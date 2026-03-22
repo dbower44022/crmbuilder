@@ -1,0 +1,53 @@
+version: "1.0"
+description: "CBM EspoCRM Configuration — Contact Fields"
+
+entities:
+  Contact:
+    fields:
+      - name: contactType
+        type: enum
+        label: "Contact Type"
+        required: false
+        default: ""
+        options:
+          - Mentor
+          - Client
+        translatedOptions:
+          Mentor: "Mentor"
+          Client: "Client"
+        style:
+          Mentor: null
+          Client: null
+
+      - name: mentorStatus
+        type: enum
+        label: "Mentor Status"
+        required: false
+        default: ""
+        options:
+          - Provisional
+          - Active
+          - Inactive
+          - Departed
+        translatedOptions:
+          Provisional: "Provisional"
+          Active: "Active"
+          Inactive: "Inactive"
+          Departed: "Departed"
+        style:
+          Provisional: null
+          Active: null
+          Inactive: null
+          Departed: null
+
+      - name: isMentor
+        type: bool
+        label: "Is Mentor"
+
+      - name: isCoMentor
+        type: bool
+        label: "Is Co-Mentor"
+
+      - name: isSme
+        type: bool
+        label: "Is SME"

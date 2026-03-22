@@ -1,0 +1,178 @@
+"""EspoCRM Admin REST API client for field management."""
+
+import base64
+import hashlib
+import hmac
+import logging
+from typing import Any
+from urllib.parse import urlparse
+
+import requests
+
+from espo_impl.core.models import InstanceProfile
+
+logger = logging.getLogger(__name__)
+
+
+class EspoAdminClient:
+    """EspoCRM Admin API client for field management.
+
+    Supports API Key, HMAC, and Basic authentication methods.
+
+    :param profile: Instance connection profile.
+    :param timeout: Request timeout in seconds.
+    """
+
+    def __init__(self, profile: InstanceProfile, timeout: int = 30) -> None:
+        self.profile = profile
+        self.timeout = timeout
+        self.session = requests.Session()
+        self.session.headers.update({
+            "Content-Type": "application/json",
+        })
+
+        if profile.auth_method == "api_key":
+            self.session.headers["X-Api-Key"] = profile.api_key
+        elif profile.auth_method == "basic":
+            credentials = f"{profile.api_key}:{profile.secret_key}"
+            encoded = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
+            self.session.headers["Authorization"] = f"Basic {encoded}"
+            self.session.headers["Espo-Authorization"] = encoded
+
+    @property
+    def _base_url(self) -> str:
+        """Admin fieldManager base URL."""
+        return f"{self.profile.api_url}/Admin/fieldManager"
+
+    def _hmac_header(self, method: str, url: str) -> dict[str, str]:
+        """Build the HMAC authorization header for a request.
+
+        :param method: HTTP method (GET, POST, PUT).
+        :param url: Full request URL.
+        :returns: Dict with the X-Hmac-Authorization header.
+        """
+        if self.profile.auth_method != "hmac":
+            return {}
+
+        # EspoCRM expects the URI portion after /api/v1/
+        parsed = urlparse(url)
+        full_path = parsed.path.lstrip("/")
+        # Strip the api/v1 prefix to get the resource path
+        api_prefix = "api/v1/"
+        if full_path.startswith(api_prefix):
+            uri = full_path[len(api_prefix):]
+        else:
+            uri = full_path
+        if parsed.query:
+            uri = f"{uri}?{parsed.query}"
+
+        string_to_sign = f"{method} /{uri}"
+        hmac_hash = hmac.new(
+            self.profile.secret_key.encode("utf-8"),
+            string_to_sign.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        auth_string = f"{self.profile.api_key}:{hmac_hash}"
+        encoded = base64.b64encode(auth_string.encode("utf-8")).decode("utf-8")
+
+        return {"X-Hmac-Authorization": encoded}
+
+    def _request(
+        self, method: str, url: str, **kwargs: Any
+    ) -> tuple[int, dict[str, Any] | None]:
+        """Execute an HTTP request with appropriate auth.
+
+        :param method: HTTP method.
+        :param url: Full request URL.
+        :returns: Tuple of (status_code, response_json or None).
+        """
+        headers = kwargs.pop("headers", {})
+        headers.update(self._hmac_header(method, url))
+
+        try:
+            resp = self.session.request(
+                method, url, headers=headers, timeout=self.timeout, **kwargs
+            )
+            body = resp.json() if resp.content else None
+            return resp.status_code, body
+        except requests.exceptions.ConnectionError as exc:
+            logger.error("Connection error: %s", exc)
+            return -1, None
+        except requests.exceptions.Timeout as exc:
+            logger.error("Request timeout: %s", exc)
+            return -1, None
+
+    def get_field(
+        self, entity: str, field_name: str
+    ) -> tuple[int, dict[str, Any] | None]:
+        """Fetch a field definition via the Metadata API.
+
+        Uses ``Metadata?key=entityDefs.{entity}.fields.{fieldName}`` which
+        reliably returns field definitions for both system and custom fields.
+        Falls back to the Admin/fieldManager endpoint if metadata returns
+        an empty result.
+
+        :param entity: Entity name (e.g., "Contact").
+        :param field_name: Field name (e.g., "contactType" or "cContactType").
+        :returns: Tuple of (status_code, response_json or None).
+        """
+        # Primary: use the Metadata API
+        url = (
+            f"{self.profile.api_url}/Metadata"
+            f"?key=entityDefs.{entity}.fields.{field_name}"
+        )
+        status_code, body = self._request("GET", url)
+
+        if status_code == 200 and isinstance(body, dict) and body:
+            return 200, body
+
+        # Metadata returned empty or error — try Admin/fieldManager
+        fm_url = f"{self._base_url}/{entity}/{field_name}"
+        return self._request("GET", fm_url)
+
+    def create_field(
+        self, entity: str, payload: dict[str, Any]
+    ) -> tuple[int, dict[str, Any] | None]:
+        """Create a new field on the instance.
+
+        Automatically injects ``isCustom: true`` into the payload.
+
+        :param entity: Entity name.
+        :param payload: Field definition payload.
+        :returns: Tuple of (status_code, response_json or None).
+        """
+        url = f"{self._base_url}/{entity}"
+        payload = {**payload, "isCustom": True}
+        return self._request("POST", url, json=payload)
+
+    def update_field(
+        self, entity: str, field_name: str, payload: dict[str, Any]
+    ) -> tuple[int, dict[str, Any] | None]:
+        """Update an existing field on the instance.
+
+        :param entity: Entity name.
+        :param field_name: Field name.
+        :param payload: Updated field definition payload.
+        :returns: Tuple of (status_code, response_json or None).
+        """
+        url = f"{self._base_url}/{entity}/{field_name}"
+        return self._request("PUT", url, json=payload)
+
+    def test_connection(self) -> tuple[bool, str]:
+        """Test API connectivity by fetching metadata.
+
+        :returns: Tuple of (success, message).
+        """
+        url = f"{self.profile.api_url}/Metadata?key=app.adminPanel"
+        status_code, _ = self._request("GET", url)
+
+        if status_code == 200:
+            return True, "Connection successful"
+        elif status_code == 401:
+            return False, "Authentication failed — check API key"
+        elif status_code == 403:
+            return False, "Access forbidden — API user needs admin role"
+        elif status_code == -1:
+            return False, "Connection failed — check URL"
+        else:
+            return False, f"Unexpected response: HTTP {status_code}"
