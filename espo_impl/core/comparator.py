@@ -14,6 +14,9 @@ COMMON_PROPERTIES: list[str] = [
     "default",
     "readOnly",
     "audited",
+    "min",
+    "max",
+    "maxLength",
 ]
 
 # Additional properties compared for enum/multiEnum types.

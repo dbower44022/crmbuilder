@@ -54,6 +54,9 @@ class FieldDefinition:
     style: dict[str, str | None] | None = None
     isSorted: bool | None = None
     displayAsLabel: bool | None = None
+    min: int | None = None
+    max: int | None = None
+    maxLength: int | None = None
 
 
 class EntityAction(Enum):

@@ -102,9 +102,12 @@ class FieldDefinition:
     style: dict[str, str | None] | None = None
     isSorted: bool | None = None
     displayAsLabel: bool | None = None
+    min: int | None = None           # Minimum value (int/float fields)
+    max: int | None = None           # Maximum value (int/float fields)
+    maxLength: int | None = None     # Maximum character length (varchar fields)
 ```
 
-Optional boolean fields default to `None` (not `False`) so the comparator can distinguish "not specified in YAML" from "explicitly set to false." Only specified properties are compared against the API state.
+Optional fields default to `None` so the comparator can distinguish "not specified in YAML" from "explicitly set to a value." Only specified properties are compared against the API state.
 
 ### ProgramFile
 
@@ -194,7 +197,7 @@ Network errors and timeouts return `(-1, None)`. All other errors return the act
 
 Custom entities get a `C` prefix: `Engagement` → `CEngagement`.
 
-Mapping is in `confirm_delete_dialog.py`:
+Mapping is currently in `confirm_delete_dialog.py` (known placement issue — `ENTITY_NAME_MAP` and `get_espo_entity_name()` are core business logic and should be refactored to `core/entity_manager.py` in a future cleanup):
 
 ```python
 ENTITY_NAME_MAP = {
@@ -276,7 +279,7 @@ SUPPORTED_ENTITY_TYPES = {"Base", "Person", "Company", "Event"}
 
 ### Properties Compared
 
-**All field types:** `label`, `required`, `default`, `readOnly`, `audited`
+**All field types:** `label`, `required`, `default`, `readOnly`, `audited`, `min`, `max`, `maxLength`
 
 **Enum/multiEnum additionally:** `options` (order-sensitive), `translatedOptions`, `style`
 
@@ -567,7 +570,7 @@ YAML files. Not gitignored — safe to commit (no credentials).
 
 ### Adding a New Entity Name Mapping
 
-Add the mapping to `ENTITY_NAME_MAP` in `confirm_delete_dialog.py`:
+Add the mapping to `ENTITY_NAME_MAP` (currently in `confirm_delete_dialog.py`):
 
 ```python
 ENTITY_NAME_MAP["NewEntity"] = "CNewEntity"

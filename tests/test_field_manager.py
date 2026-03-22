@@ -366,6 +366,35 @@ def test_build_payload_includes_only_specified():
     assert "options" not in payload
 
 
+def test_build_payload_includes_min_max_maxlength():
+    manager, _ = make_manager()
+    field_def = FieldDefinition(
+        name="npsScore",
+        type="int",
+        label="NPS Score",
+        min=0,
+        max=10,
+    )
+    payload = manager._build_payload(field_def)
+    assert payload["min"] == 0
+    assert payload["max"] == 10
+    assert "maxLength" not in payload
+
+
+def test_build_payload_includes_maxlength():
+    manager, _ = make_manager()
+    field_def = FieldDefinition(
+        name="einNumber",
+        type="varchar",
+        label="EIN Number",
+        maxLength=20,
+    )
+    payload = manager._build_payload(field_def)
+    assert payload["maxLength"] == 20
+    assert "min" not in payload
+    assert "max" not in payload
+
+
 def test_custom_field_name():
     assert FieldManager._custom_field_name("contactType") == "cContactType"
     assert FieldManager._custom_field_name("isMentor") == "cIsMentor"

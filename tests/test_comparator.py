@@ -109,3 +109,27 @@ def test_default_value_differs():
     result = FieldComparator().compare(spec, current)
     assert result.matches is False
     assert "default" in result.differences
+
+
+def test_min_value_differs():
+    spec = make_spec(type="int", min=0, max=10)
+    current = {"type": "int", "label": "Test", "min": 1, "max": 10}
+    result = FieldComparator().compare(spec, current)
+    assert result.matches is False
+    assert "min" in result.differences
+    assert "max" not in result.differences
+
+
+def test_max_length_differs():
+    spec = make_spec(type="varchar", maxLength=100)
+    current = {"type": "varchar", "label": "Test", "maxLength": 255}
+    result = FieldComparator().compare(spec, current)
+    assert result.matches is False
+    assert "maxLength" in result.differences
+
+
+def test_min_max_match():
+    spec = make_spec(type="int", min=0, max=10)
+    current = {"type": "int", "label": "Test", "min": 0, "max": 10}
+    result = FieldComparator().compare(spec, current)
+    assert result.matches is True

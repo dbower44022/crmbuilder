@@ -181,6 +181,9 @@ class ConfigLoader:
             style=data.get("style"),
             isSorted=data.get("isSorted"),
             displayAsLabel=data.get("displayAsLabel"),
+            min=data.get("min"),
+            max=data.get("max"),
+            maxLength=data.get("maxLength"),
         )
 
     def _validate_field(

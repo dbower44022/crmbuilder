@@ -37,7 +37,7 @@ The application window opens. On first launch, the `data/instances/`, `data/prog
 1. **Add an instance** — Click "+ Add" in the Instance panel, enter your EspoCRM URL and credentials
 2. **Add a program file** — Click "+ Add" in the Program File panel and select a YAML file
 3. **Select both** — Click the instance name and the program file name
-4. **Validate** — Click "Validate" to parse the YAML and preview planned changes
+4. **Validate** — Parses the YAML for structural errors, then connects to the selected instance to preview what changes would be made. Requires the instance to be reachable.
 5. **Run** — Click "Run" to apply the configuration
 
 ---
@@ -314,6 +314,9 @@ entities:
 | `style` | map | Enum/multiEnum | Color style per option |
 | `isSorted` | boolean | Enum/multiEnum | Sort options alphabetically |
 | `displayAsLabel` | boolean | Enum/multiEnum | Display as colored badge |
+| `min` | integer | No | Minimum allowed value (int/float fields) |
+| `max` | integer | No | Maximum allowed value (int/float fields) |
+| `maxLength` | integer | No | Maximum character length (varchar fields) |
 
 ### Enum Field Example
 

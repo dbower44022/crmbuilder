@@ -568,6 +568,12 @@ class FieldManager:
             payload["isSorted"] = field_def.isSorted
         if field_def.displayAsLabel is not None:
             payload["displayAsLabel"] = field_def.displayAsLabel
+        if field_def.min is not None:
+            payload["min"] = field_def.min
+        if field_def.max is not None:
+            payload["max"] = field_def.max
+        if field_def.maxLength is not None:
+            payload["maxLength"] = field_def.maxLength
         return payload
 
     def _build_report(

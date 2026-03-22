@@ -1,7 +1,7 @@
 # EspoCRM Implementation Program — Technical Specification
 
 **Project:** Cleveland Business Mentors (CBM)  
-**Version:** 1.3  
+**Version:** 1.4  
 **Status:** Draft — Phase 1 (Entity Fields + Entity Management)  
 **Target:** Claude Code implementation
 
@@ -9,7 +9,7 @@
 
 ## 1. Overview
 
-This program automates the configuration of an EspoCRM instance by reading a declarative YAML program file and applying its contents via the EspoCRM REST API. It presents a PyQt6 desktop UI that allows an administrator to select an EspoCRM instance profile and a reusable program file, then validate, run, and verify the deployment in sequence.
+This program automates the configuration of an EspoCRM instance by reading a declarative YAML program file and applying its contents via the EspoCRM REST API. It presents a PySide6 desktop UI that allows an administrator to select an EspoCRM instance profile and a reusable program file, then validate, run, and verify the deployment in sequence.
 
 The program is designed to be idempotent — it can be run repeatedly and will only make changes where the current instance state differs from the desired spec. Program files are generic and reusable against any EspoCRM instance.
 
@@ -21,7 +21,7 @@ Phase 1 covers entity fields and custom entity management (create and delete). F
 
 ```
 espocrm_impl/
-├── main.py                  # Entry point — launches PyQt6 application
+├── main.py                  # Entry point — launches PySide6 application
 ├── ui/
 │   ├── main_window.py       # Main application window
 │   ├── instance_panel.py    # Instance profile management panel
@@ -42,7 +42,7 @@ espocrm_impl/
 ### 2.1 Dependencies
 
 ```
-PyQt6       # Desktop UI framework
+PySide6       # Desktop UI framework
 requests    # HTTP client
 pyyaml      # YAML parsing
 ```
@@ -495,7 +495,7 @@ For native EspoCRM entities (`Contact`, `Account`), no mapping is applied — th
 
 ## 10. Entity Management
 
-Phase 1 adds support for two entity-level operations in the YAML program file: **create** and **delete**. These are declared in a top-level `entities` block alongside the existing `fields` structure.
+Phase 1 adds support for three entity-level operations in the YAML program file: **create**, **delete**, and **delete_and_create**. These are declared in a top-level `entities` block alongside the existing `fields` structure.
 
 ### 10.1 YAML Schema — Entity Block
 
@@ -505,7 +505,7 @@ description: "CBM Full Rebuild"
 
 entities:
   Engagement:
-    action: create                # "create" or "delete"
+    action: delete_and_create     # "create", "delete", or "delete_and_create"
     type: Base                    # Entity type (see 10.2)
     labelSingular: "Engagement"
     labelPlural: "Engagements"
@@ -515,15 +515,17 @@ entities:
         type: enum
         ...
 
-  Session:
-    action: create
-    type: Base
-    labelSingular: "Session"
-    labelPlural: "Sessions"
-    stream: true
+  Contact:                        # No action — fields only
     fields:
-      - ...
+      - name: contactType
+        type: enum
+        ...
 ```
+
+**Supported actions:**
+- `create` — Create the entity if it does not exist, then apply fields
+- `delete` — Delete the entity if it exists (must not contain `fields`)
+- `delete_and_create` — Delete the entity if it exists, recreate it, then apply fields. This is the preferred pattern for full rebuilds, as it avoids the duplicate YAML key problem that would arise from using separate `delete` and `create` blocks for the same entity name.
 
 If `action` is omitted from an entity block, it defaults to field-only operations (no entity create/delete attempted). This preserves backward compatibility with existing YAML files that only define fields on native entities like `Contact` and `Account`.
 
@@ -540,7 +542,7 @@ If `action` is omitted from an entity block, it defaults to field-only operation
 
 | Property | Type | Required | Description |
 |---|---|---|---|
-| `action` | string | yes | Must be `"create"` or `"delete"` |
+| `action` | string | yes | `"create"`, `"delete"`, or `"delete_and_create"` |
 | `type` | string | create only | Entity type (see 10.2). Default: `Base` |
 | `labelSingular` | string | create only | Singular display name |
 | `labelPlural` | string | create only | Plural display name |
@@ -549,46 +551,56 @@ If `action` is omitted from an entity block, it defaults to field-only operation
 
 ### 10.4 Processing Logic — Create
 
+Check if entity exists:
 ```
-GET /api/v1/Admin/entityManager/{EntityName}
+GET /api/v1/Metadata?key=scopes.{CEntityName}
 ```
-*(TBD — confirm endpoint via network traffic during Administration > Entity Manager > Create Entity)*
 
 - If entity already exists → skip, log as SKIPPED
-- If entity does not exist → POST to create, then verify
+- If entity does not exist → POST to create
 
 ```
-POST /api/v1/Admin/entityManager
+POST /api/v1/EntityManager/action/createEntity
 ```
-*(TBD — confirm payload structure via network traffic)*
 
-Expected payload structure (to be confirmed):
+Confirmed payload structure:
 ```json
 {
   "name": "Engagement",
   "type": "Base",
   "labelSingular": "Engagement",
   "labelPlural": "Engagements",
-  "stream": true
+  "stream": true,
+  "disabled": false
 }
 ```
 
-After creation, proceed immediately to field creation for all fields defined in the same entity block.
+Note: The `name` field uses the natural name (no C prefix). EspoCRM adds the C prefix automatically during creation.
+
+After creation, trigger a cache rebuild, then proceed to field creation for all fields defined in the same entity block.
 
 ### 10.5 Processing Logic — Delete
 
 ```
-DELETE /api/v1/Admin/entityManager/{EntityName}
+POST /api/v1/EntityManager/action/removeEntity
 ```
-*(TBD — confirm endpoint via network traffic during Administration > Entity Manager > delete action)*
 
-Delete operations are **destructive and irreversible**. Any entity marked `action: delete` triggers the confirmation dialog described in section 10.6 before any processing begins.
+Payload:
+```json
+{
+  "name": "CEngagement"
+}
+```
+
+Note: The `name` field uses the **C-prefixed** internal name. Both create and delete use POST (not PUT/DELETE methods).
+
+Delete operations are **destructive and irreversible**. Any entity marked `action: delete` or `action: delete_and_create` triggers the confirmation dialog described in section 10.6 before any processing begins.
 
 Delete removes the entity type and all its custom fields. It does not delete data records (those are handled by EspoCRM internally). After deletion, a cache rebuild is required.
 
 ### 10.6 Destructive Operation Confirmation Dialog
 
-Before executing any run that contains one or more `action: delete` entries, the program must pause and display a modal confirmation dialog. This dialog fires before any API calls are made — including non-destructive ones in the same program file.
+Before executing any run that contains one or more `action: delete` or `action: delete_and_create` entries, the program must pause and display a modal confirmation dialog. This dialog fires before any API calls are made — including non-destructive ones in the same program file.
 
 **Dialog content:**
 
@@ -635,37 +647,21 @@ This ensures the new or removed entities are visible in the EspoCRM UI immediate
 
 ## 11. Updated YAML Schema — Full Example
 
+The `delete_and_create` action combines delete and create into a single entity block, avoiding the duplicate YAML key problem that would arise from separate `delete` and `create` blocks for the same entity name.
+
 ```yaml
 version: "1.0"
 description: "CBM Full Rebuild — All Custom Entities"
 
-# This program deletes all existing custom entities and recreates
-# them from scratch with the correct field definitions.
 # WARNING: Contains delete operations. Confirmation required.
+# This program deletes and recreates all custom entities,
+# then applies field definitions.
 
 entities:
 
-  # --- Delete existing (if present) ---
-
+  # Custom entities — delete and recreate in one block
   Engagement:
-    action: delete
-
-  Session:
-    action: delete
-
-  Workshop:
-    action: delete
-
-  WorkshopAttendance:
-    action: delete
-
-  NpsSurveyResponse:
-    action: delete
-
-  # --- Recreate ---
-
-  Engagement:
-    action: create
+    action: delete_and_create
     type: Base
     labelSingular: "Engagement"
     labelPlural: "Engagements"
@@ -682,8 +678,16 @@ entities:
           - "Completed"
         ...
 
-  # Native entities — fields only, no action needed
+  Session:
+    action: delete_and_create
+    type: Base
+    labelSingular: "Session"
+    labelPlural: "Sessions"
+    stream: true
+    fields:
+      - ...
 
+  # Native entities — fields only, no action needed
   Contact:
     fields:
       - name: contactType
@@ -712,9 +716,9 @@ entities:
 - EspoCRM field names are stored in lowerCamelCase. The YAML `name` property must match this convention.
 - The `Admin/fieldManager` and entity management endpoints require admin-level API user access. Role-based API users will receive 403.
 - The target EspoCRM instance for CBM is hosted on EspoCRM Cloud (espocloud.com), version 9.3.3.
-- **Entity management endpoints are not in the OpenAPI spec.** Claude Code must discover the correct endpoints and payload structures by observing network traffic in the browser dev tools while performing entity create/delete operations in Administration > Entity Manager. Document the confirmed endpoints as comments in `entity_manager.py`.
+- **Entity management endpoints are not in the OpenAPI spec.** The confirmed endpoints (discovered via browser dev tools) are: `POST /api/v1/EntityManager/action/createEntity` (create) and `POST /api/v1/EntityManager/action/removeEntity` (delete). Both use POST. Create uses the natural name; delete uses the C-prefixed name. These are documented in `entity_manager.py`.
 - After entity creation or deletion, always trigger `POST /api/v1/Admin/rebuild` before proceeding with field operations on the affected entity.
-- All long-running operations (Run, Verify) must execute in a background thread to keep the UI responsive. Use PyQt6's `QThread` or `QRunnable` with signals to post output messages back to the main thread.
+- All long-running operations (Run, Verify) must execute in a background thread to keep the UI responsive. Use PySide6's `QThread` or `QRunnable` with signals to post output messages back to the main thread.
 - The output panel must use a monospace font for clean alignment of log-style messages.
 - The `data/` and `reports/` directories should be created automatically on first launch if they do not exist.
 - The confirmation dialog for destructive operations must be modal and block all other UI interaction until dismissed.

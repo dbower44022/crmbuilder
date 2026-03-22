@@ -375,6 +375,50 @@ def test_validate_delete_and_create_requires_type(loader, tmp_path):
     assert any("type" in e and "required" in e for e in errors)
 
 
+def test_load_field_with_min_max(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Session:
+            fields:
+              - name: npsScore
+                type: int
+                label: "NPS Score"
+                min: 0
+                max: 10
+    """)
+    path = tmp_path / "min_max.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert errors == []
+    field = program.entities[0].fields[0]
+    assert field.min == 0
+    assert field.max == 10
+
+
+def test_load_field_with_max_length(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Account:
+            fields:
+              - name: einNumber
+                type: varchar
+                label: "EIN Number"
+                maxLength: 20
+    """)
+    path = tmp_path / "max_length.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert errors == []
+    field = program.entities[0].fields[0]
+    assert field.maxLength == 20
+
+
 def test_wysiwyg_field_type_supported(loader, tmp_path):
     content = dedent("""\
         version: "1.0"
