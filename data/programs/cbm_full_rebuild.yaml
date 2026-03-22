@@ -18,11 +18,30 @@ description: "CBM Full Rebuild — Delete and Recreate All Custom Entities"
 entities:
 
   # ---------------------------------------------------------------
-  # Custom entities — delete and recreate
+  # Step 1 — Delete existing custom entities
   # ---------------------------------------------------------------
 
   Engagement:
-    action: delete_and_create
+    action: delete
+
+  Session:
+    action: delete
+
+  Workshop:
+    action: delete
+
+  WorkshopAttendance:
+    action: delete
+
+  NpsSurveyResponse:
+    action: delete
+
+  # ---------------------------------------------------------------
+  # Step 2 — Recreate custom entities with fields
+  # ---------------------------------------------------------------
+
+  Engagement:
+    action: create
     type: Base
     labelSingular: "Engagement"
     labelPlural: "Engagements"
@@ -122,11 +141,13 @@ entities:
         type: int
         label: "Total Sessions"
         readOnly: true
+        min: 0
 
       - name: totalSessionsLast30Days
         type: int
         label: "Total Sessions (Last 30 Days)"
         readOnly: true
+        min: 0
 
       - name: lastSessionDate
         type: datetime
@@ -137,13 +158,14 @@ entities:
         type: float
         label: "Total Session Hours"
         readOnly: true
+        min: 0
 
       - name: nextSessionDateTime
         type: datetime
         label: "Next Session Date/Time"
 
   Session:
-    action: delete_and_create
+    action: create
     type: Base
     labelSingular: "Session"
     labelPlural: "Sessions"
@@ -159,6 +181,7 @@ entities:
         type: int
         label: "Duration (minutes)"
         required: true
+        min: 1
 
       - name: sessionType
         type: enum
@@ -198,6 +221,7 @@ entities:
       - name: locationDetails
         type: varchar
         label: "Location Details"
+        maxLength: 255
 
       - name: topicsCovered
         type: multiEnum
@@ -236,7 +260,7 @@ entities:
         label: "Next Session Date/Time"
 
   NpsSurveyResponse:
-    action: delete_and_create
+    action: create
     type: Base
     labelSingular: "NPS Survey Response"
     labelPlural: "NPS Survey Responses"
@@ -270,6 +294,8 @@ entities:
         type: int
         label: "NPS Score"
         required: true
+        min: 0
+        max: 10
 
       - name: didCbmHelpYou
         type: bool
@@ -280,18 +306,22 @@ entities:
         type: int
         label: "I Would Return to See This Mentor Again"
         required: true
+        min: 1
+        max: 5
 
       - name: mentorListenedAndUnderstood
         type: int
         label: "Mentor Listened and Understood My Needs"
         required: true
+        min: 1
+        max: 5
 
       - name: improvementFeedback
         type: wysiwyg
         label: "How Could CBM Better Meet Your Needs?"
 
   Workshop:
-    action: delete_and_create
+    action: create
     type: Base
     labelSingular: "Workshop"
     labelPlural: "Workshops"
@@ -345,10 +375,12 @@ entities:
       - name: presenter
         type: varchar
         label: "Presenter"
+        maxLength: 255
 
       - name: location
         type: varchar
         label: "Location"
+        maxLength: 255
 
       - name: workshopDescription
         type: wysiwyg
@@ -357,6 +389,7 @@ entities:
       - name: maximumCapacity
         type: int
         label: "Maximum Capacity"
+        min: 0
 
       - name: status
         type: enum
@@ -378,7 +411,7 @@ entities:
           "Cancelled": null
 
   WorkshopAttendance:
-    action: delete_and_create
+    action: create
     type: Base
     labelSingular: "Workshop Attendance"
     labelPlural: "Workshop Attendance"
@@ -397,7 +430,7 @@ entities:
         default: true
 
   # ---------------------------------------------------------------
-  # Native entities — fields only (no create/delete)
+  # Step 3 — Native entity fields (no create/delete needed)
   # ---------------------------------------------------------------
 
   Contact:
@@ -459,6 +492,7 @@ entities:
       - name: roleAtBusiness
         type: varchar
         label: "Role at Business"
+        maxLength: 150
 
       - name: isPrimaryContact
         type: bool
@@ -557,10 +591,12 @@ entities:
       - name: timeInOperation
         type: varchar
         label: "Time in Operation"
+        maxLength: 100
 
       - name: currentTeamSize
         type: int
         label: "Current Team Size"
+        min: 0
 
       - name: revenueRange
         type: enum
@@ -734,3 +770,4 @@ entities:
       - name: einNumber
         type: varchar
         label: "EIN Number"
+        maxLength: 20

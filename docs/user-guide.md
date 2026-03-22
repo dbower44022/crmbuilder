@@ -152,7 +152,10 @@ The **Run** button becomes enabled after successful validation.
 
 Click **Run** to apply the program file to the instance.
 
-**If the program contains delete operations**, a confirmation dialog appears. You must type `DELETE` (case-sensitive) and click **Proceed** before any changes are made.
+**If the program contains delete operations**, a confirmation dialog appears with two options:
+
+- **Skip deletes (default)** — applies field changes only. Safe for live instances with existing data. Entities are created if they don't exist but never deleted.
+- **Proceed with deletes** — performs a full rebuild. Deletes and recreates all listed entities. All data in those entities is permanently lost. Requires typing DELETE to confirm.
 
 **Execution order:**
 1. Delete entities marked for deletion
@@ -428,4 +431,4 @@ Custom fields are stored with a `c` prefix. The tool tries the c-prefixed name f
 EspoCRM's cache may not have updated yet. Wait a few seconds and click **Verify** again.
 
 ### Confirmation dialog appears before Run
-Your program file contains entity delete operations (`action: delete` or `action: delete_and_create`). Type `DELETE` to confirm, or click Cancel to abort.
+Your program file contains entity delete operations. Choose "Skip deletes" to safely update fields on a live instance, or "Proceed with deletes" to perform a full rebuild (destructive — all data in the listed entities will be lost).

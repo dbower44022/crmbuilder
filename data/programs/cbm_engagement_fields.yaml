@@ -1,0 +1,141 @@
+version: "1.0"
+description: "CBM EspoCRM Configuration — Engagement Fields"
+
+# Source of truth: CBM-PRD-CRM-Implementation.docx Section 2.6
+# Custom entity — uses delete_and_create for clean deployment.
+# WARNING: Contains a delete_and_create operation — confirmation required.
+#
+# Fields NOT included here (handled separately):
+#   - Link fields: Company, Assigned Mentor, Engagement Contacts (relationships)
+
+entities:
+  Engagement:
+    action: delete_and_create
+    type: Base
+    labelSingular: "Engagement"
+    labelPlural: "Engagements"
+    stream: true
+    fields:
+
+      - name: status
+        type: enum
+        label: "Status"
+        required: true
+        default: "Submitted"
+        isSorted: false
+        options:
+          - "Submitted"
+          - "Pending Acceptance"
+          - "Assigned"
+          - "Mentor Declined"
+          - "Active"
+          - "On-Hold"
+          - "Dormant"
+          - "Inactive"
+          - "Abandoned"
+          - "Completed"
+        translatedOptions:
+          "Submitted": "Submitted"
+          "Pending Acceptance": "Pending Acceptance"
+          "Assigned": "Assigned"
+          "Mentor Declined": "Mentor Declined"
+          "Active": "Active"
+          "On-Hold": "On-Hold"
+          "Dormant": "Dormant"
+          "Inactive": "Inactive"
+          "Abandoned": "Abandoned"
+          "Completed": "Completed"
+        style:
+          "Submitted": "info"
+          "Pending Acceptance": "warning"
+          "Assigned": "primary"
+          "Mentor Declined": "danger"
+          "Active": "success"
+          "On-Hold": "warning"
+          "Dormant": "danger"
+          "Inactive": "danger"
+          "Abandoned": "default"
+          "Completed": "success"
+
+      - name: startDate
+        type: date
+        label: "Start Date"
+        readOnly: true
+
+      - name: closeDate
+        type: date
+        label: "Close Date"
+        readOnly: true
+
+      - name: mentorAssignedDate
+        type: date
+        label: "Mentor Assigned Date"
+        readOnly: true
+
+      - name: meetingCadence
+        type: enum
+        label: "Meeting Cadence"
+        required: true
+        isSorted: false
+        options:
+          - "Weekly"
+          - "Bi-Weekly"
+          - "Monthly"
+          - "As Needed"
+        translatedOptions:
+          "Weekly": "Weekly"
+          "Bi-Weekly": "Bi-Weekly"
+          "Monthly": "Monthly"
+          "As Needed": "As Needed"
+        style:
+          "Weekly": null
+          "Bi-Weekly": null
+          "Monthly": null
+          "As Needed": null
+
+      - name: engagementCloseReason
+        type: enum
+        label: "Engagement Close Reason"
+        isSorted: false
+        options:
+          - "Goals Achieved"
+          - "Client Withdrew"
+          - "Inactive / No Response"
+          - "Other"
+        translatedOptions:
+          "Goals Achieved": "Goals Achieved"
+          "Client Withdrew": "Client Withdrew"
+          "Inactive / No Response": "Inactive / No Response"
+          "Other": "Other"
+        style:
+          "Goals Achieved": null
+          "Client Withdrew": null
+          "Inactive / No Response": null
+          "Other": null
+
+      - name: totalSessions
+        type: int
+        label: "Total Sessions"
+        readOnly: true
+        min: 0
+
+      - name: totalSessionsLast30Days
+        type: int
+        label: "Total Sessions (Last 30 Days)"
+        readOnly: true
+        min: 0
+
+      - name: lastSessionDate
+        type: date
+        label: "Last Session Date"
+        readOnly: true
+
+      - name: totalSessionHours
+        type: float
+        label: "Total Session Hours"
+        readOnly: true
+        min: 0
+
+      - name: nextSessionDateTime
+        type: datetime
+        label: "Next Session Date/Time"

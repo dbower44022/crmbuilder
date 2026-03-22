@@ -1,0 +1,71 @@
+version: "1.0"
+description: "CBM EspoCRM Configuration — NPS Survey Response Fields"
+
+# Source of truth: CBM-PRD-CRM-Implementation.docx Section 2.8
+# Custom entity — uses delete_and_create for clean deployment.
+# WARNING: Contains a delete_and_create operation — confirmation required.
+#
+# Fields NOT included here (handled separately):
+#   - Link fields: Engagement, Session (relationships)
+
+entities:
+  NpsSurveyResponse:
+    action: delete_and_create
+    type: Base
+    labelSingular: "NPS Survey Response"
+    labelPlural: "NPS Survey Responses"
+    stream: false
+    fields:
+
+      - name: surveyTrigger
+        type: enum
+        label: "Survey Trigger"
+        readOnly: true
+        isSorted: false
+        options:
+          - "2nd Session"
+          - "Every 5 Sessions"
+          - "Engagement Close"
+        translatedOptions:
+          "2nd Session": "2nd Session"
+          "Every 5 Sessions": "Every 5 Sessions"
+          "Engagement Close": "Engagement Close"
+        style:
+          "2nd Session": null
+          "Every 5 Sessions": null
+          "Engagement Close": null
+
+      - name: surveyDateTime
+        type: datetime
+        label: "Survey Date/Time"
+        readOnly: true
+
+      - name: npsScore
+        type: int
+        label: "NPS Score"
+        required: true
+        min: 0
+        max: 10
+
+      - name: didCbmHelpYou
+        type: bool
+        label: "Did CBM Help You?"
+        required: true
+
+      - name: wouldReturnToMentor
+        type: int
+        label: "I Would Return to See This Mentor Again"
+        required: true
+        min: 1
+        max: 5
+
+      - name: mentorListenedAndUnderstood
+        type: int
+        label: "Mentor Listened and Understood My Needs"
+        required: true
+        min: 1
+        max: 5
+
+      - name: improvementFeedback
+        type: wysiwyg
+        label: "How Could CBM Better Meet Your Needs?"

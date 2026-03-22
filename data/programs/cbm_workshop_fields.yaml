@@ -1,0 +1,130 @@
+version: "1.0"
+description: "CBM EspoCRM Configuration — Workshop Fields"
+
+# Source of truth: CBM-PRD-CRM-Implementation.docx Section 2.9
+# Custom entity — uses delete_and_create for clean deployment.
+# WARNING: Contains a delete_and_create operation — confirmation required.
+#
+# Note: Presenter field is defined as Text in the guide (not a Link field yet).
+# A future enhancement may link this to a Contact record.
+
+entities:
+  Workshop:
+    action: delete_and_create
+    type: Base
+    labelSingular: "Workshop"
+    labelPlural: "Workshops"
+    stream: true
+    fields:
+
+      - name: title
+        type: varchar
+        label: "Title"
+        required: true
+        maxLength: 255
+
+      - name: workshopDateTime
+        type: datetime
+        label: "Date/Time"
+        required: true
+
+      - name: topicCategory
+        type: enum
+        label: "Topic/Category"
+        required: true
+        isSorted: false
+        options:
+          - "Business Planning & Strategy"
+          - "Marketing & Sales"
+          - "Financial Management & Accounting"
+          - "Operations & Process Improvement"
+          - "Human Resources & Team Building"
+          - "Legal & Compliance"
+          - "Technology & Digital Transformation"
+          - "Access to Capital & Funding"
+          - "E-Commerce & Online Business"
+          - "Export & International Trade"
+          - "Nonprofit Management"
+          - "Social Entrepreneurship"
+          - "Real Estate & Property Management"
+          - "Retail & Consumer Goods"
+          - "Food & Beverage"
+          - "Healthcare & Wellness"
+          - "Manufacturing & Supply Chain"
+          - "Construction & Trades"
+        translatedOptions:
+          "Business Planning & Strategy": "Business Planning & Strategy"
+          "Marketing & Sales": "Marketing & Sales"
+          "Financial Management & Accounting": "Financial Management & Accounting"
+          "Operations & Process Improvement": "Operations & Process Improvement"
+          "Human Resources & Team Building": "Human Resources & Team Building"
+          "Legal & Compliance": "Legal & Compliance"
+          "Technology & Digital Transformation": "Technology & Digital Transformation"
+          "Access to Capital & Funding": "Access to Capital & Funding"
+          "E-Commerce & Online Business": "E-Commerce & Online Business"
+          "Export & International Trade": "Export & International Trade"
+          "Nonprofit Management": "Nonprofit Management"
+          "Social Entrepreneurship": "Social Entrepreneurship"
+          "Real Estate & Property Management": "Real Estate & Property Management"
+          "Retail & Consumer Goods": "Retail & Consumer Goods"
+          "Food & Beverage": "Food & Beverage"
+          "Healthcare & Wellness": "Healthcare & Wellness"
+          "Manufacturing & Supply Chain": "Manufacturing & Supply Chain"
+          "Construction & Trades": "Construction & Trades"
+        style:
+          "Business Planning & Strategy": null
+          "Marketing & Sales": null
+          "Financial Management & Accounting": null
+          "Operations & Process Improvement": null
+          "Human Resources & Team Building": null
+          "Legal & Compliance": null
+          "Technology & Digital Transformation": null
+          "Access to Capital & Funding": null
+          "E-Commerce & Online Business": null
+          "Export & International Trade": null
+          "Nonprofit Management": null
+          "Social Entrepreneurship": null
+          "Real Estate & Property Management": null
+          "Retail & Consumer Goods": null
+          "Food & Beverage": null
+          "Healthcare & Wellness": null
+          "Manufacturing & Supply Chain": null
+          "Construction & Trades": null
+
+      - name: presenter
+        type: varchar
+        label: "Presenter"
+        maxLength: 255
+
+      - name: location
+        type: varchar
+        label: "Location"
+        maxLength: 255
+
+      - name: workshopDescription
+        type: wysiwyg
+        label: "Description"
+
+      - name: maximumCapacity
+        type: int
+        label: "Maximum Capacity"
+        min: 0
+
+      - name: status
+        type: enum
+        label: "Status"
+        required: true
+        default: "Scheduled"
+        isSorted: false
+        options:
+          - "Scheduled"
+          - "Completed"
+          - "Cancelled"
+        translatedOptions:
+          "Scheduled": "Scheduled"
+          "Completed": "Completed"
+          "Cancelled": "Cancelled"
+        style:
+          "Scheduled": "info"
+          "Completed": "success"
+          "Cancelled": "danger"

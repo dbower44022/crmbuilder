@@ -1,0 +1,61 @@
+version: "1.0"
+description: "CBM EspoCRM Configuration — Dues Fields"
+
+# Source of truth: CBM-PRD-CRM-Implementation.docx Section 2.11
+# Custom entity — uses delete_and_create for clean deployment.
+# WARNING: Contains a delete_and_create operation — confirmation required.
+#
+# Dues tracks annual dues payment records for mentor Contacts.
+# One record per billing year per mentor.
+#
+# Fields NOT included here (handled separately):
+#   - Link fields: Mentor / Contact (relationship)
+
+entities:
+  Dues:
+    action: delete_and_create
+    type: Base
+    labelSingular: "Dues"
+    labelPlural: "Dues"
+    stream: false
+    fields:
+
+      - name: billingYear
+        type: int
+        label: "Billing Year"
+        required: true
+        min: 2000
+
+      - name: amountDue
+        type: currency
+        label: "Amount Due"
+        required: true
+
+      - name: invoiceDate
+        type: date
+        label: "Invoice Date"
+
+      - name: paymentDate
+        type: date
+        label: "Payment Date"
+
+      - name: paymentMethod
+        type: enum
+        label: "Payment Method"
+        isSorted: false
+        options:
+          - "Stripe"
+          - "Waived"
+          - "Other"
+        translatedOptions:
+          "Stripe": "Stripe"
+          "Waived": "Waived"
+          "Other": "Other"
+        style:
+          "Stripe": null
+          "Waived": null
+          "Other": null
+
+      - name: notes
+        type: wysiwyg
+        label: "Notes"

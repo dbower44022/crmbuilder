@@ -1,0 +1,114 @@
+version: "1.0"
+description: "CBM EspoCRM Configuration — Session Fields"
+
+# Source of truth: CBM-PRD-CRM-Implementation.docx Section 2.7
+# Custom entity — uses delete_and_create for clean deployment.
+# WARNING: Contains a delete_and_create operation — confirmation required.
+#
+# Dynamic Logic (configured separately):
+#   - meetingLocationType: visible only when sessionType = "In-Person"
+#   - locationDetails: visible only when meetingLocationType = "Other"
+#
+# Fields NOT included here (handled separately):
+#   - Link fields: Engagement, Mentor Attendees (relationships)
+
+entities:
+  Session:
+    action: delete_and_create
+    type: Base
+    labelSingular: "Session"
+    labelPlural: "Sessions"
+    stream: true
+    fields:
+
+      - name: sessionDateTime
+        type: datetime
+        label: "Session Date/Time"
+        required: true
+
+      - name: duration
+        type: int
+        label: "Duration (minutes)"
+        required: true
+        min: 1
+
+      - name: sessionType
+        type: enum
+        label: "Session Type"
+        required: true
+        isSorted: false
+        options:
+          - "In-Person"
+          - "Video Call"
+          - "Phone Call"
+        translatedOptions:
+          "In-Person": "In-Person"
+          "Video Call": "Video Call"
+          "Phone Call": "Phone Call"
+        style:
+          "In-Person": null
+          "Video Call": null
+          "Phone Call": null
+
+      - name: meetingLocationType
+        type: enum
+        label: "Meeting Location Type"
+        isSorted: false
+        options:
+          - "CBM Office"
+          - "Client's Place of Business"
+          - "Other"
+        translatedOptions:
+          "CBM Office": "CBM Office"
+          "Client's Place of Business": "Client's Place of Business"
+          "Other": "Other"
+        style:
+          "CBM Office": null
+          "Client's Place of Business": null
+          "Other": null
+
+      - name: locationDetails
+        type: varchar
+        label: "Location Details"
+        maxLength: 255
+
+      - name: topicsCovered
+        type: multiEnum
+        label: "Topics Covered"
+        options:
+          - "Business Planning"
+          - "Marketing Strategy"
+          - "Financial Review"
+          - "Sales & Revenue Growth"
+          - "Operations & Processes"
+          - "HR & Staffing"
+          - "Legal & Compliance"
+          - "Technology & Systems"
+          - "Funding & Capital"
+          - "Customer Discovery"
+          - "Product / Service Development"
+          - "Partnerships & Networking"
+          - "Goal Setting & Accountability"
+          - "Crisis & Problem Solving"
+          - "Other"
+
+      - name: topicsCoveredNotes
+        type: wysiwyg
+        label: "Topics Covered Notes"
+
+      - name: mentorNotes
+        type: wysiwyg
+        label: "Mentor Notes"
+
+      - name: nextSteps
+        type: wysiwyg
+        label: "Next Steps"
+
+      - name: newBusinessStarted
+        type: bool
+        label: "New Business Started"
+        default: false
+
+      - name: nextSessionDateTime
+        type: datetime
+        label: "Next Session Date/Time"

@@ -55,9 +55,12 @@ class ProgramPanel(QWidget):
         self.add_btn.clicked.connect(self._on_add)
         self.edit_btn.clicked.connect(self._on_edit)
         self.delete_btn.clicked.connect(self._on_delete)
+        self.refresh_btn = QPushButton("Refresh")
+        self.refresh_btn.clicked.connect(self._on_refresh)
         btn_layout.addWidget(self.add_btn)
         btn_layout.addWidget(self.edit_btn)
         btn_layout.addWidget(self.delete_btn)
+        btn_layout.addWidget(self.refresh_btn)
         group_layout.addLayout(btn_layout)
 
         group.setLayout(group_layout)
@@ -121,6 +124,11 @@ class ProgramPanel(QWidget):
             return
         path = self._paths[row]
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
+
+    def _on_refresh(self) -> None:
+        """Reload the program file list from disk."""
+        self._load_programs()
+        self.program_selected.emit(None)
 
     def _on_delete(self) -> None:
         """Delete the selected program file after confirmation."""

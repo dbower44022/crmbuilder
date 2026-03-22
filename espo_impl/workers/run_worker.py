@@ -15,6 +15,7 @@ class RunWorker(QThread):
     :param profile: Instance connection profile.
     :param program: Validated program file to process.
     :param operation: Either "run", "preview", or "verify".
+    :param skip_deletes: If True, skip all entity delete operations.
     :param parent: Parent QObject.
     """
 
@@ -27,12 +28,14 @@ class RunWorker(QThread):
         profile: InstanceProfile,
         program: ProgramFile,
         operation: str,
+        skip_deletes: bool = False,
         parent=None,
     ) -> None:
         super().__init__(parent)
         self.profile = profile
         self.program = program
         self.operation = operation
+        self.skip_deletes = skip_deletes
 
     def run(self) -> None:
         """Execute the operation in a background thread."""
@@ -68,28 +71,42 @@ class RunWorker(QThread):
         entity_mgr = EntityManager(client, self.output_line.emit)
         had_entity_ops = False
 
-        # Step 1: Delete entities
-        delete_actions = {EntityAction.DELETE, EntityAction.DELETE_AND_CREATE}
-        deletes = [
-            e for e in self.program.entities if e.action in delete_actions
-        ]
-        if deletes:
+        if self.skip_deletes:
             self.output_line.emit("", "white")
-            self.output_line.emit("=== ENTITY DELETIONS ===", "white")
-            for entity_def in deletes:
+            self.output_line.emit(
+                "[INFO]    Delete operations skipped "
+                "\u2014 running in field-update mode",
+                "yellow",
+            )
+        else:
+            # Step 1: Delete entities
+            delete_actions = {
+                EntityAction.DELETE, EntityAction.DELETE_AND_CREATE
+            }
+            deletes = [
+                e for e in self.program.entities
+                if e.action in delete_actions
+            ]
+            if deletes:
+                self.output_line.emit("", "white")
+                self.output_line.emit(
+                    "=== ENTITY DELETIONS ===", "white"
+                )
+                for entity_def in deletes:
+                    try:
+                        entity_mgr._delete_entity(entity_def)
+                    except EntityManagerError as exc:
+                        self.finished_error.emit(str(exc))
+                        return
+                had_entity_ops = True
                 try:
-                    entity_mgr._delete_entity(entity_def)
+                    entity_mgr.rebuild_cache()
                 except EntityManagerError as exc:
                     self.finished_error.emit(str(exc))
                     return
-            had_entity_ops = True
-            try:
-                entity_mgr.rebuild_cache()
-            except EntityManagerError as exc:
-                self.finished_error.emit(str(exc))
-                return
 
-        # Step 2: Create entities
+        # Step 2: Create entities (for both create and delete_and_create)
+        # In skip_deletes mode, delete_and_create is treated as create-if-not-exists
         create_actions = {EntityAction.CREATE, EntityAction.DELETE_AND_CREATE}
         creates = [
             e for e in self.program.entities if e.action in create_actions
@@ -118,7 +135,9 @@ class RunWorker(QThread):
         if has_fields:
             if had_entity_ops:
                 self.output_line.emit("", "white")
-                self.output_line.emit("=== FIELD OPERATIONS ===", "white")
+                self.output_line.emit(
+                    "=== FIELD OPERATIONS ===", "white"
+                )
             report = field_mgr.run(self.program)
         else:
             report = field_mgr._build_report(self.program, "run", [])

@@ -65,6 +65,11 @@ class FieldComparator:
             if spec_value is None:
                 continue
             current_value = current.get(prop)
+            # Skip if the API didn't return this property — the Metadata
+            # API omits label, translatedOptions, and some defaults from
+            # the field definition (they're in the translation system).
+            if current_value is None and prop not in current:
+                continue
             if spec_value != current_value:
                 differences.append(prop)
 
@@ -74,6 +79,8 @@ class FieldComparator:
                 if spec_value is None:
                     continue
                 current_value = current.get(prop)
+                if current_value is None and prop not in current:
+                    continue
                 if spec_value != current_value:
                     differences.append(prop)
 

@@ -23,7 +23,10 @@ from espo_impl.core.models import (
     RunReport,
 )
 from espo_impl.core.reporter import Reporter
-from espo_impl.ui.confirm_delete_dialog import ConfirmDeleteDialog
+from espo_impl.ui.confirm_delete_dialog import (
+    ConfirmDeleteDialog,
+    DeleteDialogResult,
+)
 from espo_impl.ui.instance_panel import InstancePanel
 from espo_impl.ui.output_panel import OutputPanel
 from espo_impl.ui.program_panel import ProgramPanel
@@ -189,6 +192,8 @@ class MainWindow(QMainWindow):
         if not self.state.instance or not self.state.program:
             return
 
+        skip_deletes = False
+
         # Check for destructive operations
         if self.state.program.has_delete_operations:
             delete_actions = {
@@ -206,13 +211,17 @@ class MainWindow(QMainWindow):
             dialog = ConfirmDeleteDialog(
                 delete_entities, program_name, self
             )
-            if dialog.exec() != ConfirmDeleteDialog.DialogCode.Accepted:
+            dialog.exec()
+
+            if dialog.result == DeleteDialogResult.CANCELLED:
                 self.output_panel.append_line(
                     "[RUN] Cancelled by user", "yellow"
                 )
                 return
+            elif dialog.result == DeleteDialogResult.SKIP_DELETES:
+                skip_deletes = True
 
-        self._start_worker("run")
+        self._start_worker("run", skip_deletes=skip_deletes)
 
     def _on_verify_clicked(self) -> None:
         """Start the verify operation in a background thread."""
@@ -220,10 +229,13 @@ class MainWindow(QMainWindow):
             return
         self._start_worker("verify")
 
-    def _start_worker(self, operation: str) -> None:
+    def _start_worker(
+        self, operation: str, skip_deletes: bool = False
+    ) -> None:
         """Launch the background worker thread.
 
-        :param operation: "run" or "verify".
+        :param operation: "run", "preview", or "verify".
+        :param skip_deletes: If True, skip entity delete operations.
         """
         self.state.operation_in_progress = True
         self.progress_bar.setVisible(True)
@@ -238,6 +250,7 @@ class MainWindow(QMainWindow):
             self.state.instance,
             self.state.program,
             operation,
+            skip_deletes=skip_deletes,
             parent=self,
         )
         self._worker.output_line.connect(self._on_worker_output)
@@ -311,5 +324,5 @@ class MainWindow(QMainWindow):
 
         self.validate_btn.setEnabled(has_selection and not in_progress)
         self.run_btn.setEnabled(self.state.validated and not in_progress)
-        self.verify_btn.setEnabled(self.state.run_complete and not in_progress)
+        self.verify_btn.setEnabled(self.state.validated and not in_progress)
         self.report_btn.setEnabled(self.state.last_report_path is not None)

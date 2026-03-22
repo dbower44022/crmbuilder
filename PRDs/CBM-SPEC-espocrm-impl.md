@@ -602,36 +602,50 @@ Delete removes the entity type and all its custom fields. It does not delete dat
 
 Before executing any run that contains one or more `action: delete` or `action: delete_and_create` entries, the program must pause and display a modal confirmation dialog. This dialog fires before any API calls are made — including non-destructive ones in the same program file.
 
+The dialog presents two radio button options, allowing the user to choose between a safe field-update mode and a full destructive rebuild at runtime.
+
 **Dialog content:**
 
 ```
-┌────────────────────────────────────────────────┐
-│  ⚠  Destructive Operation Detected             │
-├────────────────────────────────────────────────┤
-│                                                │
-│  The program "cbm_full_rebuild.yaml" contains  │
-│  DELETE operations. The following entities     │
-│  will be permanently deleted:                  │
-│                                                │
-│    • CEngagement                               │
-│    • CSessions                                 │
-│    • CWorkshops                                │
-│    • CWorkshopAttendee                         │
-│    • CNpsSurveyResponse                        │
-│                                                │
-│  This cannot be undone.                        │
-│                                                │
-│  Type DELETE to confirm:  [____________]       │
-│                                                │
-│              [Cancel]  [Proceed]               │
-└────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│  Delete Operations Detected                          │
+├──────────────────────────────────────────────────────┤
+│                                                      │
+│  The program "cbm_full_rebuild.yaml" contains        │
+│  DELETE operations for the following entities:       │
+│                                                      │
+│    • CEngagement  (delete and create)                │
+│    • CSessions  (delete and create)                  │
+│    • CWorkshops  (delete and create)                 │
+│                                                      │
+│  ○ Skip deletes — update fields only                 │
+│    Safe for live instances with existing data.       │
+│                                                      │
+│  ○ Proceed with deletes — full rebuild               │
+│    Destroys all data in listed entities.             │
+│    Type DELETE to confirm: [____________]            │
+│                                                      │
+│                          [Cancel]  [Proceed]          │
+└──────────────────────────────────────────────────────┘
 ```
 
 **Behavior:**
-- The **Proceed** button is disabled until the user types `DELETE` (case-sensitive) in the text field
+
+- **"Skip deletes"** is selected by default when the dialog opens
+- When "Skip deletes" is selected, the DELETE text field is hidden and the **Proceed** button is immediately enabled
+- When "Proceed with deletes" is selected, the DELETE text field appears and the **Proceed** button is disabled until `DELETE` is typed exactly (case-sensitive)
 - Clicking **Cancel** returns to the main window with no changes made
-- Clicking **Proceed** (once enabled) begins the full run including deletions
-- The dialog lists the EspoCRM internal names (with `C` prefix) so the user sees exactly what will be deleted in the system
+- The dialog lists the EspoCRM internal names (with `C` prefix) so the user sees exactly what will be affected
+
+**Return values:**
+
+The dialog returns one of three outcomes:
+
+| Return Value | Meaning |
+|---|---|
+| `SKIP_DELETES` | User chose "Skip deletes" and clicked Proceed. No entity deletions are performed. Entities with `delete_and_create` are treated as `create` (create-if-not-exists). Field operations proceed normally for all entities. |
+| `FULL_REBUILD` | User chose "Proceed with deletes", typed DELETE, and clicked Proceed. Full destructive rebuild: delete entities, rebuild cache, create entities, rebuild cache, apply fields. |
+| `CANCELLED` | User clicked Cancel. No changes are made. Run is aborted. |
 
 ### 10.7 Cache Rebuild
 
