@@ -5,6 +5,7 @@ from textwrap import dedent
 import pytest
 
 from espo_impl.core.config_loader import ConfigLoader
+from espo_impl.core.models import EntityAction
 
 
 @pytest.fixture
@@ -45,6 +46,7 @@ def test_load_valid_program(loader, valid_yaml):
     assert program.description == "Test program"
     assert len(program.entities) == 1
     assert program.entities[0].name == "Contact"
+    assert program.entities[0].action == EntityAction.NONE
     assert len(program.entities[0].fields) == 2
     assert program.entities[0].fields[0].name == "contactType"
     assert program.entities[0].fields[0].options == ["Mentor", "Client"]
@@ -200,3 +202,192 @@ def test_validate_missing_label(loader, tmp_path):
     program = loader.load_program(path)
     errors = loader.validate_program(program)
     assert any("label" in e for e in errors)
+
+
+# --- Entity action tests ---
+
+
+def test_load_entity_create(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Engagement:
+            action: create
+            type: Base
+            labelSingular: "Engagement"
+            labelPlural: "Engagements"
+            stream: true
+            fields:
+              - name: status
+                type: enum
+                label: "Status"
+                options:
+                  - Active
+                  - Closed
+    """)
+    path = tmp_path / "create.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+
+    assert program.entities[0].action == EntityAction.CREATE
+    assert program.entities[0].type == "Base"
+    assert program.entities[0].labelSingular == "Engagement"
+    assert program.entities[0].labelPlural == "Engagements"
+    assert program.entities[0].stream is True
+    assert len(program.entities[0].fields) == 1
+    assert not program.has_delete_operations
+
+
+def test_load_entity_delete(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Engagement:
+            action: delete
+    """)
+    path = tmp_path / "delete.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+
+    assert program.entities[0].action == EntityAction.DELETE
+    assert program.entities[0].fields == []
+    assert program.has_delete_operations
+
+
+def test_load_entity_delete_and_create(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Engagement:
+            action: delete_and_create
+            type: Base
+            labelSingular: "Engagement"
+            labelPlural: "Engagements"
+            fields:
+              - name: status
+                type: varchar
+                label: "Status"
+    """)
+    path = tmp_path / "rebuild.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+
+    assert program.entities[0].action == EntityAction.DELETE_AND_CREATE
+    assert program.has_delete_operations
+    assert len(program.entities[0].fields) == 1
+
+
+def test_load_entity_no_action(loader, valid_yaml):
+    """Entities without action default to NONE (fields-only)."""
+    program = loader.load_program(valid_yaml)
+    assert program.entities[0].action == EntityAction.NONE
+    assert not program.has_delete_operations
+
+
+def test_validate_create_missing_type(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Engagement:
+            action: create
+            labelSingular: "Engagement"
+            labelPlural: "Engagements"
+    """)
+    path = tmp_path / "no_type.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("type" in e and "required" in e for e in errors)
+
+
+def test_validate_create_missing_labels(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Engagement:
+            action: create
+            type: Base
+    """)
+    path = tmp_path / "no_labels.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("labelSingular" in e for e in errors)
+    assert any("labelPlural" in e for e in errors)
+
+
+def test_validate_create_invalid_entity_type(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Engagement:
+            action: create
+            type: InvalidType
+            labelSingular: "Engagement"
+            labelPlural: "Engagements"
+    """)
+    path = tmp_path / "bad_entity_type.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("unsupported entity type" in e for e in errors)
+
+
+def test_validate_delete_with_fields_is_error(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Engagement:
+            action: delete
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+    """)
+    path = tmp_path / "delete_with_fields.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("delete" in e and "fields" in e for e in errors)
+
+
+def test_validate_delete_and_create_requires_type(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Engagement:
+            action: delete_and_create
+            labelSingular: "Engagement"
+            labelPlural: "Engagements"
+    """)
+    path = tmp_path / "rebuild_no_type.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("type" in e and "required" in e for e in errors)
+
+
+def test_wysiwyg_field_type_supported(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: notes
+                type: wysiwyg
+                label: "Notes"
+    """)
+    path = tmp_path / "wysiwyg.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert errors == []

@@ -6,6 +6,8 @@ from pathlib import Path
 import yaml
 
 from espo_impl.core.models import (
+    SUPPORTED_ENTITY_TYPES,
+    EntityAction,
     EntityDefinition,
     FieldDefinition,
     ProgramFile,
@@ -16,6 +18,7 @@ logger = logging.getLogger(__name__)
 SUPPORTED_FIELD_TYPES: set[str] = {
     "varchar",
     "text",
+    "wysiwyg",
     "enum",
     "multiEnum",
     "bool",
@@ -31,12 +34,11 @@ SUPPORTED_FIELD_TYPES: set[str] = {
 
 ENUM_TYPES: set[str] = {"enum", "multiEnum"}
 
+VALID_ACTIONS: set[str] = {"create", "delete", "delete_and_create"}
+
 
 class ConfigLoader:
-    """Loads and validates YAML program files.
-
-    :param path: Path to the YAML program file.
-    """
+    """Loads and validates YAML program files."""
 
     def load_program(self, path: Path) -> ProgramFile:
         """Parse a YAML program file into a ProgramFile.
@@ -57,13 +59,36 @@ class ConfigLoader:
         raw_entities = raw.get("entities", {})
         if isinstance(raw_entities, dict):
             for entity_name, entity_data in raw_entities.items():
+                if not isinstance(entity_data, dict):
+                    entity_data = {}
+
+                # Parse entity action
+                raw_action = entity_data.get("action")
+                if raw_action is None:
+                    action = EntityAction.NONE
+                elif raw_action in VALID_ACTIONS:
+                    action = EntityAction(raw_action)
+                else:
+                    action = EntityAction.NONE
+
+                # Parse fields
                 fields: list[FieldDefinition] = []
-                raw_fields = entity_data.get("fields", []) if isinstance(entity_data, dict) else []
-                for field_data in raw_fields:
-                    if not isinstance(field_data, dict):
-                        continue
-                    fields.append(self._parse_field(field_data))
-                entities.append(EntityDefinition(name=entity_name, fields=fields))
+                raw_fields = entity_data.get("fields", [])
+                if isinstance(raw_fields, list):
+                    for field_data in raw_fields:
+                        if isinstance(field_data, dict):
+                            fields.append(self._parse_field(field_data))
+
+                entities.append(EntityDefinition(
+                    name=entity_name,
+                    fields=fields,
+                    action=action,
+                    type=entity_data.get("type"),
+                    labelSingular=entity_data.get("labelSingular"),
+                    labelPlural=entity_data.get("labelPlural"),
+                    stream=entity_data.get("stream", False),
+                    disabled=entity_data.get("disabled", False),
+                ))
 
         return ProgramFile(
             version=str(raw.get("version", "")),
@@ -89,11 +114,51 @@ class ConfigLoader:
             return errors
 
         for entity in program.entities:
-            seen_names: set[str] = set()
-            for field_def in entity.fields:
-                errors.extend(
-                    self._validate_field(entity.name, field_def, seen_names)
+            errors.extend(self._validate_entity(entity))
+
+        return errors
+
+    def _validate_entity(self, entity: EntityDefinition) -> list[str]:
+        """Validate an entity definition.
+
+        :param entity: Entity definition to validate.
+        :returns: List of error messages.
+        """
+        errors: list[str] = []
+
+        if entity.action in (EntityAction.CREATE, EntityAction.DELETE_AND_CREATE):
+            if not entity.type:
+                errors.append(
+                    f"{entity.name}: 'type' is required for "
+                    f"action '{entity.action.value}'"
                 )
+            elif entity.type not in SUPPORTED_ENTITY_TYPES:
+                errors.append(
+                    f"{entity.name}: unsupported entity type '{entity.type}'"
+                )
+            if not entity.labelSingular:
+                errors.append(
+                    f"{entity.name}: 'labelSingular' is required for "
+                    f"action '{entity.action.value}'"
+                )
+            if not entity.labelPlural:
+                errors.append(
+                    f"{entity.name}: 'labelPlural' is required for "
+                    f"action '{entity.action.value}'"
+                )
+
+        if entity.action == EntityAction.DELETE and entity.fields:
+            errors.append(
+                f"{entity.name}: 'action: delete' must not contain 'fields' "
+                f"(fields on a deleted entity make no sense)"
+            )
+
+        # Validate fields
+        seen_names: set[str] = set()
+        for field_def in entity.fields:
+            errors.extend(
+                self._validate_field(entity.name, field_def, seen_names)
+            )
 
         return errors
 
@@ -107,15 +172,15 @@ class ConfigLoader:
             name=data.get("name", ""),
             type=data.get("type", ""),
             label=data.get("label", ""),
-            required=data.get("required", False),
+            required=data.get("required"),
             default=data.get("default"),
-            readOnly=data.get("readOnly", False),
-            audited=data.get("audited", False),
+            readOnly=data.get("readOnly"),
+            audited=data.get("audited"),
             options=data.get("options"),
             translatedOptions=data.get("translatedOptions"),
             style=data.get("style"),
-            isSorted=data.get("isSorted", False),
-            displayAsLabel=data.get("displayAsLabel", False),
+            isSorted=data.get("isSorted"),
+            displayAsLabel=data.get("displayAsLabel"),
         )
 
     def _validate_field(

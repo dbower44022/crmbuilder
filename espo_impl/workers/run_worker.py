@@ -4,16 +4,17 @@ from PySide6.QtCore import QThread, Signal
 
 from espo_impl.core.api_client import EspoAdminClient
 from espo_impl.core.comparator import FieldComparator
+from espo_impl.core.entity_manager import EntityManager, EntityManagerError
 from espo_impl.core.field_manager import FieldManager
-from espo_impl.core.models import InstanceProfile, ProgramFile
+from espo_impl.core.models import EntityAction, InstanceProfile, ProgramFile
 
 
 class RunWorker(QThread):
-    """Background worker that runs field operations off the main thread.
+    """Background worker that runs entity and field operations off the main thread.
 
     :param profile: Instance connection profile.
     :param program: Validated program file to process.
-    :param operation: Either "run" or "verify".
+    :param operation: Either "run", "preview", or "verify".
     :param parent: Parent QObject.
     """
 
@@ -38,15 +39,88 @@ class RunWorker(QThread):
         try:
             client = EspoAdminClient(self.profile)
             comparator = FieldComparator()
-            manager = FieldManager(client, comparator, self.output_line.emit)
+            field_mgr = FieldManager(client, comparator, self.output_line.emit)
 
-            if self.operation == "run":
-                report = manager.run(self.program)
-            elif self.operation == "preview":
-                report = manager.preview(self.program)
-            else:
-                report = manager.verify(self.program)
+            if self.operation == "preview":
+                report = field_mgr.preview(self.program)
+                self.finished_ok.emit(report)
+                return
 
-            self.finished_ok.emit(report)
+            if self.operation == "verify":
+                report = field_mgr.verify(self.program)
+                self.finished_ok.emit(report)
+                return
+
+            # --- Full run ---
+            self._run_full(client, field_mgr)
+
         except Exception as exc:
             self.finished_error.emit(str(exc))
+
+    def _run_full(
+        self, client: EspoAdminClient, field_mgr: FieldManager
+    ) -> None:
+        """Execute entity operations then field operations.
+
+        :param client: API client.
+        :param field_mgr: Field manager for field operations.
+        """
+        entity_mgr = EntityManager(client, self.output_line.emit)
+        had_entity_ops = False
+
+        # Step 1: Delete entities
+        delete_actions = {EntityAction.DELETE, EntityAction.DELETE_AND_CREATE}
+        deletes = [
+            e for e in self.program.entities if e.action in delete_actions
+        ]
+        if deletes:
+            self.output_line.emit("", "white")
+            self.output_line.emit("=== ENTITY DELETIONS ===", "white")
+            for entity_def in deletes:
+                try:
+                    entity_mgr._delete_entity(entity_def)
+                except EntityManagerError as exc:
+                    self.finished_error.emit(str(exc))
+                    return
+            had_entity_ops = True
+            try:
+                entity_mgr.rebuild_cache()
+            except EntityManagerError as exc:
+                self.finished_error.emit(str(exc))
+                return
+
+        # Step 2: Create entities
+        create_actions = {EntityAction.CREATE, EntityAction.DELETE_AND_CREATE}
+        creates = [
+            e for e in self.program.entities if e.action in create_actions
+        ]
+        if creates:
+            self.output_line.emit("", "white")
+            self.output_line.emit("=== ENTITY CREATION ===", "white")
+            for entity_def in creates:
+                try:
+                    entity_mgr._create_entity(entity_def)
+                except EntityManagerError as exc:
+                    self.finished_error.emit(str(exc))
+                    return
+            had_entity_ops = True
+            try:
+                entity_mgr.rebuild_cache()
+            except EntityManagerError as exc:
+                self.finished_error.emit(str(exc))
+                return
+
+        # Step 3: Process fields
+        has_fields = any(
+            e.fields and e.action != EntityAction.DELETE
+            for e in self.program.entities
+        )
+        if has_fields:
+            if had_entity_ops:
+                self.output_line.emit("", "white")
+                self.output_line.emit("=== FIELD OPERATIONS ===", "white")
+            report = field_mgr.run(self.program)
+        else:
+            report = field_mgr._build_report(self.program, "run", [])
+
+        self.finished_ok.emit(report)

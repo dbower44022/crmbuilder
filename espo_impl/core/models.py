@@ -56,16 +56,40 @@ class FieldDefinition:
     displayAsLabel: bool | None = None
 
 
+class EntityAction(Enum):
+    """Action to perform on an entity."""
+
+    NONE = "none"
+    CREATE = "create"
+    DELETE = "delete"
+    DELETE_AND_CREATE = "delete_and_create"
+
+
+SUPPORTED_ENTITY_TYPES: set[str] = {"Base", "Person", "Company", "Event"}
+
+
 @dataclass
 class EntityDefinition:
-    """Fields grouped under an entity name.
+    """Entity definition from a YAML program file.
 
-    :param name: Entity name (e.g., "Contact").
+    :param name: Entity name (e.g., "Contact", "Engagement").
     :param fields: List of field definitions for this entity.
+    :param action: Entity-level action (create, delete, delete_and_create, or none).
+    :param type: Entity type for creation (Base, Person, Company, Event).
+    :param labelSingular: Singular display name.
+    :param labelPlural: Plural display name.
+    :param stream: Whether to enable the Stream panel.
+    :param disabled: Whether the entity is disabled.
     """
 
     name: str
     fields: list[FieldDefinition]
+    action: EntityAction = EntityAction.NONE
+    type: str | None = None
+    labelSingular: str | None = None
+    labelPlural: str | None = None
+    stream: bool = False
+    disabled: bool = False
 
 
 @dataclass
@@ -82,6 +106,14 @@ class ProgramFile:
     description: str
     entities: list[EntityDefinition]
     source_path: Path | None = None
+
+    @property
+    def has_delete_operations(self) -> bool:
+        """Whether any entity in this program has a delete action."""
+        return any(
+            e.action in (EntityAction.DELETE, EntityAction.DELETE_AND_CREATE)
+            for e in self.entities
+        )
 
 
 class FieldStatus(Enum):

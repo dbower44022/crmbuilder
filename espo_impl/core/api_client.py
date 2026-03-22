@@ -158,6 +158,50 @@ class EspoAdminClient:
         url = f"{self._base_url}/{entity}/{field_name}"
         return self._request("PUT", url, json=payload)
 
+    # --- Entity Manager endpoints ---
+
+    def create_entity(
+        self, payload: dict[str, Any]
+    ) -> tuple[int, dict[str, Any] | None]:
+        """Create a custom entity type.
+
+        :param payload: Entity definition (name, type, labelSingular, etc.).
+        :returns: Tuple of (status_code, response_json or None).
+        """
+        url = f"{self.profile.api_url}/EntityManager/action/createEntity"
+        return self._request("POST", url, json=payload)
+
+    def remove_entity(self, name: str) -> tuple[int, dict[str, Any] | None]:
+        """Remove a custom entity type.
+
+        Uses the EspoCRM internal name (C-prefixed).
+
+        :param name: EspoCRM internal entity name (e.g., "CEngagement").
+        :returns: Tuple of (status_code, response_json or None).
+        """
+        url = f"{self.profile.api_url}/EntityManager/action/removeEntity"
+        return self._request("POST", url, json={"name": name})
+
+    def check_entity_exists(self, name: str) -> tuple[int, bool]:
+        """Check whether an entity type exists via the Metadata API.
+
+        :param name: Entity name to check (e.g., "CEngagement").
+        :returns: Tuple of (status_code, exists).
+        """
+        url = f"{self.profile.api_url}/Metadata?key=scopes.{name}"
+        status_code, body = self._request("GET", url)
+        if status_code == 200 and isinstance(body, dict) and body:
+            return status_code, True
+        return status_code, False
+
+    def rebuild(self) -> tuple[int, dict[str, Any] | None]:
+        """Trigger a cache rebuild on the instance.
+
+        :returns: Tuple of (status_code, response_json or None).
+        """
+        url = f"{self.profile.api_url}/Admin/rebuild"
+        return self._request("POST", url)
+
     def test_connection(self) -> tuple[bool, str]:
         """Test API connectivity by fetching metadata.
 

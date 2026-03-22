@@ -8,6 +8,7 @@ from typing import Any
 from espo_impl.core.api_client import EspoAdminClient
 from espo_impl.core.comparator import FieldComparator
 from espo_impl.core.models import (
+    EntityAction,
     FieldDefinition,
     FieldResult,
     FieldStatus,
@@ -15,6 +16,7 @@ from espo_impl.core.models import (
     RunReport,
     RunSummary,
 )
+from espo_impl.ui.confirm_delete_dialog import get_espo_entity_name
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +46,10 @@ class FieldManager:
         self.output_fn = output_fn
 
     def run(self, program: ProgramFile) -> RunReport:
-        """Execute full run: check -> act -> verify for each field.
+        """Execute field operations: check -> act for each field.
+
+        Skips entities with delete-only actions (no fields to process).
+        Uses C-prefixed entity names for custom entities.
 
         :param program: Parsed and validated program file.
         :returns: Complete run report.
@@ -52,9 +57,15 @@ class FieldManager:
         results: list[FieldResult] = []
 
         for entity_def in program.entities:
+            if entity_def.action == EntityAction.DELETE:
+                continue
+            if not entity_def.fields:
+                continue
+
+            espo_name = get_espo_entity_name(entity_def.name)
             for field_def in entity_def.fields:
                 try:
-                    result = self._process_field(entity_def.name, field_def)
+                    result = self._process_field(espo_name, field_def)
                 except AuthenticationError:
                     self.output_fn(
                         "[ERROR] Authentication failed (HTTP 401) — aborting run",
@@ -82,10 +93,16 @@ class FieldManager:
         results: list[FieldResult] = []
 
         for entity_def in program.entities:
+            if entity_def.action == EntityAction.DELETE:
+                continue
+            if not entity_def.fields:
+                continue
+
+            espo_name = get_espo_entity_name(entity_def.name)
             for field_def in entity_def.fields:
                 prefix = f"{entity_def.name}.{field_def.name}"
                 status_code, current, _ = self._get_field_resolved(
-                    entity_def.name, field_def.name
+                    espo_name, field_def.name
                 )
 
                 if status_code == 401:
@@ -180,10 +197,16 @@ class FieldManager:
         self.output_fn("===========================================", "white")
 
         for entity_def in program.entities:
+            if entity_def.action == EntityAction.DELETE:
+                continue
+            if not entity_def.fields:
+                continue
+
+            espo_name = get_espo_entity_name(entity_def.name)
             for field_def in entity_def.fields:
                 prefix = f"{entity_def.name}.{field_def.name}"
                 status_code, current, _ = self._get_field_resolved(
-                    entity_def.name, field_def.name
+                    espo_name, field_def.name
                 )
 
                 if status_code == 401:

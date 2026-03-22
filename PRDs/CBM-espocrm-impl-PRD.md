@@ -1,0 +1,481 @@
+# EspoCRM Implementation Program — Technical Specification
+
+**Project:** Cleveland Business Mentors (CBM)  
+**Version:** 1.1  
+**Status:** Draft — Phase 1 (Entity Fields)  
+**Target:** Claude Code implementation
+
+---
+
+## 1. Overview
+
+This program automates the configuration of an EspoCRM instance by reading a declarative YAML program file and applying its contents via the EspoCRM REST API. It presents a PyQt6 desktop UI that allows an administrator to select an EspoCRM instance profile and a reusable program file, then validate, run, and verify the deployment in sequence.
+
+The program is designed to be idempotent — it can be run repeatedly and will only make changes where the current instance state differs from the desired spec. Program files are generic and reusable against any EspoCRM instance.
+
+Phase 1 covers entity fields. Future phases will add additional object types using the same architecture.
+
+---
+
+## 2. Application Structure
+
+```
+espocrm_impl/
+├── main.py                  # Entry point — launches PyQt6 application
+├── ui/
+│   ├── main_window.py       # Main application window
+│   ├── instance_panel.py    # Instance profile management panel
+│   └── program_panel.py     # Program file management panel
+├── core/
+│   ├── config_loader.py     # YAML loading and validation
+│   ├── api_client.py        # EspoCRM REST API wrapper
+│   ├── field_manager.py     # Field check/create/update/verify logic
+│   ├── comparator.py        # Field state comparison logic
+│   └── reporter.py          # Log and JSON report generation
+├── data/
+│   ├── instances/           # Instance profile storage (JSON files)
+│   └── programs/            # YAML program files
+└── reports/                 # Timestamped run reports (.log and .json)
+```
+
+### 2.1 Dependencies
+
+```
+PyQt6       # Desktop UI framework
+requests    # HTTP client
+pyyaml      # YAML parsing
+```
+
+Targets Python 3.9+.
+
+---
+
+## 3. Desktop UI Design
+
+The application opens as a single main window with a clean, professional layout. All interaction happens within this window.
+
+### 3.1 Main Window Layout
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  EspoCRM Implementation Tool                                        │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌─────────────────────────┐  ┌─────────────────────────────────┐  │
+│  │  INSTANCE               │  │  PROGRAM FILE                   │  │
+│  │                         │  │                                 │  │
+│  │  ○ CBM Production       │  │  ○ cbm_contact_fields.yaml      │  │
+│  │  ○ CBM Staging          │  │  ○ cbm_engagement_entity.yaml   │  │
+│  │                         │  │  ○ base_config.yaml             │  │
+│  │  [+ Add] [✎ Edit] [✕]  │  │                                 │  │
+│  │                         │  │  [+ Add] [✎ Edit] [✕]          │  │
+│  ├─────────────────────────┤  └─────────────────────────────────┘  │
+│  │  URL:  _______________  │                                        │
+│  │  Key:  ••••••••••••••   │  ┌─────────────────────────────────┐  │
+│  │  [Save Instance]        │  │  [Validate] [Run] [Verify]      │  │
+│  └─────────────────────────┘  └─────────────────────────────────┘  │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────────┐│
+│  │  OUTPUT                                                         ││
+│  │                                                                 ││
+│  │  [CHECK]  Contact.contactType ... EXISTS                        ││
+│  │  [COMPARE] Contact.contactType ... DIFFERS (label, options)     ││
+│  │  [UPDATE] Contact.contactType ... OK                            ││
+│  │  [VERIFY] Contact.contactType ... VERIFIED                      ││
+│  │                                                                 ││
+│  └─────────────────────────────────────────────────────────────────┘│
+│  [Clear Output]                                        [View Report] │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 3.2 Instance Panel
+
+Displays a list of saved instance profiles. Each profile stores:
+- Display name (e.g., "CBM Production")
+- EspoCRM URL
+- API Key (stored in plain text in a local JSON file)
+
+Selecting an instance auto-populates the URL and API Key fields below the list.
+
+**Add Instance** opens a dialog prompting for name, URL, and API key.
+**Edit Instance** opens the same dialog pre-populated with the selected instance's values.
+**Delete Instance** prompts for confirmation before removing.
+**Save Instance** saves any changes made to the URL or API Key fields directly.
+
+Instance profiles are stored as individual JSON files in `data/instances/`.
+
+### 3.3 Program File Panel
+
+Displays a list of available YAML program files from the `data/programs/` directory.
+
+**Add Program** opens the OS file picker to import a YAML file into `data/programs/`.
+**Edit Program** opens the selected YAML file in the system's default text editor.
+**Delete Program** prompts for confirmation before removing.
+
+Program files are generic — they contain no instance-specific information and can be applied to any EspoCRM instance.
+
+### 3.4 Action Buttons
+
+Three buttons execute the workflow in sequence. Buttons are enabled/disabled based on state:
+
+| Button | Enabled When | Action |
+|---|---|---|
+| **Validate** | Instance and program both selected | Parses and validates the YAML file; checks structure and required fields; does NOT contact the EspoCRM API |
+| **Run** | Validate has passed | Applies the program to the selected instance; check → act → verify cycle per field |
+| **Verify** | Run has completed | Re-reads the instance state and confirms all fields match the spec; read-only, makes no changes |
+
+Button states:
+- **Validate** is always available once both selections are made
+- **Run** becomes available only after a successful Validate
+- **Verify** becomes available after Run completes (whether or not errors occurred)
+- All three buttons are disabled while any operation is in progress
+- A spinner/progress indicator is shown during active operations
+
+### 3.5 Output Panel
+
+A scrollable, read-only text area using a monospace font that displays real-time output as operations execute. Output is color-coded:
+
+| Color | Meaning |
+|---|---|
+| White / default | Informational messages |
+| Green | Success (created, updated, verified) |
+| Yellow | Warning (skipped, type conflict) |
+| Red | Error or verification failure |
+| Gray | No-change / skipped |
+
+Output is not cleared between operations in the same session — the full history of a session is visible. The **Clear Output** button resets the panel.
+
+### 3.6 View Report Button
+
+After a Run or Verify operation, the **View Report** button becomes active. Clicking it opens the most recent `.log` report file in the system's default text viewer.
+
+---
+
+## 4. Instance Profile Storage
+
+Instance profiles are stored as JSON files in `data/instances/`. One file per instance.
+
+```json
+{
+  "name": "CBM Production",
+  "url": "https://cleveland-business-mentors.espocloud.com",
+  "api_key": "your-api-key-here"
+}
+```
+
+Filenames are slugified from the instance name (e.g., `cbm_production.json`).
+
+The API key is stored in plain text. This tool is intended for internal administrative use on secured machines.
+
+---
+
+## 5. YAML Program File Format
+
+Program files are the machine-readable deployment specs. They live in `data/programs/` and contain no instance-specific information.
+
+### 5.1 Top-Level Structure
+
+```yaml
+version: "1.0"
+description: "CBM EspoCRM Configuration — Contact Fields"
+
+entities:
+  Contact:
+    fields:
+      - ...
+```
+
+### 5.2 Field Definition Schema
+
+Each field entry under an entity's `fields` list supports the following properties:
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | yes | Internal field name (lowerCamelCase) |
+| `type` | string | yes | EspoCRM field type (see 5.3) |
+| `label` | string | yes | Display label shown in UI |
+| `required` | boolean | no | Default: false |
+| `default` | string | no | Default value |
+| `readOnly` | boolean | no | Default: false |
+| `audited` | boolean | no | Default: false |
+| `options` | list | enum/multiEnum only | List of option values |
+| `translatedOptions` | map | enum/multiEnum only | Display labels for each option value |
+| `style` | map | enum/multiEnum only | Color style per option (null = default) |
+| `isSorted` | boolean | enum/multiEnum only | Sort options alphabetically |
+| `displayAsLabel` | boolean | enum/multiEnum only | Display as colored label badge |
+
+### 5.3 Supported Field Types (Phase 1)
+
+- `varchar` — single-line text
+- `text` — multi-line text
+- `enum` — single-select dropdown
+- `multiEnum` — multi-select dropdown
+- `bool` — checkbox / boolean
+- `int` — integer
+- `float` — decimal number
+- `date` — date picker
+- `datetime` — date + time picker
+- `currency` — monetary value
+- `url` — URL field
+- `email` — email address
+- `phone` — phone number
+
+### 5.4 Example Program File
+
+```yaml
+version: "1.0"
+description: "CBM EspoCRM Configuration — Contact Fields"
+
+entities:
+  Contact:
+    fields:
+      - name: contactType
+        type: enum
+        label: "Contact Type"
+        required: false
+        default: ""
+        options:
+          - Mentor
+          - Client
+        translatedOptions:
+          Mentor: "Mentor"
+          Client: "Client"
+        style:
+          Mentor: null
+          Client: null
+
+      - name: mentorStatus
+        type: enum
+        label: "Mentor Status"
+        required: false
+        default: ""
+        options:
+          - Provisional
+          - Active
+          - Inactive
+          - Departed
+        translatedOptions:
+          Provisional: "Provisional"
+          Active: "Active"
+          Inactive: "Inactive"
+          Departed: "Departed"
+        style:
+          Provisional: null
+          Active: null
+          Inactive: null
+          Departed: null
+
+      - name: isMentor
+        type: bool
+        label: "Is Mentor"
+
+      - name: isCoMentor
+        type: bool
+        label: "Is Co-Mentor"
+
+      - name: isSme
+        type: bool
+        label: "Is SME"
+```
+
+---
+
+## 6. Processing Logic
+
+### 6.1 Validate
+
+Validates the selected YAML file without contacting the EspoCRM API:
+
+- File parses as valid YAML
+- Top-level `version`, `description`, and `entities` keys are present
+- Each field entry has required properties: `name`, `type`, `label`
+- Field types are from the supported list
+- Enum/multiEnum fields have a non-empty `options` list
+- No duplicate field names within the same entity
+
+Output: pass with field/entity count summary, or fail with specific error messages for each issue found.
+
+### 6.2 Run
+
+For each field defined in the YAML program file, executes the following three-phase cycle:
+
+**Phase 1 — Check**
+
+```
+GET /api/v1/Admin/fieldManager/{Entity}/{fieldName}
+```
+
+- HTTP 404 → field does not exist → proceed to Create
+- HTTP 200 → field exists → compare to spec → Update if differs, Skip if matches
+
+**Phase 2 — Act**
+
+Create (field does not exist):
+```
+POST /api/v1/Admin/fieldManager/{Entity}
+```
+Payload: full field definition from YAML, plus `"isCustom": true`
+
+Update (field exists but differs):
+```
+PUT /api/v1/Admin/fieldManager/{Entity}/{fieldName}
+```
+Payload: full field definition from YAML
+
+Skip: no API call made if field already matches spec.
+
+**Phase 3 — Verify**
+
+After any Create or Update, issue a fresh GET to confirm the field now matches the spec. Record as Verified or Verification Failed.
+
+### 6.3 Verify (Standalone)
+
+Re-reads every field defined in the program file from the live instance and compares each to its spec. Makes no changes. Reports compliance status for every field — useful for confirming a deployment after the fact.
+
+### 6.4 Field Comparison Rules
+
+The following properties are compared between current state and desired spec:
+
+- `type` — if differs, log warning and skip (type changes not supported)
+- `label`
+- `required`
+- `default`
+- `readOnly`
+- `audited`
+- `options` (enum/multiEnum — order matters)
+- `translatedOptions` (enum/multiEnum)
+- `style` (enum/multiEnum)
+
+---
+
+## 7. Error Handling
+
+The program uses a **continue-and-log** strategy. A failure on one field does not stop processing of subsequent fields.
+
+| Error Condition | Behavior |
+|---|---|
+| Network timeout or connection error | Log error, mark field as ERROR, continue |
+| HTTP 401 Unauthorized | Log error, abort entire run |
+| HTTP 403 Forbidden | Log error, mark field as ERROR, continue |
+| HTTP 404 on GET | Treat as field does not exist, proceed to Create |
+| HTTP 4xx on POST/PUT | Log error and response body, mark field as ERROR, continue |
+| HTTP 5xx | Log error and response body, mark field as ERROR, continue |
+| Type mismatch | Log warning, skip field, mark as SKIPPED_TYPE_CONFLICT |
+| Verification failure after create/update | Log warning, mark as VERIFICATION_FAILED, continue |
+| YAML parse error | Shown in output panel, Run button remains disabled |
+| Missing required YAML fields | All validation errors shown in output panel, Run blocked |
+
+---
+
+## 8. Output and Reporting
+
+### 8.1 Output Panel Messages
+
+```
+[VALIDATE] Parsing cbm_contact_fields.yaml ...
+[VALIDATE] OK — 2 entities, 5 fields found
+
+[CHECK]   Contact.contactType ... EXISTS
+[COMPARE] Contact.contactType ... DIFFERS (label, options)
+[UPDATE]  Contact.contactType ... OK
+[VERIFY]  Contact.contactType ... VERIFIED
+
+[CHECK]   Contact.isMentor ... NOT FOUND
+[CREATE]  Contact.isMentor ... OK
+[VERIFY]  Contact.isMentor ... VERIFIED
+
+[CHECK]   Contact.mentorStatus ... EXISTS
+[COMPARE] Contact.mentorStatus ... MATCHES
+[SKIP]    Contact.mentorStatus ... NO CHANGES NEEDED
+
+===========================================
+RUN SUMMARY
+===========================================
+Total fields processed : 5
+  Created              : 2
+  Updated              : 1
+  Skipped (no change)  : 1
+  Verification failed  : 0
+  Errors               : 1
+===========================================
+Reports written to:
+  reports/cbm_crm_run_20260321_143022.log
+  reports/cbm_crm_run_20260321_143022.json
+===========================================
+```
+
+### 8.2 Log File (.log)
+
+Human-readable timestamped report written to `reports/`. Contains run metadata (instance name, URL, program file, operation type, timestamp), full per-field narrative, and summary.
+
+Filename: `cbm_crm_run_YYYYMMDD_HHMMSS.log`
+
+### 8.3 JSON Report (.json)
+
+Structured machine-readable report written to `reports/`.
+
+```json
+{
+  "run_metadata": {
+    "timestamp": "2026-03-21T14:30:22Z",
+    "instance": "CBM Production",
+    "espocrm_url": "https://cleveland-business-mentors.espocloud.com",
+    "program_file": "cbm_contact_fields.yaml",
+    "operation": "run"
+  },
+  "summary": {
+    "total": 5,
+    "created": 2,
+    "updated": 1,
+    "skipped": 1,
+    "verification_failed": 0,
+    "errors": 1
+  },
+  "results": [
+    {
+      "entity": "Contact",
+      "field": "contactType",
+      "status": "updated",
+      "verified": true,
+      "changes": ["label", "options"],
+      "error": null
+    },
+    {
+      "entity": "Contact",
+      "field": "isMentor",
+      "status": "created",
+      "verified": true,
+      "changes": null,
+      "error": null
+    }
+  ]
+}
+```
+
+Filename: `cbm_crm_run_YYYYMMDD_HHMMSS.json`
+
+---
+
+## 9. Future Phases
+
+| Phase | Object Type | EspoCRM Endpoint |
+|---|---|---|
+| 2 | Entity layouts (detail/edit/list) | `Admin/layouts/{entity}/{layoutType}` |
+| 3 | Relationships | `Admin/entityManager/{entity}/relationships` |
+| 4 | Dynamic Logic rules | Embedded in field definitions (extend Phase 1) |
+| 5 | Search presets / filters | `Admin/searchManager` (TBD) |
+| 6 | Custom entities | `Admin/entityManager` |
+| 7 | Roles and permissions | `Role` entity via standard CRUD |
+
+---
+
+## 10. Notes for Implementer
+
+- The `isCustom: true` flag must be included in all POST payloads. EspoCRM uses this to store custom fields in the `custom/` directory.
+- EspoCRM field names are stored in lowerCamelCase. The YAML `name` property must match this convention.
+- The `Admin/fieldManager` endpoints require admin-level API user access. Role-based API users will receive 403.
+- The target EspoCRM instance for CBM is hosted on EspoCRM Cloud (espocloud.com), version 9.3.3.
+- After creating or updating fields, EspoCRM may require a cache rebuild for changes to be visible in the UI. A future enhancement could optionally trigger `POST /api/v1/Admin/rebuild` at the end of a run.
+- All long-running operations (Run, Verify) must execute in a background thread to keep the UI responsive. Use PyQt6's `QThread` or `QRunnable` with signals to post output messages back to the main thread.
+- The output panel must use a monospace font for clean alignment of log-style messages.
+- The `data/` and `reports/` directories should be created automatically on first launch if they do not exist.

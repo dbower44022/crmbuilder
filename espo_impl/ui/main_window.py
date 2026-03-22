@@ -16,8 +16,14 @@ from PySide6.QtWidgets import (
 )
 
 from espo_impl.core.config_loader import ConfigLoader
-from espo_impl.core.models import InstanceProfile, ProgramFile, RunReport
+from espo_impl.core.models import (
+    EntityAction,
+    InstanceProfile,
+    ProgramFile,
+    RunReport,
+)
 from espo_impl.core.reporter import Reporter
+from espo_impl.ui.confirm_delete_dialog import ConfirmDeleteDialog
 from espo_impl.ui.instance_panel import InstancePanel
 from espo_impl.ui.output_panel import OutputPanel
 from espo_impl.ui.program_panel import ProgramPanel
@@ -179,9 +185,33 @@ class MainWindow(QMainWindow):
         self._start_worker("preview")
 
     def _on_run_clicked(self) -> None:
-        """Start the run operation in a background thread."""
+        """Start the run operation, with confirmation if deletes are present."""
         if not self.state.instance or not self.state.program:
             return
+
+        # Check for destructive operations
+        if self.state.program.has_delete_operations:
+            delete_actions = {
+                EntityAction.DELETE, EntityAction.DELETE_AND_CREATE
+            }
+            delete_entities = [
+                e for e in self.state.program.entities
+                if e.action in delete_actions
+            ]
+            program_name = (
+                self.state.program.source_path.name
+                if self.state.program.source_path
+                else "unknown"
+            )
+            dialog = ConfirmDeleteDialog(
+                delete_entities, program_name, self
+            )
+            if dialog.exec() != ConfirmDeleteDialog.DialogCode.Accepted:
+                self.output_panel.append_line(
+                    "[RUN] Cancelled by user", "yellow"
+                )
+                return
+
         self._start_worker("run")
 
     def _on_verify_clicked(self) -> None:
