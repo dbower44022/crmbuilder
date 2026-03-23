@@ -1,5 +1,5 @@
 version: "1.0"
-content_version: "1.1.0"
+content_version: "1.2.0"
 description: "CBM EspoCRM Configuration — Partner Relationships"
 
 # Source of truth: CBM-PRD-CRM-Partners.docx
@@ -120,7 +120,7 @@ relationships:
     entity: Account
     entityForeign: Contact
     linkType: manyToOne
-    link: assignedLiaison
+    link: partnerLiaison
     linkForeign: cLiaisonPartners
     label: "Assigned Liaison"
     labelForeign: "Partner Liaisons"
