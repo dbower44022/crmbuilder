@@ -646,6 +646,116 @@ def test_validate_valid_layout_no_errors(loader, tmp_path):
     assert errors == []
 
 
+# --- Description property tests ---
+
+
+def test_entity_description_parsed(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            description: >
+              Represents individuals in the CRM system.
+              Includes both mentors and clients.
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+    """)
+    path = tmp_path / "entity_desc.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    assert program.entities[0].description is not None
+    assert "individuals" in program.entities[0].description
+
+
+def test_field_description_parsed(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: contactType
+                type: enum
+                label: "Contact Type"
+                description: "Classifies contact as Mentor or Client"
+                options:
+                  - Mentor
+                  - Client
+    """)
+    path = tmp_path / "field_desc.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    assert program.entities[0].fields[0].description == "Classifies contact as Mentor or Client"
+
+
+def test_panel_description_parsed(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+            layout:
+              detail:
+                panels:
+                  - label: "General Info"
+                    description: "Core contact information"
+                    rows:
+                      - [foo]
+    """)
+    path = tmp_path / "panel_desc.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    panel = program.entities[0].layouts["detail"].panels[0]
+    assert panel.description == "Core contact information"
+
+
+def test_entity_without_description_validates(loader, tmp_path):
+    """Entity without description should pass validation (backward compatible)."""
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+    """)
+    path = tmp_path / "no_entity_desc.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert errors == []
+    assert program.entities[0].description is None
+
+
+def test_field_without_description_validates(loader, tmp_path):
+    """Field without description should pass validation (no warning)."""
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+    """)
+    path = tmp_path / "no_field_desc.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert errors == []
+    assert program.entities[0].fields[0].description is None
+
+
 def test_wysiwyg_field_type_supported(loader, tmp_path):
     content = dedent("""\
         version: "1.0"

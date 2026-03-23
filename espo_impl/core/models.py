@@ -58,6 +58,7 @@ class FieldDefinition:
     max: int | None = None
     maxLength: int | None = None
     category: str | None = None
+    description: str | None = None
 
 
 @dataclass
@@ -89,6 +90,7 @@ class PanelSpec:
     dynamicLogicVisible: dict | None = None
     rows: list | None = None
     tabs: list[TabSpec] | None = None
+    description: str | None = None
 
 
 @dataclass
@@ -135,6 +137,7 @@ class EntityDefinition:
     stream: bool = False
     disabled: bool = False
     layouts: dict[str, LayoutSpec] = field(default_factory=dict)
+    description: str | None = None
 
 
 @dataclass

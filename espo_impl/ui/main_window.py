@@ -119,11 +119,21 @@ class MainWindow(QMainWindow):
         self.output_panel = OutputPanel()
         main_layout.addWidget(self.output_panel, stretch=1)
 
-        # Bottom bar: Clear Output + View Report
+        # Bottom bar
         bottom_layout = QHBoxLayout()
         self.clear_btn = QPushButton("Clear Output")
         self.clear_btn.clicked.connect(self._on_clear_output)
         bottom_layout.addWidget(self.clear_btn)
+
+        self.docgen_btn = QPushButton("Generate Docs")
+        self.docgen_btn.clicked.connect(self._on_generate_docs)
+        bottom_layout.addWidget(self.docgen_btn)
+
+        self.open_ref_btn = QPushButton("Open Reference Doc")
+        self.open_ref_btn.clicked.connect(self._on_open_reference)
+        self.open_ref_btn.setEnabled(False)
+        bottom_layout.addWidget(self.open_ref_btn)
+
         bottom_layout.addStretch()
         self.report_btn = QPushButton("View Report")
         self.report_btn.clicked.connect(self._on_view_report)
@@ -306,6 +316,69 @@ class MainWindow(QMainWindow):
     def _on_clear_output(self) -> None:
         """Clear the output panel."""
         self.output_panel.clear()
+
+    def _on_generate_docs(self) -> None:
+        """Generate reference documentation from YAML program files."""
+        import sys
+
+        sys.path.insert(
+            0, str(self.base_dir)
+        )
+
+        programs_dir = self.base_dir / "data" / "programs"
+        output_dir = self.base_dir / "PRDs" / "generated"
+
+        self.output_panel.append_line("", "white")
+        self.output_panel.append_line(
+            f"[DOCGEN]  Loading program files from {programs_dir} ...",
+            "white",
+        )
+
+        try:
+            from tools.docgen.renderers import docx_renderer, md_renderer
+            from tools.generate_docs import build_document
+
+            doc = build_document(programs_dir, "CBM CRM Implementation Reference")
+
+            self.output_panel.append_line(
+                "[DOCGEN]  Building document ...", "white"
+            )
+
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+            md_path = output_dir / "CBM-CRM-Reference.md"
+            md_path.write_text(
+                md_renderer.render(doc), encoding="utf-8"
+            )
+            self.output_panel.append_line(
+                f"[DOCGEN]  Generated {md_path.name}", "green"
+            )
+
+            docx_path = output_dir / "CBM-CRM-Reference.docx"
+            docx_renderer.render(doc, docx_path)
+            self.output_panel.append_line(
+                f"[DOCGEN]  Generated {docx_path.name}", "green"
+            )
+
+            self._docx_path = docx_path
+            self.open_ref_btn.setEnabled(True)
+
+            self.output_panel.append_line(
+                f"[DOCGEN]  Done. Files written to {output_dir}/",
+                "green",
+            )
+
+        except Exception as exc:
+            self.output_panel.append_line(
+                f"[DOCGEN]  ERROR: {exc}", "red"
+            )
+
+    def _on_open_reference(self) -> None:
+        """Open the generated reference document."""
+        if hasattr(self, "_docx_path") and self._docx_path.exists():
+            QDesktopServices.openUrl(
+                QUrl.fromLocalFile(str(self._docx_path))
+            )
 
     def _on_view_report(self) -> None:
         """Open the most recent report in the system viewer."""

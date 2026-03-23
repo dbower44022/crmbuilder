@@ -106,6 +106,7 @@ class ConfigLoader:
                     stream=entity_data.get("stream", False),
                     disabled=entity_data.get("disabled", False),
                     layouts=layouts,
+                    description=entity_data.get("description"),
                 ))
 
         return ProgramFile(
@@ -209,6 +210,7 @@ class ConfigLoader:
             max=data.get("max"),
             maxLength=data.get("maxLength"),
             category=data.get("category"),
+            description=data.get("description"),
         )
 
     def _parse_layout(
@@ -255,6 +257,7 @@ class ConfigLoader:
             dynamicLogicVisible=data.get("dynamicLogicVisible"),
             rows=data.get("rows"),
             tabs=tabs,
+            description=data.get("description"),
         )
 
     def _parse_tab(self, data: dict[str, Any]) -> TabSpec:

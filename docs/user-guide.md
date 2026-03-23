@@ -320,6 +320,7 @@ entities:
 | `min` | integer | No | Minimum allowed value (int/float fields) |
 | `max` | integer | No | Maximum allowed value (int/float fields) |
 | `maxLength` | integer | No | Maximum character length (varchar fields) |
+| `description` | string | No | Business rationale for the field. Appears in the generated reference document. |
 
 ### Enum Field Example
 
@@ -453,6 +454,20 @@ EspoCRM automatically adds a prefix to custom entity and field names:
 - **Custom fields:** `contactType` becomes `cContactType` internally
 
 **You do not need to add these prefixes in your YAML files.** Write natural names and the tool handles the translation automatically.
+
+---
+
+## Generating Documentation
+
+After updating YAML program files, regenerate the reference manual:
+
+```bash
+uv run python tools/generate_docs.py
+```
+
+This produces `CBM-CRM-Reference.docx` and `CBM-CRM-Reference.md` in `PRDs/generated/`. Commit both files alongside the updated YAML files.
+
+You can also click **Generate Docs** in the application's bottom bar. The **Open Reference Doc** button opens the generated `.docx` in your system viewer.
 
 ---
 

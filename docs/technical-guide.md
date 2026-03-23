@@ -105,6 +105,8 @@ class FieldDefinition:
     min: int | None = None           # Minimum value (int/float fields)
     max: int | None = None           # Maximum value (int/float fields)
     maxLength: int | None = None     # Maximum character length (varchar fields)
+    category: str | None = None      # UI grouping for layout tab assignment
+    description: str | None = None   # Business rationale (for doc generator)
 ```
 
 Optional fields default to `None` so the comparator can distinguish "not specified in YAML" from "explicitly set to a value." Only specified properties are compared against the API state.
@@ -544,6 +546,50 @@ Example: `cbm_production_run_20260321_143022.log`
   ]
 }
 ```
+
+---
+
+## Documentation Generator (`tools/generate_docs.py`)
+
+Reads all YAML program files and produces a structured reference manual in both `.md` and `.docx` formats. The YAML files are the single source of truth.
+
+### Running
+
+```bash
+uv run python tools/generate_docs.py --programs data/programs/ --output PRDs/generated/
+```
+
+Or use the **Generate Docs** button in the application UI.
+
+### Architecture
+
+```
+tools/docgen/
+├── models.py          # DocDocument, DocSection, DocTable, DocParagraph
+├── yaml_loader.py     # Load YAML files, build entity index, canonical ordering
+├── builders/          # One builder per document section
+│   ├── entity_builder.py      # Section 2 — entity header tables
+│   ├── field_builder.py       # Section 3 — field tables with c-prefix, type mapping
+│   ├── layout_builder.py      # Section 4 — panel/tab/column descriptions
+│   ├── view_builder.py        # Section 5 — list view columns
+│   ├── placeholder_builder.py # Sections 6-8 — future capability placeholders
+│   └── appendix_builder.py    # Appendix A (enum values) and B (deployment status)
+└── renderers/
+    ├── md_renderer.py         # GitHub Markdown output
+    └── docx_renderer.py       # Word document output (python-docx)
+```
+
+### Key Behaviors
+
+- **`description` property**: Read from entities, fields, and panels. Entities without description show "No description provided." Field descriptions truncated to 200 chars in tables.
+- **Type mapping**: YAML types mapped to display names (e.g., `wysiwyg` → "Rich Text")
+- **c-prefix**: Internal field names use the c-prefix (e.g., `cContactType`)
+- **Entity ordering**: Follows canonical order: Account, Contact, Engagement, Session, NpsSurveyResponse, Workshop, WorkshopAttendance, Dues
+- **Entity display names**: Account → "Company", NpsSurveyResponse → "NPS Survey Response"
+
+### When to Regenerate
+
+Regenerate whenever YAML program files are updated. Commit both the YAML changes and the regenerated documents together.
 
 ---
 
