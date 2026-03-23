@@ -171,33 +171,35 @@ class RelationshipManager:
             raise RelationshipManagerError()
 
         if status_code < 0 or status_code >= 400:
+            error_detail = ""
+            if isinstance(body, dict):
+                error_detail = body.get("message", str(body))
+            elif isinstance(body, str):
+                error_detail = body[:200]
+            detail_suffix = f": {error_detail}" if error_detail else ""
             self.output_fn(
-                f"[RELATIONSHIP]  {prefix} ... ERROR (HTTP {status_code})",
+                f"[RELATIONSHIP]  {prefix} ... ERROR (HTTP {status_code}{detail_suffix})",
                 "red",
             )
-            if body:
-                msg = (
-                    body.get("message", "")
-                    if isinstance(body, dict)
-                    else str(body)
-                )
-                if msg:
-                    self.output_fn(f"              {msg}", "red")
+            logger.error("createLink failed: HTTP %s — %s", status_code, body)
             return RelationshipResult(
                 name=rel.name,
                 entity=rel.entity,
                 entity_foreign=rel.entity_foreign,
                 link=rel.link,
                 status=RelationshipStatus.ERROR,
-                message=f"HTTP {status_code}",
+                message=f"HTTP {status_code}{detail_suffix}",
             )
 
         self.output_fn(
             f"[RELATIONSHIP]  {prefix} ... CREATED OK", "green"
         )
 
-        # Verify
-        verify = self._check_link_exists(espo_entity, rel.link)
+        # Verify — use c-prefixed name for native entity primary side
+        verify_link = rel.link
+        if rel.entity in NATIVE_ENTITIES:
+            verify_link = "c" + rel.link[0].upper() + rel.link[1:]
+        verify = self._check_link_exists(espo_entity, verify_link)
         if verify is not None and self._compare_link(
             verify, rel, espo_entity_foreign
         ):
