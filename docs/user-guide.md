@@ -2,9 +2,13 @@
 
 ## What This Tool Does
 
-The EspoCRM Implementation Tool automates the configuration of an EspoCRM instance. Instead of manually creating fields and entities through the EspoCRM admin UI, you write a declarative YAML file that describes the desired configuration, and the tool applies it via the EspoCRM REST API.
+The EspoCRM Implementation Tool automates the configuration of EspoCRM
+instances. Instead of manually creating fields, layouts, and relationships
+through the EspoCRM admin UI, you write declarative YAML files describing
+the desired configuration and the tool applies them via the EspoCRM REST API.
 
-The tool is **idempotent** — you can run the same program file repeatedly and it will only make changes where the current instance state differs from your specification.
+The tool is **idempotent** — running the same file repeatedly only makes
+changes where the instance differs from the spec.
 
 ---
 
@@ -14,6 +18,7 @@ The tool is **idempotent** — you can run the same program file repeatedly and 
 
 - Python 3.12 or later
 - [uv](https://docs.astral.sh/uv/) package manager
+- Node.js (for Word document generation)
 
 ### Setup
 
@@ -28,17 +33,18 @@ uv sync
 uv run espo-impl
 ```
 
-The application window opens. On first launch, the `data/instances/`, `data/programs/`, and `reports/` directories are created automatically.
-
 ---
 
 ## Quick Start
 
-1. **Add an instance** — Click "+ Add" in the Instance panel, enter your EspoCRM URL and credentials
-2. **Add a program file** — Click "+ Add" in the Program File panel and select a YAML file
-3. **Select both** — Click the instance name and the program file name
-4. **Validate** — Parses the YAML for structural errors, then connects to the selected instance to preview what changes would be made. Requires the instance to be reachable.
-5. **Run** — Click "Run" to apply the configuration
+1. **Add an instance** — Click **+ Add** in the Instance panel
+2. **Enter connection details** — Name, URL, auth credentials, project folder
+3. **Select the instance** — The Program File panel loads your YAML files
+4. **Select a program file** — Click it in the list
+5. **Validate** — Checks YAML structure and previews planned changes
+6. **Run** — Applies the configuration
+7. **Verify** — Confirms everything matches the spec
+8. **Generate Docs** — Produces the reference manual
 
 ---
 
@@ -48,22 +54,21 @@ The application window opens. On first launch, the `data/instances/`, `data/prog
 +---------------------------+  +-------------------------------+
 |  INSTANCE                 |  |  PROGRAM FILE                 |
 |                           |  |                               |
-|  > CBM Production         |  |  > cbm_contact_fields.yaml    |
-|    CBM Staging            |  |    cbm_full_rebuild.yaml      |
-|                           |  |                               |
-|  [+ Add] [Edit] [Delete]  |  |  [+ Add] [Edit] [Delete]     |
-|                           |  +-------------------------------+
-|  URL: https://cbm.espo... |
-|  Key: ****************    |  [Validate]  [Run]  [Verify]
-+---------------------------+  +-------------------------------+
-|  OUTPUT                                                      |
-|                                                              |
-|  [VALIDATE] OK — 7 entities, 67 fields found                 |
-|  [CHECK]   Contact.contactType ... EXISTS                    |
-|  [SKIP]    Contact.contactType ... NO CHANGES NEEDED         |
-|                                                              |
+|  > CBM Test               |  |  cbm_contact_fields  v1.0.0  |
+|    CBM Production         |  |  cbm_account_fields  v1.0.0  |
+|                           |  |  cbm_relationships   v1.3.0  |
+|  [+ Add] [Edit] [Delete]  |  |                               |
+|                           |  |  [+ Add] [Edit] [Delete]     |
+|  URL: https://cbm...      |  +-------------------------------+
+|  Folder: ~/Projects/CBM   |
+|                           |  [Validate]  [Run]  [Verify]
++---------------------------+
 +--------------------------------------------------------------+
-[Clear Output]                                   [View Report]
+|  OUTPUT                                                      |
+|  [VERIFY] Contact.contactType ... VERIFIED                   |
+|  [VERIFY] Contact.mentorStatus ... VERIFIED                  |
++--------------------------------------------------------------+
+[Clear Output]  [Generate Docs]                  [View Report]
 ```
 
 ---
@@ -72,508 +77,393 @@ The application window opens. On first launch, the `data/instances/`, `data/prog
 
 ### Adding an Instance
 
-1. Click **"+ Add"** in the Instance panel
+1. Click **+ Add** in the Instance panel
 2. Fill in:
-   - **Name** — A display name (e.g., "CBM Production")
-   - **URL** — Your EspoCRM base URL (e.g., `https://your-instance.espocloud.com`)
-   - **Auth Method** — Choose one of three methods (see below)
-   - **Credentials** — API key/username and secret/password
+   - **Name** — Display name (e.g., "CBM Test")
+   - **URL** — EspoCRM base URL
+   - **Auth Method** — API Key, HMAC, or Basic
+   - **Credentials** — API key or username/password
+   - **Project Folder** — Click **Browse** to select the client folder
 3. Click **Save**
+
+The tool creates `programs/`, `reports/`, and `Implementation Docs/`
+subdirectories inside the project folder automatically.
 
 ### Authentication Methods
 
-| Method | API Key / Username Field | Secret / Password Field | When to Use |
-|--------|--------------------------|------------------------|-------------|
-| **API Key** | EspoCRM API key | (not used) | For API Users with admin access |
-| **HMAC** | HMAC API key | HMAC secret key | For API Users using HMAC auth |
-| **Basic** | Admin username | Admin password | For regular admin users (recommended for EspoCRM Cloud) |
+| Method | When to Use |
+|---|---|
+| **API Key** | API Users with admin access |
+| **HMAC** | API Users using HMAC authentication |
+| **Basic** | Regular admin users; recommended for EspoCRM Cloud |
 
-**Recommendation for EspoCRM Cloud:** Use **Basic** authentication with your admin login credentials. EspoCRM Cloud API Users cannot be granted true admin access, which is required for the Admin/fieldManager and EntityManager endpoints.
+**EspoCRM Cloud users:** Use **Basic** authentication with your admin
+credentials. Cloud API Users cannot be granted the admin access required
+for field and entity management endpoints.
 
-### Editing and Deleting Instances
+### Project Folder
 
-- Select an instance from the list
-- Click **Edit** to modify its settings
-- Click **Delete** to remove it (with confirmation prompt)
+Each instance is bound to a project folder:
 
-Instance profiles are stored as JSON files in `data/instances/`. API keys and passwords are stored in plain text — this tool is intended for use on secured administrator machines.
+```
+~/Projects/CBM/
+├── programs/            ← YAML program files (loaded automatically)
+├── Implementation Docs/ ← generated reference manual
+└── reports/             ← run/verify reports
+```
+
+Selecting an instance automatically loads its program files. Reports and
+generated docs are written to the same folder.
 
 ---
 
 ## Managing Program Files
 
-### Importing a Program File
+Program files are YAML files in your project folder's `programs/`
+directory. They appear in the Program File panel automatically when you
+select an instance.
 
-1. Click **"+ Add"** in the Program File panel
-2. Select a `.yaml` or `.yml` file from the file picker
-3. The file is copied into `data/programs/`
+Each file shows its `content_version` alongside the filename so you can
+confirm you're working with the latest version.
 
-### Editing a Program File
+### Adding a File
 
-Select a program file and click **Edit**. The file opens in your system's default text editor.
+Click **+ Add** and select a `.yaml` file. It is copied into the
+`programs/` directory.
 
-### Deleting a Program File
+### Editing a File
 
-Select a program file and click **Delete** (with confirmation prompt).
-
----
-
-## Workflow: Validate, Run, Verify
-
-### Step 1: Validate
-
-Click **Validate** after selecting both an instance and a program file.
-
-**What happens:**
-1. The YAML file is parsed and checked for structural errors
-2. If valid, the tool connects to the instance and previews what changes would be made
-3. The output panel shows a summary of planned actions:
-
-```
-[VALIDATE] OK — 7 entities, 67 fields found
-[VALIDATE] Checking instance for planned changes ...
-
-===========================================
-PLANNED CHANGES
-===========================================
-  Contact.contactType — no changes needed
-  Contact.mentorStatus — UPDATE (options)
-  Contact.roleAtBusiness — CREATE (varchar, "Role at Business")
-===========================================
-  To create : 1
-  To update : 1
-  No change : 1
-===========================================
-```
-
-The **Run** button becomes enabled after successful validation.
-
-### Step 2: Run
-
-Click **Run** to apply the program file to the instance.
-
-**If the program contains delete operations**, a confirmation dialog appears with two options:
-
-- **Skip deletes (default)** — applies field changes only. Safe for live instances with existing data. Entities are created if they don't exist but never deleted.
-- **Proceed with deletes** — performs a full rebuild. Deletes and recreates all listed entities. All data in those entities is permanently lost. Requires typing DELETE to confirm.
-
-**Execution order:**
-1. Delete entities marked for deletion
-2. Cache rebuild
-3. Create entities marked for creation
-4. Cache rebuild
-5. Create/update fields for all entities
-
-**Output during execution:**
-```
-=== ENTITY DELETIONS ===
-[CHECK]   Entity Engagement (CEngagement) ...
-[DELETE]  CEngagement ... OK
-[REBUILD] Cache rebuild complete
-
-=== ENTITY CREATION ===
-[CHECK]   Entity Engagement (CEngagement) ...
-[CREATE]  CEngagement ... OK
-[REBUILD] Cache rebuild complete
-
-=== FIELD OPERATIONS ===
-[CHECK]   Contact.contactType ...
-[CHECK]   Contact.contactType ... EXISTS
-[COMPARE] Contact.contactType ... MATCHES
-[SKIP]    Contact.contactType ... NO CHANGES NEEDED
-
-[CHECK]   Contact.roleAtBusiness ...
-[CHECK]   Contact.roleAtBusiness ... NOT FOUND
-[CREATE]  Contact.roleAtBusiness ... OK
-```
-
-Reports are written to `reports/` as both `.log` (human-readable) and `.json` (machine-readable) files.
-
-### Step 3: Verify
-
-Click **Verify** after a run completes. This performs a read-only check — it re-reads every field from the instance and confirms they match the specification. No changes are made.
-
-```
-[VERIFY]  Contact.contactType ... VERIFIED
-[VERIFY]  Contact.mentorStatus ... VERIFIED
-[VERIFY]  Contact.roleAtBusiness ... VERIFIED
-```
-
-**Tip:** Wait a few seconds after Run before clicking Verify. EspoCRM may need time to rebuild its internal cache.
+Select a file and click **Edit**. Opens in your system's default text
+editor.
 
 ---
 
-## Writing YAML Program Files
+## Workflow: Validate → Run → Verify
 
-### Basic Structure
+### Validate
 
-```yaml
-version: "1.0"
-description: "My EspoCRM Configuration"
+Click **Validate** after selecting an instance and program file.
 
-entities:
-  Contact:
-    fields:
-      - name: myField
-        type: varchar
-        label: "My Field"
-```
+1. Parses the YAML for structural errors
+2. Connects to the instance and previews planned changes
+3. Shows a summary of what will be created, updated, or left unchanged
 
-### Entity Actions
+The Run button enables after successful validation.
 
-Entities can have an optional `action` that controls entity-level operations:
+### Run
 
-| Action | Behavior |
-|--------|----------|
-| *(omitted)* | Fields only — no entity create/delete |
-| `create` | Create the entity if it doesn't exist, then apply fields |
-| `delete` | Delete the entity (must not have a `fields` section) |
-| `delete_and_create` | Delete if exists, recreate, then apply fields |
+Click **Run** to deploy the configuration.
 
-**Example: Create a custom entity with fields**
-```yaml
-entities:
-  Engagement:
-    action: create
-    type: Base
-    labelSingular: "Engagement"
-    labelPlural: "Engagements"
-    stream: true
-    fields:
-      - name: status
-        type: enum
-        label: "Status"
-        options:
-          - Active
-          - Closed
-```
+**If the program contains delete operations**, a confirmation dialog appears:
 
-**Example: Full rebuild (delete and recreate)**
-```yaml
-entities:
-  Engagement:
-    action: delete_and_create
-    type: Base
-    labelSingular: "Engagement"
-    labelPlural: "Engagements"
-    stream: true
-    fields:
-      - name: status
-        type: enum
-        ...
-```
+- **Skip deletes** (default) — creates new entities and applies field
+  changes only. Safe for instances with live data.
+- **Proceed with deletes** — deletes and recreates entities. Requires
+  typing DELETE to confirm. All data in the listed entities is lost.
 
-**Example: Add fields to a native entity (no action needed)**
-```yaml
-entities:
-  Contact:
-    fields:
-      - name: isMentor
-        type: bool
-        label: "Is Mentor"
-```
+**Processing order:**
+1. Entity deletions → cache rebuild
+2. Entity creations → cache rebuild
+3. Field operations (check → create/update → verify per field)
+4. Layout operations (check → apply → verify per layout)
+5. Relationship operations (check → create → verify per relationship)
 
-### Entity Types
+**Output colors:**
 
-| Type | Description |
-|------|-------------|
-| `Base` | General-purpose entity with name and description |
-| `Person` | Includes email, phone, name, address fields |
-| `Company` | Includes email, phone, billing/shipping address |
-| `Event` | Includes date start/end, duration, status |
+| Color | Meaning |
+|---|---|
+| Green | Created, updated, or verified successfully |
+| Gray | No change needed |
+| Yellow | Warning (skipped, type conflict) |
+| Red | Error |
 
-### Supported Field Types
+### Verify
 
-| Type | Description | Special Properties |
-|------|-------------|-------------------|
-| `varchar` | Single-line text | `maxLength` |
-| `text` | Multi-line plain text | |
-| `wysiwyg` | Rich text editor (HTML) | |
-| `enum` | Single-select dropdown | `options`, `translatedOptions`, `style`, `isSorted` |
-| `multiEnum` | Multi-select dropdown | `options`, `translatedOptions`, `style` |
-| `bool` | Checkbox | |
-| `int` | Integer number | `min`, `max` |
-| `float` | Decimal number | `min`, `max` |
-| `date` | Date picker | |
-| `datetime` | Date + time picker | |
-| `currency` | Monetary value | |
-| `url` | URL field | |
-| `email` | Email address | |
-| `phone` | Phone number | |
+Click **Verify** to re-check all fields against the spec without making
+changes. Use after a Run to confirm deployment, or at any time to check
+whether manual changes have drifted from the spec.
 
-### Field Properties
-
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `name` | string | Yes | Internal field name (lowerCamelCase) |
-| `type` | string | Yes | Field type (see table above) |
-| `label` | string | Yes | Display label in the UI |
-| `required` | boolean | No | Whether the field is mandatory |
-| `default` | string | No | Default value |
-| `readOnly` | boolean | No | Whether the field is read-only |
-| `audited` | boolean | No | Whether changes are tracked |
-| `options` | list | Enum/multiEnum | List of option values |
-| `translatedOptions` | map | Enum/multiEnum | Display labels for each option |
-| `style` | map | Enum/multiEnum | Color style per option |
-| `isSorted` | boolean | Enum/multiEnum | Sort options alphabetically |
-| `displayAsLabel` | boolean | Enum/multiEnum | Display as colored badge |
-| `min` | integer | No | Minimum allowed value (int/float fields) |
-| `max` | integer | No | Maximum allowed value (int/float fields) |
-| `maxLength` | integer | No | Maximum character length (varchar fields) |
-| `description` | string | No | Business rationale for the field. Appears in the generated reference document. |
-
-### Enum Field Example
-
-```yaml
-- name: mentorStatus
-  type: enum
-  label: "Mentor Status"
-  required: false
-  default: ""
-  isSorted: false
-  options:
-    - "Provisional"
-    - "Active"
-    - "Inactive"
-    - "Departed"
-  translatedOptions:
-    "Provisional": "Provisional"
-    "Active": "Active"
-    "Inactive": "Inactive"
-    "Departed": "Departed"
-  style:
-    "Provisional": null
-    "Active": "success"
-    "Inactive": "danger"
-    "Departed": null
-```
-
-### Available Styles for Enum Options
-
-- `null` or omitted — Default (no color)
-- `"default"` — Gray
-- `"primary"` — Blue
-- `"success"` — Green
-- `"danger"` — Red
-- `"warning"` — Yellow/Orange
-- `"info"` — Light blue
+Note: Verify currently checks fields only. Layouts and relationships
+are not re-verified by the Verify button — use Run for those.
 
 ---
 
-## Layout Configuration
+## Generate Docs
 
-Layouts define how fields are arranged on detail/edit views and which columns appear in list views. Add a `layout` block to any entity definition.
+Click **Generate Docs** to produce the reference manual from all YAML
+files in the project folder's `programs/` directory.
 
-### The `category` Property
+Output files in `Implementation Docs/`:
+- `CBM-CRM-Reference.md` — Markdown version
+- `CBM-CRM-Reference.docx` — Word document
 
-Assign a `category` to fields to group them for automatic layout generation:
-
-```yaml
-fields:
-  - name: isMentor
-    type: bool
-    label: "Is Mentor"
-    category: mentor
-
-  - name: mentorStatus
-    type: enum
-    label: "Mentor Status"
-    category: mentor
-```
-
-### Detail/Edit Layout with Category-Based Tabs
-
-```yaml
-layout:
-  detail:
-    panels:
-      - label: "Mentor Info"
-        tabBreak: true
-        tabLabel: "Mentor"
-        dynamicLogicVisible:
-          attribute: contactType
-          value: "Mentor"
-        tabs:
-          - label: "Mentor Details"
-            category: mentor
-```
-
-Fields matching the category are automatically grouped into rows (2 fields per row). Full-width field types (`wysiwyg`, `text`) get their own row.
-
-### Detail/Edit Layout with Explicit Rows
-
-For precise control, specify rows directly:
-
-```yaml
-layout:
-  detail:
-    panels:
-      - label: "General"
-        rows:
-          - [name, emailAddress]
-          - [contactType, null]
-```
-
-Use `null` for empty cells. Native fields (`name`, `emailAddress`) are used as-is; custom fields are automatically c-prefixed in the API payload.
-
-### List Layout
-
-```yaml
-layout:
-  list:
-    columns:
-      - field: name
-        width: 30
-      - field: contactType
-      - field: mentorStatus
-```
-
-If `width` is omitted, EspoCRM distributes column widths equally.
-
-### Dynamic Logic Visibility
-
-Show/hide panels based on field values:
-
-```yaml
-panels:
-  - label: "Mentor Fields"
-    dynamicLogicVisible:
-      attribute: contactType
-      value: "Mentor"
-```
-
-This panel only appears when `contactType` equals "Mentor".
-
----
-
-## Relationship Configuration
-
-Relationships define links between entities. Add a `relationships` block at the top level of a YAML file (separate from `entities`).
-
-```yaml
-relationships:
-  - name: engagementToSessions
-    entity: Engagement
-    entityForeign: Session
-    linkType: oneToMany
-    link: engagementSessions
-    linkForeign: sessionEngagement
-    label: "Sessions"
-    labelForeign: "Engagement"
-```
-
-### Link Types
-
-| Type | Meaning |
-|------|---------|
-| `oneToMany` | One primary record has many foreign records |
-| `manyToOne` | Many primary records belong to one foreign record |
-| `manyToMany` | Both sides have many records (requires `relationName`) |
-
-### Pre-existing Relationships
-
-Use `action: skip` for relationships already created manually in EspoCRM:
-
-```yaml
-  - name: existingRel
-    entity: Engagement
-    entityForeign: Account
-    linkType: manyToOne
-    link: assignedEngagement
-    linkForeign: cCompanyRequestionHelp
-    label: "Company"
-    labelForeign: "Engagements"
-    action: skip
-```
-
-Skipped relationships are logged but no API calls are made.
-
----
-
-## Entity and Field Naming
-
-EspoCRM automatically adds a prefix to custom entity and field names:
-
-- **Custom entities:** `Engagement` becomes `CEngagement` internally
-- **Custom fields:** `contactType` becomes `cContactType` internally
-
-**You do not need to add these prefixes in your YAML files.** Write natural names and the tool handles the translation automatically.
-
----
-
-## Generating Documentation
-
-After updating YAML program files, regenerate the reference manual:
-
-```bash
-uv run python tools/generate_docs.py
-```
-
-This produces `CBM-CRM-Reference.docx` and `CBM-CRM-Reference.md` in `PRDs/generated/`. Commit both files alongside the updated YAML files.
-
-You can also click **Generate Docs** in the application's bottom bar. The **Open Reference Doc** button opens the generated `.docx` in your system viewer.
+Regenerate the docs whenever YAML files are updated. Commit both the
+updated YAML files and the regenerated docs to the client repository.
 
 ---
 
 ## Reports
 
-After each Run or Verify operation, two report files are generated in the `reports/` directory:
+After each Run or Verify, two report files are written to `reports/`:
 
-- **`.log`** — Human-readable text report with timestamps and summaries
+- **`.log`** — Human-readable text report
 - **`.json`** — Machine-readable structured report
 
-Click **View Report** to open the most recent `.log` file in your system text viewer.
+Filename format: `{instance}_{operation}_{timestamp}_{version}.log`
 
-**Filename format:** `{instance_slug}_{operation}_{timestamp}.log`
+Example: `cbm_test_run_20260323_155604_v1_0_0.log`
 
-Example: `cbm_production_run_20260321_143022.log`
-
----
-
-## Output Panel Colors
-
-| Color | Meaning |
-|-------|---------|
-| White | Informational messages |
-| Green | Success (created, updated, verified, rebuild complete) |
-| Yellow | Warnings (skipped, type conflict, cancelled) |
-| Red | Errors (API failures, verification failures) |
-| Gray | No change needed |
-
-Output is preserved across operations within the same session. Click **Clear Output** to reset.
+Click **View Report** to open the most recent log file.
 
 ---
 
-## Error Handling
+## Writing YAML Program Files
 
-The tool uses a **continue-and-log** strategy. A failure on one field does not stop processing of subsequent fields.
+### File Structure
 
-| Error | Behavior |
-|-------|----------|
-| YAML parse error | Shown in output, Run button stays disabled |
-| Missing required YAML fields | All errors shown, Run blocked |
-| HTTP 401 (Unauthorized) | Entire run aborted |
-| HTTP 403 (Forbidden) | Field marked as error, processing continues |
-| HTTP 409 (Conflict) | Field exists under different name, falls back to update |
-| HTTP 500+ (Server error) | Field marked as error, processing continues |
-| Network timeout | Field marked as error, processing continues |
-| Type mismatch | Field skipped with warning |
+```yaml
+version: "1.0"
+content_version: "1.0.0"
+description: "What this file configures"
+
+# Source: PRD document and section
+
+entities:
+  EntityName:
+    description: >
+      Required. Why this entity exists, its role in the data model,
+      and PRD reference.
+    fields:
+      - name: fieldName
+        type: varchar
+        label: "Display Label"
+        description: "Why this field exists. PRD reference."
+        category: "Tab Name"
+
+relationships:
+  - name: relName
+    ...
+```
+
+### content_version
+
+Increment `content_version` when you change a file:
+
+| Change | Bump |
+|---|---|
+| Description or comment fixes | PATCH (1.0.0 → 1.0.1) |
+| New fields or enum values added | MINOR (1.0.0 → 1.1.0) |
+| Fields removed, types changed | MAJOR (1.0.0 → 2.0.0) |
+
+### Entity Blocks
+
+```yaml
+entities:
+  Engagement:                     # natural name — no C-prefix
+    description: >
+      Required entity description with PRD reference.
+    action: delete_and_create     # omit for native entities
+    type: Base
+    labelSingular: "Engagement"
+    labelPlural: "Engagements"
+    stream: true
+    fields: [...]
+    layout: {...}
+```
+
+**Action values:**
+
+| Action | When to Use |
+|---|---|
+| *(omit)* | Native entities (Account, Contact) — fields only |
+| `delete_and_create` | Custom entities — clean rebuild |
+| `create` | Custom entities — first-time only |
+| `delete` | Remove an entity (no fields allowed) |
+
+### Field Definitions
+
+```yaml
+- name: mentorStatus       # lowerCamelCase, no c-prefix
+  type: enum
+  label: "Mentor Status"
+  description: >
+    Why this field exists. What decision it supports. PRD reference.
+  category: "Mentor Role & Capacity"
+  required: true
+  default: "Submitted"
+  readOnly: false
+  options:
+    - "Submitted"
+    - "Active"
+    - "Inactive"
+  translatedOptions:
+    "Submitted": "Submitted"
+    "Active": "Active"
+    "Inactive": "Inactive"
+  style:
+    "Submitted": "info"
+    "Active": "success"
+    "Inactive": "default"
+```
+
+**Supported field types:**
+
+| Type | Description | Extra Properties |
+|---|---|---|
+| `varchar` | Single-line text | `maxLength` |
+| `text` | Multi-line plain text | |
+| `wysiwyg` | Rich text (HTML editor) | |
+| `enum` | Single-select dropdown | `options`, `style`, `isSorted` |
+| `multiEnum` | Multi-select dropdown | `options`, `style` |
+| `bool` | Checkbox | |
+| `int` | Integer | `min`, `max` |
+| `float` | Decimal | `min`, `max` |
+| `date` | Date picker | |
+| `datetime` | Date and time | |
+| `currency` | Monetary value | |
+| `url` | URL | |
+| `email` | Email address | |
+| `phone` | Phone number | |
+
+**Enum styles:** `null` (default), `"default"` (gray), `"primary"` (blue),
+`"success"` (green), `"danger"` (red), `"warning"` (orange), `"info"` (light blue)
+
+### Layout Definitions
+
+```yaml
+layout:
+  detail:
+    panels:
+
+      # Category-based tab (fields grouped automatically)
+      - label: "Mentor Details"
+        tabBreak: true
+        tabLabel: "Mentor"
+        description: "Visible only when Contact Type = Mentor."
+        dynamicLogicVisible:
+          attribute: contactType   # no c-prefix in YAML
+          value: "Mentor"
+        tabs:
+          - label: "Identity"
+            category: "Mentor Identity & Contact"
+          - label: "Skills"
+            category: "Mentor Skills & Expertise"
+
+      # Explicit rows (precise field placement)
+      - label: "Overview"
+        tabBreak: true
+        tabLabel: "Overview"
+        rows:
+          - [name, website]
+          - [organizationType, accountType]
+          - [businessStage, null]   # null = empty cell
+
+  list:
+    columns:
+      - field: name
+        width: 25
+      - field: contactType
+        width: 15
+```
+
+**Layout rules:**
+- Each panel has either `rows` OR `tabs`, not both
+- `tabBreak: true` requires `tabLabel`
+- Tab `category` must match at least one field's `category`
+- wysiwyg and text fields in category tabs auto-generate as full-width rows
+- Native field names in rows (name, emailAddress) pass through without prefix
+
+### Relationship Definitions
+
+```yaml
+relationships:
+
+  # New relationship to create
+  - name: duesToMentor
+    description: >
+      Links Dues records to the mentor Contact. PRD reference.
+    entity: Dues             # natural name — no C-prefix
+    entityForeign: Contact
+    linkType: manyToOne
+    link: mentor
+    linkForeign: duesRecords
+    label: "Mentor"
+    labelForeign: "Dues Records"
+    audited: false
+
+  # Pre-existing relationship (skip creation)
+  - name: engagementToSessions
+    entity: Engagement
+    entityForeign: Session
+    linkType: oneToMany
+    link: engagementSessionses
+    linkForeign: sessionEngagement
+    label: "Sessions"
+    labelForeign: "Engagement"
+    action: skip
+```
+
+**Link types:**
+
+| Type | Meaning |
+|---|---|
+| `oneToMany` | One primary → many foreign |
+| `manyToOne` | Many primary → one foreign |
+| `manyToMany` | Many both ways (requires `relationName`) |
+
+**Important — linkForeign c-prefix rule:**
+When the foreign entity is a custom entity (C-prefix), the `linkForeign`
+value must also include the c-prefix. Example: if the foreign link on
+`CEngagement` is named `npsSurveyResponses`, specify
+`linkForeign: cNpsSurveyResponses`.
+
+When the primary entity is native (Account, Contact), specify the `link`
+name without a c-prefix. EspoCRM will auto-apply it and the tool handles
+this correctly.
+
+---
+
+## Naming Conventions
+
+EspoCRM automatically adds a `c` prefix to custom entity and field names.
+You never add this prefix in your YAML — the tool handles it:
+
+- Custom entity: `Engagement` → stored as `CEngagement`
+- Custom field: `contactType` → stored as `cContactType`
+
+You only add the c-prefix explicitly when:
+- Specifying `linkForeign` values for custom entity foreign sides
+- Referencing native fields in layout rows (no prefix needed there)
 
 ---
 
 ## Troubleshooting
 
-### "HTTP 403 Forbidden" on all fields
-Your API user doesn't have admin access. Use **Basic** authentication with your regular EspoCRM admin credentials instead.
+### HTTP 403 on all operations
+Your API user lacks admin access. Switch to **Basic** authentication
+with your admin username and password.
 
-### "HTTP 409 Conflict" on field creation
-The field already exists under its c-prefixed name. The tool will automatically fall back to updating the field.
+### TYPE CONFLICT on a field
+The field exists with a different type than specified in the YAML. The
+tool skips it. To resolve: manually delete the field in EspoCRM Entity
+Manager, then run the YAML file to recreate it correctly. Note: deleting
+a field destroys its data — export records first on production.
 
-### Fields show "NOT FOUND" but exist in EspoCRM
-Custom fields are stored with a `c` prefix. The tool tries the c-prefixed name first. If both lookups fail, the field may have been created through a different mechanism.
+### VERIFY FAILED after relationships
+This may be a cosmetic bug in the verify step for certain relationship
+types. Check that the relationship actually exists via:
+`/api/v1/Metadata?key=entityDefs.{Entity}.links.{linkName}`
 
-### Verification fails after successful Run
-EspoCRM's cache may not have updated yet. Wait a few seconds and click **Verify** again.
+### Program file panel is empty
+Ensure the selected instance has a project folder configured, and that
+the `programs/` subdirectory contains `.yaml` files.
 
-### Confirmation dialog appears before Run
-Your program file contains entity delete operations. Choose "Skip deletes" to safely update fields on a live instance, or "Proceed with deletes" to perform a full rebuild (destructive — all data in the listed entities will be lost).
+### Generate Docs shows an error
+Ensure Node.js is installed for Word document generation. The Markdown
+output does not require Node.js.
+
+### Confirmation dialog on Run
+Your program file contains `action: delete_and_create` or `action: delete`.
+Choose **Skip deletes** for safe field-only updates on live instances.
+Only choose **Proceed with deletes** on test instances or when doing
+a clean rebuild with no live data.
