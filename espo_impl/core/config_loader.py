@@ -123,6 +123,7 @@ class ConfigLoader:
         return ProgramFile(
             version=str(raw.get("version", "")),
             description=str(raw.get("description", "")),
+            content_version=str(raw.get("content_version", "1.0.0")),
             entities=entities,
             source_path=path,
             relationships=relationships,

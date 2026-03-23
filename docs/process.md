@@ -158,6 +158,26 @@ relationships:     # optional if file only has entities
     ...
 ```
 
+### Content Versioning
+
+Every YAML file has a `content_version` field using semantic versioning:
+
+```yaml
+content_version: "1.0.0"
+```
+
+Increment the version when making changes:
+
+| Change | Version bump | Example |
+|---|---|---|
+| Description updates, comment fixes | PATCH | 1.0.0 → 1.0.1 |
+| New fields added, enum values added | MINOR | 1.0.0 → 1.1.0 |
+| Fields removed, types changed, entity restructured | MAJOR | 1.0.0 → 2.0.0 |
+
+The version is displayed in the Program File panel, included in run/verify
+report headers, and embedded in report filenames. This makes it easy to
+confirm which version of a program file was used for a given deployment.
+
 ### 4.3 Entity Block
 
 ```yaml

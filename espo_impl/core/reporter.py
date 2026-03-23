@@ -55,6 +55,7 @@ class Reporter:
         lines.append(f"Instance     : {report.instance_name}")
         lines.append(f"URL          : {report.espocrm_url}")
         lines.append(f"Program File : {report.program_file}")
+        lines.append(f"Version      : {report.content_version}")
         lines.append(f"Operation    : {report.operation}")
         lines.append("===========================================")
         lines.append("")
@@ -136,6 +137,7 @@ class Reporter:
                 "instance": report.instance_name,
                 "espocrm_url": report.espocrm_url,
                 "program_file": report.program_file,
+                "content_version": report.content_version,
                 "operation": report.operation,
             },
             "summary": {
@@ -217,4 +219,7 @@ class Reporter:
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 
         slug = report.instance_name.lower().replace(" ", "_").replace("-", "_")
-        return f"{slug}_{report.operation}_{ts}"
+        version_suffix = ""
+        if report.content_version:
+            version_suffix = f"_v{report.content_version.replace('.', '_')}"
+        return f"{slug}_{report.operation}_{ts}{version_suffix}"

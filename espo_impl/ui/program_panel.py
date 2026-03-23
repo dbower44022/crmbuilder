@@ -4,6 +4,7 @@ import logging
 import shutil
 from pathlib import Path
 
+import yaml
 from PySide6.QtCore import QUrl, Signal
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
@@ -69,19 +70,43 @@ class ProgramPanel(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(group)
 
+    @staticmethod
+    def _read_content_version(path: Path) -> str:
+        """Read content_version from a YAML file without full parsing.
+
+        :param path: Path to the YAML file.
+        :returns: Version string, or empty string if not set.
+        """
+        try:
+            raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+            return raw.get("content_version", "") if isinstance(raw, dict) else ""
+        except Exception:
+            return ""
+
+    def _add_program_item(self, path: Path) -> None:
+        """Add a program file to the list with optional version display.
+
+        :param path: Path to the YAML file.
+        """
+        self._paths.append(path)
+        version = self._read_content_version(path)
+        if version:
+            text = f"{path.name}  v{version}"
+        else:
+            text = path.name
+        self.list_widget.addItem(text)
+
     def _load_programs(self) -> None:
         """Load program file list from the programs directory."""
         self._paths.clear()
         self.list_widget.clear()
 
         for path in sorted(self.programs_dir.glob("*.yaml")):
-            self._paths.append(path)
-            self.list_widget.addItem(path.name)
+            self._add_program_item(path)
 
         for path in sorted(self.programs_dir.glob("*.yml")):
             if path not in self._paths:
-                self._paths.append(path)
-                self.list_widget.addItem(path.name)
+                self._add_program_item(path)
 
     def _on_selection_changed(self, row: int) -> None:
         """Handle program list selection change."""

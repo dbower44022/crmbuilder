@@ -206,6 +206,7 @@ class ProgramFile:
     description: str
     entities: list[EntityDefinition]
     source_path: Path | None = None
+    content_version: str = "1.0.0"
     relationships: list[RelationshipDefinition] = field(default_factory=list)
 
     @property
@@ -305,6 +306,7 @@ class RunReport:
     espocrm_url: str
     program_file: str
     operation: str
+    content_version: str = ""
     summary: RunSummary = field(default_factory=RunSummary)
     results: list[FieldResult] = field(default_factory=list)
     layout_results: list[LayoutResult] = field(default_factory=list)

@@ -958,6 +958,46 @@ def test_relationships_only_file_validates(loader, tmp_path):
     assert errors == []
 
 
+# --- Content version tests ---
+
+
+def test_content_version_parsed(loader, tmp_path):
+    """content_version is parsed correctly when present."""
+    content = dedent("""\
+        version: "1.0"
+        content_version: "2.3.1"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+    """)
+    path = tmp_path / "versioned.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    assert program.content_version == "2.3.1"
+
+
+def test_content_version_defaults_when_absent(loader, tmp_path):
+    """Default '1.0.0' is used when content_version is absent."""
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+    """)
+    path = tmp_path / "no_cv.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    assert program.content_version == "1.0.0"
+
+
 def test_wysiwyg_field_type_supported(loader, tmp_path):
     content = dedent("""\
         version: "1.0"

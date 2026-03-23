@@ -618,6 +618,7 @@ class FieldManager:
             instance_name=self.client.profile.name,
             espocrm_url=self.client.profile.url,
             program_file=source_name,
+            content_version=program.content_version,
             operation=operation,
             summary=summary,
             results=results,

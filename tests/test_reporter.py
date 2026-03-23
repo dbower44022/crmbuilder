@@ -11,12 +11,13 @@ from espo_impl.core.models import (
 from espo_impl.core.reporter import Reporter
 
 
-def make_report() -> RunReport:
+def make_report(content_version: str = "1.0.0") -> RunReport:
     return RunReport(
         timestamp="2026-03-21T14:30:22+00:00",
         instance_name="CBM Production",
         espocrm_url="https://cbm.espocloud.com",
         program_file="cbm_contact_fields.yaml",
+        content_version=content_version,
         operation="run",
         summary=RunSummary(total=3, created=1, updated=1, skipped=1),
         results=[
@@ -127,3 +128,32 @@ def test_creates_reports_dir_if_missing(tmp_path):
 
     assert log_path.exists()
     assert json_path.exists()
+
+
+# --- Content version tests ---
+
+
+def test_log_contains_content_version(tmp_path):
+    reporter = Reporter(tmp_path)
+    report = make_report(content_version="2.1.0")
+    log_path, _ = reporter.write_report(report)
+    content = log_path.read_text()
+
+    assert "Version      : 2.1.0" in content
+
+
+def test_json_contains_content_version(tmp_path):
+    reporter = Reporter(tmp_path)
+    report = make_report(content_version="2.1.0")
+    _, json_path = reporter.write_report(report)
+    data = json.loads(json_path.read_text())
+
+    assert data["run_metadata"]["content_version"] == "2.1.0"
+
+
+def test_report_filename_includes_version_suffix(tmp_path):
+    reporter = Reporter(tmp_path)
+    report = make_report(content_version="2.1.0")
+    log_path, _ = reporter.write_report(report)
+
+    assert "v2_1_0" in log_path.stem
