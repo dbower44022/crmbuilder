@@ -49,7 +49,14 @@ def load_programs(programs_dir: Path) -> dict[str, dict[str, Any]]:
     """
     entities: dict[str, dict[str, Any]] = {}
 
+    # Skip full_rebuild files — they duplicate individual entity files
+    # and use different action values (separate create/delete steps)
+    SKIP_PATTERNS = {"full_rebuild"}
+
     for path in sorted(programs_dir.glob("*.yaml")):
+        if any(p in path.stem for p in SKIP_PATTERNS):
+            logger.debug("Skipping %s (full_rebuild file)", path.name)
+            continue
         try:
             raw = yaml.safe_load(path.read_text(encoding="utf-8"))
         except yaml.YAMLError as exc:
@@ -91,10 +98,15 @@ def load_programs(programs_dir: Path) -> dict[str, dict[str, Any]]:
                                 existing_fields.append(f)
                                 existing_names.add(fname)
                     entities[entity_name]["fields"] = existing_fields
-                # Merge non-field keys (later file wins for scalar values)
+                # Merge non-field keys — first file wins for description
+                # and action; later files may add layout, labels, etc.
+                FIRST_WINS = {"description", "action"}
                 for key, val in entity_data.items():
-                    if key != "fields":
-                        entities[entity_name][key] = val
+                    if key == "fields":
+                        continue
+                    if key in FIRST_WINS and entities[entity_name].get(key):
+                        continue  # preserve first definition
+                    entities[entity_name][key] = val
                 entities[entity_name]["_source_file"] = path.name
             else:
                 entities[entity_name] = {

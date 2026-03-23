@@ -28,7 +28,12 @@ def build_entity_sections(
         action = data.get("action", "")
         entity_type = data.get("type", "Native" if is_native else "Base")
         singular = data.get("labelSingular", display)
-        plural = data.get("labelPlural", f"{display}s")
+        _default_plurals = {
+            "Company": "Companies",
+            "Activity": "Activities",
+            "Category": "Categories",
+        }
+        plural = data.get("labelPlural", _default_plurals.get(display, f"{display}s"))
         stream = "Yes" if data.get("stream", False) else "No"
 
         if is_native:
