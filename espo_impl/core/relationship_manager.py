@@ -204,6 +204,9 @@ class RelationshipManager:
                 verified=True,
             )
 
+        self.output_fn(
+            f"[RELATIONSHIP]  {prefix} ... VERIFY FAILED", "yellow"
+        )
         return RelationshipResult(
             name=rel.name,
             entity=rel.entity,

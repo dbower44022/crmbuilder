@@ -312,6 +312,13 @@ class FieldManager:
         self.output_fn(f"  No change : {skips}", "gray")
         if errors:
             self.output_fn(f"  Errors    : {errors}", "red")
+        if program.relationships:
+            self.output_fn("", "white")
+            self.output_fn(
+                f"  Note: {len(program.relationships)} relationships defined "
+                f"— processed during Run, not shown in preview.",
+                "white",
+            )
         self.output_fn("===========================================", "white")
 
         return self._build_report(program, "preview", results)

@@ -210,3 +210,28 @@ def test_create_and_verify():
     assert results[0].verified is True
     messages = [m for m, _ in output_log]
     assert any("VERIFIED" in m for m in messages)
+
+
+def test_verify_always_logged_after_create():
+    """Verify is always called and logged after a successful create."""
+    client = MagicMock(spec=EspoAdminClient)
+    # Check returns missing, then verify returns non-matching data
+    client.get_link.side_effect = [
+        (200, None),  # check — missing
+        (200, {       # verify — does NOT match
+            "type": "hasMany",
+            "entity": "WrongEntity",
+            "foreign": "wrongLink",
+        }),
+    ]
+    client.create_link.return_value = (200, {})
+
+    manager, output_log = make_manager(client)
+    results = manager.process_relationships([make_rel()])
+
+    assert results[0].status == RelationshipStatus.CREATED
+    assert results[0].verified is False
+    messages = [m for m, _ in output_log]
+    # Must have CREATED OK followed by a verify log line
+    assert any("CREATED OK" in m for m in messages)
+    assert any("VERIFY FAILED" in m for m in messages)

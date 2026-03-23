@@ -184,9 +184,18 @@ class MainWindow(QMainWindow):
             return
 
         total_fields = sum(len(e.fields) for e in program.entities)
+        total_relationships = len(program.relationships)
+
+        parts = []
+        if program.entities:
+            parts.append(f"{len(program.entities)} entities, {total_fields} fields")
+        if total_relationships:
+            parts.append(f"{total_relationships} relationships")
+        if not parts:
+            parts.append("no entities or relationships")
+
         self.output_panel.append_line(
-            f"[VALIDATE] OK — {len(program.entities)} entities, "
-            f"{total_fields} fields found",
+            f"[VALIDATE] OK — {', '.join(parts)} found",
             "green",
         )
         self.state.program = program
