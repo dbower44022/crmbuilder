@@ -1,5 +1,9 @@
 # EspoCRM Implementation Tool — Process Guide
 
+**Version:** 1.1  
+**Last Updated:** March 2026  
+**Changelog:** See end of document.
+
 **Audience:** Technical team members responsible for designing, building,
 and maintaining CRM configurations using this tool.
 
@@ -713,3 +717,11 @@ configured manually before the tool was built.
 
 After completing each manual step, run the affected YAML file and verify
 before proceeding to the next file.
+---
+
+## Changelog
+
+| Version | Date | Changes |
+|---|---|---|
+| 1.1 | March 2026 | Added project folder architecture, fixed c-prefix rules for relationships, updated troubleshooting, added deployment guide cross-references, added production deployment notes |
+| 1.0 | March 2026 | Initial release |

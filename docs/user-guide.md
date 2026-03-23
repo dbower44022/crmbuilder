@@ -1,5 +1,9 @@
 # EspoCRM Implementation Tool — User Guide
 
+**Version:** 2.0  
+**Last Updated:** March 2026  
+**Changelog:** See end of document.
+
 ## What This Tool Does
 
 The EspoCRM Implementation Tool automates the configuration of EspoCRM
@@ -467,3 +471,11 @@ Your program file contains `action: delete_and_create` or `action: delete`.
 Choose **Skip deletes** for safe field-only updates on live instances.
 Only choose **Proceed with deletes** on test instances or when doing
 a clean rebuild with no live data.
+---
+
+## Changelog
+
+| Version | Date | Changes |
+|---|---|---|
+| 2.0 | March 2026 | Complete rewrite — added project folder concept, content versioning, layout and relationship configuration, Generate Docs button, updated troubleshooting |
+| 1.0 | Early 2026 | Initial release covering field management only |

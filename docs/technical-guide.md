@@ -1,5 +1,9 @@
 # EspoCRM Implementation Tool — Technical Guide
 
+**Version:** 1.1  
+**Last Updated:** March 2026  
+**Changelog:** See end of document.
+
 ## Architecture Overview
 
 ```
@@ -727,3 +731,11 @@ ENTITY_NAME_MAP["NewEntity"] = "CNewEntity"
 ### Adding a New Operation Phase
 
 The run sequence is in `RunWorker._run_full()`. Insert new phases between entity ops and field ops as needed. Use `EntityManager` or `FieldManager` patterns for orchestration.
+---
+
+## Changelog
+
+| Version | Date | Changes |
+|---|---|---|
+| 1.1 | March 2026 | Added layout manager, relationship manager, documentation generator, and content_version support |
+| 1.0 | Early 2026 | Initial release covering entity and field management |

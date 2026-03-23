@@ -1,5 +1,9 @@
 # EspoCRM Implementation Tool — Deployment Guide
 
+**Version:** 1.0  
+**Last Updated:** March 2026  
+**Changelog:** See end of document.
+
 **Audience:** Technical team members deploying a CRM configuration to an
 EspoCRM instance for the first time, or promoting a tested configuration
 to production.
@@ -378,3 +382,10 @@ See the [Process Guide](process.md) for full details:
 The test → production promotion process described in this guide applies
 to every subsequent change: validate on test first, verify clean, then
 promote to production.
+---
+
+## Changelog
+
+| Version | Date | Changes |
+|---|---|---|
+| 1.0 | March 2026 | Initial release |
