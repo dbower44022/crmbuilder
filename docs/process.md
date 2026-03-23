@@ -626,3 +626,20 @@ Never commit:
 | Layout Spec | `PRDs/CBM-SPEC-layout-management.md` | Layout API and schema |
 | Relationship Spec | `PRDs/CBM-SPEC-relationship-management.md` | Relationship API and schema |
 | Doc Generator Spec | `PRDs/CBM-SPEC-doc-generator.md` | Documentation generator design |
+
+---
+
+## 14. Known Production Deployment Notes
+
+### CBM Production — Pre-Deployment Manual Steps
+
+The following manual steps are required before running the tool against
+the CBM Production instance. These are one-time fixes for fields that
+were manually configured with the wrong type before the tool was built.
+
+| Field | Entity | Action Required |
+|---|---|---|
+| `cTimeInOperation` | Account | Delete field manually in Entity Manager before running `cbm_account_fields.yaml`. It was created as `varchar` — the YAML defines it as `enum`. Deleting and recreating via the tool will lose any existing values on live records — export first. |
+
+After completing each manual step, run the affected YAML file and verify
+before proceeding to the next file.
