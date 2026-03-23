@@ -6,6 +6,11 @@ and maintaining CRM configurations using this tool.
 **Scope:** The complete lifecycle — from requirements capture through YAML
 authoring, deployment, verification, and ongoing maintenance.
 
+**Deployment operations** — setting up instances, running files, and
+promoting to production — are covered in the
+[Deployment Guide](deployment-guide.md). This guide focuses on design,
+authoring, and maintenance.
+
 ---
 
 ## 1. Overview
@@ -22,6 +27,10 @@ YAML Program Files  ← single source of truth
        ↓
     Verify
 ```
+
+For step-by-step instructions on running the tool, deploying files to
+a test instance, and promoting to production, see the
+[Deployment Guide](deployment-guide.md).
 
 **The YAML files are the single source of truth.** Every field, layout,
 and relationship in EspoCRM must be defined in a YAML file before it is
@@ -678,6 +687,7 @@ Never commit:
 
 | Document | Location | Purpose |
 |---|---|---|
+| Deployment Guide | `docs/deployment-guide.md` | Step-by-step instance deployment and production promotion |
 | User Guide | `docs/user-guide.md` | Tool installation and usage |
 | Technical Guide | `docs/technical-guide.md` | Architecture and module reference |
 | PRD | `PRDs/CBM-espocrm-impl-PRD.md` | Product requirements |
