@@ -109,7 +109,7 @@ entities:
       # Activity Content — category: Activity Content
       # ---------------------------------------------------------------
 
-      - name: description
+      - name: activityDescription
         type: wysiwyg
         label: "Description"
         category: "Activity Content"
@@ -127,7 +127,7 @@ entities:
         description: >
           Additional notes or follow-up items arising from the activity.
           Used for action items, next steps, and any context not captured
-          in the Description field.
+          in the Activity Description field.
           Requirement: CBM-PRD-CRM-Partners.docx Section 10.2.
 
     layout:
