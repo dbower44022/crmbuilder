@@ -105,7 +105,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--output",
-        default="PRDs/generated/",
+        default="PRDs/Implementation Docs/",
         help="Output directory",
     )
     parser.add_argument(

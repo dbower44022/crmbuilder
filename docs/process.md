@@ -457,12 +457,12 @@ Click **Generate Docs** in the tool, or run from the command line:
 ```bash
 uv run python tools/generate_docs.py \
   --programs data/programs/ \
-  --output PRDs/generated/
+  --output PRDs/Implementation Docs/
 ```
 
 This produces:
-- `PRDs/generated/CBM-CRM-Reference.md` — Markdown version
-- `PRDs/generated/CBM-CRM-Reference.docx` — Word document
+- `PRDs/Implementation Docs/CBM-CRM-Reference.md` — Markdown version
+- `PRDs/Implementation Docs/CBM-CRM-Reference.docx` — Word document
 
 **Commit both files to the client repo alongside the updated YAML files.**
 The reference document is a generated artifact — it is never edited manually.

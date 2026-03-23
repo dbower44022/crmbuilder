@@ -326,7 +326,7 @@ class MainWindow(QMainWindow):
         )
 
         programs_dir = self.base_dir / "data" / "programs"
-        output_dir = self.base_dir / "PRDs" / "generated"
+        output_dir = self.base_dir / "PRDs" / "Implementation Docs"
 
         self.output_panel.append_line("", "white")
         self.output_panel.append_line(
