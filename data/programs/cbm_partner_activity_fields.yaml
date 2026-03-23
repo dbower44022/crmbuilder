@@ -1,0 +1,166 @@
+version: "1.0"
+description: "CBM EspoCRM Configuration — Partner Activity Entity"
+
+# Source of truth: CBM-PRD-CRM-Partners.docx Section 10
+# Custom entity — uses delete_and_create for clean deployment.
+# WARNING: Contains a delete_and_create operation — confirmation required.
+#
+# NOTE: This module is CBM's first structured event/activity tracking
+# capability. A broader Events module may be developed separately in a
+# future workstream. Partner Activities should be designed to avoid
+# conflict with any future Events module.
+#
+# Fields NOT included here (handled separately):
+#   - Link fields: Partner (Account), Attendees (Contact — manyToMany)
+
+entities:
+  PartnerActivity:
+    description: >
+      Records joint activities and events between CBM and a Partner organization.
+      Covers the full spectrum of Partner engagement: CBM-hosted events where
+      a Partner was invited, co-hosted events, joint workshops or programs,
+      co-developed content, coordination meetings, and other activities. Used
+      by the assigned liaison to maintain a complete activity log for each
+      Partner, and to produce the portfolio-level reporting CBM leadership
+      needs on partnership engagement frequency and depth. This is CBM's first
+      structured event tracking capability — individual contact attendees are
+      tracked to know which specific Partner contacts were present at each
+      activity.
+      Requirement: CBM-PRD-CRM-Partners.docx Section 10.
+
+    action: delete_and_create
+    type: Base
+    labelSingular: "Partner Activity"
+    labelPlural: "Partner Activities"
+    stream: true
+
+    fields:
+
+      # ---------------------------------------------------------------
+      # Activity Details — category: Activity Details
+      # ---------------------------------------------------------------
+
+      - name: activityName
+        type: varchar
+        label: "Activity Name"
+        required: true
+        maxLength: 255
+        category: "Activity Details"
+        description: >
+          Name or title of the activity or event. Required. Should be
+          descriptive enough to distinguish similar activities (e.g.,
+          "Q1 2026 Liaison Check-In with SBDC" vs. "Q2 2026 Co-Hosted
+          Workshop — Marketing for Small Business"). Used as the primary
+          identifier in list views and relationship panels.
+          Requirement: CBM-PRD-CRM-Partners.docx Section 10.2.
+
+      - name: activityType
+        type: enum
+        label: "Activity Type"
+        required: true
+        isSorted: false
+        category: "Activity Details"
+        description: >
+          Classifies the nature of the activity. CBM-Hosted Event: a CBM
+          event to which the Partner was invited or attended. Co-Hosted Event:
+          jointly organized and/or funded by both CBM and the Partner.
+          Joint Workshop/Program: a structured program or workshop series
+          developed collaboratively. Co-Developed Content: a mentoring module,
+          curriculum, or resource jointly created by both organizations.
+          Meeting/Coordination Call: a scheduled relationship management
+          interaction between CBM liaison/management and Partner contacts.
+          Other: any activity not covered above.
+          Requirement: CBM-PRD-CRM-Partners.docx Section 10.1.
+        options:
+          - "CBM-Hosted Event"
+          - "Co-Hosted Event"
+          - "Joint Workshop / Program"
+          - "Co-Developed Content"
+          - "Meeting / Coordination Call"
+          - "Other"
+        translatedOptions:
+          "CBM-Hosted Event": "CBM-Hosted Event"
+          "Co-Hosted Event": "Co-Hosted Event"
+          "Joint Workshop / Program": "Joint Workshop / Program"
+          "Co-Developed Content": "Co-Developed Content"
+          "Meeting / Coordination Call": "Meeting / Coordination Call"
+          "Other": "Other"
+        style:
+          "CBM-Hosted Event": null
+          "Co-Hosted Event": "primary"
+          "Joint Workshop / Program": "primary"
+          "Co-Developed Content": "info"
+          "Meeting / Coordination Call": null
+          "Other": null
+
+      - name: activityDate
+        type: date
+        label: "Date"
+        required: true
+        category: "Activity Details"
+        description: >
+          Date the activity occurred or is scheduled to occur. Required.
+          Primary sort field on the Partner Activities list view (descending —
+          most recent first). Used by CBM leadership to identify Partners with
+          no recent logged activity in the portfolio dashboard.
+          Requirement: CBM-PRD-CRM-Partners.docx Section 10.2.
+
+      # ---------------------------------------------------------------
+      # Activity Content — category: Activity Content
+      # ---------------------------------------------------------------
+
+      - name: description
+        type: wysiwyg
+        label: "Description"
+        category: "Activity Content"
+        description: >
+          Description of the activity — its purpose, agenda, and any outcomes
+          or decisions. Used by the liaison to document what occurred and
+          to provide context for future reference when reviewing the Partner's
+          activity history.
+          Requirement: CBM-PRD-CRM-Partners.docx Section 10.2.
+
+      - name: activityNotes
+        type: wysiwyg
+        label: "Notes"
+        category: "Activity Content"
+        description: >
+          Additional notes or follow-up items arising from the activity.
+          Used for action items, next steps, and any context not captured
+          in the Description field.
+          Requirement: CBM-PRD-CRM-Partners.docx Section 10.2.
+
+    layout:
+      detail:
+        panels:
+
+          - label: "Activity Details"
+            tabBreak: true
+            tabLabel: "Details"
+            style: default
+            description: >
+              Core activity logistics — what, what type, and when.
+            rows:
+              - [activityName, null]
+              - [activityType, activityDate]
+
+          - label: "Activity Content"
+            tabBreak: true
+            tabLabel: "Content"
+            style: default
+            description: >
+              Description of the activity and follow-up notes.
+            tabs:
+              - label: "Content"
+                category: "Activity Content"
+
+      list:
+        columns:
+          - field: activityDate
+            width: 12
+          - field: activityName
+            width: 30
+          - field: activityType
+            width: 25
+          - field: name
+            width: 33

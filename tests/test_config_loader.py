@@ -649,6 +649,68 @@ def test_validate_valid_layout_no_errors(loader, tmp_path):
 # --- Description property tests ---
 
 
+def test_panel_rows_parsed(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+              - name: bar
+                type: varchar
+                label: "Bar"
+            layout:
+              detail:
+                panels:
+                  - label: "General"
+                    rows:
+                      - [foo, bar]
+                      - [foo]
+    """)
+    path = tmp_path / "panel_rows.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    panel = program.entities[0].layouts["detail"].panels[0]
+    assert panel.rows is not None
+    assert len(panel.rows) == 2
+    assert panel.rows[0] == ["foo", "bar"]
+    assert panel.rows[1] == ["foo"]
+
+
+def test_panel_dynamic_logic_visible_parsed(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+            layout:
+              detail:
+                panels:
+                  - label: "Conditional"
+                    dynamicLogicVisible:
+                      conditionGroup:
+                        - type: equals
+                          attribute: contactType
+                          value: Mentor
+                    rows:
+                      - [foo]
+    """)
+    path = tmp_path / "dynamic_logic.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    panel = program.entities[0].layouts["detail"].panels[0]
+    assert panel.dynamicLogicVisible is not None
+    assert "conditionGroup" in panel.dynamicLogicVisible
+    assert panel.dynamicLogicVisible["conditionGroup"][0]["attribute"] == "contactType"
+
+
 def test_entity_description_parsed(loader, tmp_path):
     content = dedent("""\
         version: "1.0"

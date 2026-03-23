@@ -101,6 +101,25 @@ def test_fields_grouped_by_category():
     assert any("cat_b" in v for v in first_col_values)
 
 
+def test_fields_without_category_under_general():
+    entities = [
+        ("Contact", {
+            "fields": [
+                {"name": "f1", "type": "varchar", "label": "F1", "category": "cat_a"},
+                {"name": "f2", "type": "varchar", "label": "F2"},
+                {"name": "f3", "type": "varchar", "label": "F3", "category": "cat_a"},
+            ]
+        })
+    ]
+    section = build_field_sections(entities)
+    table = section.content[0].content[0]
+    first_col_values = [r[0] for r in table.rows]
+    # "General" category header should appear before "cat_a"
+    general_idx = next(i for i, v in enumerate(first_col_values) if "General" in v)
+    cat_a_idx = next(i for i, v in enumerate(first_col_values) if "cat_a" in v)
+    assert general_idx < cat_a_idx
+
+
 def test_enum_notes_inline():
     entities = [
         ("Contact", {
@@ -117,7 +136,7 @@ def test_enum_notes_inline():
     section = build_field_sections(entities)
     table = section.content[0].content[0]
     notes_idx = table.headers.index("Notes")
-    assert "Values: A, B, C" in table.rows[0][notes_idx]
+    assert "Values: A | B | C" in table.rows[0][notes_idx]
 
 
 def test_enum_notes_appendix_reference():

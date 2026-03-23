@@ -55,12 +55,12 @@ def _build_notes(field_data: dict[str, Any]) -> str:
     if field_type in ENUM_TYPES:
         options = field_data.get("options", [])
         if options and len(options) <= MAX_INLINE_OPTIONS:
-            notes_parts.append(f"Values: {', '.join(str(o) for o in options)}")
+            notes_parts.append(f"Values: {' | '.join(str(o) for o in options)}")
         elif options:
             notes_parts.append("See Appendix A")
 
     if field_data.get("readOnly"):
-        notes_parts.append("Read-only")
+        notes_parts.append("Read-only.")
 
     default = field_data.get("default")
     if default is not None and default != "":
@@ -120,7 +120,14 @@ def build_field_sections(
             categorized.setdefault(cat, []).append(f)
 
         rows: list[list[str]] = []
-        for cat_name in categorized:
+        # Ensure "General" appears first, then other categories in order
+        cat_order: list[str] = []
+        if "General" in categorized:
+            cat_order.append("General")
+        for cn in categorized:
+            if cn != "General":
+                cat_order.append(cn)
+        for cat_name in cat_order:
             # Add category header row
             if len(categorized) > 1:
                 rows.append([f"— {cat_name} —", "", "", "", "", "", ""])

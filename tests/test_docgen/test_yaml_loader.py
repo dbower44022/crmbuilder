@@ -62,6 +62,37 @@ def test_preserves_field_order(tmp_path):
     assert [f["name"] for f in fields] == ["zebra", "alpha", "middle"]
 
 
+def test_merges_fields_from_multiple_files(tmp_path):
+    file1 = dedent("""\
+        version: "1.0"
+        description: "File one"
+        entities:
+          Contact:
+            fields:
+              - name: alpha
+                type: varchar
+                label: "Alpha"
+    """)
+    file2 = dedent("""\
+        version: "1.0"
+        description: "File two"
+        entities:
+          Contact:
+            fields:
+              - name: beta
+                type: varchar
+                label: "Beta"
+    """)
+    (tmp_path / "a_file1.yaml").write_text(file1)
+    (tmp_path / "b_file2.yaml").write_text(file2)
+    entities = load_programs(tmp_path)
+    assert "Contact" in entities
+    fields = entities["Contact"]["fields"]
+    names = [f["name"] for f in fields]
+    assert "alpha" in names
+    assert "beta" in names
+
+
 def test_ordered_entities_follows_canonical_order(tmp_path):
     content = dedent("""\
         version: "1.0"

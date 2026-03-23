@@ -1,0 +1,126 @@
+version: "1.0"
+description: "CBM EspoCRM Configuration — Partner Relationships"
+
+# Source of truth: CBM-PRD-CRM-Partners.docx
+#
+# All relationships in this file are new — none exist yet on the instance.
+# Processing note: all Partner entities must be created (via their
+# respective YAML files) before these relationships can be deployed.
+
+relationships:
+
+  # ---------------------------------------------------------------
+  # Partner Agreement Relationships
+  # ---------------------------------------------------------------
+
+  - name: partnerAgreementToPartner
+    description: >
+      Links a Partner Agreement record to the Partner Account it belongs to.
+      A Partner may have more than one agreement on file over time. Drives
+      the Partner Agreements panel on the Partner Account detail view,
+      providing a complete agreement history. Access restricted to
+      management-level users.
+      Requirement: CBM-PRD-CRM-Partners.docx Section 7.
+    entity: PartnerAgreement
+    entityForeign: Account
+    linkType: manyToOne
+    link: partner
+    linkForeign: partnerAgreements
+    label: "Partner"
+    labelForeign: "Partner Agreements"
+    audited: false
+
+  # ---------------------------------------------------------------
+  # Client-Partner Association Relationships
+  # ---------------------------------------------------------------
+
+  - name: clientPartnerAssociationToClient
+    description: >
+      Links a Client-Partner Association record to the client Account it
+      represents. Enables the Partner Associations panel on the Client Account
+      detail view, showing which Partner organizations are associated with
+      this client. Used as the basis for Partner-specific analytics filtering.
+      Requirement: CBM-PRD-CRM-Partners.docx Section 8.
+    entity: ClientPartnerAssociation
+    entityForeign: Account
+    linkType: manyToOne
+    link: clientAccount
+    linkForeign: clientPartnerAssociations
+    label: "Client"
+    labelForeign: "Partner Associations"
+    audited: false
+
+  - name: clientPartnerAssociationToPartner
+    description: >
+      Links a Client-Partner Association record to the Partner Account it
+      represents. Enables the Associated Clients panel on the Partner Account
+      detail view, showing which clients belong to this Partner's population.
+      The primary data source for all per-Partner analytics and reporting.
+      Requirement: CBM-PRD-CRM-Partners.docx Section 8.
+    entity: ClientPartnerAssociation
+    entityForeign: Account
+    linkType: manyToOne
+    link: partnerAccount
+    linkForeign: partnerClientAssociations
+    label: "Partner"
+    labelForeign: "Associated Clients"
+    audited: false
+
+  # ---------------------------------------------------------------
+  # Partner Activity Relationships
+  # ---------------------------------------------------------------
+
+  - name: partnerActivityToPartner
+    description: >
+      Links a Partner Activity record to the Partner Account it belongs to.
+      Drives the Partner Activities panel on the Partner Account detail view,
+      providing a complete log of all joint activities and events. Used by CBM
+      leadership to identify Partners with no recent logged activity.
+      Requirement: CBM-PRD-CRM-Partners.docx Section 10.
+    entity: PartnerActivity
+    entityForeign: Account
+    linkType: manyToOne
+    link: partnerOrganization
+    linkForeign: partnerActivities
+    label: "Partner"
+    labelForeign: "Partner Activities"
+    audited: false
+
+  - name: partnerActivityToAttendees
+    description: >
+      Many-to-many link between a Partner Activity and the Contact(s) who
+      attended or participated. Tracks which specific individuals from a
+      Partner organization (or from CBM) were present at each activity.
+      CBM needs this individual-level attendance data to know which Partner
+      contacts have been engaged and to support relationship management.
+      Requirement: CBM-PRD-CRM-Partners.docx Section 10.2.
+    entity: PartnerActivity
+    entityForeign: Contact
+    linkType: manyToMany
+    link: attendees
+    linkForeign: partnerActivitiesAttended
+    label: "Attendees"
+    labelForeign: "Partner Activities Attended"
+    relationName: cPartnerActivityAttendee
+    audited: false
+
+  # ---------------------------------------------------------------
+  # Liaison Assignment
+  # ---------------------------------------------------------------
+
+  - name: partnerToAssignedLiaison
+    description: >
+      Links a Partner Account to the CBM member (Contact) assigned as its
+      liaison. The liaison is responsible for managing the day-to-day Partner
+      relationship, logging activities and communications, and delivering
+      analytics reports. Only the current liaison assignment is stored —
+      liaison history is not tracked.
+      Requirement: CBM-PRD-CRM-Partners.docx Section 9.
+    entity: Account
+    entityForeign: Contact
+    linkType: manyToOne
+    link: assignedLiaison
+    linkForeign: liaisonPartners
+    label: "Assigned Liaison"
+    labelForeign: "Partner Liaisons"
+    audited: false

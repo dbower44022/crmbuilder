@@ -17,12 +17,18 @@ ENTITY_ORDER: list[str] = [
     "Workshop",
     "WorkshopAttendance",
     "Dues",
+    "PartnerAgreement",
+    "ClientPartnerAssociation",
+    "PartnerActivity",
 ]
 
 ENTITY_DISPLAY_NAMES: dict[str, str] = {
     "Account": "Company",
     "NpsSurveyResponse": "NPS Survey Response",
     "WorkshopAttendance": "Workshop Attendance",
+    "ClientPartnerAssociation": "Client-Partner Association",
+    "PartnerAgreement": "Partner Agreement",
+    "PartnerActivity": "Partner Activity",
 }
 
 
@@ -62,18 +68,40 @@ def load_programs(programs_dir: Path) -> dict[str, dict[str, Any]]:
                 entity_data = {}
 
             if entity_name in entities:
-                logger.warning(
-                    "Entity '%s' found in multiple files — "
-                    "using definition from %s",
-                    entity_name,
-                    path.name,
-                )
-
-            entities[entity_name] = {
-                **entity_data,
-                "_source_file": path.name,
-                "_entity_name": entity_name,
-            }
+                # Merge fields from multiple files
+                existing_fields = entities[entity_name].get("fields", [])
+                new_fields = entity_data.get("fields", [])
+                if new_fields:
+                    existing_names = {
+                        f.get("name") for f in existing_fields
+                        if isinstance(f, dict)
+                    }
+                    for f in new_fields:
+                        if isinstance(f, dict):
+                            fname = f.get("name")
+                            if fname in existing_names:
+                                logger.warning(
+                                    "Entity '%s': duplicate field '%s' "
+                                    "in %s (already defined)",
+                                    entity_name,
+                                    fname,
+                                    path.name,
+                                )
+                            else:
+                                existing_fields.append(f)
+                                existing_names.add(fname)
+                    entities[entity_name]["fields"] = existing_fields
+                # Merge non-field keys (later file wins for scalar values)
+                for key, val in entity_data.items():
+                    if key != "fields":
+                        entities[entity_name][key] = val
+                entities[entity_name]["_source_file"] = path.name
+            else:
+                entities[entity_name] = {
+                    **entity_data,
+                    "_source_file": path.name,
+                    "_entity_name": entity_name,
+                }
 
     for path in sorted(programs_dir.glob("*.yml")):
         try:

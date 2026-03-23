@@ -1,8 +1,16 @@
 version: "1.0"
-description: "CBM EspoCRM Configuration — Account (Company) Fields"
+description: "CBM EspoCRM Configuration — Account (Company) Fields and Layout"
 
-# Source of truth: CBM-PRD-CRM-Implementation.docx Section 2.4
+# Source of truth: CBM-PRD-CRM-Implementation.docx Sections 2.4, Phase 2
+#                  CBM-PRD-CRM-Partners.docx Section 15.2
+#
 # Native EspoCRM entity (Account, relabeled as Company) — no action required.
+#
+# DESIGN DECISION: companyRole (single-select) replaced by accountType
+# (multi-select) to support accounts that hold multiple roles simultaneously
+# (e.g. an organization that is both a Client Company and a Partner).
+# accountType is the Dynamic Logic driver for all Client Company and Partner
+# panel visibility. See CBM-PRD-CRM-Partners.docx Section 15.2.
 #
 # Fields NOT included here (handled separately):
 #   - Link fields (relationships to other entities)
@@ -10,10 +18,19 @@ description: "CBM EspoCRM Configuration — Account (Company) Fields"
 
 entities:
   Account:
+    description: "Represents all organizations in CBM's ecosystem — client
+                  businesses receiving mentoring, Partner organizations, CBM
+                  itself, sponsors, and vendors. A single Account entity covers
+                  all organization types, distinguished by the Account Type
+                  multi-select field which drives Dynamic Logic panel visibility.
+                  An account may hold multiple types simultaneously.
+                  Requirement: CBM-PRD-CRM-Client.docx Section 2.1,
+                  CBM-PRD-CRM-Partners.docx Section 15.1."
+
     fields:
 
       # ---------------------------------------------------------------
-      # 2.4.1 Business Identity & Classification Fields
+      # Business Identity — category: Business Identity
       # ---------------------------------------------------------------
 
       - name: organizationType
@@ -21,6 +38,11 @@ entities:
         label: "Organization Type"
         required: true
         isSorted: false
+        category: "Business Identity"
+        description: "Distinguishes for-profit businesses from nonprofits.
+                      Drives reporting segmentation and determines which intake
+                      fields are relevant. Required at intake.
+                      Requirement: CBM-PRD-CRM-Client.docx Section 3.1"
         options:
           - "For-Profit"
           - "Non-Profit"
@@ -31,35 +53,40 @@ entities:
           "For-Profit": null
           "Non-Profit": null
 
-      - name: companyRole
-        type: enum
-        label: "Company Role"
+      - name: accountType
+        type: multiEnum
+        label: "Account Type"
         required: true
-        isSorted: false
+        category: "Business Identity"
+        description: >
+          Multi-select classification of the account's role in CBM's ecosystem.
+          An account may hold more than one type simultaneously — for example,
+          a Partner organization that is also a mentoring client would be both
+          Client Company and Partner. Drives Dynamic Logic panel visibility:
+          Client Company panels shown only when Account Type includes Client
+          Company; Partner panels only when it includes Partner.
+          Replaces the previous single-select companyRole field, which could
+          not support multi-type accounts.
+          Requirement: CBM-PRD-CRM-Client.docx Section 3.1,
+          CBM-PRD-CRM-Partners.docx Section 15.2.
         options:
           - "Client Company"
+          - "Partner"
           - "Mentoring Company"
-          - "Partner Company"
-          - "Sponsor Company"
-          - "Vendor Company"
-        translatedOptions:
-          "Client Company": "Client Company"
-          "Mentoring Company": "Mentoring Company"
-          "Partner Company": "Partner Company"
-          "Sponsor Company": "Sponsor Company"
-          "Vendor Company": "Vendor Company"
-        style:
-          "Client Company": null
-          "Mentoring Company": null
-          "Partner Company": null
-          "Sponsor Company": null
-          "Vendor Company": null
+          - "Sponsor"
+          - "Vendor"
 
       - name: businessStage
         type: enum
         label: "Business Stage"
         required: true
         isSorted: false
+        category: "Business Identity"
+        description: "Indicates the maturity stage of the client's business at the
+                      time of intake. Used for mentor matching — some mentors
+                      specialize in early-stage businesses — and for funder
+                      reporting on client demographics.
+                      Requirement: CBM-PRD-CRM-Client.docx Section 3.1"
         options:
           - "Pre-Startup"
           - "Startup"
@@ -79,11 +106,21 @@ entities:
           "Growth Stage": null
           "Established": null
 
+      # ---------------------------------------------------------------
+      # Business Classification — category: Business Classification
+      # ---------------------------------------------------------------
+
       - name: naicsSector
         type: enum
         label: "NAICS Sector"
         required: true
         isSorted: false
+        category: "Business Classification"
+        description: "Top-level federal industry classification (20 sectors).
+                      Used for mentor-client matching — mentors specify which
+                      sectors they serve. Also used for funder reporting on
+                      industry distribution of clients served.
+                      Requirement: CBM-PRD-CRM-Client.docx Section 3.1"
         options:
           - "11 - Agriculture, Forestry, Fishing"
           - "21 - Mining, Quarrying, Oil & Gas"
@@ -111,6 +148,12 @@ entities:
         label: "NAICS Subsector"
         required: true
         isSorted: false
+        category: "Business Classification"
+        description: "3-digit NAICS subsector providing more specific industry
+                      classification within the selected sector. Approximately
+                      100 values aligned to the 2022 federal standard. Used
+                      for detailed funder reporting and geographic market analysis.
+                      Requirement: CBM-PRD-CRM-Client.docx Section 3.1"
         options:
           - "111 - Crop Production"
           - "112 - Animal Production and Aquaculture"
@@ -209,10 +252,21 @@ entities:
           - "927 - Space Research and Technology"
           - "928 - National Security and International Affairs"
 
+      # ---------------------------------------------------------------
+      # Mentoring Context — category: Mentoring Context
+      # ---------------------------------------------------------------
+
       - name: mentoringFocusAreas
         type: multiEnum
         label: "Mentoring Focus Areas"
         required: true
+        category: "Mentoring Context"
+        description: "The specific business areas where the client is seeking
+                      mentoring support. Multi-select because clients often need
+                      help across multiple domains. Used for mentor matching —
+                      mentors specify which focus areas they cover. TBD: values
+                      to be confirmed with CBM leadership before go-live.
+                      Requirement: CBM-PRD-CRM-Client.docx Section 3.1"
         options:
           - "Business Planning & Strategy"
           - "Marketing & Sales"
@@ -237,19 +291,36 @@ entities:
         type: wysiwyg
         label: "Mentoring Needs Description"
         required: true
+        category: "Mentoring Context"
+        description: "Free-form description of what the client is seeking from CBM
+                      mentoring. Collected on the intake form and used by the admin
+                      during mentor matching to understand context beyond the
+                      structured focus area selections.
+                      Requirement: CBM-PRD-CRM-Client.docx Section 4.1"
 
       # ---------------------------------------------------------------
-      # 2.4.2 Business Detail Fields
+      # Business Detail — category: Business Detail
       # ---------------------------------------------------------------
 
       - name: businessDescription
         type: wysiwyg
         label: "Business Description"
+        category: "Business Detail"
+        description: "Narrative overview of the client's business — what they do,
+                      who they serve, and their business model. Populated
+                      post-assignment by the assigned mentor during initial
+                      discovery sessions.
+                      Requirement: CBM-PRD-CRM-Client.docx Section 4.2"
 
       - name: timeInOperation
         type: enum
         label: "Time in Operation"
         isSorted: false
+        category: "Business Detail"
+        description: "How long the business has been operating. Used alongside
+                      Business Stage for funder reporting on client maturity.
+                      Ranges are intentionally broad to reduce friction at intake.
+                      Requirement: CBM-PRD-CRM-Client.docx Section 3.1"
         options:
           - "Not yet started"
           - "Less than 1 year"
@@ -276,11 +347,22 @@ entities:
         type: int
         label: "Current Team Size"
         min: 0
+        category: "Business Detail"
+        description: "Total number of people currently working in the business
+                      including owners, full-time, and part-time employees. Used
+                      for funder reporting on job creation and retention impact.
+                      Requirement: CBM-PRD-CRM-Client.docx Section 4.2"
 
       - name: revenueRange
         type: enum
         label: "Revenue Range"
         isSorted: false
+        category: "Business Detail"
+        description: "Annual revenue bracket. Collected post-assignment as part of
+                      the business profile. Used for funder reporting and for
+                      segmenting clients by business maturity. Ranges rather than
+                      exact figures reduce client sensitivity around disclosure.
+                      Requirement: CBM-PRD-CRM-Client.docx Section 4.2"
         options:
           - "Pre-Revenue"
           - "Under $50K"
@@ -309,26 +391,64 @@ entities:
       - name: fundingSituation
         type: wysiwyg
         label: "Funding Situation"
+        category: "Business Detail"
+        description: "Description of the client's current funding sources, capital
+                      needs, and financing history. Populated post-assignment.
+                      Helps the mentor understand financial constraints and identify
+                      appropriate capital access strategies.
+                      Requirement: CBM-PRD-CRM-Client.docx Section 4.2"
 
       - name: currentChallenges
         type: wysiwyg
         label: "Current Challenges"
+        category: "Business Detail"
+        description: "The primary obstacles the client is currently facing in their
+                      business. Populated post-assignment during discovery. Guides
+                      the mentor's focus areas and session planning.
+                      Requirement: CBM-PRD-CRM-Client.docx Section 4.2"
 
       - name: goalsAndObjectives
         type: wysiwyg
         label: "Goals and Objectives"
+        category: "Business Detail"
+        description: "The client's stated goals for their business over the next
+                      1-3 years. Populated post-assignment. Used to define
+                      engagement success criteria and measure outcomes at close.
+                      Requirement: CBM-PRD-CRM-Client.docx Section 4.2"
 
       - name: desiredOutcomes
         type: wysiwyg
         label: "Desired Outcomes (6-12 Months)"
+        category: "Business Detail"
+        description: "Specific outcomes the client hopes to achieve within the
+                      near-term mentoring period. More concrete than Goals and
+                      Objectives. Used to set engagement milestones and evaluate
+                      progress at NPS survey points.
+                      Requirement: CBM-PRD-CRM-Client.docx Section 4.2"
 
       - name: previousMentoringExperience
         type: wysiwyg
         label: "Previous Mentoring/Advisory Experience"
+        category: "Business Detail"
+        description: "Summary of any prior mentoring, coaching, or advisory
+                      relationships the client has had. Helps the mentor calibrate
+                      their approach and avoid repeating work already done with
+                      previous advisors.
+                      Requirement: CBM-PRD-CRM-Client.docx Section 4.2"
+
+      # ---------------------------------------------------------------
+      # Professional Advisors — category: Professional Advisors
+      # ---------------------------------------------------------------
 
       - name: currentProfessionalAdvisors
         type: multiEnum
         label: "Current Professional Advisors"
+        category: "Professional Advisors"
+        description: "The professional advisors currently supporting the client's
+                      business. Helps the mentor understand the client's existing
+                      support network and coordinate rather than duplicate advice.
+                      Multi-select because clients typically have several advisors.
+                      Requirement: CBM-PRD-CRM-Client.docx Section 4.2"
         options:
           - "Banker / Financial Institution"
           - "Attorney / Legal Counsel"
@@ -338,15 +458,30 @@ entities:
           - "Marketing / PR Consultant"
           - "Business Coach"
 
+      # ---------------------------------------------------------------
+      # Business Registration — category: Business Registration
+      # ---------------------------------------------------------------
+
       - name: registeredWithState
         type: bool
         label: "Registered with State"
         default: false
+        category: "Business Registration"
+        description: "Whether the business is formally registered with the state.
+                      Gates the display of all registration detail fields via
+                      Dynamic Logic. Pre-startup businesses may not yet be
+                      registered. Required for funder compliance reporting.
+                      Requirement: CBM-PRD-CRM-Client.docx Section 4.2"
 
       - name: stateOfRegistration
         type: enum
         label: "State of Registration"
         isSorted: true
+        category: "Business Registration"
+        description: "The US state where the business is officially registered.
+                      Visible only when Registered with State = Yes (Dynamic Logic).
+                      Most CBM clients will be registered in Ohio.
+                      Requirement: CBM-PRD-CRM-Client.docx Section 4.2"
         options:
           - "Alabama"
           - "Alaska"
@@ -404,6 +539,11 @@ entities:
         type: enum
         label: "Legal Business Structure"
         isSorted: false
+        category: "Business Registration"
+        description: "The legal form of the business entity. Visible only when
+                      Registered with State = Yes. Relevant for mentoring advice
+                      on liability, taxation, and growth structure.
+                      Requirement: CBM-PRD-CRM-Client.docx Section 4.2"
         options:
           - "Sole Proprietor"
           - "Partnership"
@@ -433,17 +573,135 @@ entities:
         type: bool
         label: "EIN on File"
         default: false
+        category: "Business Registration"
+        description: "Whether CBM has the business's Employer Identification Number
+                      on file. Visible only when Registered with State = Yes.
+                      Required for certain grant programs and funder compliance.
+                      Requirement: CBM-PRD-CRM-Client.docx Section 4.2"
 
       - name: dateOfFormation
         type: date
         label: "Date of Formation"
+        category: "Business Registration"
+        description: "The official date the business was registered with the state.
+                      Visible only when Registered with State = Yes. Used to
+                      calculate time in operation and for funder reporting.
+                      Requirement: CBM-PRD-CRM-Client.docx Section 4.2"
 
       - name: registeredAgent
         type: bool
         label: "Registered Agent"
         default: false
+        category: "Business Registration"
+        description: "Whether the business has designated a registered agent for
+                      state compliance purposes. Visible only when Registered
+                      with State = Yes. Indicates compliance maturity.
+                      Requirement: CBM-PRD-CRM-Client.docx Section 4.2"
 
       - name: einNumber
         type: varchar
         label: "EIN Number"
         maxLength: 20
+        category: "Business Registration"
+        description: "The business's 9-digit Employer Identification Number
+                      (format: XX-XXXXXXX). Restricted field — visible to Admin
+                      and Primary Mentor roles only. Not collected on the intake
+                      form; mentor-populated after engagement begins.
+                      Requirement: CBM-PRD-CRM-Client.docx Section 4.2"
+
+    layout:
+      detail:
+        panels:
+
+          - label: "Business Identity"
+            tabBreak: true
+            tabLabel: "Overview"
+            style: default
+            description: "Core identifying information about the company,
+                          visible and editable by all roles."
+            rows:
+              - [name, website]
+              - [address, null]
+              - [organizationType, accountType]
+              - [businessStage, null]
+
+          - label: "Business Classification"
+            tabBreak: true
+            tabLabel: "Classification"
+            style: default
+            description: "Industry classification fields used for mentor matching
+                          and funder reporting."
+            dynamicLogicVisible:
+              attribute: accountType
+              value: "Client Company"
+            tabs:
+              - label: "Classification"
+                category: "Business Classification"
+
+          - label: "Mentoring Context"
+            tabBreak: true
+            tabLabel: "Mentoring"
+            style: default
+            description: "Fields describing what the client needs from CBM mentoring.
+                          Core input for the mentor matching process."
+            dynamicLogicVisible:
+              attribute: accountType
+              value: "Client Company"
+            tabs:
+              - label: "Mentoring"
+                category: "Mentoring Context"
+
+          - label: "Business Detail"
+            tabBreak: true
+            tabLabel: "Detail"
+            style: default
+            description: "In-depth business profile populated post-assignment.
+                          Provides the mentor with context for effective engagement."
+            dynamicLogicVisible:
+              attribute: accountType
+              value: "Client Company"
+            tabs:
+              - label: "Detail"
+                category: "Business Detail"
+
+          - label: "Professional Advisors"
+            tabBreak: true
+            tabLabel: "Advisors"
+            style: default
+            description: "The client's existing professional support network.
+                          Helps the mentor avoid duplicating advice already received."
+            dynamicLogicVisible:
+              attribute: accountType
+              value: "Client Company"
+            tabs:
+              - label: "Advisors"
+                category: "Professional Advisors"
+
+          - label: "Business Registration"
+            tabBreak: true
+            tabLabel: "Registration"
+            style: default
+            description: "Legal and compliance registration details. Gated behind
+                          Registered with State = Yes via Dynamic Logic. EIN Number
+                          is restricted to Admin and Primary Mentor roles."
+            dynamicLogicVisible:
+              attribute: accountType
+              value: "Client Company"
+            tabs:
+              - label: "Registration"
+                category: "Business Registration"
+
+      list:
+        columns:
+          - field: name
+            width: 25
+          - field: accountType
+            width: 15
+          - field: organizationType
+            width: 15
+          - field: businessStage
+            width: 15
+          - field: naicsSector
+            width: 20
+          - field: billingAddressCity
+            width: 10

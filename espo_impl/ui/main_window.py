@@ -399,3 +399,7 @@ class MainWindow(QMainWindow):
         self.run_btn.setEnabled(self.state.validated and not in_progress)
         self.verify_btn.setEnabled(self.state.validated and not in_progress)
         self.report_btn.setEnabled(self.state.last_report_path is not None)
+
+        programs_exist = (self.base_dir / "data" / "programs").exists() and \
+            any((self.base_dir / "data" / "programs").glob("*.yaml"))
+        self.docgen_btn.setEnabled(programs_exist and not in_progress)

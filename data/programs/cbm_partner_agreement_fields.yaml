@@ -1,0 +1,176 @@
+version: "1.0"
+description: "CBM EspoCRM Configuration — Partner Agreement Entity"
+
+# Source of truth: CBM-PRD-CRM-Partners.docx Section 7
+# Custom entity — uses delete_and_create for clean deployment.
+# WARNING: Contains a delete_and_create operation — confirmation required.
+#
+# NOTE: The Agreement Document field (file attachment) is not configurable
+# via the implementation tool's current field types. File attachment fields
+# must be configured manually in EspoCRM's Entity Manager after initial
+# deployment. This is noted in the field description below.
+#
+# Fields NOT included here (handled separately):
+#   - Link fields: Partner (relationship to Account)
+
+entities:
+  PartnerAgreement:
+    description: >
+      Tracks formal written agreements between CBM and a Partner organization.
+      A Partner may have more than one agreement on file over time (e.g., an
+      original MOU and a subsequent renewal). All agreements are retained for
+      historical reference even when superseded. Agreement documents are
+      restricted to management-level access — liaisons and mentors without
+      management access cannot view or download agreement attachments.
+      Requirement: CBM-PRD-CRM-Partners.docx Section 7.
+
+    action: delete_and_create
+    type: Base
+    labelSingular: "Partner Agreement"
+    labelPlural: "Partner Agreements"
+    stream: false
+
+    fields:
+
+      # ---------------------------------------------------------------
+      # Agreement Details — category: Agreement Details
+      # ---------------------------------------------------------------
+
+      - name: agreementType
+        type: enum
+        label: "Agreement Type"
+        required: true
+        isSorted: false
+        category: "Agreement Details"
+        description: >
+          Categorizes the type of formal agreement in place. MOU: Memorandum
+          of Understanding — a non-binding statement of intent and shared
+          goals. Partnership Agreement: a binding agreement defining terms,
+          responsibilities, and commitments. Letter of Intent: a preliminary
+          document outlining the intended terms before a formal agreement.
+          Other: any agreement not covered by the above categories.
+          Requirement: CBM-PRD-CRM-Partners.docx Section 7.
+        options:
+          - "Memorandum of Understanding (MOU)"
+          - "Partnership Agreement"
+          - "Letter of Intent"
+          - "Other"
+        translatedOptions:
+          "Memorandum of Understanding (MOU)": "Memorandum of Understanding (MOU)"
+          "Partnership Agreement": "Partnership Agreement"
+          "Letter of Intent": "Letter of Intent"
+          "Other": "Other"
+        style:
+          "Memorandum of Understanding (MOU)": null
+          "Partnership Agreement": null
+          "Letter of Intent": null
+          "Other": null
+
+      - name: creationDate
+        type: date
+        label: "Creation Date"
+        required: true
+        category: "Agreement Details"
+        description: >
+          The date the agreement was created or signed. Required. Used as
+          the primary sort field on the Partner Agreements list view and for
+          tracking agreement history over time.
+          Requirement: CBM-PRD-CRM-Partners.docx Section 7.
+
+      - name: expirationRenewalDate
+        type: date
+        label: "Expiration / Renewal Date"
+        category: "Agreement Details"
+        description: >
+          The date the agreement expires or is due for renewal. Optional —
+          some agreements (e.g., MOUs) may not have a formal expiration.
+          Used in the CBM internal portfolio dashboard to surface agreements
+          expiring within a defined upcoming window so the liaison can
+          initiate renewal conversations proactively.
+          Requirement: CBM-PRD-CRM-Partners.docx Section 7,
+          CBM-PRD-CRM-Partners.docx Section 13.2.
+
+      # ---------------------------------------------------------------
+      # Agreement Document — category: Agreement Document
+      # NOTE: File attachment field must be configured manually.
+      # ---------------------------------------------------------------
+
+      - name: agreementDocumentUrl
+        type: url
+        label: "Agreement Document URL"
+        category: "Agreement Document"
+        description: >
+          URL to the signed agreement document stored in Google Drive or
+          another document management system. Used as an alternative to a
+          native EspoCRM file attachment when direct file upload is not
+          available or preferred. The linked document should be stored in a
+          restricted-access Google Drive folder accessible only to CBM
+          management-level users.
+          NOTE: EspoCRM also supports native File attachment fields — this
+          should be configured manually in Entity Manager if direct file
+          upload is preferred over a URL link.
+          Requirement: CBM-PRD-CRM-Partners.docx Section 7.
+
+      # ---------------------------------------------------------------
+      # Notes — category: Notes
+      # ---------------------------------------------------------------
+
+      - name: notes
+        type: wysiwyg
+        label: "Notes"
+        category: "Notes"
+        description: >
+          Any relevant notes about the agreement — context for the agreement's
+          creation, key provisions or commitments referenced in the document,
+          renewal history, or any exceptions to standard terms. Admin and
+          management access only.
+          Requirement: CBM-PRD-CRM-Partners.docx Section 7.
+
+    layout:
+      detail:
+        panels:
+
+          - label: "Agreement Details"
+            tabBreak: true
+            tabLabel: "Details"
+            style: default
+            description: >
+              Core agreement fields. Access restricted to management-level
+              users — liaisons and mentors without management access cannot
+              view or download agreement records.
+            rows:
+              - [agreementType, creationDate]
+              - [expirationRenewalDate, null]
+
+          - label: "Agreement Document"
+            tabBreak: true
+            tabLabel: "Document"
+            style: default
+            description: >
+              Link to or attachment of the signed agreement document.
+            tabs:
+              - label: "Document"
+                category: "Agreement Document"
+
+          - label: "Notes"
+            tabBreak: true
+            tabLabel: "Notes"
+            style: default
+            description: >
+              Admin notes on the agreement context and history.
+            tabs:
+              - label: "Notes"
+                category: "Notes"
+
+      list:
+        columns:
+          - field: name
+            width: 25
+          - field: agreementType
+            width: 25
+          - field: creationDate
+            width: 18
+          - field: expirationRenewalDate
+            width: 18
+          - field: agreementDocumentUrl
+            width: 14

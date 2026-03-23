@@ -1,0 +1,122 @@
+version: "1.0"
+description: "CBM EspoCRM Configuration — Contact (Partner Contact) Fields and Layout Extension"
+
+# Source of truth: CBM-PRD-CRM-Partners.docx Section 6
+# Native EspoCRM entity (Contact) — no action required.
+#
+# This file extends the Contact entity with Partner Contact-specific fields.
+# It is applied AFTER cbm_contact_fields.yaml, which defines Mentor and
+# Client contact fields.
+#
+# Partner Contacts are individuals at Partner organizations. A single Contact
+# record supports all roles — a person can be simultaneously a CBM Mentor
+# and a Partner Contact. The isPartnerContact flag drives Dynamic Logic
+# visibility for Partner Contact panels, independent of contactType.
+
+entities:
+  Contact:
+    description: >
+      Extended with Partner Contact fields to support CBM's Partner Management
+      module. Partner Contacts are individuals at Partner organizations whom
+      CBM communicates with, invites to events, and coordinates with on joint
+      activities. A Contact may be both a CBM Mentor and a Partner Contact —
+      the system supports this overlap without duplication using the
+      isPartnerContact flag alongside the existing contactType field.
+      Requirement: CBM-PRD-CRM-Partners.docx Section 6.
+
+    fields:
+
+      # ---------------------------------------------------------------
+      # Partner Contact Identity — category: Partner Contact
+      # ---------------------------------------------------------------
+
+      - name: isPartnerContact
+        type: bool
+        label: "Is Partner Contact"
+        default: false
+        category: "Partner Contact"
+        description: >
+          Flags this contact as a representative of a Partner organization.
+          When true, shows the Partner Contact fields panel via Dynamic Logic.
+          Can be true simultaneously with contactType = Mentor (for CBM
+          mentors who also serve as contacts at a Partner organization).
+          Set by admin when the contact is linked to a Partner Account.
+          Requirement: CBM-PRD-CRM-Partners.docx Section 6.1.
+
+      - name: birthdate
+        type: date
+        label: "Birthdate"
+        category: "Partner Contact"
+        description: >
+          Contact's date of birth. Used to recognize birthdays and strengthen
+          the Partner relationship through personal outreach. Optional. Stored
+          securely and accessible to the assigned liaison and admin only.
+          Requirement: CBM-PRD-CRM-Partners.docx Section 6.2.
+
+      - name: primaryContactFor
+        type: multiEnum
+        label: "Primary Contact For"
+        category: "Partner Contact"
+        description: >
+          Designates the function(s) for which this individual is the primary
+          point of contact at their Partner organization. A Partner may have
+          different primary contacts for different functions — e.g., one person
+          for referrals and another for billing or event coordination.
+          Requirement: CBM-PRD-CRM-Partners.docx Section 6.2.
+        options:
+          - "Referrals"
+          - "Events"
+          - "Billing"
+          - "General"
+          - "Agreements"
+        translatedOptions:
+          "Referrals": "Referrals"
+          "Events": "Events"
+          "Billing": "Billing"
+          "General": "General"
+          "Agreements": "Agreements"
+
+      - name: isCbmMentor
+        type: bool
+        label: "Is CBM Mentor"
+        default: false
+        category: "Partner Contact"
+        description: >
+          Indicates that this Partner Contact is also a CBM Mentor. When true,
+          the admin should link this Contact record to the corresponding Mentor
+          record or confirm they are the same record. Prevents duplicate records
+          from being created. When set, the Mentor Details panel on this Contact
+          record should also be populated.
+          Requirement: CBM-PRD-CRM-Partners.docx Section 6.2.
+
+      - name: partnerContactNotes
+        type: wysiwyg
+        label: "Partner Contact Notes"
+        category: "Partner Contact"
+        description: >
+          Notes specific to this individual in their capacity as a Partner
+          Contact. Used by the liaison to capture relationship context,
+          communication history summaries, and key background about this
+          person. Separate from the general Contact notes to keep Partner
+          relationship context distinct from mentoring context.
+          Requirement: CBM-PRD-CRM-Partners.docx Section 6.2.
+
+    layout:
+      detail:
+        panels:
+
+          - label: "Partner Contact"
+            tabBreak: true
+            tabLabel: "Partner"
+            style: default
+            description: >
+              Partner Contact-specific fields. Visible only when
+              Is Partner Contact = true. Independent of the Mentor/Client
+              contact type — a person can be both a CBM Mentor and a
+              Partner Contact simultaneously.
+            dynamicLogicVisible:
+              attribute: isPartnerContact
+              value: true
+            tabs:
+              - label: "Partner Contact"
+                category: "Partner Contact"

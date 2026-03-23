@@ -1,0 +1,108 @@
+version: "1.0"
+description: "CBM EspoCRM Configuration — Client-Partner Association Entity"
+
+# Source of truth: CBM-PRD-CRM-Partners.docx Section 8
+# Custom entity — uses delete_and_create for clean deployment.
+# WARNING: Contains a delete_and_create operation — confirmation required.
+#
+# This entity links a Client Account to a Partner Account. It is the
+# foundation for Partner-specific analytics — all per-Partner metrics
+# are calculated by filtering client activity through these associations.
+#
+# A client may be associated with multiple Partners simultaneously.
+# Associations are not time-bounded — they persist for the life of the
+# client's engagement with CBM unless explicitly removed.
+#
+# Fields NOT included here (handled separately):
+#   - Link fields: Client (Account), Partner (Account) — relationships
+
+entities:
+  ClientPartnerAssociation:
+    description: >
+      Junction entity linking a Client Account to a Partner Account. Enables
+      CBM to track which clients belong to each Partner's population, which
+      is the foundation for all Partner-specific analytics reporting. A client
+      may be associated with multiple Partners simultaneously — geographic
+      overlap is common in Northeast Ohio. Associations are established at
+      intake when the client indicates a referral source or partnership program,
+      and persist unless explicitly removed. Detailed client-level data shared
+      with Partners may require client consent; aggregate analytics may be
+      provided without individual consent.
+      Requirement: CBM-PRD-CRM-Partners.docx Section 8.
+
+    action: delete_and_create
+    type: Base
+    labelSingular: "Client-Partner Association"
+    labelPlural: "Client-Partner Associations"
+    stream: false
+
+    fields:
+
+      # ---------------------------------------------------------------
+      # Association Details — category: Association Details
+      # ---------------------------------------------------------------
+
+      - name: associationType
+        type: enum
+        label: "Association Type"
+        isSorted: false
+        category: "Association Details"
+        description: >
+          How the client is connected to the Partner organization. Referred By:
+          the Partner referred this client to CBM. Serves Same Population: the
+          Partner serves the same community segment as this client, even without
+          a direct referral. Program Participant: the client actively participates
+          in a program or service offered by this Partner. Other: any other
+          connection not covered above. Optional — the association itself is
+          more important than its classification.
+          Requirement: CBM-PRD-CRM-Partners.docx Section 8.2.
+        options:
+          - "Referred By"
+          - "Serves Same Population"
+          - "Program Participant"
+          - "Other"
+        translatedOptions:
+          "Referred By": "Referred By"
+          "Serves Same Population": "Serves Same Population"
+          "Program Participant": "Program Participant"
+          "Other": "Other"
+        style:
+          "Referred By": null
+          "Serves Same Population": null
+          "Program Participant": null
+          "Other": null
+
+      - name: notes
+        type: varchar
+        label: "Notes"
+        maxLength: 500
+        category: "Association Details"
+        description: >
+          Brief context about why this association exists — e.g., the name
+          of the program the client participates in, how the referral was
+          made, or any other relevant background. Optional.
+          Requirement: CBM-PRD-CRM-Partners.docx Section 8.2.
+
+    layout:
+      detail:
+        panels:
+
+          - label: "Association Details"
+            tabBreak: true
+            tabLabel: "Details"
+            style: default
+            description: >
+              Association classification and context. The Client and Partner
+              links are managed as relationship fields.
+            rows:
+              - [associationType, null]
+              - [notes, null]
+
+      list:
+        columns:
+          - field: name
+            width: 30
+          - field: associationType
+            width: 25
+          - field: notes
+            width: 45
