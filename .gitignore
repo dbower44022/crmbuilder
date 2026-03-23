@@ -26,3 +26,5 @@ data/instances/*.json
 # Reports are generated output
 reports/*.log
 reports/*.json
+
+*.docx#
