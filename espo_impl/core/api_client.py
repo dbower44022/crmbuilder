@@ -202,6 +202,34 @@ class EspoAdminClient:
         url = f"{self.profile.api_url}/Admin/rebuild"
         return self._request("POST", url)
 
+    # --- Relationship Manager endpoints ---
+
+    def get_link(
+        self, entity: str, link: str
+    ) -> tuple[int, Any]:
+        """Fetch link metadata for a relationship.
+
+        :param entity: EspoCRM entity name (C-prefixed for custom).
+        :param link: Link name on the entity.
+        :returns: Tuple of (status_code, response_json).
+        """
+        url = (
+            f"{self.profile.api_url}/Metadata"
+            f"?key=entityDefs.{entity}.links.{link}"
+        )
+        return self._request("GET", url)
+
+    def create_link(
+        self, payload: dict[str, Any]
+    ) -> tuple[int, dict[str, Any] | None]:
+        """Create a relationship link between entities.
+
+        :param payload: Full link payload.
+        :returns: Tuple of (status_code, response_json or None).
+        """
+        url = f"{self.profile.api_url}/EntityManager/action/createLink"
+        return self._request("POST", url, json=payload)
+
     # --- Layout Manager endpoints ---
 
     def get_layout(

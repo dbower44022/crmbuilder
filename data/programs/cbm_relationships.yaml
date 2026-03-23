@@ -1,0 +1,215 @@
+version: "1.0"
+description: "CBM EspoCRM Configuration — All Relationships"
+
+# Source of truth: CBM-SPEC-relationship-management.md
+#
+# Relationships marked action: skip already exist and were created manually.
+# They are defined here for full reproducibility — if the instance is rebuilt
+# from scratch, all 11 relationships will be created by the tool.
+#
+# Relationships WITHOUT action: skip are to be created by the tool.
+#
+# Processing note: relationships are processed after all entity, field,
+# and layout operations are complete.
+
+relationships:
+
+  # ---------------------------------------------------------------
+  # Engagement Relationships (6 — all already exist)
+  # ---------------------------------------------------------------
+
+  - name: engagementToCompany
+    description: >
+      Links an Engagement to the client Company (Account) it represents.
+      The primary navigational link from Engagement back to the client
+      business record. Drives the Company panel on the Engagement detail
+      view and the Engagements panel on the Company detail view.
+      Requirement: CBM-PRD-CRM-Client.docx Section 2.3.
+    entity: Engagement
+    entityForeign: Account
+    linkType: manyToOne
+    link: assignedEngagement
+    linkForeign: cCompanyRequestionHelp
+    label: "Company"
+    labelForeign: "Engagements"
+    audited: false
+    action: skip
+
+  - name: engagementToAssignedMentor
+    description: >
+      Links an Engagement to the Primary Mentor (Contact) assigned to it.
+      The single-value mentor assignment — one mentor is the lead for each
+      Engagement. Drives mentor capacity calculations (Current Active Clients,
+      Available Capacity) on the mentor Contact record.
+      Requirement: CBM-PRD-CRM-Mentor.docx Section 4.3.
+    entity: Engagement
+    entityForeign: Contact
+    linkType: manyToOne
+    link: assignedMentor
+    linkForeign: cEngagements
+    label: "Assigned Mentor"
+    labelForeign: "Engagements (Primary)"
+    audited: false
+    action: skip
+
+  - name: engagementToClientContacts
+    description: >
+      Many-to-many link between an Engagement and the client Contact(s)
+      participating in it. Allows multiple contacts from the same Company
+      to be linked to an Engagement (e.g. business owner + co-founder).
+      Drives the Engagement Contacts relationship panel on the Engagement
+      detail view and the Engagements panel on the Contact detail view.
+      Requirement: CBM-PRD-CRM-Client.docx Section 2.3.
+    entity: Engagement
+    entityForeign: Contact
+    linkType: manyToMany
+    link: contacts
+    linkForeign: cEngagementContacts
+    label: "Client Contacts"
+    labelForeign: "Engagements (Client)"
+    relationName: cEngagementContact
+    audited: false
+    action: skip
+
+  - name: engagementToCoMentors
+    description: >
+      Many-to-many link between an Engagement and Co-Mentor/SME Contact(s)
+      supporting it. Allows multiple supporting mentors to be associated
+      with a single Engagement alongside the Primary Mentor. Drives the
+      CBM Contacts panel on the Engagement detail view and the Co-Mentor
+      Engagements panel on the Contact detail view.
+      Requirement: CBM-PRD-CRM-Mentor.docx Section 4.3.
+    entity: Engagement
+    entityForeign: Contact
+    linkType: manyToMany
+    link: cBMContacts
+    linkForeign: cCoMentorEngagements
+    label: "Co-Mentors / SMEs"
+    labelForeign: "Engagements (Co-Mentor)"
+    relationName: cEngagementCBMContact
+    audited: false
+    action: skip
+
+  - name: engagementToSessions
+    description: >
+      One-to-many link between an Engagement and its Session records.
+      The primary structural link driving session tracking, analytics
+      roll-ups (Total Sessions, Last Session Date, Total Session Hours),
+      NPS survey trigger logic, and inactivity monitoring.
+      Requirement: CBM-PRD-CRM-Client.docx Section 2.4.
+    entity: Engagement
+    entityForeign: Session
+    linkType: oneToMany
+    link: engagementSessionses
+    linkForeign: sessionEngagement
+    label: "Sessions"
+    labelForeign: "Engagement"
+    audited: false
+    action: skip
+
+  - name: workshopToAttendance
+    description: >
+      One-to-many link between a Workshop and its Workshop Attendance
+      records. Enables the Attendee List panel on the Workshop detail
+      view and drives the Confirmed Attendees formula field (count of
+      linked attendance records where Attended = Yes).
+      Requirement: CBM-PRD-CRM-Client.docx Section 2.5.
+    entity: Workshop
+    entityForeign: WorkshopAttendance
+    linkType: oneToMany
+    link: workshopAttendees
+    linkForeign: workshopAttended
+    label: "Workshop Attendance"
+    labelForeign: "Workshop"
+    relationName: cWorkshopAttendeeWorkshops
+    audited: false
+    action: skip
+
+  # ---------------------------------------------------------------
+  # Relationships to Create (5)
+  # ---------------------------------------------------------------
+
+  - name: npsSurveyToEngagement
+    description: >
+      Links an NPS Survey Response to the Engagement that triggered it.
+      The primary navigational link from a survey response back to the
+      mentoring context in which it was collected. Drives the NPS Survey
+      Responses panel on the Engagement detail view, enabling admins to
+      review all satisfaction data for an engagement in one place.
+      Requirement: CBM-PRD-CRM-Client.docx Section 5.3.
+    entity: NpsSurveyResponse
+    entityForeign: Engagement
+    linkType: manyToOne
+    link: engagement
+    linkForeign: npsSurveyResponses
+    label: "Engagement"
+    labelForeign: "NPS Survey Responses"
+    audited: false
+
+  - name: workshopAttendanceToContact
+    description: >
+      Links a Workshop Attendance record to the client Contact who attended.
+      Enables the Workshop Attendance panel on the Contact detail view,
+      providing a complete picture of a client's workshop participation
+      history alongside their mentoring engagement history.
+      Requirement: CBM-PRD-CRM-Client.docx Section 2.5.
+    entity: WorkshopAttendance
+    entityForeign: Contact
+    linkType: manyToOne
+    link: contact
+    linkForeign: workshopAttendances
+    label: "Contact"
+    labelForeign: "Workshop Attendance"
+    audited: false
+
+  - name: workshopAttendanceToEngagement
+    description: >
+      Links a Workshop Attendance record to the client's active Engagement
+      at the time of the workshop. Enables CBM to report on workshop
+      participation in the context of mentoring activity — e.g. what
+      percentage of active clients attended a given workshop.
+      Requirement: CBM-PRD-CRM-Client.docx Section 2.5.
+    entity: WorkshopAttendance
+    entityForeign: Engagement
+    linkType: manyToOne
+    link: engagement
+    linkForeign: workshopAttendances
+    label: "Engagement"
+    labelForeign: "Workshop Attendance"
+    audited: false
+
+  - name: duesToMentor
+    description: >
+      Links a Dues record to the mentor Contact it belongs to. One Dues
+      record per billing year per mentor. Drives the Dues panel on the
+      mentor Contact detail view, providing a complete payment history
+      visible to admin. Used for annual billing cycle management and
+      audit documentation.
+      Requirement: CBM-PRD-CRM-Mentor.docx Section 6.1.
+    entity: Dues
+    entityForeign: Contact
+    linkType: manyToOne
+    link: mentor
+    linkForeign: duesRecords
+    label: "Mentor"
+    labelForeign: "Dues Records"
+    audited: false
+
+  - name: sessionToMentorAttendees
+    description: >
+      Many-to-many link between a Session and the mentor/SME Contacts
+      who attended it. Supports sessions attended by the Primary Mentor,
+      Co-Mentor(s), and/or SME(s) simultaneously. Drives the Mentor
+      Attendees panel on the Session detail view. At least one Contact
+      from the Mentoring Company must be present before a Session can
+      be saved.
+      Requirement: CBM-PRD-CRM-Mentor.docx Section 4.4.
+    entity: Session
+    entityForeign: Contact
+    linkType: manyToMany
+    link: mentorAttendees
+    linkForeign: attendedSessions
+    label: "Mentor Attendees"
+    labelForeign: "Sessions Attended"
+    relationName: cSessionMentorAttendee
+    audited: false

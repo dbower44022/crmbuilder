@@ -756,6 +756,146 @@ def test_field_without_description_validates(loader, tmp_path):
     assert program.entities[0].fields[0].description is None
 
 
+# --- Relationship tests ---
+
+
+def test_load_relationships(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        relationships:
+          - name: testRel
+            entity: Session
+            entityForeign: Engagement
+            linkType: manyToOne
+            link: sessionEngagement
+            linkForeign: engagementSessions
+            label: "Engagement"
+            labelForeign: "Sessions"
+            audited: false
+    """)
+    path = tmp_path / "rels.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    assert len(program.relationships) == 1
+    rel = program.relationships[0]
+    assert rel.name == "testRel"
+    assert rel.entity == "Session"
+    assert rel.entity_foreign == "Engagement"
+    assert rel.link_type == "manyToOne"
+    assert rel.action is None
+
+
+def test_load_relationship_action_skip(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        relationships:
+          - name: existingRel
+            entity: Engagement
+            entityForeign: Account
+            linkType: manyToOne
+            link: assignedEngagement
+            linkForeign: cCompanyRequestionHelp
+            label: "Company"
+            labelForeign: "Engagements"
+            action: skip
+    """)
+    path = tmp_path / "skip.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    assert program.relationships[0].action == "skip"
+    errors = loader.validate_program(program)
+    assert errors == []
+
+
+def test_validate_relationship_invalid_link_type(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        relationships:
+          - name: badRel
+            entity: A
+            entityForeign: B
+            linkType: invalidType
+            link: a
+            linkForeign: b
+            label: "A"
+            labelForeign: "B"
+    """)
+    path = tmp_path / "bad_link.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("linkType" in e for e in errors)
+
+
+def test_validate_relationship_many_to_many_needs_relation_name(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        relationships:
+          - name: m2m
+            entity: A
+            entityForeign: B
+            linkType: manyToMany
+            link: bs
+            linkForeign: as
+            label: "Bs"
+            labelForeign: "As"
+    """)
+    path = tmp_path / "m2m.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("relationName" in e for e in errors)
+
+
+def test_validate_relationship_missing_required_fields(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        relationships:
+          - name: ""
+            entity: ""
+            entityForeign: B
+            linkType: oneToMany
+            link: bs
+            linkForeign: ""
+            label: "Bs"
+            labelForeign: "As"
+    """)
+    path = tmp_path / "missing.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("name" in e for e in errors)
+    assert any("entity" in e and "missing" in e for e in errors)
+    assert any("linkForeign" in e for e in errors)
+
+
+def test_relationships_only_file_validates(loader, tmp_path):
+    """A YAML file with only relationships (no entities) should validate."""
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        relationships:
+          - name: testRel
+            entity: A
+            entityForeign: B
+            linkType: oneToMany
+            link: bs
+            linkForeign: a
+            label: "Bs"
+            labelForeign: "A"
+    """)
+    path = tmp_path / "rels_only.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert errors == []
+
+
 def test_wysiwyg_field_type_supported(loader, tmp_path):
     content = dedent("""\
         version: "1.0"

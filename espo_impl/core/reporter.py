@@ -5,7 +5,12 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from espo_impl.core.models import FieldResult, LayoutResult, RunReport
+from espo_impl.core.models import (
+    FieldResult,
+    LayoutResult,
+    RelationshipResult,
+    RunReport,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +100,26 @@ class Reporter:
             lines.append(f"  Skipped (no change)  : {report.summary.layouts_skipped}")
             lines.append(f"  Failed               : {report.summary.layouts_failed}")
 
+        if report.relationship_results:
+            lines.append("")
+            for result in report.relationship_results:
+                status_str = result.status.value.upper()
+                line = (
+                    f"  {result.entity} \u2192 {result.entity_foreign}"
+                    f" ({result.link}) : {status_str}"
+                )
+                if result.verified:
+                    line += " (verified)"
+                if result.message:
+                    line += f" \u2014 {result.message}"
+                lines.append(line)
+            lines.append("")
+            total_rels = len(report.relationship_results)
+            lines.append(f"Total relationships    : {total_rels}")
+            lines.append(f"  Created              : {report.summary.relationships_created}")
+            lines.append(f"  Skipped              : {report.summary.relationships_skipped}")
+            lines.append(f"  Failed               : {report.summary.relationships_failed}")
+
         lines.append("===========================================")
 
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -124,6 +149,10 @@ class Reporter:
             "results": [self._result_to_dict(r) for r in report.results],
             "layout_results": [
                 self._layout_result_to_dict(r) for r in report.layout_results
+            ],
+            "relationship_results": [
+                self._relationship_result_to_dict(r)
+                for r in report.relationship_results
             ],
         }
         path.write_text(
@@ -157,6 +186,22 @@ class Reporter:
             "status": result.status.value,
             "verified": result.verified,
             "error": result.error,
+        }
+
+    def _relationship_result_to_dict(self, result: RelationshipResult) -> dict:
+        """Convert a RelationshipResult to a JSON-serializable dict.
+
+        :param result: Single relationship result.
+        :returns: Dict for JSON report.
+        """
+        return {
+            "name": result.name,
+            "entity": result.entity,
+            "entity_foreign": result.entity_foreign,
+            "link": result.link,
+            "status": result.status.value,
+            "verified": result.verified,
+            "message": result.message,
         }
 
     def _generate_filename(self, report: RunReport) -> str:

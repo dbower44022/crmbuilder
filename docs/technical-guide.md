@@ -549,6 +549,38 @@ Example: `cbm_production_run_20260321_143022.log`
 
 ---
 
+## Relationship Manager (`core/relationship_manager.py`)
+
+### API Endpoints
+
+| Operation | Method | Endpoint |
+|-----------|--------|----------|
+| Check | GET | `/Metadata?key=entityDefs.{entity}.links.{link}` |
+| Create | POST | `/EntityManager/action/createLink` |
+| Delete | POST | `/EntityManager/action/removeLink` (not used in normal flow) |
+
+### Link Type Mapping
+
+| YAML `linkType` | Metadata `type` (primary side) |
+|-----------------|-------------------------------|
+| `oneToMany` | `hasMany` |
+| `manyToOne` | `belongsTo` |
+| `manyToMany` | `hasMany` |
+
+### `action: skip` Pattern
+
+Relationships with `action: skip` are logged as SKIPPED without any API calls — not even the check step. This is for pre-existing relationships that were created manually and are known to be correct. They're defined in YAML for documentation and full reproducibility.
+
+### Entity Name Resolution
+
+Both `entity` and `entityForeign` are resolved via `get_espo_entity_name()` before any API call. The `link` and `linkForeign` names are used as-is (they are already in EspoCRM's internal format).
+
+### Processing Order
+
+Relationships are processed after all entity creation, field management, and layout management is complete. This ensures all referenced entities exist.
+
+---
+
 ## Documentation Generator (`tools/generate_docs.py`)
 
 Reads all YAML program files and produces a structured reference manual in both `.md` and `.docx` formats. The YAML files are the single source of truth.

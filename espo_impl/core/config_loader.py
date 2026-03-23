@@ -15,6 +15,7 @@ from espo_impl.core.models import (
     LayoutSpec,
     PanelSpec,
     ProgramFile,
+    RelationshipDefinition,
     TabSpec,
 )
 
@@ -42,6 +43,8 @@ ENUM_TYPES: set[str] = {"enum", "multiEnum"}
 VALID_ACTIONS: set[str] = {"create", "delete", "delete_and_create"}
 
 VALID_LAYOUT_TYPES: set[str] = {"detail", "edit", "list"}
+
+VALID_LINK_TYPES: set[str] = {"oneToMany", "manyToOne", "manyToMany"}
 
 
 class ConfigLoader:
@@ -109,11 +112,20 @@ class ConfigLoader:
                     description=entity_data.get("description"),
                 ))
 
+        # Parse relationships
+        relationships: list[RelationshipDefinition] = []
+        raw_rels = raw.get("relationships", [])
+        if isinstance(raw_rels, list):
+            for rel_data in raw_rels:
+                if isinstance(rel_data, dict):
+                    relationships.append(self._parse_relationship(rel_data))
+
         return ProgramFile(
             version=str(raw.get("version", "")),
             description=str(raw.get("description", "")),
             entities=entities,
             source_path=path,
+            relationships=relationships,
         )
 
     def validate_program(self, program: ProgramFile) -> list[str]:
@@ -128,12 +140,15 @@ class ConfigLoader:
             errors.append("Missing required top-level key: 'version'")
         if not program.description:
             errors.append("Missing required top-level key: 'description'")
-        if not program.entities:
-            errors.append("Missing or empty 'entities' section")
+        if not program.entities and not program.relationships:
+            errors.append("Missing or empty 'entities' and 'relationships' sections")
             return errors
 
         for entity in program.entities:
             errors.extend(self._validate_entity(entity))
+
+        for rel in program.relationships:
+            errors.extend(self._validate_relationship(rel))
 
         return errors
 
@@ -403,5 +418,75 @@ class ConfigLoader:
                     f"{prefix}: duplicate field name in entity '{entity_name}'"
                 )
             seen_names.add(field_def.name)
+
+        return errors
+
+    def _parse_relationship(self, data: dict) -> RelationshipDefinition:
+        """Parse a relationship definition from YAML.
+
+        :param data: Raw relationship data.
+        :returns: RelationshipDefinition instance.
+        """
+        return RelationshipDefinition(
+            name=data.get("name", ""),
+            description=data.get("description"),
+            entity=data.get("entity", ""),
+            entity_foreign=data.get("entityForeign", ""),
+            link_type=data.get("linkType", ""),
+            link=data.get("link", ""),
+            link_foreign=data.get("linkForeign", ""),
+            label=data.get("label", ""),
+            label_foreign=data.get("labelForeign", ""),
+            relation_name=data.get("relationName"),
+            audited=data.get("audited", False),
+            audited_foreign=data.get("auditedForeign", False),
+            action=data.get("action"),
+        )
+
+    def _validate_relationship(
+        self, rel: RelationshipDefinition
+    ) -> list[str]:
+        """Validate a relationship definition.
+
+        :param rel: Relationship definition to validate.
+        :returns: List of error messages.
+        """
+        errors: list[str] = []
+        prefix = f"relationship[{rel.name or '(unnamed)'}]"
+
+        required_fields = {
+            "name": rel.name,
+            "entity": rel.entity,
+            "entityForeign": rel.entity_foreign,
+            "link": rel.link,
+            "linkForeign": rel.link_foreign,
+            "label": rel.label,
+            "labelForeign": rel.label_foreign,
+        }
+        for field_name, value in required_fields.items():
+            if not value:
+                errors.append(
+                    f"{prefix}: missing required property '{field_name}'"
+                )
+
+        if rel.link_type and rel.link_type not in VALID_LINK_TYPES:
+            errors.append(
+                f"{prefix}: invalid linkType '{rel.link_type}' "
+                f"(must be one of: {', '.join(sorted(VALID_LINK_TYPES))})"
+            )
+        elif not rel.link_type:
+            errors.append(f"{prefix}: missing required property 'linkType'")
+
+        if rel.link_type == "manyToMany" and not rel.relation_name:
+            errors.append(
+                f"{prefix}: 'relationName' is required for "
+                f"manyToMany relationships"
+            )
+
+        if rel.action is not None and rel.action != "skip":
+            errors.append(
+                f"{prefix}: invalid action '{rel.action}' "
+                f"(must be 'skip' or omitted)"
+            )
 
         return errors

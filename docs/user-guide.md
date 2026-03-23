@@ -446,6 +446,50 @@ This panel only appears when `contactType` equals "Mentor".
 
 ---
 
+## Relationship Configuration
+
+Relationships define links between entities. Add a `relationships` block at the top level of a YAML file (separate from `entities`).
+
+```yaml
+relationships:
+  - name: engagementToSessions
+    entity: Engagement
+    entityForeign: Session
+    linkType: oneToMany
+    link: engagementSessions
+    linkForeign: sessionEngagement
+    label: "Sessions"
+    labelForeign: "Engagement"
+```
+
+### Link Types
+
+| Type | Meaning |
+|------|---------|
+| `oneToMany` | One primary record has many foreign records |
+| `manyToOne` | Many primary records belong to one foreign record |
+| `manyToMany` | Both sides have many records (requires `relationName`) |
+
+### Pre-existing Relationships
+
+Use `action: skip` for relationships already created manually in EspoCRM:
+
+```yaml
+  - name: existingRel
+    entity: Engagement
+    entityForeign: Account
+    linkType: manyToOne
+    link: assignedEngagement
+    linkForeign: cCompanyRequestionHelp
+    label: "Company"
+    labelForeign: "Engagements"
+    action: skip
+```
+
+Skipped relationships are logged but no API calls are made.
+
+---
+
 ## Entity and Field Naming
 
 EspoCRM automatically adds a prefix to custom entity and field names:

@@ -141,6 +141,57 @@ class EntityDefinition:
 
 
 @dataclass
+class RelationshipDefinition:
+    """A relationship between two entities.
+
+    :param name: Identifier for this relationship.
+    :param entity: Primary entity (natural name).
+    :param entity_foreign: Foreign entity (natural name).
+    :param link_type: oneToMany, manyToOne, or manyToMany.
+    :param link: Link name on the primary entity.
+    :param link_foreign: Link name on the foreign entity.
+    :param label: Panel label on the primary entity.
+    :param label_foreign: Panel label on the foreign entity.
+    """
+
+    name: str
+    entity: str
+    entity_foreign: str
+    link_type: str
+    link: str
+    link_foreign: str
+    label: str
+    label_foreign: str
+    description: str | None = None
+    relation_name: str | None = None
+    audited: bool = False
+    audited_foreign: bool = False
+    action: str | None = None
+
+
+class RelationshipStatus(Enum):
+    """Outcome status for a relationship operation."""
+
+    CREATED = "created"
+    SKIPPED = "skipped"
+    WARNING = "warning"
+    ERROR = "error"
+
+
+@dataclass
+class RelationshipResult:
+    """Result of processing a single relationship."""
+
+    name: str
+    entity: str
+    entity_foreign: str
+    link: str
+    status: RelationshipStatus
+    verified: bool = False
+    message: str | None = None
+
+
+@dataclass
 class ProgramFile:
     """Parsed YAML program file.
 
@@ -148,12 +199,14 @@ class ProgramFile:
     :param description: Human-readable description.
     :param entities: List of entity definitions.
     :param source_path: Path to the source YAML file.
+    :param relationships: List of relationship definitions.
     """
 
     version: str
     description: str
     entities: list[EntityDefinition]
     source_path: Path | None = None
+    relationships: list[RelationshipDefinition] = field(default_factory=list)
 
     @property
     def has_delete_operations(self) -> bool:
@@ -229,6 +282,9 @@ class RunSummary:
     layouts_updated: int = 0
     layouts_skipped: int = 0
     layouts_failed: int = 0
+    relationships_created: int = 0
+    relationships_skipped: int = 0
+    relationships_failed: int = 0
 
 
 @dataclass
@@ -252,3 +308,4 @@ class RunReport:
     summary: RunSummary = field(default_factory=RunSummary)
     results: list[FieldResult] = field(default_factory=list)
     layout_results: list[LayoutResult] = field(default_factory=list)
+    relationship_results: list[RelationshipResult] = field(default_factory=list)

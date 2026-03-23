@@ -1,7 +1,7 @@
 # EspoCRM Implementation Program — Technical Specification
 
 **Project:** Cleveland Business Mentors (CBM)  
-**Version:** 1.5  
+**Version:** 1.6  
 **Status:** Draft — Phase 1 (Entity Fields + Entity Management + Documentation)  
 **Target:** Claude Code implementation
 
@@ -703,7 +703,7 @@ entities:
 
 | Phase | Object Type | EspoCRM Endpoint |
 |---|---|---|
-| 2 | Relationships | `Admin/entityManager/{entity}/relationships` (TBD) |
+| ~~2~~ | ~~Relationships~~ | Implemented — `EntityManager/action/createLink` |
 | 3 | Entity layouts (detail/edit/list) | `Admin/layouts/{entity}/{layoutType}` |
 | 4 | Dynamic Logic rules | Embedded in field definitions (extend Phase 1) |
 | 5 | Search presets / filters | `Admin/searchManager` (TBD) |

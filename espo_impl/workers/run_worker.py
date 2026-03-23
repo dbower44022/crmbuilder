@@ -12,6 +12,11 @@ from espo_impl.core.models import (
     EntityLayoutStatus,
     InstanceProfile,
     ProgramFile,
+    RelationshipStatus,
+)
+from espo_impl.core.relationship_manager import (
+    RelationshipManager,
+    RelationshipManagerError,
 )
 
 
@@ -208,6 +213,66 @@ class RunWorker(QThread):
             self.output_line.emit(
                 f"  Failed               : {report.summary.layouts_failed}",
                 "red" if report.summary.layouts_failed else "white",
+            )
+            self.output_line.emit(
+                "===========================================", "white"
+            )
+
+        # Step 5: Process relationships
+        if self.program.relationships:
+            self.output_line.emit("", "white")
+            self.output_line.emit(
+                "=== RELATIONSHIP OPERATIONS ===", "white"
+            )
+            rel_mgr = RelationshipManager(client, self.output_line.emit)
+
+            try:
+                rel_results = rel_mgr.process_relationships(
+                    self.program.relationships
+                )
+            except RelationshipManagerError as exc:
+                self.finished_error.emit(str(exc))
+                return
+
+            report.relationship_results.extend(rel_results)
+
+            for rr in rel_results:
+                if rr.status == RelationshipStatus.CREATED:
+                    report.summary.relationships_created += 1
+                elif rr.status == RelationshipStatus.SKIPPED:
+                    report.summary.relationships_skipped += 1
+                elif rr.status in (
+                    RelationshipStatus.ERROR,
+                    RelationshipStatus.WARNING,
+                ):
+                    report.summary.relationships_failed += 1
+
+            self.output_line.emit("", "white")
+            self.output_line.emit(
+                "===========================================", "white"
+            )
+            self.output_line.emit("RELATIONSHIP SUMMARY", "white")
+            self.output_line.emit(
+                "===========================================", "white"
+            )
+            total_rels = len(rel_results)
+            self.output_line.emit(
+                f"Total relationships processed : {total_rels}", "white"
+            )
+            self.output_line.emit(
+                f"  Created                     : "
+                f"{report.summary.relationships_created}",
+                "green" if report.summary.relationships_created else "white",
+            )
+            self.output_line.emit(
+                f"  Skipped (already exists)    : "
+                f"{report.summary.relationships_skipped}",
+                "gray",
+            )
+            self.output_line.emit(
+                f"  Failed                      : "
+                f"{report.summary.relationships_failed}",
+                "red" if report.summary.relationships_failed else "white",
             )
             self.output_line.emit(
                 "===========================================", "white"
