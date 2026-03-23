@@ -298,6 +298,21 @@ layout:
 
 ### 4.6 Relationship Definition
 
+**Important — c-prefix on linkForeign for custom entities:**
+When defining a relationship where the foreign entity is a custom entity
+(C-prefixed in EspoCRM), the  value must also include the
+c-prefix. EspoCRM stores the foreign link name with the c-prefix
+automatically.
+
+Examples:
+- Relationship to a custom entity: 
+- Relationship to a native entity: 
+
+The rule: if the foreign entity is in the C-prefix list, apply the c-prefix
+to  as well. If it is a native entity (Account, Contact, etc.),
+no prefix is needed.
+
+
 ```yaml
 relationships:
 
