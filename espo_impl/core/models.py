@@ -57,6 +57,47 @@ class FieldDefinition:
     min: int | None = None
     max: int | None = None
     maxLength: int | None = None
+    category: str | None = None
+
+
+@dataclass
+class TabSpec:
+    """A sub-tab within a panel, populated by field category."""
+
+    label: str
+    category: str
+    rows: list | None = None
+
+
+@dataclass
+class ColumnSpec:
+    """A column in a list view layout."""
+
+    field: str
+    width: int | None = None
+
+
+@dataclass
+class PanelSpec:
+    """A panel in a detail/edit layout."""
+
+    label: str
+    tabBreak: bool = False
+    tabLabel: str | None = None
+    style: str = "default"
+    hidden: bool = False
+    dynamicLogicVisible: dict | None = None
+    rows: list | None = None
+    tabs: list[TabSpec] | None = None
+
+
+@dataclass
+class LayoutSpec:
+    """Layout definition for one layout type (detail, edit, or list)."""
+
+    layout_type: str
+    panels: list[PanelSpec] | None = None
+    columns: list[ColumnSpec] | None = None
 
 
 class EntityAction(Enum):
@@ -93,6 +134,7 @@ class EntityDefinition:
     labelPlural: str | None = None
     stream: bool = False
     disabled: bool = False
+    layouts: dict[str, LayoutSpec] = field(default_factory=dict)
 
 
 @dataclass
@@ -117,6 +159,26 @@ class ProgramFile:
             e.action in (EntityAction.DELETE, EntityAction.DELETE_AND_CREATE)
             for e in self.entities
         )
+
+
+class EntityLayoutStatus(Enum):
+    """Outcome status for a layout operation."""
+
+    UPDATED = "updated"
+    SKIPPED = "skipped"
+    VERIFICATION_FAILED = "verification_failed"
+    ERROR = "error"
+
+
+@dataclass
+class LayoutResult:
+    """Result of processing a single layout."""
+
+    entity: str
+    layout_type: str
+    status: EntityLayoutStatus
+    verified: bool = False
+    error: str | None = None
 
 
 class FieldStatus(Enum):
@@ -161,6 +223,9 @@ class RunSummary:
     skipped: int = 0
     verification_failed: int = 0
     errors: int = 0
+    layouts_updated: int = 0
+    layouts_skipped: int = 0
+    layouts_failed: int = 0
 
 
 @dataclass
@@ -183,3 +248,4 @@ class RunReport:
     operation: str
     summary: RunSummary = field(default_factory=RunSummary)
     results: list[FieldResult] = field(default_factory=list)
+    layout_results: list[LayoutResult] = field(default_factory=list)

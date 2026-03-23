@@ -419,6 +419,233 @@ def test_load_field_with_max_length(loader, tmp_path):
     assert field.maxLength == 20
 
 
+# --- Layout tests ---
+
+
+def test_load_field_with_category(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: isMentor
+                type: bool
+                label: "Is Mentor"
+                category: mentor
+    """)
+    path = tmp_path / "category.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    assert program.entities[0].fields[0].category == "mentor"
+
+
+def test_load_layout_detail_with_panels(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: isMentor
+                type: bool
+                label: "Is Mentor"
+                category: mentor
+            layout:
+              detail:
+                panels:
+                  - label: "Mentor Info"
+                    tabBreak: true
+                    tabLabel: "Mentor"
+                    tabs:
+                      - label: "Mentor Details"
+                        category: mentor
+    """)
+    path = tmp_path / "layout_detail.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    entity = program.entities[0]
+    assert "detail" in entity.layouts
+    layout = entity.layouts["detail"]
+    assert layout.layout_type == "detail"
+    assert len(layout.panels) == 1
+    assert layout.panels[0].label == "Mentor Info"
+    assert layout.panels[0].tabBreak is True
+    assert layout.panels[0].tabLabel == "Mentor"
+    assert len(layout.panels[0].tabs) == 1
+    assert layout.panels[0].tabs[0].category == "mentor"
+
+
+def test_load_layout_list_with_columns(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: isMentor
+                type: bool
+                label: "Is Mentor"
+            layout:
+              list:
+                columns:
+                  - field: name
+                    width: 30
+                  - field: isMentor
+    """)
+    path = tmp_path / "layout_list.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    entity = program.entities[0]
+    assert "list" in entity.layouts
+    layout = entity.layouts["list"]
+    assert layout.layout_type == "list"
+    assert len(layout.columns) == 2
+    assert layout.columns[0].field == "name"
+    assert layout.columns[0].width == 30
+    assert layout.columns[1].field == "isMentor"
+    assert layout.columns[1].width is None
+
+
+def test_validate_panel_rows_and_tabs_error(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+                category: general
+            layout:
+              detail:
+                panels:
+                  - label: "Bad Panel"
+                    rows:
+                      - [foo]
+                    tabs:
+                      - label: "Tab"
+                        category: general
+    """)
+    path = tmp_path / "both.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("both" in e and "rows" in e and "tabs" in e for e in errors)
+
+
+def test_validate_tab_category_not_found(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+            layout:
+              detail:
+                panels:
+                  - label: "Panel"
+                    tabs:
+                      - label: "Tab"
+                        category: nonexistent
+    """)
+    path = tmp_path / "bad_cat.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("nonexistent" in e and "not found" in e for e in errors)
+
+
+def test_validate_tab_break_without_label(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+            layout:
+              detail:
+                panels:
+                  - label: "Panel"
+                    tabBreak: true
+                    rows:
+                      - [foo]
+    """)
+    path = tmp_path / "no_tab_label.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("tabLabel" in e and "required" in e for e in errors)
+
+
+def test_validate_list_layout_must_have_columns(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+            layout:
+              list:
+                panels:
+                  - label: "Bad"
+    """)
+    path = tmp_path / "list_no_cols.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("columns" in e for e in errors)
+
+
+def test_validate_valid_layout_no_errors(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: isMentor
+                type: bool
+                label: "Is Mentor"
+                category: mentor
+              - name: mentorStatus
+                type: enum
+                label: "Status"
+                category: mentor
+                options:
+                  - Active
+                  - Inactive
+            layout:
+              detail:
+                panels:
+                  - label: "Mentor Info"
+                    tabBreak: true
+                    tabLabel: "Mentor"
+                    tabs:
+                      - label: "Details"
+                        category: mentor
+              list:
+                columns:
+                  - field: name
+                  - field: isMentor
+    """)
+    path = tmp_path / "valid_layout.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert errors == []
+
+
 def test_wysiwyg_field_type_supported(loader, tmp_path):
     content = dedent("""\
         version: "1.0"

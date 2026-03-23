@@ -363,6 +363,63 @@ Note: Both create and delete use POST (not PUT/DELETE methods).
 
 ---
 
+## Layout Manager (`core/layout_manager.py`)
+
+### API Endpoints
+
+| Operation | Method | Endpoint |
+|-----------|--------|----------|
+| Read | GET | `/Layout/action/getOriginal?scope={entity}&name={type}` |
+| Save | PUT | `/{entity}/layout/{type}` |
+
+Both use the EspoCRM internal entity name (C-prefixed for custom entities).
+
+### Tab Expansion Algorithm
+
+When a panel has `tabs` instead of `rows`, each tab expands into a separate API panel object:
+
+1. **First tab** inherits the parent panel's `tabBreak`, `tabLabel`, and `dynamicLogicVisible`
+2. **Subsequent tabs** get `tabBreak: false`, `tabLabel: null`, but still inherit `dynamicLogicVisible`
+3. Each tab's rows are auto-generated from fields matching its `category`
+
+### Auto-Row Generation
+
+When a tab specifies a `category` instead of explicit `rows`:
+
+1. Collect fields where `field.category == tab.category`, in definition order
+2. Group into rows of 2 fields each
+3. `wysiwyg`, `text`, and `address` type fields get their own full-width row (single cell)
+4. If last row has one normal field, pad with `false` (empty cell)
+
+### Field Name C-Prefix in Layouts
+
+Field names in layout row cells must use the c-prefixed internal name for custom fields:
+
+```python
+def _resolve_field_name(name, custom_field_names):
+    if name in custom_field_names:
+        return f"c{name[0].upper()}{name[1:]}"
+    return name  # native fields pass through
+```
+
+A field is considered custom if it appears in the entity's `fields` list in the YAML. Native fields referenced in explicit `rows` (e.g., `name`, `emailAddress`) pass through without prefix.
+
+### Dynamic Logic Translation
+
+```python
+# YAML shorthand:
+{"attribute": "contactType", "value": "Mentor"}
+
+# API format (with c-prefix applied):
+{"conditionGroup": [{"type": "equals", "attribute": "cContactType", "value": "Mentor"}]}
+```
+
+### The `category` Property
+
+Added to `FieldDefinition` — a string tag that groups fields for layout tab assignment. Has no effect on the EspoCRM field itself; only used by the layout manager for auto-row generation.
+
+---
+
 ## Run Orchestration (`workers/run_worker.py`)
 
 The `RunWorker` (QThread) orchestrates the full execution:
@@ -383,6 +440,12 @@ The `RunWorker` (QThread) orchestrates the full execution:
        └── For each entity with fields (skipping DELETE-only):
            └── For each field:
                └── CHECK → COMPARE → ACT
+
+4. Layout Operations
+   └── For each entity with layouts (skipping DELETE-only):
+       └── layout_mgr.process_layouts(entity_def, fields)
+           └── For each layout type:
+               └── CHECK → APPLY (if differs) → summary
 ```
 
 ### Signals

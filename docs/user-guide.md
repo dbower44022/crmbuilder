@@ -359,6 +359,92 @@ entities:
 
 ---
 
+## Layout Configuration
+
+Layouts define how fields are arranged on detail/edit views and which columns appear in list views. Add a `layout` block to any entity definition.
+
+### The `category` Property
+
+Assign a `category` to fields to group them for automatic layout generation:
+
+```yaml
+fields:
+  - name: isMentor
+    type: bool
+    label: "Is Mentor"
+    category: mentor
+
+  - name: mentorStatus
+    type: enum
+    label: "Mentor Status"
+    category: mentor
+```
+
+### Detail/Edit Layout with Category-Based Tabs
+
+```yaml
+layout:
+  detail:
+    panels:
+      - label: "Mentor Info"
+        tabBreak: true
+        tabLabel: "Mentor"
+        dynamicLogicVisible:
+          attribute: contactType
+          value: "Mentor"
+        tabs:
+          - label: "Mentor Details"
+            category: mentor
+```
+
+Fields matching the category are automatically grouped into rows (2 fields per row). Full-width field types (`wysiwyg`, `text`) get their own row.
+
+### Detail/Edit Layout with Explicit Rows
+
+For precise control, specify rows directly:
+
+```yaml
+layout:
+  detail:
+    panels:
+      - label: "General"
+        rows:
+          - [name, emailAddress]
+          - [contactType, null]
+```
+
+Use `null` for empty cells. Native fields (`name`, `emailAddress`) are used as-is; custom fields are automatically c-prefixed in the API payload.
+
+### List Layout
+
+```yaml
+layout:
+  list:
+    columns:
+      - field: name
+        width: 30
+      - field: contactType
+      - field: mentorStatus
+```
+
+If `width` is omitted, EspoCRM distributes column widths equally.
+
+### Dynamic Logic Visibility
+
+Show/hide panels based on field values:
+
+```yaml
+panels:
+  - label: "Mentor Fields"
+    dynamicLogicVisible:
+      attribute: contactType
+      value: "Mentor"
+```
+
+This panel only appears when `contactType` equals "Mentor".
+
+---
+
 ## Entity and Field Naming
 
 EspoCRM automatically adds a prefix to custom entity and field names:

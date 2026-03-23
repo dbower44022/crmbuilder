@@ -202,6 +202,36 @@ class EspoAdminClient:
         url = f"{self.profile.api_url}/Admin/rebuild"
         return self._request("POST", url)
 
+    # --- Layout Manager endpoints ---
+
+    def get_layout(
+        self, entity: str, layout_type: str
+    ) -> tuple[int, Any]:
+        """Fetch the current layout for an entity.
+
+        :param entity: EspoCRM entity name (C-prefixed for custom).
+        :param layout_type: Layout type (e.g., "detail", "list").
+        :returns: Tuple of (status_code, response_json).
+        """
+        url = (
+            f"{self.profile.api_url}/Layout/action/getOriginal"
+            f"?scope={entity}&name={layout_type}"
+        )
+        return self._request("GET", url)
+
+    def save_layout(
+        self, entity: str, layout_type: str, payload: Any
+    ) -> tuple[int, Any]:
+        """Save a layout for an entity.
+
+        :param entity: EspoCRM entity name (C-prefixed for custom).
+        :param layout_type: Layout type (e.g., "detail", "list").
+        :param payload: Full layout payload (list of panels or columns).
+        :returns: Tuple of (status_code, response_json).
+        """
+        url = f"{self.profile.api_url}/{entity}/layout/{layout_type}"
+        return self._request("PUT", url, json=payload)
+
     def test_connection(self) -> tuple[bool, str]:
         """Test API connectivity by fetching metadata.
 

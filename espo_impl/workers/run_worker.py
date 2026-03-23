@@ -6,7 +6,13 @@ from espo_impl.core.api_client import EspoAdminClient
 from espo_impl.core.comparator import FieldComparator
 from espo_impl.core.entity_manager import EntityManager, EntityManagerError
 from espo_impl.core.field_manager import FieldManager
-from espo_impl.core.models import EntityAction, InstanceProfile, ProgramFile
+from espo_impl.core.layout_manager import LayoutManager, LayoutManagerError
+from espo_impl.core.models import (
+    EntityAction,
+    EntityLayoutStatus,
+    InstanceProfile,
+    ProgramFile,
+)
 
 
 class RunWorker(QThread):
@@ -141,5 +147,70 @@ class RunWorker(QThread):
             report = field_mgr.run(self.program)
         else:
             report = field_mgr._build_report(self.program, "run", [])
+
+        # Step 4: Process layouts
+        has_layouts = any(
+            e.layouts and e.action != EntityAction.DELETE
+            for e in self.program.entities
+        )
+        if has_layouts:
+            self.output_line.emit("", "white")
+            self.output_line.emit("=== LAYOUT OPERATIONS ===", "white")
+            layout_mgr = LayoutManager(client, self.output_line.emit)
+
+            for entity_def in self.program.entities:
+                if entity_def.action == EntityAction.DELETE:
+                    continue
+                if not entity_def.layouts:
+                    continue
+                try:
+                    layout_results = layout_mgr.process_layouts(
+                        entity_def, entity_def.fields
+                    )
+                except LayoutManagerError as exc:
+                    self.finished_error.emit(str(exc))
+                    return
+                report.layout_results.extend(layout_results)
+
+            # Update summary
+            for lr in report.layout_results:
+                if lr.status == EntityLayoutStatus.UPDATED:
+                    report.summary.layouts_updated += 1
+                elif lr.status == EntityLayoutStatus.SKIPPED:
+                    report.summary.layouts_skipped += 1
+                elif lr.status in (
+                    EntityLayoutStatus.ERROR,
+                    EntityLayoutStatus.VERIFICATION_FAILED,
+                ):
+                    report.summary.layouts_failed += 1
+
+            # Emit layout summary
+            self.output_line.emit("", "white")
+            self.output_line.emit(
+                "===========================================", "white"
+            )
+            self.output_line.emit("LAYOUT SUMMARY", "white")
+            self.output_line.emit(
+                "===========================================", "white"
+            )
+            total_layouts = len(report.layout_results)
+            self.output_line.emit(
+                f"Total layouts processed : {total_layouts}", "white"
+            )
+            self.output_line.emit(
+                f"  Updated              : {report.summary.layouts_updated}",
+                "green" if report.summary.layouts_updated else "white",
+            )
+            self.output_line.emit(
+                f"  Skipped (no change)  : {report.summary.layouts_skipped}",
+                "gray",
+            )
+            self.output_line.emit(
+                f"  Failed               : {report.summary.layouts_failed}",
+                "red" if report.summary.layouts_failed else "white",
+            )
+            self.output_line.emit(
+                "===========================================", "white"
+            )
 
         self.finished_ok.emit(report)

@@ -2,15 +2,20 @@
 
 import logging
 from pathlib import Path
+from typing import Any
 
 import yaml
 
 from espo_impl.core.models import (
     SUPPORTED_ENTITY_TYPES,
+    ColumnSpec,
     EntityAction,
     EntityDefinition,
     FieldDefinition,
+    LayoutSpec,
+    PanelSpec,
     ProgramFile,
+    TabSpec,
 )
 
 logger = logging.getLogger(__name__)
@@ -35,6 +40,8 @@ SUPPORTED_FIELD_TYPES: set[str] = {
 ENUM_TYPES: set[str] = {"enum", "multiEnum"}
 
 VALID_ACTIONS: set[str] = {"create", "delete", "delete_and_create"}
+
+VALID_LAYOUT_TYPES: set[str] = {"detail", "edit", "list"}
 
 
 class ConfigLoader:
@@ -79,6 +86,16 @@ class ConfigLoader:
                         if isinstance(field_data, dict):
                             fields.append(self._parse_field(field_data))
 
+                # Parse layouts
+                layouts: dict[str, LayoutSpec] = {}
+                raw_layout = entity_data.get("layout", {})
+                if isinstance(raw_layout, dict):
+                    for layout_type, layout_data in raw_layout.items():
+                        if isinstance(layout_data, dict):
+                            layouts[layout_type] = self._parse_layout(
+                                layout_type, layout_data
+                            )
+
                 entities.append(EntityDefinition(
                     name=entity_name,
                     fields=fields,
@@ -88,6 +105,7 @@ class ConfigLoader:
                     labelPlural=entity_data.get("labelPlural"),
                     stream=entity_data.get("stream", False),
                     disabled=entity_data.get("disabled", False),
+                    layouts=layouts,
                 ))
 
         return ProgramFile(
@@ -160,6 +178,12 @@ class ConfigLoader:
                 self._validate_field(entity.name, field_def, seen_names)
             )
 
+        # Validate layouts
+        for layout_type, layout_spec in entity.layouts.items():
+            errors.extend(
+                self._validate_layout(entity, layout_type, layout_spec)
+            )
+
         return errors
 
     def _parse_field(self, data: dict) -> FieldDefinition:
@@ -184,7 +208,158 @@ class ConfigLoader:
             min=data.get("min"),
             max=data.get("max"),
             maxLength=data.get("maxLength"),
+            category=data.get("category"),
         )
+
+    def _parse_layout(
+        self, layout_type: str, data: dict[str, Any]
+    ) -> LayoutSpec:
+        """Parse a layout definition from YAML.
+
+        :param layout_type: Layout type (detail, edit, list).
+        :param data: Raw layout data.
+        :returns: LayoutSpec instance.
+        """
+        if layout_type == "list":
+            columns: list[ColumnSpec] = []
+            for col_data in data.get("columns", []):
+                columns.append(self._parse_column(col_data))
+            return LayoutSpec(
+                layout_type=layout_type, columns=columns
+            )
+
+        # detail or edit layout
+        panels: list[PanelSpec] = []
+        for panel_data in data.get("panels", []):
+            if isinstance(panel_data, dict):
+                panels.append(self._parse_panel(panel_data))
+        return LayoutSpec(layout_type=layout_type, panels=panels)
+
+    def _parse_panel(self, data: dict[str, Any]) -> PanelSpec:
+        """Parse a panel definition from YAML.
+
+        :param data: Raw panel data.
+        :returns: PanelSpec instance.
+        """
+        tabs: list[TabSpec] | None = None
+        raw_tabs = data.get("tabs")
+        if isinstance(raw_tabs, list):
+            tabs = [self._parse_tab(t) for t in raw_tabs if isinstance(t, dict)]
+
+        return PanelSpec(
+            label=data.get("label", ""),
+            tabBreak=data.get("tabBreak", False),
+            tabLabel=data.get("tabLabel"),
+            style=data.get("style", "default"),
+            hidden=data.get("hidden", False),
+            dynamicLogicVisible=data.get("dynamicLogicVisible"),
+            rows=data.get("rows"),
+            tabs=tabs,
+        )
+
+    def _parse_tab(self, data: dict[str, Any]) -> TabSpec:
+        """Parse a tab definition from YAML.
+
+        :param data: Raw tab data.
+        :returns: TabSpec instance.
+        """
+        return TabSpec(
+            label=data.get("label", ""),
+            category=data.get("category", ""),
+            rows=data.get("rows"),
+        )
+
+    def _parse_column(self, data: dict | str) -> ColumnSpec:
+        """Parse a column definition from YAML.
+
+        :param data: Raw column data (dict or string shorthand).
+        :returns: ColumnSpec instance.
+        """
+        if isinstance(data, str):
+            return ColumnSpec(field=data)
+        return ColumnSpec(
+            field=data.get("field", ""),
+            width=data.get("width"),
+        )
+
+    def _validate_layout(
+        self,
+        entity: EntityDefinition,
+        layout_type: str,
+        layout_spec: LayoutSpec,
+    ) -> list[str]:
+        """Validate a layout definition.
+
+        :param entity: The containing entity definition.
+        :param layout_type: Layout type string.
+        :param layout_spec: Layout specification to validate.
+        :returns: List of error messages.
+        """
+        errors: list[str] = []
+        prefix = f"{entity.name}.layout.{layout_type}"
+
+        if layout_type not in VALID_LAYOUT_TYPES:
+            errors.append(f"{prefix}: unsupported layout type '{layout_type}'")
+            return errors
+
+        if layout_type == "list":
+            if not layout_spec.columns:
+                errors.append(f"{prefix}: list layout must have 'columns'")
+            if layout_spec.panels:
+                errors.append(
+                    f"{prefix}: list layout must not have 'panels'"
+                )
+            return errors
+
+        # detail / edit layout
+        if not layout_spec.panels:
+            errors.append(f"{prefix}: detail/edit layout must have 'panels'")
+            return errors
+
+        field_names = {f.name for f in entity.fields}
+        field_categories = {
+            f.category for f in entity.fields if f.category
+        }
+        seen_labels: set[str] = set()
+
+        for panel in layout_spec.panels:
+            panel_prefix = f"{prefix}.panel[{panel.label}]"
+
+            if panel.label in seen_labels:
+                errors.append(
+                    f"{panel_prefix}: duplicate panel label"
+                )
+            seen_labels.add(panel.label)
+
+            if panel.rows is not None and panel.tabs is not None:
+                errors.append(
+                    f"{panel_prefix}: panel cannot have both 'rows' and 'tabs'"
+                )
+
+            if panel.tabBreak and not panel.tabLabel:
+                errors.append(
+                    f"{panel_prefix}: 'tabLabel' is required when "
+                    f"'tabBreak' is true"
+                )
+
+            if panel.tabs:
+                for tab in panel.tabs:
+                    if tab.category and tab.category not in field_categories:
+                        errors.append(
+                            f"{panel_prefix}.tab[{tab.label}]: "
+                            f"category '{tab.category}' not found in "
+                            f"any field definition"
+                        )
+
+            if panel.rows:
+                for row in panel.rows:
+                    if isinstance(row, list):
+                        for cell in row:
+                            if isinstance(cell, str) and cell not in field_names:
+                                # Allow native field names (not in YAML fields)
+                                pass
+
+        return errors
 
     def _validate_field(
         self,

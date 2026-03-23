@@ -5,7 +5,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from espo_impl.core.models import FieldResult, RunReport
+from espo_impl.core.models import FieldResult, LayoutResult, RunReport
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +65,17 @@ class Reporter:
                 line += f" — {result.error}"
             lines.append(line)
 
+        if report.layout_results:
+            lines.append("")
+            for result in report.layout_results:
+                status_str = result.status.value.upper()
+                line = f"  {result.entity}.{result.layout_type} : {status_str}"
+                if result.verified:
+                    line += " (verified)"
+                if result.error:
+                    line += f" — {result.error}"
+                lines.append(line)
+
         lines.append("")
         lines.append("===========================================")
         lines.append("SUMMARY")
@@ -75,6 +86,15 @@ class Reporter:
         lines.append(f"  Skipped (no change)  : {report.summary.skipped}")
         lines.append(f"  Verification failed  : {report.summary.verification_failed}")
         lines.append(f"  Errors               : {report.summary.errors}")
+
+        if report.layout_results:
+            lines.append("")
+            total_layouts = len(report.layout_results)
+            lines.append(f"Total layouts processed : {total_layouts}")
+            lines.append(f"  Updated              : {report.summary.layouts_updated}")
+            lines.append(f"  Skipped (no change)  : {report.summary.layouts_skipped}")
+            lines.append(f"  Failed               : {report.summary.layouts_failed}")
+
         lines.append("===========================================")
 
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -102,6 +122,9 @@ class Reporter:
                 "errors": report.summary.errors,
             },
             "results": [self._result_to_dict(r) for r in report.results],
+            "layout_results": [
+                self._layout_result_to_dict(r) for r in report.layout_results
+            ],
         }
         path.write_text(
             json.dumps(data, indent=2) + "\n", encoding="utf-8"
@@ -119,6 +142,20 @@ class Reporter:
             "status": result.status.value,
             "verified": result.verified,
             "changes": result.changes,
+            "error": result.error,
+        }
+
+    def _layout_result_to_dict(self, result: LayoutResult) -> dict:
+        """Convert a LayoutResult to a JSON-serializable dict.
+
+        :param result: Single layout result.
+        :returns: Dict for JSON report.
+        """
+        return {
+            "entity": result.entity,
+            "layout_type": result.layout_type,
+            "status": result.status.value,
+            "verified": result.verified,
             "error": result.error,
         }
 

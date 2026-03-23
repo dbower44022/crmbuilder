@@ -1,8 +1,8 @@
 # EspoCRM Implementation Program — Technical Specification
 
 **Project:** Cleveland Business Mentors (CBM)  
-**Version:** 1.4  
-**Status:** Draft — Phase 1 (Entity Fields + Entity Management)  
+**Version:** 1.5
+**Status:** Draft — Phase 1 (Entity Fields + Entity Management + Layouts)  
 **Target:** Claude Code implementation
 
 ---
@@ -207,6 +207,7 @@ Each field entry under an entity's `fields` list supports the following properti
 | `min` | integer | int/float only | Minimum allowed value |
 | `max` | integer | int/float only | Maximum allowed value |
 | `maxLength` | integer | varchar only | Maximum character length |
+| `category` | string | no | UI grouping category for layout tab assignment |
 
 ### 5.3 Supported Field Types (Phase 1)
 
@@ -714,10 +715,14 @@ entities:
 
 ## 12. Future Phases
 
+**Implemented:**
+- Entity layouts (detail/edit/list) — `Layout/action/getOriginal` (GET) and `{entity}/layout/{type}` (PUT)
+
+**Remaining:**
+
 | Phase | Object Type | EspoCRM Endpoint |
 |---|---|---|
-| 2 | Relationships | `Admin/entityManager/{entity}/relationships` (TBD) |
-| 3 | Entity layouts (detail/edit/list) | `Admin/layouts/{entity}/{layoutType}` |
+| 3 | Relationships | `Admin/entityManager/{entity}/relationships` (TBD) |
 | 4 | Dynamic Logic rules | Embedded in field definitions (extend Phase 1) |
 | 5 | Search presets / filters | `Admin/searchManager` (TBD) |
 | 6 | Roles and permissions | `Role` entity via standard CRUD |
@@ -736,3 +741,5 @@ entities:
 - The output panel must use a monospace font for clean alignment of log-style messages.
 - The `data/` and `reports/` directories should be created automatically on first launch if they do not exist.
 - The confirmation dialog for destructive operations must be modal and block all other UI interaction until dismissed.
+- **Layout management endpoints:** Read: `GET /api/v1/Layout/action/getOriginal?scope={entity}&name={type}`. Save: `PUT /api/v1/{entity}/layout/{type}`. Both use the C-prefixed entity name for custom entities. Field names in layout payloads must use the c-prefix for custom fields. EspoCRM replaces the entire layout on each PUT — always send the complete panel array.
+- The `category` property on fields is used by the layout manager to auto-generate rows from fields matching a category. It has no effect on the EspoCRM field itself.
