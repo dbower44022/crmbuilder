@@ -16,7 +16,7 @@ from espo_impl.core.models import (
     RelationshipResult,
     RelationshipStatus,
 )
-from espo_impl.ui.confirm_delete_dialog import get_espo_entity_name
+from espo_impl.ui.confirm_delete_dialog import NATIVE_ENTITIES, get_espo_entity_name
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +113,16 @@ class RelationshipManager:
         espo_entity = get_espo_entity_name(rel.entity)
         espo_entity_foreign = get_espo_entity_name(rel.entity_foreign)
 
-        existing = self._check_link_exists(espo_entity, rel.link)
+        # For native entities, EspoCRM auto-applies c-prefix to link names.
+        # Try the c-prefixed name first, fall back to the name as specified.
+        check_link = rel.link
+        if rel.entity in NATIVE_ENTITIES:
+            c_link = "c" + rel.link[0].upper() + rel.link[1:]
+            probe = self._check_link_exists(espo_entity, c_link)
+            if probe is not None:
+                check_link = c_link
+
+        existing = self._check_link_exists(espo_entity, check_link)
 
         if existing is not None:
             # Compare
@@ -255,8 +264,19 @@ class RelationshipManager:
             return False
         if existing.get("entity") != espo_entity_foreign:
             return False
-        if existing.get("foreign") != rel.link_foreign:
-            return False
+        # foreign key may be absent or c-prefixed by EspoCRM
+        if "foreign" in existing:
+            existing_foreign = existing["foreign"]
+            expected_foreign = rel.link_foreign
+            # normalise: strip leading c-prefix for comparison
+            def strip_c(s):
+                return s[1].lower() + s[2:] if len(s) > 1 and s[0] == "c" and s[1].isupper() else s
+            if strip_c(existing_foreign) != strip_c(expected_foreign):
+                logger.debug(
+                    "Foreign mismatch: existing=%s expected=%s",
+                    existing_foreign, expected_foreign
+                )
+                return False
         return True
 
     def _build_payload(
