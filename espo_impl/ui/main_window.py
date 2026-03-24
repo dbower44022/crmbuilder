@@ -59,7 +59,7 @@ class MainWindow(QMainWindow):
         self.base_dir = base_dir
         self.state = UIState()
         self.config_loader = ConfigLoader()
-        self.reporter = Reporter(base_dir / "reports")
+        self.reporter: Reporter | None = None
         self._worker: RunWorker | None = None
         self._build_ui()
         self._update_button_states()
@@ -145,6 +145,15 @@ class MainWindow(QMainWindow):
         self.state.instance = profile
         self.state.validated = False
         self.state.run_complete = False
+
+        # Update program panel to use this instance's project folder
+        if profile and profile.programs_dir:
+            self.program_panel.set_programs_dir(profile.programs_dir)
+        else:
+            self.program_panel.set_programs_dir(
+                self.base_dir / "data" / "programs"
+            )
+
         self._update_button_states()
 
     def _on_program_selected(self, path: Path | None) -> None:
@@ -260,6 +269,14 @@ class MainWindow(QMainWindow):
         self.progress_bar.setVisible(True)
         self._update_button_states()
 
+        # Use instance project folder for reports, fall back to default
+        if self.state.instance and self.state.instance.reports_dir:
+            reports_dir = self.state.instance.reports_dir
+        else:
+            reports_dir = self.base_dir / "reports"
+        reports_dir.mkdir(parents=True, exist_ok=True)
+        self.reporter = Reporter(reports_dir)
+
         self.output_panel.append_line("", "white")
         self.output_panel.append_line(
             f"--- {operation.upper()} started ---", "white"
@@ -328,14 +345,28 @@ class MainWindow(QMainWindow):
 
     def _on_generate_docs(self) -> None:
         """Generate reference documentation from YAML program files."""
+        if not self.state.instance:
+            self.output_panel.append_line(
+                "[DOCGEN] No instance selected.", "red"
+            )
+            return
+
+        if not self.state.instance.project_folder:
+            self.output_panel.append_line(
+                "[DOCGEN] No project folder configured for this instance. "
+                "Edit the instance to add a project folder.",
+                "red",
+            )
+            return
+
         import sys
 
         sys.path.insert(
             0, str(self.base_dir)
         )
 
-        programs_dir = self.base_dir / "data" / "programs"
-        output_dir = self.base_dir / "PRDs" / "Implementation Docs"
+        programs_dir = self.state.instance.programs_dir
+        output_dir = self.state.instance.docs_dir
 
         self.output_panel.append_line("", "white")
         self.output_panel.append_line(
@@ -347,7 +378,8 @@ class MainWindow(QMainWindow):
             from tools.docgen.renderers import docx_renderer, md_renderer
             from tools.generate_docs import build_document
 
-            doc = build_document(programs_dir, "CBM CRM Implementation Reference")
+            instance_name = self.state.instance.name
+            doc = build_document(programs_dir, f"{instance_name} CRM Implementation Reference")
 
             self.output_panel.append_line(
                 "[DOCGEN]  Building document ...", "white"
@@ -355,7 +387,7 @@ class MainWindow(QMainWindow):
 
             output_dir.mkdir(parents=True, exist_ok=True)
 
-            md_path = output_dir / "CBM-CRM-Reference.md"
+            md_path = output_dir / f"{instance_name}-CRM-Reference.md"
             md_path.write_text(
                 md_renderer.render(doc), encoding="utf-8"
             )
@@ -363,7 +395,7 @@ class MainWindow(QMainWindow):
                 f"[DOCGEN]  Generated {md_path.name}", "green"
             )
 
-            docx_path = output_dir / "CBM-CRM-Reference.docx"
+            docx_path = output_dir / f"{instance_name}-CRM-Reference.docx"
             docx_renderer.render(doc, docx_path)
             self.output_panel.append_line(
                 f"[DOCGEN]  Generated {docx_path.name}", "green"
@@ -409,6 +441,10 @@ class MainWindow(QMainWindow):
         self.verify_btn.setEnabled(self.state.validated and not in_progress)
         self.report_btn.setEnabled(self.state.last_report_path is not None)
 
-        programs_exist = (self.base_dir / "data" / "programs").exists() and \
-            any((self.base_dir / "data" / "programs").glob("*.yaml"))
-        self.docgen_btn.setEnabled(programs_exist and not in_progress)
+        has_programs = (
+            self.state.instance is not None
+            and self.state.instance.programs_dir is not None
+            and self.state.instance.programs_dir.exists()
+            and any(self.state.instance.programs_dir.glob("*.yaml"))
+        )
+        self.docgen_btn.setEnabled(has_programs and not in_progress)

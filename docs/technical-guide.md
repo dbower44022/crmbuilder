@@ -59,10 +59,16 @@ class InstanceProfile:
     api_key: str                     # API key or username
     auth_method: str = "api_key"     # "api_key", "hmac", or "basic"
     secret_key: str | None = None    # HMAC secret or password
+    project_folder: str | None = None  # Path to client project directory
 
     api_url -> str                   # Property: {url}/api/v1
     slug -> str                      # Property: filename-safe name
+    programs_dir -> Path | None      # Property: {project_folder}/programs
+    reports_dir -> Path | None       # Property: {project_folder}/reports
+    docs_dir -> Path | None          # Property: {project_folder}/Implementation Docs
 ```
+
+The three directory properties return `None` when `project_folder` is not set. This drives the fallback behavior throughout the UI — when an instance has no project folder, the tool falls back to its own `data/programs/` and `reports/` directories.
 
 ### EntityAction (Enum)
 
@@ -487,6 +493,18 @@ class UIState:
 - **Run:** validated, not in progress
 - **Verify:** run complete, not in progress
 - **View Report:** report file exists
+- **Generate Docs:** instance has a project folder with at least one `.yaml` file in `programs/`
+
+### Instance-Aware Directory Switching
+
+When an instance is selected, `_on_instance_selected` updates the program panel's directory:
+
+- If the instance has a `project_folder` → `programs_dir` (project folder's `programs/`)
+- Otherwise → falls back to `base_dir / "data" / "programs"`
+
+The `Reporter` is created lazily in `_start_worker` using the instance's `reports_dir` (or `base_dir / "reports"` as fallback). This ensures reports land in the correct project folder.
+
+After add/edit, `instance_panel` explicitly emits `instance_selected` to guarantee the main window picks up the updated profile, even when the list selection index hasn't changed (e.g., single-instance case).
 
 ### Confirmation Dialog
 
@@ -591,11 +609,17 @@ Reads all YAML program files and produces a structured reference manual in both 
 
 ### Running
 
-```bash
-uv run python tools/generate_docs.py --programs data/programs/ --output PRDs/generated/
-```
+Use the **Generate Docs** button in the application UI. The button is enabled when the selected instance has a project folder with at least one `.yaml` file in its `programs/` directory.
 
-Or use the **Generate Docs** button in the application UI.
+The tool reads from `{project_folder}/programs/` and writes to `{project_folder}/Implementation Docs/`. Output files are named after the instance: `{instance_name}-CRM-Reference.md` and `{instance_name}-CRM-Reference.docx`.
+
+Generate Docs requires a project folder — instances without one see an error message prompting them to configure a project folder.
+
+CLI usage (standalone):
+
+```bash
+uv run python tools/generate_docs.py --programs ~/Projects/CBM/programs/ --output ~/Projects/CBM/Implementation\ Docs/
+```
 
 ### Architecture
 
@@ -641,6 +665,7 @@ uv run pytest tests/ -v
 
 | Module | Test File | Cases |
 |--------|-----------|-------|
+| `models.py` | `test_models.py` | Project folder directory properties, None handling |
 | `config_loader.py` | `test_config_loader.py` | YAML parsing, validation rules, entity actions, field types |
 | `api_client.py` | `test_api_client.py` | Auth headers, URL construction, HMAC signing, error handling |
 | `comparator.py` | `test_comparator.py` | Match/diff detection, type conflicts, enum order, optional fields |
@@ -685,7 +710,8 @@ Configuration in `pyproject.toml`: line length 88, Python 3.12 target, rules E/F
   "url": "https://cbm.espocloud.com",
   "api_key": "admin_username",
   "auth_method": "basic",
-  "secret_key": "admin_password"
+  "secret_key": "admin_password",
+  "project_folder": "/home/user/Projects/ClevelandBusinessMentors"
 }
 ```
 
@@ -693,13 +719,38 @@ Filename: `{name.lower().replace(" ", "_").replace("-", "_")}.json`
 
 Gitignored: `data/instances/*.json` (contains credentials).
 
-### Program Files (`data/programs/`)
+The `project_folder` key is optional. Existing JSON files without it load normally — `data.get("project_folder")` returns `None`.
 
-YAML files. Not gitignored — safe to commit (no credentials).
+### Project Folder Structure
 
-### Reports (`reports/`)
+When an instance has a `project_folder`, the tool uses its subdirectories for all file operations:
 
-`.log` and `.json` files. Gitignored.
+```
+{project_folder}/
+├── programs/            ← YAML program files (loaded in Program File panel)
+├── Implementation Docs/ ← generated reference manual
+└── reports/             ← run/verify reports
+```
+
+These directories are created automatically when an instance is saved with a project folder (via `_ensure_project_structure`).
+
+### Fallback Directories
+
+When `project_folder` is `None` (legacy instances or no folder configured):
+
+| Purpose | Fallback Path |
+|---------|--------------|
+| Programs | `{base_dir}/data/programs/` |
+| Reports | `{base_dir}/reports/` |
+| Generate Docs | Disabled (shows error message) |
+
+### Program Files
+
+YAML files live in the project folder's `programs/` directory. Not gitignored — safe to commit (no credentials).
+
+### Reports
+
+`.log` and `.json` files in the project folder's `reports/` directory. Typically gitignored in the client repo.
 
 ---
 
@@ -737,5 +788,6 @@ The run sequence is in `RunWorker._run_full()`. Insert new phases between entity
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.2 | March 2026 | Added project folder architecture: per-instance programs/reports/docs directories, lazy reporter initialization, instance-aware program panel switching, folder structure auto-creation |
 | 1.1 | March 2026 | Added layout manager, relationship manager, documentation generator, and content_version support |
 | 1.0 | Early 2026 | Initial release covering entity and field management |

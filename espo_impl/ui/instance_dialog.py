@@ -1,13 +1,18 @@
 """Modal dialog for adding/editing instance profiles."""
 
+from pathlib import Path
+
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
+    QFileDialog,
     QFormLayout,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
     QMessageBox,
+    QPushButton,
     QWidget,
 )
 
@@ -46,6 +51,8 @@ class InstanceDialog(QDialog):
             self.key_input.setText(profile.api_key)
             if profile.secret_key:
                 self.secret_input.setText(profile.secret_key)
+            if profile.project_folder:
+                self.folder_input.setText(profile.project_folder)
         else:
             self.setWindowTitle("Add Instance")
 
@@ -80,6 +87,19 @@ class InstanceDialog(QDialog):
         layout.addRow(self.secret_label, self.secret_input)
         self.secret_label.setVisible(False)
         self.secret_input.setVisible(False)
+
+        # Project folder
+        folder_layout = QHBoxLayout()
+        self.folder_input = QLineEdit()
+        self.folder_input.setPlaceholderText(
+            "Select project folder (programs, reports, docs)"
+        )
+        self.folder_input.setReadOnly(True)
+        self.folder_browse_btn = QPushButton("Browse...")
+        self.folder_browse_btn.clicked.connect(self._on_browse_folder)
+        folder_layout.addWidget(self.folder_input)
+        folder_layout.addWidget(self.folder_browse_btn)
+        layout.addRow("Project Folder:", folder_layout)
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Save
@@ -118,6 +138,16 @@ class InstanceDialog(QDialog):
             self.secret_label.setVisible(False)
             self.secret_input.setVisible(False)
 
+    def _on_browse_folder(self) -> None:
+        """Open folder picker dialog."""
+        folder = QFileDialog.getExistingDirectory(
+            self,
+            "Select Project Folder",
+            self.folder_input.text() or str(Path.home()),
+        )
+        if folder:
+            self.folder_input.setText(folder)
+
     def _on_save(self) -> None:
         """Validate inputs and accept the dialog."""
         name = self.name_input.text().strip()
@@ -140,6 +170,15 @@ class InstanceDialog(QDialog):
             )
             return
 
+        folder = self.folder_input.text().strip()
+        if folder and not Path(folder).exists():
+            QMessageBox.warning(
+                self,
+                "Validation Error",
+                f"Project folder does not exist:\n{folder}",
+            )
+            return
+
         self.accept()
 
     def get_profile(self) -> InstanceProfile:
@@ -159,4 +198,5 @@ class InstanceDialog(QDialog):
             api_key=self.key_input.text().strip(),
             auth_method=auth_method,
             secret_key=secret_key,
+            project_folder=self.folder_input.text().strip() or None,
         )

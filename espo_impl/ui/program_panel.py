@@ -96,10 +96,28 @@ class ProgramPanel(QWidget):
             text = path.name
         self.list_widget.addItem(text)
 
+    def set_programs_dir(self, programs_dir: Path | None) -> None:
+        """Update the programs directory and reload the file list.
+
+        :param programs_dir: New programs directory, or None to clear.
+        """
+        if programs_dir is None:
+            self.programs_dir = None
+            self.list_widget.clear()
+            self._paths.clear()
+            return
+
+        self.programs_dir = programs_dir
+        programs_dir.mkdir(parents=True, exist_ok=True)
+        self._load_programs()
+
     def _load_programs(self) -> None:
         """Load program file list from the programs directory."""
         self._paths.clear()
         self.list_widget.clear()
+
+        if self.programs_dir is None:
+            return
 
         for path in sorted(self.programs_dir.glob("*.yaml")):
             self._add_program_item(path)

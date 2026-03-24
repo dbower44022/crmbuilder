@@ -197,9 +197,17 @@ are not re-verified by the Verify button — use Run for those.
 Click **Generate Docs** to produce the reference manual from all YAML
 files in the project folder's `programs/` directory.
 
-Output files in `Implementation Docs/`:
-- `CBM-CRM-Reference.md` — Markdown version
-- `CBM-CRM-Reference.docx` — Word document
+Output files in `Implementation Docs/` (named after the instance):
+- `{Instance Name}-CRM-Reference.md` — Markdown version
+- `{Instance Name}-CRM-Reference.docx` — Word document
+
+For example, an instance named "CBM Demo CRM" produces
+`CBM Demo CRM-CRM-Reference.md` and `CBM Demo CRM-CRM-Reference.docx`.
+
+The **Generate Docs** button is enabled when the selected instance has
+a project folder with at least one `.yaml` file in `programs/`. If no
+project folder is configured, the output panel shows a message asking
+you to edit the instance and add one.
 
 Regenerate the docs whenever YAML files are updated. Commit both the
 updated YAML files and the regenerated docs to the client repository.
@@ -208,7 +216,9 @@ updated YAML files and the regenerated docs to the client repository.
 
 ## Reports
 
-After each Run or Verify, two report files are written to `reports/`:
+After each Run or Verify, two report files are written to the project
+folder's `reports/` directory (or `reports/` in the tool directory if
+no project folder is configured):
 
 - **`.log`** — Human-readable text report
 - **`.json`** — Machine-readable structured report

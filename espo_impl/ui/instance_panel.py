@@ -74,6 +74,11 @@ class InstancePanel(QWidget):
         self.key_display.setEchoMode(QLineEdit.EchoMode.Password)
         group_layout.addWidget(self.key_display)
 
+        group_layout.addWidget(QLabel("Project Folder:"))
+        self.folder_display = QLineEdit()
+        self.folder_display.setReadOnly(True)
+        group_layout.addWidget(self.folder_display)
+
         group.setLayout(group_layout)
 
         layout = QVBoxLayout(self)
@@ -94,6 +99,7 @@ class InstancePanel(QWidget):
                     api_key=data["api_key"],
                     auth_method=data.get("auth_method", "api_key"),
                     secret_key=data.get("secret_key"),
+                    project_folder=data.get("project_folder"),
                 )
                 self._profiles.append(profile)
                 self.list_widget.addItem(profile.name)
@@ -114,6 +120,8 @@ class InstancePanel(QWidget):
         }
         if profile.secret_key:
             data["secret_key"] = profile.secret_key
+        if profile.project_folder:
+            data["project_folder"] = profile.project_folder
         path.write_text(
             json.dumps(data, indent=2) + "\n", encoding="utf-8"
         )
@@ -133,11 +141,23 @@ class InstancePanel(QWidget):
             profile = self._profiles[row]
             self.url_display.setText(profile.url)
             self.key_display.setText(profile.api_key)
+            self.folder_display.setText(profile.project_folder or "")
             self.instance_selected.emit(profile)
         else:
             self.url_display.clear()
             self.key_display.clear()
+            self.folder_display.clear()
             self.instance_selected.emit(None)
+
+    @staticmethod
+    def _ensure_project_structure(folder: Path) -> None:
+        """Create standard project subdirectories if they don't exist.
+
+        :param folder: Project folder root path.
+        """
+        (folder / "programs").mkdir(parents=True, exist_ok=True)
+        (folder / "reports").mkdir(parents=True, exist_ok=True)
+        (folder / "Implementation Docs").mkdir(parents=True, exist_ok=True)
 
     def _on_add(self) -> None:
         """Open dialog to add a new instance."""
@@ -145,11 +165,14 @@ class InstancePanel(QWidget):
         if dialog.exec() == InstanceDialog.DialogCode.Accepted:
             profile = dialog.get_profile()
             self._save_instance(profile)
+            if profile.project_folder:
+                self._ensure_project_structure(Path(profile.project_folder))
             self._load_instances()
             # Select the newly added instance
             for i, p in enumerate(self._profiles):
                 if p.slug == profile.slug:
                     self.list_widget.setCurrentRow(i)
+                    self.instance_selected.emit(p)
                     break
 
     def _on_edit(self) -> None:
@@ -165,10 +188,13 @@ class InstancePanel(QWidget):
             if old_profile.slug != new_profile.slug:
                 self._delete_instance_file(old_profile)
             self._save_instance(new_profile)
+            if new_profile.project_folder:
+                self._ensure_project_structure(Path(new_profile.project_folder))
             self._load_instances()
             for i, p in enumerate(self._profiles):
                 if p.slug == new_profile.slug:
                     self.list_widget.setCurrentRow(i)
+                    self.instance_selected.emit(p)
                     break
 
     def _on_delete(self) -> None:

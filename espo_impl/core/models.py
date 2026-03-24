@@ -14,6 +14,7 @@ class InstanceProfile:
     :param api_key: API key for authentication.
     :param auth_method: Authentication method ("api_key" or "hmac").
     :param secret_key: Secret key for HMAC authentication.
+    :param project_folder: Path to client project directory.
     """
 
     name: str
@@ -21,6 +22,28 @@ class InstanceProfile:
     api_key: str
     auth_method: str = "api_key"
     secret_key: str | None = None
+    project_folder: str | None = None
+
+    @property
+    def programs_dir(self) -> Path | None:
+        """Path to the programs directory for this instance."""
+        if self.project_folder:
+            return Path(self.project_folder) / "programs"
+        return None
+
+    @property
+    def reports_dir(self) -> Path | None:
+        """Path to the reports directory for this instance."""
+        if self.project_folder:
+            return Path(self.project_folder) / "reports"
+        return None
+
+    @property
+    def docs_dir(self) -> Path | None:
+        """Path to the Implementation Docs directory for this instance."""
+        if self.project_folder:
+            return Path(self.project_folder) / "Implementation Docs"
+        return None
 
     @property
     def api_url(self) -> str:
