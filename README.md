@@ -1,4 +1,4 @@
-# CRM Builder
+# EspoCRM Implementation Tool
 
 Desktop tool for deploying EspoCRM field configurations from declarative YAML program files.
 
@@ -6,7 +6,7 @@ Desktop tool for deploying EspoCRM field configurations from declarative YAML pr
 
 ```bash
 uv sync
-uv run crmbuilder
+uv run espo-impl
 ```
 
 ## Documentation Generator
