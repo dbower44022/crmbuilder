@@ -49,7 +49,7 @@ class Reporter:
         """
         lines: list[str] = []
         lines.append("===========================================")
-        lines.append(f"EspoCRM Implementation Tool — {report.operation.upper()} Report")
+        lines.append(f"CRM Builder — {report.operation.upper()} Report")
         lines.append("===========================================")
         lines.append(f"Timestamp    : {report.timestamp}")
         lines.append(f"Instance     : {report.instance_name}")

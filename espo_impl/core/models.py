@@ -1,4 +1,4 @@
-"""Data models for the EspoCRM Implementation Tool."""
+"""Data models for CRM Builder."""
 
 from dataclasses import dataclass, field
 from enum import Enum

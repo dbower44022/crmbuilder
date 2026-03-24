@@ -1,4 +1,4 @@
-"""Entry point for the EspoCRM Implementation Tool."""
+"""Entry point for CRM Builder."""
 
 import logging
 import sys
@@ -22,7 +22,7 @@ def main() -> None:
     (base / "reports").mkdir(parents=True, exist_ok=True)
 
     app = QApplication(sys.argv)
-    app.setApplicationName("EspoCRM Implementation Tool")
+    app.setApplicationName("CRM Builder")
     window = MainWindow(base_dir=base)
     window.show()
     sys.exit(app.exec())

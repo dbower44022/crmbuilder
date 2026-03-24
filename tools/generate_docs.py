@@ -27,7 +27,7 @@ INTRO_TEXT = (
     "every entity, field, layout, and configuration item required to support "
     "the requirements stated in the CBM PRD documents.\n\n"
     "This document is generated automatically from the YAML program files "
-    "used by the EspoCRM Implementation Tool. To update this document, "
+    "used by CRM Builder. To update this document, "
     "update the YAML files and regenerate.\n\n"
     "Sections marked 'Planned — Not Yet Implemented' describe future "
     "capability not yet supported by the deployment tool."
