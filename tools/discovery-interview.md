@@ -1,6 +1,6 @@
 # CRM Builder — Discovery Interview Guide
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Last Updated:** March 2026  
 **Purpose:** AI interviewer guide for Phase 1 — Discovery  
 **Changelog:** See end of document.
@@ -95,6 +95,8 @@ is missed before wrapping up.
 - [ ] 6. Communication and Outreach
 - [ ] 7. Integration and Data
 - [ ] 8. Constraints and Priorities
+- [ ] 9. Marketing and Attraction
+- [ ] 10. Learning and Content
 
 ---
 
@@ -376,7 +378,95 @@ implementation phasing.
 
 ---
 
-## Closing the Interview
+
+---
+
+## Topic 9 — Marketing and Attraction
+
+**What the AI is trying to learn:**
+How the organization attracts mentors and clients — the channels they
+use, how they track where people come from, and what marketing or
+outreach activities need to be recorded in the CRM.
+
+**Opening question:**
+> "Let's talk about how people find your organization. How do mentors
+> hear about you and decide to get involved? And how do clients find
+> out about your services and reach out?"
+
+**Follow-up probes (use as needed):**
+- "What channels drive the most mentor applications — word of mouth,
+  social media, events, partner referrals, your website?"
+- "Do you run any active recruiting campaigns for mentors? How do
+  you track which campaigns are working?"
+- "On the client side — how do most clients find you? Is it primarily
+  partner referrals, web search, social media, community events?"
+- "Do you track referral sources — where a mentor or client first
+  heard about CBM? Is that something you'd want to report on?"
+- "Do you do any email marketing or newsletters to attract new
+  mentors or clients? If so, what platform do you use?"
+- "Do you attend or host community events to raise awareness? Do
+  you need to track those events and their outcomes?"
+- "Is there a formal ambassador or referral program where existing
+  mentors or partners recruit new mentors?"
+
+**Signs you have enough:**
+- Primary attraction channels identified for both mentors and clients
+- Referral source tracking requirement understood
+- Email marketing and campaign tools identified
+- Event-based outreach needs captured
+
+**CRM mapping note:**
+Referral source typically becomes a field on Contact and/or Account
+records. Campaign tracking may require integration with an email
+marketing platform. Events that generate leads may need their own
+entity or link to the Workshop entity.
+
+---
+
+## Topic 10 — Learning and Content
+
+**What the AI is trying to learn:**
+How the organization creates, manages, and delivers educational content
+to mentors and clients — training materials, resource libraries, online
+courses, and how access is controlled and tracked.
+
+**Opening question:**
+> "Let's talk about learning and educational content. You mentioned
+> mandatory training for mentors — beyond that, what educational
+> resources does CBM create or curate for mentors and clients?"
+
+**Follow-up probes (use as needed):**
+- "Is there a library of resources — articles, templates, guides,
+  videos — that mentors can access to help their clients?"
+- "Do clients have access to any learning materials, or is content
+  primarily for mentors?"
+- "How is training content currently delivered — a third-party
+  platform, CBM-created materials, or a combination?"
+- "Do you track which mentors have accessed or completed specific
+  resources? Is that important for quality assurance?"
+- "Are learning materials created internally by CBM, sourced from
+  partners, or both?"
+- "Do partners contribute content — for example, a bank providing
+  financial literacy materials?"
+- "Is there a need to version or update materials over time, and
+  notify mentors when new versions are available?"
+- "Beyond the mandatory onboarding training, is there ongoing
+  continuing education for active mentors?"
+
+**Signs you have enough:**
+- Types of content and their audiences identified
+- Delivery platform(s) identified or noted as TBD
+- Access control requirements understood
+- Content contribution sources identified (CBM, partners, external)
+- Tracking and completion requirements noted
+
+**CRM mapping note:**
+Learning materials may be tracked as a simple reference library
+within the CRM, or managed in a dedicated LMS with CRM integration
+for completion tracking. The complexity of content management will
+affect the platform recommendation in Phase 3.
+
+---## Closing the Interview
 
 ### Coverage Check
 
@@ -545,4 +635,5 @@ conversation between two people trying to solve a problem together.
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.1 | March 2026 | Added Topic 9 (Marketing and Attraction) and Topic 10 (Learning and Content) |
 | 1.0 | March 2026 | Initial release |
