@@ -2,7 +2,7 @@
 
 ## Context
 
-The EspoCRM Implementation Tool currently handles entity creation/deletion and
+The CRM Builder currently handles entity creation/deletion and
 field management. We are now adding Phase 2: layout management — the ability to
 define and deploy detail view layouts and list view column definitions via YAML
 program files.

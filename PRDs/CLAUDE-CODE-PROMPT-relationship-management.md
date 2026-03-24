@@ -2,7 +2,7 @@
 
 ## Context
 
-The EspoCRM Implementation Tool currently handles entity creation, field
+The CRM Builder currently handles entity creation, field
 management, and layout management. We are now adding Phase 4: relationship
 management — the ability to define and deploy entity relationships via YAML
 program files.

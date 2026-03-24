@@ -1,6 +1,6 @@
-# EspoCRM Implementation Tool — Technical Guide
+# CRM Builder — Technical Guide
 
-**Version:** 1.1  
+**Version:** 1.2  
 **Last Updated:** March 2026  
 **Changelog:** See end of document.
 
@@ -789,5 +789,6 @@ The run sequence is in `RunWorker._run_full()`. Insert new phases between entity
 | Version | Date | Changes |
 |---|---|---|
 | 1.2 | March 2026 | Added project folder architecture: per-instance programs/reports/docs directories, lazy reporter initialization, instance-aware program panel switching, folder structure auto-creation |
+| 1.2 | March 2026 | Renamed to CRM Builder |
 | 1.1 | March 2026 | Added layout manager, relationship manager, documentation generator, and content_version support |
 | 1.0 | Early 2026 | Initial release covering entity and field management |

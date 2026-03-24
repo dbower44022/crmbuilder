@@ -4,7 +4,7 @@
 
 This prompt covers two related tasks:
 
-1. **Add `description` property support** to the EspoCRM Implementation Tool
+1. **Add `description` property support** to the CRM Builder
 2. **Build the Documentation Generator** that reads YAML files and produces
    a reference manual in `.docx` and `.md` formats
 

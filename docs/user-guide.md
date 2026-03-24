@@ -1,12 +1,12 @@
-# EspoCRM Implementation Tool — User Guide
+# CRM Builder — User Guide
 
-**Version:** 2.0  
+**Version:** 2.1  
 **Last Updated:** March 2026  
 **Changelog:** See end of document.
 
 ## What This Tool Does
 
-The EspoCRM Implementation Tool automates the configuration of EspoCRM
+The CRM Builder automates the configuration of EspoCRM
 instances. Instead of manually creating fields, layouts, and relationships
 through the EspoCRM admin UI, you write declarative YAML files describing
 the desired configuration and the tool applies them via the EspoCRM REST API.
@@ -27,14 +27,14 @@ changes where the instance differs from the spec.
 ### Setup
 
 ```bash
-cd espo-implementation-tool
+cd crmbuilder
 uv sync
 ```
 
 ### Launch
 
 ```bash
-uv run espo-impl
+uv run crmbuilder
 ```
 
 ---
@@ -487,5 +487,6 @@ a clean rebuild with no live data.
 
 | Version | Date | Changes |
 |---|---|---|
+| 2.1 | March 2026 | Renamed to CRM Builder |
 | 2.0 | March 2026 | Complete rewrite — added project folder concept, content versioning, layout and relationship configuration, Generate Docs button, updated troubleshooting |
 | 1.0 | Early 2026 | Initial release covering field management only |

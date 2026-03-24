@@ -59,7 +59,7 @@ The application opens as a single main window with a clean, professional layout.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  EspoCRM Implementation Tool                                        │
+│  CRM Builder                                        │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  ┌─────────────────────────┐  ┌─────────────────────────────────┐  │

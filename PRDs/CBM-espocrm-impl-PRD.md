@@ -1,4 +1,4 @@
-# EspoCRM Implementation Tool — Product Requirements Document
+# CRM Builder — Product Requirements Document
 
 **Version:** 2.0  
 **Status:** Current  
@@ -8,7 +8,7 @@
 
 ## 1. Overview
 
-The EspoCRM Implementation Tool is a desktop application that automates
+The CRM Builder is a desktop application that automates
 the configuration of EspoCRM instances. It reads declarative YAML program
 files and applies their contents via the EspoCRM REST API, replacing manual
 configuration through the EspoCRM admin UI.
@@ -181,7 +181,7 @@ ProjectFolder/
 ## 6. Deployment Architecture
 
 ```
-Tool repo (espo-implementation-tool)
+Tool repo (crmbuilder)
   ├── espo_impl/   ← application source code
   ├── tools/       ← utilities (doc generator)
   ├── docs/        ← tool documentation

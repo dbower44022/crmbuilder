@@ -4,7 +4,7 @@ This file provides guidance to Claude Code when working in this repository.
 
 ## Project
 
-This is the **EspoCRM Implementation Tool** — a PySide6 desktop application
+This is the **CRM Builder** — a PySide6 desktop application
 that deploys EspoCRM configuration declaratively from YAML program files.
 
 This is NOT the CBM client repository. Client-specific YAML files and
@@ -18,7 +18,7 @@ generated documentation live in the client's own repository (e.g.,
 uv sync
 
 # Run the application
-uv run espo-impl
+uv run crmbuilder
 
 # Run tests
 uv run pytest tests/ -v

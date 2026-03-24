@@ -1,6 +1,6 @@
-# EspoCRM Implementation Tool — Process Guide
+# CRM Builder — Process Guide
 
-**Version:** 1.1  
+**Version:** 1.2  
 **Last Updated:** March 2026  
 **Changelog:** See end of document.
 
@@ -51,7 +51,7 @@ The implementation tool repository contains only the tool itself — no
 client data:
 
 ```
-espo-implementation-tool/
+crmbuilder/
 ├── docs/          # Process, user, and technical documentation
 ├── PRDs/          # Tool specs and design documents
 ├── espo_impl/     # Tool source code
@@ -723,5 +723,6 @@ before proceeding to the next file.
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.2 | March 2026 | Renamed from EspoCRM Implementation Tool to CRM Builder |
 | 1.1 | March 2026 | Added project folder architecture, fixed c-prefix rules for relationships, updated troubleshooting, added deployment guide cross-references, added production deployment notes |
 | 1.0 | March 2026 | Initial release |

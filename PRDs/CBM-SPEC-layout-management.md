@@ -1,4 +1,4 @@
-# EspoCRM Implementation Tool — Layout Management Specification
+# CRM Builder — Layout Management Specification
 
 **Version:** 1.0  
 **Status:** Draft  

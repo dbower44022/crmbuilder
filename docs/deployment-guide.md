@@ -1,6 +1,6 @@
-# EspoCRM Implementation Tool — Deployment Guide
+# CRM Builder — Deployment Guide
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Last Updated:** March 2026  
 **Changelog:** See end of document.
 
@@ -50,8 +50,8 @@ test deployment is simply selecting a different instance and clicking Run.
 ### 2.1 Install the Tool
 
 ```bash
-git clone https://github.com/dbower44022/espo-implementation-tool.git
-cd espo-implementation-tool
+git clone https://github.com/dbower44022/crmbuilder.git
+cd crmbuilder
 uv sync
 ```
 
@@ -60,7 +60,7 @@ Requires Python 3.12+, uv, and Node.js.
 ### 2.2 Launch
 
 ```bash
-uv run espo-impl
+uv run crmbuilder
 ```
 
 ### 2.3 Add the Test Instance
@@ -388,4 +388,5 @@ promote to production.
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.1 | March 2026 | Renamed to CRM Builder |
 | 1.0 | March 2026 | Initial release |
