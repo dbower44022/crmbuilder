@@ -1,0 +1,773 @@
+version: "1.0"
+description: "CBM Full Rebuild — Delete and Recreate All Custom Entities"
+
+# WARNING: This program contains DELETE operations.
+# A confirmation dialog requiring you to type DELETE will appear
+# before any changes are made.
+#
+# This program:
+#   1. Deletes all CBM custom entities (if they exist)
+#   2. Recreates them from the canonical spec
+#   3. Applies all field definitions
+#   4. Triggers a cache rebuild
+#
+# Use this program for clean deployments on a new or reset instance.
+# For field-only updates on an existing instance, use the individual
+# entity field YAML files instead.
+
+entities:
+
+  # ---------------------------------------------------------------
+  # Step 1 — Delete existing custom entities
+  # ---------------------------------------------------------------
+
+  Engagement:
+    action: delete
+
+  Session:
+    action: delete
+
+  Workshop:
+    action: delete
+
+  WorkshopAttendance:
+    action: delete
+
+  NpsSurveyResponse:
+    action: delete
+
+  # ---------------------------------------------------------------
+  # Step 2 — Recreate custom entities with fields
+  # ---------------------------------------------------------------
+
+  Engagement:
+    action: create
+    type: Base
+    labelSingular: "Engagement"
+    labelPlural: "Engagements"
+    stream: true
+    fields:
+
+      - name: status
+        type: enum
+        label: "Status"
+        required: true
+        default: "Submitted"
+        isSorted: false
+        options:
+          - "Submitted"
+          - "Pending Acceptance"
+          - "Assigned"
+          - "Active"
+          - "On-Hold"
+          - "Dormant"
+          - "Inactive"
+          - "Abandoned"
+          - "Completed"
+        translatedOptions:
+          "Submitted": "Submitted"
+          "Pending Acceptance": "Pending Acceptance"
+          "Assigned": "Assigned"
+          "Active": "Active"
+          "On-Hold": "On-Hold"
+          "Dormant": "Dormant"
+          "Inactive": "Inactive"
+          "Abandoned": "Abandoned"
+          "Completed": "Completed"
+        style:
+          "Submitted": "info"
+          "Pending Acceptance": "warning"
+          "Assigned": "primary"
+          "Active": "success"
+          "On-Hold": "warning"
+          "Dormant": "danger"
+          "Inactive": "danger"
+          "Abandoned": "default"
+          "Completed": "success"
+
+      - name: startDate
+        type: date
+        label: "Start Date"
+
+      - name: closeDate
+        type: date
+        label: "Close Date"
+
+      - name: meetingCadence
+        type: enum
+        label: "Meeting Cadence"
+        isSorted: false
+        options:
+          - "Weekly"
+          - "Bi-Weekly"
+          - "Monthly"
+          - "As Needed"
+        translatedOptions:
+          "Weekly": "Weekly"
+          "Bi-Weekly": "Bi-Weekly"
+          "Monthly": "Monthly"
+          "As Needed": "As Needed"
+        style:
+          "Weekly": null
+          "Bi-Weekly": null
+          "Monthly": null
+          "As Needed": null
+
+      - name: engagementCloseReason
+        type: enum
+        label: "Engagement Close Reason"
+        isSorted: false
+        options:
+          - "Goals Achieved"
+          - "Client Withdrew"
+          - "Inactive / No Response"
+          - "Other"
+        translatedOptions:
+          "Goals Achieved": "Goals Achieved"
+          "Client Withdrew": "Client Withdrew"
+          "Inactive / No Response": "Inactive / No Response"
+          "Other": "Other"
+        style:
+          "Goals Achieved": null
+          "Client Withdrew": null
+          "Inactive / No Response": null
+          "Other": null
+
+      - name: submissionDate
+        type: datetime
+        label: "Submission Date"
+
+      - name: totalSessions
+        type: int
+        label: "Total Sessions"
+        readOnly: true
+        min: 0
+
+      - name: totalSessionsLast30Days
+        type: int
+        label: "Total Sessions (Last 30 Days)"
+        readOnly: true
+        min: 0
+
+      - name: lastSessionDate
+        type: datetime
+        label: "Last Session Date"
+        readOnly: true
+
+      - name: totalSessionHours
+        type: float
+        label: "Total Session Hours"
+        readOnly: true
+        min: 0
+
+      - name: nextSessionDateTime
+        type: datetime
+        label: "Next Session Date/Time"
+
+  Session:
+    action: create
+    type: Base
+    labelSingular: "Session"
+    labelPlural: "Sessions"
+    stream: true
+    fields:
+
+      - name: sessionDateTime
+        type: datetime
+        label: "Session Date/Time"
+        required: true
+
+      - name: duration
+        type: int
+        label: "Duration (minutes)"
+        required: true
+        min: 1
+
+      - name: sessionType
+        type: enum
+        label: "Session Type"
+        required: true
+        isSorted: false
+        options:
+          - "In-Person"
+          - "Video Call"
+          - "Phone Call"
+        translatedOptions:
+          "In-Person": "In-Person"
+          "Video Call": "Video Call"
+          "Phone Call": "Phone Call"
+        style:
+          "In-Person": null
+          "Video Call": null
+          "Phone Call": null
+
+      - name: meetingLocationType
+        type: enum
+        label: "Meeting Location Type"
+        isSorted: false
+        options:
+          - "CBM Office"
+          - "Client's Place of Business"
+          - "Other"
+        translatedOptions:
+          "CBM Office": "CBM Office"
+          "Client's Place of Business": "Client's Place of Business"
+          "Other": "Other"
+        style:
+          "CBM Office": null
+          "Client's Place of Business": null
+          "Other": null
+
+      - name: locationDetails
+        type: varchar
+        label: "Location Details"
+        maxLength: 255
+
+      - name: topicsCovered
+        type: multiEnum
+        label: "Topics Covered"
+        options:
+          - "Business Planning"
+          - "Marketing & Sales"
+          - "Financial Management"
+          - "Operations"
+          - "Human Resources"
+          - "Legal & Compliance"
+          - "Technology"
+          - "Funding & Capital"
+          - "Leadership & Management"
+          - "Growth Strategy"
+
+      - name: topicsCoveredNotes
+        type: wysiwyg
+        label: "Topics Covered Notes"
+
+      - name: mentorNotes
+        type: wysiwyg
+        label: "Mentor Notes"
+
+      - name: nextSteps
+        type: wysiwyg
+        label: "Next Steps"
+
+      - name: newBusinessStarted
+        type: bool
+        label: "New Business Started"
+        default: false
+
+      - name: nextSessionDateTime
+        type: datetime
+        label: "Next Session Date/Time"
+
+  NpsSurveyResponse:
+    action: create
+    type: Base
+    labelSingular: "NPS Survey Response"
+    labelPlural: "NPS Survey Responses"
+    stream: false
+    fields:
+
+      - name: surveyTrigger
+        type: enum
+        label: "Survey Trigger"
+        readOnly: true
+        isSorted: false
+        options:
+          - "2nd Session"
+          - "Every 5 Sessions"
+          - "Engagement Close"
+        translatedOptions:
+          "2nd Session": "2nd Session"
+          "Every 5 Sessions": "Every 5 Sessions"
+          "Engagement Close": "Engagement Close"
+        style:
+          "2nd Session": null
+          "Every 5 Sessions": null
+          "Engagement Close": null
+
+      - name: surveyDateTime
+        type: datetime
+        label: "Survey Date/Time"
+        readOnly: true
+
+      - name: npsScore
+        type: int
+        label: "NPS Score"
+        required: true
+        min: 0
+        max: 10
+
+      - name: didCbmHelpYou
+        type: bool
+        label: "Did CBM Help You?"
+        required: true
+
+      - name: wouldReturnToMentor
+        type: int
+        label: "I Would Return to See This Mentor Again"
+        required: true
+        min: 1
+        max: 5
+
+      - name: mentorListenedAndUnderstood
+        type: int
+        label: "Mentor Listened and Understood My Needs"
+        required: true
+        min: 1
+        max: 5
+
+      - name: improvementFeedback
+        type: wysiwyg
+        label: "How Could CBM Better Meet Your Needs?"
+
+  Workshop:
+    action: create
+    type: Base
+    labelSingular: "Workshop"
+    labelPlural: "Workshops"
+    stream: true
+    fields:
+
+      - name: workshopDateTime
+        type: datetime
+        label: "Date/Time"
+        required: true
+
+      - name: topicCategory
+        type: enum
+        label: "Topic/Category"
+        required: true
+        isSorted: false
+        options:
+          - "Business Planning"
+          - "Marketing & Sales"
+          - "Financial Management"
+          - "Operations"
+          - "Human Resources"
+          - "Legal & Compliance"
+          - "Technology"
+          - "Funding & Capital"
+          - "Leadership & Management"
+          - "Growth Strategy"
+        translatedOptions:
+          "Business Planning": "Business Planning"
+          "Marketing & Sales": "Marketing & Sales"
+          "Financial Management": "Financial Management"
+          "Operations": "Operations"
+          "Human Resources": "Human Resources"
+          "Legal & Compliance": "Legal & Compliance"
+          "Technology": "Technology"
+          "Funding & Capital": "Funding & Capital"
+          "Leadership & Management": "Leadership & Management"
+          "Growth Strategy": "Growth Strategy"
+        style:
+          "Business Planning": null
+          "Marketing & Sales": null
+          "Financial Management": null
+          "Operations": null
+          "Human Resources": null
+          "Legal & Compliance": null
+          "Technology": null
+          "Funding & Capital": null
+          "Leadership & Management": null
+          "Growth Strategy": null
+
+      - name: presenter
+        type: varchar
+        label: "Presenter"
+        maxLength: 255
+
+      - name: location
+        type: varchar
+        label: "Location"
+        maxLength: 255
+
+      - name: workshopDescription
+        type: wysiwyg
+        label: "Description"
+
+      - name: maximumCapacity
+        type: int
+        label: "Maximum Capacity"
+        min: 0
+
+      - name: status
+        type: enum
+        label: "Status"
+        required: true
+        default: "Scheduled"
+        isSorted: false
+        options:
+          - "Scheduled"
+          - "Completed"
+          - "Cancelled"
+        translatedOptions:
+          "Scheduled": "Scheduled"
+          "Completed": "Completed"
+          "Cancelled": "Cancelled"
+        style:
+          "Scheduled": null
+          "Completed": null
+          "Cancelled": null
+
+  WorkshopAttendance:
+    action: create
+    type: Base
+    labelSingular: "Workshop Attendance"
+    labelPlural: "Workshop Attendance"
+    stream: false
+    fields:
+
+      - name: attendanceDate
+        type: date
+        label: "Attendance Date"
+        readOnly: true
+
+      - name: attended
+        type: bool
+        label: "Attended"
+        required: true
+        default: true
+
+  # ---------------------------------------------------------------
+  # Step 3 — Native entity fields (no create/delete needed)
+  # ---------------------------------------------------------------
+
+  Contact:
+    fields:
+
+      - name: contactType
+        type: enum
+        label: "Contact Type"
+        required: false
+        default: ""
+        isSorted: false
+        options:
+          - "Mentor"
+          - "Client"
+        translatedOptions:
+          "Mentor": "Mentor"
+          "Client": "Client"
+        style:
+          "Mentor": null
+          "Client": null
+
+      - name: mentorStatus
+        type: enum
+        label: "Mentor Status"
+        required: false
+        default: ""
+        isSorted: false
+        options:
+          - "Provisional"
+          - "Active"
+          - "Inactive"
+          - "Departed"
+        translatedOptions:
+          "Provisional": "Provisional"
+          "Active": "Active"
+          "Inactive": "Inactive"
+          "Departed": "Departed"
+        style:
+          "Provisional": null
+          "Active": null
+          "Inactive": null
+          "Departed": null
+
+      - name: isMentor
+        type: bool
+        label: "Is Mentor"
+        default: false
+
+      - name: isCoMentor
+        type: bool
+        label: "Is Co-Mentor"
+        default: false
+
+      - name: isSme
+        type: bool
+        label: "Is SME"
+        default: false
+
+      - name: roleAtBusiness
+        type: varchar
+        label: "Role at Business"
+        maxLength: 150
+
+      - name: isPrimaryContact
+        type: bool
+        label: "Primary Contact"
+        default: false
+
+  Account:
+    fields:
+
+      - name: organizationType
+        type: enum
+        label: "Organization Type"
+        required: true
+        isSorted: false
+        options:
+          - "For-Profit"
+          - "Non-Profit"
+        translatedOptions:
+          "For-Profit": "For-Profit"
+          "Non-Profit": "Non-Profit"
+        style:
+          "For-Profit": null
+          "Non-Profit": null
+
+      - name: businessStage
+        type: enum
+        label: "Business Stage"
+        required: true
+        isSorted: false
+        options:
+          - "Pre-Startup"
+          - "Startup"
+          - "Early Stage"
+          - "Growth Stage"
+          - "Established"
+        translatedOptions:
+          "Pre-Startup": "Pre-Startup"
+          "Startup": "Startup"
+          "Early Stage": "Early Stage"
+          "Growth Stage": "Growth Stage"
+          "Established": "Established"
+        style:
+          "Pre-Startup": null
+          "Startup": null
+          "Early Stage": null
+          "Growth Stage": null
+          "Established": null
+
+      - name: mentoringFocusAreas
+        type: multiEnum
+        label: "Mentoring Focus Areas"
+        required: true
+        options:
+          - "Business Planning"
+          - "Marketing & Sales"
+          - "Financial Management"
+          - "Operations"
+          - "Human Resources"
+          - "Legal & Compliance"
+          - "Technology"
+          - "Funding & Capital"
+          - "Leadership & Management"
+          - "Growth Strategy"
+
+      - name: mentoringNeedsDescription
+        type: wysiwyg
+        label: "Mentoring Needs Description"
+        required: true
+
+      - name: companyRole
+        type: enum
+        label: "Company Role"
+        required: false
+        default: "Client Company"
+        isSorted: false
+        options:
+          - "Client Company"
+          - "Partner"
+          - "Funder"
+          - "Other"
+        translatedOptions:
+          "Client Company": "Client Company"
+          "Partner": "Partner"
+          "Funder": "Funder"
+          "Other": "Other"
+        style:
+          "Client Company": null
+          "Partner": null
+          "Funder": null
+          "Other": null
+
+      - name: businessDescription
+        type: wysiwyg
+        label: "Business Description"
+
+      - name: timeInOperation
+        type: varchar
+        label: "Time in Operation"
+        maxLength: 100
+
+      - name: currentTeamSize
+        type: int
+        label: "Current Team Size"
+        min: 0
+
+      - name: revenueRange
+        type: enum
+        label: "Revenue Range"
+        isSorted: false
+        options:
+          - "Pre-Revenue"
+          - "Under $50K"
+          - "$50K - $100K"
+          - "$100K - $250K"
+          - "$250K - $500K"
+          - "$500K - $1M"
+          - "$1M - $5M"
+          - "Over $5M"
+        translatedOptions:
+          "Pre-Revenue": "Pre-Revenue"
+          "Under $50K": "Under $50K"
+          "$50K - $100K": "$50K - $100K"
+          "$100K - $250K": "$100K - $250K"
+          "$250K - $500K": "$250K - $500K"
+          "$500K - $1M": "$500K - $1M"
+          "$1M - $5M": "$1M - $5M"
+          "Over $5M": "Over $5M"
+        style:
+          "Pre-Revenue": null
+          "Under $50K": null
+          "$50K - $100K": null
+          "$100K - $250K": null
+          "$250K - $500K": null
+          "$500K - $1M": null
+          "$1M - $5M": null
+          "Over $5M": null
+
+      - name: fundingSituation
+        type: wysiwyg
+        label: "Funding Situation"
+
+      - name: currentChallenges
+        type: wysiwyg
+        label: "Current Challenges"
+
+      - name: goalsAndObjectives
+        type: wysiwyg
+        label: "Goals and Objectives"
+
+      - name: desiredOutcomes
+        type: wysiwyg
+        label: "Desired Outcomes (6-12 Months)"
+
+      - name: previousMentoringExperience
+        type: wysiwyg
+        label: "Previous Mentoring/Advisory Experience"
+
+      - name: currentProfessionalAdvisors
+        type: multiEnum
+        label: "Current Professional Advisors"
+        options:
+          - "Banker / Financial Institution"
+          - "Attorney / Legal Counsel"
+          - "Accountant / CPA"
+          - "IT Consultant"
+          - "Insurance Agent"
+          - "Marketing / PR Consultant"
+          - "Business Coach"
+
+      - name: registeredWithState
+        type: bool
+        label: "Registered with State"
+        default: false
+
+      - name: stateOfRegistration
+        type: enum
+        label: "State of Registration"
+        isSorted: true
+        options:
+          - "Alabama"
+          - "Alaska"
+          - "Arizona"
+          - "Arkansas"
+          - "California"
+          - "Colorado"
+          - "Connecticut"
+          - "Delaware"
+          - "Florida"
+          - "Georgia"
+          - "Hawaii"
+          - "Idaho"
+          - "Illinois"
+          - "Indiana"
+          - "Iowa"
+          - "Kansas"
+          - "Kentucky"
+          - "Louisiana"
+          - "Maine"
+          - "Maryland"
+          - "Massachusetts"
+          - "Michigan"
+          - "Minnesota"
+          - "Mississippi"
+          - "Missouri"
+          - "Montana"
+          - "Nebraska"
+          - "Nevada"
+          - "New Hampshire"
+          - "New Jersey"
+          - "New Mexico"
+          - "New York"
+          - "North Carolina"
+          - "North Dakota"
+          - "Ohio"
+          - "Oklahoma"
+          - "Oregon"
+          - "Pennsylvania"
+          - "Rhode Island"
+          - "South Carolina"
+          - "South Dakota"
+          - "Tennessee"
+          - "Texas"
+          - "Utah"
+          - "Vermont"
+          - "Virginia"
+          - "Washington"
+          - "West Virginia"
+          - "Wisconsin"
+          - "Wyoming"
+          - "District of Columbia"
+
+      - name: legalBusinessStructure
+        type: enum
+        label: "Legal Business Structure"
+        isSorted: false
+        options:
+          - "Sole Proprietor"
+          - "Partnership"
+          - "LLC"
+          - "S-Corp"
+          - "C-Corp"
+          - "Non-Profit 501(c)(3)"
+          - "Other"
+        translatedOptions:
+          "Sole Proprietor": "Sole Proprietor"
+          "Partnership": "Partnership"
+          "LLC": "LLC"
+          "S-Corp": "S-Corp"
+          "C-Corp": "C-Corp"
+          "Non-Profit 501(c)(3)": "Non-Profit 501(c)(3)"
+          "Other": "Other"
+        style:
+          "Sole Proprietor": null
+          "Partnership": null
+          "LLC": null
+          "S-Corp": null
+          "C-Corp": null
+          "Non-Profit 501(c)(3)": null
+          "Other": null
+
+      - name: einOnFile
+        type: bool
+        label: "EIN on File"
+        default: false
+
+      - name: dateOfFormation
+        type: date
+        label: "Date of Formation"
+
+      - name: registeredAgent
+        type: bool
+        label: "Registered Agent"
+        default: false
+
+      - name: einNumber
+        type: varchar
+        label: "EIN Number"
+        maxLength: 20
