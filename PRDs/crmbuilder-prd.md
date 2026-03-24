@@ -34,7 +34,7 @@ reference documentation are both outputs derived from the YAML files.
 ### 1.2 Target Users
 
 Technical administrators responsible for configuring and maintaining
-EspoCRM instances for CBM and future clients. Users are expected to be
+EspoCRM instances for any client. Users are expected to be
 comfortable with YAML but should not need to understand the EspoCRM
 REST API directly.
 
@@ -188,7 +188,7 @@ Tool repo (crmbuilder)
   ├── PRDs/        ← tool specs
   └── tests/       ← test suite
 
-Client repo (e.g. ClevelandBusinessMentoring)
+Client repo (e.g. MyClient-EspoCRM)
   ├── PRDs/                 ← source PRD documents
   ├── programs/             ← YAML program files
   ├── Implementation Docs/  ← generated reference manual

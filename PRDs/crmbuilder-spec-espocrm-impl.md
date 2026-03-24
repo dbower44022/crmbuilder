@@ -1,6 +1,5 @@
 # CRM Builder — EspoCRM Configuration Specification
 
-**Project:** Cleveland Business Mentors (CBM)  
 **Version:** 1.6  
 **Status:** Draft — Phase 1 (Entity Fields + Entity Management + Documentation)  
 **Target:** Claude Code implementation
@@ -65,8 +64,8 @@ The application opens as a single main window with a clean, professional layout.
 │  ┌─────────────────────────┐  ┌─────────────────────────────────┐  │
 │  │  INSTANCE               │  │  PROGRAM FILE                   │  │
 │  │                         │  │                                 │  │
-│  │  ○ CBM Production       │  │  ○ cbm_contact_fields.yaml      │  │
-│  │  ○ CBM Staging          │  │  ○ cbm_engagement_entity.yaml   │  │
+│  │  ○ My Instance          │  │  ○ client_contact_fields.yaml   │  │
+│  │  ○ My Instance (Test)   │  │  ○ client_engagement_fields.yaml│  │
 │  │                         │  │  ○ base_config.yaml             │  │
 │  │  [+ Add] [✎ Edit] [✕]  │  │                                 │  │
 │  │                         │  │  [+ Add] [✎ Edit] [✕]          │  │
@@ -92,7 +91,7 @@ The application opens as a single main window with a clean, professional layout.
 ### 3.2 Instance Panel
 
 Displays a list of saved instance profiles. Each profile stores:
-- Display name (e.g., "CBM Production")
+- Display name (e.g., "My CRM Instance")
 - EspoCRM URL
 - API Key (stored in plain text in a local JSON file)
 
@@ -158,8 +157,8 @@ Instance profiles are stored as JSON files in `data/instances/`. One file per in
 
 ```json
 {
-  "name": "CBM Production",
-  "url": "https://cleveland-business-mentors.espocloud.com",
+  "name": "My Instance",
+  "url": "https://your-instance.espocloud.com",
   "api_key": "your-api-key-here"
 }
 ```
@@ -178,7 +177,7 @@ Program files are the machine-readable deployment specs. They live in `data/prog
 
 ```yaml
 version: "1.0"
-description: "CBM EspoCRM Configuration — Contact Fields"
+description: "CRM Configuration — Contact Fields"
 
 entities:
   Contact:
@@ -231,7 +230,7 @@ Each field entry under an entity's `fields` list supports the following properti
 
 ```yaml
 version: "1.0"
-description: "CBM EspoCRM Configuration — Contact Fields"
+description: "CRM Configuration — Contact Fields"
 
 entities:
   Contact:
@@ -425,8 +424,8 @@ Structured machine-readable report written to `reports/`.
 {
   "run_metadata": {
     "timestamp": "2026-03-21T14:30:22Z",
-    "instance": "CBM Production",
-    "espocrm_url": "https://cleveland-business-mentors.espocloud.com",
+    "instance": "My Instance",
+    "espocrm_url": "https://your-instance.espocloud.com",
     "program_file": "cbm_contact_fields.yaml",
     "operation": "run"
   },
@@ -503,7 +502,7 @@ Phase 1 adds support for two entity-level operations in the YAML program file: *
 
 ```yaml
 version: "1.0"
-description: "CBM Full Rebuild"
+description: "Full Rebuild"
 
 entities:
   Engagement:
@@ -642,7 +641,7 @@ This ensures the new or removed entities are visible in the EspoCRM UI immediate
 
 ```yaml
 version: "1.0"
-description: "CBM Full Rebuild — All Custom Entities"
+description: "Full Rebuild — All Custom Entities"
 
 # This program deletes all existing custom entities and recreates
 # them from scratch with the correct field definitions.
@@ -716,7 +715,7 @@ entities:
 - The `isCustom: true` flag must be included in all field POST payloads. EspoCRM uses this to store custom fields in the `custom/` directory.
 - EspoCRM field names are stored in lowerCamelCase. The YAML `name` property must match this convention.
 - The `Admin/fieldManager` and entity management endpoints require admin-level API user access. Role-based API users will receive 403.
-- The target EspoCRM instance for CBM is hosted on EspoCRM Cloud (espocloud.com), version 9.3.3.
+- Tested against EspoCRM Cloud (espocloud.com), version 9.3.3.
 - **Entity management endpoints** are `POST /api/v1/EntityManager/action/createEntity` and `POST /api/v1/EntityManager/action/removeEntity`. Note these use the `EntityManager` controller, not `Admin/entityManager`. The check endpoint (to determine if an entity exists before acting) should be confirmed via network traffic — likely a GET to `EntityManager` with the entity name as a parameter.
 - After entity creation or deletion, always trigger `POST /api/v1/Admin/rebuild` before proceeding with field operations on the affected entity.
 - All long-running operations (Run, Verify) must execute in a background thread to keep the UI responsive. Use PyQt6's `QThread` or `QRunnable` with signals to post output messages back to the main thread.

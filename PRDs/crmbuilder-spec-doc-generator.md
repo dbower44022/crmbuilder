@@ -1,9 +1,9 @@
-# CBM EspoCRM Documentation Generator — Technical Specification
+# CRM Builder — Documentation Generator Specification
 
 **Version:** 1.0  
 **Status:** Draft  
 **Script:** `tools/generate_docs.py`  
-**Repository:** `ClevelandBusinessMentoring/`
+**Repository:** `crmbuilder`
 
 ---
 
@@ -15,8 +15,7 @@ for the Cleveland Business Mentors CRM system.
 
 The generated document is the authoritative implementation reference —
 it defines what must be implemented in EspoCRM to support the requirements
-stated in the CBM PRD documents. It replaces the manually-maintained
-CBM-PRD-CRM-Implementation.docx.
+stated in the client PRD documents. It replaces manually-maintained reference documents.
 
 **The YAML files are the single source of truth.** The generated document
 is always derived from them and is never edited manually.
@@ -25,8 +24,8 @@ is always derived from them and is never edited manually.
 
 | File | Format | Audience |
 |---|---|---|
-| `CBM-CRM-Reference.docx` | Word document | Stakeholders, administrators |
-| `CBM-CRM-Reference.md` | Markdown | Developers, version control |
+| `{Client}-CRM-Reference.docx` | Word document | Stakeholders, administrators |
+| `{Client}-CRM-Reference.md` | Markdown | Developers, version control |
 
 Both files are generated from the same data in a single run.
 
@@ -47,7 +46,7 @@ Options:
 | `--programs` | `data/programs/` | Directory containing YAML program files |
 | `--output` | `PRDs/generated/` | Directory for output files |
 | `--format` | `both` | Output format: `docx`, `md`, or `both` |
-| `--title` | `CBM CRM Implementation Reference` | Document title |
+| `--title` | `{Client} CRM Implementation Reference` | Document title |
 | `--version` | (from YAML files) | Override version string |
 
 ---
@@ -86,7 +85,7 @@ Version: {version}
 Generated: {timestamp}
 
 This document defines the EspoCRM configuration required to support
-the requirements specified in the CBM PRD documents. It is generated
+the requirements specified in the client PRD documents. It is generated
 automatically from the YAML program files and must not be edited manually.
 To update this document, update the YAML files and regenerate.
 ```
@@ -228,10 +227,10 @@ Panel 2: Client Details (Tab — visible when Contact Type = Client)
 
 Panel 3: Mentor Details (Tab — visible when Contact Type = Mentor)
   Sub-tabs:
-    Identity: Personal Email, CBM Gmail Address, Professional Title,
+    Identity: Personal Email, Gmail Address, Professional Title,
               Current Employer, Currently Employed, Years of Experience
     Biographical: Professional Bio, Why Interested in Mentoring,
-                  How Did You Hear About CBM
+                  How Did You Hear About Us
     Skills: NAICS Sectors, Mentoring Focus Areas, Skills & Expertise Tags,
             Fluent Languages
     Capacity: Is Mentor, Is Co-Mentor, Is SME, Mentor Status,
@@ -281,9 +280,7 @@ Search preset definitions will be added to the YAML program files in a
 future release of the implementation tool. When implemented, this section
 will be generated automatically from those definitions.
 
-Planned search presets are documented in the CBM PRD documents:
-  CBM-PRD-CRM-Client.docx — client-facing views
-  CBM-PRD-CRM-Mentor.docx — mentor-facing views
+Planned search presets are documented in the client PRD documents.
 ```
 
 ### 4.8 Section 7 — Relationships
@@ -456,9 +453,9 @@ python-docx     # Generate .docx output
 ## 6. DOCX Formatting
 
 The `.docx` output uses professional formatting consistent with the
-existing CBM PRD documents.
+existing client PRD documents.
 
-- **Title page:** CBM logo placeholder, document title, generated date
+- **Title page:** Client logo placeholder, document title, generated date
 - **Headings:** Heading 1 for major sections, Heading 2 for entities,
   Heading 3 for subsections
 - **Tables:** Banded rows, header row shaded, consistent column widths
@@ -492,7 +489,7 @@ When the Implementation Guide needs updating:
 
 1. Update the relevant YAML program file(s)
 2. Run `python tools/generate_docs.py`
-3. Review the generated `CBM-CRM-Reference.docx`
+3. Review the generated reference document
 4. Commit both the updated YAML files and the generated document to the repo
 
 The generated document is committed to the repo so stakeholders can access

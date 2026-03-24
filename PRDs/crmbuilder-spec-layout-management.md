@@ -165,7 +165,7 @@ Layouts are defined in the same YAML program file as fields, under a
 
 ```yaml
 version: "1.0"
-description: "CBM EspoCRM Configuration — Contact Layout"
+description: "CRM Configuration — Contact Layout"
 
 entities:
   Contact:
@@ -542,9 +542,9 @@ EspoCRM distributes equally.
 
 ---
 
-## 9. CBM Layout Definitions — Contact
+## 9. Example Layout Definitions — Contact
 
-Based on CBM-PRD-CRM-Implementation.docx Phase 3.
+Based on the client PRD documents.
 
 ```yaml
 layout:

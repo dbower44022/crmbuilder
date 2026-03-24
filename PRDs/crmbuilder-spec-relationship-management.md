@@ -1,4 +1,4 @@
-# CBM EspoCRM Relationship Management — Technical Specification
+# CRM Builder — Relationship Management Specification
 
 **Version:** 1.0  
 **Status:** Draft  
@@ -115,7 +115,7 @@ be defined once rather than on each side.
 
 ```yaml
 version: "1.0"
-description: "CBM EspoCRM Configuration — Relationships"
+description: "CRM Configuration — Relationships"
 
 relationships:
   - name: sessionEngagement
@@ -222,7 +222,7 @@ After creation, re-fetch the link via the check endpoint and confirm:
 
 ### 5.4 Already-Existing Relationships
 
-The 6 relationships already manually created on CBM's EspoCRM instance are
+Relationships already manually created on the EspoCRM instance are
 included in the YAML with their exact existing link names. The check step
 will find them and skip creation. This ensures full reproducibility — if
 the instance were rebuilt from scratch, all relationships would be created.
@@ -322,9 +322,9 @@ class RelationshipResult:
 
 ---
 
-## 11. CBM Relationship Inventory
+## 11. Example Relationship Inventory
 
-Complete list of all 11 CBM relationships. The first 6 already exist;
+Complete list of all 11 relationships. The first 6 already exist;
 the final 5 are to be created by the tool.
 
 | # | Primary Entity | Foreign Entity | Type | Link | Link Foreign | Status |
