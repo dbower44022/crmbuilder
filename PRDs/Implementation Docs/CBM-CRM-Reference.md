@@ -14,7 +14,7 @@ This document defines the EspoCRM configuration required to support the requirem
 
 This document is the authoritative implementation reference for the Cleveland Business Mentors CRM system built on EspoCRM. It defines every entity, field, layout, and configuration item required to support the requirements stated in the CBM PRD documents.
 
-This document is generated automatically from the YAML program files used by the EspoCRM Implementation Tool. To update this document, update the YAML files and regenerate.
+This document is generated automatically from the YAML program files used by the CRM Builder tool. To update this document, update the YAML files and regenerate.
 
 Sections marked 'Planned — Not Yet Implemented' describe future capability not yet supported by the deployment tool.
 

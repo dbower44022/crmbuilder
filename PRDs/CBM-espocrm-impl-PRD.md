@@ -182,7 +182,7 @@ ProjectFolder/
 
 ```
 Tool repo (crmbuilder)
-  ├── espo_impl/   ← application source code
+  ├── espo_impl/   ← application source code (package name retained for compatibility)
   ├── tools/       ← utilities (doc generator)
   ├── docs/        ← tool documentation
   ├── PRDs/        ← tool specs

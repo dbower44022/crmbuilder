@@ -1,4 +1,4 @@
-# EspoCRM Implementation Program — Technical Specification
+# CRM Builder — EspoCRM Configuration Specification
 
 **Project:** Cleveland Business Mentors (CBM)  
 **Version:** 1.6  
