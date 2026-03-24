@@ -14,9 +14,9 @@ The documentation generator produces a reference manual directly from the YAML,
 replacing the manually-maintained Implementation Guide.
 
 Key specifications:
-- `PRDs/CBM-SPEC-espocrm-impl.md` (v1.5) — main tool spec
-- `PRDs/CBM-SPEC-layout-management.md` — layout spec (panel description)
-- `PRDs/CBM-SPEC-doc-generator.md` — documentation generator spec
+- `PRDs/crmbuilder-spec-espocrm-impl.md` (v1.5) — main tool spec
+- `PRDs/crmbuilder-spec-layout-management.md` — layout spec (panel description)
+- `PRDs/crmbuilder-spec-doc-generator.md` — documentation generator spec
 
 Read all three before writing any code.
 Also read `/mnt/skills/public/docx/SKILL.md` before implementing the DOCX renderer.
@@ -79,7 +79,7 @@ Run `uv run pytest tests/ -v` and confirm passing before Part 2.
 ## Part 2 — Documentation Generator
 
 Build a documentation generator that reads all YAML program files and produces
-a structured reference manual. Full specification in `PRDs/CBM-SPEC-doc-generator.md`.
+a structured reference manual. Full specification in `PRDs/crmbuilder-spec-doc-generator.md`.
 
 ### Task 4 — Project Structure
 
@@ -165,7 +165,7 @@ def load_programs(programs_dir: Path) -> dict[str, dict]:
 
 ### Task 7 — Builders
 
-Implement each builder per the spec in `PRDs/CBM-SPEC-doc-generator.md`.
+Implement each builder per the spec in `PRDs/crmbuilder-spec-doc-generator.md`.
 
 **Critical behavior for descriptions:**
 
@@ -278,7 +278,7 @@ Run `uv run pytest tests/test_docgen/ -v` and confirm passing before DOCX render
 
 ### Task 12 — Update Spec and Guides
 
-**`PRDs/CBM-SPEC-espocrm-impl.md`** — already at v1.5 with description in schema.
+**`PRDs/crmbuilder-spec-espocrm-impl.md`** — already at v1.5 with description in schema.
 No changes needed.
 
 **`docs/technical-guide.md`:**

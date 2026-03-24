@@ -3,7 +3,7 @@
 **Version:** 1.0  
 **Status:** Draft  
 **Scope:** Phase 4 — Relationship Management  
-**Parent spec:** CBM-SPEC-espocrm-impl.md (v1.5)
+**Parent spec:** crmbuilder-spec-espocrm-impl.md (v1.5)
 
 ---
 

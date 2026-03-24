@@ -8,8 +8,8 @@ management — the ability to define and deploy entity relationships via YAML
 program files.
 
 Key specifications:
-- `PRDs/CBM-SPEC-espocrm-impl.md` (v1.5) — main tool spec
-- `PRDs/CBM-SPEC-relationship-management.md` — relationship spec (read this first)
+- `PRDs/crmbuilder-spec-espocrm-impl.md` (v1.5) — main tool spec
+- `PRDs/crmbuilder-spec-relationship-management.md` — relationship spec (read this first)
 
 Read both documents carefully before writing any code.
 
@@ -336,11 +336,11 @@ JSON schema addition:
 
 ## Task 6 — Update Spec and Guides
 
-### 6a — Update `PRDs/CBM-SPEC-espocrm-impl.md`
+### 6a — Update `PRDs/crmbuilder-spec-espocrm-impl.md`
 
 - Bump version to 1.6
 - Add Section 11: Relationship Management (reference
-  CBM-SPEC-relationship-management.md)
+  crmbuilder-spec-relationship-management.md)
 - Add `relationships` to the YAML top-level structure description
 - Update Future Phases — move relationships from future to current
 

@@ -2,7 +2,7 @@
 
 **Version:** 1.0  
 **Status:** Draft  
-**Depends on:** CBM-SPEC-espocrm-impl.md v1.4
+**Depends on:** crmbuilder-spec-espocrm-impl.md v1.4
 
 ---
 

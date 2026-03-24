@@ -694,11 +694,11 @@ Never commit:
 | Deployment Guide | `docs/deployment-guide.md` | Step-by-step instance deployment and production promotion |
 | User Guide | `docs/user-guide.md` | Tool installation and usage |
 | Technical Guide | `docs/technical-guide.md` | Architecture and module reference |
-| PRD | `PRDs/CBM-espocrm-impl-PRD.md` | Product requirements |
-| YAML Spec | `PRDs/CBM-SPEC-espocrm-impl.md` | Complete YAML schema reference |
-| Layout Spec | `PRDs/CBM-SPEC-layout-management.md` | Layout API and schema |
-| Relationship Spec | `PRDs/CBM-SPEC-relationship-management.md` | Relationship API and schema |
-| Doc Generator Spec | `PRDs/CBM-SPEC-doc-generator.md` | Documentation generator design |
+| PRD | `PRDs/crmbuilder-prd.md` | Product requirements |
+| YAML Spec | `PRDs/crmbuilder-spec-espocrm-impl.md` | Complete YAML schema reference |
+| Layout Spec | `PRDs/crmbuilder-spec-layout-management.md` | Layout API and schema |
+| Relationship Spec | `PRDs/crmbuilder-spec-relationship-management.md` | Relationship API and schema |
+| Doc Generator Spec | `PRDs/crmbuilder-spec-doc-generator.md` | Documentation generator design |
 
 ---
 

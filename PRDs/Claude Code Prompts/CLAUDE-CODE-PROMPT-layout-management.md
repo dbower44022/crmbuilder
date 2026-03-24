@@ -8,8 +8,8 @@ define and deploy detail view layouts and list view column definitions via YAML
 program files.
 
 The full technical specification is in two documents:
-- `PRDs/CBM-SPEC-espocrm-impl.md` — main tool spec (v1.4)
-- `PRDs/CBM-SPEC-layout-management.md` — layout management spec (read this first)
+- `PRDs/crmbuilder-spec-espocrm-impl.md` — main tool spec (v1.4)
+- `PRDs/crmbuilder-spec-layout-management.md` — layout management spec (read this first)
 
 Read both documents carefully before writing any code.
 
@@ -359,7 +359,7 @@ JSON schema addition:
 
 ## Task 6 — Update Spec and Guides
 
-### 6a — Update `PRDs/CBM-SPEC-espocrm-impl.md`
+### 6a — Update `PRDs/crmbuilder-spec-espocrm-impl.md`
 
 - Bump version to 1.5
 - Add layout management to the Phase 1 scope description
