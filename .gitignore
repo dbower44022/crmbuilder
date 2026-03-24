@@ -28,3 +28,10 @@ reports/*.log
 reports/*.json
 
 *.docx#
+
+# Client data — belongs in client repos, not here
+data/programs/cbm_*.yaml
+data/programs/*.yaml
+data/instances/*.json
+PRDs/Implementation Docs/
+PRDs/generated/
