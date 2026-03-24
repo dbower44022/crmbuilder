@@ -1,7 +1,7 @@
 [project]
-name = "espo-implementation-tool"
+name = "crmbuilder"
 version = "0.1.0"
-description = "Desktop tool for deploying EspoCRM field configurations from YAML"
+description = "CRM Builder — EspoCRM configuration deployment tool"
 readme = "README.md"
 authors = [{ name = "Doug", email = "doug@dougbower.com" }]
 requires-python = ">=3.12"
@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.scripts]
-espo-impl = "espo_impl.main:main"
+crmbuilder = "espo_impl.main:main"
 
 [build-system]
 requires = ["hatchling"]

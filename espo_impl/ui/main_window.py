@@ -49,7 +49,7 @@ class UIState:
 
 
 class MainWindow(QMainWindow):
-    """Main application window for the EspoCRM Implementation Tool.
+    """Main application window for CRM Builder.
 
     :param base_dir: Base directory for data and reports.
     """
@@ -66,7 +66,7 @@ class MainWindow(QMainWindow):
 
     def _build_ui(self) -> None:
         """Build the main window layout."""
-        self.setWindowTitle("EspoCRM Implementation Tool")
+        self.setWindowTitle("CRM Builder")
         self.setMinimumSize(900, 650)
 
         central = QWidget()
