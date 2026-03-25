@@ -1,6 +1,6 @@
 # CRM Builder — Entity Data Interview Guide
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Last Updated:** March 2026  
 **Purpose:** AI interviewer guide for Phase 2 Session A — Data Definition  
 **Changelog:** See end of document.
@@ -33,8 +33,9 @@ completion — schedule a follow-up rather than pushing through fatigue.
 - This variant clearly scoped before starting
 
 **Output:** A complete field inventory for this entity variant, ready
-for layout design. The YAML and PRD section are produced in Session C
-(Synthesis) after both data and process sessions are complete.
+for layout design, PLUS a full session transcript. The YAML and PRD
+section (including transcript) are produced in Session C (Synthesis)
+after both data and process sessions are complete.
 
 ---
 
@@ -55,6 +56,21 @@ for layout design. The YAML and PRD section are produced in Session C
 >
 > If you're not sure about something, just say so — I'll mark it as TBD
 > and add it to the task list. Ready?"
+
+### Start the Session Transcript
+
+Before asking any questions, create a running transcript for this
+session. Record every question asked and every answer given, verbatim.
+The transcript is a required output — it becomes part of the PRD.
+
+Format each exchange as:
+```
+**Q:** [Question exactly as asked]
+**A:** [User response exactly as given]
+```
+
+Do not summarize or paraphrase. If the user gives a long answer,
+record it in full.
 
 ### Variant Confirmation
 
@@ -367,4 +383,5 @@ capture the status values."
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.1 | March 2026 | Added session transcript requirement |
 | 1.0 | March 2026 | Initial release — split from original entity-interview.md |

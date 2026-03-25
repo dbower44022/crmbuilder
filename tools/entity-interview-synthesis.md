@@ -1,6 +1,6 @@
 # CRM Builder — Entity Synthesis Guide
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Last Updated:** March 2026  
 **Purpose:** AI guide for Phase 2 Session C — Synthesis  
 **Changelog:** See end of document.
@@ -24,9 +24,14 @@ reviews and approves.
 - Session B complete — full process definition with additional fields
 
 **Outputs:**
-1. **PRD Section** — human-readable entity description
+1. **PRD Section** — human-readable entity description including full session transcript
 2. **YAML Program File** — complete, deployment-ready configuration
 3. **Task List** — all TBDs and manual config items
+
+The session transcript is embedded in the PRD as the final section.
+It captures every question and answer across both Session A and Session B,
+verbatim. Stakeholders who were not present can review it, and future
+sessions can reference it when amending requirements.
 
 ---
 
@@ -237,6 +242,27 @@ relationships:
 
 | # | Decision | Rationale |
 |---|---|---|
+| 1 | [Decision] | [Why] |
+
+---
+
+## Session Transcript
+
+### Session A — Data Definition ([date])
+
+**Q:** [Question as asked]
+**A:** [User response verbatim]
+
+[Continue for all exchanges in Session A]
+
+---
+
+### Session B — Process Definition ([date])
+
+**Q:** [Question as asked]
+**A:** [User response verbatim]
+
+[Continue for all exchanges in Session B]
 ```
 
 ---
@@ -304,4 +330,5 @@ An entity is complete when:
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.1 | March 2026 | Added session transcript as required PRD section |
 | 1.0 | March 2026 | Initial release — split from original entity-interview.md |

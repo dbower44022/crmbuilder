@@ -51,9 +51,9 @@ completely different answers for a Mentor vs. a Client Contact.
 
 | Session | Output |
 |---|---|
-| A — Data | Field inventory + layout proposal |
-| B — Process | Process definitions + additional fields |
-| C — Synthesis | PRD section + YAML file + Task list |
+| A — Data | Field inventory + layout proposal + Session A transcript |
+| B — Process | Process definitions + additional fields + Session B transcript |
+| C — Synthesis | PRD section (with full transcript) + YAML file + Task list |
 
 For multi-variant entities, Session C produces one YAML per variant,
 then merges them into a single entity file with Dynamic Logic.

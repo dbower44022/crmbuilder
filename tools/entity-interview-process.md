@@ -1,6 +1,6 @@
 # CRM Builder — Entity Process Interview Guide
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Last Updated:** March 2026  
 **Purpose:** AI interviewer guide for Phase 2 Session B — Process Definition  
 **Changelog:** See end of document.
@@ -28,11 +28,23 @@ pause process, not when listing fields. Capture these additions and include
 them in the Session C synthesis.
 
 **Output:** A complete process definition for this entity variant, plus
-any additional fields discovered. Ready for Session C synthesis.
+any additional fields discovered, PLUS a continuation of the session
+transcript. Ready for Session C synthesis.
 
 ---
 
 ## Before the Session Begins
+
+### Continue the Session Transcript
+
+Continue recording the transcript started in Session A. Label this
+section clearly:
+
+```
+#### Session B — Process Definition ([date])
+```
+
+Record every question and answer verbatim throughout this session.
 
 ### Opening
 
@@ -367,4 +379,5 @@ variant] first and we'll cover [other variant] in its own session."
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.1 | March 2026 | Added session transcript continuation requirement |
 | 1.0 | March 2026 | Initial release — split from original entity-interview.md |
