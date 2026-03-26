@@ -1,6 +1,6 @@
 # CRM Builder — Technical Guide
 
-**Version:** 1.2  
+**Version:** 1.3
 **Last Updated:** March 2026  
 **Changelog:** See end of document.
 
@@ -16,16 +16,19 @@ espo_impl/
 │   ├── field_manager.py           # Field CHECK→ACT orchestration
 │   ├── entity_manager.py          # Entity create/delete orchestration
 │   ├── comparator.py              # Field spec vs API state comparison
-│   └── reporter.py                # .log and .json report generation
+│   ├── reporter.py                # .log and .json report generation
+│   └── import_manager.py          # Data import CHECK→ACT orchestration
 ├── ui/                            # PySide6 GUI components
 │   ├── main_window.py             # Top-level window + state machine
 │   ├── instance_panel.py          # Instance list + CRUD
 │   ├── instance_dialog.py         # Add/Edit instance modal
 │   ├── program_panel.py           # Program file list + CRUD
 │   ├── output_panel.py            # Color-coded monospace output
-│   └── confirm_delete_dialog.py   # Destructive op confirmation + entity name mapping
+│   ├── confirm_delete_dialog.py   # Destructive op confirmation + entity name mapping
+│   └── import_dialog.py           # Four-step data import wizard
 └── workers/
-    └── run_worker.py              # QThread wrapper for background operations
+    ├── run_worker.py              # QThread wrapper for background operations
+    └── import_worker.py           # QThread wrapper for import operations
 ```
 
 The `core/` layer has no GUI dependencies and can be tested independently. The `ui/` layer handles all PySide6 interaction. The `workers/` layer bridges the two using Qt signals for thread-safe communication.
@@ -196,6 +199,11 @@ All methods return `tuple[int, dict | None]` (status_code, response_body).
 | `check_entity_exists(name)` | GET | `/Metadata?key=scopes.{name}` | Returns `(status, bool)` |
 | `rebuild()` | POST | `/Admin/rebuild` | Cache rebuild |
 | `test_connection()` | GET | `/Metadata?key=app.adminPanel` | Returns `(bool, message)` |
+| `get_entity_field_list(entity)` | GET | `/Metadata?key=entityDefs.{entity}.fields` | All field definitions for an entity |
+| `search_by_email(entity, email)` | GET | `/{entity}?where[0][type]=equals&where[0][attribute]=emailAddress&where[0][value]={email}&maxSize=2` | Returns list of matches |
+| `get_record(entity, id)` | GET | `/{entity}/{id}` | Single record by ID |
+| `create_record(entity, payload)` | POST | `/{entity}` | Create a new record |
+| `patch_record(entity, id, payload)` | PATCH | `/{entity}/{id}` | Partial update on existing record |
 
 ### Error Handling
 
@@ -488,12 +496,12 @@ class UIState:
     last_report_path: Path | None       # Most recent report
 ```
 
-**Button enable rules:**
-- **Validate:** instance and program selected, not in progress
-- **Run:** validated, not in progress
-- **Verify:** run complete, not in progress
-- **View Report:** report file exists
-- **Generate Docs:** instance has a project folder with at least one `.yaml` file in `programs/`
+**Button behavior:** Buttons are never disabled. Each click handler checks
+preconditions and shows an explanatory message in the output panel if they
+are not met (e.g., "Select an instance first", "Validate a program file
+first", "An operation is already in progress").
+
+- **Import Data:** Opens the import wizard dialog. Requires an instance.
 
 ### Instance-Aware Directory Switching
 
@@ -600,6 +608,102 @@ Both `entity` and `entityForeign` are resolved via `get_espo_entity_name()` befo
 ### Processing Order
 
 Relationships are processed after all entity creation, field management, and layout management is complete. This ensures all referenced entities exist.
+
+---
+
+## Import Manager (`core/import_manager.py`)
+
+### Data Structures
+
+```python
+class ImportAction(Enum):
+    CREATE, UPDATE, SKIP, ERROR
+
+@dataclass
+class RecordPlan:
+    source_name: str             # display name from JSON
+    email: str | None            # email used for matching
+    action: ImportAction
+    espo_id: str | None          # set if existing record found
+    fields_to_set: dict          # payload for CREATE/UPDATE
+    fields_skipped: list         # fields with existing values
+    error_message: str | None
+
+@dataclass
+class ImportResult:
+    source_name, email, action, success, fields_set,
+    fields_skipped, error_message
+
+@dataclass
+class ImportReport:
+    timestamp, instance_name, entity, source_file,
+    total, created, updated, skipped, errors, results
+```
+
+### CHECK Phase (`check()`)
+
+For each source record:
+
+1. Build candidate payload from field mapping + fixed values
+2. Clean phone numbers to E.164 format (`+1` prefix for US 10-digit)
+3. Derive `firstName`/`lastName` from record display name or email if missing
+4. Find email address from mapped fields or fixed values
+5. Search EspoCRM by email (`search_by_email`, `maxSize=2`)
+6. If no match → `CREATE` with full payload
+7. If match found → fetch full record, compare each field:
+   - Existing value is `None` or `""` → include in `fields_to_set`
+   - Existing value is non-empty → add to `fields_skipped`
+   - All fields skipped → `SKIP`; otherwise → `UPDATE`
+8. If 2 matches → use first, log WARNING about duplicate email
+
+### ACT Phase (`execute()`)
+
+Iterates pre-computed `RecordPlan` objects from CHECK:
+
+- `CREATE` → `POST /api/v1/{entity}` with payload
+- `UPDATE` → `PATCH /api/v1/{entity}/{id}` with partial payload
+- `SKIP` / `ERROR` → logged, no API call
+
+Errors on individual records do not abort the import. Each record's
+outcome is logged with full field=value detail.
+
+### Payload Transformations
+
+- **Phone cleaning**: Strips non-digit characters, prepends `+1` for
+  10-digit US numbers, `+` for 11-digit numbers starting with `1`
+- **Name derivation**: Parses record `name` field (strips Mr./Mrs./Ms./Dr.)
+  then falls back to email local part (`first.last@domain`)
+- **Boolean conversion**: Fixed-value strings `"true"`/`"false"` →
+  Python `True`/`False`
+- **Empty filtering**: Empty string values are excluded from payload
+- **Non-writable fields**: Fields with types `personName`, `address`,
+  `map`, `foreign`, `linkParent`, `autoincrement` and fields marked
+  `readOnly` or `notStorable` are excluded from mapping dropdowns
+
+### Report Writing
+
+`write_report()` produces `.log` and `.json` files in the instance's
+`reports/` directory with filename pattern `import_{timestamp}.{ext}`.
+
+---
+
+### Import Dialog (`ui/import_dialog.py`)
+
+Four-step wizard (`QDialog` with `QStackedWidget`):
+
+| Step | Widget | Background Worker |
+|------|--------|-------------------|
+| 1 — Setup | File picker, entity combo, fixed-value table | None (sync field fetch) |
+| 2 — Mapping | Mapping table with searchable combos, unmapped list | None |
+| 3 — Preview | Scroll area with per-record plans, summary counts | `CheckWorker` (QThread) |
+| 4 — Execute | Output panel, progress bar, summary, View Report | `ImportWorker` (QThread) |
+
+The dialog is fully self-contained — it does not interact with the main
+window's `UIState`. The `EspoAdminClient` is passed in from the main window.
+
+Field combos use `setEditable(True)` with `MatchContains` completer for
+type-to-filter search. Auto-mapping uses a known alias table plus
+case-insensitive label and normalized matching.
 
 ---
 
@@ -788,7 +892,7 @@ The run sequence is in `RunWorker._run_full()`. Insert new phases between entity
 
 | Version | Date | Changes |
 |---|---|---|
-| 1.2 | March 2026 | Added project folder architecture: per-instance programs/reports/docs directories, lazy reporter initialization, instance-aware program panel switching, folder structure auto-creation |
-| 1.2 | March 2026 | Renamed to CRM Builder |
+| 1.3 | March 2026 | Added data import: import_manager.py, import_dialog.py, import_worker.py, 5 new API endpoints, never-disable button pattern |
+| 1.2 | March 2026 | Added project folder architecture, renamed to CRM Builder |
 | 1.1 | March 2026 | Added layout manager, relationship manager, documentation generator, and content_version support |
 | 1.0 | Early 2026 | Initial release covering entity and field management |

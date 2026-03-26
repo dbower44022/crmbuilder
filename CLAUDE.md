@@ -46,16 +46,19 @@ espo_impl/
 │   ├── relationship_manager.py # Relationship CHECK→ACT orchestration
 │   ├── entity_manager.py # Entity create/delete
 │   ├── comparator.py  # Field spec vs API state comparison
-│   └── reporter.py    # .log and .json report generation
+│   ├── reporter.py    # .log and .json report generation
+│   └── import_manager.py # Data import CHECK→ACT orchestration
 ├── ui/                # PySide6 GUI components
 │   ├── main_window.py # Top-level window + state machine
 │   ├── instance_panel.py # Instance list + CRUD
 │   ├── instance_dialog.py # Add/Edit instance modal
 │   ├── program_panel.py # Program file list
 │   ├── output_panel.py # Color-coded output
-│   └── confirm_delete_dialog.py # Delete confirmation + entity name mapping
+│   ├── confirm_delete_dialog.py # Delete confirmation + entity name mapping
+│   └── import_dialog.py # Four-step data import wizard
 └── workers/
-    └── run_worker.py  # QThread background operations
+    ├── run_worker.py  # QThread background operations
+    └── import_worker.py # QThread import background worker
 
 tools/
 └── docgen/            # Documentation generator
@@ -74,8 +77,13 @@ tools/
   c-prefix to link names — the tool handles this in check/verify steps
 - Each instance profile has a `project_folder` pointing to the client repo
 - YAML files live in `{project_folder}/programs/`
-- Reports go to `{project_folder}/reports/`
+- Reports go to `{project_folder}/reports/` (including import reports)
 - Generated docs go to `{project_folder}/Implementation Docs/`
+- Import Data button opens a self-contained wizard dialog (no UIState interaction)
+- Import matches records by email; never overwrites existing non-empty fields
+- Phone numbers are auto-cleaned to E.164 (+1 for US 10-digit numbers)
+- firstName/lastName are derived from record name or email when not mapped
+- Buttons are never disabled — click handlers show explanatory messages instead
 
 ## What NOT to Do
 

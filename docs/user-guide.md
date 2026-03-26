@@ -1,6 +1,6 @@
 # CRM Builder — User Guide
 
-**Version:** 2.1  
+**Version:** 3.0
 **Last Updated:** March 2026  
 **Changelog:** See end of document.
 
@@ -72,7 +72,7 @@ uv run crmbuilder
 |  [VERIFY] Contact.contactType ... VERIFIED                   |
 |  [VERIFY] Contact.mentorStatus ... VERIFIED                  |
 +--------------------------------------------------------------+
-[Clear Output]  [Generate Docs]                  [View Report]
+[Clear Output]  [Generate Docs]  [Import Data]    [View Report]
 ```
 
 ---
@@ -211,6 +211,80 @@ you to edit the instance and add one.
 
 Regenerate the docs whenever YAML files are updated. Commit both the
 updated YAML files and the regenerated docs to the client repository.
+
+---
+
+## Importing Data
+
+Click **Import Data** to open the import wizard. This imports records from
+a JSON file into an EspoCRM entity (currently Contact). The wizard has
+four steps.
+
+### Step 1 — Setup
+
+1. **Browse** to select a JSON file. The file should contain an array of
+   records, each with a `fields` dict of human-readable field names.
+2. **Entity Type** is pre-selected (Contact). The tool fetches the field
+   list from EspoCRM automatically.
+3. **Fixed-Value Fields** — add field/value pairs applied to every record.
+   For example, set `Contact Type` = `Mentor` for a mentor import. Click
+   **+ Add Field** and select from the searchable dropdown.
+
+### Step 2 — Field Mapping
+
+Map each JSON field key to an EspoCRM field. The tool auto-maps common
+fields (Email → emailAddress, Phone → phoneNumber, etc.). Fields set to
+`(skip)` are excluded from the import.
+
+- Dropdowns are searchable — type to filter the field list
+- Fields used as fixed values in Step 1 are excluded
+- Read-only and computed fields (name, address) are excluded
+- At least one field must be mapped to proceed
+
+**Unmapped Fields** panel shows JSON keys set to `(skip)` — these are
+informational only; you are not required to map every field.
+
+### Step 3 — Preview
+
+The tool checks each record against EspoCRM without making changes:
+
+| Action | Meaning |
+|---|---|
+| **CREATE** | No existing record found; will create new |
+| **UPDATE** | Existing record found; will patch only empty fields |
+| **SKIP** | Existing record found; all mapped fields already have values |
+| **ERROR** | No email address; record cannot be matched |
+
+Records are matched by email address. Existing non-empty field values are
+never overwritten.
+
+The **Import** button shows the count of records to be created or updated.
+
+### Step 4 — Execute
+
+The import runs in the background with real-time output showing each
+record's status and the field values being sent. A summary and report
+files are produced on completion.
+
+### Automatic Data Handling
+
+- **Phone numbers** are cleaned to E.164 format (`(216) 407-2836` →
+  `+12164072836`)
+- **First/Last name** are derived from the record's display name (stripping
+  salutations like Mr./Ms./Dr.) or parsed from the email address
+  (`deb.myers@...` → Deb / Myers) when not explicitly mapped
+- **Boolean fixed values** entered as `"true"` / `"false"` are converted
+  to actual booleans
+
+### Import Reports
+
+After each import, two report files are written to the instance's
+`reports/` directory:
+
+- `import_{timestamp}.log` — human-readable log with per-record details
+- `import_{timestamp}.json` — machine-readable structured report
+
+Click **View Report** to open the log file.
 
 ---
 
@@ -476,6 +550,16 @@ the `programs/` subdirectory contains `.yaml` files.
 Ensure Node.js is installed for Word document generation. The Markdown
 output does not require Node.js.
 
+### HTTP 400 during import
+Check the output log for the specific EspoCRM error message. Common causes:
+a field is mapped to a read-only or computed field, a phone number format
+is rejected, or a required field (like `lastName`) is missing. The log
+shows every field and value being sent for each record.
+
+### Import shows all records as ERROR
+Every record needs an email address for matching. Ensure a JSON field is
+mapped to `emailAddress` or that `emailAddress` is set as a fixed value.
+
 ### Confirmation dialog on Run
 Your program file contains `action: delete_and_create` or `action: delete`.
 Choose **Skip deletes** for safe field-only updates on live instances.
@@ -487,6 +571,7 @@ a clean rebuild with no live data.
 
 | Version | Date | Changes |
 |---|---|---|
+| 3.0 | March 2026 | Added data import wizard with four-step workflow, field mapping, match-by-email, never-overwrite rule, phone number cleaning, name derivation |
 | 2.1 | March 2026 | Renamed to CRM Builder |
 | 2.0 | March 2026 | Complete rewrite — added project folder concept, content versioning, layout and relationship configuration, Generate Docs button, updated troubleshooting |
 | 1.0 | Early 2026 | Initial release covering field management only |
