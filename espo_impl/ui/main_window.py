@@ -131,7 +131,6 @@ class MainWindow(QMainWindow):
 
         self.open_ref_btn = QPushButton("Open Reference Doc")
         self.open_ref_btn.clicked.connect(self._on_open_reference)
-        self.open_ref_btn.setEnabled(False)
         bottom_layout.addWidget(self.open_ref_btn)
 
         self.import_btn = QPushButton("Import Data")
@@ -170,7 +169,20 @@ class MainWindow(QMainWindow):
 
     def _on_validate_clicked(self) -> None:
         """Parse and validate the YAML, then preview planned changes."""
-        if not self.state.program_path or not self.state.instance:
+        if self.state.operation_in_progress:
+            self.output_panel.append_line(
+                "[VALIDATE] An operation is already in progress", "yellow"
+            )
+            return
+        if not self.state.instance:
+            self.output_panel.append_line(
+                "[VALIDATE] Select an instance first", "yellow"
+            )
+            return
+        if not self.state.program_path:
+            self.output_panel.append_line(
+                "[VALIDATE] Select a program file first", "yellow"
+            )
             return
 
         self.output_panel.append_line(
@@ -221,7 +233,15 @@ class MainWindow(QMainWindow):
 
     def _on_run_clicked(self) -> None:
         """Start the run operation, with confirmation if deletes are present."""
+        if self.state.operation_in_progress:
+            self.output_panel.append_line(
+                "[RUN] An operation is already in progress", "yellow"
+            )
+            return
         if not self.state.instance or not self.state.program:
+            self.output_panel.append_line(
+                "[RUN] Validate a program file first", "yellow"
+            )
             return
 
         skip_deletes = False
@@ -257,7 +277,15 @@ class MainWindow(QMainWindow):
 
     def _on_verify_clicked(self) -> None:
         """Start the verify operation in a background thread."""
+        if self.state.operation_in_progress:
+            self.output_panel.append_line(
+                "[VERIFY] An operation is already in progress", "yellow"
+            )
+            return
         if not self.state.instance or not self.state.program:
+            self.output_panel.append_line(
+                "[VERIFY] Validate a program file first", "yellow"
+            )
             return
         self._start_worker("verify")
 
@@ -349,6 +377,11 @@ class MainWindow(QMainWindow):
 
     def _on_generate_docs(self) -> None:
         """Generate reference documentation from YAML program files."""
+        if self.state.operation_in_progress:
+            self.output_panel.append_line(
+                "[DOCGEN] An operation is already in progress", "yellow"
+            )
+            return
         if not self.state.instance:
             self.output_panel.append_line(
                 "[DOCGEN] No instance selected.", "red"
@@ -406,7 +439,6 @@ class MainWindow(QMainWindow):
             )
 
             self._docx_path = docx_path
-            self.open_ref_btn.setEnabled(True)
 
             self.output_panel.append_line(
                 f"[DOCGEN]  Done. Files written to {output_dir}/",
@@ -420,7 +452,15 @@ class MainWindow(QMainWindow):
 
     def _on_import_data(self) -> None:
         """Open the import wizard dialog."""
+        if self.state.operation_in_progress:
+            self.output_panel.append_line(
+                "[IMPORT] An operation is already in progress", "yellow"
+            )
+            return
         if not self.state.instance:
+            self.output_panel.append_line(
+                "[IMPORT] Select an instance first", "yellow"
+            )
             return
 
         from espo_impl.core.api_client import EspoAdminClient
@@ -432,39 +472,40 @@ class MainWindow(QMainWindow):
 
     def _on_open_reference(self) -> None:
         """Open the generated reference document."""
-        if hasattr(self, "_docx_path") and self._docx_path.exists():
-            QDesktopServices.openUrl(
-                QUrl.fromLocalFile(str(self._docx_path))
+        if not hasattr(self, "_docx_path"):
+            self.output_panel.append_line(
+                "[DOCGEN] No reference doc generated yet "
+                "\u2014 click Generate Docs first",
+                "yellow",
             )
+            return
+        if not self._docx_path.exists():
+            self.output_panel.append_line(
+                f"[DOCGEN] Reference doc not found: {self._docx_path}",
+                "yellow",
+            )
+            return
+        QDesktopServices.openUrl(
+            QUrl.fromLocalFile(str(self._docx_path))
+        )
 
     def _on_view_report(self) -> None:
         """Open the most recent report in the system viewer."""
-        if self.state.last_report_path and self.state.last_report_path.exists():
-            QDesktopServices.openUrl(
-                QUrl.fromLocalFile(str(self.state.last_report_path))
+        if not self.state.last_report_path:
+            self.output_panel.append_line(
+                "[INFO] No report yet \u2014 run or verify a program first",
+                "yellow",
             )
+            return
+        if not self.state.last_report_path.exists():
+            self.output_panel.append_line(
+                f"[INFO] Report file not found: {self.state.last_report_path}",
+                "yellow",
+            )
+            return
+        QDesktopServices.openUrl(
+            QUrl.fromLocalFile(str(self.state.last_report_path))
+        )
 
     def _update_button_states(self) -> None:
-        """Enable/disable buttons based on current state."""
-        in_progress = self.state.operation_in_progress
-        has_selection = (
-            self.state.instance is not None
-            and self.state.program_path is not None
-        )
-
-        self.validate_btn.setEnabled(has_selection and not in_progress)
-        self.run_btn.setEnabled(self.state.validated and not in_progress)
-        self.verify_btn.setEnabled(self.state.validated and not in_progress)
-        self.report_btn.setEnabled(self.state.last_report_path is not None)
-
-        self.import_btn.setEnabled(
-            self.state.instance is not None and not in_progress
-        )
-
-        has_programs = (
-            self.state.instance is not None
-            and self.state.instance.programs_dir is not None
-            and self.state.instance.programs_dir.exists()
-            and any(self.state.instance.programs_dir.glob("*.yaml"))
-        )
-        self.docgen_btn.setEnabled(has_programs and not in_progress)
+        """Refresh any dynamic button labels. Buttons are never disabled."""

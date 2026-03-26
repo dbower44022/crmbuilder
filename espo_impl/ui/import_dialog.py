@@ -42,15 +42,25 @@ logger = logging.getLogger(__name__)
 
 # Known alias table for auto-mapping (Section 4 of spec)
 CONTACT_ALIAS_TABLE: dict[str, str] = {
-    "Contact Name": "name",
+    "Contact Name": "(skip)",
     "Preferred Name": "firstName",
     "Email": "emailAddress",
     "SCORE Email": "emailAddress",
     "Phone": "phoneNumber",
     "Personal Email": "(skip)",
-    "Mailing Address": "address",
+    "Mailing Address": "(skip)",
     "Birth Year": "cBirthYear",
     "Gender": "cGender",
+}
+
+# EspoCRM field types that are computed or composite and cannot be set directly
+NON_WRITABLE_FIELD_TYPES: set[str] = {
+    "personName",
+    "address",
+    "map",
+    "foreign",
+    "linkParent",
+    "autoincrement",
 }
 
 ENTITY_OPTIONS = ["Contact"]
@@ -189,6 +199,11 @@ class ImportDialog(QDialog):
 
         layout.addLayout(nav_layout)
 
+        # Connect entity combo signal and trigger initial field load
+        # after all widgets exist
+        self._entity_combo.currentTextChanged.connect(self._on_entity_changed)
+        self._on_entity_changed(self._entity_combo.currentText())
+
         self._update_nav_buttons()
 
     # ── Step 1: Setup ──────────────────────────────────────────────
@@ -218,7 +233,6 @@ class ImportDialog(QDialog):
         entity_layout = QHBoxLayout(entity_group)
         self._entity_combo = QComboBox()
         self._entity_combo.addItems(ENTITY_OPTIONS)
-        self._entity_combo.currentTextChanged.connect(self._on_entity_changed)
         entity_layout.addWidget(self._entity_combo)
         self._entity_status_label = QLabel("")
         entity_layout.addWidget(self._entity_status_label)
@@ -326,6 +340,10 @@ class ImportDialog(QDialog):
     def _on_add_fixed_row(self) -> None:
         """Add a new row to the fixed-value fields table."""
         if not self._espo_fields:
+            self._entity_status_label.setText(
+                "Select an entity type first — fields must be loaded"
+            )
+            self._entity_status_label.setStyleSheet("color: red;")
             return
 
         row = self._fixed_table.rowCount()
@@ -339,13 +357,13 @@ class ImportDialog(QDialog):
 
         remove_btn = QPushButton("\u2715")
         remove_btn.setFixedWidth(30)
-        remove_btn.clicked.connect(lambda: self._remove_fixed_row(row))
+        remove_btn.clicked.connect(
+            lambda _checked, b=remove_btn: self._remove_fixed_row(b)
+        )
         self._fixed_table.setCellWidget(row, 2, remove_btn)
 
-    def _remove_fixed_row(self, row: int) -> None:
-        """Remove a fixed-value row."""
-        # Find the actual row of the sender button
-        btn = self.sender()
+    def _remove_fixed_row(self, btn: QPushButton) -> None:
+        """Remove the fixed-value row containing the given button."""
         for r in range(self._fixed_table.rowCount()):
             if self._fixed_table.cellWidget(r, 2) is btn:
                 self._fixed_table.removeRow(r)
@@ -363,23 +381,49 @@ class ImportDialog(QDialog):
                     combo.setCurrentIndex(idx)
             self._fixed_table.setCellWidget(row, 0, combo)
 
+    @staticmethod
+    def _field_display(label: str, name: str) -> str:
+        """Build a display string for a field, avoiding redundancy.
+
+        Shows just the label when it matches the internal name.
+        Shows "Label (internal_name)" when they differ.
+
+        :param label: Human-readable field label.
+        :param name: Internal EspoCRM field name.
+        :returns: Display string.
+        """
+        if label.lower().replace(" ", "") == name.lower():
+            return label
+        return f"{label} ({name})"
+
     def _build_espo_field_combo(
         self, exclude_fixed: bool = True
     ) -> QComboBox:
-        """Build a QComboBox with EspoCRM fields sorted by label.
+        """Build a searchable QComboBox with EspoCRM fields sorted by label.
 
         :param exclude_fixed: If True, exclude fields used in fixed-value table.
-        :returns: Populated QComboBox.
+        :returns: Populated QComboBox with type-to-filter.
         """
         combo = QComboBox()
+        combo.setEditable(True)
+        combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        combo.completer().setFilterMode(Qt.MatchFlag.MatchContains)
+        combo.completer().setCompletionMode(
+            combo.completer().CompletionMode.PopupCompletion
+        )
         used_fields = self._get_fixed_field_names() if exclude_fixed else set()
 
         items: list[tuple[str, str]] = []
         for name, meta in self._espo_fields.items():
             if name in used_fields:
                 continue
+            field_type = meta.get("type", "")
+            if field_type in NON_WRITABLE_FIELD_TYPES:
+                continue
+            if meta.get("readOnly") or meta.get("notStorable"):
+                continue
             label = meta.get("label", name)
-            items.append((f"{label} ({name})", name))
+            items.append((self._field_display(label, name), name))
 
         items.sort(key=lambda x: x[0].lower())
         for display, data in items:
@@ -475,16 +519,27 @@ class ImportDialog(QDialog):
             item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             self._mapping_table.setItem(row, 0, item)
 
-            # EspoCRM field combo
+            # EspoCRM field combo (searchable)
             combo = QComboBox()
+            combo.setEditable(True)
+            combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+            combo.completer().setFilterMode(Qt.MatchFlag.MatchContains)
+            combo.completer().setCompletionMode(
+                combo.completer().CompletionMode.PopupCompletion
+            )
             combo.addItem("(skip)", "(skip)")
 
             items: list[tuple[str, str]] = []
             for name, meta in self._espo_fields.items():
                 if name in fixed_field_names:
                     continue
+                field_type = meta.get("type", "")
+                if field_type in NON_WRITABLE_FIELD_TYPES:
+                    continue
+                if meta.get("readOnly") or meta.get("notStorable"):
+                    continue
                 label = meta.get("label", name)
-                items.append((f"{label} \u2014 {name}", name))
+                items.append((self._field_display(label, name), name))
             items.sort(key=lambda x: x[0].lower())
             for display, data in items:
                 combo.addItem(display, data)
@@ -742,7 +797,6 @@ class ImportDialog(QDialog):
         btn_layout = QHBoxLayout()
         self._view_report_btn = QPushButton("View Report")
         self._view_report_btn.clicked.connect(self._on_view_report)
-        self._view_report_btn.setEnabled(False)
         btn_layout.addWidget(self._view_report_btn)
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
@@ -828,7 +882,6 @@ class ImportDialog(QDialog):
             self._append_output("Reports written to:", "white")
             self._append_output(f"  {log_path}", "white")
             self._append_output(f"  {json_path}", "white")
-            self._view_report_btn.setEnabled(True)
         except Exception as exc:
             self._append_output(
                 f"[ERROR] Failed to write reports: {exc}", "red"
@@ -847,10 +900,20 @@ class ImportDialog(QDialog):
 
     def _on_view_report(self) -> None:
         """Open the import report log file."""
-        if self._report_log_path and self._report_log_path.exists():
-            QDesktopServices.openUrl(
-                QUrl.fromLocalFile(str(self._report_log_path))
+        if not self._report_log_path:
+            self._append_output(
+                "[INFO] No report yet — run an import first", "yellow"
             )
+            return
+        if not self._report_log_path.exists():
+            self._append_output(
+                f"[INFO] Report file not found: {self._report_log_path}",
+                "yellow",
+            )
+            return
+        QDesktopServices.openUrl(
+            QUrl.fromLocalFile(str(self._report_log_path))
+        )
 
     def _append_output(self, message: str, color: str = "white") -> None:
         """Append a color-coded line to the output panel.
@@ -881,6 +944,8 @@ class ImportDialog(QDialog):
 
     def _on_back(self) -> None:
         """Navigate to the previous step."""
+        if self._is_operation_active():
+            return
         step = self._current_step()
         if step > 0:
             self._stack.setCurrentIndex(step - 1)
@@ -889,14 +954,29 @@ class ImportDialog(QDialog):
 
     def _on_next(self) -> None:
         """Navigate to the next step."""
+        if self._is_operation_active():
+            return
+
         step = self._current_step()
 
         if step == 0:
-            # Moving to Step 2: populate mapping table
+            if not self._records:
+                self._file_status_label.setText(
+                    "Select a JSON file first"
+                )
+                self._file_status_label.setStyleSheet("color: red;")
+                return
+            if not self._espo_fields:
+                self._entity_status_label.setText(
+                    "Entity fields must be loaded — check your connection"
+                )
+                self._entity_status_label.setStyleSheet("color: red;")
+                return
             self._stack.setCurrentIndex(1)
             self._populate_mapping_table()
         elif step == 1:
-            # Moving to Step 3: run CHECK
+            if not self._has_any_mapping():
+                return
             self._stack.setCurrentIndex(2)
             self._run_check()
         else:
@@ -907,6 +987,14 @@ class ImportDialog(QDialog):
 
     def _on_import(self) -> None:
         """Start the import (transition to Step 4)."""
+        if self._is_operation_active():
+            return
+        has_actionable = any(
+            p.action in (ImportAction.CREATE, ImportAction.UPDATE)
+            for p in self._plans
+        )
+        if not has_actionable:
+            return
         self._stack.setCurrentIndex(3)
         self._update_step_label()
         self._update_nav_buttons()
@@ -931,44 +1019,28 @@ class ImportDialog(QDialog):
         )
 
     def _update_nav_buttons(self) -> None:
-        """Update navigation button visibility and enabled state."""
+        """Update navigation button visibility."""
+        if not hasattr(self, "_back_btn"):
+            return
         step = self._current_step()
-        active = self._is_operation_active()
 
-        # Back: visible on steps 1-3, disabled during operations
+        # Back: visible on steps 1-2
         self._back_btn.setVisible(step > 0 and step < 3)
-        self._back_btn.setEnabled(not active)
 
         # Next: visible on steps 0-1
         self._next_btn.setVisible(step < 2)
-        if step == 0:
-            self._next_btn.setEnabled(
-                bool(self._records) and bool(self._espo_fields)
-            )
-        elif step == 1:
-            self._next_btn.setEnabled(self._has_any_mapping())
-        else:
-            self._next_btn.setEnabled(False)
 
-        # Import: visible on step 2, after check completes
+        # Import: visible on step 2, update label with count
         self._import_btn.setVisible(step == 2)
-        if step == 2 and not active:
-            has_actionable = any(
-                p.action in (ImportAction.CREATE, ImportAction.UPDATE)
-                for p in self._plans
+        if step == 2 and self._plans:
+            count = sum(
+                1 for p in self._plans
+                if p.action in (ImportAction.CREATE, ImportAction.UPDATE)
             )
-            self._import_btn.setEnabled(has_actionable)
-            if has_actionable:
-                count = sum(
-                    1 for p in self._plans
-                    if p.action in (ImportAction.CREATE, ImportAction.UPDATE)
-                )
+            if count:
                 self._import_btn.setText(f"Import ({count} records)")
             else:
                 self._import_btn.setText("Import")
-        else:
-            self._import_btn.setEnabled(False)
 
-        # Close: always visible on step 3, elsewhere hidden
+        # Close: visible on step 3
         self._close_btn.setVisible(step == 3)
-        self._close_btn.setEnabled(not active)

@@ -4,7 +4,7 @@ import json
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -113,7 +113,94 @@ class ImportManager:
             else:
                 payload[espo_field] = value
 
+        # Clean phone number to digits-only with leading +
+        if "phoneNumber" in payload and isinstance(payload["phoneNumber"], str):
+            payload["phoneNumber"] = self._clean_phone(payload["phoneNumber"])
+
+        # Derive firstName/lastName if not already set
+        if not payload.get("firstName") or not payload.get("lastName"):
+            # Try the record's top-level "name" field first
+            source_name = record.get("name", "")
+            if source_name:
+                first, last = self._names_from_display_name(source_name)
+                if not payload.get("firstName") and first:
+                    payload["firstName"] = first
+                if not payload.get("lastName") and last:
+                    payload["lastName"] = last
+
+            # Fall back to parsing the email address
+            email = payload.get("emailAddress", "")
+            if email:
+                first, last = self._names_from_email(email)
+                if not payload.get("firstName") and first:
+                    payload["firstName"] = first
+                if not payload.get("lastName") and last:
+                    payload["lastName"] = last
+
         return payload
+
+    @staticmethod
+    def _clean_phone(raw: str) -> str:
+        """Normalize a phone number to a format EspoCRM accepts.
+
+        Strips parentheses, dashes, spaces, and dots. Preserves a
+        leading ``+`` for international numbers. Returns digits-only
+        (with optional leading ``+``).
+
+        :param raw: Raw phone string, e.g. "(216) 407-2836".
+        :returns: Cleaned phone string, e.g. "+12164072836" or "2164072836".
+        """
+        digits = "".join(c for c in raw if c.isdigit())
+        if not digits:
+            return raw
+        # Prepend + if original had one
+        if raw.lstrip().startswith("+"):
+            return f"+{digits}"
+        # US 10-digit numbers need +1 prefix
+        if len(digits) == 10:
+            return f"+1{digits}"
+        # 11-digit starting with 1 (US with country code)
+        if len(digits) == 11 and digits.startswith("1"):
+            return f"+{digits}"
+        return digits
+
+    @staticmethod
+    def _names_from_display_name(name: str) -> tuple[str, str]:
+        """Extract first and last name from a display name.
+
+        Strips common prefixes (Mr., Mrs., Ms., Dr.) and uses
+        the first token as firstName, remaining tokens as lastName.
+
+        :param name: Display name (e.g., "Ms. Deb S Myers").
+        :returns: Tuple of (firstName, lastName).
+        """
+        parts = name.strip().split()
+        # Strip leading salutation
+        if parts and parts[0].lower().rstrip(".") in {"mr", "mrs", "ms", "dr"}:
+            parts = parts[1:]
+        if not parts:
+            return "", ""
+        if len(parts) == 1:
+            return parts[0], ""
+        return parts[0], " ".join(parts[1:])
+
+    @staticmethod
+    def _names_from_email(email: str) -> tuple[str, str]:
+        """Extract first and last name from an email address.
+
+        Expects format ``firstname.lastname@domain``.
+
+        :param email: Email address string.
+        :returns: Tuple of (firstName, lastName), title-cased.
+                  Empty strings if the format cannot be parsed.
+        """
+        local = email.split("@")[0] if "@" in email else ""
+        if not local:
+            return "", ""
+        parts = local.split(".")
+        if len(parts) >= 2:
+            return parts[0].title(), " ".join(p.title() for p in parts[1:])
+        return parts[0].title(), ""
 
     def _find_email(
         self,
@@ -299,7 +386,7 @@ class ImportManager:
         :returns: ImportReport with per-record results.
         """
         report = ImportReport(
-            timestamp=datetime.now(datetime.UTC).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             instance_name=self.client.profile.name,
             entity=entity,
             source_file="",
@@ -344,6 +431,7 @@ class ImportManager:
                     f"[IMPORT]  {plan.source_name} ... CREATING",
                     "white",
                 )
+                self._emit_payload(plan.fields_to_set)
                 status, body = self.client.create_record(
                     entity, plan.fields_to_set
                 )
@@ -361,9 +449,7 @@ class ImportManager:
                         fields_set=list(plan.fields_to_set.keys()),
                     ))
                 else:
-                    error_msg = f"HTTP {status}"
-                    if isinstance(body, dict) and "message" in body:
-                        error_msg = body["message"]
+                    error_msg = self._extract_error(status, body)
                     self.emit_line(
                         f"[IMPORT]  {plan.source_name} ... "
                         f"ERROR — {error_msg}",
@@ -381,10 +467,10 @@ class ImportManager:
 
             if plan.action == ImportAction.UPDATE:
                 self.emit_line(
-                    f"[IMPORT]  {plan.source_name} ... "
-                    f"UPDATE (patching {len(plan.fields_to_set)} fields)",
+                    f"[IMPORT]  {plan.source_name} ... UPDATE",
                     "white",
                 )
+                self._emit_payload(plan.fields_to_set)
                 status, body = self.client.patch_record(
                     entity, plan.espo_id, plan.fields_to_set
                 )
@@ -403,9 +489,7 @@ class ImportManager:
                         fields_skipped=list(plan.fields_skipped),
                     ))
                 else:
-                    error_msg = f"HTTP {status}"
-                    if isinstance(body, dict) and "message" in body:
-                        error_msg = body["message"]
+                    error_msg = self._extract_error(status, body)
                     self.emit_line(
                         f"[IMPORT]  {plan.source_name} ... "
                         f"ERROR — {error_msg}",
@@ -421,6 +505,36 @@ class ImportManager:
                     ))
 
         return report
+
+    def _emit_payload(self, fields: dict[str, Any]) -> None:
+        """Emit one line per field showing the value being sent.
+
+        :param fields: {espo_field_name: value} payload.
+        """
+        for field_name, value in fields.items():
+            display = value
+            if isinstance(value, str) and len(value) > 60:
+                display = value[:57] + "..."
+            self.emit_line(
+                f"           {field_name} = {display!r}",
+                "white",
+            )
+
+    @staticmethod
+    def _extract_error(status: int, body: Any) -> str:
+        """Extract a human-readable error message from an API response.
+
+        :param status: HTTP status code.
+        :param body: Parsed response body.
+        :returns: Error message string.
+        """
+        if isinstance(body, dict):
+            if "message" in body:
+                return f"HTTP {status}: {body['message']}"
+            if "messageTranslation" in body:
+                return f"HTTP {status}: {body['messageTranslation']}"
+            return f"HTTP {status}: {body}"
+        return f"HTTP {status}"
 
     def write_report(
         self,
