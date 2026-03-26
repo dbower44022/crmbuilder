@@ -260,6 +260,85 @@ class EspoAdminClient:
         url = f"{self.profile.api_url}/{entity}/layout/{layout_type}"
         return self._request("PUT", url, json=payload)
 
+    # --- Data-level endpoints ---
+
+    def get_entity_field_list(
+        self, entity: str
+    ) -> tuple[int, dict[str, dict] | None]:
+        """Fetch all field definitions for an entity.
+
+        :param entity: Entity name (e.g., "Contact").
+        :returns: Tuple of (status_code, {fieldName: {label, type, ...}} or None).
+        """
+        url = (
+            f"{self.profile.api_url}/Metadata"
+            f"?key=entityDefs.{entity}.fields"
+        )
+        return self._request("GET", url)
+
+    def search_by_email(
+        self, entity: str, email: str
+    ) -> tuple[int, list[dict] | None]:
+        """Search for records matching an email address.
+
+        :param entity: Entity name (e.g., "Contact").
+        :param email: Email address to search for.
+        :returns: Tuple of (status_code, list of matching records or None).
+        """
+        url = (
+            f"{self.profile.api_url}/{entity}"
+            f"?where[0][type]=equals"
+            f"&where[0][attribute]=emailAddress"
+            f"&where[0][value]={email}"
+            f"&maxSize=2"
+        )
+        status, body = self._request("GET", url)
+        if status == 200 and isinstance(body, dict):
+            return status, body.get("list", [])
+        return status, [] if status == 200 else None
+
+    def get_record(
+        self, entity: str, record_id: str
+    ) -> tuple[int, dict[str, Any] | None]:
+        """Fetch a single record by ID.
+
+        :param entity: Entity name.
+        :param record_id: EspoCRM record ID.
+        :returns: Tuple of (status_code, record dict or None).
+        """
+        url = f"{self.profile.api_url}/{entity}/{record_id}"
+        return self._request("GET", url)
+
+    def create_record(
+        self, entity: str, payload: dict[str, Any]
+    ) -> tuple[int, dict[str, Any] | None]:
+        """Create a new record.
+
+        :param entity: Entity name.
+        :param payload: Field values to set.
+        :returns: Tuple of (status_code, created record or None).
+        """
+        url = f"{self.profile.api_url}/{entity}"
+        return self._request("POST", url, json=payload)
+
+    def patch_record(
+        self, entity: str, record_id: str, payload: dict[str, Any]
+    ) -> tuple[int, dict[str, Any] | None]:
+        """Patch specific fields on an existing record.
+
+        Only the fields included in payload are updated.
+        Fields not in payload are left unchanged.
+
+        :param entity: Entity name.
+        :param record_id: EspoCRM record ID.
+        :param payload: Partial field values to update.
+        :returns: Tuple of (status_code, response or None).
+        """
+        url = f"{self.profile.api_url}/{entity}/{record_id}"
+        return self._request("PATCH", url, json=payload)
+
+    # --- Connection test ---
+
     def test_connection(self) -> tuple[bool, str]:
         """Test API connectivity by fetching metadata.
 

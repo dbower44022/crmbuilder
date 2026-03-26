@@ -134,6 +134,10 @@ class MainWindow(QMainWindow):
         self.open_ref_btn.setEnabled(False)
         bottom_layout.addWidget(self.open_ref_btn)
 
+        self.import_btn = QPushButton("Import Data")
+        self.import_btn.clicked.connect(self._on_import_data)
+        bottom_layout.addWidget(self.import_btn)
+
         bottom_layout.addStretch()
         self.report_btn = QPushButton("View Report")
         self.report_btn.clicked.connect(self._on_view_report)
@@ -414,6 +418,18 @@ class MainWindow(QMainWindow):
                 f"[DOCGEN]  ERROR: {exc}", "red"
             )
 
+    def _on_import_data(self) -> None:
+        """Open the import wizard dialog."""
+        if not self.state.instance:
+            return
+
+        from espo_impl.core.api_client import EspoAdminClient
+        from espo_impl.ui.import_dialog import ImportDialog
+
+        client = EspoAdminClient(self.state.instance)
+        dialog = ImportDialog(self.state.instance, client, self)
+        dialog.exec()
+
     def _on_open_reference(self) -> None:
         """Open the generated reference document."""
         if hasattr(self, "_docx_path") and self._docx_path.exists():
@@ -440,6 +456,10 @@ class MainWindow(QMainWindow):
         self.run_btn.setEnabled(self.state.validated and not in_progress)
         self.verify_btn.setEnabled(self.state.validated and not in_progress)
         self.report_btn.setEnabled(self.state.last_report_path is not None)
+
+        self.import_btn.setEnabled(
+            self.state.instance is not None and not in_progress
+        )
 
         has_programs = (
             self.state.instance is not None
