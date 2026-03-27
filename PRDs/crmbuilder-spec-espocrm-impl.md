@@ -1,7 +1,7 @@
 # CRM Builder — EspoCRM Configuration Specification
 
-**Version:** 1.6  
-**Status:** Draft — Phase 1 (Entity Fields + Entity Management + Documentation)  
+**Version:** 1.7  
+**Status:** Active — Phase 1 (Entity Fields + Entity Management), Phase 2 (Relationships), Phase 3 (Layouts) Implemented  
 **Target:** Claude Code implementation
 
 ---
@@ -12,7 +12,7 @@ This program automates the configuration of an EspoCRM instance by reading a dec
 
 The program is designed to be idempotent — it can be run repeatedly and will only make changes where the current instance state differs from the desired spec. Program files are generic and reusable against any EspoCRM instance.
 
-Phase 1 covers entity fields and custom entity management (create and delete). Future phases will add additional object types using the same architecture.
+Phase 1 covers entity fields and custom entity management (create and delete). Phase 2 covers relationships. Phase 3 covers entity layouts (detail, edit, and list views). Future phases will add Dynamic Logic rules, search presets, and role management.
 
 ---
 
@@ -195,11 +195,12 @@ Each field entry under an entity's `fields` list supports the following properti
 | `type` | string | yes | EspoCRM field type (see 5.3) |
 | `label` | string | yes | Display label shown in UI |
 | `description` | string | no | Business rationale and PRD reference for this field |
-| `required` | boolean | no | Default: false |
-| `default` | string | no | Default value |
-| `readOnly` | boolean | no | Default: false |
-| `audited` | boolean | no | Default: false |
-| `category` | string | no | UI grouping / tab category for layout management |
+| `required` | boolean | no | Field must be filled in before saving. Default: false |
+| `default` | string | no | Default value when a new record is created |
+| `readOnly` | boolean | no | Field cannot be edited by users. Default: false |
+| `audited` | boolean | no | Changes to this field are logged in the record's activity stream with old and new values. Default: false. Use on status fields and other significant change indicators. |
+| `copyToClipboard` | boolean | no | Adds a copy-to-clipboard button next to the field in the detail view. Useful for email addresses, phone numbers, URLs, EIN numbers, and other frequently-copied values. EspoCRM API property: `copyToClipboard`. Default: false |
+| `category` | string | no | UI grouping / tab category for layout management. Used by the layout engine to auto-assign fields to the correct panel tab. |
 | `options` | list | enum/multiEnum only | List of option values |
 | `translatedOptions` | map | enum/multiEnum only | Display labels for each option value |
 | `style` | map | enum/multiEnum only | Color style per option (null = default) |
@@ -700,13 +701,13 @@ entities:
 
 ## 12. Future Phases
 
-| Phase | Object Type | EspoCRM Endpoint |
-|---|---|---|
-| ~~2~~ | ~~Relationships~~ | Implemented — `EntityManager/action/createLink` |
-| 3 | Entity layouts (detail/edit/list) | `Admin/layouts/{entity}/{layoutType}` |
-| 4 | Dynamic Logic rules | Embedded in field definitions (extend Phase 1) |
-| 5 | Search presets / filters | `Admin/searchManager` (TBD) |
-| 6 | Roles and permissions | `Role` entity via standard CRUD |
+| Phase | Object Type | EspoCRM Endpoint | Status |
+|---|---|---|---|
+| ~~2~~ | ~~Relationships~~ | `EntityManager/action/createLink` | ✅ Implemented |
+| ~~3~~ | ~~Entity layouts (detail/edit/list)~~ | `Admin/layouts/{entity}/{layoutType}` | ✅ Implemented |
+| 4 | Dynamic Logic rules | Embedded in field definitions (extend Phase 1) | Planned |
+| 5 | Search presets / filters | `Admin/searchManager` (TBD) | Planned |
+| 6 | Roles and permissions | `Role` entity via standard CRUD | Planned |
 
 ---
 
