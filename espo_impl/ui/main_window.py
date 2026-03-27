@@ -133,6 +133,10 @@ class MainWindow(QMainWindow):
         self.open_ref_btn.clicked.connect(self._on_open_reference)
         bottom_layout.addWidget(self.open_ref_btn)
 
+        self.preview_btn = QPushButton("Preview YAML")
+        self.preview_btn.clicked.connect(self._on_preview_yaml)
+        bottom_layout.addWidget(self.preview_btn)
+
         self.import_btn = QPushButton("Import Data")
         self.import_btn.clicked.connect(self._on_import_data)
         bottom_layout.addWidget(self.import_btn)
@@ -449,6 +453,34 @@ class MainWindow(QMainWindow):
             self.output_panel.append_line(
                 f"[DOCGEN]  ERROR: {exc}", "red"
             )
+
+    def _on_preview_yaml(self) -> None:
+        """Open the YAML preview dialog."""
+        if not self.state.instance:
+            self.output_panel.append_line(
+                "[PREVIEW] Select an instance first", "yellow"
+            )
+            return
+
+        programs_dir = self.state.instance.programs_dir
+        if not programs_dir:
+            self.output_panel.append_line(
+                "[PREVIEW] No project folder configured for this instance",
+                "yellow",
+            )
+            return
+
+        if not programs_dir.exists() or not any(programs_dir.glob("*.yaml")):
+            self.output_panel.append_line(
+                f"[PREVIEW] No YAML files found in {programs_dir}",
+                "yellow",
+            )
+            return
+
+        from espo_impl.ui.yaml_preview_dialog import YamlPreviewDialog
+
+        dialog = YamlPreviewDialog(programs_dir, self)
+        dialog.exec()
 
     def _on_import_data(self) -> None:
         """Open the import wizard dialog."""

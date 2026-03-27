@@ -95,6 +95,7 @@ class CheckWorker(QThread):
         records: list[dict],
         field_mapping: dict[str, str],
         fixed_values: dict[str, str],
+        source_file: str = "",
         parent=None,
     ) -> None:
         super().__init__(parent)
@@ -103,6 +104,7 @@ class CheckWorker(QThread):
         self.records = records
         self.field_mapping = field_mapping
         self.fixed_values = fixed_values
+        self.source_file = source_file
 
     def run(self) -> None:
         """Run CHECK in background thread."""
@@ -113,6 +115,7 @@ class CheckWorker(QThread):
                 self.records,
                 self.field_mapping,
                 self.fixed_values,
+                self.source_file,
             )
             self.finished.emit(plans)
         except Exception as exc:
@@ -680,6 +683,7 @@ class ImportDialog(QDialog):
             self._records,
             self._field_mapping,
             self._fixed_values,
+            self._source_file,
             parent=self,
         )
         self._check_worker.output_line.connect(self._on_check_output)
@@ -821,6 +825,7 @@ class ImportDialog(QDialog):
             self.client,
             self._entity_combo.currentText(),
             self._plans,
+            self._source_file,
             parent=self,
         )
         self._import_worker.output_line.connect(self._on_import_output)

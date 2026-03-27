@@ -24,12 +24,14 @@ class ImportWorker(QThread):
         client: EspoAdminClient,
         entity: str,
         plans: list[RecordPlan],
+        source_file: str = "",
         parent=None,
     ) -> None:
         super().__init__(parent)
         self.client = client
         self.entity = entity
         self.plans = plans
+        self.source_file = source_file
 
     def run(self) -> None:
         """Execute the import in a background thread."""
@@ -37,7 +39,9 @@ class ImportWorker(QThread):
             manager = ImportManager(
                 self.client, emit_line=self.output_line.emit
             )
-            report = manager.execute(self.entity, self.plans)
+            report = manager.execute(
+                self.entity, self.plans, self.source_file
+            )
             self.finished_ok.emit(report)
         except Exception as exc:
             self.finished_error.emit(str(exc))

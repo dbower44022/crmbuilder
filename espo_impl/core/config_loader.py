@@ -81,12 +81,17 @@ class ConfigLoader:
                 else:
                     action = EntityAction.NONE
 
-                # Parse fields
+                # Parse fields (list or dict format)
                 fields: list[FieldDefinition] = []
                 raw_fields = entity_data.get("fields", [])
                 if isinstance(raw_fields, list):
                     for field_data in raw_fields:
                         if isinstance(field_data, dict):
+                            fields.append(self._parse_field(field_data))
+                elif isinstance(raw_fields, dict):
+                    for field_name, field_data in raw_fields.items():
+                        if isinstance(field_data, dict):
+                            field_data.setdefault("name", field_name)
                             fields.append(self._parse_field(field_data))
 
                 # Parse layouts

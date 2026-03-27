@@ -237,6 +237,7 @@ class ImportManager:
         records: list[dict],
         field_mapping: dict[str, str],
         fixed_values: dict[str, str],
+        source_file: str = "",
     ) -> list[RecordPlan]:
         """Determine the action for each record without making changes.
 
@@ -244,9 +245,15 @@ class ImportManager:
         :param records: List of source records (each has a 'fields' dict).
         :param field_mapping: {json_field_key: espo_field_name}.
         :param fixed_values: {espo_field_name: value} applied to all records.
+        :param source_file: Source JSON filename for log output.
         :returns: List of RecordPlan, one per source record.
         """
         plans: list[RecordPlan] = []
+
+        if source_file:
+            self.emit_line(
+                f"[CHECK]   Source file: {source_file}", "white"
+            )
 
         for i, record in enumerate(records):
             source_name = record.get("name", f"Record {i + 1}")
@@ -378,18 +385,25 @@ class ImportManager:
         self,
         entity: str,
         plans: list[RecordPlan],
+        source_file: str = "",
     ) -> ImportReport:
         """Execute a list of RecordPlans produced by check().
 
         :param entity: EspoCRM entity name.
         :param plans: Plans from check().
+        :param source_file: Source JSON filename for log output.
         :returns: ImportReport with per-record results.
         """
+        if source_file:
+            self.emit_line(
+                f"[IMPORT]  Source file: {source_file}", "white"
+            )
+
         report = ImportReport(
             timestamp=datetime.now(UTC).isoformat(),
             instance_name=self.client.profile.name,
             entity=entity,
-            source_file="",
+            source_file=source_file,
             total=len(plans),
         )
 
