@@ -1,6 +1,6 @@
 # CRM Builder — EspoCRM Configuration Specification
 
-**Version:** 1.8  
+**Version:** 1.9  
 **Status:** Active — Phase 1 (Entity Fields + Entity Management), Phase 2 (Relationships), Phase 3 (Layouts) Implemented  
 **Target:** Claude Code implementation
 
@@ -148,11 +148,11 @@ Output is not cleared between operations in the same session — the full histor
 
 ### 3.7 Import Tooltips
 
-The **Import Tooltips** action reads the `description` property from each field definition in the selected program file and writes it to the EspoCRM field's `tooltip` property via the API. This populates the in-app help tooltip that appears next to field labels in the detail and edit views, helping users understand the purpose and expected content of each field without leaving the CRM.
+The **Import Tooltips** action reads the `tooltip` property from each field definition in the selected program file and writes it to the EspoCRM field's `tooltip` property via the API. This populates the in-app help tooltip that appears next to field labels in the detail and edit views, helping users understand the purpose and expected content of each field without leaving the CRM.
 
 **Behavior:**
-- Operates on all fields in the selected program file that have a non-empty `description` value
-- Fields without a `description` are skipped
+- Operates on all fields in the selected program file that have a non-empty `tooltip` value
+- Fields without a `tooltip` property are skipped — their EspoCRM tooltip is not modified
 - Uses the same check → act → verify pattern as field deployment
 - Can be run independently of the main Run operation — tooltips can be updated at any time without redeploying fields
 - Idempotent — running multiple times produces the same result
@@ -163,10 +163,13 @@ The **Import Tooltips** action reads the `description` property from each field 
 ```
 [TOOLTIP]  Contact.mentorStatus ... UPDATED OK
 [TOOLTIP]  Contact.contactType ... NO CHANGE
-[TOOLTIP]  Contact.isMentor ... SKIPPED (no description)
+[TOOLTIP]  Contact.isMentor ... SKIPPED (no tooltip)
 ```
 
-**Design note:** The `description` field in YAML is intentionally dual-purpose — it serves as human-readable documentation in the YAML file (for developers and reviewers) and as the source for EspoCRM field tooltips (for end users). Authors should write descriptions that are meaningful in both contexts: concise enough to work as a tooltip, rich enough to document the field's purpose and PRD reference.
+**Design note:** The `tooltip` and `description` properties serve different audiences and should be authored separately:
+
+- `tooltip` — written for **end users** operating the CRM. Concise, plain language. Explains what to enter and why. Example: *"Select the business areas where this mentor can provide guidance. Used to match mentors to clients with aligned needs."*
+- `description` — written for **developers and implementers**. Can include PRD section references, MANUAL CONFIG instructions, implementation notes, and technical rationale. Not deployed to EspoCRM.
 
 ---
 
@@ -213,7 +216,8 @@ Each field entry under an entity's `fields` list supports the following properti
 | `name` | string | yes | Internal field name (lowerCamelCase) |
 | `type` | string | yes | EspoCRM field type (see 5.3) |
 | `label` | string | yes | Display label shown in UI |
-| `description` | string | no | Business rationale and PRD reference for this field. When the **Import Tooltips** feature is run, this value is written to the EspoCRM field's `tooltip` property, which displays as a help tooltip next to the field label in the detail and edit views. |
+| `description` | string | no | Developer-facing documentation for this field. Captures business rationale, PRD references, MANUAL CONFIG notes, and implementation context. Visible in the YAML file and generated documentation. Not deployed to EspoCRM. |
+| `tooltip` | string | no | User-facing help text deployed to the EspoCRM field's `tooltip` property. Appears as a help icon next to the field label in detail and edit views. Should be concise and written for end users, not developers. When the **Import Tooltips** feature is run, this value is written to EspoCRM. If omitted, the field's tooltip in EspoCRM is not modified. |
 | `required` | boolean | no | Field must be filled in before saving. Default: false |
 | `default` | string | no | Default value when a new record is created |
 | `readOnly` | boolean | no | Field cannot be edited by users. Default: false |
