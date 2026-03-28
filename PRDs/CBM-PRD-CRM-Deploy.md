@@ -69,7 +69,183 @@ new server through deploying configuration to it.
 
 ---
 
-## 4. Architecture
+## 4. Prerequisites
+
+The following must be completed by the administrator **before** opening the
+Setup Wizard in CRM Builder. The deployment tool will validate some of these
+automatically, but most require manual action in advance.
+
+### 4.1 DigitalOcean Account and Droplet
+
+1. **Create a DigitalOcean account** at https://digitalocean.com if you do
+   not already have one.
+
+2. **Provision a Droplet** with the following specifications:
+
+   | Setting | Production | Test / Staging |
+   |---------|-----------|----------------|
+   | Image | Ubuntu 22.04 LTS x64 | Ubuntu 22.04 LTS x64 |
+   | Size | 2 vCPU / 4 GB RAM / 80 GB SSD (~$24/mo) | 1 vCPU / 2 GB RAM / 50 GB SSD (~$12/mo) |
+   | Region | Choose closest to your users | Same region as Production |
+   | Authentication | SSH Key (see section 4.2) | SSH Key |
+
+   > Do not select a one-click app (WordPress, LAMP, etc.) — the Droplet
+   > must be a clean Ubuntu 22.04 image with nothing pre-installed.
+
+3. **Note the Droplet's public IPv4 address** — you will need it in the
+   Setup Wizard and for the DNS A record below.
+
+4. **Enable DigitalOcean backups** (optional but recommended for Production):
+   In the Droplet settings, enable Weekly Backups. This adds approximately
+   20% to the Droplet cost but provides automated snapshots.
+
+### 4.2 SSH Key
+
+CRM Builder connects to the Droplet via SSH using key-based authentication.
+Password-based SSH is not supported.
+
+**If you already have an SSH key pair:**
+- Locate your private key file (typically `~/.ssh/id_rsa` on Mac/Linux or
+  `C:\Users\you\.ssh\id_rsa` on Windows)
+- Ensure the corresponding public key is added to the Droplet (see below)
+
+**If you need to create a new SSH key pair:**
+
+On Mac or Linux:
+```bash
+ssh-keygen -t ed25519 -C "crm-deploy"
+```
+Accept the default file location. You may set a passphrase or leave it blank.
+
+On Windows (PowerShell):
+```powershell
+ssh-keygen -t ed25519 -C "crm-deploy"
+```
+
+**Adding your public key to the Droplet:**
+
+The easiest method is to add the key when creating the Droplet in the
+DigitalOcean control panel:
+1. In the Droplet creation screen, under **Authentication**, select
+   **SSH Key → New SSH Key**
+2. Paste the contents of your public key file (e.g. `~/.ssh/id_rsa.pub`
+   or `~/.ssh/id_ed25519.pub`)
+3. Click **Add SSH Key**
+
+If the Droplet already exists:
+1. Copy your public key to the clipboard:
+   ```bash
+   cat ~/.ssh/id_ed25519.pub
+   ```
+2. SSH into the Droplet as root using the DigitalOcean console
+3. Append your public key to `/root/.ssh/authorized_keys`:
+   ```bash
+   echo "your-public-key-here" >> ~/.ssh/authorized_keys
+   ```
+
+**Verify SSH access before running the deployment tool:**
+```bash
+ssh -i ~/.ssh/id_ed25519 root@<droplet-ip>
+```
+You should connect without a password prompt. If you are prompted for a
+password, the key is not configured correctly — do not proceed until this
+is resolved.
+
+### 4.3 Domain Name and DNS
+
+A registered domain name is required for all deployments. The deployment
+tool does not support bare IP address installations.
+
+**Subdomain conventions:**
+
+| Environment | Subdomain | Example |
+|-------------|-----------|---------|
+| Production | `crm` | `crm.mycompany.com` |
+| Test / Staging | `crm-test` | `crm-test.mycompany.com` |
+
+**Creating the DNS A record:**
+
+Log in to your DNS provider (wherever your domain name is registered or
+managed — e.g. DigitalOcean DNS, GoDaddy, Namecheap, Cloudflare) and
+create an A record:
+
+| Field | Value |
+|-------|-------|
+| Type | `A` |
+| Name / Host | `crm` (production) or `crm-test` (test) |
+| Value / Points To | The Droplet's public IPv4 address |
+| TTL | `300` (5 minutes — can be raised to 3600 after confirming it works) |
+
+**Provider-specific notes:**
+
+- **Cloudflare users:** Set the proxy status to **DNS only** (grey cloud,
+  not orange). The EspoCRM Let's Encrypt challenge requires a direct
+  connection to the server; Cloudflare's proxy will cause certificate
+  issuance to fail.
+- **All other providers:** Standard A record creation applies.
+
+**Waiting for DNS propagation:**
+
+After saving the A record, wait for it to propagate before starting
+deployment. With a TTL of 300 seconds this is typically 2–10 minutes,
+but can occasionally take longer.
+
+You can verify propagation using any of the following:
+
+```bash
+# On Mac / Linux
+dig crm.mycompany.com +short
+# Should return your Droplet IP
+
+# On Windows
+nslookup crm.mycompany.com
+# Look for the Address line — should match your Droplet IP
+```
+
+Or use an online tool such as https://dnschecker.org.
+
+> CRM Builder will automatically validate DNS propagation before starting
+> deployment and will wait up to 10 minutes, retrying every 30 seconds.
+> However, confirming it manually in advance avoids delays at startup.
+
+### 4.4 Information to Have Ready
+
+Before opening the Setup Wizard, have the following ready:
+
+| Item | Notes |
+|------|-------|
+| Droplet IP address | From the DigitalOcean control panel |
+| SSH private key file path | e.g. `~/.ssh/id_ed25519` |
+| Base domain | e.g. `mycompany.com` |
+| Subdomain | `crm` for production, `crm-test` for test |
+| Let's Encrypt email address | Used for certificate expiry notifications — use a monitored address |
+| EspoCRM admin username | Default: `admin` |
+| EspoCRM admin password | Choose a strong password; store it securely |
+| EspoCRM admin email address | The admin user's email address |
+| EspoCRM DB password | Choose a strong password; store it securely |
+| MariaDB root password | Optional — leave blank to auto-generate |
+
+> Passwords entered in the Setup Wizard are saved to a local configuration
+> file and used during deployment. Store all credentials in a password
+> manager — they cannot be recovered from CRM Builder after entry.
+
+### 4.5 CRM Builder Instance Profile
+
+Before using the Deploy feature, create an Instance Profile in CRM Builder
+for the environment you are deploying:
+
+1. In CRM Builder, click **+ Add** in the Instance panel
+2. Enter a name (e.g. `MyCompany CRM — Production`)
+3. You do not need a working URL yet — the Deploy feature will update the
+   URL automatically after a successful deployment
+4. Save the profile and select it in the Instance panel
+
+The Deploy panel will then show a **Set Up Deployment** button, which opens
+the Setup Wizard.
+
+---
+
+## 5. Architecture
 
 ### 4.1 Hosting Infrastructure
 
@@ -112,7 +288,7 @@ CRM Builder:
 
 ---
 
-## 5. User Experience
+## 6. User Experience
 
 ### 5.1 Deploy Panel in the Main Window
 
@@ -227,7 +403,7 @@ user can export results as a text file.
 
 ---
 
-## 6. Functional Requirements
+## 7. Functional Requirements
 
 ### 6.1 Deployment Configuration
 
@@ -337,7 +513,7 @@ sudo bash install.sh -y --ssl --letsencrypt \
 
 ---
 
-## 7. Error Handling
+## 8. Error Handling
 
 ### 7.1 Failure Behavior
 
@@ -364,7 +540,7 @@ a **Restart Deployment** button to re-run from Phase 1.
 
 ---
 
-## 8. Security Requirements
+## 9. Security Requirements
 
 - Passwords are masked in all log output — never logged in plaintext
 - Deployment config files are gitignored — the tool verifies
@@ -375,7 +551,7 @@ a **Restart Deployment** button to re-run from Phase 1.
 
 ---
 
-## 9. Technical Requirements
+## 10. Technical Requirements
 
 ### 9.1 Language and Runtime
 
@@ -441,7 +617,7 @@ class DeployConfig:
 
 ---
 
-## 10. Out of Scope
+## 11. Out of Scope
 
 - DigitalOcean Droplet provisioning
 - DNS record configuration
@@ -451,7 +627,7 @@ class DeployConfig:
 
 ---
 
-## 11. Decisions
+## 12. Decisions
 
 | # | Decision |
 |---|----------|
