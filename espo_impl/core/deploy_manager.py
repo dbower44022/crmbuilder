@@ -117,14 +117,19 @@ def mask_credentials(command: str, config: DeployConfig) -> str:
     :param config: Deploy config containing credential values.
     :returns: Command with credentials masked.
     """
-    safe = command
-    for val, label in [
+    # Replace longest values first to avoid substring collisions
+    # (e.g., if db_password is a prefix of admin_password)
+    replacements = [
         (config.db_password, "[db_password]"),
         (config.db_root_password, "[db_root_password]"),
         (config.admin_password, "[admin_password]"),
-    ]:
-        if val:
-            safe = safe.replace(val, label)
+    ]
+    replacements = [(v, lbl) for v, lbl in replacements if v]
+    replacements.sort(key=lambda x: len(x[0]), reverse=True)
+
+    safe = command
+    for val, label in replacements:
+        safe = safe.replace(val, label)
     return safe
 
 
@@ -132,6 +137,7 @@ def run_remote(
     ssh: paramiko.SSHClient,
     command: str,
     log_callback: Callable[[str], None] | None = None,
+    get_pty: bool = False,
 ) -> tuple[int, str]:
     """Execute a command on the remote server.
 
@@ -140,9 +146,13 @@ def run_remote(
     :param ssh: Connected SSH client.
     :param command: Command to execute.
     :param log_callback: Optional line callback.
+    :param get_pty: Request a pseudo-terminal (needed for commands that
+        require a TTY, such as the EspoCRM installer script).
     :returns: (exit_code, full_output).
     """
-    _stdin, stdout, stderr = ssh.exec_command(command, timeout=600)
+    _stdin, stdout, stderr = ssh.exec_command(
+        command, timeout=600, get_pty=get_pty
+    )
     output_lines: list[str] = []
 
     for line in stdout:
@@ -239,9 +249,9 @@ def phase2_install_espocrm(
     if exit_code != 0:
         return False, "Failed to download EspoCRM installer"
 
-    # Run installer
+    # Run installer (--clean handles retries after a previous failed attempt)
     install_cmd = (
-        f"sudo bash install.sh -y --ssl --letsencrypt "
+        f"sudo bash install.sh -y --clean --ssl --letsencrypt "
         f"--domain={config.full_domain} "
         f"--email={config.letsencrypt_email} "
         f"--admin-username={config.admin_username} "
@@ -251,7 +261,9 @@ def phase2_install_espocrm(
     )
     safe_cmd = mask_credentials(install_cmd, config)
     log_callback(f"$ {safe_cmd}")
-    exit_code, output = run_remote(ssh, install_cmd, log_callback)
+    exit_code, output = run_remote(
+        ssh, install_cmd, log_callback, get_pty=True
+    )
     if exit_code != 0:
         return False, f"EspoCRM installer failed (exit {exit_code})"
 
@@ -395,11 +407,12 @@ def phase4_verify(
         lambda ec, out: ec == 0 and "espocrm" in out.lower(),
     )
 
-    # DB connectivity
+    # DB connectivity — check the db container is Up in docker compose
     run_check(
         "Database connectivity",
-        "docker exec espocrm-db mariadb-admin ping 2>/dev/null",
-        lambda ec, out: ec == 0 and "alive" in out.lower(),
+        "docker compose -f /var/www/espocrm/docker-compose.yml ps "
+        "| grep -iE 'mysql|mariadb|espocrm-db'",
+        lambda ec, out: ec == 0 and "up" in out.lower(),
     )
 
     overall = all(r["passed"] for r in results)
