@@ -172,6 +172,98 @@ to the new instance immediately.
 
 ---
 
+## After Deployment — Connecting CRM Builder to the New Instance
+
+Before you can deploy YAML program files (Validate → Run → Verify),
+you must configure authentication in your CRM Builder instance profile.
+The field management and entity management API endpoints require
+**admin-level access** — without it you will get HTTP 403 Forbidden on
+every operation.
+
+### Option A — Basic Auth (Quickest)
+
+Use the same admin credentials you entered in the Setup Wizard. No
+additional EspoCRM configuration needed.
+
+1. In CRM Builder, select the instance and click **Edit**
+2. Set:
+   - **Auth Method:** Basic (Username/Password)
+   - **Username:** the admin username from Step 4 (default: `admin`)
+   - **Password:** the admin password from Step 4
+3. Click **Save**
+
+You can now Validate and Run YAML program files immediately.
+
+### Option B — API Key (Recommended for Production)
+
+API Key authentication is more secure for ongoing use because you can
+revoke the key without changing the admin password. However, it requires
+creating an API User in EspoCRM with admin access first.
+
+**Step 1 — Create an API User in EspoCRM:**
+
+1. Log in to EspoCRM at `https://{your-domain}`
+2. Go to **Administration** (gear icon, top-right)
+3. Click **API Users** (under the Users section)
+4. Click **Create API User**
+5. Set:
+   - **User Name:** `crmbuilder` (or any name)
+   - **Authentication Method:** API Key
+6. Click **Save**
+7. After saving, an **API Key** field appears — copy this value
+
+**Step 2 — Grant Admin Access:**
+
+The API User must have admin-level access. There are two ways:
+
+**Method A — Make the API User an Admin:**
+1. On the API User record, check the **Is Admin** checkbox
+2. Click **Save**
+
+**Method B — Create an Admin Role (more granular):**
+1. Go to **Administration → Roles**
+2. Click **Create Role**
+3. Name it `CRM Builder Admin`
+4. Under **Access**, set all entity scopes to **Enabled** and all
+   actions to **Yes** (or at minimum: enable read/write on all entities
+   you plan to configure)
+5. **Important:** The role must include access to:
+   - Administration
+   - Entity Manager (for creating/deleting entities)
+   - Field Manager (for creating/updating fields)
+6. Save the role
+7. Go back to the API User and assign this role under the **Roles** field
+
+> **Note:** For the field management and entity management endpoints that
+> CRM Builder uses, the API user typically needs full admin access.
+> Restricted roles will result in HTTP 403 errors. If in doubt, use
+> **Is Admin** (Method A).
+
+**Step 3 — Configure CRM Builder:**
+
+1. In CRM Builder, select the instance and click **Edit**
+2. Set:
+   - **Auth Method:** API Key
+   - **API Key:** paste the key from step 1
+3. Click **Save**
+
+### Verify the Connection
+
+After configuring authentication (either option):
+
+1. Select a YAML program file
+2. Click **Validate**
+3. You should see `[VALIDATE] OK` followed by a preview of planned
+   changes
+
+If you see `[VALIDATE] FAILED` or `HTTP 403`, double-check:
+- The URL matches `https://{your-domain}` (no trailing slash)
+- The API User has admin access (Option B) or the admin password is
+  correct (Option A)
+- For Option B: the API User is active (not disabled)
+
+---
+
 ## Deployment Dashboard
 
 After the first deployment, the Deploy panel shows the dashboard:
