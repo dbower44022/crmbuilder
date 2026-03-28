@@ -284,7 +284,9 @@ class YamlPreviewDialog(QDialog):
         """Build the fields table for a program."""
         columns = [
             "Entity", "Field", "Type", "Label",
-            "Required", "Default", "Category", "Options", "Description",
+            "Required", "Default", "Category",
+            "Options", "Option Descriptions",
+            "Tooltip", "Description",
         ]
 
         rows: list[list[str]] = []
@@ -294,6 +296,11 @@ class YamlPreviewDialog(QDialog):
                 options_str = ""
                 if field.options:
                     options_str = ", ".join(field.options)
+                opt_desc_str = ""
+                if field.optionDescriptions:
+                    opt_desc_str = "; ".join(
+                        f"{k}: {v}" for k, v in field.optionDescriptions.items()
+                    )
                 rows.append([
                     entity.name,
                     field.name,
@@ -303,6 +310,8 @@ class YamlPreviewDialog(QDialog):
                     field.default or "",
                     field.category or "",
                     options_str,
+                    opt_desc_str[:150],
+                    (field.tooltip or "")[:120],
                     (field.description or "").strip().replace("\n", " ")[:120],
                 ])
                 tooltips.append(
