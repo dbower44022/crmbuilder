@@ -145,7 +145,7 @@ the bottom of every step.
 |------|-------|-----------------|
 | 1 | Server Connection | Droplet IP address; SSH key file path (with Browse button); SSH username (default: `root`) |
 | 2 | Domain | Base domain (e.g. `mycompany.com`); Subdomain prefix (default: `crm` for production, `crm-test` for test); Full domain shown as read-only preview |
-| 3 | Database | EspoCRM DB password; MySQL root password (optional — auto-generated if blank) |
+| 3 | Database | EspoCRM DB password; MariaDB root password (optional — auto-generated if blank) |
 | 4 | EspoCRM Admin | Admin username (default: `admin`); Admin password; Admin email address |
 | 5 | SSL | Email address for Let's Encrypt expiry notifications |
 | 6 | Review & Confirm | Summary of all entered values (passwords masked). Back and **Save & Deploy** buttons. |
@@ -244,7 +244,7 @@ named `{instance_slug}_deploy.json`. This file is gitignored.
 | `subdomain` | Subdomain prefix | `crm` |
 | `letsencrypt_email` | Email for Let's Encrypt notifications | — |
 | `db_password` | EspoCRM database password | — |
-| `db_root_password` | MySQL root password | auto-generated |
+| `db_root_password` | MariaDB root password | auto-generated |
 | `admin_username` | EspoCRM admin username | `admin` |
 | `admin_password` | EspoCRM admin password | — |
 | `admin_email` | EspoCRM admin email | — |

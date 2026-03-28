@@ -230,7 +230,7 @@ def phase4_verify(
     - SSL certificate valid and >30 days remaining
     - EspoCRM login page present (curl https://{domain} contains 'EspoCRM')
     - Cron job configured (crontab -l contains espocrm)
-    - DB connectivity (docker exec espocrm-db mysqladmin ping)
+    - DB connectivity (docker exec espocrm-db mariadb-admin ping)
     """
 ```
 
@@ -308,7 +308,7 @@ Steps:
 |---|-------|--------|
 | 1 | Server Connection | Droplet IP (QLineEdit); SSH Key File (QLineEdit + Browse QPushButton using QFileDialog); SSH Username (QLineEdit, default `root`) |
 | 2 | Domain | Base Domain (QLineEdit, placeholder `mycompany.com`); Subdomain (QLineEdit, default `crm`); Full Domain preview (read-only QLabel, updates live as user types, format: `{subdomain}.{base_domain}`) |
-| 3 | Database | EspoCRM DB Password (QLineEdit, echoMode Password); MySQL Root Password (QLineEdit, echoMode Password, placeholder `Leave blank to auto-generate`) |
+| 3 | Database | EspoCRM DB Password (QLineEdit, echoMode Password); MariaDB Root Password (QLineEdit, echoMode Password, placeholder `Leave blank to auto-generate`) |
 | 4 | EspoCRM Admin | Admin Username (QLineEdit, default `admin`); Admin Password (QLineEdit, echoMode Password); Admin Email (QLineEdit) |
 | 5 | SSL / Let's Encrypt | Let's Encrypt Email (QLineEdit, helper text: `Used for certificate expiry notifications`) |
 | 6 | Review & Confirm | Read-only summary of all values; passwords shown as `••••••••` with a Show/Hide toggle QPushButton; Back and **Save & Deploy** buttons |
