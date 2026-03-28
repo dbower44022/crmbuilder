@@ -20,6 +20,125 @@ The three modes are:
 
 ---
 
+## DNS Setup & Validation (Required for Options 2 and 3)
+
+### Recommended Domain Convention
+
+Use a subdomain of your existing registered domain. The standard convention is:
+
+```
+crm.yourdomain.com
+```
+
+This is the most universally recognized pattern, is immediately clear to users and staff, and avoids any conflict with your existing website. The deployment tool should pre-populate this as the default and allow the user to override it.
+
+---
+
+### Step-by-Step: Creating the DNS A Record
+
+You need to add a DNS record that points your CRM subdomain to your DigitalOcean Droplet's IP address. The exact steps depend on your DNS provider, but the record values are the same everywhere.
+
+**What you are creating:**
+
+| Field | Value |
+|-------|-------|
+| Record Type | `A` |
+| Name / Host | `crm` (just the subdomain, not the full domain) |
+| Value / Points To | The public IPv4 address of your Droplet |
+| TTL | `300` (5 minutes — keep low until confirmed working, then raise to 3600) |
+
+**Steps by common provider:**
+
+**DigitalOcean DNS (if your domain is managed there):**
+1. In the DigitalOcean control panel, go to **Networking → Domains**
+2. Select your domain
+3. Under "Create new record", choose type **A**
+4. In the **Hostname** field enter `crm`
+5. In the **Will Direct To** field enter the Droplet's IP address
+6. Set TTL to `300`
+7. Click **Create Record**
+
+**GoDaddy:**
+1. Log in → My Products → DNS → Manage
+2. Click **Add** under DNS Records
+3. Type: `A`, Name: `crm`, Value: `<Droplet IP>`, TTL: `600`
+4. Save
+
+**Namecheap:**
+1. Dashboard → Domain List → Manage → Advanced DNS
+2. Click **Add New Record**
+3. Type: `A Record`, Host: `crm`, Value: `<Droplet IP>`, TTL: `300`
+4. Save
+
+**Cloudflare:**
+1. Select your domain → DNS → Records → Add record
+2. Type: `A`, Name: `crm`, IPv4 address: `<Droplet IP>`, TTL: `Auto`
+3. **Important:** Set the Proxy status to **DNS only** (grey cloud, not orange) — the EspoCRM Let's Encrypt challenge requires a direct connection to the server, not Cloudflare's proxy
+4. Save
+
+> If your domain is managed elsewhere, the pattern is the same — create an A record with name `crm` pointing to the Droplet IP.
+
+---
+
+### DNS Propagation
+
+After saving the record, DNS changes take time to propagate across the internet. With a TTL of 300 seconds, this is typically **2–10 minutes**, but can occasionally take longer depending on your provider.
+
+**Do not run the EspoCRM installer until propagation is confirmed.** Let's Encrypt will fail if it cannot resolve your domain to the server.
+
+---
+
+### Validation: Confirming DNS Has Propagated
+
+The deployment tool should run this check automatically before proceeding to installation. It can also be run manually.
+
+**Option A — Using `dig` (Linux/macOS, on the Droplet or your local machine):**
+```bash
+dig crm.yourdomain.com +short
+```
+Expected output: the Droplet's IP address. If it returns nothing or a different IP, propagation is not complete yet.
+
+**Option B — Using `nslookup` (works on Windows, Linux, macOS):**
+```bash
+nslookup crm.yourdomain.com
+```
+Look for the `Address` line in the output. It should match the Droplet IP.
+
+**Option C — Using `curl` (confirms the server is reachable, not just resolving):**
+```bash
+curl -I http://crm.yourdomain.com
+```
+If you get any HTTP response (even an error page), the domain is resolving to the server and port 80 is reachable — which is what Let's Encrypt needs.
+
+**Option D — Online tools (no command line required):**
+- https://dnschecker.org — shows propagation status across multiple global DNS servers
+- https://mxtoolbox.com/DNSLookup.aspx — quick A record lookup
+
+---
+
+### Deployment Tool Validation Logic
+
+The tool should implement the following pre-flight check before running the installer:
+
+```
+1. Resolve the provided domain (e.g. crm.yourdomain.com) via DNS
+2. Compare the resolved IP to the Droplet's public IP
+3. If they match → proceed with installation
+4. If they do not match → display an error:
+     "DNS not yet propagated. The domain crm.yourdomain.com currently resolves
+      to X.X.X.X but this Droplet's IP is Y.Y.Y.Y. Please check your DNS
+      settings and wait a few minutes before retrying."
+5. If no result → display an error:
+     "The domain crm.yourdomain.com could not be resolved. Please ensure you
+      have created an A record pointing to this Droplet's IP (Y.Y.Y.Y)."
+6. Optionally: retry automatically every 30 seconds up to a configurable timeout
+   (suggested default: 10 minutes)
+```
+
+This check prevents wasting a Let's Encrypt rate-limit attempt on a domain that isn't ready, and gives the user a clear, actionable error rather than a cryptic Let's Encrypt failure message.
+
+---
+
 ## Option 1: HTTP Only (No SSL)
 
 ### What It Is
@@ -89,11 +208,8 @@ sudo bash install.sh --ssl --letsencrypt --domain=my-espocrm.com --email=email@m
 
 ### Step-by-Step
 1. Provision a DigitalOcean Droplet (Ubuntu 22.04 recommended)
-2. In your DNS provider, create an **A record**:
-   - Name: `crm` (or `@` for root domain)
-   - Value: Droplet public IP
-   - TTL: 300 seconds (low, so it propagates quickly)
-3. Wait for DNS propagation (typically 2–15 minutes; can verify with `dig crm.mycompany.com`)
+2. Create a DNS A record for `crm.yourdomain.com` pointing to the Droplet IP — see the **DNS Setup & Validation** section above for provider-specific instructions
+3. Confirm DNS has propagated using the validation steps above before continuing
 4. Open ports 80 and 443 on the Droplet:
    ```bash
    ufw allow 80/tcp
@@ -253,8 +369,11 @@ The deployment tool would need to support a "renew certificate" operation separa
 
 Recommended approach for the tool: **support Let's Encrypt as the primary/default path**, with HTTP-only as an explicitly opt-in dev/test mode. Own certificate support can be added as a secondary advanced option.
 
+Decided:
+- ✅ Use `crm.yourdomain.com` subdomain convention as the default
+- ✅ The tool will validate DNS propagation before attempting Let's Encrypt issuance
+
 Open questions:
 - Does the target customer base have compliance requirements (HIPAA, PCI, SOC2) that mandate commercial certificates?
 - Will the tool always expect users to have a domain name pre-configured, or must it work with bare IPs?
-- Should the tool validate DNS propagation before attempting Let's Encrypt issuance?
 - Should the tool manage certificate renewal notifications, or is that out of scope?
