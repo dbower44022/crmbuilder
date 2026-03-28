@@ -27,6 +27,7 @@ from espo_impl.ui.confirm_delete_dialog import (
     ConfirmDeleteDialog,
     DeleteDialogResult,
 )
+from espo_impl.ui.deploy_panel import DeployPanel
 from espo_impl.ui.instance_panel import InstancePanel
 from espo_impl.ui.output_panel import OutputPanel
 from espo_impl.ui.program_panel import ProgramPanel
@@ -118,6 +119,12 @@ class MainWindow(QMainWindow):
         top_layout.addLayout(right_layout)
         main_layout.addLayout(top_layout)
 
+        # Deploy panel
+        self.deploy_panel = DeployPanel(
+            self.base_dir / "data" / "instances"
+        )
+        main_layout.addWidget(self.deploy_panel, stretch=1)
+
         # Output panel
         self.output_panel = OutputPanel()
         main_layout.addWidget(self.output_panel, stretch=1)
@@ -155,6 +162,9 @@ class MainWindow(QMainWindow):
         self.state.instance = profile
         self.state.validated = False
         self.state.run_complete = False
+
+        # Update deploy panel
+        self.deploy_panel.set_instance(profile)
 
         # Update program panel to use this instance's project folder
         if profile and profile.programs_dir:
@@ -550,6 +560,43 @@ class MainWindow(QMainWindow):
         client = EspoAdminClient(self.state.instance)
         dialog = ImportDialog(self.state.instance, client, self)
         dialog.exec()
+
+    def _on_cert_expiry_updated(self, expiry_date: str) -> None:
+        """Handle cert expiry update from deploy worker (runs on main thread).
+
+        Updates the deploy config, saves it, updates the instance profile URL,
+        and refreshes the deploy panel cert badge.
+        """
+        if not self.state.instance:
+            return
+
+        from espo_impl.core.deploy_manager import (
+            load_deploy_config,
+            save_deploy_config,
+        )
+
+        instances_dir = self.base_dir / "data" / "instances"
+        config = load_deploy_config(instances_dir, self.state.instance.slug)
+        if not config:
+            return
+
+        config.cert_expiry_date = expiry_date
+        save_deploy_config(instances_dir, self.state.instance.slug, config)
+
+        # Update instance profile URL to match the deployed domain
+        new_url = f"https://{config.full_domain}"
+        if self.state.instance.url != new_url:
+            self.state.instance.url = new_url
+            self.instance_panel._save_instance(self.state.instance)
+
+        # Refresh dashboard cert badge
+        dashboard = self.deploy_panel.get_dashboard()
+        if dashboard:
+            dashboard.update_cert_badge(expiry_date)
+
+    def _on_deploy_config_saved(self, config) -> None:
+        """Handle deploy config saved from wizard. Refresh deploy panel."""
+        self.deploy_panel.set_instance(self.state.instance)
 
     def _on_open_reference(self) -> None:
         """Open the generated reference document."""
