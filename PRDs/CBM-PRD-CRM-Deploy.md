@@ -1,6 +1,6 @@
 # CRM Builder — EspoCRM Deployment Feature
 ## Product Requirements Document
-**Version:** 1.0 | **Date:** March 2026 | **Status:** Active
+**Version:** 1.1 | **Date:** 2026-03-28 | **Status:** Active
 
 ---
 
@@ -8,10 +8,11 @@
 
 | Version | Date | Notes |
 |---------|------|-------|
-| 0.1 | March 2026 | Initial draft as standalone tool |
-| 0.2 | March 2026 | Added PySide6 GUI: Setup Wizard and Deployment Dashboard |
-| 0.3 | March 2026 | Closed open questions: cleanup/restart, cbmadmin user, DO backup |
-| 1.0 | March 2026 | Rewritten: integrated into CRM Builder; switched to official EspoCRM installer script (Docker-based); aligned to CRM Builder file structure and UI patterns |
+| 0.1 | 2026-03-01 | Initial draft as standalone tool |
+| 0.2 | 2026-03-10 | Added PySide6 GUI: Setup Wizard and Deployment Dashboard |
+| 0.3 | 2026-03-15 | Closed open questions: cleanup/restart, cbmadmin user, DO backup |
+| 1.0 | 2026-03-20 | Rewritten: integrated into CRM Builder; switched to official EspoCRM installer script (Docker-based); aligned to CRM Builder file structure and UI patterns |
+| 1.1 | 2026-03-28 | Added Prerequisites section; replaced MySQL references with MariaDB; updated domain conventions |
 
 ---
 
