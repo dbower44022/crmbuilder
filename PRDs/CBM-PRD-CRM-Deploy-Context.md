@@ -1,139 +1,230 @@
-# CRM Deployment Tool — Project Context Summary
+# CRM Builder — Deployment Feature Context Summary
 
-This document captures the decisions and rationale established during the planning conversation that produced `CBM-PRD-CRM-Deploy.md`. Use it to orient Claude Code or any new collaborator joining this project.
-
----
-
-## What This Tool Is
-
-The CBM CRM Deployment Tool is a **PySide6 desktop application** that automates the end-to-end deployment of self-hosted EspoCRM instances on DigitalOcean. It is intended to be run by a CBM administrator (who may not be deeply technical) to stand up and verify EspoCRM on a fresh Ubuntu server.
-
-It is a **separate application** from the existing `crmbuilder` EspoCRM configuration tool. Where `crmbuilder` manages EspoCRM *application configuration* (entities, fields, layouts via REST API), this tool manages *server-level infrastructure deployment* (Nginx, PHP, MySQL, EspoCRM installation, SSL).
+This document captures the decisions and rationale established during planning
+for the EspoCRM deployment feature. Use it to orient Claude Code or any new
+collaborator joining this work.
 
 ---
 
-## Hosting Architecture Decisions
+## What This Feature Is
+
+The Deployment feature is an integrated part of **CRM Builder** — the existing
+PySide6 desktop application (`espo_impl/`). It is not a separate tool.
+
+CRM Builder already manages EspoCRM *application configuration* (fields,
+layouts, relationships, data import) against running instances via the REST API.
+The Deployment feature adds the step that comes before that: standing up a fresh
+EspoCRM instance on a DigitalOcean Droplet from scratch, so the same tool covers
+the full lifecycle from provisioning through configuration.
+
+---
+
+## Why Integrated, Not Separate
+
+An earlier version of this PRD described a standalone application. That was
+revised for the following reasons:
+
+- A single tool is simpler for the administrator — one thing to install, one
+  place to look
+- Deployment is naturally tied to an instance profile — the selected instance
+  in CRM Builder determines what gets deployed and where
+- The existing CRM Builder codebase already provides the UI framework,
+  pattern library, and project structure; building on it avoids duplication
+- After deployment, CRM Builder can immediately connect to the new instance
+  and begin deploying configuration — there is no hand-off between tools
+
+---
+
+## Hosting Architecture
 
 ### Provider: DigitalOcean
 Selected over AWS, Hetzner, Vultr, and Linode. Key reasons:
 - Best documentation ecosystem for self-hosted EspoCRM on Ubuntu
 - Simplest UI and managed backup options for a non-developer admin
-- Predictable flat-rate pricing with no hidden egress fees (unlike AWS Lightsail)
-- Price premium over Hetzner/Vultr is small (~$10–15/mo) and worth the operational simplicity
+- Predictable flat-rate pricing with no hidden egress fees
 
-### Two Environments
-| Environment | Domain | Droplet Size | Est. Cost |
-|-------------|--------|--------------|-----------|
-| Production | crm.clevelandbusinessmentors.org | 2 vCPU / 4GB / 80GB SSD | ~$24/mo |
-| Dev/Test | dev-crm.clevelandbusinessmentors.org | 1 vCPU / 2GB / 50GB SSD | ~$12/mo |
+### Two Environments Per Client
+| Environment | Domain Convention | Droplet Size | Est. Cost |
+|-------------|-------------------|--------------|-----------|
+| Production | `crm.{client-domain}` | 2 vCPU / 4 GB / 80 GB SSD | ~$24/mo |
+| Test / Staging | `crm-test.{client-domain}` | 1 vCPU / 2 GB / 50 GB SSD | ~$12/mo |
 
-**Total: ~$36/mo for CRM hosting alone.**
+Both environments are built independently from the PRD as source of truth.
+There is no data migration between Test and Production — they are completely
+separate builds. Test is used to validate the deployment process and
+EspoCRM configuration before touching Production.
 
-### Broader Architecture Context
-CBM's full stack will eventually include WordPress and Moodle alongside EspoCRM. The planned hosting architecture is:
-- **Server 1 (Prod):** EspoCRM + WordPress co-hosted (2 vCPU / 4GB)
-- **Server 2 (Prod):** Moodle standalone (2 vCPU / 4GB)
-- **Server 3 (Dev):** EspoCRM + WordPress co-hosted (1 vCPU / 2GB)
-- **Server 4 (Dev):** Moodle standalone (1 vCPU / 2GB)
-
-The deployment tool currently covers **EspoCRM only**. WordPress and Moodle deployment tools are future work. Droplet sizing already accounts for eventual WordPress co-hosting.
-
-### Database: MySQL 8.0 (not PostgreSQL)
-PostgreSQL was considered but rejected. EspoCRM is built primarily against MySQL/MariaDB — PostgreSQL is a secondary target with less community documentation and support. MySQL is the safe choice at CBM's scale.
+### Domain Requirements
+- A registered domain name is **required** for all deployments
+- Bare IP deployments are not supported (Let's Encrypt requires a domain)
+- The deployment tool does not configure DNS — the administrator must create
+  a DNS A record pointing the subdomain to the Droplet IP before running the tool
+- The tool validates DNS propagation before proceeding and before SSL issuance
 
 ---
 
-## Application Design Decisions
+## Installation Approach: Official EspoCRM Installer Script
 
-### GUI: PySide6 Hybrid — Wizard + Dashboard
-The tool uses a two-mode GUI:
-- **Setup Wizard** on first run — walks users through configuration step by step
-- **Deployment Dashboard** on subsequent runs — shows phase status, live log output, action buttons
+The most important technical decision in this feature is how EspoCRM gets
+installed on the server.
 
-This was chosen because target users may not be comfortable with the command line. The GUI must be accessible to non-technical administrators.
+**Decision: use the official EspoCRM installer script.**
 
-### Invocation
+An earlier version of the PRD described manually installing a LAMP stack
+(Nginx + PHP 8.2 + MySQL 8.0 + Certbot individually). That approach was
+rejected because:
+
+- It requires CRM Builder to maintain its own installation logic that will
+  drift as EspoCRM evolves
+- The official installer is the supported, tested, maintained path
+- The official installer handles everything in one command — Docker, Nginx,
+  MariaDB, EspoCRM, Let's Encrypt, cron — reducing the surface area of things
+  that can go wrong
+
+The official installer deploys EspoCRM as Docker containers (Nginx, MariaDB,
+and EspoCRM via Docker Compose). CRM Builder's Phase 1 installs Docker on
+the Droplet; Phase 2 runs the installer script with all configuration passed
+as flags.
+
+The installer is downloaded fresh each run to ensure the latest stable version:
 ```
-python main.py
+wget -N https://github.com/espocrm/espocrm-installer/releases/latest/download/install.sh
+sudo bash install.sh -y --ssl --letsencrypt \
+  --domain={full_domain} \
+  --email={letsencrypt_email} \
+  --admin-username={admin_username} \
+  --admin-password={admin_password} \
+  --db-password={db_password} \
+  --db-root-password={db_root_password}
 ```
-No CLI arguments required for normal operation.
-
-### Configuration Persistence
-- First run: collect all config interactively via the Setup Wizard
-- Save to `config/cbm-crm-dev.yml` or `config/cbm-crm-prod.yml`
-- Subsequent runs: load from saved config with option to edit
-- Config files contain credentials — must be gitignored automatically by the tool
-
-### SSH Architecture
-- Tool runs **locally** on administrator's machine
-- Connects to Droplet **remotely via SSH** using Paramiko
-- No code is permanently installed on the server
-- All remote commands executed via SSH
 
 ---
 
-## Deployment Phase Decisions
+## SSL / TLS Decisions
 
-### Phase 1: Server Hardening — cbmadmin User
-**Decision:** Create a non-root sudo user named `cbmadmin` during Phase 1.
+- **Let's Encrypt** is the standard SSL mode for all deployments — free,
+  auto-renewing, fully handled by the EspoCRM installer
+- **No compliance requirements** exist for the target customer base — Let's
+  Encrypt is sufficient
+- **No custom/commercial certificates** in v1.0
+- **No bare IP / HTTP-only** for production or test environments
+- Let's Encrypt auto-renewal is managed by the installer's built-in cron.
+  CRM Builder additionally monitors certificate expiry and alerts the
+  operator if the certificate is approaching expiry (in case auto-renewal
+  has silently failed)
+- Alert thresholds: warn at 30 days remaining, escalate at 14 days remaining
 
-Rationale:
-- Running everything as root is dangerous — a single bad command can destroy the server
-- EspoCRM/Nginx documentation assumes a non-root sudo user
-- Easier to grant access to a second admin without sharing root credentials
+---
 
-The tool connects initially as `root`, creates `cbmadmin`, copies SSH keys, disables root SSH login, then **reconnects as `cbmadmin`** for all subsequent phases. Every sudo command in phases 2–5 runs via `cbmadmin`.
+## UI Integration Decisions
+
+### Deploy Panel in Main Window
+A Deploy section is added to the CRM Builder main window. It is always
+visible and its content is driven by the currently selected instance — the
+same pattern used by the existing Program panel.
+
+### No Separate Welcome Screen
+The original PRD had a Welcome Screen where users chose "Dev" or "Production."
+In the integrated design, environment selection is implicit — the user selects
+an instance in the Instance Panel, and the Deploy panel acts on that instance.
+
+### Setup Wizard as Modal Dialog
+On first run (no deployment config for the selected instance), a **Set Up
+Deployment** button appears. Clicking it opens a 6-step Setup Wizard as a
+modal dialog, following the same visual pattern as `instance_dialog.py`.
+
+### Deployment Dashboard Inline
+On subsequent runs, the Deploy panel shows the Deployment Dashboard inline —
+phase status cards, action buttons, log window, and certificate status.
+
+---
+
+## Server Architecture Decisions
+
+### No cbmadmin User
+The original PRD created a non-root `cbmadmin` user during server hardening.
+This was removed in the integrated design because:
+
+- The official EspoCRM installer script runs as root and manages its own
+  Docker-based environment
+- Adding a non-root user layer introduces complexity without benefit when
+  using the Docker installer
+- The Docker containers handle process isolation at a different level
+
+All SSH operations connect as the configured SSH user (typically `root` for
+a fresh DigitalOcean Droplet).
 
 ### Failure Behavior: Cleanup Then Restart from Phase 1
-**Decision:** On any phase failure — clean up the failed phase, then restart from Phase 1.
+On any phase failure — clean up the failed phase's changes, then allow restart
+from Phase 1. Resuming from an arbitrary mid-deployment phase risks leaving
+the server in an unknown state. A clean restart from Phase 1 ensures a
+known-good starting point.
 
-Rationale: Resuming mid-deployment from an arbitrary phase risks leaving the server in a partially-configured state. A clean restart from Phase 1 ensures a known-good starting point every time.
-
-Cleanup is **best-effort** — if a cleanup step fails, the tool logs it and continues rather than halting. The user is notified of any incomplete cleanup steps.
-
-Cleanup actions per phase are specified in Section 7.2 of the PRD.
-
-### Phase 5: Verification
-Verification is **read-only** — no cleanup required on failure. It runs 10 checks covering services, HTTP/HTTPS responses, SSL validity, cron, MySQL connectivity, and EspoCRM daemon.
+Cleanup is **best-effort**: if a cleanup step fails, the tool logs it and
+continues rather than halting. The user is notified of any incomplete steps.
 
 ---
 
-## What Each Environment Is For
+## Configuration and File Structure
 
-**Both environments are built independently from the PRD as source of truth.** There is no data migration between Dev and Production — they are completely separate builds.
+### DeployConfig Model
+A new `DeployConfig` dataclass is added to `espo_impl/core/models.py`.
+It is separate from `InstanceProfile` — an instance profile can exist without
+a deploy config, and a deploy config can exist without the instance yet being
+reachable (e.g. mid-deployment).
 
-- **Dev/Test:** Build and validate the deployment process and EspoCRM configuration before touching Production
-- **Production:** Final live environment; built after Dev/Test validates cleanly
+After successful deployment, Phase 3 updates the `InstanceProfile.url` field
+to `https://{full_domain}` so CRM Builder can immediately connect to the new
+instance. This is the only point where deploy config and instance profile
+interact.
 
-The EspoCRM Cloud trial instance (used for early development) is decommissioned once Production is live.
+### Config Storage
+Deployment configuration is stored as `{instance_slug}_deploy.json` in
+`data/instances/`, alongside existing instance profile JSON files.
+These files contain credentials and are gitignored.
+
+The tool must verify that `data/instances/*_deploy.json` is covered by
+`.gitignore` on first run.
+
+### New Files
+```
+espo_impl/
+├── core/
+│   └── deploy_manager.py       # SSH execution, phase logic, config read/write
+├── ui/
+│   ├── deploy_panel.py         # Deploy section in main window
+│   ├── deploy_wizard.py        # Setup Wizard modal (6 steps)
+│   └── deploy_dashboard.py     # Deployment Dashboard (phases, log, cert status)
+└── workers/
+    └── deploy_worker.py        # QThread background worker for SSH phases
+```
+
+No new top-level directories. No changes to existing files except:
+- `espo_impl/core/models.py` — add `DeployConfig` dataclass
+- `espo_impl/ui/main_window.py` — add Deploy panel to layout
+- `pyproject.toml` — add `paramiko` and `dnspython` dependencies
+- `CLAUDE.md` — updated to describe the deployment feature
 
 ---
 
-## Out of Scope for This Tool
+## What Is Out of Scope
 
-- DigitalOcean Droplet provisioning (done manually or via DO CLI before running the tool)
-- DNS record configuration (done manually in DNS provider)
-- EspoCRM application configuration — that is `crmbuilder`'s job
-- WordPress or Moodle deployment (separate future tools)
-- Database backup/restore automation
-- Monitoring and alerting
-- DigitalOcean backup verification via API (deferred to future version)
-
----
-
-## File Locations
-
-| File | Location |
-|------|----------|
-| PRD (Markdown) | `PRDs/CBM-PRD-CRM-Deploy.md` |
-| PRD (Word) | `PRDs/CBM-PRD-CRM-Deploy.docx` |
-| This context doc | `PRDs/CBM-PRD-CRM-Deploy-Context.md` |
-| Application code (to be built) | `cbm-crm-deploy/` (root of repo or subfolder TBD) |
+- DigitalOcean Droplet provisioning (done manually before running the tool)
+- DNS record configuration (done manually before running the tool)
+- Data migration between environments
+- WordPress or Moodle deployment (future work)
+- Database backup and restore automation
+- Monitoring and alerting beyond SSL expiry tracking
+- Custom or commercial SSL certificates (v1.0)
 
 ---
 
-## Suggested Claude Code Opening Prompt
+## Key Documents
 
-When starting a Claude Code session to build this tool, use:
-
-> "Please build the CBM CRM Deployment Tool as specified in `PRDs/CBM-PRD-CRM-Deploy.md`. Before writing any code, read that file fully. Also read `PRDs/CBM-PRD-CRM-Deploy-Context.md` for decision rationale and architecture context. Start by creating the project structure and `main.py` entry point, then implement the UI screens before the deployment phases."
+| Document | Location | Purpose |
+|----------|----------|---------|
+| Deployment PRD | `PRDs/CBM-PRD-CRM-Deploy.md` | Full feature requirements |
+| This context doc | `PRDs/CBM-PRD-CRM-Deploy-Context.md` | Decision rationale |
+| SSL/TLS Analysis | `PRDs/espocrm-ssl-tls-analysis.md` | SSL option analysis and decisions |
+| Master PRD | `PRDs/crmbuilder-prd.md` | Overall CRM Builder product vision |
+| CLAUDE.md | `CLAUDE.md` | Project guide for Claude Code |
