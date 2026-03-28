@@ -432,9 +432,24 @@ Each card shows:
 #### 5.3.3 Action Buttons
 
 - **Deploy All** — runs all phases sequentially from Phase 1
-- **Run Verification Only** — runs Phase 4 (verify) only
+- **Run Verification Only** — runs Phase 4 (verify) only; see pre-flight
+  check below
 - **Retry Failed Phase** — enabled only when a phase has failed; re-runs
   from the failed phase
+
+**Run Verification Only — pre-flight check:**
+
+Before running Phase 4, the tool must check whether a successful deployment
+has previously completed by inspecting the `deployed_at` field in the
+`DeployConfig`. If `deployed_at` is `None` or not set, it means **Deploy
+All** has never completed successfully for this instance. In that case the
+tool must not run verification — instead it must display a clear message:
+
+> *"No completed deployment found for this instance. Please run Deploy All
+> first to install EspoCRM on the server before running verification."*
+
+This prevents a confusing cascade of false failures when verification is
+run against a server that has never been deployed to.
 
 #### 5.3.4 Log Window
 
