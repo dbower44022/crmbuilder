@@ -180,73 +180,43 @@ The field management and entity management API endpoints require
 **admin-level access** — without it you will get HTTP 403 Forbidden on
 every operation.
 
-### Option A — Basic Auth (Quickest)
+### Use Basic Auth with the Admin Account
 
-Use the same admin credentials you entered in the Setup Wizard. No
-additional EspoCRM configuration needed.
+CRM Builder uses EspoCRM's Administration API endpoints to manage fields,
+entities, layouts, and relationships. These endpoints require a **real
+admin user** — they cannot be accessed by API Users, regardless of what
+role is assigned. EspoCRM roles control access to entity *data* (records),
+not to the Administration configuration API.
+
+**This means Basic authentication with the admin account is the correct
+and recommended approach for CRM Builder.**
 
 1. In CRM Builder, select the instance and click **Edit**
 2. Set:
    - **Auth Method:** Basic (Username/Password)
-   - **Username:** the admin username from Step 4 (default: `admin`)
-   - **Password:** the admin password from Step 4
+   - **Username:** the admin username from Step 4 of the wizard
+     (default: `admin`)
+   - **Password:** the admin password from Step 4 of the wizard
 3. Click **Save**
 
 You can now Validate and Run YAML program files immediately.
 
-### Option B — API Key (Recommended for Production)
-
-API Key authentication is more secure for ongoing use because you can
-revoke the key without changing the admin password. However, it requires
-creating an API User in EspoCRM with admin access first.
-
-**Step 1 — Create an API User in EspoCRM:**
-
-1. Log in to EspoCRM at `https://{your-domain}`
-2. Go to **Administration** (gear icon, top-right)
-3. Click **API Users** (under the Users section)
-4. Click **Create API User**
-5. Set:
-   - **User Name:** `crmbuilder` (or any name)
-   - **Authentication Method:** API Key
-6. Click **Save**
-7. After saving, an **API Key** field appears — copy this value
-
-**Step 2 — Grant Admin Access via Role:**
-
-API Users in EspoCRM do not have an "Is Admin" option — access is
-controlled through Roles.
-
-1. Go to **Administration → Roles**
-2. Click **Create Role**
-3. Name it `CRM Builder Admin`
-4. Under **Access**, set all entity scopes to **Enabled** and all
-   actions to **Yes**
-5. **Important:** The role must include access to:
-   - Administration
-   - Entity Manager (for creating/deleting entities)
-   - Field Manager (for creating/updating fields)
-6. Save the role
-7. Go back to the API User record and assign this role under the
-   **Roles** field
-8. Click **Save**
-
-> **Note:** For the field management and entity management endpoints
-> that CRM Builder uses, the API user needs full admin-level access.
-> Restricted roles will result in HTTP 403 errors. If you encounter
-> 403s, verify the role has Administration access enabled.
-
-**Step 3 — Configure CRM Builder:**
-
-1. In CRM Builder, select the instance and click **Edit**
-2. Set:
-   - **Auth Method:** API Key
-   - **API Key:** paste the key from step 1
-3. Click **Save**
+> **Why not API Key?** EspoCRM API Users (the kind that get API Keys)
+> are designed for integrations that read and write *records* — contacts,
+> accounts, leads, etc. They cannot access the `Admin/fieldManager`,
+> `EntityManager`, or `Admin/layouts` endpoints that CRM Builder needs
+> for configuration deployment. Assigning a role to an API User grants
+> data access, not administration access. If you try to use an API Key,
+> you will get HTTP 403 on all field and entity operations.
+>
+> Basic auth with the admin account is secure when used over HTTPS
+> (which is always the case after deployment — Let's Encrypt is
+> mandatory). The credentials are sent in the `Authorization` header,
+> encrypted in transit.
 
 ### Verify the Connection
 
-After configuring authentication (either option):
+After configuring authentication:
 
 1. Select a YAML program file
 2. Click **Validate**
@@ -255,9 +225,9 @@ After configuring authentication (either option):
 
 If you see `[VALIDATE] FAILED` or `HTTP 403`, double-check:
 - The URL matches `https://{your-domain}` (no trailing slash)
-- The API User has admin access (Option B) or the admin password is
-  correct (Option A)
-- For Option B: the API User is active (not disabled)
+- The admin password is correct
+- You selected **Basic (Username/Password)** as the auth method, not
+  API Key
 
 ---
 
