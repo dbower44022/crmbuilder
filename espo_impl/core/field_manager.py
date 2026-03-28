@@ -583,6 +583,7 @@ class FieldManager:
             payload["max"] = field_def.max
         if field_def.maxLength is not None:
             payload["maxLength"] = field_def.maxLength
+        # optionDescriptions is documentation-only — never included in API payloads
         return payload
 
     def _build_report(

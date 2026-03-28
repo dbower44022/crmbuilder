@@ -418,6 +418,20 @@ def test_build_payload_omits_copy_to_clipboard_when_none():
     assert "copyToClipboard" not in payload
 
 
+def test_build_payload_excludes_option_descriptions():
+    manager, _ = make_manager()
+    field_def = FieldDefinition(
+        name="status",
+        type="enum",
+        label="Status",
+        options=["Active", "Inactive"],
+        optionDescriptions={"Active": "Fully qualified.", "Inactive": "Not active."},
+    )
+    payload = manager._build_payload(field_def)
+    assert "optionDescriptions" not in payload
+    assert payload["options"] == ["Active", "Inactive"]
+
+
 def test_custom_field_name():
     assert FieldManager._custom_field_name("contactType") == "cContactType"
     assert FieldManager._custom_field_name("isMentor") == "cIsMentor"

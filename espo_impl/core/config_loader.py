@@ -224,6 +224,7 @@ class ConfigLoader:
             audited=data.get("audited"),
             copyToClipboard=data.get("copyToClipboard"),
             options=data.get("options"),
+            optionDescriptions=data.get("optionDescriptions"),
             translatedOptions=data.get("translatedOptions"),
             style=data.get("style"),
             isSorted=data.get("isSorted"),
@@ -418,6 +419,27 @@ class ConfigLoader:
             if not field_def.options:
                 errors.append(
                     f"{prefix}: enum/multiEnum fields must have a non-empty 'options' list"
+                )
+
+        if field_def.optionDescriptions is not None:
+            if field_def.type not in ENUM_TYPES:
+                errors.append(
+                    f"{prefix}: 'optionDescriptions' is only valid on "
+                    f"enum/multiEnum fields"
+                )
+            elif field_def.options:
+                option_set = set(field_def.options)
+                for key in field_def.optionDescriptions:
+                    if key not in option_set:
+                        errors.append(
+                            f"{prefix}: optionDescriptions key '{key}' "
+                            f"does not match any value in 'options'"
+                        )
+            else:
+                logger.warning(
+                    "%s: optionDescriptions present but 'options' is empty "
+                    "or absent — descriptions cannot be cross-referenced",
+                    prefix,
                 )
 
         if field_def.name:

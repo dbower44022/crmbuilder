@@ -805,6 +805,129 @@ def test_field_tooltip_parsed(loader, tmp_path):
     assert program.entities[0].fields[1].tooltip is None
 
 
+def test_option_descriptions_parsed(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: mentorStatus
+                type: enum
+                label: "Mentor Status"
+                options:
+                  - Active
+                  - Inactive
+                optionDescriptions:
+                  Active: "Fully qualified mentor."
+                  Inactive: "No longer mentoring."
+              - name: firstName
+                type: varchar
+                label: "First Name"
+    """)
+    path = tmp_path / "opt_desc.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    field0 = program.entities[0].fields[0]
+    assert field0.optionDescriptions == {
+        "Active": "Fully qualified mentor.",
+        "Inactive": "No longer mentoring.",
+    }
+    assert program.entities[0].fields[1].optionDescriptions is None
+
+
+def test_option_descriptions_valid_keys(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: status
+                type: enum
+                label: "Status"
+                options:
+                  - Active
+                  - Inactive
+                optionDescriptions:
+                  Active: "Active description"
+    """)
+    path = tmp_path / "opt_desc_valid.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert not errors
+
+
+def test_option_descriptions_invalid_key(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: status
+                type: enum
+                label: "Status"
+                options:
+                  - Active
+                  - Inactive
+                optionDescriptions:
+                  Active: "Active description"
+                  Bogus: "Not a real option"
+    """)
+    path = tmp_path / "opt_desc_bad_key.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("Bogus" in e and "does not match" in e for e in errors)
+
+
+def test_option_descriptions_on_non_enum_field(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: firstName
+                type: varchar
+                label: "First Name"
+                optionDescriptions:
+                  Foo: "Bar"
+    """)
+    path = tmp_path / "opt_desc_non_enum.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("only valid on enum" in e for e in errors)
+
+
+def test_option_descriptions_without_options_warns(loader, tmp_path, caplog):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: status
+                type: enum
+                label: "Status"
+                optionDescriptions:
+                  Active: "Active description"
+    """)
+    path = tmp_path / "opt_desc_no_opts.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    # Validation should produce an error for missing options (enum requires options)
+    # but optionDescriptions itself should only warn, not error
+    errors = loader.validate_program(program)
+    # The enum-requires-options error fires
+    assert any("non-empty 'options'" in e for e in errors)
+    # But no error specifically about optionDescriptions — it logs a warning
+    assert not any("optionDescriptions" in e for e in errors)
+
+
 def test_panel_description_parsed(loader, tmp_path):
     content = dedent("""\
         version: "1.0"

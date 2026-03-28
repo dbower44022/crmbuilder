@@ -459,6 +459,34 @@ entities:
 **Enum styles:** `null` (default), `"default"` (gray), `"primary"` (blue),
 `"success"` (green), `"danger"` (red), `"warning"` (orange), `"info"` (light blue)
 
+### Option Descriptions
+
+Use `optionDescriptions` to document what each enum/multiEnum value means.
+This is **documentation only** — it is never deployed to EspoCRM. It
+appears in generated reference documentation and helps YAML authors and
+reviewers understand each dropdown value.
+
+```yaml
+- name: mentorStatus
+  type: enum
+  label: "Mentor Status"
+  options:
+    - Provisional
+    - Active
+    - Inactive
+    - Departed
+  optionDescriptions:
+    Provisional: "Accepted into the program, completing onboarding."
+    Active: "Fully qualified mentor, available for new clients."
+    Inactive: "No longer actively mentoring."
+    Departed: "Has formally left the CBM program."
+```
+
+**Rules:**
+- Only valid on `enum` and `multiEnum` fields
+- Every key must match a value in `options` (extra keys cause a validation error)
+- You do not need to describe every option — partial coverage is fine
+
 ### Layout Definitions
 
 ```yaml
