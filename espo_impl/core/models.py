@@ -83,6 +83,7 @@ class FieldDefinition:
     maxLength: int | None = None
     category: str | None = None
     description: str | None = None
+    tooltip: str | None = None
 
 
 @dataclass
@@ -191,6 +192,25 @@ class RelationshipDefinition:
     audited: bool = False
     audited_foreign: bool = False
     action: str | None = None
+
+
+class TooltipStatus(Enum):
+    """Outcome status for a tooltip import operation."""
+
+    UPDATED = "updated"
+    SKIPPED = "skipped"
+    NO_CHANGE = "no_change"
+    ERROR = "error"
+
+
+@dataclass
+class TooltipResult:
+    """Result of processing a single field tooltip."""
+
+    entity: str
+    field: str
+    status: TooltipStatus
+    error: str | None = None
 
 
 class RelationshipStatus(Enum):
@@ -310,6 +330,9 @@ class RunSummary:
     relationships_created: int = 0
     relationships_skipped: int = 0
     relationships_failed: int = 0
+    tooltips_updated: int = 0
+    tooltips_skipped: int = 0
+    tooltips_failed: int = 0
 
 
 @dataclass
@@ -335,3 +358,4 @@ class RunReport:
     results: list[FieldResult] = field(default_factory=list)
     layout_results: list[LayoutResult] = field(default_factory=list)
     relationship_results: list[RelationshipResult] = field(default_factory=list)
+    tooltip_results: list[TooltipResult] = field(default_factory=list)

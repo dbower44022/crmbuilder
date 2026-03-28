@@ -233,6 +233,7 @@ class ConfigLoader:
             maxLength=data.get("maxLength"),
             category=data.get("category"),
             description=data.get("description"),
+            tooltip=data.get("tooltip"),
         )
 
     def _parse_layout(

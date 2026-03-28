@@ -775,6 +775,36 @@ def test_field_copy_to_clipboard_parsed(loader, tmp_path):
     assert program.entities[0].fields[1].copyToClipboard is None
 
 
+def test_field_tooltip_parsed(loader, tmp_path):
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: mentorStatus
+                type: enum
+                label: "Mentor Status"
+                tooltip: "Current stage of the mentor in the CBM program lifecycle."
+                description: "Developer-facing PRD reference."
+                options:
+                  - Active
+                  - Inactive
+              - name: firstName
+                type: varchar
+                label: "First Name"
+    """)
+    path = tmp_path / "tooltip.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    # tooltip and description coexist independently
+    field0 = program.entities[0].fields[0]
+    assert field0.tooltip == "Current stage of the mentor in the CBM program lifecycle."
+    assert field0.description == "Developer-facing PRD reference."
+    # field without tooltip
+    assert program.entities[0].fields[1].tooltip is None
+
+
 def test_panel_description_parsed(loader, tmp_path):
     content = dedent("""\
         version: "1.0"

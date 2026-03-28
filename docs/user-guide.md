@@ -192,6 +192,49 @@ are not re-verified by the Verify button — use Run for those.
 
 ---
 
+## Import Tooltips
+
+Click **Import Tooltips** to deploy user-facing help text from your YAML
+files to EspoCRM. This writes the `tooltip` property on each field,
+which appears as a help icon next to field labels in the detail and edit
+views.
+
+**Prerequisites:** Select an instance and validate a program file first.
+
+**How it works:**
+
+1. For each field with a `tooltip` value in the YAML, the tool checks
+   the current EspoCRM tooltip
+2. If the tooltip already matches — **NO CHANGE**
+3. If it differs or is empty — **UPDATED**
+4. Fields without a `tooltip` property are **SKIPPED**
+
+Import Tooltips can be run independently of Run — you can update tooltips
+at any time without redeploying fields.
+
+### tooltip vs description
+
+These two properties serve different audiences:
+
+| Property | Audience | Deployed to EspoCRM? | Purpose |
+|---|---|---|---|
+| `tooltip` | End users | Yes | Concise help text shown next to field labels |
+| `description` | Developers | No | PRD references, rationale, implementation notes |
+
+**Example — good tooltip:**
+
+```yaml
+- name: mentorExpertise
+  type: multiEnum
+  label: "Mentor Expertise"
+  tooltip: "Select the business areas where this mentor can provide guidance."
+  description: >
+    Multi-select of mentor skill categories. Drives the mentor-client
+    matching algorithm. PRD Reference: Section 4.2.
+```
+
+---
+
 ## Generate Docs
 
 Click **Generate Docs** to produce the reference manual from all YAML
@@ -571,6 +614,7 @@ a clean rebuild with no live data.
 
 | Version | Date | Changes |
 |---|---|---|
+| 3.1 | March 2026 | Added Import Tooltips feature, tooltip vs description documentation |
 | 3.0 | March 2026 | Added data import wizard with four-step workflow, field mapping, match-by-email, never-overwrite rule, phone number cleaning, name derivation |
 | 2.1 | March 2026 | Renamed to CRM Builder |
 | 2.0 | March 2026 | Complete rewrite — added project folder concept, content versioning, layout and relationship configuration, Generate Docs button, updated troubleshooting |

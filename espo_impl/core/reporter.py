@@ -10,6 +10,7 @@ from espo_impl.core.models import (
     LayoutResult,
     RelationshipResult,
     RunReport,
+    TooltipResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -121,6 +122,21 @@ class Reporter:
             lines.append(f"  Skipped              : {report.summary.relationships_skipped}")
             lines.append(f"  Failed               : {report.summary.relationships_failed}")
 
+        if report.tooltip_results:
+            lines.append("")
+            for result in report.tooltip_results:
+                status_str = result.status.value.upper()
+                line = f"  {result.entity}.{result.field} : {status_str}"
+                if result.error:
+                    line += f" \u2014 {result.error}"
+                lines.append(line)
+            lines.append("")
+            total_tips = len(report.tooltip_results)
+            lines.append(f"Total tooltips processed : {total_tips}")
+            lines.append(f"  Updated               : {report.summary.tooltips_updated}")
+            lines.append(f"  No change / skipped   : {report.summary.tooltips_skipped}")
+            lines.append(f"  Failed                : {report.summary.tooltips_failed}")
+
         lines.append("===========================================")
 
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -155,6 +171,10 @@ class Reporter:
             "relationship_results": [
                 self._relationship_result_to_dict(r)
                 for r in report.relationship_results
+            ],
+            "tooltip_results": [
+                self._tooltip_result_to_dict(r)
+                for r in report.tooltip_results
             ],
         }
         path.write_text(
@@ -204,6 +224,19 @@ class Reporter:
             "status": result.status.value,
             "verified": result.verified,
             "message": result.message,
+        }
+
+    def _tooltip_result_to_dict(self, result: TooltipResult) -> dict:
+        """Convert a TooltipResult to a JSON-serializable dict.
+
+        :param result: Single tooltip result.
+        :returns: Dict for JSON report.
+        """
+        return {
+            "entity": result.entity,
+            "field": result.field,
+            "status": result.status.value,
+            "error": result.error,
         }
 
     def _generate_filename(self, report: RunReport) -> str:

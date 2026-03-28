@@ -98,12 +98,15 @@ class MainWindow(QMainWindow):
         self.validate_btn = QPushButton("Validate")
         self.run_btn = QPushButton("Run")
         self.verify_btn = QPushButton("Verify")
+        self.tooltip_btn = QPushButton("Import Tooltips")
         self.validate_btn.clicked.connect(self._on_validate_clicked)
         self.run_btn.clicked.connect(self._on_run_clicked)
         self.verify_btn.clicked.connect(self._on_verify_clicked)
+        self.tooltip_btn.clicked.connect(self._on_import_tooltips)
         action_layout.addWidget(self.validate_btn)
         action_layout.addWidget(self.run_btn)
         action_layout.addWidget(self.verify_btn)
+        action_layout.addWidget(self.tooltip_btn)
         right_layout.addLayout(action_layout)
 
         # Progress bar
@@ -292,6 +295,52 @@ class MainWindow(QMainWindow):
             )
             return
         self._start_worker("verify")
+
+    def _on_import_tooltips(self) -> None:
+        """Start the tooltip import operation in a background thread."""
+        if self.state.operation_in_progress:
+            self.output_panel.append_line(
+                "[TOOLTIP] An operation is already in progress", "yellow"
+            )
+            return
+        if not self.state.instance:
+            self.output_panel.append_line(
+                "[TOOLTIP] Select an instance first", "yellow"
+            )
+            return
+        if not self.state.program:
+            self.output_panel.append_line(
+                "[TOOLTIP] Validate a program file first", "yellow"
+            )
+            return
+
+        self.state.operation_in_progress = True
+        self.progress_bar.setVisible(True)
+
+        # Use instance project folder for reports, fall back to default
+        if self.state.instance.reports_dir:
+            reports_dir = self.state.instance.reports_dir
+        else:
+            reports_dir = self.base_dir / "reports"
+        reports_dir.mkdir(parents=True, exist_ok=True)
+        self.reporter = Reporter(reports_dir)
+
+        self.output_panel.append_line("", "white")
+        self.output_panel.append_line(
+            "--- IMPORT TOOLTIPS started ---", "white"
+        )
+
+        from espo_impl.workers.tooltip_worker import TooltipWorker
+
+        self._worker = TooltipWorker(
+            self.state.instance,
+            self.state.program,
+            parent=self,
+        )
+        self._worker.output_line.connect(self._on_worker_output)
+        self._worker.finished_ok.connect(self._on_worker_finished)
+        self._worker.finished_error.connect(self._on_worker_error)
+        self._worker.start()
 
     def _start_worker(
         self, operation: str, skip_deletes: bool = False
