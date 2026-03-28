@@ -237,6 +237,39 @@ Or use an online tool such as https://dnschecker.org.
 > deployment and will wait up to 10 minutes, retrying every 30 seconds.
 > However, confirming it manually in advance avoids delays at startup.
 
+### 4.3a Let's Encrypt Email Address
+
+The Setup Wizard asks for a Let's Encrypt email address. This is worth
+understanding before you enter it.
+
+**What it is used for:**
+
+Let's Encrypt uses this address for one purpose only: to send you a warning
+email if your SSL certificate is approaching expiry and automatic renewal
+has failed. You will receive a notification at 20 days remaining and again
+at 10 days remaining if the problem is not resolved.
+
+It is not used for marketing, account login, or anything CRM-related.
+Let's Encrypt will not share it with third parties.
+
+**What to enter:**
+
+Enter the email address of whoever is responsible for maintaining this
+server — typically the IT administrator or the person running CRM Builder.
+It does not need to be the same as the EspoCRM admin account email.
+
+**Why it matters:**
+
+CRM Builder monitors certificate expiry and will alert you within the
+application. However, Let's Encrypt's email serves as an independent
+backup warning in case CRM Builder is not being actively checked or its
+own monitoring has failed. If this email goes unread and auto-renewal has
+silently failed, the site will go down when the certificate expires after
+90 days.
+
+Use a real, actively monitored address — not a shared inbox that nobody
+reads, and not a personal address that may change.
+
 ### 4.4 Information to Have Ready
 
 Before opening the Setup Wizard, have the following ready:
@@ -247,7 +280,7 @@ Before opening the Setup Wizard, have the following ready:
 | SSH private key file path | e.g. `~/.ssh/id_ed25519` |
 | Base domain | e.g. `mycompany.com` |
 | Subdomain | `crm` for production, `crm-test` for test |
-| Let's Encrypt email address | Used for certificate expiry notifications — use a monitored address |
+| Let's Encrypt email address | Email address of the person responsible for maintaining this server — see section 4.3a below |
 | EspoCRM admin username | Default: `admin` |
 | EspoCRM admin password | Choose a strong password; store it securely |
 | EspoCRM admin email address | The admin user's email address |
@@ -399,9 +432,24 @@ Each card shows:
 #### 5.3.3 Action Buttons
 
 - **Deploy All** — runs all phases sequentially from Phase 1
-- **Run Verification Only** — runs Phase 4 (verify) only
+- **Run Verification Only** — runs Phase 4 (verify) only; see pre-flight
+  check below
 - **Retry Failed Phase** — enabled only when a phase has failed; re-runs
   from the failed phase
+
+**Run Verification Only — pre-flight check:**
+
+Before running Phase 4, the tool must check whether a successful deployment
+has previously completed by inspecting the `deployed_at` field in the
+`DeployConfig`. If `deployed_at` is `None` or not set, it means **Deploy
+All** has never completed successfully for this instance. In that case the
+tool must not run verification — instead it must display a clear message:
+
+> *"No completed deployment found for this instance. Please run Deploy All
+> first to install EspoCRM on the server before running verification."*
+
+This prevents a confusing cascade of false failures when verification is
+run against a server that has never been deployed to.
 
 #### 5.3.4 Log Window
 

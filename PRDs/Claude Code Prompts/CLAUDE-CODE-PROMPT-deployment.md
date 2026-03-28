@@ -361,7 +361,11 @@ shows the failed command and output.
 ### Action Buttons
 
 - **Deploy All** (`QPushButton`) — starts all phases from Phase 1
-- **Run Verification Only** (`QPushButton`) — runs Phase 4 only
+- **Run Verification Only** (`QPushButton`) — runs Phase 4 only; before
+  running, check `DeployConfig.deployed_at` — if it is `None`, show a
+  `QMessageBox` with the message: *"No completed deployment found for this
+  instance. Please run Deploy All first to install EspoCRM on the server
+  before running verification."* and abort.
 - **Retry Failed Phase** (`QPushButton`) — enabled only when a phase is
   in Failed state; re-runs from the failed phase
 
