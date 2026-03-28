@@ -662,7 +662,72 @@ data. Click **Cancel** to safely abort.
 
 ---
 
-## Changelog
+## Accessing Your CRM After Deployment
+
+Once CRM Builder has deployed the configuration to your CRM instance,
+your administrator can log in to the CRM directly using a web browser.
+
+### Finding Your Instance URL
+
+The instance URL is stored in the instance profile in CRM Builder.
+Select the instance in the Instance panel — the URL is displayed
+in the URL field below the instance list.
+
+For EspoCRM Cloud instances, the URL typically looks like:
+```
+https://your-organization.espocloud.com
+```
+
+### Logging In
+
+Open the instance URL in any modern web browser. You will see the
+EspoCRM login screen.
+
+Log in with the same credentials stored in the instance profile:
+
+| Auth Method | Username | Password |
+|---|---|---|
+| Basic | The username you entered in CRM Builder | The password you entered in CRM Builder |
+| API Key | Your admin username | Your admin password (not the API key) |
+| HMAC | Your admin username | Your admin password (not the API key or secret) |
+
+**Note:** The API Key and HMAC credentials stored in CRM Builder are
+used for the API connection only. To log into the CRM web interface,
+always use your admin username and password.
+
+### First Login
+
+On your first login to a newly provisioned EspoCRM instance, the
+system may prompt you to:
+- Change your password
+- Set your timezone and language preferences
+- Complete an initial setup wizard (EspoCRM Cloud only)
+
+Complete these steps before inviting other users or making manual
+changes in the CRM UI.
+
+### Adding Users
+
+CRM Builder manages CRM configuration (fields, layouts, relationships,
+roles) but does not create CRM user accounts. After logging in as
+administrator, create user accounts for your staff through the EspoCRM
+administration panel:
+
+**Administration → Users → Create User**
+
+Assign the appropriate roles to each user based on what CRM Builder
+has deployed. Role names will match those defined in your YAML program
+files.
+
+### Verifying the Configuration
+
+After logging in, it is good practice to run **Verify** in CRM Builder
+to confirm the deployed configuration matches the spec before handing
+the system over to users.
+
+---
+
+
 
 | Version | Date | Changes |
 |---|---|---|
