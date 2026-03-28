@@ -152,6 +152,26 @@ Runs seven checks:
 
 ---
 
+## After Deployment — Logging In
+
+Once all four phases complete successfully, your EspoCRM instance is live.
+
+**URL:** `https://{subdomain}.{base-domain}`
+(e.g., `https://crm.mycompany.com` or `https://crm-test.mycompany.com`)
+
+**Login credentials:** The Admin Username and Admin Password you entered
+in Step 4 of the Setup Wizard (default username: `admin`).
+
+Open the URL in a browser — you should see the EspoCRM login page. After
+logging in, you can begin configuring the instance by deploying YAML
+program files from CRM Builder (Validate → Run → Verify).
+
+CRM Builder automatically updates the instance profile URL after a
+successful deployment, so the Validate / Run / Verify buttons connect
+to the new instance immediately.
+
+---
+
 ## Deployment Dashboard
 
 After the first deployment, the Deploy panel shows the dashboard:
