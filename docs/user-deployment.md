@@ -212,32 +212,29 @@ creating an API User in EspoCRM with admin access first.
 6. Click **Save**
 7. After saving, an **API Key** field appears — copy this value
 
-**Step 2 — Grant Admin Access:**
+**Step 2 — Grant Admin Access via Role:**
 
-The API User must have admin-level access. There are two ways:
+API Users in EspoCRM do not have an "Is Admin" option — access is
+controlled through Roles.
 
-**Method A — Make the API User an Admin:**
-1. On the API User record, check the **Is Admin** checkbox
-2. Click **Save**
-
-**Method B — Create an Admin Role (more granular):**
 1. Go to **Administration → Roles**
 2. Click **Create Role**
 3. Name it `CRM Builder Admin`
 4. Under **Access**, set all entity scopes to **Enabled** and all
-   actions to **Yes** (or at minimum: enable read/write on all entities
-   you plan to configure)
+   actions to **Yes**
 5. **Important:** The role must include access to:
    - Administration
    - Entity Manager (for creating/deleting entities)
    - Field Manager (for creating/updating fields)
 6. Save the role
-7. Go back to the API User and assign this role under the **Roles** field
+7. Go back to the API User record and assign this role under the
+   **Roles** field
+8. Click **Save**
 
-> **Note:** For the field management and entity management endpoints that
-> CRM Builder uses, the API user typically needs full admin access.
-> Restricted roles will result in HTTP 403 errors. If in doubt, use
-> **Is Admin** (Method A).
+> **Note:** For the field management and entity management endpoints
+> that CRM Builder uses, the API user needs full admin-level access.
+> Restricted roles will result in HTTP 403 errors. If you encounter
+> 403s, verify the role has Administration access enabled.
 
 **Step 3 — Configure CRM Builder:**
 
