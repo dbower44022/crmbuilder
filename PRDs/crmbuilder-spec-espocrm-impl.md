@@ -1,7 +1,7 @@
 # CRM Builder — EspoCRM Configuration Specification
 
-**Version:** 1.6.1
-**Status:** Draft — Phase 1 (Entity Fields + Entity Management + Documentation)  
+**Version:** 2.0  
+**Status:** Active — Phase 1 (Entity Fields + Entity Management), Phase 2 (Relationships), Phase 3 (Layouts) Implemented  
 **Target:** Claude Code implementation
 
 ---
@@ -12,7 +12,7 @@ This program automates the configuration of an EspoCRM instance by reading a dec
 
 The program is designed to be idempotent — it can be run repeatedly and will only make changes where the current instance state differs from the desired spec. Program files are generic and reusable against any EspoCRM instance.
 
-Phase 1 covers entity fields and custom entity management (create and delete). Future phases will add additional object types using the same architecture.
+Phase 1 covers entity fields and custom entity management (create and delete). Phase 2 covers relationships. Phase 3 covers entity layouts (detail, edit, and list views). Future phases will add Dynamic Logic rules, search presets, and role management.
 
 ---
 
@@ -110,6 +110,7 @@ Displays a list of available YAML program files from the `data/programs/` direct
 
 **Add Program** opens the OS file picker to import a YAML file into `data/programs/`.
 **Edit Program** opens the selected YAML file in the system's default text editor.
+**View Program** opens the selected YAML file in a read-only viewer within the application. Displays the raw YAML content in a scrollable, monospace text panel. Allows the user to inspect a program file's contents without leaving the app or opening an external editor.
 **Delete Program** prompts for confirmation before removing.
 
 Program files are generic — they contain no instance-specific information and can be applied to any EspoCRM instance.
@@ -145,9 +146,30 @@ A scrollable, read-only text area using a monospace font that displays real-time
 
 Output is not cleared between operations in the same session — the full history of a session is visible. The **Clear Output** button resets the panel.
 
-### 3.6 View Report Button
+### 3.7 Import Tooltips
 
-After a Run or Verify operation, the **View Report** button becomes active. Clicking it opens the most recent `.log` report file in the system's default text viewer.
+The **Import Tooltips** action reads the `tooltip` property from each field definition in the selected program file and writes it to the EspoCRM field's `tooltip` property via the API. This populates the in-app help tooltip that appears next to field labels in the detail and edit views, helping users understand the purpose and expected content of each field without leaving the CRM.
+
+**Behavior:**
+- Operates on all fields in the selected program file that have a non-empty `tooltip` value
+- Fields without a `tooltip` property are skipped — their EspoCRM tooltip is not modified
+- Uses the same check → act → verify pattern as field deployment
+- Can be run independently of the main Run operation — tooltips can be updated at any time without redeploying fields
+- Idempotent — running multiple times produces the same result
+
+**EspoCRM API:** The `tooltip` property is set via the same `Admin/fieldManager/{entity}/{fieldName}` PUT endpoint used for field updates, with `tooltip` added to the payload.
+
+**Output messages follow the same format as field operations:**
+```
+[TOOLTIP]  Contact.mentorStatus ... UPDATED OK
+[TOOLTIP]  Contact.contactType ... NO CHANGE
+[TOOLTIP]  Contact.isMentor ... SKIPPED (no tooltip)
+```
+
+**Design note:** The `tooltip` and `description` properties serve different audiences and should be authored separately:
+
+- `tooltip` — written for **end users** operating the CRM. Concise, plain language. Explains what to enter and why. Example: *"Select the business areas where this mentor can provide guidance. Used to match mentors to clients with aligned needs."*
+- `description` — written for **developers and implementers**. Can include PRD section references, MANUAL CONFIG instructions, implementation notes, and technical rationale. Not deployed to EspoCRM.
 
 ---
 
@@ -194,14 +216,16 @@ Each field entry under an entity's `fields` list supports the following properti
 | `name` | string | yes | Internal field name (lowerCamelCase) |
 | `type` | string | yes | EspoCRM field type (see 5.3) |
 | `label` | string | yes | Display label shown in UI |
-| `description` | string | no | Business rationale and PRD reference for this field |
-| `required` | boolean | no | Default: false |
-| `default` | string | no | Default value |
-| `readOnly` | boolean | no | Default: false |
-| `audited` | boolean | no | Default: false |
-| `copyToClipboard` | boolean | no | Adds a copy-to-clipboard button next to the field in detail view. Useful for email, phone, URL, EIN, and other frequently-copied values. EspoCRM API property: `copyToClipboard`. |
-| `category` | string | no | UI grouping / tab category for layout management |
+| `description` | string | no | Developer-facing documentation for this field. Captures business rationale, PRD references, MANUAL CONFIG notes, and implementation context. Visible in the YAML file and generated documentation. Not deployed to EspoCRM. |
+| `tooltip` | string | no | User-facing help text deployed to the EspoCRM field's `tooltip` property. Appears as a help icon next to the field label in detail and edit views. Should be concise and written for end users, not developers. When the **Import Tooltips** feature is run, this value is written to EspoCRM. If omitted, the field's tooltip in EspoCRM is not modified. |
+| `required` | boolean | no | Field must be filled in before saving. Default: false |
+| `default` | string | no | Default value when a new record is created |
+| `readOnly` | boolean | no | Field cannot be edited by users. Default: false |
+| `audited` | boolean | no | Changes to this field are logged in the record's activity stream with old and new values. Default: false. Use on status fields and other significant change indicators. |
+| `copyToClipboard` | boolean | no | Adds a copy-to-clipboard button next to the field in the detail view. Useful for email addresses, phone numbers, URLs, EIN numbers, and other frequently-copied values. EspoCRM API property: `copyToClipboard`. Default: false |
+| `category` | string | no | UI grouping / tab category for layout management. Used by the layout engine to auto-assign fields to the correct panel tab. |
 | `options` | list | enum/multiEnum only | List of option values |
+| `optionDescriptions` | map | enum/multiEnum only | Optional documentation descriptions for each option value. Keys match the option values in `options`. Used in generated documentation and YAML review — never deployed to EspoCRM. Example: `Active: "Mentor is fully qualified and available for new client assignments."` |
 | `translatedOptions` | map | enum/multiEnum only | Display labels for each option value |
 | `style` | map | enum/multiEnum only | Color style per option (null = default) |
 | `isSorted` | boolean | enum/multiEnum only | Sort options alphabetically |
@@ -256,21 +280,31 @@ entities:
         label: "Mentor Status"
         required: false
         default: ""
+        audited: true
+        description: >
+          Current lifecycle stage of the mentor. Changes logged in
+          the activity stream. PRD Reference: Section 3.1.
+        tooltip: "Current stage of the mentor in the CBM program lifecycle."
         options:
           - Provisional
           - Active
           - Inactive
           - Departed
+        optionDescriptions:
+          Provisional: "Accepted into the program, completing onboarding requirements before becoming Active."
+          Active: "Fully qualified mentor, available for new client assignments."
+          Inactive: "No longer actively mentoring. All active clients have been reassigned."
+          Departed: "Has formally left the CBM program. Record retained for historical reference."
         translatedOptions:
           Provisional: "Provisional"
           Active: "Active"
           Inactive: "Inactive"
           Departed: "Departed"
         style:
-          Provisional: null
-          Active: null
-          Inactive: null
-          Departed: null
+          Provisional: warning
+          Active: success
+          Inactive: danger
+          Departed: danger
 
       - name: isMentor
         type: bool
@@ -702,13 +736,13 @@ entities:
 
 ## 12. Future Phases
 
-| Phase | Object Type | EspoCRM Endpoint |
-|---|---|---|
-| ~~2~~ | ~~Relationships~~ | Implemented — `EntityManager/action/createLink` |
-| 3 | Entity layouts (detail/edit/list) | `Admin/layouts/{entity}/{layoutType}` |
-| 4 | Dynamic Logic rules | Embedded in field definitions (extend Phase 1) |
-| 5 | Search presets / filters | `Admin/searchManager` (TBD) |
-| 6 | Roles and permissions | `Role` entity via standard CRUD |
+| Phase | Object Type | EspoCRM Endpoint | Status |
+|---|---|---|---|
+| ~~2~~ | ~~Relationships~~ | `EntityManager/action/createLink` | ✅ Implemented |
+| ~~3~~ | ~~Entity layouts (detail/edit/list)~~ | `Admin/layouts/{entity}/{layoutType}` | ✅ Implemented |
+| 4 | Dynamic Logic rules | Embedded in field definitions (extend Phase 1) | Planned |
+| 5 | Search presets / filters | `Admin/searchManager` (TBD) | Planned |
+| 6 | Roles and permissions | `Role` entity via standard CRUD | Planned |
 
 ---
 
