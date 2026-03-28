@@ -33,6 +33,7 @@ Read these files carefully before writing any code:
 6. Create `espo_impl/ui/deploy_panel.py` — Deploy section for main window
 7. Update `espo_impl/ui/main_window.py` — add Deploy panel to layout
 8. Update `pyproject.toml` — add `paramiko` and `dnspython` dependencies
+9. Write tests in `tests/test_deploy_manager.py`
 
 Implement in the order listed. Confirm with me after each task before
 proceeding to the next.
@@ -426,8 +427,25 @@ Specific changes:
 3. Connect the `instance_panel.instance_selected` signal to
    `deploy_panel.set_instance` so the Deploy panel updates when the user
    selects a different instance.
-4. After `DeployWizard` emits `config_saved`, also update the instance
-   profile URL if it has changed (call the existing instance save logic).
+4. Connect the `DeployWorker.cert_expiry_updated` signal to a new private
+   method `_on_cert_expiry_updated(self, expiry_date: str)` on `MainWindow`.
+   This method must run on the main thread (Qt signal/slot guarantees this).
+   It should:
+   - Update `DeployConfig.cert_expiry_date` with the new value
+   - Save the updated config via `deploy_manager.save_deploy_config()`
+   - Update the instance profile URL to `https://{config.full_domain}` using
+     the existing instance save logic (same pattern used in `_on_instance_saved`)
+   - Refresh the Deploy panel cert status badge
+
+   **Important:** This is the only place the instance profile URL is updated
+   after deployment. Do not update it inside `deploy_worker.py` or
+   `deploy_manager.py` — it must happen here on the main thread to avoid
+   cross-thread modification of UI state.
+
+5. Connect `DeployWizard.config_saved` to a new private method
+   `_on_deploy_config_saved(self, config: DeployConfig)` that saves the
+   config and refreshes the Deploy panel. Do not update the instance profile
+   URL here — that happens only after a successful deployment in step 4.
 
 Do not change any existing signal connections, button handlers, or
 `UIState` logic.
@@ -441,6 +459,106 @@ Add to the `dependencies` list:
 "paramiko>=3.0",
 "dnspython>=2.0",
 ```
+
+---
+
+## Task 9 — Write Tests in `tests/test_deploy_manager.py`
+
+Follow the same patterns as existing test files (e.g. `test_config_loader.py`,
+`test_comparator.py`). Use `pytest` with no external dependencies — mock SSH
+and DNS calls where needed using `unittest.mock`.
+
+Write tests for the following:
+
+### 9a — `DeployConfig` model
+
+```python
+def test_full_domain_property():
+    """full_domain combines subdomain and base_domain correctly."""
+
+def test_full_domain_production():
+    """crm.mycompany.com for standard production config."""
+
+def test_full_domain_test_env():
+    """crm-test.mycompany.com for test environment config."""
+```
+
+### 9b — Config file read/write
+
+```python
+def test_save_and_load_deploy_config(tmp_path):
+    """Saved config round-trips correctly through JSON."""
+
+def test_load_deploy_config_missing_returns_none(tmp_path):
+    """load_deploy_config returns None when file does not exist."""
+
+def test_save_deploy_config_creates_file(tmp_path):
+    """save_deploy_config creates the JSON file at the correct path."""
+
+def test_save_deploy_config_filename_uses_slug(tmp_path):
+    """Config is saved as {slug}_deploy.json."""
+```
+
+### 9c — DNS validation
+
+```python
+def test_check_dns_match(mocker):
+    """Returns (True, '') when resolved IP matches expected IP."""
+
+def test_check_dns_mismatch(mocker):
+    """Returns (False, message) when resolved IP does not match."""
+
+def test_check_dns_no_result(mocker):
+    """Returns (False, message) when domain does not resolve."""
+
+def test_check_dns_message_includes_domain(mocker):
+    """Failure message includes the domain name."""
+
+def test_check_dns_message_includes_ips(mocker):
+    """Mismatch message includes both resolved IP and expected IP."""
+```
+
+### 9d — Password masking
+
+```python
+def test_mask_credentials_replaces_db_password():
+    """db_password value is replaced with [db_password] placeholder."""
+
+def test_mask_credentials_replaces_admin_password():
+    """admin_password value is replaced with [admin_password] placeholder."""
+
+def test_mask_credentials_replaces_root_password():
+    """db_root_password value is replaced with [db_root_password] placeholder."""
+
+def test_mask_credentials_leaves_non_credential_text_unchanged():
+    """Non-credential parts of the command string are not modified."""
+
+def test_mask_credentials_handles_none_password():
+    """None password values do not cause errors."""
+```
+
+### 9e — Certificate expiry helpers
+
+```python
+def test_cert_days_remaining_future_date():
+    """Returns positive integer for a future expiry date."""
+
+def test_cert_days_remaining_past_date():
+    """Returns negative integer for an already-expired date."""
+
+def test_cert_days_remaining_none_input():
+    """Returns None when expiry_date_str is None."""
+
+def test_cert_days_remaining_correct_calculation():
+    """Returns correct number of days for a known date."""
+```
+
+> Note: SSH phase functions (`phase1_server_prep` through `phase4_verify`)
+> require a live server and are not covered by unit tests. They are
+> exercised by manual integration testing against a real Droplet.
+
+Do not mock `InstanceProfile` or any existing core modules — import and
+use them directly as the existing tests do.
 
 ---
 
