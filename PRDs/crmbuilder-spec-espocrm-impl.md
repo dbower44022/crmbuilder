@@ -1,6 +1,6 @@
 # CRM Builder — EspoCRM Configuration Specification
 
-**Version:** 1.7  
+**Version:** 1.8  
 **Status:** Active — Phase 1 (Entity Fields + Entity Management), Phase 2 (Relationships), Phase 3 (Layouts) Implemented  
 **Target:** Claude Code implementation
 
@@ -110,6 +110,7 @@ Displays a list of available YAML program files from the `data/programs/` direct
 
 **Add Program** opens the OS file picker to import a YAML file into `data/programs/`.
 **Edit Program** opens the selected YAML file in the system's default text editor.
+**View Program** opens the selected YAML file in a read-only viewer within the application. Displays the raw YAML content in a scrollable, monospace text panel. Allows the user to inspect a program file's contents without leaving the app or opening an external editor.
 **Delete Program** prompts for confirmation before removing.
 
 Program files are generic — they contain no instance-specific information and can be applied to any EspoCRM instance.
@@ -145,9 +146,27 @@ A scrollable, read-only text area using a monospace font that displays real-time
 
 Output is not cleared between operations in the same session — the full history of a session is visible. The **Clear Output** button resets the panel.
 
-### 3.6 View Report Button
+### 3.7 Import Tooltips
 
-After a Run or Verify operation, the **View Report** button becomes active. Clicking it opens the most recent `.log` report file in the system's default text viewer.
+The **Import Tooltips** action reads the `description` property from each field definition in the selected program file and writes it to the EspoCRM field's `tooltip` property via the API. This populates the in-app help tooltip that appears next to field labels in the detail and edit views, helping users understand the purpose and expected content of each field without leaving the CRM.
+
+**Behavior:**
+- Operates on all fields in the selected program file that have a non-empty `description` value
+- Fields without a `description` are skipped
+- Uses the same check → act → verify pattern as field deployment
+- Can be run independently of the main Run operation — tooltips can be updated at any time without redeploying fields
+- Idempotent — running multiple times produces the same result
+
+**EspoCRM API:** The `tooltip` property is set via the same `Admin/fieldManager/{entity}/{fieldName}` PUT endpoint used for field updates, with `tooltip` added to the payload.
+
+**Output messages follow the same format as field operations:**
+```
+[TOOLTIP]  Contact.mentorStatus ... UPDATED OK
+[TOOLTIP]  Contact.contactType ... NO CHANGE
+[TOOLTIP]  Contact.isMentor ... SKIPPED (no description)
+```
+
+**Design note:** The `description` field in YAML is intentionally dual-purpose — it serves as human-readable documentation in the YAML file (for developers and reviewers) and as the source for EspoCRM field tooltips (for end users). Authors should write descriptions that are meaningful in both contexts: concise enough to work as a tooltip, rich enough to document the field's purpose and PRD reference.
 
 ---
 
@@ -194,7 +213,7 @@ Each field entry under an entity's `fields` list supports the following properti
 | `name` | string | yes | Internal field name (lowerCamelCase) |
 | `type` | string | yes | EspoCRM field type (see 5.3) |
 | `label` | string | yes | Display label shown in UI |
-| `description` | string | no | Business rationale and PRD reference for this field |
+| `description` | string | no | Business rationale and PRD reference for this field. When the **Import Tooltips** feature is run, this value is written to the EspoCRM field's `tooltip` property, which displays as a help tooltip next to the field label in the detail and edit views. |
 | `required` | boolean | no | Field must be filled in before saving. Default: false |
 | `default` | string | no | Default value when a new record is created |
 | `readOnly` | boolean | no | Field cannot be edited by users. Default: false |
