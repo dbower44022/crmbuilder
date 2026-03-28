@@ -168,14 +168,38 @@ tool does not support bare IP address installations.
 
 Log in to your DNS provider (wherever your domain name is registered or
 managed — e.g. DigitalOcean DNS, GoDaddy, Namecheap, Cloudflare) and
-create an A record:
+create an A record with these values:
 
 | Field | Value |
 |-------|-------|
 | Type | `A` |
-| Name / Host | `crm` (production) or `crm-test` (test) |
+| Name / Host | See note below |
 | Value / Points To | The Droplet's public IPv4 address |
 | TTL | `300` (5 minutes — can be raised to 3600 after confirming it works) |
+
+**What to enter in the Name / Host field:**
+
+This is the most commonly confusing part — different DNS providers expect
+different formats for the same thing.
+
+- **Most providers (GoDaddy, Namecheap, DigitalOcean DNS):** Enter just
+  the subdomain portion — `crm` or `crm-test`. The provider automatically
+  appends your base domain. Do not enter the full domain name.
+
+- **Some providers:** Expect the fully qualified name including the base
+  domain — `crm.clevelandbusinessmentors.org`
+
+**How to tell which format your provider wants:**
+
+Many providers show a preview of the full record as you type. Watch this
+preview carefully:
+
+- If it shows `crm.clevelandbusinessmentors.org.` (trailing dot is normal
+  in DNS notation) → you have entered the correct value
+- If it shows `crm.clevelandbusinessmentors.org.clevelandbusinessmentors.org.`
+  → you have entered too much; use just `crm` instead
+- If there is no preview, enter just `crm` — this is correct for the
+  majority of providers
 
 **Provider-specific notes:**
 
@@ -183,7 +207,11 @@ create an A record:
   not orange). The EspoCRM Let's Encrypt challenge requires a direct
   connection to the server; Cloudflare's proxy will cause certificate
   issuance to fail.
-- **All other providers:** Standard A record creation applies.
+- **DigitalOcean DNS users:** Enter just `crm` in the Hostname field.
+  DigitalOcean will show the full record as `crm.yourdomain.com` in the
+  confirmation view.
+- **GoDaddy users:** Enter just `crm` in the Name field.
+- **Namecheap users:** Enter just `crm` in the Host field.
 
 **Waiting for DNS propagation:**
 
