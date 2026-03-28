@@ -222,6 +222,7 @@ class ConfigLoader:
             default=data.get("default"),
             readOnly=data.get("readOnly"),
             audited=data.get("audited"),
+            copyToClipboard=data.get("copyToClipboard"),
             options=data.get("options"),
             translatedOptions=data.get("translatedOptions"),
             style=data.get("style"),

@@ -395,6 +395,29 @@ def test_build_payload_includes_maxlength():
     assert "max" not in payload
 
 
+def test_build_payload_includes_copy_to_clipboard():
+    manager, _ = make_manager()
+    field_def = FieldDefinition(
+        name="einNumber",
+        type="varchar",
+        label="EIN Number",
+        copyToClipboard=True,
+    )
+    payload = manager._build_payload(field_def)
+    assert payload["copyToClipboard"] is True
+
+
+def test_build_payload_omits_copy_to_clipboard_when_none():
+    manager, _ = make_manager()
+    field_def = FieldDefinition(
+        name="firstName",
+        type="varchar",
+        label="First Name",
+    )
+    payload = manager._build_payload(field_def)
+    assert "copyToClipboard" not in payload
+
+
 def test_custom_field_name():
     assert FieldManager._custom_field_name("contactType") == "cContactType"
     assert FieldManager._custom_field_name("isMentor") == "cIsMentor"

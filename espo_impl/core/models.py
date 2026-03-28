@@ -72,6 +72,7 @@ class FieldDefinition:
     default: str | None = None
     readOnly: bool | None = None
     audited: bool | None = None
+    copyToClipboard: bool | None = None
     options: list[str] | None = None
     translatedOptions: dict[str, str] | None = None
     style: dict[str, str | None] | None = None

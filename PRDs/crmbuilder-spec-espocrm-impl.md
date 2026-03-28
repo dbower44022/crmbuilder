@@ -1,6 +1,6 @@
 # CRM Builder — EspoCRM Configuration Specification
 
-**Version:** 1.6  
+**Version:** 1.6.1
 **Status:** Draft — Phase 1 (Entity Fields + Entity Management + Documentation)  
 **Target:** Claude Code implementation
 
@@ -199,6 +199,7 @@ Each field entry under an entity's `fields` list supports the following properti
 | `default` | string | no | Default value |
 | `readOnly` | boolean | no | Default: false |
 | `audited` | boolean | no | Default: false |
+| `copyToClipboard` | boolean | no | Adds a copy-to-clipboard button next to the field in detail view. Useful for email, phone, URL, EIN, and other frequently-copied values. EspoCRM API property: `copyToClipboard`. |
 | `category` | string | no | UI grouping / tab category for layout management |
 | `options` | list | enum/multiEnum only | List of option values |
 | `translatedOptions` | map | enum/multiEnum only | Display labels for each option value |
@@ -348,6 +349,7 @@ The following properties are compared between current state and desired spec:
 - `default`
 - `readOnly`
 - `audited`
+- `copyToClipboard`
 - `options` (enum/multiEnum — order matters)
 - `translatedOptions` (enum/multiEnum)
 - `style` (enum/multiEnum)

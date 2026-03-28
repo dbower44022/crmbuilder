@@ -565,6 +565,8 @@ class FieldManager:
             payload["readOnly"] = field_def.readOnly
         if field_def.audited is not None:
             payload["audited"] = field_def.audited
+        if field_def.copyToClipboard is not None:
+            payload["copyToClipboard"] = field_def.copyToClipboard
         if field_def.options is not None:
             payload["options"] = field_def.options
         if field_def.translatedOptions is not None:
