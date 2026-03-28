@@ -1,25 +1,42 @@
-# CBM CRM Deployment Tool
+# CRM Builder — EspoCRM Deployment Feature
 ## Product Requirements Document
-**Version:** 0.3 | **Date:** March 2026 | **Organization:** Cleveland Business Mentors
+**Version:** 1.0 | **Date:** March 2026 | **Status:** Active
+
+---
+
+## Revision History
+
+| Version | Date | Notes |
+|---------|------|-------|
+| 0.1 | March 2026 | Initial draft as standalone tool |
+| 0.2 | March 2026 | Added PySide6 GUI: Setup Wizard and Deployment Dashboard |
+| 0.3 | March 2026 | Closed open questions: cleanup/restart, cbmadmin user, DO backup |
+| 1.0 | March 2026 | Rewritten: integrated into CRM Builder; switched to official EspoCRM installer script (Docker-based); aligned to CRM Builder file structure and UI patterns |
 
 ---
 
 ## 1. Overview
 
-This document defines the requirements for the CBM CRM Deployment Tool, a Python desktop application with a graphical user interface (GUI) built with PySide6. It automates the provisioning, configuration, and verification of self-hosted EspoCRM instances on DigitalOcean.
+This document defines the requirements for adding EspoCRM server deployment
+capability directly into the CRM Builder desktop application. Rather than
+maintaining a separate tool, deployment is a new feature panel within the
+existing PySide6 application, consistent with the existing Instance, Program,
+and Output panels.
 
-The tool eliminates manual, error-prone server setup steps by executing a repeatable, scripted deployment sequence via SSH. It is designed to be accessible to non-technical administrators through a guided, visual interface. It targets two environments: Dev/Test and Production.
+The feature automates provisioning EspoCRM on a DigitalOcean Droplet via SSH,
+using the official EspoCRM installer script as the installation mechanism. It
+targets two environments per client: Production and Test/Staging.
 
 ---
 
 ## 2. Background
 
-Cleveland Business Mentors (CBM) is deploying EspoCRM as its CRM platform to manage mentor-client relationships, engagement tracking, and communications. Two self-hosted instances are required:
-
-- **Production:** `crm.clevelandbusinessmentors.org`
-- **Dev/Test:** `dev-crm.clevelandbusinessmentors.org`
-
-Both environments are hosted on DigitalOcean Droplets running Ubuntu 22.04 LTS. The deployment tool is intended to be run locally by a CBM administrator and must handle the full server configuration lifecycle from a clean Ubuntu image through to a verified, operational EspoCRM instance.
+CRM Builder already manages EspoCRM configuration (fields, layouts,
+relationships, data import) against running instances. The missing link is
+the step before that: getting a fresh EspoCRM instance up and running on
+a server. Adding deployment to CRM Builder closes this gap and gives
+administrators a single tool for the full lifecycle — from provisioning a
+new server through deploying configuration to it.
 
 ---
 
@@ -27,21 +44,28 @@ Both environments are hosted on DigitalOcean Droplets running Ubuntu 22.04 LTS. 
 
 ### 3.1 Goals
 
-- Fully automate EspoCRM installation and configuration on a fresh Ubuntu 22.04 LTS Droplet
-- Provide a graphical desktop interface (PySide6) accessible to non-technical administrators
-- Guide first-time users through configuration via a step-by-step Setup Wizard
-- Provide a Deployment Dashboard for subsequent runs with real-time phase status and log output
-- Support both Dev/Test and Production environments via a single tool with environment-specific configuration
-- Persist environment configuration to local YAML files for reuse across sessions
-- Execute post-deployment verification checks and display results clearly in the UI
+- Add a Deploy panel to the CRM Builder main window as a new section
+- Allow the user to initiate deployment from the currently selected instance
+- Guide first-time setup through a modal Setup Wizard (consistent with
+  existing dialog patterns such as `instance_dialog.py`)
+- Provide a Deployment Dashboard for subsequent runs with real-time phase
+  status and log output
+- Use the official EspoCRM installer script as the installation mechanism
+  (Docker-based; Nginx + MariaDB + EspoCRM as containers)
+- Validate DNS propagation before attempting Let's Encrypt certificate issuance
+- Track SSL certificate expiry and warn the operator before certificates expire
+- Persist deployment configuration alongside existing instance profiles
 
 ### 3.2 Non-Goals
 
-- The tool does **not** provision DigitalOcean Droplets (server must exist before running)
-- The tool does **not** configure DNS records (must be done manually in DNS provider)
+- The tool does **not** provision DigitalOcean Droplets (Droplet must exist
+  before running the Deploy feature)
+- The tool does **not** configure DNS records (must be done manually in the
+  DNS provider before deployment)
 - The tool does **not** migrate data between environments
-- The tool does **not** manage ongoing EspoCRM application configuration (contacts, fields, roles, etc.)
 - The tool does **not** support operating systems other than Ubuntu 22.04 LTS
+- The tool does **not** support bare IP deployments for production or test
+  environments (a domain name is required)
 
 ---
 
@@ -49,89 +73,119 @@ Both environments are hosted on DigitalOcean Droplets running Ubuntu 22.04 LTS. 
 
 ### 4.1 Hosting Infrastructure
 
-| Parameter | Production | Dev / Test |
-|-----------|-----------|------------|
+Each client deployment targets two environments, each on its own Droplet:
+
+| Parameter | Production | Test / Staging |
+|-----------|-----------|----------------|
 | Provider | DigitalOcean | DigitalOcean |
-| Region | New York (nyc1 or nyc3) | New York (nyc1 or nyc3) |
-| Droplet Size | 2 vCPU / 4 GB RAM / 80 GB SSD | 1 vCPU / 2 GB RAM / 50 GB SSD |
 | OS | Ubuntu 22.04 LTS | Ubuntu 22.04 LTS |
-| Domain | crm.clevelandbusinessmentors.org | dev-crm.clevelandbusinessmentors.org |
+| Droplet Size | 2 vCPU / 4 GB RAM / 80 GB SSD | 1 vCPU / 2 GB RAM / 50 GB SSD |
+| Domain convention | `crm.{client-domain}` | `crm-test.{client-domain}` |
 | Est. Monthly Cost | ~$24/mo | ~$12/mo |
 
-### 4.2 Software Stack
+### 4.2 Software Stack (Server)
 
-| Component | Version | Role |
-|-----------|---------|------|
-| Ubuntu | 22.04 LTS | Operating system |
-| Nginx | Latest stable | Web server / reverse proxy |
-| PHP | 8.2 | Application runtime |
-| MySQL | 8.0 | Database |
-| EspoCRM | Latest stable release | CRM application |
-| Certbot | Latest stable | Let's Encrypt SSL certificate management |
-| Git | System default | Version control utility |
+The official EspoCRM installer script manages the server stack as Docker
+containers. CRM Builder does not install or configure these components
+individually — it delegates entirely to the installer script.
 
-### 4.3 Deployment Tool Architecture
+| Component | Role |
+|-----------|------|
+| Docker + Docker Compose | Container runtime (installed by EspoCRM script) |
+| Nginx (container) | Web server / reverse proxy |
+| MariaDB (container) | Database |
+| EspoCRM (container) | CRM application |
+| Let's Encrypt / Certbot | SSL certificate (managed by EspoCRM script) |
 
-The deployment tool is a Python 3 application that runs locally on the administrator's machine. It connects to the target Droplet via SSH using the Paramiko library and executes all installation and configuration steps remotely. No code is permanently installed on the server.
+### 4.3 Integration Architecture
 
-Key architectural characteristics:
+The Deploy feature follows the same architectural patterns as the rest of
+CRM Builder:
 
-- **Local execution:** runs on administrator's laptop/workstation
-- **Remote operations:** all server commands executed via SSH (Paramiko)
-- **Config persistence:** environment configuration saved to local YAML files
-- **Idempotent design:** safe to re-run against an existing deployment
-- **Phase-based execution:** deployment divided into discrete phases
+- **Business logic** in `espo_impl/core/` — no GUI dependencies
+- **UI components** in `espo_impl/ui/` — PySide6 panels and dialogs
+- **Background work** in `espo_impl/workers/` — QThread workers
+- **SSH execution** via Paramiko — all server commands run remotely;
+  nothing is permanently installed on the administrator's machine
+- **Config persistence** alongside instance profiles in `data/instances/`,
+  gitignored
 
 ---
 
 ## 5. User Experience
 
-The tool presents a PySide6 desktop GUI. The interface operates in two distinct modes depending on whether a saved configuration exists for the selected environment: **Setup Wizard** (first run) and **Deployment Dashboard** (subsequent runs). The application launches by running `python main.py` — no command-line arguments required.
+### 5.1 Deploy Panel in the Main Window
 
-### 5.1 Application Launch
+A **Deploy** section is added to the CRM Builder main window below the
+existing Instance and Program panels. It is always visible but its content
+is context-sensitive based on the selected instance.
 
-On launch, the application displays a **Welcome Screen** with two large buttons:
+**When no instance is selected:**
+The panel displays a prompt: *"Select an instance to manage its deployment."*
 
-- Deploy to Dev / Test
-- Deploy to Production
+**When an instance is selected but has no deployment configuration:**
+The panel displays a **Set Up Deployment** button. Clicking it opens the
+Setup Wizard as a modal dialog.
 
-The application checks whether a saved configuration file exists for the selected environment. If no config exists, the Setup Wizard opens. If config exists, the Deployment Dashboard opens.
+**When an instance is selected and has deployment configuration:**
+The panel displays the Deployment Dashboard inline.
 
-### 5.2 Setup Wizard (First Run)
+This mirrors the existing pattern where selecting an instance drives the
+Program panel content, and dialogs (like `InstanceDialog`) handle
+configuration tasks modally.
 
-The Setup Wizard guides the user through configuration in a series of clearly labeled steps. Each step occupies the full window and includes a title, brief explanation, and input fields. Navigation buttons (Back, Next, Cancel) appear at the bottom of every step.
+### 5.2 Setup Wizard (First Run — Modal Dialog)
+
+The Setup Wizard opens as a modal dialog when no deployment configuration
+exists for the selected instance. It follows the same visual style as
+`instance_dialog.py`. Navigation buttons (Back, Next, Cancel) appear at
+the bottom of every step.
 
 | Step | Title | Fields / Actions |
 |------|-------|-----------------|
-| 1 | Choose Environment | Confirm target environment (pre-selected based on launch button) |
-| 2 | Server Connection | Droplet IP address, SSH key file path (browse button), SSH username |
-| 3 | Domain | Domain name (pre-filled based on environment, editable) |
-| 4 | Database | MySQL root password, EspoCRM database name, database username, database password |
-| 5 | EspoCRM Admin Account | Admin username, admin password, admin email address |
-| 6 | Review & Confirm | Summary of all entered values (passwords masked). Edit and Save buttons. |
+| 1 | Server Connection | Droplet IP address; SSH key file path (with Browse button); SSH username (default: `root`) |
+| 2 | Domain | Base domain (e.g. `mycompany.com`); Subdomain prefix (default: `crm` for production, `crm-test` for test); Full domain shown as read-only preview |
+| 3 | Database | EspoCRM DB password; MySQL root password (optional — auto-generated if blank) |
+| 4 | EspoCRM Admin | Admin username (default: `admin`); Admin password; Admin email address |
+| 5 | SSL | Email address for Let's Encrypt expiry notifications |
+| 6 | Review & Confirm | Summary of all entered values (passwords masked). Back and **Save & Deploy** buttons. |
 
-On the Review & Confirm step, the user can go back to edit any field. Clicking **Save & Deploy** saves the config to a local YAML file, transitions to the Deployment Dashboard, and begins deployment automatically.
+On **Save & Deploy**, the wizard saves the configuration, closes, and the
+Deploy panel transitions to the Deployment Dashboard and begins deployment
+automatically.
 
-> **Note:** Password fields must always be masked (shown as dots). The Review step shows passwords as masked strings with an optional Show toggle.
+> Password fields must always be masked. The Review step shows passwords as
+> masked strings with an optional Show/Hide toggle.
 
-### 5.3 Deployment Dashboard (Subsequent Runs)
+### 5.3 Deployment Dashboard
 
-The Deployment Dashboard is the primary interface for users who have already configured an environment. It consists of four areas:
+The Deployment Dashboard displays within the Deploy panel for instances that
+have deployment configuration. It has four areas:
 
 #### 5.3.1 Environment Header
 
-Displays the target environment name (Dev/Test or Production), domain, and Droplet IP. An **Edit Configuration** button opens a settings panel to update any saved values.
+Displays the instance name, full domain, and Droplet IP. An **Edit
+Configuration** button reopens the Setup Wizard pre-populated with saved
+values.
+
+Also displays SSL certificate status:
+- Certificate expiry date
+- Days remaining
+- Status badge: **Valid** (green, >30 days), **Expiring Soon** (yellow,
+  14–30 days), **Critical** (red, <14 days), **Unknown** (grey)
 
 #### 5.3.2 Phase Status Panel
 
-Displays the five deployment phases as a vertical list of status cards. Each card shows:
+Displays the four deployment phases as a vertical list of status cards.
+Each card shows:
 
 - Phase name and brief description
-- Current status: Not Started, In Progress, Completed, Failed
-- Status represented by both a color indicator **and** a text label (never color alone)
+- Status: Not Started / In Progress / Completed / Failed
+- Status represented by both a color indicator **and** a text label
+  (never color alone)
 
-| Status | Indicator Color | Label |
-|--------|----------------|-------|
+| Status | Color | Label |
+|--------|-------|-------|
 | Not Started | Grey | Not Started |
 | In Progress | Blue (animated) | Running... |
 | Completed | Green | Completed |
@@ -140,120 +194,146 @@ Displays the five deployment phases as a vertical list of status cards. Each car
 #### 5.3.3 Action Buttons
 
 - **Deploy All** — runs all phases sequentially from Phase 1
-- **Run Verification Only** — runs Phase 5 (verify) only
-- **Retry Failed Phase** — enabled only when a phase has failed; re-runs from the failed phase
+- **Run Verification Only** — runs Phase 4 (verify) only
+- **Retry Failed Phase** — enabled only when a phase has failed; re-runs
+  from the failed phase
 
 #### 5.3.4 Log Window
 
-A scrollable, read-only log window occupies the lower portion of the dashboard. It streams live output from SSH commands as deployment runs. Each log line is timestamped and color-coded by severity:
+A scrollable, read-only log window streams live SSH output during
+deployment. Each line is timestamped and color-coded:
 
 - White: standard output
 - Yellow: warnings
 - Red: errors
 
-A **Copy Log** and **Save Log to File** button appear above the log window.
+**Copy Log** and **Save Log to File** buttons appear above the log window,
+consistent with the existing `OutputPanel` component.
 
-### 5.4 Verification Results Screen
+### 5.4 Verification Results
 
-After Phase 5 (Verification) completes, the tool displays a dedicated results screen showing a table of all verification checks with pass/fail status for each. A summary banner at the top indicates overall result: **All Checks Passed** or **Issues Found**.
-
-From this screen the user can return to the Dashboard or export the results as a text file.
+After Phase 4 (Verification) completes, a results table is shown within the
+Deploy panel listing each check with pass/fail status. A summary banner
+indicates overall result: **All Checks Passed** or **Issues Found**. The
+user can export results as a text file.
 
 ### 5.5 Error Handling in the UI
 
 - If a phase fails, the phase card turns red and deployment halts
-- An error panel expands below the failed phase card showing the failed command and its output
-- Where possible, a plain-language remediation message is displayed
+- An error panel expands below the failed phase card showing the failed
+  command and its output
+- Where possible, a plain-language remediation message is shown
 - The **Retry Failed Phase** button becomes active
 
 ---
 
 ## 6. Functional Requirements
 
-### 6.1 Configuration Management
+### 6.1 Deployment Configuration
 
-The tool must collect and persist the following configuration values per environment:
+Each instance may have an associated deployment configuration stored as a
+separate JSON file alongside the instance profile in `data/instances/`,
+named `{instance_slug}_deploy.json`. This file is gitignored.
 
-| Parameter | Description | Default / Example |
-|-----------|-------------|-------------------|
-| environment | Target environment identifier | `dev` or `prod` |
-| droplet_ip | IP address of the target Droplet | e.g. 192.168.1.100 |
-| ssh_key_path | Local path to SSH private key | ~/.ssh/id_rsa |
-| ssh_user | SSH login username | root (initial), cbmadmin (after hardening) |
-| domain | Fully qualified domain name | Auto-set based on environment |
-| mysql_root_password | MySQL root password to set | User-provided |
-| mysql_db_name | EspoCRM database name | espocrm |
-| mysql_db_user | EspoCRM database user | espocrm_user |
-| mysql_db_password | EspoCRM database password | User-provided |
-| espocrm_admin_user | EspoCRM admin username | admin |
-| espocrm_admin_password | EspoCRM admin password | User-provided |
-| espocrm_admin_email | EspoCRM admin email address | User-provided |
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `droplet_ip` | IP address of the target Droplet | — |
+| `ssh_key_path` | Local path to SSH private key | `~/.ssh/id_rsa` |
+| `ssh_user` | SSH login username | `root` |
+| `base_domain` | Registered domain (e.g. `mycompany.com`) | — |
+| `subdomain` | Subdomain prefix | `crm` |
+| `letsencrypt_email` | Email for Let's Encrypt notifications | — |
+| `db_password` | EspoCRM database password | — |
+| `db_root_password` | MySQL root password | auto-generated |
+| `admin_username` | EspoCRM admin username | `admin` |
+| `admin_password` | EspoCRM admin password | — |
+| `admin_email` | EspoCRM admin email | — |
+| `cert_expiry_date` | Last known certificate expiry (ISO date) | — |
+| `deployed_at` | Timestamp of last successful deployment | — |
 
-> **Note:** Config files are saved as `config/cbm-crm-dev.yml` and `config/cbm-crm-prod.yml` in the tool's local directory. These files contain credentials and must not be committed to version control. The tool must automatically create a `.gitignore` entry for the `config/` directory on first run.
+The full domain is derived as `{subdomain}.{base_domain}`.
 
-### 6.2 Deployment Phases
+### 6.2 DNS Pre-flight Validation
 
-The deployment is organized into the following sequential phases. Each phase must complete successfully before the next begins. The tool must report phase status (started, completed, failed) clearly in the UI.
+Before Phase 1 begins (and again before Phase 2 SSL issuance), the tool
+validates that DNS has propagated:
 
-#### Phase 1 — Server Hardening
+1. Resolve `{subdomain}.{base_domain}` via DNS
+2. Compare resolved IP to `droplet_ip`
+3. If they match → proceed
+4. If they do not match → display a clear error with the mismatched IPs
+5. If no result → display an error prompting the user to create the A record
+6. Retry automatically every 30 seconds up to a 10-minute timeout, with
+   a countdown shown in the log window
 
-- Connect to Droplet as root for initial setup
-- Create non-root sudo user: `cbmadmin`
-- Copy root SSH `authorized_keys` to `cbmadmin` user
-- Add `cbmadmin` to sudoers group
-- Disable root SSH login
-- Disable SSH password authentication (key-based only)
-- Restart SSH service
-- Reconnect as `cbmadmin` for all subsequent phases
-- Configure swap space (2GB, recommended for 2GB RAM Droplets)
-- Update apt package index
-- Install essential utilities: `curl`, `git`, `unzip`, `software-properties-common`
+### 6.3 Deployment Phases
 
-> **Note:** All phases after Phase 1 operate as `cbmadmin` via sudo. The tool must re-establish the SSH connection as `cbmadmin` after hardening completes.
+#### Phase 1 — Server Preparation
 
-#### Phase 2 — Software Stack Installation
+- Connect to Droplet via SSH as the configured user
+- Run `apt-get update && apt-get upgrade -y`
+- Install Docker prerequisites: `curl`, `ca-certificates`, `gnupg`
+- Install Docker Engine and Docker Compose via Docker's official apt repository
+- Configure swap space (2 GB)
+- Open firewall ports 22, 80, and 443
 
-- Install and configure Nginx
-- Install PHP 8.2 with required extensions: `mbstring`, `curl`, `zip`, `gd`, `intl`, `mysqlnd`, `xml`, `bcmath`, `tokenizer`
-- Install MySQL 8.0
-- Set MySQL root password
-- Create EspoCRM database, database user, and grant privileges
-- Install Certbot and Nginx plugin
+#### Phase 2 — EspoCRM Installation
 
-#### Phase 3 — EspoCRM Installation
+- Download the official EspoCRM installer script
+- Run the installer with Let's Encrypt SSL and all configuration flags:
 
-- Download latest stable EspoCRM release from official source
-- Extract to `/var/www/espocrm`
-- Set correct file ownership (`www-data`) and permissions
-- Configure Nginx virtual host for the target domain
-- Run EspoCRM CLI installer with database and admin credentials
-- Configure EspoCRM cron job for scheduled tasks
-- Configure EspoCRM daemon for WebSocket/real-time features
+```
+sudo bash install.sh -y --ssl --letsencrypt \
+  --domain={full_domain} \
+  --email={letsencrypt_email} \
+  --admin-username={admin_username} \
+  --admin-password={admin_password} \
+  --db-password={db_password} \
+  --db-root-password={db_root_password}
+```
 
-#### Phase 4 — SSL Configuration
+- The installer handles: Docker Compose setup, Nginx configuration,
+  MariaDB initialisation, EspoCRM installation, Let's Encrypt certificate
+  issuance, and cron configuration
 
-- Issue Let's Encrypt SSL certificate for the target domain via Certbot
-- Configure Nginx for HTTPS with HTTP → HTTPS redirect
-- Verify certificate auto-renewal timer is active
+#### Phase 3 — Post-Install Configuration
 
-> **Note:** SSL issuance requires that DNS A records already point to the Droplet IP before this phase runs. The tool will check DNS resolution and warn the user if the domain does not resolve correctly before attempting certificate issuance.
+- Verify all Docker containers are running (`espocrm`, `espocrm-db`, `espocrm-nginx`)
+- Confirm cron job is active for EspoCRM scheduled tasks
+- Record the SSL certificate expiry date to the deployment config file
+- Update the instance profile URL to `https://{full_domain}` so CRM Builder
+  can immediately connect to the new instance
 
-#### Phase 5 — Verification
-
-After deployment completes, the tool runs the following verification checks and reports pass/fail for each:
+#### Phase 4 — Verification
 
 | Check | Method | Pass Condition |
 |-------|--------|---------------|
-| Nginx running | `systemctl status nginx` | Service active |
-| MySQL running | `systemctl status mysql` | Service active |
-| PHP-FPM running | `systemctl status php8.2-fpm` | Service active |
+| Docker containers running | `docker compose ps` in `/var/www/espocrm` | All containers Up |
 | HTTP redirect | HTTP GET to domain | 301/302 to HTTPS |
 | HTTPS response | HTTPS GET to domain | 200 OK |
 | SSL certificate valid | Certificate expiry check | Valid, >30 days remaining |
-| EspoCRM login page | HTTPS GET / | EspoCRM login UI present |
+| EspoCRM login page | HTTPS GET `/` | EspoCRM login UI present |
 | Cron job configured | `crontab -l` | EspoCRM cron entry present |
-| MySQL connectivity | MySQL CLI with EspoCRM credentials | Successful connection |
-| EspoCRM daemon | `systemctl status espocrm-daemon` | Service active |
+| DB connectivity | `docker exec espocrm-db` health check | Successful |
+
+### 6.4 SSL Certificate Expiry Monitoring
+
+- Expiry date is stored in the deployment config after each successful
+  deployment or verification run
+- Each time the Deploy panel is shown, a background thread refreshes the
+  expiry date via SSH
+- Display thresholds:
+
+| Days Remaining | Badge | Color |
+|---------------|-------|-------|
+| > 30 days | Valid | Green |
+| 14–30 days | Expiring Soon | Yellow |
+| < 14 days | Critical — Renew Now | Red |
+| Unknown | Unknown | Grey |
+
+- Let's Encrypt auto-renewal is handled by the EspoCRM installer's built-in
+  cron. The tool's monitoring exists to catch cases where auto-renewal has
+  silently failed.
 
 ---
 
@@ -261,43 +341,37 @@ After deployment completes, the tool runs the following verification checks and 
 
 ### 7.1 Failure Behavior
 
-- Each phase must catch and surface errors clearly, including the failed command and its output
-- On phase failure, the tool halts immediately and displays a clear error message in the UI
-- Where possible, a plain-language remediation suggestion is shown alongside the technical error
-- SSH connection failures must be reported with actionable guidance (check IP, key path, firewall rules)
-- DNS resolution failure before SSL issuance must display a warning and prompt the user to confirm before attempting anyway or aborting
+- Each phase catches and surfaces errors clearly, including the failed
+  command and full output
+- On phase failure, deployment halts and a plain-language remediation
+  message is shown where possible
+- SSH connection failures are reported with actionable guidance
 
-### 7.2 Cleanup and Restart
+### 7.2 Cleanup on Failure
 
-When a phase fails, the tool must:
-
-1. Halt deployment immediately at the point of failure
-2. Execute a cleanup sequence to remove any partially installed components from the failed phase
-3. Report cleanup status clearly in the log window (each cleanup step shown as it runs)
-4. Return the server to a clean state equivalent to the start of Phase 1
-5. Present a **Restart Deployment** button in the UI to re-run from Phase 1
-
-Cleanup actions per phase:
+When a phase fails the tool halts, runs best-effort cleanup, and presents
+a **Restart Deployment** button to re-run from Phase 1.
 
 | Phase | Cleanup Actions |
 |-------|----------------|
-| Phase 1 — Hardening | Remove `cbmadmin` user if created; restore `sshd_config` to original; restart SSH |
-| Phase 2 — Stack | Purge `nginx`, `php8.2`, `mysql-server` packages; remove associated config files and data directories |
-| Phase 3 — EspoCRM | Remove `/var/www/espocrm`; remove Nginx virtual host config; drop EspoCRM database and user |
-| Phase 4 — SSL | Revoke and delete Let's Encrypt certificate; remove HTTPS Nginx config; restore HTTP-only config |
-| Phase 5 — Verify | No cleanup required (verification is read-only) |
+| Phase 1 — Server Prep | Remove partially installed packages; restore original swap config |
+| Phase 2 — Installation | `docker compose down --volumes` in `/var/www/espocrm`; remove installer files |
+| Phase 3 — Post-install | No destructive cleanup (config updates only; re-running is safe) |
+| Phase 4 — Verification | No cleanup required (read-only) |
 
-> **Note:** Cleanup is best-effort. If a cleanup step itself fails, the tool logs the failure and continues with remaining cleanup steps rather than halting. The user is notified of any cleanup steps that could not be completed.
+> Cleanup is best-effort. Failures during cleanup are logged and the user
+> is notified of any steps that could not be completed.
 
 ---
 
 ## 8. Security Requirements
 
-- Credentials in config files must not be displayed in terminal output after initial entry (mask passwords)
-- Config YAML files must be gitignored — the tool must create a `.gitignore` entry automatically
-- SSH connections must use key-based authentication only — the tool must not support password-based SSH
-- All web traffic must be HTTPS — HTTP must redirect to HTTPS
-- MySQL must only accept local connections (no remote root access)
+- Passwords are masked in all log output — never logged in plaintext
+- Deployment config files are gitignored — the tool verifies
+  `data/instances/*_deploy.json` is in `.gitignore` on first run
+- SSH connections use key-based authentication only
+- All web traffic is HTTPS — HTTP redirects to HTTPS (enforced by installer)
+- MariaDB container is not exposed outside the Docker network
 
 ---
 
@@ -305,69 +379,90 @@ Cleanup actions per phase:
 
 ### 9.1 Language and Runtime
 
-- Python 3.10 or higher
-- PySide6 6.6 or higher
-- Application launched by running: `python main.py`
-- No command-line arguments required for normal operation
+Follows existing CRM Builder standards:
+- Python 3.12+
+- PySide6 6.10+
+- Managed via `uv` / `pyproject.toml`
 
-### 9.2 Dependencies
+### 9.2 New Dependencies
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| PySide6 | >=6.6 | Desktop GUI framework (wizard, dashboard, log window) |
-| paramiko | >=3.0 | SSH connection and remote command execution |
-| pyyaml | >=6.0 | Config file read/write |
-| dnspython | >=2.0 | DNS resolution check before SSL issuance |
+Add to `pyproject.toml` `dependencies`:
+
+| Package | Purpose |
+|---------|---------|
+| `paramiko` | SSH connection and remote command execution |
+| `dnspython` | DNS resolution for pre-flight validation |
 
 ### 9.3 File Structure
 
 ```
-cbm-crm-deploy/
-  main.py                 # Application entry point
-  requirements.txt        # Python dependencies
-  ui/
-    welcome.py            # Welcome / environment selection screen
-    wizard.py             # Setup Wizard (first run)
-    dashboard.py          # Deployment Dashboard (subsequent runs)
-    verification.py       # Verification results screen
-  phases/
-    phase1_hardening.py
-    phase2_stack.py
-    phase3_espocrm.py
-    phase4_ssl.py
-    phase5_verify.py
-  config/
-    cbm-crm-dev.yml       # Dev config (gitignored)
-    cbm-crm-prod.yml      # Prod config (gitignored)
+espo_impl/
+├── core/
+│   └── deploy_manager.py       # SSH execution, phase logic, config read/write
+├── ui/
+│   ├── deploy_panel.py         # Deploy section in main window
+│   ├── deploy_wizard.py        # Setup Wizard modal dialog (6-step)
+│   └── deploy_dashboard.py     # Deployment Dashboard (phases, log, cert status)
+└── workers/
+    └── deploy_worker.py        # QThread background worker for SSH phases
+
+data/
+└── instances/
+    └── {instance_slug}_deploy.json   # Per-instance deploy config (gitignored)
+```
+
+### 9.4 New Model: `DeployConfig`
+
+Add to `espo_impl/core/models.py`:
+
+```python
+@dataclass
+class DeployConfig:
+    """Deployment configuration for an EspoCRM instance on DigitalOcean."""
+    droplet_ip: str
+    ssh_key_path: str
+    ssh_user: str
+    base_domain: str
+    subdomain: str
+    letsencrypt_email: str
+    db_password: str
+    db_root_password: str
+    admin_username: str
+    admin_password: str
+    admin_email: str
+    cert_expiry_date: str | None = None
+    deployed_at: str | None = None
+
+    @property
+    def full_domain(self) -> str:
+        """Fully qualified domain name for this deployment."""
+        return f"{self.subdomain}.{self.base_domain}"
 ```
 
 ---
 
 ## 10. Out of Scope
 
-- DigitalOcean Droplet provisioning (must be done manually or via DigitalOcean CLI)
+- DigitalOcean Droplet provisioning
 - DNS record configuration
-- EspoCRM application configuration (entity customizations, roles, workflows)
-- Moodle or WordPress deployment (separate tools to be defined)
+- Data migration between environments
 - Database backup and restore automation
-- Monitoring and alerting setup
+- Monitoring and alerting beyond SSL expiry tracking
 
 ---
 
-## 11. Open Questions
+## 11. Decisions
 
-| # | Question | Status | Decision |
-|---|----------|--------|----------|
-| 1 | Should the tool support resuming from the last completed phase, or always restart from Phase 1? | Closed | On failure: cleanup failed phase, restart from Phase 1 |
-| 2 | Should the tool create a non-root sudo user during server hardening? | Closed | Yes — create `cbmadmin` user in Phase 1; all subsequent phases run as `cbmadmin` |
-| 3 | Should DigitalOcean automated backup verification be included (requires DO API key)? | Closed | Out of scope for v1.0 |
-
----
-
-## 12. Revision History
-
-| Version | Date | Author | Notes |
-|---------|------|--------|-------|
-| 0.1 | March 2026 | CBM / Claude | Initial draft |
-| 0.2 | March 2026 | CBM / Claude | Added PySide6 GUI: Setup Wizard and Deployment Dashboard |
-| 0.3 | March 2026 | CBM / Claude | Closed open questions: cleanup/restart behavior, cbmadmin user, DO backup verification |
+| # | Decision |
+|---|----------|
+| 1 | Deployment is integrated into CRM Builder — not a separate tool |
+| 2 | Deploy panel is added to the main window; Setup Wizard launches as a modal dialog |
+| 3 | Environment selection is implicit — the selected instance determines the deployment target |
+| 4 | The official EspoCRM installer script (Docker-based) is used — no manual LAMP stack |
+| 5 | Let's Encrypt is the standard SSL mode — no bare IP, no custom certificate in v1.0 |
+| 6 | Domain names are required for all deployments |
+| 7 | Domain convention: `crm.{domain}` for production, `crm-test.{domain}` for test/staging |
+| 8 | DNS propagation is validated before deployment begins and before SSL issuance |
+| 9 | SSL certificate expiry is tracked in deploy config and displayed in the Deploy panel |
+| 10 | Alert thresholds: warn at 30 days remaining, escalate at 14 days remaining |
+| 11 | Deploy config stored as `{instance_slug}_deploy.json` in `data/instances/` (gitignored) |
