@@ -1,6 +1,6 @@
 # CRM Builder — EspoCRM Deployment Feature
 ## Product Requirements Document
-**Version:** 1.1 | **Date:** 2026-03-28 | **Status:** Active
+**Version:** 1.2 | **Date:** 2026-03-29 | **Status:** Active
 
 ---
 
@@ -12,6 +12,7 @@
 | 0.2 | 2026-03-10 | Added PySide6 GUI: Setup Wizard and Deployment Dashboard |
 | 0.3 | 2026-03-15 | Closed open questions: cleanup/restart, cbmadmin user, DO backup |
 | 1.0 | 2026-03-20 | Rewritten: integrated into CRM Builder; switched to official EspoCRM installer script (Docker-based); aligned to CRM Builder file structure and UI patterns |
+| 1.2 | 2026-03-29 | Added Section 8: Initial CRM System Admin Settings (Phase 4); renumbered subsequent sections 8–12 → 9–13 |
 | 1.1 | 2026-03-28 | Added Prerequisites section; replaced MySQL references with MariaDB; updated domain conventions |
 
 ---
@@ -590,9 +591,174 @@ sudo bash install.sh -y --ssl --letsencrypt \
 
 ---
 
-## 8. Error Handling
+## 8. Initial CRM System Admin Settings
 
-### 8.1 Failure Behavior
+### 8.1 Overview
+
+After a successful server deployment (Phases 1–3), CRM Builder applies an
+initial system configuration to the EspoCRM instance via its REST API. This
+eliminates manual post-install administration and ensures every instance
+starts from a consistent, known state.
+
+Configuration is defined in a `settings:` block in the instance YAML file
+and applied automatically as **Phase 4** of the deployment sequence. The
+existing Verification phase becomes Phase 5.
+
+Authentication uses the admin credentials already captured in the Setup
+Wizard — no additional credentials are required.
+
+If no `settings:` block is present in the instance YAML, Phase 4 is skipped
+and a note is shown in the log: *"No settings block found — skipping initial
+configuration."*
+
+---
+
+### 8.2 Fully Automated Settings
+
+The following are applied via the EspoCRM API during Phase 4:
+
+| Category | Settings | API Endpoint |
+|----------|----------|--------------|
+| System | Timezone, language, date format, time format, currency | `PUT /api/v1/Settings` |
+| Navigation | Tab list (entities shown in nav bar), quick-create menu | `PUT /api/v1/Settings` |
+| Dashboard | Default dashboard layout for new users | `PUT /api/v1/Settings` |
+| Email (SMTP) | System SMTP host, port, auth, from address | `PUT /api/v1/Settings` |
+| Roles | Create roles with scope, action, and field-level permissions | `CRUD /api/v1/Role` |
+| Teams | Create teams and assign members | `CRUD /api/v1/Team` |
+| Users | Create initial user accounts with role and team assignments | `CRUD /api/v1/User` |
+| Dashboard Templates | Create templates assignable to teams | `CRUD /api/v1/DashboardTemplate` |
+| Group Email Accounts | Inbound email accounts (e.g. support inbox) | `CRUD /api/v1/InboundEmail` |
+| Scheduled Jobs | Enable/disable and set schedule for system jobs | `CRUD /api/v1/ScheduledJob` |
+| Currency Rates | Set exchange rates for non-default currencies | `PUT /api/v1/CurrencyRate` |
+
+---
+
+### 8.3 Partially Automated Settings (Manual Steps Required)
+
+The following cannot be fully automated via the API and require manual action
+after deployment:
+
+| Setting | Limitation | Manual Step |
+|---------|------------|-------------|
+| Panel-level dynamic logic | Requires server-side metadata files — not writable via API | Configure in EspoCRM Admin UI after deployment |
+| Google / Outlook integrations | OAuth flow requires browser interaction | Complete OAuth authorization in EspoCRM Admin UI |
+| Custom scheduled jobs | Require server-side PHP class files | Deploy PHP files separately; enable via API |
+
+CRM Builder displays these as a post-deployment checklist in the Deploy panel
+after Phase 4 completes.
+
+---
+
+### 8.4 YAML Schema — `settings:` Block
+
+The `settings:` block is added to the instance YAML file alongside existing
+`entities:`, `fields:`, and `relationships:` blocks.
+
+```yaml
+settings:
+  system:
+    timezone: "America/New_York"
+    language: "en_US"
+    dateFormat: "MM/DD/YYYY"
+    timeFormat: "HH:mm"
+    currency: "USD"
+
+  navigation:
+    tabList:
+      - Account
+      - Contact
+      - Lead
+      - Opportunity
+      - Case
+    quickCreateList:
+      - Contact
+      - Lead
+
+  smtp:
+    server: "smtp.example.com"
+    port: 587
+    auth: true
+    username: "noreply@example.com"
+    # password stored in deploy config, not in YAML
+
+  roles:
+    - name: "Sales Rep"
+      permissions:
+        Account: { read: "all", edit: "own", delete: "no" }
+        Contact: { read: "all", edit: "own", delete: "no" }
+
+  teams:
+    - name: "Sales"
+    - name: "Support"
+
+  users:
+    - username: "jsmith"
+      firstName: "Jane"
+      lastName: "Smith"
+      email: "jsmith@example.com"
+      roles: ["Sales Rep"]
+      teams: ["Sales"]
+      # No password field — sendAccessInfo: true is always used.
+      # EspoCRM emails the user a secure password-setup link (2-day expiry).
+      # User cannot log in until they have set their own password.
+      # Requires SMTP to be configured first (applied earlier in this phase).
+```
+
+---
+
+### 8.5 User Password Handling
+
+EspoCRM does not support a "force password change on first login" flag. CRM
+Builder addresses this by always creating users with `sendAccessInfo: true`
+and no password field:
+
+1. EspoCRM auto-generates a random stub password (the user never sees it)
+2. EspoCRM creates a `PasswordChangeRequest` with a 2-day expiry
+3. EspoCRM emails the user a secure link:
+   `https://{domain}/?entryPoint=changePassword&id={token}`
+4. The user clicks the link and sets their own password
+5. The user cannot log in until they have completed this step
+
+**Dependency:** SMTP must be configured before users are created. Phase 4
+applies SMTP settings first to ensure the password-setup email is delivered.
+
+**SMTP not configured:** If SMTP configuration is absent from the `settings:`
+block, CRM Builder will warn before creating users:
+*"SMTP is not configured. Users will not receive password-setup emails and
+will be unable to log in. Add smtp settings to your YAML or configure SMTP
+manually in EspoCRM before creating users."*
+
+---
+
+### 8.6 Phase 4 Execution Sequence
+
+Phase 4 runs automatically after Phase 3 (Post-Install Configuration).
+Steps are executed in the following order to respect dependencies:
+
+| Step | Action | API |
+|------|--------|-----|
+| 1 | Authenticate using admin credentials from deploy config | `POST /api/v1/App/user` |
+| 2 | Apply system settings (timezone, language, date/time format, currency) | `PUT /api/v1/Settings` |
+| 3 | Configure system SMTP | `PUT /api/v1/Settings` |
+| 4 | Apply navigation tabs and quick-create list | `PUT /api/v1/Settings` |
+| 5 | Apply default dashboard layout | `PUT /api/v1/Settings` |
+| 6 | Create teams | `POST /api/v1/Team` |
+| 7 | Create roles with permissions | `POST /api/v1/Role` |
+| 8 | Create users; assign roles and teams; send password-setup email | `POST /api/v1/User` |
+| 9 | Create dashboard templates (if defined) | `POST /api/v1/DashboardTemplate` |
+| 10 | Configure group email accounts (if defined) | `POST /api/v1/InboundEmail` |
+| 11 | Configure scheduled jobs (if defined) | `PUT /api/v1/ScheduledJob` |
+| 12 | Set currency rates (if defined) | `PUT /api/v1/CurrencyRate` |
+
+If any step fails, Phase 4 logs the error and continues with remaining steps
+(non-blocking). A summary of all failures is shown in the Deploy panel after
+Phase 4 completes.
+
+---
+
+## 9. Error Handling
+
+### 9.1 Failure Behavior
 
 - Each phase catches and surfaces errors clearly, including the failed
   command and full output
@@ -600,7 +766,7 @@ sudo bash install.sh -y --ssl --letsencrypt \
   message is shown where possible
 - SSH connection failures are reported with actionable guidance
 
-### 8.2 Cleanup on Failure
+### 9.2 Cleanup on Failure
 
 When a phase fails the tool halts, runs best-effort cleanup, and presents
 a **Restart Deployment** button to re-run from Phase 1.
@@ -617,7 +783,7 @@ a **Restart Deployment** button to re-run from Phase 1.
 
 ---
 
-## 9. Security Requirements
+## 10. Security Requirements
 
 - Passwords are masked in all log output — never logged in plaintext
 - Deployment config files are gitignored — the tool verifies
@@ -628,16 +794,16 @@ a **Restart Deployment** button to re-run from Phase 1.
 
 ---
 
-## 10. Technical Requirements
+## 11. Technical Requirements
 
-### 10.1 Language and Runtime
+### 11.1 Language and Runtime
 
 Follows existing CRM Builder standards:
 - Python 3.12+
 - PySide6 6.10+
 - Managed via `uv` / `pyproject.toml`
 
-### 10.2 New Dependencies
+### 11.2 New Dependencies
 
 Add to `pyproject.toml` `dependencies`:
 
@@ -646,7 +812,7 @@ Add to `pyproject.toml` `dependencies`:
 | `paramiko` | SSH connection and remote command execution |
 | `dnspython` | DNS resolution for pre-flight validation |
 
-### 10.3 File Structure
+### 11.3 File Structure
 
 ```
 espo_impl/
@@ -664,7 +830,7 @@ data/
     └── {instance_slug}_deploy.json   # Per-instance deploy config (gitignored)
 ```
 
-### 10.4 New Model: `DeployConfig`
+### 11.4 New Model: `DeployConfig`
 
 Add to `espo_impl/core/models.py`:
 
@@ -694,7 +860,7 @@ class DeployConfig:
 
 ---
 
-## 11. Out of Scope
+## 12. Out of Scope
 
 - DigitalOcean Droplet provisioning
 - DNS record configuration
@@ -704,7 +870,7 @@ class DeployConfig:
 
 ---
 
-## 12. Decisions
+## 13. Decisions
 
 | # | Decision |
 |---|----------|
