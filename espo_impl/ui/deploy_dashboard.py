@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QPushButton,
     QTextEdit,
     QVBoxLayout,
@@ -304,6 +305,15 @@ class DeployDashboard(QWidget):
         """Run Phase 4 verification only."""
         if self._worker is not None:
             self.append_log("A deployment is already in progress.", "warning")
+            return
+        if self.config.deployed_at is None:
+            QMessageBox.warning(
+                self,
+                "No Deployment Found",
+                "No completed deployment found for this instance. "
+                "Please run Deploy All first to install EspoCRM on "
+                "the server before running verification.",
+            )
             return
         self._start_deploy(start_phase=4)
 
