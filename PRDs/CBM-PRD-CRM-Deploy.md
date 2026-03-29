@@ -309,7 +309,7 @@ the Setup Wizard.
 
 ## 5. Architecture
 
-### 4.1 Hosting Infrastructure
+### 5.1 Hosting Infrastructure
 
 Each client deployment targets two environments, each on its own Droplet:
 
@@ -321,7 +321,7 @@ Each client deployment targets two environments, each on its own Droplet:
 | Domain convention | `crm.{client-domain}` | `crm-test.{client-domain}` |
 | Est. Monthly Cost | ~$24/mo | ~$12/mo |
 
-### 4.2 Software Stack (Server)
+### 5.2 Software Stack (Server)
 
 The official EspoCRM installer script manages the server stack as Docker
 containers. CRM Builder does not install or configure these components
@@ -335,7 +335,7 @@ individually — it delegates entirely to the installer script.
 | EspoCRM (container) | CRM application |
 | Let's Encrypt / Certbot | SSL certificate (managed by EspoCRM script) |
 
-### 4.3 Integration Architecture
+### 5.3 Integration Architecture
 
 The Deploy feature follows the same architectural patterns as the rest of
 CRM Builder:
@@ -352,7 +352,7 @@ CRM Builder:
 
 ## 6. User Experience
 
-### 5.1 Deploy Panel in the Main Window
+### 6.1 Deploy Panel in the Main Window
 
 A **Deploy** section is added to the CRM Builder main window below the
 existing Instance and Program panels. It is always visible but its content
@@ -372,7 +372,7 @@ This mirrors the existing pattern where selecting an instance drives the
 Program panel content, and dialogs (like `InstanceDialog`) handle
 configuration tasks modally.
 
-### 5.2 Setup Wizard (First Run — Modal Dialog)
+### 6.2 Setup Wizard (First Run — Modal Dialog)
 
 The Setup Wizard opens as a modal dialog when no deployment configuration
 exists for the selected instance. It follows the same visual style as
@@ -395,7 +395,7 @@ automatically.
 > Password fields must always be masked. The Review step shows passwords as
 > masked strings with an optional Show/Hide toggle.
 
-### 5.3 Deployment Dashboard
+### 6.3 Deployment Dashboard
 
 The Deployment Dashboard displays within the Deploy panel for instances that
 have deployment configuration. It has four areas:
@@ -463,14 +463,14 @@ deployment. Each line is timestamped and color-coded:
 **Copy Log** and **Save Log to File** buttons appear above the log window,
 consistent with the existing `OutputPanel` component.
 
-### 5.4 Verification Results
+### 6.4 Verification Results
 
 After Phase 4 (Verification) completes, a results table is shown within the
 Deploy panel listing each check with pass/fail status. A summary banner
 indicates overall result: **All Checks Passed** or **Issues Found**. The
 user can export results as a text file.
 
-### 5.5 Error Handling in the UI
+### 6.5 Error Handling in the UI
 
 - If a phase fails, the phase card turns red and deployment halts
 - An error panel expands below the failed phase card showing the failed
@@ -482,7 +482,7 @@ user can export results as a text file.
 
 ## 7. Functional Requirements
 
-### 6.1 Deployment Configuration
+### 7.1 Deployment Configuration
 
 Each instance may have an associated deployment configuration stored as a
 separate JSON file alongside the instance profile in `data/instances/`,
@@ -506,7 +506,7 @@ named `{instance_slug}_deploy.json`. This file is gitignored.
 
 The full domain is derived as `{subdomain}.{base_domain}`.
 
-### 6.2 DNS Pre-flight Validation
+### 7.2 DNS Pre-flight Validation
 
 Before Phase 1 begins (and again before Phase 2 SSL issuance), the tool
 validates that DNS has propagated:
@@ -519,7 +519,7 @@ validates that DNS has propagated:
 6. Retry automatically every 30 seconds up to a 10-minute timeout, with
    a countdown shown in the log window
 
-### 6.3 Deployment Phases
+### 7.3 Deployment Phases
 
 #### Phase 1 — Server Preparation
 
@@ -569,7 +569,7 @@ sudo bash install.sh -y --ssl --letsencrypt \
 | Cron job configured | `crontab -l` | EspoCRM cron entry present |
 | DB connectivity | `docker exec espocrm-db` health check | Successful |
 
-### 6.4 SSL Certificate Expiry Monitoring
+### 7.4 SSL Certificate Expiry Monitoring
 
 - Expiry date is stored in the deployment config after each successful
   deployment or verification run
@@ -592,7 +592,7 @@ sudo bash install.sh -y --ssl --letsencrypt \
 
 ## 8. Error Handling
 
-### 7.1 Failure Behavior
+### 8.1 Failure Behavior
 
 - Each phase catches and surfaces errors clearly, including the failed
   command and full output
@@ -600,7 +600,7 @@ sudo bash install.sh -y --ssl --letsencrypt \
   message is shown where possible
 - SSH connection failures are reported with actionable guidance
 
-### 7.2 Cleanup on Failure
+### 8.2 Cleanup on Failure
 
 When a phase fails the tool halts, runs best-effort cleanup, and presents
 a **Restart Deployment** button to re-run from Phase 1.
@@ -630,14 +630,14 @@ a **Restart Deployment** button to re-run from Phase 1.
 
 ## 10. Technical Requirements
 
-### 9.1 Language and Runtime
+### 10.1 Language and Runtime
 
 Follows existing CRM Builder standards:
 - Python 3.12+
 - PySide6 6.10+
 - Managed via `uv` / `pyproject.toml`
 
-### 9.2 New Dependencies
+### 10.2 New Dependencies
 
 Add to `pyproject.toml` `dependencies`:
 
@@ -646,7 +646,7 @@ Add to `pyproject.toml` `dependencies`:
 | `paramiko` | SSH connection and remote command execution |
 | `dnspython` | DNS resolution for pre-flight validation |
 
-### 9.3 File Structure
+### 10.3 File Structure
 
 ```
 espo_impl/
@@ -664,7 +664,7 @@ data/
     └── {instance_slug}_deploy.json   # Per-instance deploy config (gitignored)
 ```
 
-### 9.4 New Model: `DeployConfig`
+### 10.4 New Model: `DeployConfig`
 
 Add to `espo_impl/core/models.py`:
 
