@@ -126,6 +126,76 @@ tools/
 - `deploy_worker.py` follows the same QThread pattern as `run_worker.py` and
   `import_worker.py` — emit signals for log lines, phase status, and completion
 
+## Document Production Process
+
+This section governs requirements work done in Claude.ai sessions —
+producing Master PRDs, Domain PRDs, Consolidated Designs, and
+Verification Specs for any CRM implementation using CRM Builder.
+
+### The Document Hierarchy
+
+Every CRM implementation produces four levels of documentation in
+strict sequence. Full specifications are in
+`PRDs/application/app-document-architecture.md`.
+
+```
+Level 1 — Master PRD        (interview authored)
+Level 2 — Domain PRDs       (interview authored, one per domain)
+Level 3 — Consolidated Design (tool maintained after each Domain PRD)
+Level 4 — Verification Spec  (generated from YAML)
+```
+
+### Required Sequence — NEVER Skip Steps
+
+```
+Step 1: Master PRD
+    → Confirm with user before proceeding to Step 2
+
+Step 2: Domain PRD (one domain at a time)
+    → After completing each Domain PRD, STOP
+    → Update Consolidated Design before starting the next Domain PRD
+    → Confirm with user before proceeding
+
+Step 3: Consolidated Design update
+    → Update after EVERY Domain PRD — not after all of them
+    → Check for conflicts with existing entities from prior domains
+    → Confirm with user before proceeding to next Domain PRD
+
+Step 4: Repeat Steps 2-3 for each remaining domain
+
+Step 5: YAML generation
+    → Only after ALL Domain PRDs and Consolidated Design are complete
+
+Step 6: Verification Spec
+    → Only after YAML is generated
+```
+
+### Confirmation Gates
+
+After completing any document or step, always explicitly state:
+
+"The next required step per the process is [X]. Shall I proceed?"
+
+Never move to the next step without explicit user confirmation.
+
+### PRD Content Rules
+
+- Never mention specific product names (EspoCRM, WordPress, Moodle,
+  Constant Contact, etc.) in Level 1 or Level 2 documents. These are
+  implementation details that belong in the Consolidated Design and
+  implementation documentation only.
+- Every requirement must have a unique identifier following the scheme
+  defined in app-document-architecture.md Section 4.
+- The Consolidated Design is never manually authored — it is derived
+  from Domain PRDs.
+
+### At the Start of Every Requirements Session
+
+1. Ask the user which implementation is being worked on
+2. Read the implementation's CLAUDE.md for current state
+3. Identify which step of the process the implementation is on
+4. State the current step and confirm before proceeding
+
 ## What NOT to Do
 
 - Do not add client-specific YAML files to `data/programs/`
