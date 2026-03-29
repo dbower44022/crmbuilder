@@ -1,44 +1,58 @@
 # CRM Builder — Documentation Generator
 
-**Version:** 1.0
+**Version:** 2.0
 **Status:** Current
 **Last Updated:** March 2026
-**Depends On:** app-yaml-schema.md, feat-entities.md, feat-fields.md,
+**Depends On:** app-yaml-schema.md, app-document-architecture.md,
+               feat-entities.md, feat-fields.md,
                feat-layouts.md, feat-relationships.md
 
 ---
 
 ## 1. Purpose
 
-This document defines the requirements for the documentation generator
-in CRM Builder — the feature that produces a structured human-readable
-reference manual from the YAML program files.
+This document defines the requirements for the Documentation Generator
+in CRM Builder — the feature that produces the Verification Spec
+(Level 4 in the document hierarchy) from the YAML program files.
 
-The documentation generator solves a persistent problem in CRM
-implementations: the configuration defined in technical files and the
-documentation shared with stakeholders and administrators drift apart
-over time. CRM Builder eliminates this drift by generating
-documentation directly from the YAML files that are also used to
-deploy the configuration. The YAML files are always the single source
-of truth.
+The Verification Spec is a QA artifact, not a requirements document.
+Its sole purpose is to allow the administrator to confirm that the
+YAML configuration faithfully represents what the PRDs require. It is
+generated after YAML files are produced and reviewed before go-live.
+
+The document hierarchy, document purposes, and the role of the
+Verification Spec within the overall requirements process are defined
+in `app-document-architecture.md`. This document defines the
+generation process and output format specific to the Verification Spec.
+
+The Verification Spec does not replace or supersede the Master PRD
+or Domain PRDs. Those documents are the source of truth for all
+requirements. The Verification Spec answers one question only:
+does the YAML match what the PRDs require?
 
 ---
 
 ## 2. Design Principles
 
-**Generated, never edited manually.** The reference manual is always
+**Generated, never edited manually.** The Verification Spec is always
 derived from the YAML program files. It must never be edited by hand.
-To update the documentation, update the YAML files and regenerate.
+To update it, update the YAML files and regenerate.
 
-**YAML is the single source of truth.** All content in the generated
-document — entity descriptions, field descriptions, layout structure,
-enum values — comes from the YAML files. Content not present in the
-YAML files does not appear in the document.
+**YAML is the source for this document only.** All content in the
+Verification Spec — entity descriptions, field descriptions, layout
+structure, enum values — comes from the YAML files. The PRDs are the
+source of truth for requirements. The Verification Spec reflects what
+the YAML contains, which should match the PRDs.
+
+**A QA tool, not a stakeholder document.** The Verification Spec is
+for the implementation team to confirm configuration correctness. It
+is not distributed to stakeholders. Stakeholders receive the Master
+PRD and Domain PRDs.
 
 **Dual format output.** The generator produces both a Word document
-for stakeholders and a Markdown file for version control and developer
-reference. Both formats are produced from the same data in a single
-run and are always identical in content.
+and a Markdown file for version control and developer reference.
+Both formats are produced from the same data in a single run and
+are always identical in content.
 
 ---
 
@@ -60,14 +74,14 @@ directory within the project folder. Files are named after the
 instance:
 
 ```
-{Instance Name}-CRM-Reference.md
-{Instance Name}-CRM-Reference.docx
+{Instance Name}-Verification-Spec.md
+{Instance Name}-Verification-Spec.docx
 ```
 
 For example, an instance named "CBM Demo CRM" produces:
 ```
-CBM Demo CRM-CRM-Reference.md
-CBM Demo CRM-CRM-Reference.docx
+CBM Demo CRM-Verification-Spec.md
+CBM Demo CRM-Verification-Spec.docx
 ```
 
 ### 3.3 Command Line
@@ -109,7 +123,7 @@ the deployment tool, and describing what will appear there when it is.
 
 The title page includes:
 - Organization name (derived from the instance name or YAML metadata)
-- Document title: "CRM Implementation Reference"
+- Document title: "CRM Verification Spec"
 - A statement that the document is generated from YAML program files
   and must not be edited manually
 - The document version (taken from the first YAML file loaded, or
@@ -119,9 +133,11 @@ The title page includes:
 ### 5.2 Introduction
 
 A fixed explanatory section covering:
-- What this document is and who it is for
-- How it relates to the PRD documents
-- How to use it as a reference
+- What this document is and who it is for — a QA artifact for the
+  implementation team, not a stakeholder document
+- How it relates to the Master PRD and Domain PRDs — those documents
+  define requirements; this document confirms the YAML matches them
+- How to use it to verify configuration correctness
 - How to regenerate it when YAML files are updated
 - An explanation of placeholder sections
 
@@ -320,16 +336,20 @@ in a single run. They are always identical in content.
 
 ## 8. Regeneration Workflow
 
-The expected workflow for keeping the reference manual up to date:
+The Verification Spec should be regenerated whenever YAML program
+files are updated. The expected workflow:
 
 1. Update the relevant YAML program file(s)
 2. Click Generate Docs (or run the command line tool)
-3. Review the generated document
-4. Commit both the updated YAML files and the regenerated documents
-   to the client repository
+3. Review the Verification Spec against the relevant Domain PRD
+   sections to confirm the YAML matches requirements
+4. Commit both the updated YAML files and the regenerated
+   Verification Spec to the client repository
 
-The generated document is committed to the client repository so
-stakeholders can access it without running the generator themselves.
+The Verification Spec is committed to the client repository so the
+implementation team can review it without running the generator.
+It is not distributed to stakeholders — stakeholders receive
+the Master PRD and Domain PRDs.
 
 ---
 
@@ -349,3 +369,10 @@ sections become fully generated:
 - **Multi-language support** — generating documents in languages other
   than English using the `translatedOptions` values already present
   in the YAML schema
+
+---
+
+*This document defines the Documentation Generator feature within the
+CRM Builder document architecture. The governing document architecture,
+identifier scheme, and document hierarchy are defined in
+`app-document-architecture.md`.*
