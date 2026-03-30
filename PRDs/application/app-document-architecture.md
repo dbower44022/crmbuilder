@@ -1,8 +1,8 @@
 # CRM Builder — Document Architecture & Requirements Management
 
-**Version:** 1.0
+**Version:** 1.1
 **Status:** Current
-**Last Updated:** March 2026
+**Last Updated:** 03-29-26 21:45
 
 ---
 
@@ -400,6 +400,7 @@ or modified after recording.
 **Produced by:** Master PRD interview
 **Audience:** Executives, all stakeholders
 **Purpose:** Define what the CRM provides to the organization
+**Output Format:** Word document (.docx) — the primary purpose of this document is stakeholder review
 
 #### Structure
 
@@ -454,6 +455,7 @@ One section per domain. Each section contains:
 **Purpose:** Define how each business domain operates and what the
 CRM supports in sufficient detail for a knowledgeable stakeholder
 to fully understand all processes, data, and personas in that domain
+**Output Format:** Word document (.docx) — the primary purpose of this document is stakeholder review
 
 #### Structure
 
