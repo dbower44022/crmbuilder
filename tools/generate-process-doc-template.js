@@ -31,15 +31,25 @@
 //   - Human-readable-first identifiers: "Client Intake (MN-INTAKE)" not
 //     "MN-INTAKE — Client Intake"
 //
+// Workflow Diagrams:
+//   - Created in draw.io, exported as PNG
+//   - File convention: PRDs/{domain_code}/{PROCESS-CODE}-workflow.png
+//   - Source files:     PRDs/{domain_code}/{PROCESS-CODE}-workflow.drawio
+//   - The generator auto-embeds the PNG after the Process Workflow section
+//     if the file exists; shows a dashed placeholder if not
+//   - Image is scaled to content width (6.5 inches) maintaining aspect ratio
+//   - To update: edit .drawio, re-export PNG, rerun generator
+//
 // Dependencies:
 //   npm install -g docx
 //
 // ═══════════════════════════════════════════════════════════════════════
 
 const fs = require("fs");
+const path = require("path");
 const {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-  Header, Footer, AlignmentType, LevelFormat,
+  Header, Footer, AlignmentType, LevelFormat, ImageRun,
   HeadingLevel, BorderStyle, WidthType, ShadingType,
   PageBreak, PositionalTab, PositionalTabAlignment,
   PositionalTabRelativeTo, PositionalTabLeader
@@ -356,6 +366,82 @@ function docFooter(domainName) {
 }
 
 
+// ── Workflow diagram helper ────────────────────────────────────────
+// Embeds a PNG if it exists at the given path, otherwise returns a
+// labeled placeholder. PNG is scaled to content width (6.5 inches)
+// while maintaining aspect ratio.
+//
+// Convention:
+//   Source:   PRDs/{domain_code}/{PROCESS-CODE}-workflow.drawio
+//   Export:   PRDs/{domain_code}/{PROCESS-CODE}-workflow.png
+//
+// To update a diagram: edit the .drawio file, re-export as PNG,
+// rerun the generator. The new image replaces the old one automatically.
+
+function workflowDiagram(pngPath) {
+  if (pngPath && fs.existsSync(pngPath)) {
+    const imgBuf = fs.readFileSync(pngPath);
+    // Read PNG dimensions from IHDR chunk (width at byte 16, height at byte 20)
+    const pxW = imgBuf.readUInt32BE(16);
+    const pxH = imgBuf.readUInt32BE(20);
+    // Scale to content width: 6.5 inches = 5943600 EMU
+    const maxWidthEMU = 5943600;
+    const scale = maxWidthEMU / (pxW * 9525); // 9525 EMU per pixel at 96 DPI
+    const widthEMU = Math.round(pxW * 9525 * scale);
+    const heightEMU = Math.round(pxH * 9525 * scale);
+    return [
+      new Paragraph({
+        spacing: { before: 200, after: 60 },
+        children: [r("Process Workflow Diagram", { bold: true, size: SZ.body })],
+      }),
+      new Paragraph({
+        spacing: { after: 200 },
+        alignment: AlignmentType.CENTER,
+        children: [
+          new ImageRun({
+            data: imgBuf,
+            transformation: { width: Math.round(widthEMU / 9525), height: Math.round(heightEMU / 9525) },
+            type: "png",
+          }),
+        ],
+      }),
+    ];
+  }
+  // Placeholder when no diagram exists yet
+  return [
+    new Paragraph({
+      spacing: { before: 200, after: 60 },
+      children: [r("Process Workflow Diagram", { bold: true, size: SZ.body })],
+    }),
+    new Table({
+      width: { size: TABLE_WIDTH, type: WidthType.DXA },
+      columnWidths: [TABLE_WIDTH],
+      rows: [
+        new TableRow({
+          children: [
+            new TableCell({
+              borders: {
+                top: { style: BorderStyle.DASHED, size: 1, color: COLORS.borderColor },
+                bottom: { style: BorderStyle.DASHED, size: 1, color: COLORS.borderColor },
+                left: { style: BorderStyle.DASHED, size: 1, color: COLORS.borderColor },
+                right: { style: BorderStyle.DASHED, size: 1, color: COLORS.borderColor },
+              },
+              width: { size: TABLE_WIDTH, type: WidthType.DXA },
+              margins: { top: 200, bottom: 200, left: 200, right: 200 },
+              children: [new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [r("Workflow diagram to be inserted. Export from draw.io as PNG.", { size: SZ.small, color: COLORS.idColor, italics: true })],
+              })],
+            }),
+          ],
+        }),
+      ],
+    }),
+    p("", { after: 200 }),
+  ];
+}
+
+
 // ═══════════════════════════════════════════════════════════════════════
 // DOCUMENT CONTENT — Replace everything below for each process
 // ═══════════════════════════════════════════════════════════════════════
@@ -364,6 +450,7 @@ function docFooter(domainName) {
 const ORG_NAME = "Cleveland Business Mentors";
 const PROCESS_LABEL = "Client Intake (MN-INTAKE)";  // human-readable first
 const DOMAIN_NAME = "Mentoring";
+const DIAGRAM_PATH = "PRDs/MN/MN-INTAKE-workflow.png";  // set to null to skip diagram
 const OUTPUT_FILE = "/home/claude/MN-INTAKE.docx";
 
 const doc = new Document({
@@ -425,6 +512,9 @@ const doc = new Document({
 
         p(""),
         p("A structured eligibility screening workflow may be defined by CBM leadership in a future revision. The current process assumes a basic administrative review.", { italics: true }),
+
+        // ── Workflow diagram (PNG if available, placeholder if not) ──
+        ...workflowDiagram(DIAGRAM_PATH),
 
         // ══════════════════════════════════════════════════════════════
         // Section 4: System Requirements
