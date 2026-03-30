@@ -2,7 +2,7 @@
 
 **Version:** 1.1
 **Status:** Current
-**Last Updated:** 03-29-26 21:45
+**Last Updated:** 03-29-26 22:00
 
 ---
 
@@ -487,6 +487,10 @@ One section per process. Each process section contains:
   the process (pre-existing data requirements)
 - **Data Collected** — data captured as a result of running the
   process (new data created by the process)
+- **Workflow Diagram Placeholder** — a blank page with the title
+  "Add Workflow Diagram Here" inserted at the end of each process
+  section, providing a designated location for a manually added
+  workflow diagram
 
 **4. Data Reference**
 A consolidated view of all data managed in this domain, organized
