@@ -2,7 +2,7 @@
 
 **Version:** 1.1
 **Status:** Current
-**Last Updated:** 03-29-26 22:00
+**Last Updated:** 03-29-26 22:15
 
 ---
 
@@ -471,7 +471,9 @@ processes.
 
 **3. Business Processes**
 
-One section per process. Each process section contains:
+One section per process. Each process section begins on a new page
+so that the full process description is never split across a page
+boundary. Each process section contains:
 
 - **Process Purpose and Trigger** — what the process accomplishes
   and what initiates it
