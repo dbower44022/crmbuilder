@@ -1,7 +1,7 @@
 # CRM Builder — Master PRD Interview Guide
 
-**Version:** 1.0
-**Last Updated:** 03-30-26 15:00
+**Version:** 1.1
+**Last Updated:** 03-30-26 17:30
 **Purpose:** AI interviewer guide for Phase 1 — Master PRD
 **Governing Process:** PRDs/application/CRM-Builder-Document-Production-Process.docx
 
@@ -36,24 +36,33 @@ with four sections:
 
 1. **Organization Overview** — mission, operating context, why a CRM
    is needed
-2. **Personas** — one entry per persona with name, description,
-   relationship to the organization, primary domains, and what the
-   CRM provides to them
+2. **Personas** — one entry per persona with: Responsibilities
+   (bulleted list of what the person does), What the CRM Provides
+   (bulleted list of capabilities the system delivers to support
+   that role), and Primary Domains
 3. **Key Business Domains** — one section per domain with domain
-   purpose, personas involved, process list with one-line descriptions,
-   and key data categories
+   purpose, personas involved, business processes (each with a
+   one-line description, implementation tier, business value as a
+   bulleted list, and key capabilities as a bulleted list), and
+   key data categories
 4. **System Scope** — in scope, out of scope, key integrations
    described generically by function
 
+The Key Business Domains section also includes:
+
+- Implementation tier definitions (Core, Important, Enhancement,
+  Out of Scope) with a process tier summary table
+- Domain codes (2–4 uppercase letters) for each Key Business Domain
+
 The Master PRD also establishes:
 
-- Domain codes (2–4 uppercase letters) for each Key Business Domain
 - The recommended order for processing domains (typically the domain
   with the most entities first)
-- The dependency order of processes within each domain — sequential
-  lifecycle processes first, then asynchronous processes
+- The sequence of processes within each domain — sequential lifecycle
+  processes first, then asynchronous processes
 - Identifiers for each persona (MST-PER-001, MST-PER-002, etc.)
   and domain (MST-DOM-001, MST-DOM-002, etc.)
+- An implementation tier for each process
 
 ---
 
@@ -167,8 +176,21 @@ a CRM. This becomes Section 1 of the Master PRD.
 **What the AI is trying to learn:**
 The distinct types of people who will interact with or be tracked by
 the CRM. Each persona gets an identifier (MST-PER-001, etc.) and an
-entry in the Master PRD with: name, description, relationship to the
-organization, primary domains, and what the CRM provides to them.
+entry in the Master PRD with three elements:
+
+- **Responsibilities** — bulleted list of what this person does in
+  their role (the WHAT, not the HOW)
+- **What the CRM Provides** — bulleted list of capabilities the
+  system delivers to support that role (stated positively — what
+  the CRM gives them, not what's missing without it)
+- **Primary Domains** — which Key Business Domains this persona
+  participates in
+
+The persona section serves a critical stakeholder review purpose:
+stakeholders must be able to read the persona entries and determine
+that the CRM will meet the needs of everyone in the organization.
+Responsibilities tell them "yes, you understood my job." What the
+CRM Provides tells them "yes, the system will support my work."
 
 **Important:** A persona is a role, not a specific person. "Mentor"
 is a persona. "John Smith" is not.
@@ -181,8 +203,10 @@ is a persona. "John Smith" is not.
 **Follow-up probes (use as needed):**
 - "For each role — what is their relationship to the organization?
   Are they staff, volunteers, clients, partners, donors?"
-- "What does each role need from the CRM? What would make the CRM
-  valuable to them specifically?"
+- "What are the key responsibilities of this role? What does this
+  person actually do day to day?"
+- "What would the CRM need to provide to make this person's work
+  easier or more effective?"
 - "Are there people who play more than one role? For example,
   someone who is both a volunteer and a donor?"
 - "Are there internal roles — administrators, coordinators, managers
@@ -192,6 +216,14 @@ is a persona. "John Smith" is not.
   with? Do they need visibility into the CRM, or are they just
   tracked as records?"
 
+**For each persona, capture:**
+- A clear role name
+- Their key responsibilities (what they do — these become the
+  Responsibilities bullets)
+- What the CRM needs to give them (what capabilities they need —
+  these become the What the CRM Provides bullets)
+- Which domains they participate in
+
 **As personas are identified, assign identifiers:**
 > "So we have our first persona — let's call that MST-PER-001:
 > Mentor. The second would be MST-PER-002: Client Contact. Does
@@ -199,10 +231,11 @@ is a persona. "John Smith" is not.
 
 **Signs you have enough:**
 - All distinct roles identified and named
-- Each persona has a clear description and relationship to the org
+- Each persona has clear responsibilities (bulleted)
+- Each persona has clear CRM capabilities needed (bulleted)
 - Multi-role situations noted
 - Internal vs. external personas distinguished
-- Each persona has an assigned identifier
+- Each persona has an assigned identifier and primary domains
 
 ---
 
@@ -266,25 +299,22 @@ processes:
   in another domain?"
 
 **For each process, capture:**
-- A clear name
+- A clear name and process code
 - A one-line description of what it accomplishes
 - Whether it is a sequential lifecycle process or an asynchronous
   process
 - Any obvious dependencies on other processes
 
-**Establishing dependency order:**
+**Establishing process sequence:**
 
 After all processes in a domain are identified, work with the
-administrator to establish the order they should be defined in:
+administrator to establish the sequence they should be listed in.
+The principle is lifecycle processes first (because they establish
+core data), then asynchronous processes (because they react to
+that data):
 
-> "Now let's think about what order these processes should be
-> defined in. The principle is: lifecycle processes first (because
-> they create the core data), then asynchronous processes (because
-> they react to that data). Within lifecycle processes, earlier
-> stages come first.
->
-> Based on what you've described, I'd suggest this order for
-> [Domain Name]:
+> "Based on what you've described, I'd suggest listing the
+> processes for [Domain Name] in this order:
 > 1. [Process] — creates the initial records
 > 2. [Process] — updates status based on [trigger]
 > 3. [Process] — adds ongoing data
@@ -293,13 +323,81 @@ administrator to establish the order they should be defined in:
 >
 > Does that sequence make sense?"
 
+### Part C — Implementation Tier Assignment
+
+After all processes across all domains are identified, assign an
+implementation tier to each process. Work through the processes
+one at a time, stating the proposed tier and rationale positively
+(what the process enables, not what's missing without it).
+
+The four tiers are:
+
+- **Core** — Required for launch. The organization cannot operate
+  without this process in the CRM.
+- **Important** — Required within 60 days of launch. Operations
+  can begin without it but will be constrained.
+- **Enhancement** — Valuable but can be deferred to a later phase
+  without impacting core operations.
+- **Out of Scope** — Identified as a future need but not included
+  in this implementation. Documented for completeness and future
+  planning.
+
+> "Now let's prioritize. For each process, I'll suggest an
+> implementation tier based on what you've told me about what's
+> most critical. Let's walk through them one at a time."
+
+For each process, present the tier and a positive business value
+statement:
+
+> "[Process Name]: I'd suggest Core — [positive value statement].
+> Does that feel right?"
+
+**Important:** State business value positively. Say what the
+process enables, not what goes wrong without it. "Gives CBM a
+structured path for client intake" not "Without this, client
+requests would be lost."
+
+After all tiers are assigned, present a summary table for
+confirmation:
+
+> "Here's the full tier assignment across all domains:
+>
+> Core: [list]
+> Important: [list]
+> Enhancement: [list]
+> Out of Scope: [list]
+>
+> Does this prioritization look right?"
+
+### Part D — Business Value and Key Capabilities
+
+For each process, capture two additional elements that will appear
+in the Master PRD as bulleted lists:
+
+- **Business Value** — why this process matters to the organization,
+  stated positively (what it enables, what it provides). These
+  become bulleted value statements.
+- **Key Capabilities** — the specific capabilities the CRM provides
+  to support this process. These become bulleted capability
+  statements.
+
+This can be done during the initial process discussion or as a
+focused pass after all processes are identified — whichever flows
+more naturally in the conversation.
+
+> "For [Process Name], what's the core value this brings to the
+> organization? And what specific capabilities does the CRM need
+> to provide to support it?"
+
 **Signs you have enough:**
 - All domains identified with codes and identifiers
 - Each domain has a complete process list
-- Each process has a name and one-line description
-- Processes are classified as lifecycle or asynchronous
-- Dependency order is established within each domain
+- Each process has a name, code, and one-line description
+- Processes are sequenced (lifecycle first, then async)
 - Cross-domain dependencies are noted
+- Every process has an assigned implementation tier
+- Every process has business value statements (bulleted)
+- Every process has key capability statements (bulleted)
 
 ### Establishing Domain Processing Order
 
@@ -396,11 +494,13 @@ Before closing, review the topic checklist. For any uncovered topics:
 
 Summarize the key findings back to the administrator. Present:
 
-1. The personas identified (with identifiers)
+1. The personas identified (with identifiers, responsibilities,
+   and CRM capabilities)
 2. The domains identified (with codes and identifiers)
-3. The process list for each domain (with dependency order)
-4. The recommended domain processing order
-5. The system scope (in/out/integrations)
+3. The process list for each domain (with sequence and tiers)
+4. The implementation tier summary across all domains
+5. The recommended domain processing order
+6. The system scope (in/out/integrations)
 
 > "Let me summarize what we've established before I produce the
 > Master PRD..."
@@ -410,14 +510,21 @@ misunderstandings before the document is produced.
 
 ### Document Production
 
-After confirmation, produce the Master PRD as a Word document
-following the structure defined in the Document Production Process:
+After confirmation, produce the Master PRD as a Word document with
+the following structure:
 
-1. Organization Overview
-2. Personas (with identifiers)
-3. Key Business Domains (with domain codes, process lists, dependency
-   order, key data categories)
-4. System Scope (in scope, out of scope, integrations by function)
+1. **Organization Overview** — mission, operating context, why a
+   CRM is needed
+2. **Personas** — each persona with Responsibilities (bulleted),
+   What the CRM Provides (bulleted), and Primary Domains
+3. **Key Business Domains** — opens with implementation tier
+   definitions and a process tier summary table, then one section
+   per domain containing: domain purpose, personas involved,
+   business processes (each with one-line description, tier badge,
+   business value as bulleted list, key capabilities as bulleted
+   list), and key data categories
+4. **System Scope** — in scope, out of scope, integrations
+   described by function
 
 Commit the document to the repository at:
 `PRDs/{Implementation}-Master-PRD.docx`
@@ -483,4 +590,5 @@ discover them now than during Phase 2.
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.1 | 03-30-26 | Updated persona format (Responsibilities + What the CRM Provides, both bulleted). Added implementation tier system (Core, Important, Enhancement, Out of Scope). Added Business Value and Key Capabilities as bulleted lists per process. Updated document production structure to match. |
 | 1.0 | 03-30-26 | Initial release. Replaces discovery-interview.md. |
