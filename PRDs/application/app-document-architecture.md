@@ -2,7 +2,7 @@
 
 **Version:** 1.1
 **Status:** Current
-**Last Updated:** 03-29-26 22:15
+**Last Updated:** 03-29-26 22:30
 
 ---
 
@@ -485,10 +485,18 @@ boundary. Each process section contains:
   end to end
 - **System Requirements** — what the CRM must do to support this
   process, stated as "The system must..." statements
-- **Process Data** — data the system must have available to execute
-  the process (pre-existing data requirements)
-- **Data Collected** — data captured as a result of running the
-  process (new data created by the process)
+- **Process Data** — fields the system must have available to execute
+  the process (pre-existing data requirements). Fields are grouped by
+  Category and each entry includes the field label (human-readable
+  name) and a description of the field's purpose in the process.
+- **Data Collected** — fields captured as a result of running the
+  process (new data created by the process). Fields are grouped by
+  Category and each entry includes the field label (human-readable
+  name) and a description of the field's purpose in the process.
+
+  > **Note:** Category is a formal property defined in the YAML schema.
+  > Its definition and assignment rules will be documented in the
+  > YAML schema specification.
 - **Workflow Diagram Placeholder** — a blank page with the title
   "Add Workflow Diagram Here" inserted at the end of each process
   section, providing a designated location for a manually added
