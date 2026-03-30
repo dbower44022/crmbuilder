@@ -1,0 +1,119 @@
+# Creatio CRM Platform Profile
+name: Creatio
+slug: creatio
+type: Low-code CRM platform
+deployment: Cloud or on-premise
+last_reviewed: 2026-03-30
+
+pricing:
+  free_tier: "14-day trial"
+  min_paid_per_user_month: 40
+  full_admin_api_per_user_month: 40
+  enterprise_per_user_month: 70
+  currency: USD
+  notes: "$10K/year minimum"
+
+api:
+  protocol: ["OData 3/4", "DataService JSON-RPC"]
+  format: [JSON]
+  auth_methods: ["Forms auth", "Basic auth", "OAuth 2.0"]
+
+# ─── Standard Entities ──────────────────────────────────────────────
+standard_entities:
+  account: {name: Account, api_name: Account}
+  contact: {name: Contact, api_name: Contact}
+  lead: {name: Lead, api_name: Lead}
+  opportunity: {name: Opportunity, api_name: Opportunity}
+  order: {name: Order, api_name: Order}
+  product: {name: Product, api_name: Product}
+  contract: {name: Contract, api_name: Contract}
+  invoice: {name: Invoice, api_name: Invoice}
+  document: {name: Document, api_name: Document}
+  activity: {name: Activity, api_name: Activity}
+  case: {name: Case, api_name: Case}
+  campaign: {name: Campaign, api_name: Campaign}
+  label_renamable_via_api: false
+  notes: "Also includes Service and Marketing module entities"
+
+# ─── Entity Management ─────────────────────────────────────────────
+entity_management:
+  create_entity:
+    rating: indirect
+    method: "Package deploy or IDE only — not via REST API"
+    notes: "Entities are defined in configuration packages and deployed via Creatio IDE or package import."
+  delete_entity:
+    rating: indirect
+    method: "Package deploy or IDE only"
+  check_existence:
+    rating: full
+    method: "OData entity metadata query"
+
+# ─── Field Management ──────────────────────────────────────────────
+field_management:
+  create_field:
+    rating: indirect
+    method: "Package deploy only — not via REST API"
+    notes: "Fields (columns) are defined in entity schemas within configuration packages."
+
+  read_metadata:
+    rating: full
+    method: "OData $metadata endpoint"
+
+  field_types:
+    text: {equivalent: Text, creatable: false, notes: "Package only"}
+    int: {equivalent: Integer, creatable: false}
+    decimal: {equivalent: Decimal/Money, creatable: false}
+    float: {equivalent: Float, creatable: false}
+    datetime: {equivalent: DateTime, creatable: false}
+    date: {equivalent: Date, creatable: false}
+    time: {equivalent: Time, creatable: false}
+    bool: {equivalent: Boolean, creatable: false}
+    enum: {equivalent: Lookup, creatable: false, notes: "All dropdowns are Lookup columns to lookup entities"}
+    image: {equivalent: Image, creatable: false}
+    file: {equivalent: File, creatable: false}
+    guid: {equivalent: GUID, creatable: false}
+    encrypted: {equivalent: Encrypted, creatable: false}
+    color: {equivalent: Color, creatable: false}
+
+# ─── Layout Management ─────────────────────────────────────────────
+layout_management:
+  read_layouts:
+    rating: indirect
+    method: "Freedom UI JSON schemas in packages"
+  write_layouts:
+    rating: indirect
+    method: "Freedom UI JSON schemas deployed via packages — not REST"
+    notes: "Supports grid, tabs, conditional visibility — but not modifiable via REST API"
+
+# ─── Relationship Management ───────────────────────────────────────
+relationship_management:
+  create_relationship:
+    rating: indirect
+    method: "Lookup columns in entity schema packages"
+    notes: "Many-to-many via junction entities. All relationship definitions require package deployment."
+
+# ─── Data Operations ───────────────────────────────────────────────
+data_operations:
+  create_record: {rating: full, method: "POST /odata/{entity}"}
+  read_record: {rating: full, method: "GET /odata/{entity}({id})"}
+  update_record: {rating: full, method: "PATCH /odata/{entity}({id})"}
+  delete_record: {rating: full, method: "DELETE /odata/{entity}({id})"}
+  search_by_field: {rating: full, method: "OData $filter or DataService queries"}
+
+# ─── Future Capabilities ──────────────────────────────────────────
+workflow_automation:
+  create_rules: {rating: partial, method: "POST RunProcess — trigger existing processes only"}
+  create_flows: {rating: none, notes: "BPMN 2.0 process designer is visual/IDE only"}
+
+roles_permissions:
+  create_roles: {rating: partial, method: "SysAdminUnit entity operations"}
+
+dashboards_reports:
+  create_dashboards: {rating: partial}
+
+email_templates:
+  crud_templates: {rating: partial}
+
+webhooks_events:
+  outbound_webhooks: {rating: partial}
+  event_subscriptions: {rating: partial}

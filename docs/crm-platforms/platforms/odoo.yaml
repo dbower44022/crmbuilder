@@ -1,0 +1,243 @@
+# Odoo CRM Platform Profile
+name: Odoo
+slug: odoo
+type: Open-source ERP/CRM (LGPL)
+deployment: Self-hosted, Odoo.sh (PaaS), or Odoo Online (SaaS)
+last_reviewed: 2026-03-30
+
+pricing:
+  free_tier: "Community Edition (fully free, self-hosted, complete API)"
+  min_paid_per_user_month: 25
+  full_admin_api_per_user_month: 0
+  full_admin_api_notes: "Community Edition — free, self-hosted"
+  enterprise_per_user_month: 47
+  currency: USD
+
+api:
+  protocol: ["XML-RPC", "JSON-RPC", "REST API (Enterprise 17+)"]
+  format: [JSON, XML]
+  auth_methods: ["Database + username + password/API key", "OAuth 2.0 (Enterprise REST)"]
+  rate_limit: "None (self-hosted); Odoo Online limits undocumented"
+  admin_auth: "Administration/Settings group"
+  deprecation_notes: "XML-RPC and JSON-RPC scheduled for deprecation in Odoo 22 (fall 2028)"
+
+# ─── Standard Entities ──────────────────────────────────────────────
+standard_entities:
+  contact: {name: "res.partner", api_name: "res.partner", notes: "Unified model for contacts and companies (is_company flag)"}
+  account: {name: "res.partner", api_name: "res.partner", notes: "Same model as contact; is_company=True"}
+  lead: {name: "crm.lead", api_name: "crm.lead", notes: "Unified lead/opportunity (type=lead or type=opportunity)"}
+  opportunity: {name: "crm.lead", api_name: "crm.lead", notes: "Same model as lead; type=opportunity"}
+  case: {name: "helpdesk.ticket", api_name: "helpdesk.ticket", notes: "Enterprise only"}
+  task: {name: "mail.activity", api_name: "mail.activity"}
+  meeting: {name: "calendar.event", api_name: "calendar.event"}
+  call: {name: "voip.phonecall", api_name: "voip.phonecall", notes: "Enterprise VoIP module"}
+  email: {name: "mail.mail", api_name: "mail.mail"}
+  campaign: {name: "utm.campaign", api_name: "utm.campaign"}
+  target_list: {name: "mailing.list", api_name: "mailing.list"}
+  document: {name: "documents.document", api_name: "documents.document", notes: "Enterprise Documents module"}
+  product: {name: "product.product", api_name: "product.product"}
+  quote: {name: "sale.order", api_name: "sale.order", notes: "Quotation state of sale order"}
+  invoice: {name: "account.move", api_name: "account.move"}
+  user: {name: "res.users", api_name: "res.users"}
+  team: {name: "crm.team", api_name: "crm.team"}
+  label_renamable_via_api: true
+  label_rename_method: "ir.model name field"
+
+# ─── Entity Management ─────────────────────────────────────────────
+entity_management:
+  create_entity:
+    rating: full
+    min_edition: community
+    method: "execute_kw('ir.model', 'create', ...) with model field"
+    max_entities:
+      notes: "No hard entity limit"
+    naming_convention: "x_ prefix required for custom models"
+    notes: "Requires name, model (x_ prefixed), field_id (at minimum x_name). State attribute and access rules created separately."
+  delete_entity:
+    rating: full
+    method: "execute_kw('ir.model', 'unlink', [id])"
+  check_existence:
+    rating: full
+    method: "execute_kw('ir.model', 'search', [[['model', '=', 'x_modelname']]])"
+  entity_types:
+    available: ["Custom model names — no fixed type system"]
+    notes: "Models can inherit from mixins (mail.thread for messaging, mail.activity.mixin for activities)."
+    transient_models: true
+    transient_notes: "TransientModel for wizard/temporary data — auto-cleaned."
+  cache_rebuild:
+    rating: full
+    required: false
+    method: "Automatic on model/field creation; manual via base.module.upgrade if needed"
+  activity_stream:
+    supported: true
+    name: "Chatter (mail.thread mixin)"
+
+# ─── Field Management ──────────────────────────────────────────────
+field_management:
+  create_field:
+    rating: full
+    min_edition: community
+    method: "execute_kw('ir.model.fields', 'create', ...)"
+    max_fields_per_object: "No hard limit"
+    naming_convention: "x_ prefix required for custom fields"
+
+  update_field:
+    rating: full
+    method: "execute_kw('ir.model.fields', 'write', [id], {...})"
+
+  read_metadata:
+    rating: full
+    method: "execute_kw('ir.model.fields', 'search_read', ...) or fields_get()"
+
+  field_types:
+    varchar: {equivalent: char, creatable: true}
+    text: {equivalent: text, creatable: true}
+    wysiwyg: {equivalent: html, creatable: true}
+    enum: {equivalent: selection, creatable: true}
+    multiEnum: {equivalent: "selection (widget=many2many_tags)", creatable: true}
+    bool: {equivalent: boolean, creatable: true}
+    int: {equivalent: integer, creatable: true}
+    float: {equivalent: float, creatable: true}
+    date: {equivalent: date, creatable: true}
+    datetime: {equivalent: datetime, creatable: true}
+    currency: {equivalent: monetary, creatable: true}
+    url: {equivalent: "char (widget=url)", creatable: true}
+    email: {equivalent: "char (widget=email)", creatable: true}
+    phone: {equivalent: "char (widget=phone)", creatable: true}
+  all_current_types_supported: true
+  additional_types:
+    - {name: many2one, creatable: true, notes: "Foreign key to another model"}
+    - {name: one2many, creatable: true, notes: "Inverse of many2one"}
+    - {name: many2many, creatable: true, notes: "Relation table auto-created"}
+    - {name: binary, creatable: true, notes: "File/attachment storage"}
+    - {name: image, creatable: true, notes: "Binary with image widget + auto-resize"}
+    - {name: reference, creatable: true, notes: "Polymorphic — model,id format"}
+    - {name: json, creatable: true, notes: "Odoo 17+ — native JSON storage"}
+    - {name: properties, creatable: true, notes: "Odoo 17+ — dynamic schema-less fields"}
+
+  field_properties:
+    label: {supported: true, api_key: field_description}
+    required: {supported: true, api_key: required}
+    default: {supported: true, api_key: default, notes: "Python expression evaluated at create time"}
+    readOnly: {supported: true, api_key: readonly}
+    audited: {supported: true, api_key: tracking, notes: "Integer value; tracking=True or tracking=1..100 for ordering"}
+    description: {supported: true, api_key: help}
+    tooltip: {supported: true, api_key: help, notes: "Same as description"}
+    min: {supported: false, notes: "Enforced via Python constraints, not field metadata"}
+    max: {supported: false, notes: "Enforced via Python constraints, not field metadata"}
+    maxLength: {supported: true, api_key: size}
+    options: {supported: true, api_key: selection, notes: "List of (value, label) tuples"}
+    translatedOptions: {supported: true, api_key: "ir.translation / _() markup"}
+    optionDescriptions: {supported: false}
+    style: {supported: false}
+    isSorted: {supported: false}
+    displayAsLabel: {supported: false}
+    copyToClipboard: {supported: false}
+    category: {supported: false}
+    unique: {supported: true, api_key: "_sql_constraints", notes: "SQL constraint on model class"}
+    externalId: {supported: true, api_key: "ir.model.data XML ID", notes: "External identifiers for data import/export"}
+    formula: {supported: true, api_key: "compute + depends", notes: "Python compute method with @api.depends decorator"}
+    encrypted: {supported: false, notes: "No built-in field-level encryption; use database-level or third-party"}
+    translate: {supported: true, api_key: translate}
+    index: {supported: true, api_key: index}
+    store: {supported: true, api_key: store, notes: "Whether computed field is persisted to database"}
+    groups: {supported: true, api_key: groups, notes: "Comma-separated XML IDs of groups that can see the field"}
+    on_delete: {supported: true, api_key: ondelete, notes: "set null, restrict, cascade — for many2one fields"}
+    domain: {supported: true, api_key: domain, notes: "Filter domain expression for relational fields"}
+
+# ─── Layout Management ─────────────────────────────────────────────
+layout_management:
+  read_layouts:
+    rating: full
+    method: "execute_kw('ir.ui.view', 'search_read', [[['model', '=', '{model}'], ['type', '=', 'form']]])"
+  write_layouts:
+    rating: full
+    method: "execute_kw('ir.ui.view', 'write', [id], {'arch': xml_string})"
+    min_edition: community
+    notes: "Views are XML arch fields, fully readable and writable via API. View inheritance via xpath expressions."
+  detail_view: {supported: true, notes: "Form view (type=form)"}
+  edit_view: {supported: true, notes: "Same form view; edit mode is a UI state toggle"}
+  list_view: {supported: true, notes: "Tree/List view (type=tree)"}
+  panels: {supported: true, notes: "<group> and <notebook>/<page> elements in form arch"}
+  tabs: {supported: true, notes: "<notebook> with <page> children"}
+  conditional_visibility: {supported: true, notes: "attrs={'invisible': [domain]} on any XML element"}
+  field_width_control: {supported: true, notes: "<group> with col attribute; colspan on fields"}
+  empty_cell_handling: {supported: true, notes: "Automatic in group layout"}
+  view_types:
+    - {type: form, name: Form}
+    - {type: tree, name: "Tree / List"}
+    - {type: kanban, name: Kanban}
+    - {type: calendar, name: Calendar}
+    - {type: graph, name: Graph}
+    - {type: pivot, name: Pivot}
+    - {type: search, name: Search}
+    - {type: gantt, name: Gantt, notes: "Enterprise only"}
+    - {type: activity, name: Activity}
+    - {type: map, name: Map, notes: "Enterprise only"}
+  view_inheritance:
+    supported: true
+    method: "inherit_id + xpath expressions"
+    notes: "Child views extend parent views without modifying the original."
+
+# ─── Relationship Management ───────────────────────────────────────
+relationship_management:
+  create_relationship:
+    rating: full
+    method: "execute_kw('ir.model.fields', 'create', ...) with ttype=many2one/one2many/many2many"
+  one_to_many: {supported: true, method: "one2many field type (inverse of many2one)"}
+  many_to_one: {supported: true, method: "many2one field type"}
+  many_to_many: {supported: true, method: "many2many field type (relation table auto-created)"}
+  link_labels: {supported: true, api_key: "string attribute on field definition"}
+  audit_both_sides: {supported: true, notes: "tracking attribute on relationship fields"}
+  check_existence: {supported: true, method: "fields_get() or ir.model.fields search"}
+  cascade_delete: {supported: true, options: ["set null", restrict, cascade]}
+  polymorphic: {supported: true, notes: "reference field type — 'model,id' format string"}
+  self_referential: {supported: true, notes: "many2one with comodel_name=same model (e.g., parent_id)"}
+
+# ─── Data Operations ───────────────────────────────────────────────
+data_operations:
+  create_record: {rating: full, method: "execute_kw(model, 'create', [values])"}
+  read_record: {rating: full, method: "execute_kw(model, 'read', [ids], {'fields': [...]})"}
+  update_record: {rating: full, method: "execute_kw(model, 'write', [ids], values)"}
+  delete_record: {rating: full, method: "execute_kw(model, 'unlink', [ids])"}
+  search_by_field: {rating: full, method: "execute_kw(model, 'search_read', [domain])"}
+  search_by_email: {rating: full, method: "search_read with [['email', '=', value]] domain"}
+  upsert: {rating: indirect, method: "load() method with external IDs; or search then create/write", notes: "No native single-call upsert"}
+  batch_create: {rating: full, method: "create() accepts list of value dicts natively"}
+  bulk_import: {rating: full, method: "load() method — handles external IDs, relations, batch processing"}
+  query_language: {name: "Domain expressions", notes: "Polish-notation filter tuples: [('field', 'operator', value)]. Supports &, |, ! operators. No raw SQL via API."}
+  max_results_per_query: "No hard limit (native list support)"
+  max_results_with_pagination: "Unlimited (limit + offset parameters)"
+
+# ─── Future Capabilities ──────────────────────────────────────────
+workflow_automation:
+  create_rules: {rating: full, method: "execute_kw('base.automation', 'create', ...)"}
+  trigger_types: ["on_create", "on_write", "on_unlink", "on_time", "on_stage_set"]
+  server_actions: {rating: full, method: "ir.actions.server — code execution, email, object write, multi-action"}
+  scheduled_actions: {rating: full, method: "ir.cron — scheduled server actions with interval configuration"}
+  approval_processes: {rating: indirect, notes: "Custom implementation via stages and groups; Studio (Enterprise) adds approval flows"}
+  validation_rules: {rating: full, method: "Python @api.constrains decorators; _sql_constraints"}
+  email_from_template: {rating: full, method: "mail.template send_mail() method"}
+
+roles_permissions:
+  create_roles: {rating: full, method: "execute_kw('res.groups', 'create', ...)"}
+  module_permissions: {rating: full, method: "ir.model.access — per-model CRUD permissions per group"}
+  field_level_security: {rating: full, method: "groups attribute on field definitions"}
+  record_level_rules: {rating: full, method: "ir.rule — domain-based record access rules per group"}
+  user_management: {rating: full, method: "res.users CRUD + groups_id many2many assignment"}
+
+dashboards_reports:
+  create_dashboards: {rating: full, method: "ir.ui.view with type=dashboard; ir.actions.act_window for menu integration"}
+  create_reports: {rating: full, method: "ir.actions.report — QWeb PDF/HTML reports"}
+  saved_views: {rating: full, method: "ir.filters — saved search/filter/group-by configurations"}
+
+email_templates:
+  crud_templates: {rating: full, method: "execute_kw('mail.template', 'create/write/read/unlink', ...)"}
+  merge_fields: {supported: true, notes: "Jinja2 syntax: {{ object.field_name }}"}
+  html_body: {supported: true, notes: "Full HTML with QWeb templating engine"}
+
+webhooks_events:
+  outbound_webhooks: {rating: full, method: "ir.actions.server type=webhook (Odoo 17+)"}
+  event_subscriptions: {rating: full, method: "base.automation triggers — on_create, on_write, on_unlink, on_time"}
+  sync_async: both
+  retry_on_failure: {supported: true, notes: "Configurable retry on webhook actions"}

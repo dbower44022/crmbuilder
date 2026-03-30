@@ -1,0 +1,84 @@
+# Copper CRM Platform Profile
+name: Copper
+slug: copper
+type: Cloud CRM (SaaS)
+deployment: Copper-hosted only
+last_reviewed: 2026-03-30
+
+pricing:
+  free_tier: "14-day trial"
+  min_paid_per_user_month: 9
+  full_admin_api_per_user_month: 119
+  enterprise_per_user_month: 119
+  currency: USD
+
+api:
+  protocol: [REST]
+  format: [JSON]
+  auth_methods: ["API key + email headers"]
+
+# ─── Standard Entities ──────────────────────────────────────────────
+standard_entities:
+  lead: {name: Leads, api_name: leads}
+  person: {name: People, api_name: people}
+  company: {name: Companies, api_name: companies}
+  opportunity: {name: Opportunities, api_name: opportunities}
+  project: {name: Projects, api_name: projects}
+  task: {name: Tasks, api_name: tasks}
+  label_renamable_via_api: false
+
+# ─── Entity Management ─────────────────────────────────────────────
+entity_management:
+  create_entity:
+    rating: none
+    method: "Fixed data model — no custom entity creation"
+  delete_entity:
+    rating: none
+
+# ─── Field Management ──────────────────────────────────────────────
+field_management:
+  create_field:
+    rating: full
+    min_edition: business
+    method: "POST /v1/custom_field_definitions"
+  read_metadata:
+    rating: full
+    method: "GET /v1/custom_field_definitions"
+
+# ─── Layout Management ─────────────────────────────────────────────
+layout_management:
+  read_layouts:
+    rating: none
+  write_layouts:
+    rating: none
+
+# ─── Relationship Management ───────────────────────────────────────
+relationship_management:
+  create_relationship:
+    rating: partial
+    method: "Connect fields for custom lookups"
+    notes: "Limited to Connect-type custom fields"
+
+# ─── Data Operations ───────────────────────────────────────────────
+data_operations:
+  create_record: {rating: full, method: "POST /v1/{entity}"}
+  read_record: {rating: full, method: "GET /v1/{entity}/{id}"}
+  update_record: {rating: full, method: "PUT /v1/{entity}/{id}"}
+  delete_record: {rating: full, method: "DELETE /v1/{entity}/{id}"}
+  search_by_field: {rating: full, method: "POST /v1/{entity}/search"}
+
+# ─── Future Capabilities ──────────────────────────────────────────
+workflow_automation:
+  create_rules: {rating: none}
+
+roles_permissions:
+  create_roles: {rating: none}
+
+dashboards_reports:
+  create_dashboards: {rating: none}
+
+email_templates:
+  crud_templates: {rating: none}
+
+webhooks_events:
+  outbound_webhooks: {rating: none}

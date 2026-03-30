@@ -1,0 +1,237 @@
+# Microsoft Dynamics 365 CRM Platform Profile
+name: Microsoft Dynamics 365
+slug: dynamics365
+type: Cloud/On-premise CRM
+deployment: Dynamics 365 Online (SaaS), Dynamics 365 on-premises
+last_reviewed: 2026-03-30
+
+pricing:
+  free_tier: "Power Apps Developer Plan (Dataverse only); 30-day Dynamics trial"
+  min_paid_per_user_month: 65
+  full_admin_api_per_user_month: 65
+  enterprise_per_user_month: 150
+  currency: USD
+
+api:
+  protocol: ["OData v4 REST", "FetchXML"]
+  format: [JSON]
+  auth_methods: ["OAuth 2.0 via Microsoft Entra ID (Azure AD)"]
+  rate_limit: "6000 req/5min/user/server; 40K req/day per license"
+  admin_auth: "System Administrator security role"
+
+# ─── Standard Entities ──────────────────────────────────────────────
+standard_entities:
+  contact: {name: Contact, api_name: contact}
+  account: {name: Account, api_name: account}
+  lead: {name: Lead, api_name: lead}
+  opportunity: {name: Opportunity, api_name: opportunity}
+  case: {name: Incident, api_name: incident}
+  task: {name: Task, api_name: task}
+  meeting: {name: Appointment, api_name: appointment}
+  call: {name: PhoneCall, api_name: phonecall}
+  email: {name: Email, api_name: email}
+  campaign: {name: Campaign, api_name: campaign}
+  target_list: {name: List, api_name: list}
+  document: {name: Annotation, api_name: annotation}
+  product: {name: Product, api_name: product}
+  quote: {name: Quote, api_name: quote}
+  order: {name: SalesOrder, api_name: salesorder}
+  invoice: {name: Invoice, api_name: invoice}
+  user: {name: SystemUser, api_name: systemuser}
+  team: {name: Team, api_name: team}
+  label_renamable_via_api: true
+  label_rename_method: "DisplayName/DisplayCollectionName on EntityDefinitions"
+
+# ─── Entity Management ─────────────────────────────────────────────
+entity_management:
+  create_entity:
+    rating: full
+    min_edition: developer
+    method: "POST /EntityDefinitions"
+    max_entities:
+      notes: "No hard entity limit"
+    naming_convention: "Publisher prefix + underscore (e.g., new_)"
+    notes: "Requires SchemaName, DisplayName, DisplayCollectionName, PrimaryNameAttribute, OwnershipType."
+  delete_entity:
+    rating: full
+    method: "DELETE /EntityDefinitions({MetadataId})"
+  check_existence:
+    rating: full
+    method: "GET /EntityDefinitions(LogicalName='{name}')"
+  entity_types:
+    available: [Standard, Activity, Virtual, Elastic, Child]
+    ownership_types: [UserOwned, OrganizationOwned]
+    activity_entities: true
+    notes: "Activity entities inherit from ActivityPointer and appear in unified timeline."
+  cache_rebuild:
+    rating: full
+    required: true
+    method: "PublishXml or PublishAllXml action"
+  activity_stream:
+    supported: true
+    name: "Timeline / Activity Feed"
+
+# ─── Field Management ──────────────────────────────────────────────
+field_management:
+  create_field:
+    rating: full
+    min_edition: developer
+    method: "POST /EntityDefinitions(LogicalName='{entity}')/Attributes"
+    max_fields_per_object: 1024
+    naming_convention: "Publisher prefix + underscore"
+
+  update_field:
+    rating: full
+    method: "PUT /EntityDefinitions(LogicalName='{entity}')/Attributes({MetadataId})"
+
+  read_metadata:
+    rating: full
+    method: "GET /EntityDefinitions(LogicalName='{entity}')/Attributes"
+
+  field_types:
+    varchar: {equivalent: StringType, creatable: true}
+    text: {equivalent: MemoType, creatable: true}
+    wysiwyg: {equivalent: MemoType, creatable: true, notes: "Format=RichText"}
+    enum: {equivalent: PicklistType, creatable: true}
+    multiEnum: {equivalent: MultiSelectPicklistType, creatable: true}
+    bool: {equivalent: BooleanType, creatable: true}
+    int: {equivalent: IntegerType, creatable: true}
+    float: {equivalent: DecimalType, creatable: true}
+    date: {equivalent: DateTimeType, creatable: true, notes: "DateTimeBehavior=DateOnly"}
+    datetime: {equivalent: DateTimeType, creatable: true, notes: "DateTimeBehavior=UserLocal"}
+    currency: {equivalent: MoneyType, creatable: true}
+    url: {equivalent: StringType, creatable: true, notes: "FormatName=Url"}
+    email: {equivalent: StringType, creatable: true, notes: "FormatName=Email"}
+    phone: {equivalent: StringType, creatable: true, notes: "FormatName=Phone"}
+  all_current_types_supported: true
+  additional_types:
+    - {name: AutoNumber, creatable: true}
+    - {name: Calculated, creatable: true, notes: "SourceTypeMask=1"}
+    - {name: Rollup, creatable: true, notes: "SourceTypeMask=2"}
+    - {name: LookupType, creatable: true}
+    - {name: CustomerType, creatable: true, notes: "Polymorphic — Account OR Contact"}
+    - {name: ImageType, creatable: true}
+    - {name: FileType, creatable: true}
+    - {name: BigIntType, creatable: true}
+    - {name: DoubleType, creatable: true}
+
+  field_properties:
+    label: {supported: true, api_key: DisplayName}
+    required: {supported: true, api_key: RequiredLevel, notes: "None, ApplicationRequired, Recommended, SystemRequired"}
+    default: {supported: true, api_key: DefaultValue}
+    readOnly: {supported: true, api_key: "Form field control behavior", notes: "Set per-form, not per-field metadata"}
+    audited: {supported: true, api_key: IsAuditEnabled}
+    description: {supported: true, api_key: Description}
+    tooltip: {supported: true, api_key: Description, notes: "Same as description"}
+    min: {supported: true, api_key: MinValue}
+    max: {supported: true, api_key: MaxValue}
+    maxLength: {supported: true, api_key: MaxLength}
+    options: {supported: true, api_key: OptionSet}
+    translatedOptions: {supported: true, api_key: "OptionSet Labels (multi-LCID)"}
+    optionDescriptions: {supported: true, api_key: "OptionMetadata Description"}
+    style: {supported: false}
+    isSorted: {supported: false}
+    displayAsLabel: {supported: false}
+    copyToClipboard: {supported: false}
+    category: {supported: false}
+    unique: {supported: true, api_key: "Alternate Key"}
+    externalId: {supported: false, notes: "Use Alternate Keys for upsert by natural key"}
+    formula: {supported: true, api_key: "SourceTypeMask=1 (Calculated)", notes: "Calculated fields via FormulaDefinition"}
+    encrypted: {supported: true, api_key: IsSecured, notes: "Column-level encryption via Field Security Profile"}
+    precision: {supported: true, api_key: Precision}
+    format: {supported: true, api_key: FormatName, notes: "Text, Email, URL, PhoneNumber, etc."}
+
+# ─── Layout Management ─────────────────────────────────────────────
+layout_management:
+  read_layouts:
+    rating: full
+    method: "GET /systemforms?$filter=objecttypecode eq '{entity}'"
+  write_layouts:
+    rating: full
+    method: "PATCH /systemforms({formid}) — update formxml attribute"
+    min_edition: developer
+    notes: "FormXml is the XML structure defining form layout, sections, tabs, fields."
+  detail_view: {supported: true, notes: "Main form type (type=2)"}
+  edit_view: {supported: true, notes: "Same form as detail; field behavior controlled by business rules or form scripts"}
+  list_view: {supported: true, notes: "SavedQuery entity (type=0 for public views)"}
+  panels: {supported: true, notes: "Form sections within tabs"}
+  tabs: {supported: true, notes: "Native form tabs in FormXml"}
+  conditional_visibility: {supported: true, notes: "Business rules — show/hide fields and sections based on field values"}
+  field_width_control: {supported: true, notes: "1, 2, or 3 column sections; cell spanning"}
+  empty_cell_handling: {supported: true, notes: "Empty cells in FormXml grid"}
+  form_types:
+    - {type: 2, name: Main}
+    - {type: 6, name: QuickView}
+    - {type: 7, name: QuickCreate}
+    - {type: 0, name: Dashboard}
+
+# ─── Relationship Management ───────────────────────────────────────
+relationship_management:
+  create_relationship:
+    rating: full
+    method: "POST /RelationshipDefinitions"
+  one_to_many: {supported: true, method: "OneToManyRelationshipMetadata"}
+  many_to_one: {supported: true, method: "OneToManyRelationshipMetadata (reverse)"}
+  many_to_many: {supported: true, method: "ManyToManyRelationshipMetadata"}
+  link_labels: {supported: true, api_key: "AssociatedMenuConfiguration — Label, DisplayOrder"}
+  audit_both_sides: {supported: true, notes: "Per-field IsAuditEnabled on lookup attributes"}
+  check_existence: {supported: true, method: "GET /RelationshipDefinitions(SchemaName='{name}')"}
+  cascade_delete: {supported: true, options: [RemoveLink, Restrict, Cascade]}
+  cascade_configuration:
+    supported: true
+    behaviors: [Assign, Share, Unshare, Reparent, Delete, Merge, RollupView]
+    notes: "CascadeConfiguration on relationship metadata"
+  polymorphic: {supported: true, notes: "CustomerType attribute (Account OR Contact)"}
+  self_referential: {supported: true, notes: "Self-referencing one-to-many supported"}
+
+# ─── Data Operations ───────────────────────────────────────────────
+data_operations:
+  create_record: {rating: full, method: "POST /{entityset}"}
+  read_record: {rating: full, method: "GET /{entityset}({id})"}
+  update_record: {rating: full, method: "PATCH /{entityset}({id})"}
+  delete_record: {rating: full, method: "DELETE /{entityset}({id})"}
+  search_by_field: {rating: full, method: "$filter query option"}
+  search_by_email: {rating: full, method: "$filter on emailaddress1 field"}
+  upsert: {rating: full, method: "PATCH with If-Match/If-None-Match headers; Alternate Key upsert"}
+  batch_create: {rating: full, method: "$batch — up to 1000 operations per batch"}
+  bulk_import: {rating: full, method: "CreateMultiple / UpdateMultiple actions"}
+  query_language: {name: "OData $filter + FetchXML", notes: "OData for simple queries; FetchXML for complex joins, aggregates, linked-entity queries"}
+  change_tracking: {supported: true, method: "RetrieveEntityChanges function"}
+  max_results_per_query: 5000
+  max_results_with_pagination: "Unlimited (server-side paging via @odata.nextLink)"
+
+# ─── Future Capabilities ──────────────────────────────────────────
+workflow_automation:
+  create_rules: {rating: full, method: "Workflow entity (category=0 for classic workflow)"}
+  create_flows: {rating: full, method: "Workflow entity (category=5 for cloud flow / Power Automate)"}
+  approval_processes: {rating: full, method: "Power Automate Approvals connector"}
+  validation_rules: {rating: full, method: "Business rules (Workflow category=2)"}
+  scheduled_actions: {rating: full, method: "Workflow with wait conditions; Power Automate scheduled triggers"}
+  email_from_template: {rating: full, method: "SendEmailFromTemplate action"}
+  trigger_types: ["Record change", "Schedule", "On-demand", "Business Process Flow stage"]
+  custom_actions: {rating: full, method: "Workflow entity (category=3) — custom API actions"}
+
+roles_permissions:
+  create_roles: {rating: full, method: "Role entity CRUD"}
+  module_permissions: {rating: full, method: "Role privileges (entity-level CRUD + append/share)"}
+  field_level_security: {rating: full, method: "FieldSecurityProfile + FieldPermission entities"}
+  record_level_rules: {rating: full, method: "Business unit hierarchy + team sharing + custom sharing rules"}
+  user_management: {rating: full, method: "SystemUser entity CRUD + security role assignment"}
+  business_units: {supported: true, notes: "Hierarchical organizational structure for security scoping"}
+
+dashboards_reports:
+  create_dashboards: {rating: full, method: "SystemForm entity (type=0, formtype=dashboard)"}
+  create_reports: {rating: full, method: "Report entity + FetchXML-based report definitions"}
+  saved_views: {rating: full, method: "SavedQuery (system views) / UserQuery (personal views)"}
+  charts: {rating: full, method: "SavedQueryVisualization entity"}
+
+email_templates:
+  crud_templates: {rating: full, method: "Template entity CRUD"}
+  merge_fields: {supported: true, notes: "Dynamic field insertion via {!entity.field} syntax"}
+  html_body: {supported: true, notes: "Full HTML body support"}
+
+webhooks_events:
+  outbound_webhooks: {rating: full, method: "ServiceEndpoint entity (contract=Webhook)"}
+  event_subscriptions: {rating: full, method: "Azure Service Bus integration, Event Grid"}
+  sync_async: both
+  retry_on_failure: {supported: true, notes: "Retry on 502, 503, 504 responses"}

@@ -1,0 +1,81 @@
+# Freshsales (Freshworks CRM) Platform Profile
+name: "Freshsales (Freshworks CRM)"
+slug: freshsales
+type: Cloud CRM (SaaS)
+deployment: Freshworks-hosted only
+last_reviewed: 2026-03-30
+
+pricing:
+  free_tier: "Free (3 users, 1K contacts)"
+  min_paid_per_user_month: 9
+  full_admin_api_per_user_month: na
+  enterprise_per_user_month: 59
+  currency: USD
+
+api:
+  protocol: [REST]
+  format: [JSON]
+  auth_methods: ["API key"]
+
+# ─── Standard Entities ──────────────────────────────────────────────
+standard_entities:
+  contact: {name: Contacts, api_name: contacts}
+  account: {name: Accounts, api_name: accounts}
+  deal: {name: Deals, api_name: deals}
+  task: {name: Tasks, api_name: tasks}
+  appointment: {name: Appointments, api_name: appointments}
+  note: {name: Notes, api_name: notes}
+  sales_activity: {name: Sales Activities, api_name: sales_activities}
+  label_renamable_via_api: false
+
+# ─── Entity Management ─────────────────────────────────────────────
+entity_management:
+  create_entity:
+    rating: none
+    method: "Not documented — fixed entity model"
+  delete_entity:
+    rating: none
+
+# ─── Field Management ──────────────────────────────────────────────
+field_management:
+  create_field:
+    rating: unknown
+    notes: "Not well-documented in public API references"
+  read_metadata:
+    rating: unknown
+
+# ─── Layout Management ─────────────────────────────────────────────
+layout_management:
+  read_layouts:
+    rating: none
+  write_layouts:
+    rating: none
+
+# ─── Relationship Management ───────────────────────────────────────
+relationship_management:
+  create_relationship:
+    rating: none
+
+# ─── Data Operations ───────────────────────────────────────────────
+data_operations:
+  create_record: {rating: full, method: "POST /api/{entity}"}
+  read_record: {rating: full, method: "GET /api/{entity}/{id}"}
+  update_record: {rating: full, method: "PUT /api/{entity}/{id}"}
+  delete_record: {rating: full, method: "DELETE /api/{entity}/{id}"}
+  search_by_field: {rating: full, method: "GET /api/{entity}/search"}
+
+# ─── Future Capabilities ──────────────────────────────────────────
+workflow_automation:
+  create_rules: {rating: unknown}
+
+roles_permissions:
+  create_roles: {rating: unknown}
+
+dashboards_reports:
+  create_dashboards: {rating: unknown}
+
+email_templates:
+  crud_templates: {rating: unknown}
+
+webhooks_events:
+  outbound_webhooks: {rating: unknown}

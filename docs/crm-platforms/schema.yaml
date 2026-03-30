@@ -1,0 +1,308 @@
+# CRM Platform Capability Schema
+#
+# Defines all dimensions used to evaluate CRM platforms against CRM Builder.
+# Every platform YAML file must conform to this schema. The crm_compare.py
+# tool validates platform files against these definitions.
+#
+# Rating Scale (used for all capability ratings):
+#   full      — Complete API support: create, read, update, delete metadata
+#   partial   — Some operations available; significant gaps or workarounds
+#   read_only — Can read/query metadata via API but cannot create or modify
+#   indirect  — Achievable via package upload, file manipulation, or non-REST
+#   none      — Not available via any API; UI-only configuration
+#   na        — Feature does not exist on this platform
+#   unknown   — Not yet researched
+
+ratings:
+  - full
+  - partial
+  - read_only
+  - indirect
+  - none
+  - na
+  - unknown
+
+# Edition tiers (normalized across platforms)
+editions:
+  - free          # Free tier or open-source
+  - developer     # Free developer/sandbox tier
+  - starter       # Lowest paid tier
+  - professional  # Mid-tier
+  - enterprise    # Enterprise tier
+  - ultimate      # Highest tier
+  - all_paid      # Available on all paid tiers
+  - na            # Not applicable
+
+# ─── CRM Builder Field Types ───────────────────────────────────────────
+# These are the 14 field types CRM Builder currently supports.
+# Each platform file maps these to the platform's equivalent type name.
+
+field_types:
+  current:
+    - varchar
+    - text
+    - wysiwyg
+    - enum
+    - multiEnum
+    - bool
+    - int
+    - float
+    - date
+    - datetime
+    - currency
+    - url
+    - email
+    - phone
+
+  # Anticipated future field types for CRM Builder
+  future:
+    - autoNumber
+    - formula
+    - rollupSummary
+    - lookup
+    - masterDetail
+    - image
+    - file
+    - address
+    - percent
+    - encrypted
+    - json
+    - reference
+    - time
+    - geolocation
+
+# ─── Field Properties ──────────────────────────────────────────────────
+# Properties that can be set on fields via API.
+
+field_properties:
+  current:
+    - label
+    - required
+    - default
+    - readOnly
+    - audited
+    - description
+    - tooltip
+    - min
+    - max
+    - maxLength
+    - options
+    - translatedOptions
+    - optionDescriptions
+    - style
+    - isSorted
+    - displayAsLabel
+    - copyToClipboard
+    - category
+
+  future:
+    - unique
+    - externalId
+    - formula
+    - encrypted
+    - indexed
+
+# ─── Entity Types ─────────────────────────────────────────────────────
+# Entity subtype/template categories available at entity creation.
+
+entity_types:
+  current:
+    - Base
+    - Person
+    - Company
+    - Event
+
+# ─── Relationship Types ───────────────────────────────────────────────
+
+relationship_types:
+  current:
+    - oneToMany
+    - manyToOne
+    - manyToMany
+
+  future:
+    - polymorphic
+    - hierarchical
+    - selfReferential
+
+# ─── Layout Types ─────────────────────────────────────────────────────
+
+layout_types:
+  current:
+    - detail
+    - edit
+    - list
+
+  future:
+    - kanban
+    - calendar
+    - dashboard
+
+# ─── Layout Features ──────────────────────────────────────────────────
+
+layout_features:
+  current:
+    - panels
+    - tabs
+    - conditionalVisibility
+    - fieldWidthControl
+    - emptyCellHandling
+
+  future:
+    - dragAndDrop
+    - responsiveGrid
+    - customCSS
+
+# ─── Capability Dimensions ────────────────────────────────────────────
+# Top-level capability groups evaluated for each platform.
+# Each dimension has sub-capabilities with individual ratings.
+
+dimensions:
+  api_basics:
+    label: "API Protocol & Authentication"
+    status: current
+
+  standard_entities:
+    label: "Standard Entities"
+    status: current
+
+  entity_management:
+    label: "Custom Entity Management"
+    status: current
+    sub_capabilities:
+      - create_entity
+      - delete_entity
+      - check_existence
+      - entity_types
+      - cache_rebuild
+      - activity_stream
+
+  field_management:
+    label: "Field Management"
+    status: current
+    sub_capabilities:
+      - create_field
+      - update_field
+      - read_field_metadata
+      - field_type_coverage
+      - field_property_coverage
+
+  layout_management:
+    label: "Layout Management"
+    status: current
+    sub_capabilities:
+      - read_layouts
+      - write_layouts
+      - detail_view
+      - edit_view
+      - list_view
+      - panels
+      - tabs
+      - conditional_visibility
+
+  relationship_management:
+    label: "Relationship Management"
+    status: current
+    sub_capabilities:
+      - create_relationship
+      - one_to_many
+      - many_to_one
+      - many_to_many
+      - link_labels
+      - audit_both_sides
+      - check_existence
+      - cascade_delete
+
+  data_operations:
+    label: "Data Import & Record Operations"
+    status: current
+    sub_capabilities:
+      - create_record
+      - read_record
+      - update_record
+      - delete_record
+      - search_by_field
+      - search_by_email
+      - upsert
+      - batch_create
+      - bulk_import
+      - query_language
+
+  workflow_automation:
+    label: "Workflow & Automation"
+    status: future
+    sub_capabilities:
+      - create_rules
+      - create_flows
+      - approval_processes
+      - validation_rules
+      - scheduled_actions
+      - email_from_template
+
+  roles_permissions:
+    label: "Roles & Permissions"
+    status: future
+    sub_capabilities:
+      - create_roles
+      - module_permissions
+      - field_level_security
+      - record_level_rules
+      - user_management
+
+  dashboards_reports:
+    label: "Dashboards & Reports"
+    status: future
+    sub_capabilities:
+      - create_dashboards
+      - create_reports
+      - saved_views
+
+  email_templates:
+    label: "Email Templates"
+    status: future
+    sub_capabilities:
+      - crud_templates
+      - merge_fields
+      - html_body
+
+  webhooks_events:
+    label: "Webhooks & Events"
+    status: future
+    sub_capabilities:
+      - outbound_webhooks
+      - event_subscriptions
+      - sync_async
+      - retry_on_failure
+
+# ─── Tier Calculation Rules ───────────────────────────────────────────
+# Automatic tier assignment based on capability ratings.
+
+tier_rules:
+  tier_1:
+    label: "Full Feature Coverage"
+    description: "Entity, field, layout, and relationship management all via API"
+    required:
+      entity_management.create_entity: [full]
+      field_management.create_field: [full]
+      layout_management.write_layouts: [full]
+      relationship_management.create_relationship: [full]
+
+  tier_2:
+    label: "Strong but Gaps"
+    description: "Most capabilities via API but missing layout or entity creation"
+    required:
+      field_management.create_field: [full, partial]
+    any_of:
+      entity_management.create_entity: [full, partial, indirect]
+      relationship_management.create_relationship: [full, partial]
+
+  tier_3:
+    label: "Fields Only"
+    description: "Custom field creation via API but no entity/layout/relationship"
+    required:
+      field_management.create_field: [full, partial]
+
+  tier_4:
+    label: "Data API Only"
+    description: "Record CRUD only; no schema/metadata management"
+    fallback: true
