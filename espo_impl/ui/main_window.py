@@ -151,6 +151,10 @@ class MainWindow(QMainWindow):
         self.import_btn.clicked.connect(self._on_import_data)
         bottom_layout.addWidget(self.import_btn)
 
+        self.compare_btn = QPushButton("CRM Compare")
+        self.compare_btn.clicked.connect(self._on_crm_compare)
+        bottom_layout.addWidget(self.compare_btn)
+
         bottom_layout.addStretch()
         self.report_btn = QPushButton("View Report")
         self.report_btn.clicked.connect(self._on_view_report)
@@ -540,6 +544,21 @@ class MainWindow(QMainWindow):
 
         dialog = YamlPreviewDialog(programs_dir, self)
         dialog.exec()
+
+    def _on_crm_compare(self) -> None:
+        """Open the CRM platform comparison window."""
+        from espo_impl.ui.crm_compare_window import CrmCompareWindow
+
+        if hasattr(self, "_compare_window") and self._compare_window is not None:
+            if self._compare_window.isVisible():
+                self._compare_window.raise_()
+                self._compare_window.activateWindow()
+                return
+            self._compare_window.deleteLater()
+            self._compare_window = None
+
+        self._compare_window = CrmCompareWindow(self.base_dir, self)
+        self._compare_window.show()
 
     def _on_import_data(self) -> None:
         """Open the import wizard dialog."""
