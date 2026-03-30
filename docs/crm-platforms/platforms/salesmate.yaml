@@ -1,0 +1,129 @@
+# Salesmate CRM Platform Profile
+name: Salesmate
+slug: salesmate
+type: Cloud CRM (SaaS)
+deployment: Cloud only
+last_reviewed: 2026-03-30
+
+pricing:
+  free_tier: "15-day trial"
+  min_paid_per_user_month: 23
+  full_admin_api_per_user_month: 23
+  enterprise_per_user_month: 63
+  currency: USD
+  notes: "Custom modules require Business plan ($63/user/mo)"
+
+api:
+  protocol: [REST]
+  format: [JSON]
+  version: v4
+  auth_methods: ["Bearer token + x-linkname header"]
+  rate_limit: "Not publicly documented; X-RateLimit-Remaining header present"
+
+# ─── Standard Entities ──────────────────────────────────────────────
+standard_entities:
+  contact: {name: Contacts, api_name: contacts}
+  company: {name: Companies, api_name: companies}
+  deal: {name: Deals, api_name: deals}
+  activity: {name: Activities, api_name: activities, notes: "Tasks/Calls/Meetings/Emails"}
+  product: {name: Products, api_name: products}
+  quote: {name: Quotes/Estimates, api_name: quotes}
+  invoice: {name: Invoices, api_name: invoices}
+  payment: {name: Payments, api_name: payments}
+  pipeline: {name: Pipelines, api_name: pipelines, notes: "Unlimited pipelines"}
+  label_renamable_via_api: false
+
+# ─── Entity Management ─────────────────────────────────────────────
+entity_management:
+  create_entity:
+    rating: none
+    method: "Custom modules via UI only (Business plan+)"
+    notes: "Max 300 fields per module; cannot be disabled once created, only deleted"
+  delete_entity:
+    rating: na
+
+# ─── Field Management ──────────────────────────────────────────────
+field_management:
+  create_field:
+    rating: none
+    method: "No API — open feature request in community forum"
+    notes: "Max 200 custom fields total; 15 field types available in UI"
+
+  read_metadata:
+    rating: none
+
+  field_types:
+    varchar: {equivalent: Text, creatable: false, notes: "255 char limit; UI only"}
+    text: {equivalent: "Text Area", creatable: false, notes: "2K char limit; UI only"}
+    wysiwyg: {equivalent: na, creatable: false, notes: "No rich text field type"}
+    enum: {equivalent: Dropdown, creatable: false, notes: "UI only"}
+    multiEnum: {equivalent: "Multi-select", creatable: false, notes: "UI only"}
+    bool: {equivalent: Boolean, creatable: false, notes: "UI only"}
+    int: {equivalent: Integer, creatable: false, notes: "UI only"}
+    float: {equivalent: Percentage, creatable: false, notes: "UI only"}
+    date: {equivalent: Date, creatable: false, notes: "UI only"}
+    datetime: {equivalent: na, creatable: false, notes: "No datetime field type"}
+    currency: {equivalent: Currency, creatable: false, notes: "UI only"}
+    url: {equivalent: na, creatable: false, notes: "No URL field type"}
+    email: {equivalent: Email, creatable: false, notes: "UI only"}
+    phone: {equivalent: Phone, creatable: false, notes: "UI only"}
+  all_current_types_supported: false
+  missing_types: [wysiwyg, datetime, url]
+  additional_types:
+    - {name: Timezone, creatable: false, notes: "UI only"}
+    - {name: Rating, creatable: false, notes: "UI only"}
+    - {name: Formula, creatable: false, notes: "UI only"}
+    - {name: Lookup, creatable: false, notes: "UI only"}
+
+  field_properties:
+    label: {supported: true, notes: "UI only"}
+    required: {supported: true, notes: "UI only"}
+    default: {supported: true, notes: "UI only"}
+    unique: {supported: true, notes: "UI only; max 10 unique fields"}
+    field_permissions: {supported: true, notes: "UI only"}
+    display_order: {supported: true, notes: "UI only"}
+
+# ─── Layout Management ─────────────────────────────────────────────
+layout_management:
+  read_layouts:
+    rating: none
+  write_layouts:
+    rating: none
+    notes: "Visual drag-and-drop Layout Builder in UI"
+
+# ─── Relationship Management ───────────────────────────────────────
+relationship_management:
+  create_relationship:
+    rating: partial
+    notes: "Record linking via API but schema not API-manageable. Custom module lookup fields available."
+  built_in_relationships:
+    - "Contacts→Companies"
+    - "Deals→Contacts/Companies"
+    - "Activities→Contacts/Companies/Deals"
+    - "Products→Deals"
+
+# ─── Data Operations ───────────────────────────────────────────────
+data_operations:
+  create_record: {rating: full, method: "POST /v4/{entity}"}
+  read_record: {rating: full, method: "GET /v4/{entity}/{id}"}
+  update_record: {rating: full, method: "PUT /v4/{entity}/{id}"}
+  delete_record: {rating: full, method: "DELETE /v4/{entity}/{id}"}
+  search_by_field: {rating: full, method: "Search/filter available via REST v4"}
+  batch_operations: {rating: unknown, notes: "Not documented"}
+
+# ─── Future Capabilities ──────────────────────────────────────────
+workflow_automation:
+  create_rules: {rating: none, notes: "UI automation only (Pro plan+); consumes credits"}
+  create_flows: {rating: none}
+
+roles_permissions:
+  create_roles: {rating: none, notes: "Hierarchy-based in UI; field-level permissions and data sharing rules"}
+
+dashboards_reports:
+  create_dashboards: {rating: none}
+
+email_templates:
+  crud_templates: {rating: none, notes: "Not documented"}
+
+webhooks_events:
+  outbound_webhooks: {rating: partial, notes: "Company/Contact/Deal/Activity created events via automation UI; no dedicated webhook API"}

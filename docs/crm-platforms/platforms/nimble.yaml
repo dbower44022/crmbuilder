@@ -1,0 +1,147 @@
+# Nimble CRM Platform Profile
+name: Nimble
+slug: nimble
+type: Cloud CRM (SaaS)
+deployment: Cloud only
+last_reviewed: 2026-03-30
+
+pricing:
+  free_tier: "14-day trial (5 licenses)"
+  min_paid_per_user_month: 25
+  full_admin_api_per_user_month: 25
+  enterprise_per_user_month: 25
+  currency: USD
+  notes: "Single plan — all features included at $25/user/mo"
+
+api:
+  protocol: [REST]
+  format: [JSON]
+  version: v1
+  auth_methods: ["OAuth 2.0", "API key"]
+  rate_limit: "Not explicitly documented"
+
+# ─── Standard Entities ──────────────────────────────────────────────
+standard_entities:
+  contacts: {name: Contacts, api_name: contacts, notes: "Person + company in one entity via record_type field"}
+  deals: {name: Deals, api_name: deals}
+  activities: {name: Activities, api_name: activities, notes: "Task/Call/Event subtypes"}
+  notes: {name: Notes, api_name: notes}
+  messages: {name: Messages, api_name: messages}
+  pipelines: {name: Pipelines/Workflows, api_name: workflows}
+  label_renamable_via_api: false
+
+# ─── Entity Management ─────────────────────────────────────────────
+entity_management:
+  create_entity:
+    rating: none
+    method: "Fixed data model — Contacts + Deals only"
+  delete_entity:
+    rating: na
+
+# ─── Field Management ──────────────────────────────────────────────
+field_management:
+  create_field:
+    rating: full
+    min_edition: all
+    method: "POST metadata API"
+    naming_convention: "name (max 255 characters)"
+    notes: "8 field types available; supports multi-value toggle and field groups/tabs"
+
+  read_metadata:
+    rating: full
+    method: "GET metadata API"
+
+  field_types:
+    varchar: {equivalent: "Short Text", creatable: true}
+    text: {equivalent: "Long Text", creatable: true}
+    wysiwyg: {equivalent: na, creatable: false, notes: "No rich text field type"}
+    enum: {equivalent: "Select Box", creatable: true}
+    multiEnum: {equivalent: "Select Box (multi)", creatable: true}
+    bool: {equivalent: "True/False Flag", creatable: true}
+    int: {equivalent: Number, creatable: true}
+    float: {equivalent: Number, creatable: true}
+    date: {equivalent: Date, creatable: true}
+    datetime: {equivalent: na, creatable: false, notes: "Date only — no datetime type"}
+    currency: {equivalent: "Number (currency)", creatable: true, notes: "No dedicated currency type; use Number"}
+    url: {equivalent: na, creatable: false, notes: "Stored as contact field string"}
+    email: {equivalent: na, creatable: false, notes: "Stored as contact field string"}
+    phone: {equivalent: na, creatable: false, notes: "Stored as contact field string"}
+  all_current_types_supported: false
+  missing_types: [wysiwyg, datetime, url, email, phone]
+  additional_types:
+    - {name: "Short Text", creatable: true}
+    - {name: "Long Text", creatable: true}
+    - {name: "Select Box", creatable: true, notes: "Single or multi-value"}
+    - {name: "True/False Flag", creatable: true}
+    - {name: "User Field", creatable: true}
+    - {name: Date, creatable: true}
+    - {name: Address, creatable: true}
+    - {name: Number, creatable: true}
+
+  field_properties:
+    label: {supported: true, api_key: name}
+    required: {supported: false}
+    default: {supported: false, notes: "No default value via API"}
+    readOnly: {supported: false}
+    audited: {supported: false}
+    description: {supported: false}
+    tooltip: {supported: false}
+    min: {supported: false}
+    max: {supported: false}
+    maxLength: {supported: true, api_key: name, notes: "Max 255 characters"}
+    options: {supported: true, notes: "For Select Box types"}
+    translatedOptions: {supported: false}
+    optionDescriptions: {supported: false}
+    style: {supported: false}
+    isSorted: {supported: false}
+    displayAsLabel: {supported: false}
+    copyToClipboard: {supported: false}
+    category: {supported: true, notes: "Field groups/tabs"}
+    unique: {supported: false}
+
+# ─── Layout Management ─────────────────────────────────────────────
+layout_management:
+  read_layouts:
+    rating: none
+  write_layouts:
+    rating: none
+
+# ─── Relationship Management ───────────────────────────────────────
+relationship_management:
+  create_relationship:
+    rating: none
+    notes: "No relationship creation via API — implicit contact-deal association only"
+  built_in_relationships:
+    - "Contact-to-Contact (person/company hierarchy)"
+    - "Contact-to-Deal"
+
+# ─── Data Operations ───────────────────────────────────────────────
+data_operations:
+  create_record: {rating: full, method: "POST /contacts or /deals"}
+  read_record: {rating: full, method: "GET /contacts/{id}"}
+  update_record: {rating: full, method: "PUT /contacts/{id}"}
+  delete_record: {rating: full, method: "DELETE /contacts/{id}"}
+  search_by_field: {rating: full, method: "GET /contacts?query= (keyword search)"}
+  search_by_email: {rating: full, method: "GET /contacts?query={email}"}
+  batch_create: {rating: none, notes: "No batch create endpoint"}
+  bulk_delete: {rating: full, method: "Bulk delete available"}
+  pagination: {default_per_page: 30, notes: "Standard pagination"}
+  filter_by_tag: {supported: true}
+
+# ─── Future Capabilities ──────────────────────────────────────────
+workflow_automation:
+  create_rules: {rating: none, notes: "UI-only automation on workflow stage transitions; 25 automations included"}
+  create_flows: {rating: none}
+
+roles_permissions:
+  create_roles: {rating: none, notes: "Group-based permissions in UI only"}
+
+dashboards_reports:
+  create_dashboards: {rating: none}
+
+email_templates:
+  crud_templates: {rating: none}
+
+webhooks_events:
+  outbound_webhooks: {rating: none, notes: "No outbound webhooks"}
+  inbound_webhooks: {rating: full, notes: "Receive data INTO Nimble via inbound webhooks"}

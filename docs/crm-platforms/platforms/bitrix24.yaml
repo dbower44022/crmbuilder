@@ -1,0 +1,182 @@
+# Bitrix24 Platform Profile
+name: Bitrix24
+slug: bitrix24
+type: All-in-one Business Platform (CRM + PM + Comms)
+deployment: Cloud or self-hosted (on-premise)
+last_reviewed: 2026-03-30
+
+pricing:
+  free_tier: "Free (unlimited users, 5GB, but NO REST API access since Jan 2021)"
+  min_paid_per_user_month: 49
+  full_admin_api_per_user_month: 49
+  enterprise_per_user_month: 350
+  currency: USD
+  notes: "Basic plan is flat rate for 5 users ($49/mo). Enterprise is flat rate for 250 users ($350/mo). Self-hosted: $3,590+ (50 users)."
+
+api:
+  protocol: [REST]
+  format: [JSON]
+  auth_methods: ["OAuth 2.0 (marketplace apps)", "Webhook URLs (secret token)"]
+  rate_limit: "Enterprise: 5 req/sec (250 queue); Other: 2 req/sec (50 queue). Batch: 50 sub-requests = 1 API call."
+  admin_auth: "OAuth 2.0 app with CRM scope or inbound webhook URL"
+
+# ─── Standard Entities ──────────────────────────────────────────────
+standard_entities:
+  lead: {name: Leads, api_name: crm.lead}
+  deal: {name: Deals, api_name: crm.deal}
+  contact: {name: Contacts, api_name: crm.contact}
+  company: {name: Companies, api_name: crm.company}
+  activity: {name: Activities, api_name: crm.activity, notes: "Tasks, Calls, Meetings"}
+  requisite: {name: Requisites, api_name: crm.requisite}
+  quote: {name: Quotes, api_name: crm.quote}
+  invoice: {name: Invoices, api_name: crm.invoice}
+  product: {name: Products, api_name: crm.product}
+  smart_process: {name: Smart Processes, api_name: crm.type, notes: "Custom entities"}
+  label_renamable_via_api: true
+  label_rename_method: "Localized label properties on entity and field definitions"
+
+# ─── Entity Management ─────────────────────────────────────────────
+entity_management:
+  create_entity:
+    rating: full
+    min_edition: basic
+    method: "crm.type.add"
+    max_entities: unlimited
+    naming_convention: "Smart Process with numeric entityTypeId"
+    notes: "Full CRUD: crm.type.add/update/get/list/delete/fields. Each Smart Process gets own kanban, pipelines, stages, custom fields, access permissions. Configurable linking to contacts/companies, product management, observers, docs."
+  delete_entity:
+    rating: full
+    method: "crm.type.delete"
+  check_existence:
+    rating: full
+    method: "crm.type.get / crm.type.list"
+  cache_rebuild:
+    rating: na
+    notes: "Not required — changes are immediate"
+
+# ─── Field Management ──────────────────────────────────────────────
+field_management:
+  create_field:
+    rating: full
+    min_edition: basic
+    method: "crm.{entity}.userfield.add (or universal userfieldconfig)"
+
+  update_field:
+    rating: full
+    method: "crm.{entity}.userfield.update"
+
+  read_metadata:
+    rating: full
+    method: "crm.{entity}.userfield.list / crm.{entity}.fields"
+
+  field_types:
+    varchar: {equivalent: string, creatable: true}
+    text: {equivalent: string, creatable: true}
+    wysiwyg: {equivalent: na, creatable: false, notes: "No rich text field type"}
+    enum: {equivalent: enumeration, creatable: true}
+    multiEnum: {equivalent: "enumeration (MULTIPLE)", creatable: true}
+    bool: {equivalent: boolean, creatable: true}
+    int: {equivalent: integer, creatable: true}
+    float: {equivalent: double, creatable: true}
+    date: {equivalent: date, creatable: true}
+    datetime: {equivalent: datetime, creatable: true}
+    currency: {equivalent: money, creatable: true}
+    url: {equivalent: url, creatable: true}
+    email: {equivalent: string, creatable: true, notes: "No dedicated email type; use string"}
+    phone: {equivalent: string, creatable: true, notes: "No dedicated phone type; use string"}
+  all_current_types_supported: false
+  missing_types: [wysiwyg]
+  additional_types:
+    - {name: address, creatable: true}
+    - {name: file, creatable: true}
+    - {name: employee, creatable: true, notes: "Reference to Bitrix24 user"}
+    - {name: crm_status, creatable: true, notes: "Pipeline stage reference"}
+    - {name: iblock_section, creatable: true}
+    - {name: iblock_element, creatable: true}
+    - {name: crm, creatable: true, notes: "Cross-entity link to CRM records"}
+
+  field_properties:
+    label: {supported: true, api_key: LABEL, notes: "Localized labels supported"}
+    required: {supported: true, api_key: MANDATORY}
+    default: {supported: true, api_key: DEFAULT_VALUE}
+    readOnly: {supported: false}
+    audited: {supported: false}
+    description: {supported: true, api_key: HELP_MESSAGE}
+    tooltip: {supported: true, api_key: ERROR_MESSAGE}
+    min: {supported: false}
+    max: {supported: false}
+    maxLength: {supported: false}
+    options: {supported: true, api_key: "LIST (VALUE/SORT/DEF for enum items)"}
+    translatedOptions: {supported: false}
+    optionDescriptions: {supported: false}
+    style: {supported: false}
+    isSorted: {supported: true, api_key: SORT}
+    displayAsLabel: {supported: false}
+    copyToClipboard: {supported: false}
+    category: {supported: false}
+    unique: {supported: false}
+    multiple: {supported: true, api_key: MULTIPLE}
+    show_filter: {supported: true, api_key: SHOW_FILTER}
+    show_in_list: {supported: true, api_key: SHOW_IN_LIST}
+    edit_in_list: {supported: true, api_key: EDIT_IN_LIST}
+    is_searchable: {supported: true, api_key: IS_SEARCHABLE}
+
+# ─── Layout Management ─────────────────────────────────────────────
+layout_management:
+  read_layouts:
+    rating: full
+    method: "crm.item.details.configuration.get"
+  write_layouts:
+    rating: full
+    method: "crm.item.details.configuration.set"
+    notes: "Entity-specific variants for deals, leads, etc. Supports personal (per-user) and standard (all users) layouts."
+  reset_layouts:
+    rating: full
+    method: "crm.item.details.configuration.reset"
+
+# ─── Relationship Management ───────────────────────────────────────
+relationship_management:
+  create_relationship:
+    rating: full
+    method: "CRM-type custom fields link across entities; Smart Processes linked via parentId fields"
+    notes: "Contacts→Companies (companyId), Contacts↔Deals (contactIds). All API-accessible."
+  one_to_many: {supported: true}
+  many_to_one: {supported: true}
+  many_to_many: {supported: true, notes: "Via CRM-type multi-reference fields"}
+
+# ─── Data Operations ───────────────────────────────────────────────
+data_operations:
+  create_record: {rating: full, method: "crm.item.add"}
+  read_record: {rating: full, method: "crm.item.get"}
+  update_record: {rating: full, method: "crm.item.update"}
+  delete_record: {rating: full, method: "crm.item.delete"}
+  search_by_field: {rating: full, method: "crm.item.list with filtering (50/page)"}
+  batch_create: {rating: full, method: "crm.item.batchImport (20 items/request)"}
+  batch_method: {rating: full, method: "batch method: 50 sub-requests as 1 API call"}
+
+# ─── Future Capabilities ──────────────────────────────────────────
+workflow_automation:
+  create_rules: {rating: full, method: "bizproc.workflow.template.add/update/delete/list"}
+  create_flows: {rating: full, method: "bizproc.workflow.start/instances/kill/terminate"}
+  custom_robots: {rating: full, method: "bizproc.robot.add/update/delete/list"}
+  custom_activities: {rating: full, method: "bizproc.activity.add/update/delete"}
+  task_management: {rating: full, method: "bizproc.task.list/complete/delegate"}
+
+roles_permissions:
+  create_roles: {rating: partial, notes: "Role-based CRM access per entity type in UI. Programmatic permission checking available (UserPermissions service)."}
+  document_roles: {rating: full, method: "documentgenerator.role.add/update/delete/list"}
+
+dashboards_reports:
+  create_dashboards: {rating: partial}
+
+email_templates:
+  crud_templates: {rating: partial}
+
+webhooks_events:
+  inbound_webhooks:
+    rating: full
+    method: "Webhook URLs as persistent credentials"
+  outbound_webhooks:
+    rating: full
+    method: "Triggered by CRM events (ONCRMDEALUPDATE etc.), POST to external URL with verification token"
+    notes: "Configuration via UI only"

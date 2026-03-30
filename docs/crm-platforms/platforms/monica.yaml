@@ -1,0 +1,140 @@
+# Monica CRM Platform Profile
+name: Monica
+slug: monica
+type: Open-source Personal CRM (AGPL v3)
+deployment: "Self-hosted (Docker) or hosted at monicahq.com"
+last_reviewed: 2026-03-30
+
+pricing:
+  free_tier: "Hosted: 10 contacts; Self-hosted: unlimited, free"
+  min_paid_per_user_month: 9
+  full_admin_api_per_user_month: 0
+  enterprise_per_user_month: 9
+  currency: USD
+  notes: "Flat rate, not per-user; self-hosted is fully free with complete API access"
+
+api:
+  protocol: [REST]
+  format: [JSON]
+  auth_methods: ["OAuth 2.0 Bearer token"]
+  rate_limit: "60 req/min"
+
+# ─── Standard Entities ──────────────────────────────────────────────
+standard_entities:
+  contacts: {name: Contacts, api_name: contacts}
+  companies: {name: Companies, api_name: companies}
+  activities: {name: Activities, api_name: activities, notes: "With types/categories"}
+  tasks: {name: Tasks, api_name: tasks}
+  notes: {name: Notes, api_name: notes}
+  calls: {name: Calls, api_name: calls}
+  reminders: {name: Reminders, api_name: reminders}
+  tags: {name: Tags, api_name: tags}
+  groups: {name: Groups, api_name: groups}
+  gifts: {name: Gifts, api_name: gifts}
+  debts: {name: Debts, api_name: debts}
+  journal: {name: "Journal entries", api_name: journal}
+  addresses: {name: Addresses, api_name: addresses}
+  photos: {name: Photos, api_name: photos}
+  documents: {name: Documents, api_name: documents}
+  conversations: {name: Conversations, api_name: conversations}
+  label_renamable_via_api: false
+  notes: "~35 entities total in fixed schema"
+
+# ─── Entity Management ─────────────────────────────────────────────
+entity_management:
+  create_entity:
+    rating: none
+    method: "Fixed schema — no custom entity creation"
+  delete_entity:
+    rating: na
+
+# ─── Field Management ──────────────────────────────────────────────
+field_management:
+  create_field:
+    rating: partial
+    method: "POST /contactfieldtypes/"
+    notes: "Can create contact field TYPES (name, icon, protocol) but fields are string-only (max 255 chars). Activity types and genders also CRUD-able."
+
+  read_metadata:
+    rating: partial
+    method: "GET /contactfieldtypes/"
+
+  field_types:
+    varchar: {equivalent: "contact field (string)", creatable: true, notes: "All custom fields are string-only"}
+    text: {equivalent: na, creatable: false, notes: "No long text field type"}
+    wysiwyg: {equivalent: na, creatable: false}
+    enum: {equivalent: na, creatable: false, notes: "No dropdown field type"}
+    multiEnum: {equivalent: na, creatable: false}
+    bool: {equivalent: na, creatable: false, notes: "No checkbox field type"}
+    int: {equivalent: na, creatable: false, notes: "No number field type"}
+    float: {equivalent: na, creatable: false}
+    date: {equivalent: na, creatable: false, notes: "No date field type"}
+    datetime: {equivalent: na, creatable: false}
+    currency: {equivalent: na, creatable: false}
+    url: {equivalent: na, creatable: false}
+    email: {equivalent: na, creatable: false}
+    phone: {equivalent: na, creatable: false}
+  all_current_types_supported: false
+  missing_types: [text, wysiwyg, enum, multiEnum, bool, int, float, date, datetime, currency, url, email, phone]
+
+  field_properties:
+    label: {supported: true, api_key: name}
+    required: {supported: false}
+    default: {supported: false}
+    readOnly: {supported: false}
+    audited: {supported: false}
+    description: {supported: false}
+    tooltip: {supported: false}
+    min: {supported: false}
+    max: {supported: false}
+    maxLength: {supported: true, notes: "Max 255 characters (string-only)"}
+    options: {supported: false}
+    translatedOptions: {supported: false}
+    optionDescriptions: {supported: false}
+    style: {supported: false}
+    isSorted: {supported: false}
+    displayAsLabel: {supported: false}
+    copyToClipboard: {supported: false}
+    category: {supported: false}
+    unique: {supported: false}
+
+# ─── Layout Management ─────────────────────────────────────────────
+layout_management:
+  read_layouts:
+    rating: none
+  write_layouts:
+    rating: none
+
+# ─── Relationship Management ───────────────────────────────────────
+relationship_management:
+  create_relationship:
+    rating: read_only
+    method: "GET relationship types (Love, Family, Friend, Work groups — bidirectional)"
+    notes: "Can create relationship instances (POST /relationships/) but cannot create custom relationship types via API"
+
+# ─── Data Operations ───────────────────────────────────────────────
+data_operations:
+  create_record: {rating: full, method: "POST /contacts"}
+  read_record: {rating: full, method: "GET /contacts/{id}"}
+  update_record: {rating: full, method: "PUT /contacts/{id}", notes: "Full replace — no partial update"}
+  delete_record: {rating: full, method: "DELETE /contacts/{id}"}
+  search_by_field: {rating: full, method: "GET /contacts?query="}
+  batch_create: {rating: none, notes: "No batch operations"}
+  pagination: {default_per_page: 10, max_per_page: 100}
+
+# ─── Future Capabilities ──────────────────────────────────────────
+workflow_automation:
+  create_rules: {rating: none, notes: "Reminders only — one-time and recurring via API"}
+  create_flows: {rating: none}
+
+roles_permissions:
+  create_roles: {rating: none, notes: "Administrator + Regular User, UI only"}
+
+dashboards_reports:
+  create_dashboards: {rating: none}
+
+email_templates:
+  crud_templates: {rating: none}
+
+webhooks_events:
+  outbound_webhooks: {rating: none, notes: "No webhooks (GitHub issue #318 from 2017, still unimplemented)"}
