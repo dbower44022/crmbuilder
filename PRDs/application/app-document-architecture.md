@@ -2,7 +2,7 @@
 
 **Version:** 1.1
 **Status:** Current
-**Last Updated:** 03-29-26 22:30
+**Last Updated:** 03-29-26 22:45
 
 ---
 
@@ -495,8 +495,9 @@ boundary. Each process section contains:
   name) and a description of the field's purpose in the process.
 
   > **Note:** Category is a formal property defined in the YAML schema.
-  > Its definition and assignment rules will be documented in the
-  > YAML schema specification.
+  > See `app-yaml-schema.md` Section 6.1 (Common Field Properties) for
+  > the field-level definition and Section 7.4 (Category-Based Sub-Tabs)
+  > for how Category values map to layout tabs.
 - **Workflow Diagram Placeholder** — a blank page with the title
   "Add Workflow Diagram Here" inserted at the end of each process
   section, providing a designated location for a manually added
