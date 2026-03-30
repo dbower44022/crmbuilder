@@ -1,0 +1,207 @@
+# CiviCRM Platform Profile
+name: CiviCRM
+slug: civicrm
+type: Open-source nonprofit CRM (AGPL v3)
+deployment: "Self-hosted (WordPress, Drupal, Joomla, Backdrop, Standalone, Docker)"
+last_reviewed: 2026-03-30
+
+pricing:
+  free_tier: "Fully free and open-source (AGPL v3)"
+  min_paid_per_user_month: 0
+  full_admin_api_per_user_month: 0
+  enterprise_per_user_month: 0
+  currency: USD
+  notes: "No licensing tiers. Optional paid membership to support development."
+
+api:
+  protocol: [REST, PHP, CLI, AJAX]
+  format: [JSON]
+  version: API4
+  auth_methods: ["API Key (Bearer)", "JWT", "Basic Auth (disabled by default)"]
+  rate_limit: "None built-in (server-level only)"
+  admin_auth: "User with administer CiviCRM permission + authenticate with api key CMS permission"
+  notes: "AuthX system (v5.36+). Multiple interfaces: REST, PHP OOP, PHP procedural, JavaScript, CLI (cv/drush)."
+
+# ─── Standard Entities ──────────────────────────────────────────────
+standard_entities:
+  contact: {name: "Contact (Individual, Organization, Household)", api_name: Contact, notes: "Three subtypes with different fields"}
+  activity: {name: Activity, api_name: Activity}
+  case: {name: Case, api_name: Case, notes: "CiviCase component"}
+  contribution: {name: Contribution, api_name: Contribution, notes: "CiviContribute — donations/payments"}
+  event: {name: Event, api_name: Event, notes: "CiviEvent component"}
+  participant: {name: Participant, api_name: Participant}
+  membership: {name: Membership, api_name: Membership, notes: "CiviMember component"}
+  mailing: {name: Mailing, api_name: Mailing, notes: "CiviMail component"}
+  pledge: {name: Pledge, api_name: Pledge}
+  campaign: {name: Campaign, api_name: Campaign}
+  group: {name: Group, api_name: Group, notes: "Contact grouping with smart/static groups"}
+  tag: {name: Tag, api_name: Tag}
+  relationship: {name: Relationship, api_name: Relationship}
+  note: {name: Note, api_name: Note}
+  label_renamable_via_api: false
+  notes: "50+ core entities across components. Contact subtypes are Individual, Organization, Household."
+
+# ─── Entity Management ─────────────────────────────────────────────
+entity_management:
+  create_entity:
+    rating: partial
+    min_edition: free
+    method: "CustomGroup.create for custom data groups (1:1 or 1:many). ECK extension for full custom entities. civix generate:entity for code-based entities."
+    notes: "Custom Data Groups are the API-accessible approach. True custom entities require ECK extension or PHP extension code."
+    naming_convention: "Custom_GroupName for custom data groups"
+  delete_entity:
+    rating: partial
+    method: "CustomGroup.delete for custom data groups"
+  check_existence:
+    rating: full
+    method: "CustomGroup.get or Entity.get"
+  entity_types:
+    available: ["Contact subtypes (Individual, Organization, Household)", "Custom Data Groups (single-record or multi-record)", "ECK entities (extension)"]
+    notes: "Contact subtypes provide entity-like differentiation within the Contact entity"
+  cache_rebuild:
+    rating: full
+    method: "System.flush API call"
+  activity_stream:
+    supported: true
+    name: "Activities (CiviActivity component)"
+
+# ─── Field Management ──────────────────────────────────────────────
+field_management:
+  create_field:
+    rating: full
+    min_edition: free
+    method: "CustomField.create via API4"
+
+  update_field:
+    rating: full
+    method: "CustomField.save via API4"
+
+  read_metadata:
+    rating: full
+    method: "CustomField.get and Entity.getFields"
+
+  field_types:
+    varchar: {equivalent: "String + Text html_type", creatable: true}
+    text: {equivalent: "Memo + TextArea html_type", creatable: true}
+    wysiwyg: {equivalent: "Memo + RichTextEditor html_type", creatable: true}
+    enum: {equivalent: "String + Select html_type", creatable: true}
+    multiEnum: {equivalent: "String + CheckBox html_type (serialized)", creatable: true}
+    bool: {equivalent: "Boolean + Toggle html_type", creatable: true}
+    int: {equivalent: "Int + Text html_type", creatable: true}
+    float: {equivalent: "Float + Text html_type", creatable: true}
+    date: {equivalent: "Date + Select Date html_type", creatable: true}
+    datetime: {equivalent: "Date + Select Date html_type (with time)", creatable: true}
+    currency: {equivalent: "Money + Text html_type", creatable: true}
+    url: {equivalent: "Link", creatable: true}
+    email: {equivalent: "String + Text html_type", creatable: true, notes: "No dedicated email custom field type — use String"}
+    phone: {equivalent: "String + Text html_type", creatable: true, notes: "No dedicated phone custom field type — use String"}
+  all_current_types_supported: true
+  additional_types:
+    - {name: StateProvince, creatable: true, notes: "State/province reference"}
+    - {name: Country, creatable: true, notes: "Country reference"}
+    - {name: File, creatable: true, notes: "File upload"}
+    - {name: ContactReference, creatable: true, notes: "Reference to a CiviCRM contact"}
+    - {name: EntityReference, creatable: true, notes: "Reference to any entity"}
+    - {name: "Radio (html_type)", creatable: true}
+    - {name: "Hidden (html_type)", creatable: true}
+    - {name: "Autocomplete-Select (html_type)", creatable: true}
+
+  field_properties:
+    label: {supported: true, api_key: label}
+    required: {supported: true, api_key: is_required}
+    default: {supported: true, api_key: default_value}
+    readOnly: {supported: true, api_key: is_view}
+    audited: {supported: false, notes: "Change logging via CiviCRM's logging framework, not per-field"}
+    description: {supported: true, api_key: "help_pre / help_post"}
+    tooltip: {supported: true, api_key: help_post}
+    min: {supported: false}
+    max: {supported: false}
+    maxLength: {supported: true, api_key: text_length}
+    options: {supported: true, api_key: option_group_id, notes: "References a separate OptionGroup entity"}
+    translatedOptions: {supported: true, notes: "Via CiviCRM's i18n system"}
+    optionDescriptions: {supported: false}
+    style: {supported: false}
+    isSorted: {supported: true, api_key: weight}
+    displayAsLabel: {supported: false}
+    copyToClipboard: {supported: false}
+    category: {supported: true, api_key: custom_group_id, notes: "Fields belong to custom groups"}
+    unique: {supported: false}
+
+# ─── Layout Management ─────────────────────────────────────────────
+layout_management:
+  read_layouts:
+    rating: partial
+    method: "Afform.get (FormBuilder forms), SearchDisplay.get (SearchKit displays)"
+    notes: "Layout data is accessible via API but the model is different from EspoCRM's simple layout-per-entity approach"
+  write_layouts:
+    rating: partial
+    method: "Afform.create for form layouts, SearchDisplay.create for list/table displays"
+    notes: "Powerful but complex — FormBuilder uses HTML-based markup with CiviCRM directives, not a simple field arrangement API"
+  detail_view: {supported: true, notes: "Via Afform/FormBuilder — form type forms"}
+  edit_view: {supported: true, notes: "Same as detail — Afform forms handle both"}
+  list_view: {supported: true, notes: "Via SearchKit + SearchDisplay — table/list/grid displays"}
+  panels: {supported: true, notes: "Custom Data Groups control section grouping and display order via weight property"}
+  tabs: {supported: true, notes: "Contact summary tabs via Afform blocks"}
+  conditional_visibility: {supported: true, notes: "Afform supports conditional field display"}
+
+# ─── Relationship Management ───────────────────────────────────────
+relationship_management:
+  create_relationship:
+    rating: full
+    method: "RelationshipType.create via API4"
+    notes: "Bidirectional with separate A-to-B and B-to-A labels. Contact-to-contact only."
+  one_to_many: {supported: true, notes: "Via asymmetric relationship types"}
+  many_to_one: {supported: true}
+  many_to_many: {supported: true, notes: "Symmetric relationship types (e.g., Partner of)"}
+  link_labels: {supported: true, notes: "name_a_b and name_b_a labels on relationship types"}
+  audit_both_sides: {supported: false}
+  check_existence: {supported: true, method: "RelationshipType.get"}
+  cascade_delete: {supported: false, notes: "Relationships are independent records"}
+  polymorphic: {supported: false, notes: "Relationships are between contacts only — constrained by contact_type_a/b"}
+  self_referential: {supported: true, notes: "Same contact type on both sides"}
+
+# ─── Data Operations ───────────────────────────────────────────────
+data_operations:
+  create_record: {rating: full, method: "Entity.create via API4"}
+  read_record: {rating: full, method: "Entity.get via API4"}
+  update_record: {rating: full, method: "Entity.update or Entity.save via API4"}
+  delete_record: {rating: full, method: "Entity.delete via API4 — contacts support soft delete (useTrash)"}
+  search_by_field: {rating: full, method: "Entity.get with where clauses — SQL-like filtering"}
+  search_by_email: {rating: full, method: "Email.get with where clause on email field"}
+  upsert: {rating: full, method: "Entity.save with match parameter for alternative field matching"}
+  batch_create: {rating: full, method: "save action accepts arrays of records for batch upsert"}
+  bulk_import: {rating: full, method: "update action can modify multiple records matching where clause in single call"}
+  query_language: {name: "API4 where/having/join/orderBy params", notes: "SQL-like with implicit joins (dot notation), explicit joins (LEFT/INNER/EXCLUDE), and chaining"}
+  max_results_per_query: "Configurable (no hard limit)"
+
+# ─── Future Capabilities ──────────────────────────────────────────
+workflow_automation:
+  create_rules: {rating: partial, notes: "CiviRules extension — primarily UI-configured but triggers/conditions/actions are extensible via code"}
+  create_flows: {rating: indirect, notes: "Via PHP hooks (hook_civicrm_pre/post) and Symfony event dispatcher"}
+  approval_processes: {rating: none}
+  validation_rules: {rating: indirect, notes: "Via hooks and form validation"}
+  scheduled_actions: {rating: full, method: "Any API call can be configured as a scheduled job (cron-based)"}
+  email_from_template: {rating: full, method: "MessageTemplate.send or via CiviMail"}
+
+roles_permissions:
+  create_roles: {rating: partial, notes: "Permission.get API available; ACLs primarily UI/hook-managed; CMS roles provide outer layer"}
+  module_permissions: {rating: partial, notes: "Component-level permissions (CiviEvent, CiviContribute, etc.) checked via CRM_Core_Permission"}
+  field_level_security: {rating: partial, notes: "Custom data group-level access via ACLs"}
+  record_level_rules: {rating: partial, method: "ACL system with Role→Operation→DataSet model; extensible via hooks"}
+  user_management: {rating: full, notes: "Via CMS user management (WordPress/Drupal/etc.)"}
+
+dashboards_reports:
+  create_dashboards: {rating: partial, notes: "Dashboard entity exists; SearchKit displays can be embedded"}
+  create_reports: {rating: full, method: "SavedSearch.create + SearchDisplay.create via API4"}
+  saved_views: {rating: full, method: "SavedSearch entity stores API4 query parameters"}
+
+email_templates:
+  crud_templates: {rating: full, method: "MessageTemplate entity via API4"}
+  merge_fields: {supported: true, notes: "Smarty template tokens for contact/contribution/event data"}
+  html_body: {supported: true}
+
+webhooks_events:
+  outbound_webhooks: {rating: indirect, notes: "No built-in webhook system. Must build using hook_civicrm_post to trigger HTTP requests."}
+  event_subscriptions: {rating: indirect, notes: "Via PHP hooks (hook_civicrm_pre/post) — powerful but requires code"}
+  sync_async: both
+  retry_on_failure: {supported: false}

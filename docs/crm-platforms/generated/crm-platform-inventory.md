@@ -1,7 +1,7 @@
 # CRM Platform API Capability Inventory
 
 > **Generated:** 2026-03-30 by `crm_compare.py inventory`
-> **Platforms:** 15
+> **Platforms:** 18
 > **Source data:** `docs/crm-platforms/platforms/*.yaml`
 
 ---
@@ -10,6 +10,9 @@
 
 | Platform | Type | API Protocol | Auth | Free/Dev Tier |
 |----------|------|-------------|------|--------------|
+| **ActiveCampaign** | Marketing Automation + CRM (SaaS) | REST | API key (Api-Token header) | Developer sandbox (100 contacts, 2-year expiry) |
+| **Attio** | Cloud CRM (SaaS) | REST | Bearer token, OAuth 2.0, HTTP Basic | Free (3 seats, 50K records, 3 custom objects) |
+| **CiviCRM** | Open-source nonprofit CRM (AGPL v3) | REST, PHP, CLI, AJAX | API Key (Bearer), JWT, Basic Auth (disabled by default) | Fully free and open-source (AGPL v3) |
 | **Copper** | Cloud CRM (SaaS) | REST | API key + email headers | 14-day trial |
 | **Creatio** | Low-code CRM platform | OData 3/4, DataService JSON-RPC | Forms auth, Basic auth, OAuth 2.0 | 14-day trial |
 | **EspoCRM** | Open-source CRM (GPL v3) | REST | API Key, HMAC, Basic Auth | Free (self-hosted, unlimited) |
@@ -37,6 +40,9 @@
 
 ### Tier 2 — Strong but Gaps — most capabilities via API, missing layout or entity creation
 
+- **ActiveCampaign** — Free: Developer sandbox (100 contacts, 2-year expiry) | Min: $19/user/mo | Admin API: $159/user/mo
+- **Attio** — Free: Free (3 seats, 50K records, 3 custom objects) | Min: $29/user/mo
+- **CiviCRM** — Free: Fully free and open-source (AGPL v3) | Min: $0/user/mo
 - **Copper** — Free: 14-day trial | Min: $9/user/mo | Admin API: $119/user/mo
 - **HubSpot** — Free: Free CRM (1M contacts, 2 users) | Min: $20/user/mo | Admin API: $150/user/mo
 - **Monday.com CRM** — Free: 14-day trial | Min: $12/user/mo | Admin API: $na/user/mo
@@ -57,63 +63,66 @@
 
 ## Core Capability Matrix
 
-| Capability | **Copper** | **Creatio** | **EspoCRM** | **Freshsales (Freshworks CRM)** | **HubSpot** | **Insightly** | **Microsoft Dynamics 365** | **Monday.com CRM** | **Odoo** | **Pipedrive** | **Salesforce** | **SugarCRM** | **SuiteCRM** | **Vtiger** | **Zoho CRM** |
-|------------|----------|-----------|-----------|-------------------------------|-----------|-------------|--------------------------|------------------|--------|-------------|--------------|------------|------------|----------|------------|
-| Create Entity | None | Indirect | Full | None | Full | None | Full | Partial | Full | None | Full | Indirect | None | None | None |
-| Delete Entity | None | Indirect | Full | None | Full | None | Full | Partial | Full | N/A | Full | Indirect | None | None | None |
-| Create Field | Full | Indirect | Full | — | Full | None | Full | Full | Full | Full | Full | Full | None | None | Full |
-| Update Field | — | — | Full | — | Full | — | Full | — | Full | Full | Full | Full | — | — | Full |
-| Read Layout | None | Indirect | Full | None | None | None | Full | None | Full | None | Full | Read-only | None | None | Read-only |
-| Write Layout | None | Indirect | Full | None | None | None | Full | None | Full | None | Full | Indirect | None | None | None |
-| Create Relationship | Partial | Indirect | Full | None | Full | None | Full | Partial | Full | None | Full | Full | None | None | Partial |
-| Create Record | Full | Full | Full | Full | Full | Full | Full | Full | Full | Full | Full | Full | Full | Full | Full |
-| Search by Email | — | — | Full | — | Full | — | Full | — | Full | — | Full | Full | — | — | Full |
-| Batch/Bulk Import | — | — | — | — | Full | — | Full | — | Full | — | Full | Full | — | — | Full |
+| Capability | **ActiveCampaign** | **Attio** | **CiviCRM** | **Copper** | **Creatio** | **EspoCRM** | **Freshsales (Freshworks CRM)** | **HubSpot** | **Insightly** | **Microsoft Dynamics 365** | **Monday.com CRM** | **Odoo** | **Pipedrive** | **Salesforce** | **SugarCRM** | **SuiteCRM** | **Vtiger** | **Zoho CRM** |
+|------------|------------------|---------|-----------|----------|-----------|-----------|-------------------------------|-----------|-------------|--------------------------|------------------|--------|-------------|--------------|------------|------------|----------|------------|
+| Create Entity | Partial | Full | Partial | None | Indirect | Full | None | Full | None | Full | Partial | Full | None | Full | Indirect | None | None | None |
+| Delete Entity | Full | None | Partial | None | Indirect | Full | None | Full | None | Full | Partial | Full | N/A | Full | Indirect | None | None | None |
+| Create Field | Full | Full | Full | Full | Indirect | Full | — | Full | None | Full | Full | Full | Full | Full | Full | None | None | Full |
+| Update Field | Full | Full | Full | — | — | Full | — | Full | — | Full | — | Full | Full | Full | Full | — | — | Full |
+| Read Layout | None | Partial | Partial | None | Indirect | Full | None | None | None | Full | None | Full | None | Full | Read-only | None | None | Read-only |
+| Write Layout | None | None | Partial | None | Indirect | Full | None | None | None | Full | None | Full | None | Full | Indirect | None | None | None |
+| Create Relationship | None | Full | Full | Partial | Indirect | Full | None | Full | None | Full | Partial | Full | None | Full | Full | None | None | Partial |
+| Create Record | Full | Full | Full | Full | Full | Full | Full | Full | Full | Full | Full | Full | Full | Full | Full | Full | Full | Full |
+| Search by Email | Full | Full | Full | — | — | Full | — | Full | — | Full | — | Full | — | Full | Full | — | — | Full |
+| Batch/Bulk Import | Partial | None | Full | — | — | — | — | Full | — | Full | — | Full | — | Full | Full | — | — | Full |
 
 ## Layout Management Detail
 
-| Capability | **Copper** | **Creatio** | **EspoCRM** | **Freshsales (Freshworks CRM)** | **HubSpot** | **Insightly** | **Microsoft Dynamics 365** | **Monday.com CRM** | **Odoo** | **Pipedrive** | **Salesforce** | **SugarCRM** | **SuiteCRM** | **Vtiger** | **Zoho CRM** |
-|------------|----------|-----------|-----------|-------------------------------|-----------|-------------|--------------------------|------------------|--------|-------------|--------------|------------|------------|----------|------------|
-| Read Layouts | None | Indirect | Full | None | None | None | Full | None | Full | None | Full | Read-only | None | None | Read-only |
-| Write Layouts | None | Indirect | Full | None | None | None | Full | None | Full | None | Full | Indirect | None | None | None |
-| Detail View | — | — | Yes | — | No | — | Yes | — | Yes | — | Yes | Yes | — | — | No |
-| Edit View | — | — | Yes | — | No | — | Yes | — | Yes | — | Yes | Yes | — | — | No |
-| List View | — | — | Yes | — | No | — | Yes | — | Yes | — | Yes | Yes | — | — | No |
-| Panels/Sections | — | — | Yes | — | No | — | Yes | — | Yes | — | Yes | Yes | — | — | No |
-| Tabs | — | — | Yes | — | No | — | Yes | — | Yes | — | Yes | No | — | — | No |
-| Conditional Visibility | — | — | Yes | — | No | — | Yes | — | Yes | — | Yes | Yes | — | — | No |
+| Capability | **ActiveCampaign** | **Attio** | **CiviCRM** | **Copper** | **Creatio** | **EspoCRM** | **Freshsales (Freshworks CRM)** | **HubSpot** | **Insightly** | **Microsoft Dynamics 365** | **Monday.com CRM** | **Odoo** | **Pipedrive** | **Salesforce** | **SugarCRM** | **SuiteCRM** | **Vtiger** | **Zoho CRM** |
+|------------|------------------|---------|-----------|----------|-----------|-----------|-------------------------------|-----------|-------------|--------------------------|------------------|--------|-------------|--------------|------------|------------|----------|------------|
+| Read Layouts | None | Partial | Partial | None | Indirect | Full | None | None | None | Full | None | Full | None | Full | Read-only | None | None | Read-only |
+| Write Layouts | None | None | Partial | None | Indirect | Full | None | None | None | Full | None | Full | None | Full | Indirect | None | None | None |
+| Detail View | No | No | Yes | — | — | Yes | — | No | — | Yes | — | Yes | — | Yes | Yes | — | — | No |
+| Edit View | No | No | Yes | — | — | Yes | — | No | — | Yes | — | Yes | — | Yes | Yes | — | — | No |
+| List View | No | No | Yes | — | — | Yes | — | No | — | Yes | — | Yes | — | Yes | Yes | — | — | No |
+| Panels/Sections | No | No | Yes | — | — | Yes | — | No | — | Yes | — | Yes | — | Yes | Yes | — | — | No |
+| Tabs | No | No | Yes | — | — | Yes | — | No | — | Yes | — | Yes | — | Yes | No | — | — | No |
+| Conditional Visibility | No | No | Yes | — | — | Yes | — | No | — | Yes | — | Yes | — | Yes | Yes | — | — | No |
 
 ## Relationship Management Detail
 
-| Capability | **Copper** | **Creatio** | **EspoCRM** | **Freshsales (Freshworks CRM)** | **HubSpot** | **Insightly** | **Microsoft Dynamics 365** | **Monday.com CRM** | **Odoo** | **Pipedrive** | **Salesforce** | **SugarCRM** | **SuiteCRM** | **Vtiger** | **Zoho CRM** |
-|------------|----------|-----------|-----------|-------------------------------|-----------|-------------|--------------------------|------------------|--------|-------------|--------------|------------|------------|----------|------------|
-| Create Relationship | Partial | Indirect | Full | None | Full | None | Full | Partial | Full | None | Full | Full | None | None | Partial |
-| One-to-Many | — | — | Yes | — | Yes | — | Yes | — | Yes | — | Yes | Yes | — | — | Yes |
-| Many-to-Many | — | — | Yes | — | Yes | — | Yes | — | Yes | — | Yes | Yes | — | — | Yes |
-| Link Labels | — | — | Yes | — | Yes | — | Yes | — | Yes | — | Yes | Yes | — | — | No |
-| Audit Both Sides | — | — | Yes | — | No | — | Yes | — | Yes | — | Yes | Yes | — | — | No |
-| Cascade Delete | — | — | — | — | No | — | Yes | — | Yes | — | Yes | No | — | — | No |
-| Polymorphic | — | — | — | — | — | — | Yes | — | Yes | — | Yes | — | — | — | — |
+| Capability | **ActiveCampaign** | **Attio** | **CiviCRM** | **Copper** | **Creatio** | **EspoCRM** | **Freshsales (Freshworks CRM)** | **HubSpot** | **Insightly** | **Microsoft Dynamics 365** | **Monday.com CRM** | **Odoo** | **Pipedrive** | **Salesforce** | **SugarCRM** | **SuiteCRM** | **Vtiger** | **Zoho CRM** |
+|------------|------------------|---------|-----------|----------|-----------|-----------|-------------------------------|-----------|-------------|--------------------------|------------------|--------|-------------|--------------|------------|------------|----------|------------|
+| Create Relationship | None | Full | Full | Partial | Indirect | Full | None | Full | None | Full | Partial | Full | None | Full | Full | None | None | Partial |
+| One-to-Many | No | Yes | Yes | — | — | Yes | — | Yes | — | Yes | — | Yes | — | Yes | Yes | — | — | Yes |
+| Many-to-Many | No | Yes | Yes | — | — | Yes | — | Yes | — | Yes | — | Yes | — | Yes | Yes | — | — | Yes |
+| Link Labels | No | Yes | Yes | — | — | Yes | — | Yes | — | Yes | — | Yes | — | Yes | Yes | — | — | No |
+| Audit Both Sides | No | No | No | — | — | Yes | — | No | — | Yes | — | Yes | — | Yes | Yes | — | — | No |
+| Cascade Delete | No | No | No | — | — | — | — | No | — | Yes | — | Yes | — | Yes | No | — | — | No |
+| Polymorphic | No | No | No | — | — | — | — | — | — | Yes | — | Yes | — | Yes | — | — | — | — |
 
 ## Future Capabilities
 
-| Capability | **Copper** | **Creatio** | **EspoCRM** | **Freshsales (Freshworks CRM)** | **HubSpot** | **Insightly** | **Microsoft Dynamics 365** | **Monday.com CRM** | **Odoo** | **Pipedrive** | **Salesforce** | **SugarCRM** | **SuiteCRM** | **Vtiger** | **Zoho CRM** |
-|------------|----------|-----------|-----------|-------------------------------|-----------|-------------|--------------------------|------------------|--------|-------------|--------------|------------|------------|----------|------------|
-| Workflow Rules | None | Partial | — | — | None | None | Full | None | Full | None | Full | None | None | None | Read-only |
-| Flows/Automation | — | None | — | — | None | — | Full | — | — | None | Full | Partial | — | — | None |
-| Approval Processes | — | — | — | — | None | — | Full | — | Indirect | — | Full | Partial | — | — | Partial |
-| Create Roles | None | Partial | — | — | None | None | Full | None | Full | None | Full | Full | None | None | Read-only |
-| Field-Level Security | — | — | — | — | None | — | Full | — | Full | — | Full | Full | — | — | None |
-| Dashboards | None | Partial | — | — | None | None | Full | None | Full | None | Full | Partial | None | None | None |
-| Reports | — | — | — | — | None | — | Full | — | Full | — | Full | Partial | — | — | Partial |
-| Email Templates | None | Partial | — | — | None | None | Full | None | Full | None | Full | Full | None | — | Read-only |
-| Webhooks | None | Partial | — | — | None | None | Full | Partial | Full | Full | Indirect | Indirect | None | — | None |
-| Event Subscriptions | — | Partial | — | — | Partial | — | Full | — | Full | Full | Full | Indirect | — | — | Partial |
+| Capability | **ActiveCampaign** | **Attio** | **CiviCRM** | **Copper** | **Creatio** | **EspoCRM** | **Freshsales (Freshworks CRM)** | **HubSpot** | **Insightly** | **Microsoft Dynamics 365** | **Monday.com CRM** | **Odoo** | **Pipedrive** | **Salesforce** | **SugarCRM** | **SuiteCRM** | **Vtiger** | **Zoho CRM** |
+|------------|------------------|---------|-----------|----------|-----------|-----------|-------------------------------|-----------|-------------|--------------------------|------------------|--------|-------------|--------------|------------|------------|----------|------------|
+| Workflow Rules | Read-only | None | Partial | None | Partial | — | — | None | None | Full | None | Full | None | Full | None | None | None | Read-only |
+| Flows/Automation | None | None | Indirect | — | None | — | — | None | — | Full | — | — | None | Full | Partial | — | — | None |
+| Approval Processes | None | None | None | — | — | — | — | None | — | Full | — | Indirect | — | Full | Partial | — | — | Partial |
+| Create Roles | None | None | Partial | None | Partial | — | — | None | None | Full | None | Full | None | Full | Full | None | None | Read-only |
+| Field-Level Security | None | None | Partial | — | — | — | — | None | — | Full | — | Full | — | Full | Full | — | — | None |
+| Dashboards | None | None | Partial | None | Partial | — | — | None | None | Full | None | Full | None | Full | Partial | None | None | None |
+| Reports | None | None | Full | — | — | — | — | None | — | Full | — | Full | — | Full | Partial | — | — | Partial |
+| Email Templates | None | None | Full | None | Partial | — | — | None | None | Full | None | Full | None | Full | Full | None | — | Read-only |
+| Webhooks | Full | Full | Indirect | None | Partial | — | — | None | None | Full | Partial | Full | Full | Indirect | Indirect | None | — | None |
+| Event Subscriptions | Full | Full | Indirect | — | Partial | — | — | Partial | — | Full | — | Full | Full | Full | Indirect | — | — | Partial |
 
 ## Pricing Summary
 
 | Platform | Free Tier | Min Paid | Full Admin API | Enterprise |
 |----------|-----------|----------|---------------|-----------|
+| **ActiveCampaign** | Developer sandbox (100 contacts, 2-year expiry) | $19/user/mo | $159/user/mo | $159/user/mo |
+| **Attio** | Free (3 seats, 50K records, 3 custom objects) | $29/user/mo | $29/user/mo | $100/user/mo |
+| **CiviCRM** | Fully free and open-source (AGPL v3) | — | $0/user/mo | — |
 | **Copper** | 14-day trial | $9/user/mo | $119/user/mo | $119/user/mo |
 | **Creatio** | 14-day trial | $40/user/mo | $40/user/mo | $70/user/mo |
 | **EspoCRM** | Free (self-hosted, unlimited) | $15/user/mo | $0/user/mo | — |
@@ -132,4 +141,4 @@
 
 ---
 
-*Generated 2026-03-30 from 15 platform profiles by `tools/crm_compare.py`*
+*Generated 2026-03-30 from 18 platform profiles by `tools/crm_compare.py`*
