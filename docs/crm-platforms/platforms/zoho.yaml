@@ -4,6 +4,8 @@ slug: zoho
 type: Cloud CRM (SaaS)
 deployment: Zoho-hosted only
 last_reviewed: 2026-03-30
+open_source: false
+license: Proprietary
 
 pricing:
   free_tier: "Free (3 users, 5K API calls/day)"
@@ -147,6 +149,7 @@ layout_management:
   panels: {supported: false, notes: "No API write support"}
   tabs: {supported: false, notes: "No API write support"}
   conditional_visibility: {supported: false, notes: "No API support"}
+  multiple_list_views: {supported: true, api_creatable: false, notes: "Custom views configurable in UI with filters/columns; API can use cvid param to apply saved views but cannot create them"}
 
 # ─── Relationship Management ───────────────────────────────────────
 relationship_management:

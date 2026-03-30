@@ -4,6 +4,8 @@ slug: activecampaign
 type: Marketing Automation + CRM (SaaS)
 deployment: ActiveCampaign-hosted only
 last_reviewed: 2026-03-30
+open_source: false
+license: Proprietary
 
 pricing:
   free_tier: "Developer sandbox (100 contacts, 2-year expiry)"
@@ -128,6 +130,7 @@ layout_management:
   panels: {supported: false}
   tabs: {supported: false}
   conditional_visibility: {supported: false}
+  multiple_list_views: {supported: true, api_creatable: false, notes: "Saved segments and views in UI; not API-manageable"}
 
 # ─── Relationship Management ───────────────────────────────────────
 relationship_management:

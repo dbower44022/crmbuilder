@@ -4,6 +4,8 @@ slug: twenty
 type: Open-source CRM (AGPL v3)
 deployment: "Self-hosted (Docker/K8s) or Twenty-hosted cloud"
 last_reviewed: 2026-03-30
+open_source: true
+license: "AGPL v3"
 
 pricing:
   free_tier: "Self-hosted: free; Cloud Pro: $9/user/mo"
@@ -126,6 +128,7 @@ layout_management:
   panels: {supported: false}
   tabs: {supported: false}
   conditional_visibility: {supported: false}
+  multiple_list_views: {supported: true, api_creatable: false, notes: "Table, kanban, calendar views configurable in UI with sort/filter/field selection; no documented API for view CRUD yet"}
 
 # ─── Relationship Management ───────────────────────────────────────
 relationship_management:

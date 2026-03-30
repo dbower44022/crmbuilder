@@ -4,6 +4,8 @@ slug: nimble
 type: Cloud CRM (SaaS)
 deployment: Cloud only
 last_reviewed: 2026-03-30
+open_source: false
+license: Proprietary
 
 pricing:
   free_tier: "14-day trial (5 licenses)"
@@ -105,6 +107,10 @@ layout_management:
     rating: none
   write_layouts:
     rating: none
+  multiple_list_views:
+    supported: true
+    api_creatable: false
+    notes: "Saved searches/views in UI; not API-manageable"
 
 # ─── Relationship Management ───────────────────────────────────────
 relationship_management:

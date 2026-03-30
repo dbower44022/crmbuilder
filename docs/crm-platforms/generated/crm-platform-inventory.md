@@ -8,33 +8,33 @@
 
 ## Platform Overview
 
-| Platform | Type | API Protocol | Auth | Free/Dev Tier |
-|----------|------|-------------|------|--------------|
-| **ActiveCampaign** | Marketing Automation + CRM (SaaS) | REST | API key (Api-Token header) | Developer sandbox (100 contacts, 2-year expiry) |
-| **Agile CRM** | Cloud CRM (SaaS) | REST | Basic Auth (email + API key) | Free (10 users, 50K contacts, 1 workflow) |
-| **Attio** | Cloud CRM (SaaS) | REST | Bearer token, OAuth 2.0, HTTP Basic | Free (3 seats, 50K records, 3 custom objects) |
-| **Bigin (by Zoho)** | Lightweight CRM (SaaS) | REST | OAuth 2.0 (Zoho-oauthtoken) | Free (1 user, 5K API credits/day) |
-| **Bitrix24** | All-in-one Business Platform (CRM + PM + Comms) | REST | OAuth 2.0 (marketplace apps), Webhook URLs (secret token) | Free (unlimited users, 5GB, but NO REST API access since Jan 2021) |
-| **CiviCRM** | Open-source nonprofit CRM (AGPL v3) | REST, PHP, CLI, AJAX | API Key (Bearer), JWT, Basic Auth (disabled by default) | Fully free and open-source (AGPL v3) |
-| **Copper** | Cloud CRM (SaaS) | REST | API key + email headers | 14-day trial |
-| **Creatio** | Low-code CRM platform | OData 3/4, DataService JSON-RPC | Forms auth, Basic auth, OAuth 2.0 | 14-day trial |
-| **EspoCRM** | Open-source CRM (GPL v3) | REST | API Key, HMAC, Basic Auth | Free (self-hosted, unlimited) |
-| **Freshsales (Freshworks CRM)** | Cloud CRM (SaaS) | REST | API key | Free (3 users, 1K contacts) |
-| **HubSpot** | Cloud CRM (SaaS) | REST | OAuth 2.0, Private App tokens | Free CRM (1M contacts, 2 users) |
-| **Insightly** | Cloud CRM (SaaS) | REST | Basic auth (API key) | None (removed Oct 2024) |
-| **Microsoft Dynamics 365** | Cloud/On-premise CRM | OData v4 REST, FetchXML | OAuth 2.0 via Microsoft Entra ID (Azure AD) | Power Apps Developer Plan (Dataverse only); 30-day Dynamics trial |
-| **Monday.com CRM** | Work OS with CRM product | GraphQL | API tokens | 14-day trial |
-| **Monica** | Open-source Personal CRM (AGPL v3) | REST | OAuth 2.0 Bearer token | Hosted: 10 contacts; Self-hosted: unlimited, free |
-| **Nimble** | Cloud CRM (SaaS) | REST | OAuth 2.0, API key | 14-day trial (5 licenses) |
-| **Odoo** | Open-source ERP/CRM (LGPL) | XML-RPC, JSON-RPC, REST API (Enterprise 17+) | Database + username + password/API key, OAuth 2.0 (Enterprise REST) | Community Edition (fully free, self-hosted, complete API) |
-| **Pipedrive** | Cloud CRM (SaaS) | REST | OAuth 2.0, API tokens | 14-day trial |
-| **Salesforce** | Cloud CRM (SaaS) | REST, SOAP, Metadata API, Tooling API, Bulk API | OAuth 2.0 | Developer Edition (2 users, 5MB data, 15K API calls/day) |
-| **Salesmate** | Cloud CRM (SaaS) | REST | Bearer token + x-linkname header | 15-day trial |
-| **SugarCRM** | Commercial CRM (cloud + on-premise) | REST | OAuth 2.0 | None |
-| **SuiteCRM** | Open-source CRM (AGPL v3) | REST, SOAP | OAuth 2.0 | Fully free and open-source |
-| **Twenty** | Open-source CRM (AGPL v3) | REST, GraphQL | API key (Bearer token) | Self-hosted: free; Cloud Pro: $9/user/mo |
-| **Vtiger** | Cloud CRM + open-source Community | REST | Basic auth + access key, Session-based | Community Edition (OSS, self-hosted) |
-| **Zoho CRM** | Cloud CRM (SaaS) | REST | OAuth 2.0 | Free (3 users, 5K API calls/day) |
+| Platform | Type | Open Source | License | API Protocol | Auth | Free/Dev Tier |
+|----------|------|------------|---------|-------------|------|--------------|
+| **ActiveCampaign** | Marketing Automation + CRM (SaaS) | No | Proprietary | REST | API key (Api-Token header) | Developer sandbox (100 contacts, 2-year expiry) |
+| **Agile CRM** | Cloud CRM (SaaS) | No | Proprietary | REST | Basic Auth (email + API key) | Free (10 users, 50K contacts, 1 workflow) |
+| **Attio** | Cloud CRM (SaaS) | No | Proprietary | REST | Bearer token, OAuth 2.0, HTTP Basic | Free (3 seats, 50K records, 3 custom objects) |
+| **Bigin (by Zoho)** | Lightweight CRM (SaaS) | No | Proprietary | REST | OAuth 2.0 (Zoho-oauthtoken) | Free (1 user, 5K API credits/day) |
+| **Bitrix24** | All-in-one Business Platform (CRM + PM + Comms) | No | Proprietary (cloud and self-hosted) | REST | OAuth 2.0 (marketplace apps), Webhook URLs (secret token) | Free (unlimited users, 5GB, but NO REST API access since Jan 2021) |
+| **CiviCRM** | Open-source nonprofit CRM (AGPL v3) | Yes | AGPL v3 | REST, PHP, CLI, AJAX | API Key (Bearer), JWT, Basic Auth (disabled by default) | Fully free and open-source (AGPL v3) |
+| **Copper** | Cloud CRM (SaaS) | No | Proprietary | REST | API key + email headers | 14-day trial |
+| **Creatio** | Low-code CRM platform | No | Proprietary | OData 3/4, DataService JSON-RPC | Forms auth, Basic auth, OAuth 2.0 | 14-day trial |
+| **EspoCRM** | Open-source CRM (GPL v3) | Yes | GPL v3 | REST | API Key, HMAC, Basic Auth | Free (self-hosted, unlimited) |
+| **Freshsales (Freshworks CRM)** | Cloud CRM (SaaS) | No | Proprietary | REST | API key | Free (3 users, 1K contacts) |
+| **HubSpot** | Cloud CRM (SaaS) | No | Proprietary | REST | OAuth 2.0, Private App tokens | Free CRM (1M contacts, 2 users) |
+| **Insightly** | Cloud CRM (SaaS) | No | Proprietary | REST | Basic auth (API key) | None (removed Oct 2024) |
+| **Microsoft Dynamics 365** | Cloud/On-premise CRM | No | Proprietary | OData v4 REST, FetchXML | OAuth 2.0 via Microsoft Entra ID (Azure AD) | Power Apps Developer Plan (Dataverse only); 30-day Dynamics trial |
+| **Monday.com CRM** | Work OS with CRM product | No | Proprietary | GraphQL | API tokens | 14-day trial |
+| **Monica** | Open-source Personal CRM (AGPL v3) | Yes | AGPL v3 | REST | OAuth 2.0 Bearer token | Hosted: 10 contacts; Self-hosted: unlimited, free |
+| **Nimble** | Cloud CRM (SaaS) | No | Proprietary | REST | OAuth 2.0, API key | 14-day trial (5 licenses) |
+| **Odoo** | Open-source ERP/CRM (LGPL) | Yes | LGPL v3 (Community); Proprietary (Enterprise) | XML-RPC, JSON-RPC, REST API (Enterprise 17+) | Database + username + password/API key, OAuth 2.0 (Enterprise REST) | Community Edition (fully free, self-hosted, complete API) |
+| **Pipedrive** | Cloud CRM (SaaS) | No | Proprietary | REST | OAuth 2.0, API tokens | 14-day trial |
+| **Salesforce** | Cloud CRM (SaaS) | No | Proprietary | REST, SOAP, Metadata API, Tooling API, Bulk API | OAuth 2.0 | Developer Edition (2 users, 5MB data, 15K API calls/day) |
+| **Salesmate** | Cloud CRM (SaaS) | No | Proprietary | REST | Bearer token + x-linkname header | 15-day trial |
+| **SugarCRM** | Commercial CRM (cloud + on-premise) | No | Proprietary (current versions; SugarCRM CE was open-source, now SuiteCRM) | REST | OAuth 2.0 | None |
+| **SuiteCRM** | Open-source CRM (AGPL v3) | Yes | AGPL v3 | REST, SOAP | OAuth 2.0 | Fully free and open-source |
+| **Twenty** | Open-source CRM (AGPL v3) | Yes | AGPL v3 | REST, GraphQL | API key (Bearer token) | Self-hosted: free; Cloud Pro: $9/user/mo |
+| **Vtiger** | Cloud CRM + open-source Community | Yes | MPL-derived (Community); Proprietary (Cloud) | REST | Basic auth + access key, Session-based | Community Edition (OSS, self-hosted) |
+| **Zoho CRM** | Cloud CRM (SaaS) | No | Proprietary | REST | OAuth 2.0 | Free (3 users, 5K API calls/day) |
 
 ## Tier Assessment
 
@@ -101,7 +101,7 @@
 | List View | No | — | No | — | — | Yes | — | — | Yes | — | No | — | Yes | — | — | — | Yes | — | Yes | — | Yes | — | No | — | No |
 | Panels/Sections | No | — | No | — | — | Yes | — | — | Yes | — | No | — | Yes | — | — | — | Yes | — | Yes | — | Yes | — | No | — | No |
 | Tabs | No | — | No | — | — | Yes | — | — | Yes | — | No | — | Yes | — | — | — | Yes | — | Yes | — | No | — | No | — | No |
-| Conditional Visibility | No | — | No | — | — | Yes | — | — | Yes | — | No | — | Yes | — | — | — | Yes | — | Yes | — | Yes | — | No | — | No |
+| Conditional Visibility | No | — | No | — | — | Yes | No | — | Yes | — | No | — | Yes | No | — | — | Yes | — | Yes | — | Yes | — | No | — | No |
 
 ## Relationship Management Detail
 

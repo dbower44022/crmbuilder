@@ -4,6 +4,8 @@ slug: bigin
 type: Lightweight CRM (SaaS)
 deployment: Cloud only
 last_reviewed: 2026-03-30
+open_source: false
+license: Proprietary
 
 pricing:
   free_tier: "Free (1 user, 5K API credits/day)"
@@ -101,6 +103,10 @@ layout_management:
     notes: "Zoho CRM v8 has update layout API but not available in Bigin API subset"
   write_layouts:
     rating: none
+  multiple_list_views:
+    supported: true
+    api_creatable: false
+    notes: "Custom views with filters in UI; API can use cvid param but cannot create views"
 
 # ─── Relationship Management ───────────────────────────────────────
 relationship_management:

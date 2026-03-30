@@ -4,6 +4,8 @@ slug: copper
 type: Cloud CRM (SaaS)
 deployment: Copper-hosted only
 last_reviewed: 2026-03-30
+open_source: false
+license: Proprietary
 
 pricing:
   free_tier: "14-day trial"
@@ -51,6 +53,8 @@ layout_management:
     rating: none
   write_layouts:
     rating: none
+  conditional_visibility: {supported: false}
+  multiple_list_views: {supported: true, api_creatable: false, notes: "Saved filters in UI; not API-manageable"}
 
 # ─── Relationship Management ───────────────────────────────────────
 relationship_management:

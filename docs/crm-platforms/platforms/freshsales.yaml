@@ -4,6 +4,8 @@ slug: freshsales
 type: Cloud CRM (SaaS)
 deployment: Freshworks-hosted only
 last_reviewed: 2026-03-30
+open_source: false
+license: Proprietary
 
 pricing:
   free_tier: "Free (3 users, 1K contacts)"
@@ -50,6 +52,10 @@ layout_management:
     rating: none
   write_layouts:
     rating: none
+  multiple_list_views:
+    supported: true
+    api_creatable: false
+    notes: "Saved views in UI; not documented as API-manageable"
 
 # ─── Relationship Management ───────────────────────────────────────
 relationship_management:

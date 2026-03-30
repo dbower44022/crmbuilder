@@ -83,6 +83,7 @@ GAP_CHECKS: list[tuple[str, str, str]] = [
     ("Many-to-Many", "relationship_management", "many_to_many"),
     ("Link Labels", "relationship_management", "link_labels"),
     ("Audit Both Sides", "relationship_management", "audit_both_sides"),
+    ("Multiple List Views", "layout_management", "multiple_list_views"),
     ("Record Create", "data_operations", "create_record"),
     ("Record Update", "data_operations", "update_record"),
     ("Search by Email", "data_operations", "search_by_email"),
@@ -111,6 +112,7 @@ COMPARE_SECTIONS: list[tuple[str, list[tuple[str, str, str]]]] = [
         ("Panels/Sections", "layout_management", "panels"),
         ("Tabs", "layout_management", "tabs"),
         ("Conditional Visibility", "layout_management", "conditional_visibility"),
+        ("Multiple List Views", "layout_management", "multiple_list_views"),
     ]),
     ("Relationship Management", [
         ("Create Relationship", "relationship_management", "create_relationship"),
@@ -479,6 +481,17 @@ class CrmCompareWindow(QMainWindow):
         )
         type_label.setStyleSheet("color: gray;")
         layout.addWidget(type_label)
+
+        # Open source + license
+        oss = platform.get("open_source", False)
+        lic = platform.get("license", "")
+        if oss:
+            oss_label = QLabel(f"\u2713  Open Source ({lic})")
+            oss_label.setStyleSheet("color: #4CAF50; font-weight: bold;")
+        else:
+            oss_label = QLabel("Proprietary" + (f" ({lic})" if lic and lic != "Proprietary" else ""))
+            oss_label.setStyleSheet("color: gray;")
+        layout.addWidget(oss_label)
 
         # Tier badge
         tier_num, tier_label = _calculate_tier(platform)

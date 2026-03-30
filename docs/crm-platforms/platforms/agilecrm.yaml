@@ -4,6 +4,8 @@ slug: agilecrm
 type: Cloud CRM (SaaS)
 deployment: Cloud only
 last_reviewed: 2026-03-30
+open_source: false
+license: Proprietary
 
 pricing:
   free_tier: "Free (10 users, 50K contacts, 1 workflow)"
@@ -73,6 +75,10 @@ layout_management:
     rating: none
   write_layouts:
     rating: none
+  multiple_list_views:
+    supported: true
+    api_creatable: false
+    notes: "Dynamic filters available via API (POST /api/filters/filter/dynamic-filter) but saved view definitions are UI-only"
 
 # ─── Relationship Management ───────────────────────────────────────
 relationship_management:

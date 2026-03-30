@@ -4,6 +4,8 @@ slug: suitecrm
 type: Open-source CRM (AGPL v3)
 deployment: Self-hosted only
 last_reviewed: 2026-03-30
+open_source: true
+license: "AGPL v3"
 
 pricing:
   free_tier: "Fully free and open-source"
@@ -65,6 +67,10 @@ layout_management:
   write_layouts:
     rating: none
     notes: "Studio UI or viewdef code manipulation required"
+  multiple_list_views:
+    supported: true
+    api_creatable: false
+    notes: "Custom views via Studio UI; not available via REST API v8"
 
 # ─── Relationship Management ───────────────────────────────────────
 relationship_management:

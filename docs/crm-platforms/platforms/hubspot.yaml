@@ -4,6 +4,8 @@ slug: hubspot
 type: Cloud CRM (SaaS)
 deployment: HubSpot-hosted only
 last_reviewed: 2026-03-30
+open_source: false
+license: Proprietary
 
 pricing:
   free_tier: "Free CRM (1M contacts, 2 users)"
@@ -140,6 +142,7 @@ layout_management:
   panels: {supported: false, notes: "UI only"}
   tabs: {supported: false, notes: "UI only"}
   conditional_visibility: {supported: false, notes: "UI only"}
+  multiple_list_views: {supported: true, api_creatable: false, notes: "Saved views/filters on object lists via UI; no API to create views"}
 
 # ─── Relationship Management ───────────────────────────────────────
 relationship_management:

@@ -4,6 +4,8 @@ slug: insightly
 type: Cloud CRM (SaaS)
 deployment: Insightly-hosted only
 last_reviewed: 2026-03-30
+open_source: false
+license: Proprietary
 
 pricing:
   free_tier: "None (removed Oct 2024)"
@@ -56,6 +58,10 @@ layout_management:
     rating: none
   write_layouts:
     rating: none
+  multiple_list_views:
+    supported: true
+    api_creatable: false
+    notes: "Custom views in UI; not API-manageable"
 
 # ─── Relationship Management ───────────────────────────────────────
 relationship_management:

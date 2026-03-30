@@ -4,6 +4,8 @@ slug: monday
 type: Work OS with CRM product
 deployment: Monday.com-hosted only
 last_reviewed: 2026-03-30
+open_source: false
+license: Proprietary
 
 pricing:
   free_tier: "14-day trial"
@@ -67,6 +69,8 @@ layout_management:
     rating: none
   write_layouts:
     rating: none
+  conditional_visibility: {supported: false}
+  multiple_list_views: {supported: true, api_creatable: true, method: "create_board_view GraphQL mutation — supports table, kanban, chart, calendar, and more view types", notes: "Views are a core concept; multiple views per board"}
 
 # ─── Relationship Management ───────────────────────────────────────
 relationship_management:

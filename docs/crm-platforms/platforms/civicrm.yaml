@@ -4,6 +4,8 @@ slug: civicrm
 type: Open-source nonprofit CRM (AGPL v3)
 deployment: "Self-hosted (WordPress, Drupal, Joomla, Backdrop, Standalone, Docker)"
 last_reviewed: 2026-03-30
+open_source: true
+license: "AGPL v3"
 
 pricing:
   free_tier: "Fully free and open-source (AGPL v3)"
@@ -143,6 +145,7 @@ layout_management:
   panels: {supported: true, notes: "Custom Data Groups control section grouping and display order via weight property"}
   tabs: {supported: true, notes: "Contact summary tabs via Afform blocks"}
   conditional_visibility: {supported: true, notes: "Afform supports conditional field display"}
+  multiple_list_views: {supported: true, api_creatable: true, method: "SavedSearch.create + SearchDisplay.create via API4 — full query and display config per entity", notes: "Most powerful saved view system among all platforms evaluated"}
 
 # ─── Relationship Management ───────────────────────────────────────
 relationship_management:

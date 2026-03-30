@@ -4,6 +4,8 @@ slug: vtiger
 type: Cloud CRM + open-source Community
 deployment: Cloud or self-hosted (Community)
 last_reviewed: 2026-03-30
+open_source: true
+license: "MPL-derived (Community); Proprietary (Cloud)"
 
 pricing:
   free_tier: "Community Edition (OSS, self-hosted)"
@@ -62,6 +64,10 @@ layout_management:
     rating: none
   write_layouts:
     rating: none
+  multiple_list_views:
+    supported: true
+    api_creatable: false
+    notes: "Custom views in UI; describe operation returns metadata but no view creation API"
 
 # ─── Relationship Management ───────────────────────────────────────
 relationship_management:

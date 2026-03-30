@@ -4,6 +4,8 @@ slug: bitrix24
 type: All-in-one Business Platform (CRM + PM + Comms)
 deployment: Cloud or self-hosted (on-premise)
 last_reviewed: 2026-03-30
+open_source: false
+license: "Proprietary (cloud and self-hosted)"
 
 pricing:
   free_tier: "Free (unlimited users, 5GB, but NO REST API access since Jan 2021)"
@@ -133,6 +135,7 @@ layout_management:
   reset_layouts:
     rating: full
     method: "crm.item.details.configuration.reset"
+  multiple_list_views: {supported: true, api_creatable: true, method: "crm.item.list with configurable filter/select/order params; saved views via UI", notes: "List view configurations manageable alongside detail layout API"}
 
 # ─── Relationship Management ───────────────────────────────────────
 relationship_management:

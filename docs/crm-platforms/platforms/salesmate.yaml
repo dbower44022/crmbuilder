@@ -4,6 +4,8 @@ slug: salesmate
 type: Cloud CRM (SaaS)
 deployment: Cloud only
 last_reviewed: 2026-03-30
+open_source: false
+license: Proprietary
 
 pricing:
   free_tier: "15-day trial"
@@ -90,6 +92,10 @@ layout_management:
   write_layouts:
     rating: none
     notes: "Visual drag-and-drop Layout Builder in UI"
+  multiple_list_views:
+    supported: true
+    api_creatable: false
+    notes: "Custom views in UI; not API-manageable"
 
 # ─── Relationship Management ───────────────────────────────────────
 relationship_management:

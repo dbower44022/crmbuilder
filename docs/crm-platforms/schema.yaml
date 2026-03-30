@@ -33,6 +33,20 @@ editions:
   - all_paid      # Available on all paid tiers
   - na            # Not applicable
 
+# ─── Platform Profile Fields ──────────────────────────────────────────
+# Top-level fields required on every platform YAML file.
+# open_source and license were added 2026-03-30.
+
+required_profile_fields:
+  - name
+  - slug
+  - type
+  - last_reviewed
+  - pricing
+  - api
+  - open_source        # bool — is the source code available under an OSI-approved license?
+  - license            # string — license identifier (e.g., "GPL v3", "AGPL v3", "Proprietary")
+
 # ─── CRM Builder Field Types ───────────────────────────────────────────
 # These are the 14 field types CRM Builder currently supports.
 # Each platform file maps these to the platform's equivalent type name.
@@ -199,6 +213,7 @@ dimensions:
       - panels
       - tabs
       - conditional_visibility
+      - multiple_list_views  # Can multiple saved list views exist per entity?
 
   relationship_management:
     label: "Relationship Management"

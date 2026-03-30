@@ -4,6 +4,8 @@ slug: attio
 type: Cloud CRM (SaaS)
 deployment: Attio-hosted only (multi-tenant cloud)
 last_reviewed: 2026-03-30
+open_source: false
+license: Proprietary
 
 pricing:
   free_tier: "Free (3 seats, 50K records, 3 custom objects)"
@@ -133,6 +135,7 @@ layout_management:
   panels: {supported: false}
   tabs: {supported: false}
   conditional_visibility: {supported: false}
+  multiple_list_views: {supported: true, api_creatable: false, notes: "Saved views with filters/sorts configurable in UI; GET /v2/objects/{object}/views returns view metadata but no create endpoint"}
 
 # ─── Relationship Management ───────────────────────────────────────
 relationship_management:

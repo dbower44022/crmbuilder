@@ -4,6 +4,8 @@ slug: creatio
 type: Low-code CRM platform
 deployment: Cloud or on-premise
 last_reviewed: 2026-03-30
+open_source: false
+license: Proprietary
 
 pricing:
   free_tier: "14-day trial"
@@ -84,6 +86,10 @@ layout_management:
     rating: indirect
     method: "Freedom UI JSON schemas deployed via packages — not REST"
     notes: "Supports grid, tabs, conditional visibility — but not modifiable via REST API"
+  multiple_list_views:
+    supported: true
+    api_creatable: false
+    notes: "Folder views and custom list views in UI; view schemas in packages but not simple REST creation"
 
 # ─── Relationship Management ───────────────────────────────────────
 relationship_management:

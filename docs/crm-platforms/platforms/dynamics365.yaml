@@ -4,6 +4,8 @@ slug: dynamics365
 type: Cloud/On-premise CRM
 deployment: Dynamics 365 Online (SaaS), Dynamics 365 on-premises
 last_reviewed: 2026-03-30
+open_source: false
+license: Proprietary
 
 pricing:
   free_tier: "Power Apps Developer Plan (Dataverse only); 30-day Dynamics trial"
@@ -157,6 +159,7 @@ layout_management:
   panels: {supported: true, notes: "Form sections within tabs"}
   tabs: {supported: true, notes: "Native form tabs in FormXml"}
   conditional_visibility: {supported: true, notes: "Business rules — show/hide fields and sections based on field values"}
+  multiple_list_views: {supported: true, api_creatable: true, method: "SavedQuery entity (system views) — full CRUD via Web API with FetchXml query and LayoutXml columns", notes: "Also UserQuery for personal views"}
   field_width_control: {supported: true, notes: "1, 2, or 3 column sections; cell spanning"}
   empty_cell_handling: {supported: true, notes: "Empty cells in FormXml grid"}
   form_types:

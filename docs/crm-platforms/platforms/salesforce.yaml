@@ -4,6 +4,8 @@ slug: salesforce
 type: Cloud CRM (SaaS)
 deployment: Salesforce-hosted only
 last_reviewed: 2026-03-30
+open_source: false
+license: Proprietary
 
 pricing:
   free_tier: "Developer Edition (2 users, 5MB data, 15K API calls/day)"
@@ -160,6 +162,7 @@ layout_management:
   panels: {supported: true, notes: "LayoutSection with configurable columns"}
   tabs: {supported: true, notes: "FlexiPage tabs (Lightning)"}
   conditional_visibility: {supported: true, notes: "Dynamic Forms — field and section visibility rules based on record data, user profile, device"}
+  multiple_list_views: {supported: true, api_creatable: true, method: "ListView metadata type — full CRUD, define columns, filters, sort, visibility per object", notes: "Unlimited list views per object"}
   field_width_control: {supported: true, notes: "1 or 2 column sections"}
   empty_cell_handling: {supported: true, notes: "Empty LayoutItem"}
 

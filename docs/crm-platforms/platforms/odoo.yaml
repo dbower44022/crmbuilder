@@ -4,6 +4,8 @@ slug: odoo
 type: Open-source ERP/CRM (LGPL)
 deployment: Self-hosted, Odoo.sh (PaaS), or Odoo Online (SaaS)
 last_reviewed: 2026-03-30
+open_source: true
+license: "LGPL v3 (Community); Proprietary (Enterprise)"
 
 pricing:
   free_tier: "Community Edition (fully free, self-hosted, complete API)"
@@ -161,6 +163,7 @@ layout_management:
   panels: {supported: true, notes: "<group> and <notebook>/<page> elements in form arch"}
   tabs: {supported: true, notes: "<notebook> with <page> children"}
   conditional_visibility: {supported: true, notes: "attrs={'invisible': [domain]} on any XML element"}
+  multiple_list_views: {supported: true, api_creatable: true, method: "ir.filters entity via execute_kw — saved filters with domain, context, sort per model", notes: "Also ir.ui.view for tree view definitions"}
   field_width_control: {supported: true, notes: "<group> with col attribute; colspan on fields"}
   empty_cell_handling: {supported: true, notes: "Automatic in group layout"}
   view_types:

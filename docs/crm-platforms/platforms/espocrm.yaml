@@ -4,6 +4,8 @@ slug: espocrm
 type: Open-source CRM (GPL v3)
 deployment: Self-hosted (Docker)
 last_reviewed: 2026-03-30
+open_source: true
+license: "GPL v3"
 
 pricing:
   free_tier: "Free (self-hosted, unlimited)"
@@ -129,6 +131,7 @@ layout_management:
   panels: {supported: true}
   tabs: {supported: true}
   conditional_visibility: {supported: true, notes: "conditionalVisible property on fields and panels"}
+  multiple_list_views: {supported: true, api_creatable: false, notes: "Users can save custom list views with different filters/columns via UI; list layout is a single definition via API"}
   field_width_control: {supported: true, notes: "2-column grid layout"}
   empty_cell_handling: {supported: true, notes: "false placeholder for empty cells"}
 

@@ -4,6 +4,8 @@ slug: monica
 type: Open-source Personal CRM (AGPL v3)
 deployment: "Self-hosted (Docker) or hosted at monicahq.com"
 last_reviewed: 2026-03-30
+open_source: true
+license: "AGPL v3"
 
 pricing:
   free_tier: "Hosted: 10 contacts; Self-hosted: unlimited, free"
@@ -104,6 +106,9 @@ layout_management:
     rating: none
   write_layouts:
     rating: none
+  multiple_list_views:
+    supported: false
+    notes: "No saved view/filter system"
 
 # ─── Relationship Management ───────────────────────────────────────
 relationship_management:

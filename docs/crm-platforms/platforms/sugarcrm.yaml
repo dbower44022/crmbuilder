@@ -4,6 +4,8 @@ slug: sugarcrm
 type: Commercial CRM (cloud + on-premise)
 deployment: Sugar Cloud or on-premise (Enterprise only)
 last_reviewed: 2026-03-30
+open_source: false
+license: "Proprietary (current versions; SugarCRM CE was open-source, now SuiteCRM)"
 
 pricing:
   free_tier: null
@@ -167,6 +169,7 @@ layout_management:
   panels: {supported: true, notes: "Panel/section definitions in viewdefs"}
   tabs: {supported: false, notes: "Not natively supported in standard viewdefs"}
   conditional_visibility: {supported: true, notes: "SugarLogic dependency expressions for field and panel visibility"}
+  multiple_list_views: {supported: true, api_creatable: false, notes: "Custom list views via UI; API reads metadata but view creation is file-based"}
 
 # ─── Relationship Management ───────────────────────────────────────
 relationship_management:

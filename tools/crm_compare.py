@@ -90,7 +90,7 @@ def get_rating(platform: dict, *keys: str) -> str:
     if node is None:
         return "unknown"
     if isinstance(node, dict):
-        return node.get("rating", "unknown")
+        return node.get("rating", node.get("supported", "unknown"))
     if isinstance(node, bool):
         return "full" if node else "none"
     return str(node)
@@ -408,7 +408,9 @@ def cmd_capability(args: argparse.Namespace) -> None:
             edition = "—"
             method = "—"
         elif isinstance(node, dict):
-            rating = node.get("rating", "unknown")
+            rating = node.get("rating", node.get("supported", "unknown"))
+            if isinstance(rating, bool):
+                rating = "full" if rating else "none"
             edition = node.get("min_edition", "—")
             method = node.get("method", node.get("notes", "—"))
         elif isinstance(node, bool):
@@ -552,15 +554,17 @@ def cmd_inventory(args: argparse.Namespace) -> None:
     # Platform overview table
     w("## Platform Overview")
     w()
-    w("| Platform | Type | API Protocol | Auth | Free/Dev Tier |")
-    w("|----------|------|-------------|------|--------------|")
+    w("| Platform | Type | Open Source | License | API Protocol | Auth | Free/Dev Tier |")
+    w("|----------|------|------------|---------|-------------|------|--------------|")
     for p in platforms:
         name = p.get("name", "?")
         ptype = p.get("type", "—")
+        oss = "Yes" if p.get("open_source") else "No"
+        lic = p.get("license", "—")
         proto = ", ".join(p.get("api", {}).get("protocol", []))
         auth = ", ".join(p.get("api", {}).get("auth_methods", []))
         free = p.get("pricing", {}).get("free_tier", "None")
-        w(f"| **{name}** | {ptype} | {proto} | {auth} | {free} |")
+        w(f"| **{name}** | {ptype} | {oss} | {lic} | {proto} | {auth} | {free} |")
     w()
 
     # Tier assessment
