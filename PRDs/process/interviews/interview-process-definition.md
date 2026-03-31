@@ -1,7 +1,7 @@
 # CRM Builder — Process Definition Interview Guide
 
-**Version:** 2.3
-**Last Updated:** 03-31-26 18:00
+**Version:** 2.4
+**Last Updated:** 03-31-26 18:15
 **Purpose:** AI interviewer guide for Phase 2 — Process Definition
 **Governing Process:** PRDs/application/CRM-Builder-Document-Production-Process.docx
 
@@ -983,6 +983,11 @@ If any section is incomplete:
 After confirmation, produce the process document as a Word
 document with all eleven required sections.
 
+All sections use numbered headings in the Word document:
+"1. Process Purpose", "2. Process Triggers", through
+"11. Interview Transcript". Every section is numbered
+consistently — no unnumbered headings for any section.
+
 For Sections 7 and 8, present field data in tables grouped
 by entity:
 
@@ -1112,6 +1117,7 @@ redirect:
 
 | Version | Date | Changes |
 |---|---|---|
+| 2.4 | 03-31-26 | Added section numbering guidance to Document Production: all eleven sections use numbered headings consistently in the Word document output (e.g., "9. Open Issues", "10. Updates to Prior Documents", "11. Interview Transcript"). |
 | 2.3 | 03-31-26 | Added Open Issues as Section 9 and Updates to Prior Documents as Section 10. Interview Transcript moved from Section 9 to Section 11. Document now has eleven required sections. Added interview guide content for both new sections including format, consolidation, and completeness standards. Updated completeness check and summary template. |
 | 2.2 | 03-31-26 | Added address and relationship to the supported field type table (Section 8.3). Address is a composite field (street, city, state, zip). Relationship describes a connection to another entity in business terms, with implementation details deferred to Phase 5. Field type list now has 16 types. |
 | 2.1 | 03-31-26 | Added Section 9 interview guide defining the transcript format standard: condensed Q/A pairs organized by topic area (not chronologically) with inline Decision callouts. Updated Document Production section to reference the new standard. Replaces prior instruction to include verbatim conversation. |
