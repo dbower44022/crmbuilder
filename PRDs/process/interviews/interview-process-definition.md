@@ -1,7 +1,7 @@
 # CRM Builder — Process Definition Interview Guide
 
-**Version:** 2.1
-**Last Updated:** 03-31-26 17:30
+**Version:** 2.2
+**Last Updated:** 03-31-26 17:45
 **Purpose:** AI interviewer guide for Phase 2 — Process Definition
 **Governing Process:** PRDs/application/CRM-Builder-Document-Production-Process.docx
 
@@ -662,6 +662,8 @@ table lists all supported field types:
 | Phone number | phone | |
 | Fixed set of choices, pick one | enum | Requires complete list of allowed values |
 | Fixed set of choices, pick multiple | multiEnum | Requires complete list of allowed values |
+| Street, city, state, zip (composite) | address | Treated as a single field in the process document |
+| Connection to another entity | relationship | Describe in business terms. Use "(many)" suffix for one-to-many or many-to-many. Implementation details handled in Phase 5. |
 
 > "I'd store this as a [type] — [brief reason]. Does that work?"
 
@@ -990,6 +992,7 @@ redirect:
 
 | Version | Date | Changes |
 |---|---|---|
+| 2.2 | 03-31-26 | Added address and relationship to the supported field type table (Section 8.3). Address is a composite field (street, city, state, zip). Relationship describes a connection to another entity in business terms, with implementation details deferred to Phase 5. Field type list now has 16 types. |
 | 2.1 | 03-31-26 | Added Section 9 interview guide defining the transcript format standard: condensed Q/A pairs organized by topic area (not chronologically) with inline Decision callouts. Updated Document Production section to reference the new standard. Replaces prior instruction to include verbatim conversation. |
 | 2.0 | 03-30-26 | Major restructure: Split Process Purpose and Trigger into separate sections (1 and 2). Added Process Triggers section with preconditions, required data, initiation mechanism, and initiating persona. Added Process Completion section (5) covering normal completion, multiple end states, early termination, and post-completion handoffs. Reframed Process Data (7) as supporting data — required prerequisite data moved to Process Triggers. Replaced field type table with authoritative 14-type list from YAML schema. Added relationship guidance to Sections 7 and 8. Added Interview Transcript as Section 9. Document now has nine required sections. |
 | 1.0 | 03-30-26 | Initial release. Replaces entity-interview-data.md, entity-interview-process.md, and entity-interview-synthesis.md. |
