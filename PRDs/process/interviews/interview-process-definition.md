@@ -1,7 +1,7 @@
 # CRM Builder — Process Definition Interview Guide
 
-**Version:** 2.2
-**Last Updated:** 03-31-26 17:45
+**Version:** 2.3
+**Last Updated:** 03-31-26 18:00
 **Purpose:** AI interviewer guide for Phase 2 — Process Definition
 **Governing Process:** PRDs/application/CRM-Builder-Document-Production-Process.docx
 
@@ -37,9 +37,9 @@ the implementation's repository at
 
 ## What the Process Document Must Contain
 
-Every process document must contain all nine of the following sections.
+Every process document must contain all eleven of the following sections.
 Sections 7 and 8 must meet the field-level detail standard. A process
-document is not complete until all nine sections are present and meet
+document is not complete until all eleven sections are present and meet
 their respective standards.
 
 | # | Section | Content |
@@ -52,7 +52,9 @@ their respective standards.
 | 6 | System Requirements | What the CRM must do to support this process. Stated as "The system must..." with unique identifiers. |
 | 7 | Process Data | Fields this process references or uses to support its work. Grouped by entity with full field-level detail. |
 | 8 | Data Collected | Fields this process creates or updates (new data). Grouped by entity with full field-level detail. |
-| 9 | Interview Transcript | Complete record of all interview questions and answers from the session. |
+| 9 | Open Issues | Unresolved questions, TBD items, and research tasks identified during the interview. Each with a unique identifier. |
+| 10 | Updates to Prior Documents | Changes needed to previously completed process documents discovered during this interview. |
+| 11 | Interview Transcript | Condensed record of all interview questions, answers, and decisions from the session. |
 
 ### Field-Level Detail Standard
 
@@ -160,10 +162,10 @@ If this is the first process in the domain:
 
 ## Interview Structure
 
-The interview walks through the nine required sections in a natural
+The interview walks through the eleven required sections in a natural
 conversation order. The AI does not need to announce section numbers
 to the administrator — the conversation should flow naturally. But
-the AI must ensure all nine sections are covered before wrapping up.
+the AI must ensure all eleven sections are covered before wrapping up.
 
 ### Section Checklist
 
@@ -175,7 +177,9 @@ the AI must ensure all nine sections are covered before wrapping up.
 - [ ] 6. System Requirements
 - [ ] 7. Process Data
 - [ ] 8. Data Collected
-- [ ] 9. Interview Transcript
+- [ ] 9. Open Issues
+- [ ] 10. Updates to Prior Documents
+- [ ] 11. Interview Transcript
 
 ---
 
@@ -757,7 +761,109 @@ TBD — [Field Name] — [Specific question that needs answering]
 
 ---
 
-## Section 9 — Interview Transcript
+## Section 9 — Open Issues
+
+**What the AI is trying to capture:**
+Unresolved questions, TBD items, and research tasks that were
+identified during the interview but could not be resolved in the
+session. Each issue gets a unique identifier.
+
+### 9.1 Collecting Issues
+
+Open issues accumulate naturally throughout the interview. When
+the administrator is unsure about a field detail, when a research
+task is identified, or when a decision requires input from a
+stakeholder who is not present, capture it as an open issue.
+
+> "No problem — I'll capture that as an open issue. We can
+> resolve it before or during stakeholder review."
+
+### 9.2 Issue Format
+
+Each open issue receives a unique identifier following the
+pattern `[DOMAIN]-[PROCESS]-ISS-[SEQ]` and must include:
+
+- A clear description of the unresolved question or research task
+- Who needs to provide input (if known)
+- Any context that would help the person resolving the issue
+
+### 9.3 Consolidation
+
+Before closing the interview, review all TBD items captured
+during Sections 7 and 8 and ensure each one has a corresponding
+open issue in Section 9. TBDs in field tables should reference
+the open issue identifier (e.g., "TBD — see MN-ENGAGE-ISS-001").
+
+> "Let me consolidate the open issues we identified during the
+> interview. We have [N] items that need resolution."
+
+Present the list for confirmation.
+
+**Signs you have enough:**
+- Every TBD from the interview has a corresponding open issue
+- Each issue has a unique identifier and clear description
+- Owner or input source identified where known
+
+---
+
+## Section 10 — Updates to Prior Documents
+
+**What the AI is trying to capture:**
+Changes needed to previously completed process documents that
+were discovered during this interview. These are not open issues
+— they are known changes that need to be applied.
+
+### 10.1 Collecting Updates
+
+Updates to prior documents emerge when the current interview
+reveals that a prior process document is incomplete or
+inconsistent. Common examples:
+
+- A field that should have been defined in a prior process but
+  was not (e.g., Engagement Contacts auto-assignment belongs
+  in MN-INTAKE but was discovered during MN-ENGAGE)
+- A status value or enum value that needs to be added to a
+  field defined in a prior process
+- A workflow step in a prior process that needs clarification
+  based on what was learned in this interview
+- A requirement that needs to be added to a prior process
+
+### 10.2 Update Format
+
+Each update should specify:
+
+- Which prior document needs updating (process code and name)
+- What specifically needs to change
+- Why the change is needed (reference the current interview's
+  requirement or decision that triggered it)
+
+### 10.3 Consolidation
+
+Before closing the interview, review all conflicts and updates
+noted during the session:
+
+> "During this interview, we identified [N] updates needed to
+> prior documents. Let me list them for confirmation."
+
+If no updates were identified:
+
+> "No updates to prior documents were identified during this
+> interview."
+
+The section should still appear in the document even if empty,
+with a note that no updates were needed.
+
+**Signs you have enough:**
+- Every conflict or gap identified during the interview is
+  captured as an update
+- Each update clearly identifies the target document and the
+  specific change needed
+- Updates are actionable — someone could apply them without
+  needing additional context
+
+---
+
+## Section 11 — Interview Transcript
 
 **What the AI is trying to produce:**
 A complete but condensed record of the interview — every question
@@ -844,6 +950,8 @@ verify it meets the required standard:
 6. System Requirements — identifiers assigned? ✓/✗
 7. Process Data — field-level detail for every supporting field? ✓/✗
 8. Data Collected — field-level detail for every field? ✓/✗
+9. Open Issues — all TBDs captured with identifiers? ✓/✗
+10. Updates to Prior Documents — all discovered changes documented? ✓/✗
 
 If any section is incomplete:
 > "Section [N] isn't quite at the level of detail we need.
@@ -864,6 +972,8 @@ If any section is incomplete:
 >   [last ID])
 > - Process Data: [N] supporting fields across [N] entities
 > - Data Collected: [N] new fields across [N] entities
+> - Open Issues: [N] ([first ID] through [last ID])
+> - Updates to Prior Documents: [N]
 > - TBD items: [N]
 >
 > Does that feel complete?"
@@ -871,7 +981,7 @@ If any section is incomplete:
 ### Document Production
 
 After confirmation, produce the process document as a Word
-document with all nine required sections.
+document with all eleven required sections.
 
 For Sections 7 and 8, present field data in tables grouped
 by entity:
@@ -882,8 +992,18 @@ by entity:
 |----|-----------|------|----------|-------------|-------------|
 | [DOMAIN]-[PROCESS]-DAT-001 | [Name] | [Type] | [Yes/No/Conditional] | [Values or —] | [Description] |
 
-Section 9 (Interview Transcript) must follow the format
-defined in the Section 9 interview guide above: condensed
+Section 9 (Open Issues) must list every unresolved question
+and research task identified during the interview. Each issue
+receives a unique ISS identifier. If no open issues were
+identified, include the section with a note that none were found.
+
+Section 10 (Updates to Prior Documents) must list every change
+needed to previously completed process documents. If no updates
+were identified, include the section with a note that none
+were needed.
+
+Section 11 (Interview Transcript) must follow the format
+defined in the Section 11 interview guide above: condensed
 Q/A pairs organized by topic area with inline Decision
 callouts. The transcript must capture all substantive
 exchanges from the interview without dropping information,
@@ -992,6 +1112,7 @@ redirect:
 
 | Version | Date | Changes |
 |---|---|---|
+| 2.3 | 03-31-26 | Added Open Issues as Section 9 and Updates to Prior Documents as Section 10. Interview Transcript moved from Section 9 to Section 11. Document now has eleven required sections. Added interview guide content for both new sections including format, consolidation, and completeness standards. Updated completeness check and summary template. |
 | 2.2 | 03-31-26 | Added address and relationship to the supported field type table (Section 8.3). Address is a composite field (street, city, state, zip). Relationship describes a connection to another entity in business terms, with implementation details deferred to Phase 5. Field type list now has 16 types. |
 | 2.1 | 03-31-26 | Added Section 9 interview guide defining the transcript format standard: condensed Q/A pairs organized by topic area (not chronologically) with inline Decision callouts. Updated Document Production section to reference the new standard. Replaces prior instruction to include verbatim conversation. |
 | 2.0 | 03-30-26 | Major restructure: Split Process Purpose and Trigger into separate sections (1 and 2). Added Process Triggers section with preconditions, required data, initiation mechanism, and initiating persona. Added Process Completion section (5) covering normal completion, multiple end states, early termination, and post-completion handoffs. Reframed Process Data (7) as supporting data — required prerequisite data moved to Process Triggers. Replaced field type table with authoritative 14-type list from YAML schema. Added relationship guidance to Sections 7 and 8. Added Interview Transcript as Section 9. Document now has nine required sections. |
