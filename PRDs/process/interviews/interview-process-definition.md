@@ -1,7 +1,7 @@
 # CRM Builder — Process Definition Interview Guide
 
-**Version:** 2.0
-**Last Updated:** 03-30-26 22:30
+**Version:** 2.1
+**Last Updated:** 03-31-26 17:30
 **Purpose:** AI interviewer guide for Phase 2 — Process Definition
 **Governing Process:** PRDs/application/CRM-Builder-Document-Production-Process.docx
 
@@ -755,6 +755,76 @@ TBD — [Field Name] — [Specific question that needs answering]
 
 ---
 
+## Section 9 — Interview Transcript
+
+**What the AI is trying to produce:**
+A complete but condensed record of the interview — every question
+asked, every answer given, and every decision made — organized for
+easy reference by future reviewers.
+
+### 9.1 Format
+
+The transcript is organized by **topic area**, not chronologically.
+Group related exchanges under descriptive subheadings that correspond
+to the subject matter discussed (e.g., "Session Status Values,"
+"On-Hold," "Meeting Request Recipients"). This makes it easy to find
+specific decisions later without reading the entire transcript.
+
+Within each topic group, use **Q/A pairs**:
+
+> **Q:** [The question asked — condensed to its essential content]
+>
+> **A:** [The answer given — condensed to its essential content]
+
+Condense conversational filler, false starts, and back-and-forth
+clarification into clean Q/A pairs, but preserve all substantive
+information. If three exchanges were needed to arrive at an answer,
+combine them into one Q/A pair that captures the final understanding.
+Never drop information — if it was discussed, it must appear.
+
+### 9.2 Decision Callouts
+
+When a Q/A exchange results in a decision — especially one that
+changes prior content, resolves an ambiguity, or establishes a new
+rule — add a **Decision:** callout immediately after the Q/A pair:
+
+> **Decision:** [What was decided and why it matters. Reference
+> the prior content that changed if applicable.]
+
+Decision callouts are inline with the topic, not collected into a
+separate section. This keeps each decision next to the discussion
+that produced it.
+
+### 9.3 What to Include
+
+- Every question asked by the AI and every answer from the
+  administrator, condensed but complete
+- All decisions made, with inline Decision callouts
+- All conflicts identified with prior process documents and
+  their resolution
+- All TBD items identified with the specific question that
+  needs answering
+- All scope discoveries and whether they were handled inline
+  or deferred to the Master PRD
+- All updates needed to prior documents identified during
+  the interview
+
+### 9.4 What Not to Include
+
+- Greetings, pleasantries, and conversational filler
+- The AI's internal reasoning or analysis (only the questions
+  and answers matter)
+- Duplicate information — if the same topic was revisited,
+  combine into one Q/A group with the final answer
+
+**Signs you have enough:**
+- Every substantive exchange from the interview is captured
+- All decisions have inline callouts
+- A reviewer who was not present could reconstruct the full
+  reasoning behind every decision in the document
+
+---
+
 ## Closing the Interview
 
 ### Completeness Check
@@ -810,12 +880,15 @@ by entity:
 |----|-----------|------|----------|-------------|-------------|
 | [DOMAIN]-[PROCESS]-DAT-001 | [Name] | [Type] | [Yes/No/Conditional] | [Values or —] | [Description] |
 
-Section 9 (Interview Transcript) must contain the complete
-record of all questions asked and answers given during the
-session. Include the full conversational exchange — do not
-summarize or condense the interview content. This provides
-an audit trail and allows future reviewers to understand the
-reasoning behind decisions made during the interview.
+Section 9 (Interview Transcript) must follow the format
+defined in the Section 9 interview guide above: condensed
+Q/A pairs organized by topic area with inline Decision
+callouts. The transcript must capture all substantive
+exchanges from the interview without dropping information,
+but should condense conversational filler into clean Q/A
+pairs. This provides an audit trail and allows future
+reviewers to understand the reasoning behind every decision
+made during the interview.
 
 Commit the document to the repository at:
 `PRDs/{domain_code}/{PROCESS-CODE}.docx`
@@ -917,5 +990,6 @@ redirect:
 
 | Version | Date | Changes |
 |---|---|---|
+| 2.1 | 03-31-26 | Added Section 9 interview guide defining the transcript format standard: condensed Q/A pairs organized by topic area (not chronologically) with inline Decision callouts. Updated Document Production section to reference the new standard. Replaces prior instruction to include verbatim conversation. |
 | 2.0 | 03-30-26 | Major restructure: Split Process Purpose and Trigger into separate sections (1 and 2). Added Process Triggers section with preconditions, required data, initiation mechanism, and initiating persona. Added Process Completion section (5) covering normal completion, multiple end states, early termination, and post-completion handoffs. Reframed Process Data (7) as supporting data — required prerequisite data moved to Process Triggers. Replaced field type table with authoritative 14-type list from YAML schema. Added relationship guidance to Sections 7 and 8. Added Interview Transcript as Section 9. Document now has nine required sections. |
 | 1.0 | 03-30-26 | Initial release. Replaces entity-interview-data.md, entity-interview-process.md, and entity-interview-synthesis.md. |
