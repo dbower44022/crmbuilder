@@ -1,7 +1,7 @@
 # CRM Builder — Process Definition Interview Guide
 
-**Version:** 1.0
-**Last Updated:** 03-30-26 15:30
+**Version:** 2.0
+**Last Updated:** 03-30-26 22:30
 **Purpose:** AI interviewer guide for Phase 2 — Process Definition
 **Governing Process:** PRDs/application/CRM-Builder-Document-Production-Process.docx
 
@@ -37,30 +37,33 @@ the implementation's repository at
 
 ## What the Process Document Must Contain
 
-Every process document must contain all six of the following sections
-at field-level detail. A process document is not complete until all
-six sections meet the field-level detail standard.
+Every process document must contain all nine of the following sections.
+Sections 7 and 8 must meet the field-level detail standard. A process
+document is not complete until all nine sections are present and meet
+their respective standards.
 
 | # | Section | Content |
 |---|---------|---------|
-| 1 | Process Purpose and Trigger | What the process accomplishes and what initiates it. |
-| 2 | Personas Involved | Which personas participate and their specific role in this process. |
-| 3 | Process Workflow | What happens, in what order, and what decisions are made. Written as a numbered narrative. |
-| 4 | System Requirements | What the CRM must do to support this process. Stated as "The system must..." with unique identifiers. |
-| 5 | Process Data | Fields this process needs to already exist (pre-existing data). Grouped by entity with full field-level detail. |
-| 6 | Data Collected | Fields this process creates or updates (new data). Grouped by entity with full field-level detail. |
+| 1 | Process Purpose | What the process accomplishes and its defined end state. |
+| 2 | Process Triggers | Preconditions, required data, initiation mechanism, and initiating persona. |
+| 3 | Personas Involved | Which personas participate and their specific role in this process. |
+| 4 | Process Workflow | What happens, in what order, and what decisions are made. Written as a numbered narrative. |
+| 5 | Process Completion | How the process ends — normal completion, alternative end states, early termination, and post-completion handoffs. |
+| 6 | System Requirements | What the CRM must do to support this process. Stated as "The system must..." with unique identifiers. |
+| 7 | Process Data | Fields this process references or uses to support its work. Grouped by entity with full field-level detail. |
+| 8 | Data Collected | Fields this process creates or updates (new data). Grouped by entity with full field-level detail. |
+| 9 | Interview Transcript | Complete record of all interview questions and answers from the session. |
 
 ### Field-Level Detail Standard
 
-For both Process Data (Section 5) and Data Collected (Section 6),
+For both Process Data (Section 7) and Data Collected (Section 8),
 each field entry must include:
 
 - **Field name** — the human-readable label
-- **Field type** — text, dropdown, multi-select, date, integer,
-  currency, yes/no, etc.
+- **Field type** — one of the supported field types (see Section 8.3)
 - **Required status** — required, optional, conditional (with
   condition stated), or system-calculated
-- **Enum values** — for dropdowns and multi-selects, the complete
+- **Enum values** — for enum and multi-select fields, the complete
   list of allowed values
 - **Description** — what the field is for and how it is used in
   this process
@@ -157,27 +160,30 @@ If this is the first process in the domain:
 
 ## Interview Structure
 
-The interview walks through the six required sections in a natural
+The interview walks through the nine required sections in a natural
 conversation order. The AI does not need to announce section numbers
 to the administrator — the conversation should flow naturally. But
-the AI must ensure all six sections are covered before wrapping up.
+the AI must ensure all nine sections are covered before wrapping up.
 
 ### Section Checklist
 
-- [ ] 1. Process Purpose and Trigger
-- [ ] 2. Personas Involved
-- [ ] 3. Process Workflow
-- [ ] 4. System Requirements
-- [ ] 5. Process Data
-- [ ] 6. Data Collected
+- [ ] 1. Process Purpose
+- [ ] 2. Process Triggers
+- [ ] 3. Personas Involved
+- [ ] 4. Process Workflow
+- [ ] 5. Process Completion
+- [ ] 6. System Requirements
+- [ ] 7. Process Data
+- [ ] 8. Data Collected
+- [ ] 9. Interview Transcript
 
 ---
 
-## Section 1 — Process Purpose and Trigger
+## Section 1 — Process Purpose
 
 **What the AI is trying to learn:**
-What this process accomplishes, what event or condition initiates it,
-and what the defined end state is.
+What this process accomplishes and what the defined end state is —
+the "before and after" picture.
 
 **Opening question:**
 > "Let's start with the basics. What does the [Process Name]
@@ -185,23 +191,86 @@ and what the defined end state is.
 > process runs compared to before it started?"
 
 **Follow-up probes:**
-- "What triggers this process — what event or condition kicks it off?"
-- "Is the trigger an action by a specific person, a time-based
-  event, a condition being met, or something external?"
-- "When is this process considered complete — what does 'done'
-  look like?"
 - "How often does this process occur? Daily, weekly, per new
   [record type], on demand?"
+- "Is this a one-time event for each [record type], or can it
+  repeat?"
 
 **Signs you have enough:**
 - Clear statement of what the process accomplishes
-- Specific trigger identified
-- Defined end state
+- Defined end state — what "done" looks like
 - Frequency/volume understood
 
 ---
 
-## Section 2 — Personas Involved
+## Section 2 — Process Triggers
+
+**What the AI is trying to learn:**
+What must be true before this process can start, what specific
+event or action initiates it, and who is responsible for starting it.
+
+### 2.1 Preconditions
+
+> "Before this process can start, what needs to already be in
+> place? Think about what records must exist, what status they
+> need to be in, or what prior processes must have completed."
+
+**Follow-up probes:**
+- "Are there specific data fields that must be populated before
+  this process can begin?"
+- "Does a prior process need to have completed first? Which one?"
+- "Are there any time-based conditions — for example, a waiting
+  period or a calendar trigger?"
+
+### 2.2 Required Data
+
+> "Of those preconditions, what specific data must already exist
+> in the system for this process to start? For example, does a
+> contact record need to exist, or does a particular field need
+> to have a value?"
+
+For each required data item identified, collect the field-level
+detail:
+- What field or record must exist?
+- What specific value or state must it be in?
+- What happens if the required data is missing — does the process
+  simply not start, or is there an error/notification?
+
+### 2.3 Initiation Mechanism
+
+> "How exactly does this process get kicked off? Does someone
+> take a specific action, does it happen automatically based on
+> a condition, or is it triggered by something external?"
+
+**Follow-up probes:**
+- "Is this a manual action — someone decides to start it — or
+  is it automatic?"
+- "If manual, where does the person go to start it — what do
+  they click or do?"
+- "If automatic, what condition triggers it?"
+- "Can this process be started at any time, or only during
+  certain windows?"
+
+### 2.4 Initiating Persona
+
+> "Who is responsible for starting this process? Is it always
+> the same persona, or can different people initiate it?"
+
+**Follow-up probes:**
+- "Does the initiating persona need any special authority or
+  role to start this process?"
+- "Can someone delegate the initiation to another person?"
+
+**Signs you have enough:**
+- All preconditions identified (records, statuses, prior processes)
+- Required data specified with field-level detail
+- Initiation mechanism clearly described (manual/automatic/external)
+- Initiating persona identified with any authority requirements
+- Behavior when preconditions are not met is understood
+
+---
+
+## Section 3 — Personas Involved
 
 **What the AI is trying to learn:**
 Which personas (from the Master PRD) participate in this process and
@@ -233,14 +302,14 @@ what they actually do.
 
 ---
 
-## Section 3 — Process Workflow
+## Section 4 — Process Workflow
 
 **What the AI is trying to learn:**
 The step-by-step sequence of what happens, in enough detail that a
 knowledgeable stakeholder could follow the process end to end. This
 is the heart of the process document.
 
-### 3.1 Brain Dump First
+### 4.1 Brain Dump First
 
 > "Walk me through this process from start to finish. Don't worry
 > about being perfectly organized — just describe what happens,
@@ -250,7 +319,7 @@ is the heart of the process document.
 Let the administrator talk freely. Capture the narrative. Then
 probe for gaps and detail.
 
-### 3.2 Structured Follow-Up
+### 4.2 Structured Follow-Up
 
 After the initial walkthrough, probe each step for completeness:
 
@@ -289,7 +358,7 @@ for this entity, verify consistency:
 > transition fit within those values, or do we need to
 > add a new status?"
 
-### 3.3 Workflow Completeness Check
+### 4.3 Workflow Completeness Check
 
 After the detailed walkthrough:
 
@@ -308,7 +377,90 @@ Present the numbered workflow narrative and confirm each step.
 
 ---
 
-## Section 4 — System Requirements
+## Section 5 — Process Completion
+
+**What the AI is trying to learn:**
+How this process ends — both the normal successful conclusion and
+any alternative endings. What state records are in when the process
+is done, who declares it complete, and what happens next.
+
+### 5.1 Normal Completion
+
+> "When this process ends successfully, what does that look
+> like? What state are the records in, and how does everyone
+> know the process is done?"
+
+**Follow-up probes:**
+- "What specific conditions must be met for the process to be
+  considered complete?"
+- "Is there a final action someone takes — an approval, a
+  status change, a notification — that marks it as done?"
+
+### 5.2 Multiple End States
+
+> "Can this process end in more than one way? For example,
+> an application might be approved, declined, or withdrawn —
+> are there different outcomes like that for this process?"
+
+For each alternative end state:
+- "What is this end state called?"
+- "What conditions lead to this outcome?"
+- "What state are the records left in?"
+- "Is this end state final, or can the process be restarted
+  or reopened?"
+
+### 5.3 Who Declares Completion
+
+> "Who is responsible for marking this process as complete?
+> Is it automatic based on a condition, or does a specific
+> persona confirm it?"
+
+**Follow-up probes:**
+- "Does the same persona always close it out, or can it vary?"
+- "Is there an approval or sign-off required before the process
+  can be marked complete?"
+
+### 5.4 Post-Completion Handoffs
+
+> "After this process is complete, does anything else happen?
+> Think about whether completing this process triggers another
+> process, sends a notification, or creates a task for someone."
+
+**Follow-up probes:**
+- "Does anyone need to be notified that this process has
+  completed?"
+- "Does the completion of this process serve as a precondition
+  for any other process?"
+- "Is there any follow-up work that happens outside the system?"
+
+### 5.5 Early Termination and Exception Paths
+
+> "How does this process end when something goes wrong or
+> someone drops out? Think about situations where the process
+> can't continue — the person stops responding, a requirement
+> can't be met, or someone decides to cancel."
+
+**Follow-up probes:**
+- "Who has the authority to terminate this process early?"
+- "When a process is terminated early, what happens to the
+  records — are they deleted, archived, or left in a specific
+  status?"
+- "Can a terminated process be restarted later, or is it
+  final?"
+- "Are there any cleanup steps when a process ends early —
+  notifications, reassignments, or record updates?"
+
+**Signs you have enough:**
+- Normal completion conditions clearly defined
+- All alternative end states identified with their conditions
+- Persona responsible for declaring completion identified
+- Post-completion handoffs and notifications captured
+- Early termination paths described with authority and cleanup steps
+- Record states at each end point understood
+
+---
+
+## Section 6 — System Requirements
 
 **What the AI is trying to learn:**
 What the CRM must do to support this process. These are stated as
@@ -317,7 +469,7 @@ What the CRM must do to support this process. These are stated as
 The AI derives most requirements from the workflow discussion, then
 confirms and probes for anything missing.
 
-### 4.1 AI Proposes Requirements
+### 6.1 AI Proposes Requirements
 
 > "Based on the workflow we just defined, here are the system
 > requirements I'd write for this process. Let me go through
@@ -339,7 +491,7 @@ Present each requirement with its identifier:
 - Reporting and visibility needs specific to this process
 - Integration touchpoints (described by function, not product)
 
-### 4.2 Probe for Missing Requirements
+### 6.2 Probe for Missing Requirements
 
 > "Are there any other things the system must do to support
 > this process that I haven't captured? Think about:
@@ -348,7 +500,7 @@ Present each requirement with its identifier:
 > - Any reports or views specific to this process
 > - Any rules about who can access what data"
 
-### 4.3 Confirm Identifiers
+### 6.3 Confirm Identifiers
 
 Review all requirement identifiers with the administrator:
 
@@ -365,48 +517,67 @@ Review all requirement identifiers with the administrator:
 
 ---
 
-## Section 5 — Process Data (Pre-Existing)
+## Section 7 — Process Data (Supporting)
 
 **What the AI is trying to learn:**
-What data must already exist for this process to function — the
-fields this process reads but does not create. These are fields
-that were either established by a prior process or must exist as
-baseline data.
+What data this process references or uses to support its work —
+fields that help personas during the process but are not
+preconditions for starting it. These are fields the process reads
+but does not create.
+
+Note: Required data — fields that must exist before the process
+can start — belongs in Section 2 (Process Triggers). This section
+captures supporting and reference data only.
 
 This section is grouped by entity. Each field must meet the
 field-level detail standard.
 
-### 5.1 Opening
+### 7.1 Opening
 
-> "Now let's identify the data this process needs to already
-> exist before it can run. Think about what information a
-> [persona] needs to see or reference during this process
-> that they don't create during the process itself."
+> "Now let's identify the supporting data this process
+> references during its work. We've already covered the data
+> that must exist for the process to start — this is about
+> the additional information that helps people do their job
+> during the process, even if the process could technically
+> proceed without it."
 
-### 5.2 Walk Through the Workflow
+### 7.2 Walk Through the Workflow
 
-Go step by step through the workflow and identify what data
-each step reads:
+Go step by step through the workflow and identify what supporting
+data each step references:
 
 > "At step [N], [persona] needs to [action]. What information
-> do they need to have available to do that?"
+> do they reference or look at to help them do that — beyond
+> what we already identified as required to start the process?"
 
 For each field identified, collect the field-level detail:
 
 > "What would you call this field?"
-> "What type of data is it — a dropdown, free text, a date,
-> a number?"
+> "What type of data is it — a single selection from a list,
+> free text, a date, a number?"
 
-For dropdowns and multi-selects:
+For enum and multi-select fields:
 > "What are all the possible values?"
-
-> "Is this field required for the process to work, or is it
-> optional — meaning the process can proceed without it?"
 
 > "In a sentence, what is this field for in the context of
 > this process?"
 
-### 5.3 Check Against Prior Process Documents
+### 7.3 Relationships
+
+When the process references a connection between records — for
+example, looking up which mentor is assigned to a client, or
+viewing which organization a contact belongs to — capture it as
+a data item described in business terms.
+
+> "At this step, you mentioned looking at [the relationship].
+> Let me capture that — [proposed description]."
+
+Describe relationships in business language (e.g., "the mentor
+assigned to this client" rather than implementation terms). How
+the relationship is stored in the system is an implementation
+detail handled in Phase 5.
+
+### 7.4 Check Against Prior Process Documents
 
 For each field that was defined in a prior process document,
 verify consistency:
@@ -424,7 +595,7 @@ verify consistency:
 Resolve the conflict before proceeding. If resolution affects
 a prior document, note it as an update needed.
 
-### 5.4 Assign Identifiers
+### 7.5 Assign Identifiers
 
 Each data item gets an identifier:
 `[DOMAIN]-[PROCESS]-DAT-001`, `[DOMAIN]-[PROCESS]-DAT-002`, etc.
@@ -433,15 +604,16 @@ Group by entity in the final document. Present the identifiers
 for confirmation.
 
 **Signs you have enough:**
-- Every workflow step's data inputs identified
+- Every workflow step's supporting data inputs identified
 - All fields have complete field-level detail
+- Relationships described in business terms
 - Conflicts with prior processes resolved
 - Fields grouped by entity
 - Identifiers assigned and confirmed
 
 ---
 
-## Section 6 — Data Collected (New Data)
+## Section 8 — Data Collected (New Data)
 
 **What the AI is trying to learn:**
 What data this process creates or updates — the fields that are
@@ -451,13 +623,13 @@ this process makes.
 This section is grouped by entity. Each field must meet the
 field-level detail standard.
 
-### 6.1 Opening
+### 8.1 Opening
 
 > "Now let's identify the data this process creates or changes.
 > Think about what's different in the CRM after this process
 > runs — what new information exists that wasn't there before?"
 
-### 6.2 Walk Through the Workflow
+### 8.2 Walk Through the Workflow
 
 Go step by step through the workflow and identify what data
 each step creates or updates:
@@ -466,32 +638,34 @@ each step creates or updates:
 > gets recorded at that point?"
 
 For each field identified, collect the field-level detail
-using the same approach as Section 5.
+using the same approach as Section 7.
 
-### 6.3 Field Type Determination
+### 8.3 Field Type Determination
 
 The AI determines field types based on context. Only confirm
-with the administrator when genuinely ambiguous.
+with the administrator when genuinely ambiguous. The following
+table lists all supported field types:
 
-| Administrator describes... | AI suggests... |
-|---|---|
-| Short text, name, title, code | Text (varchar) |
-| Long notes, narrative, description | Text area or rich text |
-| Fixed set of choices, pick one | Dropdown |
-| Fixed set of choices, pick multiple | Multi-select |
-| Yes or No | Yes/No (boolean) |
-| Whole number, count, quantity | Integer |
-| Decimal, percentage, score | Decimal |
-| Date only (no time) | Date |
-| Date and time | DateTime |
-| Dollar amount, cost, revenue | Currency |
-| Web address, link | URL |
-| Email address | Email |
-| Phone number | Phone |
+| Administrator describes... | Field Type | Notes |
+|---|---|---|
+| Short text, name, title, code | varchar | Has optional max length |
+| Long notes, narrative, comments | text | Multi-line plain text |
+| Formatted content with bold, lists, links | wysiwyg | Rich text with formatting |
+| Yes or No, true/false, on/off | bool | Boolean |
+| Whole number, count, quantity | int | Has optional min/max |
+| Decimal, percentage, score, rating | float | Has optional min/max |
+| Date only (no time) | date | |
+| Date and time | datetime | |
+| Dollar amount, cost, revenue | currency | |
+| Web address, link | url | |
+| Email address | email | |
+| Phone number | phone | |
+| Fixed set of choices, pick one | enum | Requires complete list of allowed values |
+| Fixed set of choices, pick multiple | multiEnum | Requires complete list of allowed values |
 
 > "I'd store this as a [type] — [brief reason]. Does that work?"
 
-### 6.4 Status Fields and Transitions
+### 8.4 Status Fields and Transitions
 
 Status fields deserve special attention because they are the
 most commonly referenced fields across processes.
@@ -515,14 +689,28 @@ entity, reconcile:
 > [list]. Does this process add any new values, or does
 > it work within the existing set?"
 
-### 6.5 Fields Discovered During Workflow Discussion
+### 8.5 Relationships Created
+
+When the process creates or establishes a connection between
+records — for example, assigning a mentor to a client, or
+linking a meeting to an engagement — capture it as a data item
+described in business terms.
+
+> "This step creates a connection — [proposed description].
+> Let me capture the details."
+
+Describe relationships in business language. Implementation
+details (how the relationship is stored, link types, field
+names) are handled in Phase 5.
+
+### 8.6 Fields Discovered During Workflow Discussion
 
 Process interviews frequently reveal fields that weren't
 obvious until the workflow was discussed in detail. Common
 examples:
 
 - Reason fields that emerge from decision points ("Why was
-  this application declined?" → Decline Reason dropdown)
+  this application declined?" → Decline Reason enum)
 - Date fields that emerge from transitions ("When did they
   move to active?" → Activation Date)
 - Assignment fields that emerge from handoffs ("Who approved
@@ -534,15 +722,15 @@ When these emerge:
 > "That sounds like a new field — [proposed name]. Let me
 > capture the details for it."
 
-### 6.6 Assign Identifiers
+### 8.7 Assign Identifiers
 
-Continue the DAT identifier sequence from Section 5. If
-Section 5 ended at DAT-012, Section 6 starts at DAT-013.
+Continue the DAT identifier sequence from Section 7. If
+Section 7 ended at DAT-012, Section 8 starts at DAT-013.
 
 Group by entity in the final document. Present the identifiers
 for confirmation.
 
-### 6.7 TBD Handling
+### 8.8 TBD Handling
 
 When the administrator is unsure about a field detail:
 
@@ -559,6 +747,7 @@ TBD — [Field Name] — [Specific question that needs answering]
 - Every workflow step's data outputs identified
 - All fields have complete field-level detail
 - Status fields have complete value lists with descriptions
+- Relationships described in business terms
 - Conflicts with prior processes resolved
 - Fields grouped by entity
 - Identifiers assigned and confirmed
@@ -575,12 +764,14 @@ verify it meets the required standard:
 
 > "Let me do a completeness check before I produce the document."
 
-1. Process Purpose and Trigger — clear statement? ✓/✗
-2. Personas Involved — specific roles, not just names? ✓/✗
-3. Process Workflow — followable narrative? ✓/✗
-4. System Requirements — identifiers assigned? ✓/✗
-5. Process Data — field-level detail for every field? ✓/✗
-6. Data Collected — field-level detail for every field? ✓/✗
+1. Process Purpose — clear statement of what the process accomplishes? ✓/✗
+2. Process Triggers — preconditions, required data, mechanism, and persona? ✓/✗
+3. Personas Involved — specific roles, not just names? ✓/✗
+4. Process Workflow — followable narrative? ✓/✗
+5. Process Completion — all end states, handoffs, and early termination? ✓/✗
+6. System Requirements — identifiers assigned? ✓/✗
+7. Process Data — field-level detail for every supporting field? ✓/✗
+8. Data Collected — field-level detail for every field? ✓/✗
 
 If any section is incomplete:
 > "Section [N] isn't quite at the level of detail we need.
@@ -593,12 +784,13 @@ If any section is incomplete:
 > Name] process:
 >
 > - Purpose: [one sentence]
-> - Trigger: [what initiates it]
+> - Triggers: [preconditions, mechanism, initiating persona]
 > - Personas: [list with roles]
 > - Workflow: [N] steps from [start] to [end]
+> - Completion: [normal end state plus N alternative end states]
 > - System Requirements: [N] requirements ([first ID] through
 >   [last ID])
-> - Process Data: [N] pre-existing fields across [N] entities
+> - Process Data: [N] supporting fields across [N] entities
 > - Data Collected: [N] new fields across [N] entities
 > - TBD items: [N]
 >
@@ -607,9 +799,9 @@ If any section is incomplete:
 ### Document Production
 
 After confirmation, produce the process document as a Word
-document with all six required sections at field-level detail.
+document with all nine required sections.
 
-For Sections 5 and 6, present field data in tables grouped
+For Sections 7 and 8, present field data in tables grouped
 by entity:
 
 **Entity: [Entity Name]**
@@ -617,6 +809,13 @@ by entity:
 | ID | Field Name | Type | Required | Enum Values | Description |
 |----|-----------|------|----------|-------------|-------------|
 | [DOMAIN]-[PROCESS]-DAT-001 | [Name] | [Type] | [Yes/No/Conditional] | [Values or —] | [Description] |
+
+Section 9 (Interview Transcript) must contain the complete
+record of all questions asked and answers given during the
+session. Include the full conversational exchange — do not
+summarize or condense the interview content. This provides
+an audit trail and allows future reviewers to understand the
+reasoning behind decisions made during the interview.
 
 Commit the document to the repository at:
 `PRDs/{domain_code}/{PROCESS-CODE}.docx`
@@ -662,7 +861,7 @@ like two people walking through the process together, discovering
 each step as they go. "And then what happens?" is often the most
 productive question.
 
-**Capture fields as they emerge.** Don't wait for Sections 5 and 6
+**Capture fields as they emerge.** Don't wait for Sections 7 and 8
 to discuss data. When a field naturally emerges during the workflow
 discussion, capture it immediately. Then organize it into the right
 section when producing the document.
@@ -718,4 +917,5 @@ redirect:
 
 | Version | Date | Changes |
 |---|---|---|
+| 2.0 | 03-30-26 | Major restructure: Split Process Purpose and Trigger into separate sections (1 and 2). Added Process Triggers section with preconditions, required data, initiation mechanism, and initiating persona. Added Process Completion section (5) covering normal completion, multiple end states, early termination, and post-completion handoffs. Reframed Process Data (7) as supporting data — required prerequisite data moved to Process Triggers. Replaced field type table with authoritative 14-type list from YAML schema. Added relationship guidance to Sections 7 and 8. Added Interview Transcript as Section 9. Document now has nine required sections. |
 | 1.0 | 03-30-26 | Initial release. Replaces entity-interview-data.md, entity-interview-process.md, and entity-interview-synthesis.md. |
