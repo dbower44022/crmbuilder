@@ -1,7 +1,7 @@
 # CRM Builder — Domain Reconciliation Guide
 
-**Version:** 1.0
-**Last Updated:** 03-30-26 16:00
+**Version:** 1.1
+**Last Updated:** 04-01-26 07:00
 **Purpose:** AI guide for Phase 3 — Domain Reconciliation
 **Governing Process:** PRDs/application/CRM-Builder-Document-Production-Process.docx
 
@@ -42,7 +42,7 @@ The Domain PRD has six sections:
 |---|---------|---------|
 | 1 | Domain Overview | Expanded business context for the domain. |
 | 2 | Personas | Domain-specific roles for each participating persona. |
-| 3 | Business Processes | One subsection per process, each containing all six required sections from the process documents. |
+| 3 | Business Processes | One subsection per process, each containing all eight required sections from the process documents (see Step 2 for the section list and what is excluded). |
 | 4 | Data Reference | Consolidated view of all data in the domain, organized by entity, with full field-level detail. |
 | 5 | Decisions Made | Record of all decisions made during the process definition conversations. |
 | 6 | Open Issues | Unresolved questions requiring answers before implementation. |
@@ -268,18 +268,39 @@ than by process.
 
 ### Section 3: Business Processes
 
-Include all six required sections from each process document,
+Include all eight required sections from each process document,
 in the dependency order established in the Master PRD. This is
 primarily a reorganization — the content comes directly from the
 process documents with any conflict resolutions applied.
 
-For each process:
-1. Process Purpose and Trigger
-2. Personas Involved
-3. Process Workflow
-4. System Requirements (with identifiers)
-5. Process Data (with identifiers and field-level detail)
-6. Data Collected (with identifiers and field-level detail)
+For each process, include these eight sections:
+1. Process Purpose
+2. Process Triggers (preconditions, required data, initiation
+   mechanism, initiating persona — preserve the structured detail,
+   do not merge into a brief paragraph with Process Purpose)
+3. Personas Involved
+4. Process Workflow
+5. Process Completion (normal completion, alternative end states,
+   who declares completion, post-completion handoffs, early
+   termination if applicable — this section contains important
+   lifecycle rules that must not be omitted)
+6. System Requirements (full requirement tables with identifiers)
+7. Process Data (narrative summary of what data this process reads,
+   with field IDs and entity names, referencing Section 4 Data
+   Reference for full field-level detail — do not duplicate field
+   tables here)
+8. Data Collected (narrative summary of what data this process
+   creates or updates, with field IDs and entity names, referencing
+   Section 4 Data Reference for full field-level detail — do not
+   duplicate field tables here)
+
+**Sections excluded per process (with rationale):**
+- Open Issues — compiled into Domain PRD Section 6, not repeated
+  per process
+- Updates to Prior Documents — these have already been applied to
+  the process documents and are not needed in the Domain PRD
+- Interview Transcript — source material for the process document,
+  not domain-level content
 
 **Apply conflict resolutions:** Where a conflict was resolved
 in Step 1, use the resolved definition. Do not carry forward
@@ -433,4 +454,5 @@ generation in Phase 5.
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.1 | 04-01-26 | Updated Business Processes section from 6 to 8 required sections per process to match the current 11-section process document format (v2.4). Added Process Triggers and Process Completion as separate sections. Added explicit exclusion list (Open Issues, Updates to Prior Documents, Interview Transcript) with rationale. Changed Process Data and Data Collected to narrative summaries referencing Section 4 Data Reference instead of duplicating field tables. |
 | 1.0 | 03-30-26 | Initial release. |
