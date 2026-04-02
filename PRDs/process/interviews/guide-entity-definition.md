@@ -1,7 +1,7 @@
 # CRM Builder — Entity Definition Guide
 
-**Version:** 1.0
-**Last Updated:** 04-01-26 08:00
+**Version:** 1.1
+**Last Updated:** 04-02-26 14:00
 **Purpose:** AI guide for Phase 2 — Entity Definition
 **Governing Process:** PRDs/process/CRM-Builder-Document-Production-Process.docx
 
@@ -43,6 +43,20 @@ committed to the implementation's repository at
 **Output for Phase 2b:** One Word document per CRM entity — the
 Entity PRD — committed to the implementation's repository at
 `PRDs/entities/{EntityName}-Entity-PRD.docx`.
+
+**Generator template:** A data-driven document generator is
+available at `PRDs/process/templates/generate-entity-prd-template.js`
+in the CRM Builder repository. The template separates entity-specific
+data (an ENTITY object at the top of the file) from the rendering
+engine (bottom of the file). To produce an Entity PRD: copy the
+template, replace the ENTITY object with the entity's data from the
+session, and run with Node.js. The rendering engine is never modified.
+
+**Reference implementation:** The Contact Entity PRD (Cleveland
+Business Mentors) is the reference implementation for Entity PRD
+format and content. It demonstrates all nine sections, the
+batched-decision interview approach, and the generator template
+data structure for a complex shared entity spanning four domains.
 
 ---
 
@@ -305,12 +319,14 @@ provides the implementation mapping.
 >
 > 1. I'll compile all fields for [Entity Name] from the source
 >    documents, identifying which are native and which are custom.
-> 2. For shared entities, I'll identify which fields are shared
->    across types and which are type-specific.
-> 3. I'll propose the complete field list, relationships, and
->    implementation details.
-> 4. We'll review together and resolve any questions.
-> 5. I'll produce the Entity PRD document.
+> 2. For shared entities, I'll sort custom fields into three
+>    buckets: clearly shared, clearly type-specific, and needs
+>    discussion. You'll confirm the first two as groups.
+> 3. We'll work through the needs-discussion bucket one question
+>    at a time.
+> 4. I'll present the complete field compilation for review.
+> 5. I'll produce the Entity PRD document using the generator
+>    template.
 >
 > Ready?"
 
@@ -409,6 +425,13 @@ properties:
 **Section 8: Open Issues**
 Unresolved questions specific to this entity's implementation.
 
+**Section 9: Decisions Made**
+Decisions made during the entity definition session. Each decision
+has an identifier (format: {ENTITY-CODE}-DEC-NNN) and a description
+of the decision and its rationale. Decisions that affect other
+Entity PRDs should be cross-referenced (e.g., "Primary Contact is
+on the Account-Contact relationship — see Account Entity PRD").
+
 ---
 
 ## Critical Rules
@@ -448,15 +471,30 @@ for update when those domains are defined.
 
 ## Important AI Behaviors During Entity Definition
 
+**Batch obvious decisions, drill into ambiguous ones.** Do not ask
+about each field individually. Compile the full field inventory from
+source documents and present it in three buckets: clearly shared
+(confirm as a group), clearly type-specific (confirm as a group),
+and needs discussion (resolve one at a time). A field is "clearly
+type-specific" if it is defined in only one domain for only one
+entity type and has no plausible cross-type applicability. A field
+"needs discussion" if it could reasonably be shared or type-specific,
+if it affects other entities, or if it raises a design question.
+This approach dramatically reduces session length while preserving
+thoroughness on the questions that matter.
+
+**Upload and reference prior Entity PRDs.** When producing Entity
+PRDs for entities that have relationships to already-defined
+entities, upload the prior Entity PRDs as session input. Decisions
+in prior Entity PRDs may create requirements for the current entity
+(e.g., "Primary Contact is on the Account-Contact relationship"
+decided in the Contact Entity PRD creates a requirement the Account
+Entity PRD must implement).
+
 **Be thorough with native field identification.** The most common
 error in YAML generation is attempting to create a field that
 already exists natively. Take time to identify all native fields
 for the entity type.
-
-**Ask about shared fields explicitly.** When building an Entity PRD
-for a shared entity like Contact, ask the administrator about each
-field: "Is this field shared across all contact types, or specific
-to [type]?" Do not assume.
 
 **Propose implementation names.** The administrator uses business
 names ("Mentoring Focus Areas"). The AI should propose the
@@ -467,6 +505,13 @@ confirm.
 fields from a domain whose process documents are not yet complete,
 flag this explicitly. The Entity PRD may need to be updated when
 those domains are defined.
+
+**Use the generator template.** After all decisions are made and the
+field compilation is confirmed, use the Entity PRD generator template
+to produce the Word document. Copy the template, populate the ENTITY
+data object with the session's content, run with Node.js, and
+validate. The rendering engine is never modified — only the data
+changes per entity.
 
 **The Entity PRD is the YAML generator's primary input.** Every
 field that should appear in YAML must be in the Entity PRD. Every
@@ -500,4 +545,5 @@ Document Production Process.
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.1 | 04-02-26 | Added batched-decision approach to AI behaviors. Added generator template reference and usage instructions. Added reference implementation note (Contact Entity PRD). Added Section 9 (Decisions Made) to Entity PRD structure. Updated State the Plan to reflect batched workflow. Replaced "ask about each field" with three-bucket batching. Added prior Entity PRD cross-referencing guidance. |
 | 1.0 | 04-01-26 | Initial release. |
