@@ -1,0 +1,149 @@
+# Bigin (by Zoho) CRM Platform Profile
+name: "Bigin (by Zoho)"
+slug: bigin
+type: Lightweight CRM (SaaS)
+deployment: Cloud only
+last_reviewed: 2026-03-30
+open_source: false
+license: Proprietary
+
+pricing:
+  free_tier: "Free (1 user, 5K API credits/day)"
+  min_paid_per_user_month: 7
+  full_admin_api_per_user_month: na
+  enterprise_per_user_month: 18
+  currency: USD
+  notes: "Enterprise tier is Bigin 360; limited admin API across all plans"
+
+api:
+  protocol: [REST]
+  format: [JSON]
+  version: "Zoho CRM API patterns"
+  auth_methods: ["OAuth 2.0 (Zoho-oauthtoken)"]
+  rate_limit: "Credit-based: Free 5K/day; Paid 50K-100K/day. Concurrency: 5-10 simultaneous."
+
+# ─── Standard Entities ──────────────────────────────────────────────
+standard_entities:
+  contact: {name: Contacts, api_name: Contacts}
+  company: {name: Companies, api_name: Accounts, notes: "Accounts in API"}
+  deal: {name: Deals, api_name: Deals, notes: "Via Pipelines"}
+  product: {name: Products, api_name: Products}
+  task: {name: Tasks, api_name: Tasks}
+  event: {name: Events, api_name: Events}
+  call: {name: Calls, api_name: Calls}
+  note: {name: Notes, api_name: Notes}
+  pipeline: {name: Team Pipelines, api_name: pipelines, notes: "Organizational structure with custom stages/fields per pipeline"}
+  label_renamable_via_api: false
+
+# ─── Entity Management ─────────────────────────────────────────────
+entity_management:
+  create_entity:
+    rating: none
+    method: "No custom modules — key difference from Zoho CRM"
+    notes: "Team Pipelines (up to 5-15 by plan) provide some flexibility with custom stages/fields per pipeline"
+  delete_entity:
+    rating: na
+
+# ─── Field Management ──────────────────────────────────────────────
+field_management:
+  create_field:
+    rating: none
+    method: "Field metadata readable via GET /settings/fields?module={name}, but creation not in Bigin API subset"
+    notes: "Max 10-50 custom fields per module by plan; 20+ field types available"
+
+  read_metadata:
+    rating: full
+    method: "GET /settings/fields?module={name}"
+
+  field_types:
+    varchar: {equivalent: text, creatable: false, notes: "API not available for creation"}
+    text: {equivalent: textarea, creatable: false}
+    wysiwyg: {equivalent: na, creatable: false, notes: "No rich text field type"}
+    enum: {equivalent: picklist, creatable: false}
+    multiEnum: {equivalent: "multi-select picklist", creatable: false}
+    bool: {equivalent: "boolean/checkbox", creatable: false}
+    int: {equivalent: number, creatable: false}
+    float: {equivalent: decimal, creatable: false}
+    date: {equivalent: date, creatable: false}
+    datetime: {equivalent: datetime, creatable: false}
+    currency: {equivalent: currency, creatable: false}
+    url: {equivalent: URL, creatable: false}
+    email: {equivalent: email, creatable: false}
+    phone: {equivalent: phone, creatable: false}
+  all_current_types_supported: false
+  missing_types: [wysiwyg]
+  additional_types:
+    - {name: auto_number, creatable: false}
+    - {name: formula, creatable: false}
+    - {name: lookup, creatable: false}
+    - {name: ownerlookup, creatable: false}
+    - {name: jsonobject, creatable: false}
+
+  field_properties:
+    api_name: {supported: true, notes: "Readable via API"}
+    field_label: {supported: true, notes: "Readable via API"}
+    data_type: {supported: true, notes: "Readable via API"}
+    length: {supported: true, notes: "Readable via API"}
+    read_only: {supported: true, notes: "Readable via API"}
+    visible: {supported: true, notes: "Readable via API"}
+    system_mandatory: {supported: true, notes: "Readable via API"}
+    custom_field: {supported: true, notes: "Readable via API"}
+    view_type: {supported: true, notes: "Readable via API"}
+    mass_update: {supported: true, notes: "Readable via API"}
+    decimal_place: {supported: true, notes: "Readable via API"}
+    picklist_values: {supported: true, notes: "Readable via API"}
+    lookup_module: {supported: true, notes: "Readable via API"}
+    notes: "All properties readable; setting via API not documented"
+
+# ─── Layout Management ─────────────────────────────────────────────
+layout_management:
+  read_layouts:
+    rating: read_only
+    method: "Layout metadata retrievable via API"
+    notes: "Zoho CRM v8 has update layout API but not available in Bigin API subset"
+  write_layouts:
+    rating: none
+  multiple_list_views:
+    supported: true
+    api_creatable: false
+    notes: "Custom views with filters in UI; API can use cvid param but cannot create views"
+
+# ─── Relationship Management ───────────────────────────────────────
+relationship_management:
+  create_relationship:
+    rating: partial
+    method: "Related Records API (GET/update); lookup fields supported (max 5/module on Express+)"
+    notes: "Lookup fields cannot be created for Tasks and Events"
+  built_in_relationships:
+    - "Contacts→Companies (lookup)"
+    - "Deals→Contacts/Companies/Products (lookup)"
+
+# ─── Data Operations ───────────────────────────────────────────────
+data_operations:
+  create_record: {rating: full, method: "POST /v2/{module}"}
+  read_record: {rating: full, method: "GET /v2/{module}/{id}"}
+  update_record: {rating: full, method: "PUT /v2/{module}/{id}"}
+  delete_record: {rating: full, method: "DELETE /v2/{module}/{id}"}
+  search_by_field: {rating: full, method: "4 search types: criteria-based, email, phone, word"}
+  batch_create: {rating: full, method: "Batch insert up to 100 records/call"}
+  bulk_operations: {rating: full, method: "Bulk read/write (async)"}
+  query_api: {rating: full, method: "SQL-like query API (COQL)"}
+  pagination: {default_per_page: 200}
+
+# ─── Future Capabilities ──────────────────────────────────────────
+workflow_automation:
+  create_rules: {rating: none, notes: "UI workflow rules with email/field-update/tag/webhook actions; 3-100 rules by plan"}
+  create_flows: {rating: none}
+
+roles_permissions:
+  create_roles: {rating: read_only, notes: "GET /settings/roles, GET /settings/profiles; creation/management UI-only"}
+
+dashboards_reports:
+  create_dashboards: {rating: none}
+
+email_templates:
+  crud_templates: {rating: none, notes: "Not documented"}
+
+webhooks_events:
+  outbound_webhooks: {rating: partial, notes: "Notification APIs for module record changes; configurable via workflow rules (max 6 per rule, 10 CRM fields per payload)"}
+  notification_subscriptions: {rating: partial, notes: "Notification subscriptions may be API-configurable"}

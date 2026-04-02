@@ -1,0 +1,100 @@
+# Vtiger CRM Platform Profile
+name: Vtiger
+slug: vtiger
+type: Cloud CRM + open-source Community
+deployment: Cloud or self-hosted (Community)
+last_reviewed: 2026-03-30
+open_source: true
+license: "MPL-derived (Community); Proprietary (Cloud)"
+
+pricing:
+  free_tier: "Community Edition (OSS, self-hosted)"
+  min_paid_per_user_month: 15
+  full_admin_api_per_user_month: na
+  enterprise_per_user_month: 58
+  currency: USD
+
+api:
+  protocol: [REST]
+  format: [JSON]
+  version: "webservice.php + VTAP (Cloud)"
+  auth_methods: ["Basic auth + access key", "Session-based"]
+
+# ─── Standard Entities ──────────────────────────────────────────────
+standard_entities:
+  contact: {name: Contacts, api_name: Contacts}
+  organization: {name: Organizations, api_name: Accounts}
+  lead: {name: Leads, api_name: Leads}
+  deal: {name: Potentials, api_name: Potentials, notes: "Deals"}
+  case: {name: Cases, api_name: HelpDesk}
+  task: {name: Tasks, api_name: Calendar, notes: "type=Task"}
+  event: {name: Events, api_name: Events}
+  call: {name: Calls, api_name: PhoneCalls}
+  email: {name: Emails, api_name: Emails}
+  campaign: {name: Campaigns, api_name: Campaigns}
+  product: {name: Products, api_name: Products}
+  quote: {name: Quotes, api_name: Quotes}
+  sales_order: {name: Sales Orders, api_name: SalesOrder}
+  invoice: {name: Invoices, api_name: Invoice}
+  document: {name: Documents, api_name: Documents}
+  user: {name: Users, api_name: Users}
+  label_renamable_via_api: false
+
+# ─── Entity Management ─────────────────────────────────────────────
+entity_management:
+  create_entity:
+    rating: none
+    method: "Module Builder UI only"
+  delete_entity:
+    rating: none
+    method: "UI only"
+
+# ─── Field Management ──────────────────────────────────────────────
+field_management:
+  create_field:
+    rating: none
+    method: "UI only — no API endpoint for field creation"
+  read_metadata:
+    rating: full
+    method: "describe operation via webservice.php"
+
+# ─── Layout Management ─────────────────────────────────────────────
+layout_management:
+  read_layouts:
+    rating: none
+  write_layouts:
+    rating: none
+  multiple_list_views:
+    supported: true
+    api_creatable: false
+    notes: "Custom views in UI; describe operation returns metadata but no view creation API"
+
+# ─── Relationship Management ───────────────────────────────────────
+relationship_management:
+  create_relationship:
+    rating: none
+    method: "UI only — no API for relationship definition"
+
+# ─── Data Operations ───────────────────────────────────────────────
+data_operations:
+  create_record: {rating: full, method: "create operation via webservice.php"}
+  read_record: {rating: full, method: "retrieve operation via webservice.php"}
+  update_record: {rating: full, method: "revise/update operation via webservice.php"}
+  delete_record: {rating: full, method: "delete operation via webservice.php"}
+  search_by_field: {rating: full, method: "query operation (VQL) via webservice.php"}
+
+# ─── Future Capabilities ──────────────────────────────────────────
+workflow_automation:
+  create_rules: {rating: none}
+
+roles_permissions:
+  create_roles: {rating: none}
+
+dashboards_reports:
+  create_dashboards: {rating: none}
+
+email_templates:
+  crud_templates: {rating: unknown}
+
+webhooks_events:
+  outbound_webhooks: {rating: unknown}

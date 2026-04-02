@@ -1,0 +1,241 @@
+# CRM Builder Feature Reference (Baseline)
+#
+# This file defines what CRM Builder currently implements against EspoCRM.
+# Platform files are evaluated against this baseline.
+
+name: CRM Builder
+version: "1.0"
+target_platform: EspoCRM
+last_updated: 2026-03-30
+
+# ─── Entity Management ────────────────────────────────────────────────
+
+entity_management:
+  create_entity:
+    supported: true
+    method: "POST /api/v1/EntityManager/action/createEntity"
+    types: [Base, Person, Company, Event]
+    properties:
+      - name
+      - type
+      - labelSingular
+      - labelPlural
+      - stream
+      - disabled
+    naming_convention: "C-prefix auto-applied by EspoCRM"
+
+  delete_entity:
+    supported: true
+    method: "POST /api/v1/EntityManager/action/removeEntity"
+
+  check_existence:
+    supported: true
+    method: "GET /api/v1/Metadata?key=scopes.{entity}"
+
+  cache_rebuild:
+    supported: true
+    method: "POST /api/v1/Admin/rebuild"
+
+  native_entities:
+    - Contact
+    - Account
+    - Lead
+    - Opportunity
+    - Case
+    - Task
+    - Meeting
+    - Call
+    - Email
+    - Document
+    - Campaign
+    - TargetList
+    - User
+    - Team
+
+# ─── Field Management ─────────────────────────────────────────────────
+
+field_management:
+  create_field:
+    supported: true
+    method: "POST /api/v1/Admin/fieldManager/{entity}"
+    auto_custom_flag: true  # isCustom: true injected automatically
+
+  update_field:
+    supported: true
+    method: "PUT /api/v1/Admin/fieldManager/{entity}/{field}"
+
+  read_metadata:
+    supported: true
+    methods:
+      single: "GET /api/v1/Metadata?key=entityDefs.{entity}.fields.{field}"
+      single_alt: "GET /api/v1/Admin/fieldManager/{entity}/{field}"
+      all: "GET /api/v1/Metadata?key=entityDefs.{entity}.fields"
+
+  field_types:
+    varchar:
+      label: "Single-line text"
+      properties: [label, required, default, readOnly, audited, maxLength, description, tooltip, copyToClipboard, category]
+    text:
+      label: "Multi-line text"
+      properties: [label, required, default, readOnly, audited, maxLength, description, tooltip, category]
+    wysiwyg:
+      label: "Rich text (HTML)"
+      full_width: true
+      properties: [label, required, readOnly, audited, description, tooltip, category]
+    enum:
+      label: "Single-select dropdown"
+      properties: [label, required, default, readOnly, audited, options, translatedOptions, optionDescriptions, style, isSorted, displayAsLabel, description, tooltip, category]
+    multiEnum:
+      label: "Multi-select dropdown"
+      properties: [label, required, default, readOnly, audited, options, translatedOptions, optionDescriptions, style, isSorted, displayAsLabel, description, tooltip, category]
+    bool:
+      label: "Checkbox (boolean)"
+      properties: [label, required, default, readOnly, audited, description, tooltip, category]
+    int:
+      label: "Integer number"
+      properties: [label, required, default, readOnly, audited, min, max, description, tooltip, category]
+    float:
+      label: "Floating-point number"
+      properties: [label, required, default, readOnly, audited, min, max, description, tooltip, category]
+    date:
+      label: "Date picker"
+      properties: [label, required, default, readOnly, audited, description, tooltip, category]
+    datetime:
+      label: "Date and time"
+      properties: [label, required, default, readOnly, audited, description, tooltip, category]
+    currency:
+      label: "Monetary value"
+      properties: [label, required, default, readOnly, audited, min, max, description, tooltip, category]
+    url:
+      label: "URL"
+      properties: [label, required, default, readOnly, audited, maxLength, description, tooltip, copyToClipboard, category]
+    email:
+      label: "Email address"
+      properties: [label, required, default, readOnly, audited, description, tooltip, category]
+    phone:
+      label: "Phone number"
+      properties: [label, required, default, readOnly, audited, description, tooltip, category]
+
+  field_properties:
+    label: {type: string, description: "Display label"}
+    required: {type: bool, description: "Field is mandatory"}
+    default: {type: string, description: "Default value"}
+    readOnly: {type: bool, description: "Prevents editing"}
+    audited: {type: bool, description: "Logs changes to audit trail"}
+    min: {type: int, description: "Minimum numeric value"}
+    max: {type: int, description: "Maximum numeric value"}
+    maxLength: {type: int, description: "String length limit"}
+    description: {type: string, description: "Help text"}
+    tooltip: {type: string, description: "Hover tooltip text"}
+    options: {type: list, description: "Enum option values"}
+    translatedOptions: {type: dict, description: "Option value -> display label mapping"}
+    optionDescriptions: {type: dict, description: "Option value -> description mapping"}
+    style: {type: dict, description: "Option value -> color coding"}
+    isSorted: {type: bool, description: "Sort enum options alphabetically"}
+    displayAsLabel: {type: bool, description: "Render as label badge"}
+    copyToClipboard: {type: bool, description: "Show copy button"}
+    category: {type: string, description: "Layout grouping category"}
+
+# ─── Layout Management ────────────────────────────────────────────────
+
+layout_management:
+  read_layouts:
+    supported: true
+    method: "GET /api/v1/Layout/action/getOriginal?scope={entity}&name={type}"
+
+  write_layouts:
+    supported: true
+    method: "PUT /api/v1/{entity}/layout/{type}"
+
+  layout_types:
+    detail:
+      structure: panels
+      features: [panels, tabs, conditionalVisibility, fieldWidthControl, emptyCellHandling]
+    edit:
+      structure: panels
+      features: [panels, tabs, conditionalVisibility, fieldWidthControl, emptyCellHandling]
+    list:
+      structure: columns
+      features: [fieldWidthControl]
+
+  panel_properties:
+    - customLabel
+    - tabBreak
+    - tabLabel
+    - style  # default, success, danger, warning, info
+    - hidden
+    - dynamicLogicVisible
+    - noteText
+    - noteStyle
+    - rows
+
+  grid: "2-column fixed"
+  empty_cell: "false or null"
+
+# ─── Relationship Management ──────────────────────────────────────────
+
+relationship_management:
+  create_relationship:
+    supported: true
+    method: "POST /api/v1/EntityManager/action/createLink"
+
+  check_existence:
+    supported: true
+    method: "GET /api/v1/Metadata?key=entityDefs.{entity}.links.{link}"
+
+  relationship_types:
+    oneToMany: true
+    manyToOne: true
+    manyToMany: true  # requires relationName
+
+  properties:
+    - entity
+    - entityForeign
+    - link
+    - linkForeign
+    - label
+    - labelForeign
+    - linkType
+    - relationName  # manyToMany only
+    - audited
+    - auditedForeign
+
+# ─── Data Import ──────────────────────────────────────────────────────
+
+data_operations:
+  create_record:
+    supported: true
+    method: "POST /api/v1/{entity}"
+  read_record:
+    supported: true
+    method: "GET /api/v1/{entity}/{id}"
+  update_record:
+    supported: true
+    method: "PATCH /api/v1/{entity}/{id}"
+    non_overwrite: true  # CRM Builder logic: never overwrites non-empty fields
+  search_by_email:
+    supported: true
+    method: "GET /api/v1/{entity}?where[0][type]=equals&where[0][attribute]=emailAddress&where[0][value]={email}"
+  phone_normalization: true  # E.164 auto-cleaning
+  name_derivation: true  # firstName/lastName from name or email
+
+# ─── Authentication ───────────────────────────────────────────────────
+
+authentication:
+  methods:
+    api_key:
+      header: "X-Api-Key"
+    hmac:
+      header: "X-Hmac-Authorization"
+      algorithm: "HMAC-SHA256"
+      signature_format: "{method} /{uri}"
+    basic:
+      header: "Authorization: Basic / Espo-Authorization"
+  admin_required: true
+
+# ─── Operation Modes ──────────────────────────────────────────────────
+
+operation_modes:
+  - check   # Read-only verification, preview
+  - act     # Apply changes
+  - verify  # Post-action confirmation

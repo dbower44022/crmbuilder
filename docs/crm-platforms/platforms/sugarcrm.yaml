@@ -1,0 +1,236 @@
+# SugarCRM Platform Profile
+name: SugarCRM
+slug: sugarcrm
+type: Commercial CRM (cloud + on-premise)
+deployment: Sugar Cloud or on-premise (Enterprise only)
+last_reviewed: 2026-03-30
+open_source: false
+license: "Proprietary (current versions; SugarCRM CE was open-source, now SuiteCRM)"
+
+pricing:
+  free_tier: null
+  min_paid_per_user_month: 49
+  full_admin_api_per_user_month: 49
+  enterprise_per_user_month: 85
+  currency: USD
+
+api:
+  protocol: [REST]
+  format: [JSON]
+  version: v11.5
+  auth_methods: ["OAuth 2.0"]
+  rate_limit: "Unlimited (no published rate limit)"
+  admin_auth: "Admin user with Administrator role"
+
+# ─── Standard Entities ──────────────────────────────────────────────
+standard_entities:
+  account: {name: Accounts, api_name: Accounts}
+  contact: {name: Contacts, api_name: Contacts}
+  lead: {name: Leads, api_name: Leads}
+  opportunity: {name: Opportunities, api_name: Opportunities}
+  case: {name: Cases, api_name: Cases}
+  quote: {name: Quotes, api_name: Quotes}
+  product: {name: "Products (Catalog)", api_name: ProductTemplates}
+  revenue_line_item: {name: Revenue Line Items, api_name: RevenueLineItems}
+  forecast: {name: Forecasts, api_name: Forecasts}
+  campaign: {name: Campaigns, api_name: Campaigns}
+  target: {name: Targets, api_name: Prospects}
+  target_list: {name: Target Lists, api_name: ProspectLists}
+  call: {name: Calls, api_name: Calls}
+  meeting: {name: Meetings, api_name: Meetings}
+  task: {name: Tasks, api_name: Tasks}
+  note: {name: Notes, api_name: Notes}
+  email: {name: Emails, api_name: Emails}
+  email_template: {name: Email Templates, api_name: EmailTemplates}
+  document: {name: Documents, api_name: Documents}
+  contract: {name: Contracts, api_name: Contracts}
+  project: {name: Projects, api_name: Project}
+  user: {name: Users, api_name: Users}
+  team: {name: Teams, api_name: Teams}
+  role: {name: Roles, api_name: ACLRoles}
+  report: {name: Reports, api_name: Reports}
+  dashboard: {name: Dashboards, api_name: Dashboards}
+  tag: {name: Tags, api_name: Tags}
+  bug: {name: Bugs, api_name: Bugs}
+  knowledge_base: {name: Knowledge Base, api_name: KBContents}
+  label_renamable_via_api: true
+  label_rename_method: "Language file customization via REST API or Module Loader"
+
+# ─── Entity Management ─────────────────────────────────────────────
+entity_management:
+  create_entity:
+    rating: indirect
+    min_edition: all
+    method: "Module Loader — POST /Administration/packages + install endpoint"
+    max_entities: unlimited
+    naming_convention: "Module name with optional _c suffix for custom modules"
+    notes: "Custom modules are created via Module Loader packages. Templates available: Basic, Company, File, Issue, Person, Sale. Cache rebuild (Quick Repair and Rebuild) required after installation."
+    templates: [Basic, Company, File, Issue, Person, Sale]
+  delete_entity:
+    rating: indirect
+    method: "Module Loader — uninstall package"
+  check_existence:
+    rating: full
+    method: "GET /rest/v11_5/metadata?type_filter=modules"
+  entity_types:
+    available: [Basic, Company, File, Issue, Person, Sale]
+    notes: "Templates determine base fields and behaviors for custom modules"
+  cache_rebuild:
+    rating: full
+    required: true
+    method: "POST /rest/v11_5/Administration/repair — Quick Repair and Rebuild"
+
+# ─── Field Management ──────────────────────────────────────────────
+field_management:
+  create_field:
+    rating: full
+    min_edition: all
+    method: "POST /rest/v11_5/Metadata/fields/{module}"
+    max_fields_per_module: unlimited
+    naming_convention: "_c suffix for custom fields"
+
+  update_field:
+    rating: full
+    method: "PUT /rest/v11_5/Metadata/fields/{module}/{field}"
+
+  read_metadata:
+    rating: full
+    method: "GET /rest/v11_5/metadata?type_filter=fields&module_filter={module}"
+
+  field_types:
+    varchar: {equivalent: varchar, creatable: true}
+    text: {equivalent: text, creatable: true}
+    wysiwyg: {equivalent: html, creatable: true}
+    enum: {equivalent: enum, creatable: true}
+    multiEnum: {equivalent: multienum, creatable: true}
+    bool: {equivalent: bool, creatable: true}
+    int: {equivalent: int, creatable: true}
+    float: {equivalent: "float/decimal", creatable: true}
+    date: {equivalent: date, creatable: true}
+    datetime: {equivalent: datetime, creatable: true}
+    currency: {equivalent: currency, creatable: true}
+    url: {equivalent: url, creatable: true}
+    email: {equivalent: email, creatable: true}
+    phone: {equivalent: phone, creatable: true}
+  all_current_types_supported: true
+  additional_types:
+    - {name: autoincrement, creatable: true}
+    - {name: formula, creatable: true, notes: "SugarLogic formula expressions"}
+    - {name: relate, creatable: true, notes: "Related record lookup"}
+    - {name: link, creatable: true, notes: "Relationship link field"}
+    - {name: image, creatable: true}
+    - {name: file, creatable: true}
+    - {name: encrypt, creatable: true, notes: "Encrypted field storage"}
+    - {name: parent, creatable: true, notes: "Flex relate — polymorphic relationship"}
+    - {name: radioenum, creatable: true}
+    - {name: dynamicenum, creatable: true}
+    - {name: json, creatable: true}
+    - {name: tag, creatable: true}
+
+  field_properties:
+    label: {supported: true, api_key: label}
+    required: {supported: true, api_key: required}
+    default: {supported: true, api_key: default_value}
+    unique: {supported: false, notes: "Not a direct field property — enforced via DB index"}
+    tooltip: {supported: true, api_key: help}
+    readOnly: {supported: true, api_key: readonly}
+    visible: {supported: true, api_key: "dependency-based (SugarLogic)"}
+    maxLength: {supported: true, api_key: len}
+    options: {supported: true, api_key: options, notes: "Dropdown list name reference"}
+    audited: {supported: true, api_key: audited}
+    translatedOptions: {supported: true, api_key: "Language file customization"}
+    optionDescriptions: {supported: false}
+    style: {supported: false}
+    isSorted: {supported: false}
+    displayAsLabel: {supported: false}
+    copyToClipboard: {supported: false}
+    category: {supported: false}
+    min: {supported: true, api_key: min}
+    max: {supported: true, api_key: max}
+    massupdate: {supported: true, api_key: massupdate}
+    importable: {supported: true, api_key: importable}
+    formula: {supported: true, api_key: formula, notes: "SugarLogic expression"}
+    dependency: {supported: true, api_key: dependency, notes: "SugarLogic visibility/value dependency"}
+    reportable: {supported: true, api_key: reportable}
+    validation: {supported: true, api_key: validation}
+
+# ─── Layout Management ─────────────────────────────────────────────
+layout_management:
+  read_layouts:
+    rating: read_only
+    method: "GET /rest/v11_5/metadata?type_filter=layouts"
+  write_layouts:
+    rating: indirect
+    method: "File-based viewdefs + POST /rest/v11_5/Administration/repair"
+    notes: "Layout changes are applied via file customization and cache rebuild. No direct PUT endpoint for layouts."
+  detail_view: {supported: true, notes: "Record view via viewdefs"}
+  edit_view: {supported: true, notes: "Same as detail — inline editing in Sidecar UI"}
+  list_view: {supported: true, notes: "List viewdefs"}
+  panels: {supported: true, notes: "Panel/section definitions in viewdefs"}
+  tabs: {supported: false, notes: "Not natively supported in standard viewdefs"}
+  conditional_visibility: {supported: true, notes: "SugarLogic dependency expressions for field and panel visibility"}
+  multiple_list_views: {supported: true, api_creatable: false, notes: "Custom list views via UI; API reads metadata but view creation is file-based"}
+
+# ─── Relationship Management ───────────────────────────────────────
+relationship_management:
+  create_relationship:
+    rating: full
+    method: "POST /rest/v11_5/Metadata/relationships"
+    notes: "Creates relationship metadata and join table. Cache rebuild required."
+  one_to_many: {supported: true, method: "Relationship with type one-to-many"}
+  many_to_one: {supported: true, method: "Relationship (reverse side of one-to-many)"}
+  many_to_many: {supported: true, method: "Relationship with join table"}
+  link_labels: {supported: true, api_key: "relationship_name / lhs_label / rhs_label"}
+  audit_both_sides: {supported: true, notes: "Per-field audited property on relate fields"}
+  check_existence: {supported: true, method: "GET /rest/v11_5/metadata?type_filter=relationships"}
+  cascade_delete: {supported: false, notes: "Not configurable via API — application-level logic"}
+  self_referential: {supported: true, notes: "Self-referencing relationships supported"}
+
+# ─── Data Operations ───────────────────────────────────────────────
+data_operations:
+  create_record: {rating: full, method: "POST /rest/v11_5/{module}"}
+  read_record: {rating: full, method: "GET /rest/v11_5/{module}/{id}"}
+  update_record: {rating: full, method: "PUT /rest/v11_5/{module}/{id}"}
+  delete_record: {rating: full, method: "DELETE /rest/v11_5/{module}/{id}"}
+  search_by_field: {rating: full, method: "POST /rest/v11_5/{module}/filter"}
+  search_by_email: {rating: full, method: "POST /rest/v11_5/{module}/filter on email_addresses"}
+  upsert: {rating: partial, notes: "No native upsert — filter then create or update"}
+  batch_create: {rating: full, method: "POST /rest/v11_5/bulk — 20-25 calls/batch"}
+  bulk_import: {rating: full, method: "Import API or MassUpdate/MassDelete endpoints"}
+  query_language: {name: "Filter API", notes: "JSON-based filter with operators: $equals, $contains, $in, $between, $starts, $ends, $is_null, $not_null, $lt, $gt, $lte, $gte"}
+  max_results_per_page: 20
+  max_results_configurable: true
+
+# ─── Future Capabilities ──────────────────────────────────────────
+workflow_automation:
+  create_rules: {rating: none, notes: "No direct API — SugarBPM processes are Enterprise only, managed via visual designer"}
+  create_flows: {rating: partial, method: "SugarBPM — export/import packages", notes: "Enterprise only. Visual process designer with import/export capability."}
+  approval_processes: {rating: partial, notes: "SugarBPM approval routing (Enterprise)"}
+  validation_rules: {rating: full, method: "SugarLogic dependencies on field metadata", notes: "Calculated fields and dependencies are set via field properties"}
+  scheduled_actions: {rating: partial, notes: "SugarBPM timed events (Enterprise); Schedulers API for cron-like jobs"}
+  logic_hooks: {rating: full, method: "Code-based hooks — before_save, after_save, before_delete, etc.", notes: "Deployed via Module Loader"}
+  trigger_types: ["Record change (Logic Hooks)", "SugarBPM events (Enterprise)", "Schedulers (cron)"]
+
+roles_permissions:
+  create_roles: {rating: full, method: "POST /rest/v11_5/ACLRoles"}
+  module_permissions: {rating: full, method: "PUT /rest/v11_5/ACLRoles/{id} with module ACL data"}
+  field_level_security: {rating: full, method: "ACLField metadata on roles"}
+  record_level_rules: {rating: full, method: "Team-based visibility — assign teams to records"}
+  user_management: {rating: full, method: "POST/PUT /rest/v11_5/Users"}
+  team_management: {rating: full, method: "POST/PUT /rest/v11_5/Teams"}
+
+dashboards_reports:
+  create_dashboards: {rating: partial, method: "POST /rest/v11_5/Dashboards", notes: "Create and manage dashboard layouts with dashlet configurations"}
+  create_reports: {rating: partial, method: "POST /rest/v11_5/Reports", notes: "Create saved reports — limited to filter-based reports via API"}
+  saved_views: {rating: partial, method: "Custom filter definitions on list views"}
+
+email_templates:
+  crud_templates: {rating: full, method: "POST/GET/PUT/DELETE /rest/v11_5/EmailTemplates"}
+  merge_fields: {supported: true, notes: "Template variables using {module_field} syntax"}
+  html_body: {supported: true}
+
+webhooks_events:
+  outbound_webhooks: {rating: indirect, method: "Logic Hooks — code-based HTTP calls on record events"}
+  event_subscriptions: {rating: indirect, method: "Logic Hooks — register custom code on before/after events"}
+  sync_async: both
+  retry_on_failure: {supported: false, notes: "Custom implementation required in Logic Hook code"}

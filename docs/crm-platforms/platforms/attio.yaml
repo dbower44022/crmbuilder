@@ -1,0 +1,201 @@
+# Attio CRM Platform Profile
+name: Attio
+slug: attio
+type: Cloud CRM (SaaS)
+deployment: Attio-hosted only (multi-tenant cloud)
+last_reviewed: 2026-03-30
+open_source: false
+license: Proprietary
+
+pricing:
+  free_tier: "Free (3 seats, 50K records, 3 custom objects)"
+  min_paid_per_user_month: 29
+  full_admin_api_per_user_month: 29
+  enterprise_per_user_month: 100
+  currency: USD
+  notes: "Custom relationships require Pro ($69/user/mo)"
+
+api:
+  protocol: [REST]
+  format: [JSON]
+  version: V2
+  auth_methods: ["Bearer token", "OAuth 2.0", "HTTP Basic"]
+  rate_limit: "100 req/sec (reads), 25 req/sec (writes)"
+  admin_auth: "API token with object_configuration:read-write scope"
+
+# ─── Standard Entities ──────────────────────────────────────────────
+standard_entities:
+  people: {name: People, api_name: people, notes: "Always active, cannot deactivate"}
+  companies: {name: Companies, api_name: companies, notes: "Always active"}
+  deals: {name: Deals, api_name: deals, notes: "Opt-in, must be activated"}
+  users: {name: Users, api_name: users, notes: "Opt-in, for SaaS product users"}
+  workspaces: {name: Workspaces, api_name: workspaces, notes: "Opt-in, customer accounts"}
+  label_renamable_via_api: false
+
+# ─── Entity Management ─────────────────────────────────────────────
+entity_management:
+  create_entity:
+    rating: full
+    min_edition: free
+    method: "POST /v2/objects"
+    max_entities:
+      free: 3
+      plus: "more (unpublished)"
+      enterprise: "unlimited"
+    naming_convention: "api_slug (snake_case)"
+    notes: "Custom objects behave identically to standard objects"
+  delete_entity:
+    rating: none
+    notes: "No delete endpoint documented"
+  check_existence:
+    rating: full
+    method: "GET /v2/objects/{object}"
+  entity_types:
+    available: ["No type system — all objects are equivalent"]
+  cache_rebuild:
+    rating: na
+    notes: "Not required — changes are immediate"
+  activity_stream:
+    supported: false
+
+# ─── Field Management ──────────────────────────────────────────────
+field_management:
+  create_field:
+    rating: full
+    min_edition: free
+    method: "POST /v2/objects/{object}/attributes"
+    naming_convention: "api_slug (snake_case)"
+
+  update_field:
+    rating: full
+    method: "PATCH /v2/objects/{object}/attributes/{attribute}"
+
+  read_metadata:
+    rating: full
+    method: "GET /v2/objects/{object}/attributes"
+
+  field_types:
+    varchar: {equivalent: text, creatable: true}
+    text: {equivalent: text, creatable: true, notes: "No separate long text type"}
+    wysiwyg: {equivalent: na, creatable: false, notes: "No rich text attribute type"}
+    enum: {equivalent: select, creatable: true}
+    multiEnum: {equivalent: "select (is_multiselect)", creatable: true}
+    bool: {equivalent: checkbox, creatable: true}
+    int: {equivalent: number, creatable: true}
+    float: {equivalent: number, creatable: true}
+    date: {equivalent: date, creatable: true}
+    datetime: {equivalent: timestamp, creatable: true}
+    currency: {equivalent: currency, creatable: true}
+    url: {equivalent: domain, creatable: true, notes: "Domain type for web domains"}
+    email: {equivalent: email-address, creatable: true}
+    phone: {equivalent: phone-number, creatable: true}
+  all_current_types_supported: false
+  missing_types: [wysiwyg]
+  additional_types:
+    - {name: rating, creatable: true}
+    - {name: status, creatable: true, notes: "Pipeline/stage with time tracking"}
+    - {name: record-reference, creatable: true, notes: "Links to records of another object"}
+    - {name: actor-reference, creatable: true, notes: "References workspace members"}
+    - {name: location, creatable: true, notes: "Structured address/location"}
+    - {name: personal-name, creatable: false, notes: "System attribute only"}
+
+  field_properties:
+    label: {supported: true, api_key: title}
+    required: {supported: true, api_key: is_required}
+    default: {supported: true, api_key: default_value, notes: "Supports static values and dynamic templates"}
+    readOnly: {supported: false}
+    audited: {supported: false}
+    description: {supported: true, api_key: description}
+    tooltip: {supported: false}
+    min: {supported: false}
+    max: {supported: false}
+    maxLength: {supported: false}
+    options: {supported: true, api_key: "config (for select type)"}
+    translatedOptions: {supported: false}
+    optionDescriptions: {supported: false}
+    style: {supported: false}
+    isSorted: {supported: false}
+    displayAsLabel: {supported: false}
+    copyToClipboard: {supported: false}
+    category: {supported: false}
+    unique: {supported: true, api_key: is_unique}
+
+# ─── Layout Management ─────────────────────────────────────────────
+layout_management:
+  read_layouts:
+    rating: partial
+    method: "GET /v2/objects/{object}/views"
+    notes: "Returns saved view metadata (title, ID) but not field arrangement"
+  write_layouts:
+    rating: none
+    notes: "No API control over record page layouts, attribute ordering, or widgets"
+  detail_view: {supported: false}
+  edit_view: {supported: false}
+  list_view: {supported: false}
+  panels: {supported: false}
+  tabs: {supported: false}
+  conditional_visibility: {supported: false}
+  multiple_list_views: {supported: true, api_creatable: false, notes: "Saved views with filters/sorts configurable in UI; GET /v2/objects/{object}/views returns view metadata but no create endpoint"}
+
+# ─── Relationship Management ───────────────────────────────────────
+relationship_management:
+  create_relationship:
+    rating: full
+    min_edition: professional
+    method: "POST /v2/objects/{object}/attributes with record-reference type + relationship config"
+    notes: "Automatically creates bidirectional reverse attribute; requires Pro plan"
+  one_to_many: {supported: true}
+  many_to_one: {supported: true}
+  many_to_many: {supported: true}
+  link_labels: {supported: true, notes: "Relationship config includes title for reverse attribute"}
+  audit_both_sides: {supported: false}
+  check_existence: {supported: true, method: "GET /v2/objects/{object}/attributes"}
+  cascade_delete: {supported: false}
+  polymorphic: {supported: false}
+  self_referential: {supported: true}
+
+# ─── Data Operations ───────────────────────────────────────────────
+data_operations:
+  create_record: {rating: full, method: "POST /v2/objects/{object}/records"}
+  read_record: {rating: full, method: "GET /v2/objects/{object}/records/{id}"}
+  update_record: {rating: full, method: "PUT (overwrite) or PATCH (append) /v2/objects/{object}/records/{id}"}
+  delete_record: {rating: full, method: "DELETE /v2/objects/{object}/records/{id}"}
+  search_by_field: {rating: full, method: "POST /v2/objects/{object}/records/query with filter operators"}
+  search_by_email: {rating: full, method: "Filter on email-address attribute or POST /v2/objects/records/search"}
+  upsert: {rating: full, method: "PUT /v2/objects/{object}/records — asserts/upserts on unique attribute"}
+  batch_create: {rating: none, notes: "No batch/bulk endpoints; must iterate individual calls"}
+  bulk_import: {rating: none, notes: "CSV import in UI only"}
+  query_language: {name: "Filter operators ($eq, $in, $contains, $lt, $gt, $and, $or)", notes: "Path-based filtering through record-reference chains"}
+  max_results_per_query: 500
+
+# ─── Future Capabilities ──────────────────────────────────────────
+workflow_automation:
+  create_rules: {rating: none, notes: "Workflows are UI-configured only"}
+  create_flows: {rating: none}
+  approval_processes: {rating: none}
+  validation_rules: {rating: none}
+  scheduled_actions: {rating: none}
+  email_from_template: {rating: none}
+
+roles_permissions:
+  create_roles: {rating: none, notes: "Two access levels (Admin/Member) — UI only"}
+  module_permissions: {rating: none}
+  field_level_security: {rating: none}
+  record_level_rules: {rating: none}
+  user_management: {rating: read_only, method: "GET /v2/workspace_members"}
+
+dashboards_reports:
+  create_dashboards: {rating: none}
+  create_reports: {rating: none}
+  saved_views: {rating: read_only, method: "GET /v2/objects/{object}/views"}
+
+email_templates:
+  crud_templates: {rating: none}
+  merge_fields: {supported: false}
+  html_body: {supported: false}
+
+webhooks_events:
+  outbound_webhooks: {rating: full, method: "POST /v2/webhooks — 24 event types"}
+  event_subscriptions: {rating: full, notes: "Record/list/attribute/note/comment/task events"}
+  sync_async: async
+  retry_on_failure: {supported: true, notes: "Up to 10 retries with exponential backoff over ~3 days"}

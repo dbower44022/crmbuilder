@@ -91,6 +91,8 @@ class InstancePanel(QWidget):
         self.list_widget.clear()
 
         for path in sorted(self.instances_dir.glob("*.json")):
+            if path.stem.endswith("_deploy"):
+                continue
             try:
                 data = json.loads(path.read_text(encoding="utf-8"))
                 profile = InstanceProfile(

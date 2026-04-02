@@ -1,0 +1,104 @@
+# Monday.com CRM Platform Profile
+name: "Monday.com CRM"
+slug: monday
+type: Work OS with CRM product
+deployment: Monday.com-hosted only
+last_reviewed: 2026-03-30
+open_source: false
+license: Proprietary
+
+pricing:
+  free_tier: "14-day trial"
+  min_paid_per_user_month: 12
+  full_admin_api_per_user_month: na
+  enterprise_per_user_month: "Contact sales"
+  currency: USD
+  notes: "Min 3 seats"
+
+api:
+  protocol: [GraphQL]
+  format: [JSON]
+  auth_methods: ["API tokens"]
+  notes: "GraphQL only — no REST API"
+
+# ─── Standard Entities ──────────────────────────────────────────────
+standard_entities:
+  board: {name: Boards, api_name: boards, notes: "Equivalent to entities"}
+  item: {name: Items, api_name: items, notes: "Equivalent to records"}
+  column: {name: Columns, api_name: columns, notes: "Equivalent to fields"}
+  group: {name: Groups, api_name: groups}
+  subitem: {name: Subitems, api_name: subitems}
+  label_renamable_via_api: false
+  notes: "Fundamentally different data model — boards are more like spreadsheets than database tables"
+
+# ─── Entity Management ─────────────────────────────────────────────
+entity_management:
+  create_entity:
+    rating: partial
+    method: "create_board GraphQL mutation"
+    notes: "Can create boards but they lack the structure of traditional CRM entities"
+  delete_entity:
+    rating: partial
+    method: "delete_board mutation"
+
+# ─── Field Management ──────────────────────────────────────────────
+field_management:
+  create_field:
+    rating: full
+    method: "create_column GraphQL mutation"
+  read_metadata:
+    rating: full
+    method: "boards { columns } GraphQL query"
+  field_types:
+    status: {equivalent: enum, creatable: true}
+    dropdown: {equivalent: multiEnum, creatable: true}
+    numbers: {equivalent: int/float, creatable: true}
+    date: {equivalent: date, creatable: true}
+    text: {equivalent: varchar, creatable: true}
+    long_text: {equivalent: text, creatable: true}
+    email: {equivalent: email, creatable: true}
+    phone: {equivalent: phone, creatable: true}
+    link: {equivalent: url, creatable: true}
+    checkbox: {equivalent: bool, creatable: true}
+    rating: {equivalent: int, creatable: true}
+    timeline: {equivalent: daterange, creatable: true}
+
+# ─── Layout Management ─────────────────────────────────────────────
+layout_management:
+  read_layouts:
+    rating: none
+  write_layouts:
+    rating: none
+  conditional_visibility: {supported: false}
+  multiple_list_views: {supported: true, api_creatable: true, method: "create_board_view GraphQL mutation — supports table, kanban, chart, calendar, and more view types", notes: "Views are a core concept; multiple views per board"}
+
+# ─── Relationship Management ───────────────────────────────────────
+relationship_management:
+  create_relationship:
+    rating: partial
+    method: "Connect Boards + Mirror columns"
+    notes: "Board connections and mirrored columns provide cross-board linking"
+
+# ─── Data Operations ───────────────────────────────────────────────
+data_operations:
+  create_record: {rating: full, method: "create_item GraphQL mutation"}
+  read_record: {rating: full, method: "items GraphQL query"}
+  update_record: {rating: full, method: "change_column_value mutation"}
+  delete_record: {rating: full, method: "delete_item mutation"}
+  search_by_field: {rating: full, method: "items_page_by_column_values query"}
+
+# ─── Future Capabilities ──────────────────────────────────────────
+workflow_automation:
+  create_rules: {rating: none, notes: "Automations are UI only"}
+
+roles_permissions:
+  create_roles: {rating: none}
+
+dashboards_reports:
+  create_dashboards: {rating: none}
+
+email_templates:
+  crud_templates: {rating: none}
+
+webhooks_events:
+  outbound_webhooks: {rating: partial, method: "Webhook column type + app webhooks"}

@@ -1,0 +1,121 @@
+# Agile CRM Platform Profile
+name: Agile CRM
+slug: agilecrm
+type: Cloud CRM (SaaS)
+deployment: Cloud only
+last_reviewed: 2026-03-30
+open_source: false
+license: Proprietary
+
+pricing:
+  free_tier: "Free (10 users, 50K contacts, 1 workflow)"
+  min_paid_per_user_month: 9
+  full_admin_api_per_user_month: 9
+  enterprise_per_user_month: 48
+  currency: USD
+
+api:
+  protocol: [REST]
+  format: [JSON]
+  auth_methods: ["Basic Auth (email + API key)"]
+  rate_limit: "Free: 100/day; Starter: 1K/day; Regular: 5K/day; Enterprise: 20K/day"
+
+# ─── Standard Entities ──────────────────────────────────────────────
+standard_entities:
+  contact: {name: Contacts, api_name: contacts, type: PERSON}
+  company: {name: Companies, api_name: companies, type: COMPANY}
+  deal: {name: Deals, api_name: deals}
+  task: {name: Tasks, api_name: tasks}
+  event: {name: Events, api_name: events}
+  note: {name: Notes, api_name: notes}
+  ticket: {name: Tickets, api_name: tickets, notes: "Help desk module"}
+  campaign: {name: Campaigns, api_name: campaigns}
+  label_renamable_via_api: false
+
+# ─── Entity Management ─────────────────────────────────────────────
+entity_management:
+  create_entity:
+    rating: none
+    method: "Fixed data model — no custom entity creation"
+  delete_entity:
+    rating: na
+
+# ─── Field Management ──────────────────────────────────────────────
+field_management:
+  create_field:
+    rating: none
+    method: "Custom field definitions (schema) are UI-only. API can SET values on existing custom fields via properties array with type=CUSTOM."
+    notes: "6 custom field types in UI: Text, Text Area, Date, List (dropdown), Checkbox, Number"
+
+  read_metadata:
+    rating: none
+    notes: "No endpoint to list custom field definitions"
+
+  field_types:
+    varchar: {equivalent: Text, creatable: false, notes: "UI-only creation"}
+    text: {equivalent: Text Area, creatable: false, notes: "UI-only creation"}
+    wysiwyg: {equivalent: na, creatable: false}
+    enum: {equivalent: List, creatable: false, notes: "UI-only creation"}
+    multiEnum: {equivalent: na, creatable: false}
+    bool: {equivalent: Checkbox, creatable: false, notes: "UI-only creation"}
+    int: {equivalent: Number, creatable: false, notes: "UI-only creation"}
+    float: {equivalent: Number, creatable: false, notes: "UI-only creation"}
+    date: {equivalent: Date, creatable: false, notes: "UI-only creation"}
+    datetime: {equivalent: na, creatable: false}
+    currency: {equivalent: na, creatable: false}
+    url: {equivalent: na, creatable: false, notes: "Standard fields only"}
+    email: {equivalent: na, creatable: false, notes: "Standard fields only"}
+    phone: {equivalent: na, creatable: false, notes: "Standard fields only"}
+  all_current_types_supported: false
+  missing_types: [wysiwyg, multiEnum, datetime, currency, url, email, phone]
+
+# ─── Layout Management ─────────────────────────────────────────────
+layout_management:
+  read_layouts:
+    rating: none
+  write_layouts:
+    rating: none
+  multiple_list_views:
+    supported: true
+    api_creatable: false
+    notes: "Dynamic filters available via API (POST /api/filters/filter/dynamic-filter) but saved view definitions are UI-only"
+
+# ─── Relationship Management ───────────────────────────────────────
+relationship_management:
+  create_relationship:
+    rating: none
+    notes: "Fixed relationships only: Contact↔Company, Contact↔Deal, Contact↔Campaign"
+
+# ─── Data Operations ───────────────────────────────────────────────
+data_operations:
+  create_record: {rating: full, method: "POST /api/{entity}"}
+  read_record: {rating: full, method: "GET /api/{entity}/{id}"}
+  update_record: {rating: full, method: "PUT /api/{entity}/{id}", notes: "Partial updates supported"}
+  delete_record: {rating: full, method: "DELETE /api/{entity}/{id}"}
+  search_by_field: {rating: full, method: "POST /api/filters/filter/dynamic-filter with tag/field conditions AND/OR"}
+  search_by_email: {rating: full, method: "GET /api/contacts/search/email/{email}"}
+  batch_create: {rating: none, notes: "No bulk contact create"}
+  bulk_delete: {rating: partial, method: "POST /api/opportunity/bulk (deals only); bulk notes available"}
+
+# ─── Future Capabilities ──────────────────────────────────────────
+workflow_automation:
+  create_rules: {rating: none, notes: "Visual campaign builder is UI-only. Can enroll contacts in campaigns via POST /api/campaigns/enroll/email."}
+  read_automations: {rating: none, notes: "Not documented"}
+
+roles_permissions:
+  create_roles: {rating: none, notes: "Enterprise feature, UI only"}
+  user_management: {rating: read_only, method: "GET /api/users"}
+
+dashboards_reports:
+  create_dashboards: {rating: none}
+
+email_templates:
+  crud_templates: {rating: none}
+
+webhooks_events:
+  outbound_webhooks:
+    rating: partial
+    notes: "Contact Created/Updated, Deal Created/Updated events. UI configuration only (Admin Settings > API & Analytics > Webhooks). Limited to Contacts and Deals modules. No retry."
+
+client_libraries:
+  official: [PHP, Java, JavaScript, "C#", Ruby, Node.js, Python, "iOS SDK"]

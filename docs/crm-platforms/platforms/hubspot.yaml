@@ -1,0 +1,209 @@
+# HubSpot CRM Platform Profile
+name: HubSpot
+slug: hubspot
+type: Cloud CRM (SaaS)
+deployment: HubSpot-hosted only
+last_reviewed: 2026-03-30
+open_source: false
+license: Proprietary
+
+pricing:
+  free_tier: "Free CRM (1M contacts, 2 users)"
+  min_paid_per_user_month: 20
+  full_admin_api_per_user_month: 150
+  enterprise_per_user_month: 150
+  currency: USD
+
+api:
+  protocol: [REST]
+  format: [JSON]
+  version: v3/v4
+  auth_methods: ["OAuth 2.0", "Private App tokens"]
+  rate_limit: "100-200 req/10sec by edition; 500K/day"
+  admin_auth: "Super Admin or account-level access"
+
+# ─── Standard Entities ──────────────────────────────────────────────
+standard_entities:
+  contact: {name: Contacts, api_name: contacts}
+  company: {name: Companies, api_name: companies}
+  deal: {name: Deals, api_name: deals}
+  ticket: {name: Tickets, api_name: tickets}
+  product: {name: Products, api_name: products}
+  line_item: {name: Line Items, api_name: line_items}
+  quote: {name: Quotes, api_name: quotes}
+  call: {name: Calls, api_name: calls}
+  email: {name: Emails, api_name: emails}
+  meeting: {name: Meetings, api_name: meetings}
+  note: {name: Notes, api_name: notes}
+  task: {name: Tasks, api_name: tasks}
+  communication: {name: Communications, api_name: communications}
+  feedback_submission: {name: Feedback Submissions, api_name: feedback_submissions}
+  lead: {name: Leads, api_name: leads, notes: "Enterprise only"}
+  goal: {name: Goals, api_name: goals}
+  label_renamable_via_api: false
+  label_rename_method: "UI only — no API support for label renaming"
+
+# ─── Entity Management ─────────────────────────────────────────────
+entity_management:
+  create_entity:
+    rating: full
+    min_edition: enterprise
+    method: "POST /crm/v3/schemas"
+    max_entities:
+      enterprise: 10
+      notes: "Expandable beyond 10 via request"
+    naming_convention: "System-assigned (p_objectname)"
+    notes: "Custom objects require Enterprise ($150/mo). Schema defines properties, associations, and labels."
+  delete_entity:
+    rating: full
+    method: "DELETE /crm/v3/schemas/{objectType}"
+  check_existence:
+    rating: full
+    method: "GET /crm/v3/schemas/{objectType}"
+  entity_types:
+    available: ["Custom objects (Enterprise)"]
+  cache_rebuild:
+    rating: none
+    required: false
+    notes: "No cache rebuild needed — changes are immediate"
+
+# ─── Field Management ──────────────────────────────────────────────
+field_management:
+  create_field:
+    rating: full
+    min_edition: free
+    method: "POST /crm/v3/properties/{objectType}"
+    max_fields_per_object: 1000
+    naming_convention: "User-defined (snake_case recommended)"
+
+  update_field:
+    rating: full
+    method: "PATCH /crm/v3/properties/{objectType}/{propertyName}"
+
+  read_metadata:
+    rating: full
+    method: "GET /crm/v3/properties/{objectType}"
+
+  field_types:
+    varchar: {equivalent: "string/text", creatable: true}
+    text: {equivalent: "string/textarea", creatable: true}
+    wysiwyg: {equivalent: "string/html", creatable: true}
+    enum: {equivalent: "enumeration/select", creatable: true}
+    multiEnum: {equivalent: "enumeration/checkbox", creatable: true}
+    bool: {equivalent: "enumeration/booleancheckbox", creatable: true}
+    int: {equivalent: "number/number", creatable: true, notes: "No separate integer type — use number"}
+    float: {equivalent: "number/number", creatable: true}
+    date: {equivalent: "date/date", creatable: true}
+    datetime: {equivalent: "datetime/datetime", creatable: true}
+    currency: {equivalent: "number/number", creatable: false, notes: "No dedicated currency type — use number field"}
+    url: {equivalent: "string/text", creatable: false, notes: "No dedicated URL type — use text field"}
+    email: {equivalent: "string/text", creatable: false, notes: "No dedicated email property type — use text; contacts have built-in email"}
+    phone: {equivalent: "string/phonenumber", creatable: true}
+  all_current_types_supported: false
+  missing_types: ["currency (use number)", "url (use text)", "email (use text)"]
+  additional_types:
+    - {name: "enumeration/radio", creatable: true}
+    - {name: "string/file", creatable: true}
+
+  field_properties:
+    label: {supported: true, api_key: label}
+    required: {supported: false, notes: "No required property — use pipeline-based required fields in UI"}
+    default: {supported: false, notes: "No default value — use workflow-based defaults"}
+    unique: {supported: true, api_key: hasUniqueValue}
+    tooltip: {supported: true, api_key: description}
+    readOnly: {supported: true, api_key: hidden, notes: "Hidden property controls visibility; no true read-only flag"}
+    visible: {supported: true, api_key: hidden}
+    maxLength: {supported: false}
+    options: {supported: true, api_key: options, notes: "Array of {label, value, displayOrder, hidden}"}
+    displayOrder: {supported: true, api_key: displayOrder}
+    groupName: {supported: true, api_key: groupName}
+    audited: {supported: false}
+    translatedOptions: {supported: false}
+    optionDescriptions: {supported: true, api_key: "options[].description"}
+    style: {supported: false}
+    isSorted: {supported: false}
+    displayAsLabel: {supported: false}
+    copyToClipboard: {supported: false}
+    category: {supported: false}
+
+# ─── Layout Management ─────────────────────────────────────────────
+layout_management:
+  read_layouts:
+    rating: none
+    method: "No API support for layout reading"
+    notes: "Only primaryDisplayProperty and secondaryDisplayProperties available on schema endpoint"
+  write_layouts:
+    rating: none
+    method: "No API support for layout modification"
+    notes: "All layout configuration is UI only. Schema-level display properties are the only API-accessible layout controls."
+  detail_view: {supported: false, notes: "UI only"}
+  edit_view: {supported: false, notes: "UI only"}
+  list_view: {supported: false, notes: "UI only"}
+  panels: {supported: false, notes: "UI only"}
+  tabs: {supported: false, notes: "UI only"}
+  conditional_visibility: {supported: false, notes: "UI only"}
+  multiple_list_views: {supported: true, api_creatable: false, notes: "Saved views/filters on object lists via UI; no API to create views"}
+
+# ─── Relationship Management ───────────────────────────────────────
+relationship_management:
+  create_relationship:
+    rating: full
+    method: "Associations API v4 — PUT /crm/v4/objects/{objectType}/{objectId}/associations/{toObjectType}/{toObjectId}"
+    notes: "Define association types via POST /crm/v4/associations/{fromObjectType}/{toObjectType}/labels (Enterprise only for labels)"
+  one_to_many: {supported: true, method: "Association with cardinality constraints (application-level)"}
+  many_to_one: {supported: true, method: "Association (reverse direction)"}
+  many_to_many: {supported: true, method: "Associations are inherently many-to-many"}
+  link_labels: {supported: true, notes: "Enterprise only — max 10 labels per object pair"}
+  audit_both_sides: {supported: false}
+  check_existence: {supported: true, method: "GET /crm/v4/associations/{fromObjectType}/{toObjectType}/labels"}
+  cascade_delete: {supported: false, notes: "No cascade delete — associations are removed independently"}
+  self_referential: {supported: true}
+  max_associations_per_object: 50
+
+# ─── Data Operations ───────────────────────────────────────────────
+data_operations:
+  create_record: {rating: full, method: "POST /crm/v3/objects/{objectType}"}
+  read_record: {rating: full, method: "GET /crm/v3/objects/{objectType}/{objectId}"}
+  update_record: {rating: full, method: "PATCH /crm/v3/objects/{objectType}/{objectId}"}
+  delete_record: {rating: full, method: "DELETE /crm/v3/objects/{objectType}/{objectId}"}
+  search_by_field: {rating: full, method: "POST /crm/v3/objects/{objectType}/search with filterGroups"}
+  search_by_email: {rating: full, method: "POST /crm/v3/objects/{objectType}/search filtering on email"}
+  upsert: {rating: full, method: "POST /crm/v3/objects/{objectType}/batch/upsert", notes: "Requires unique identifier property"}
+  batch_create: {rating: full, method: "POST /crm/v3/objects/{objectType}/batch/create — 100/call"}
+  bulk_import: {rating: full, method: "Import API for CSV files"}
+  query_language: {name: "Filter Groups", notes: "JSON-based filter groups with propertyName, operator, value; max 10K results"}
+  max_results_per_query: 10000
+
+# ─── Future Capabilities ──────────────────────────────────────────
+workflow_automation:
+  create_rules: {rating: none, notes: "UI only — no API for workflow creation"}
+  create_flows: {rating: none, notes: "UI only — no API for flow creation"}
+  approval_processes: {rating: none, notes: "UI only"}
+  validation_rules: {rating: none, notes: "UI only"}
+  scheduled_actions: {rating: none, notes: "UI only"}
+  custom_actions: {rating: partial, method: "Automation API — custom action definitions (Pro+ required)"}
+  trigger_types: ["Record change (UI only)", "Schedule (UI only)", "Custom code actions (API)"]
+
+roles_permissions:
+  create_roles: {rating: none, notes: "UI only — no API for role creation"}
+  module_permissions: {rating: none, notes: "UI only"}
+  field_level_security: {rating: none, notes: "UI only"}
+  record_level_rules: {rating: none, notes: "UI only"}
+  user_management: {rating: full, method: "Settings API — invite users, assign roles/teams"}
+  team_assignment: {rating: partial, method: "Assign users to teams via API"}
+
+dashboards_reports:
+  create_dashboards: {rating: none, notes: "No API support"}
+  create_reports: {rating: none, notes: "No API support"}
+  saved_views: {rating: none, notes: "No API support"}
+
+email_templates:
+  crud_templates: {rating: none, notes: "No API support for email template CRUD"}
+  merge_fields: {supported: false, notes: "N/A — no template API"}
+  html_body: {supported: false, notes: "N/A — no template API"}
+
+webhooks_events:
+  outbound_webhooks: {rating: none, notes: "Configured via UI workflow only"}
+  event_subscriptions: {rating: partial, method: "Workflow-based subscriptions", notes: "Webhook actions in workflows (UI configuration)"}
+  sync_async: async
+  retry_on_failure: {supported: true, notes: "HubSpot retries failed webhook deliveries"}

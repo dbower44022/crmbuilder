@@ -1,0 +1,180 @@
+# Twenty CRM Platform Profile
+name: Twenty
+slug: twenty
+type: Open-source CRM (AGPL v3)
+deployment: "Self-hosted (Docker/K8s) or Twenty-hosted cloud"
+last_reviewed: 2026-03-30
+open_source: true
+license: "AGPL v3"
+
+pricing:
+  free_tier: "Self-hosted: free; Cloud Pro: $9/user/mo"
+  min_paid_per_user_month: 9
+  full_admin_api_per_user_month: 0
+  enterprise_per_user_month: 19
+  currency: USD
+  notes: "Self-hosted is fully free with complete API access; Organization plan at $19/user/mo"
+
+api:
+  protocol: [REST, GraphQL]
+  format: [JSON]
+  auth_methods: ["API key (Bearer token)"]
+  rate_limit: "100 calls/minute"
+  tech_stack: "Node.js, NestJS, TypeORM, PostgreSQL, React, TypeScript"
+
+# ─── Standard Entities ──────────────────────────────────────────────
+standard_entities:
+  people: {name: People, api_name: people, notes: "Can be deactivated"}
+  companies: {name: Companies, api_name: companies, notes: "Can be deactivated"}
+  opportunities: {name: Opportunities, api_name: opportunities, notes: "Can be deactivated"}
+  notes: {name: Notes, api_name: notes, notes: "Can be deactivated"}
+  tasks: {name: Tasks, api_name: tasks, notes: "Can be deactivated"}
+  label_renamable_via_api: true
+  label_rename_method: "Metadata API"
+
+# ─── Entity Management ─────────────────────────────────────────────
+entity_management:
+  create_entity:
+    rating: full
+    min_edition: free
+    method: "POST /rest/metadata/objects or GraphQL createObject mutation"
+    max_entities: unlimited
+    naming_convention: "Auto-generates REST + GraphQL endpoints"
+    notes: "No type system — all objects are equivalent"
+  delete_entity:
+    rating: full
+    method: "DELETE /rest/metadata/objects/{id} or GraphQL deleteObject mutation"
+  check_existence:
+    rating: full
+    method: "GET /rest/metadata/objects"
+  entity_types:
+    available: ["No type system — all objects are equivalent"]
+  cache_rebuild:
+    rating: na
+    notes: "Not required — changes are immediate"
+
+# ─── Field Management ──────────────────────────────────────────────
+field_management:
+  create_field:
+    rating: full
+    min_edition: free
+    method: "POST /rest/metadata/fields or GraphQL createField mutation"
+
+  update_field:
+    rating: full
+    method: "PATCH /rest/metadata/fields/{id} or GraphQL updateField mutation"
+
+  read_metadata:
+    rating: full
+    method: "GET /rest/metadata/fields or GraphQL"
+
+  field_types:
+    varchar: {equivalent: Text, creatable: true}
+    text: {equivalent: "Long Text", creatable: true}
+    wysiwyg: {equivalent: na, creatable: false, notes: "No rich text field type"}
+    enum: {equivalent: Select, creatable: true}
+    multiEnum: {equivalent: Multi-Select, creatable: true}
+    bool: {equivalent: Boolean, creatable: true}
+    int: {equivalent: Number, creatable: true}
+    float: {equivalent: Number, creatable: true}
+    date: {equivalent: Date, creatable: true}
+    datetime: {equivalent: DateTime, creatable: true}
+    currency: {equivalent: Currency, creatable: true}
+    url: {equivalent: "Links/Domain", creatable: true}
+    email: {equivalent: Email, creatable: true}
+    phone: {equivalent: Phone, creatable: true}
+  all_current_types_supported: false
+  missing_types: [wysiwyg]
+  additional_types:
+    - {name: Rating, creatable: true}
+    - {name: Relation, creatable: true, notes: "Links to records of another object"}
+    - {name: JSON, creatable: true}
+    - {name: Array, creatable: true}
+    - {name: Address, creatable: true}
+    - {name: Domain, creatable: true, notes: "Web domain type"}
+
+  field_properties:
+    label: {supported: true, api_key: label}
+    required: {supported: false, notes: "Not documented"}
+    default: {supported: true, api_key: default_value}
+    readOnly: {supported: false}
+    audited: {supported: false, notes: "Not documented"}
+    description: {supported: true, api_key: description}
+    tooltip: {supported: false}
+    min: {supported: false}
+    max: {supported: false}
+    maxLength: {supported: false}
+    options: {supported: true, notes: "For Select/Multi-Select types"}
+    translatedOptions: {supported: false}
+    optionDescriptions: {supported: false}
+    style: {supported: false}
+    isSorted: {supported: false}
+    displayAsLabel: {supported: false}
+    copyToClipboard: {supported: false}
+    category: {supported: false}
+    unique: {supported: true, api_key: is_unique}
+
+# ─── Layout Management ─────────────────────────────────────────────
+layout_management:
+  read_layouts:
+    rating: partial
+    notes: "Views (table/kanban/calendar) configurable in UI with sort/filter/field selection"
+  write_layouts:
+    rating: none
+    notes: "No documented REST/GraphQL API for layout manipulation yet"
+  detail_view: {supported: false, notes: "Record page layouts support drag-and-drop in UI only"}
+  edit_view: {supported: false}
+  list_view: {supported: false}
+  panels: {supported: false}
+  tabs: {supported: false}
+  conditional_visibility: {supported: false}
+  multiple_list_views: {supported: true, api_creatable: false, notes: "Table, kanban, calendar views configurable in UI with sort/filter/field selection; no documented API for view CRUD yet"}
+
+# ─── Relationship Management ───────────────────────────────────────
+relationship_management:
+  create_relationship:
+    rating: full
+    min_edition: free
+    method: "Relation field type via metadata API (POST /rest/metadata/fields)"
+    notes: "Many-to-many not native yet (planned H1 2026 — use junction object workaround)"
+  one_to_many: {supported: true}
+  many_to_one: {supported: true}
+  many_to_many: {supported: false, notes: "Planned H1 2026; use junction object workaround"}
+  link_labels: {supported: true}
+  check_existence: {supported: true, method: "GET /rest/metadata/fields"}
+  polymorphic: {supported: true, notes: "Morph/polymorphic relations supported"}
+  self_referential: {supported: true}
+  multiple_relations_same_objects: {supported: true}
+
+# ─── Data Operations ───────────────────────────────────────────────
+data_operations:
+  create_record: {rating: full, method: "POST /rest/{object} or GraphQL create mutation"}
+  read_record: {rating: full, method: "GET /rest/{object}/{id} or GraphQL query"}
+  update_record: {rating: full, method: "PATCH /rest/{object}/{id} or GraphQL update mutation"}
+  delete_record: {rating: full, method: "DELETE /rest/{object}/{id} or GraphQL delete mutation"}
+  search_by_field: {rating: full, method: "REST filter parameters or GraphQL query filters"}
+  upsert: {rating: full, method: "GraphQL upsert mutation"}
+  batch_create: {rating: full, method: "Batch operations up to 60 records/request"}
+  batch_update: {rating: full, method: "Batch operations up to 60 records/request"}
+  batch_delete: {rating: full, method: "Batch operations up to 60 records/request"}
+  pagination: {type: "cursor-based"}
+
+# ─── Future Capabilities ──────────────────────────────────────────
+workflow_automation:
+  create_rules: {rating: none, notes: "Visual workflow builder in UI with triggers, conditions, actions (custom JS, HTTP requests, delays) — no API"}
+  create_flows: {rating: none}
+
+roles_permissions:
+  create_roles: {rating: partial, notes: "Basic V1 — role assignment exists; field/object-level permissions in progress"}
+
+dashboards_reports:
+  create_dashboards: {rating: none, notes: "Not documented"}
+
+email_templates:
+  crud_templates: {rating: none, notes: "Not documented"}
+
+webhooks_events:
+  outbound_webhooks: {rating: full, notes: "Record created/updated/deleted events for all objects"}
+  event_subscriptions: {rating: full, notes: "Configured via UI (Settings > APIs & Webhooks)"}
+  signing: "HMAC SHA256"
+  sync_async: async
