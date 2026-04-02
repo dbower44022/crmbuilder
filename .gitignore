@@ -23,6 +23,9 @@ htmlcov/
 # Instance profiles contain API keys
 data/instances/*.json
 
+# Recovery logs
+data/recovery_logs/
+
 # Reports are generated output
 reports/*.log
 reports/*.json

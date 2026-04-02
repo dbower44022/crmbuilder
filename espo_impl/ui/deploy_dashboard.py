@@ -189,6 +189,15 @@ class DeployDashboard(QWidget):
         btn_row.addWidget(self._retry_btn)
 
         btn_row.addStretch()
+
+        self._recovery_btn = QPushButton("Recovery && Reset")
+        self._recovery_btn.setStyleSheet(
+            "QPushButton { color: #FFA726; }"
+            "QPushButton:hover { color: #FFB74D; }"
+        )
+        self._recovery_btn.clicked.connect(self._on_recovery)
+        btn_row.addWidget(self._recovery_btn)
+
         layout.addLayout(btn_row)
 
         # Log window
@@ -357,6 +366,25 @@ class DeployDashboard(QWidget):
         for card in self._phase_cards:
             card.set_status("not_started")
         self._failed_phase = None
+
+    def _on_recovery(self) -> None:
+        """Open the Recovery Tools dialog."""
+        from espo_impl.ui.recovery_dialog import RecoveryDialog
+
+        dialog = RecoveryDialog(
+            self.profile, self.config, self.instances_dir, self
+        )
+        dialog.config_updated.connect(self._on_config_updated)
+        dialog.profile_updated.connect(self._on_profile_updated)
+        dialog.exec()
+
+    def _on_config_updated(self, config: DeployConfig) -> None:
+        """Handle config update from recovery dialog."""
+        self.config = config
+
+    def _on_profile_updated(self, profile: InstanceProfile) -> None:
+        """Handle profile update from recovery dialog."""
+        self.profile = profile
 
     def _on_edit_config(self) -> None:
         """Open the deploy wizard in edit mode."""

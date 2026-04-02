@@ -150,16 +150,46 @@ class DeployWizard(QDialog):
         w = QWidget()
         form = QFormLayout(w)
 
+        db_pw_layout = QHBoxLayout()
         self._db_password_input = QLineEdit()
         self._db_password_input.setEchoMode(QLineEdit.EchoMode.Password)
-        form.addRow("EspoCRM DB Password:", self._db_password_input)
+        db_pw_show_btn = QPushButton("Show")
+        db_pw_show_btn.setCheckable(True)
+        db_pw_show_btn.setFixedWidth(60)
+        db_pw_show_btn.toggled.connect(
+            lambda checked: (
+                self._db_password_input.setEchoMode(
+                    QLineEdit.EchoMode.Normal if checked
+                    else QLineEdit.EchoMode.Password
+                ),
+                db_pw_show_btn.setText("Hide" if checked else "Show"),
+            )
+        )
+        db_pw_layout.addWidget(self._db_password_input)
+        db_pw_layout.addWidget(db_pw_show_btn)
+        form.addRow("EspoCRM DB Password:", db_pw_layout)
 
+        db_root_layout = QHBoxLayout()
         self._db_root_password_input = QLineEdit()
         self._db_root_password_input.setEchoMode(QLineEdit.EchoMode.Password)
         self._db_root_password_input.setPlaceholderText(
             "Leave blank to auto-generate"
         )
-        form.addRow("MariaDB Root Password:", self._db_root_password_input)
+        db_root_show_btn = QPushButton("Show")
+        db_root_show_btn.setCheckable(True)
+        db_root_show_btn.setFixedWidth(60)
+        db_root_show_btn.toggled.connect(
+            lambda checked: (
+                self._db_root_password_input.setEchoMode(
+                    QLineEdit.EchoMode.Normal if checked
+                    else QLineEdit.EchoMode.Password
+                ),
+                db_root_show_btn.setText("Hide" if checked else "Show"),
+            )
+        )
+        db_root_layout.addWidget(self._db_root_password_input)
+        db_root_layout.addWidget(db_root_show_btn)
+        form.addRow("MariaDB Root Password:", db_root_layout)
 
         self._stack.addWidget(w)
 
@@ -172,9 +202,24 @@ class DeployWizard(QDialog):
         self._admin_username_input.setText("admin")
         form.addRow("Admin Username:", self._admin_username_input)
 
+        admin_pw_layout = QHBoxLayout()
         self._admin_password_input = QLineEdit()
         self._admin_password_input.setEchoMode(QLineEdit.EchoMode.Password)
-        form.addRow("Admin Password:", self._admin_password_input)
+        admin_pw_show_btn = QPushButton("Show")
+        admin_pw_show_btn.setCheckable(True)
+        admin_pw_show_btn.setFixedWidth(60)
+        admin_pw_show_btn.toggled.connect(
+            lambda checked: (
+                self._admin_password_input.setEchoMode(
+                    QLineEdit.EchoMode.Normal if checked
+                    else QLineEdit.EchoMode.Password
+                ),
+                admin_pw_show_btn.setText("Hide" if checked else "Show"),
+            )
+        )
+        admin_pw_layout.addWidget(self._admin_password_input)
+        admin_pw_layout.addWidget(admin_pw_show_btn)
+        form.addRow("Admin Password:", admin_pw_layout)
 
         self._admin_email_input = QLineEdit()
         form.addRow("Admin Email:", self._admin_email_input)

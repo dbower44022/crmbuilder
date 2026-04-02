@@ -1,7 +1,7 @@
 # CRM Builder — User Guide
 
-**Version:** 4.0
-**Last Updated:** March 2026
+**Version:** 4.1
+**Last Updated:** April 2026
 
 ---
 
@@ -727,10 +727,203 @@ the system over to users.
 
 ---
 
+## Recovery Tools
+
+The Deployment Dashboard includes a **Recovery & Reset** button that
+opens the Recovery Tools dialog. This provides two operations for
+recovering from common deployment problems without starting over from
+scratch.
+
+### Reset Admin Credentials
+
+Use this when you are locked out of the CRM admin account — forgotten
+password, expired session, or credentials that were changed manually
+and lost.
+
+This operation resets the admin username and password directly in the
+database. All CRM data, configuration, custom fields, and
+customizations are left completely intact.
+
+**Steps:**
+
+1. Open the Deployment Dashboard for the target instance
+2. Click **Recovery & Reset**
+3. Select **Reset Admin Credentials**
+4. Enter:
+   - **New admin username**
+   - **New admin password**
+   - **Confirm new admin password**
+5. Click **Reset Credentials**
+6. Confirm when prompted
+7. The tool connects via SSH and executes the credential reset
+8. On success, a summary panel displays the new username — log in to
+   verify access
+
+The password and confirm password fields must match. If they do not,
+clicking Reset Credentials shows a message explaining the mismatch.
+
+After a successful reset, CRM Builder updates the stored deployment
+configuration with the new credentials.
+
+### Full Database Reset
+
+Use this when you need to start over with a completely clean CRM
+instance — for example, after extensive testing with disposable data,
+or when a configuration has gone wrong in a way that is easier to
+rebuild than fix.
+
+**This permanently destroys all data in the CRM.** All records, custom
+fields, relationships, and configuration are deleted and cannot be
+recovered.
+
+**Steps:**
+
+1. Open the Deployment Dashboard for the target instance
+2. Click **Recovery & Reset**
+3. Select **Full Database Reset**
+4. Read the red warning panel carefully
+5. Type **RESET** (case-sensitive) in the confirmation field
+6. Click **Proceed with Full Reset**
+7. Confirm the final dialog: **I Understand — Delete Everything**
+8. The reset sequence runs automatically:
+   - Stops and removes all CRM Docker containers and volumes
+   - Removes the installation directory
+   - Re-runs the EspoCRM installation (Phase 2)
+   - Runs post-install configuration (Phase 3)
+   - Runs verification checks (Phase 4)
+9. Verification results are displayed on completion
+
+If any step fails, the operation halts immediately and the error is
+shown in the log window. Do not attempt to use the instance until the
+issue is resolved — re-run the full deployment from the Deployment
+Dashboard if needed.
+
+**After a successful reset**, CRM Builder automatically restores the
+API connection so you can start running program files immediately:
+
+1. The tool creates a new API user (`crmbuilder-api`) on the fresh
+   EspoCRM instance using the admin credentials from the deployment
+   configuration
+2. The instance profile is updated with the new API key
+3. A confirmation message is displayed in the log window
+
+You do **not** need to create a new instance in CRM Builder, and you
+do **not** need to manually create an API user or update credentials.
+The URL, project folder, and deployment configuration are all still
+valid. Just re-run your YAML program files to restore your custom
+fields, layouts, and relationships.
+
+If automatic API user creation fails (rare — typically only if the
+CRM is slow to initialize), CRM Builder falls back to switching the
+instance profile to Basic auth using the admin credentials. You can
+create an API user manually later through the EspoCRM administration
+panel if you prefer API key authentication.
+
+**Tip for test environments:** If you prefer to skip API key
+management entirely, configure your test instance with **Basic** auth
+using the admin username and password. These credentials are passed
+to the installer on every reset and work immediately — no post-reset
+steps required at all.
+
+### Recovery Logs
+
+Every recovery operation writes a detailed log file to
+`data/recovery_logs/` in addition to the live output in the log window.
+
+Log files are named:
+```
+recovery-YYYY-MM-DD-HH-MM-SS.log
+```
+
+Each log file records:
+- Timestamp, instance name, operation type, server IP, and domain
+- Each step with its start time, result (OK or FAILED), and any
+  error details
+- Final result summary
+
+The log file path is displayed in the UI when the operation completes.
+Passwords are never included in log files.
+
+---
+
+## Troubleshooting
+
+### HTTP 403 on all operations
+Your API user lacks admin access. Switch to **Basic** authentication
+with your admin username and password. EspoCRM Cloud requires Basic
+auth for admin operations.
+
+### TYPE CONFLICT on a field
+The field exists in EspoCRM with a different type than specified in
+the YAML. The tool skips it. To resolve: manually delete the field
+in the EspoCRM Entity Manager, then run the YAML file to recreate it
+correctly.
+
+**Warning:** deleting a field destroys its data. Export records before
+doing this on a production instance.
+
+### VERIFY FAILED after relationships
+This may be a cosmetic issue in the verify step for certain
+relationship types. Check that the relationship actually exists in
+EspoCRM directly before investigating further.
+
+### Program file panel is empty
+Ensure the selected instance has a project folder configured and that
+the `programs/` subdirectory contains `.yaml` files.
+
+### Generate Docs shows an error
+Check that the instance has a project folder configured. The output
+panel message will indicate the specific problem.
+
+### HTTP 400 during import
+Check the output log for the specific error message from EspoCRM.
+Common causes: a field is mapped to a read-only field, a phone number
+format is rejected, or a required field is missing. The log shows
+every field and value sent for each record.
+
+### Import shows all records as ERROR
+Every record needs an email address for matching. Ensure a JSON field
+is mapped to `emailAddress` or that `emailAddress` is set as a fixed
+value.
+
+### Confirmation dialog on Run
+Your program file contains `action: delete_and_create` or
+`action: delete`. Type `DELETE` to confirm and click **Proceed**
+only on test instances or when doing a clean rebuild with no live
+data. Click **Cancel** to safely abort.
+
+### Recovery — SSH connection fails
+Verify that the instance's deployment configuration has the correct
+IP address and SSH key path. The SSH key must be accessible on your
+local machine at the path stored in the deploy config. Test the
+connection from your terminal: `ssh -i /path/to/key user@ip`.
+
+### Recovery — credential reset succeeds but login fails
+EspoCRM may cache authentication. Clear the browser cache and try
+again. If the problem persists, try a Full Database Reset to
+reinstall the instance from scratch.
+
+### Recovery — Full Database Reset fails mid-sequence
+The instance may be in a partially torn-down state. Return to the
+Deployment Dashboard and run a full deployment starting from Phase 1.
+Check the recovery log file (path shown in the UI) for the specific
+step that failed.
+
+### Recovery — "Could not create API user automatically"
+This means the Full Database Reset completed but the automatic API
+user creation failed. CRM Builder has switched your instance profile
+to Basic auth as a fallback — you can run program files immediately.
+To switch back to API key auth later: log into EspoCRM, go to
+Administration → API Users, create a new API user with admin access,
+then edit the instance in CRM Builder and enter the new API key.
+
+---
+
 
 
 | Version | Date | Changes |
 |---|---|---|
+| 4.1 | April 2026 | Added Recovery Tools section (Reset Admin Credentials, Full Database Reset) and related troubleshooting entries |
 | 4.0 | March 2026 | Rewritten for new documentation structure. Updated to reflect project folder model, content versioning, layout and relationship configuration, import wizard, and Generate Docs |
 | 3.0 | March 2026 | Added data import wizard |
 | 2.1 | March 2026 | Renamed to CRM Builder |
