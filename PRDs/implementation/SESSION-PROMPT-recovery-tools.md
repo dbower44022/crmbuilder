@@ -99,12 +99,69 @@ engagements, custom fields, and configuration are permanently destroyed.
 
 ---
 
+## Operation Logging
+
+Every recovery operation must write a detailed log file to the local `logs/`
+directory in addition to streaming output to the UI log window.
+
+**Log file naming:**
+```
+logs/recovery-YYYY-MM-DD-HH-MM-SS.log
+```
+
+**Log file content — required for every operation:**
+
+```
+CBM CRM Deployment Tool — Recovery Log
+=======================================
+Timestamp:   YYYY-MM-DD HH:MM:SS
+Environment: dev | prod
+Operation:   Reset Admin Credentials | Full Database Reset
+Server IP:   [droplet_ip from config]
+Domain:      [domain from config]
+
+--- Operation Steps ---
+[HH:MM:SS] STARTED  <step description>
+[HH:MM:SS] OK       <step description>
+[HH:MM:SS] FAILED   <step description>
+            Error:   <error message>
+            Command: <command that failed>
+
+--- Result ---
+COMPLETED | FAILED
+
+[If Reset Admin Credentials — COMPLETED:]
+New admin username: <username>
+Note: Password not logged for security.
+
+[If Full Database Reset — COMPLETED:]
+Phase 3 reinstallation: COMPLETED
+Phase 5 verification: COMPLETED | FAILED
+  [list each verification check and its result]
+
+[If any operation — FAILED:]
+Failed at step: <step description>
+Error detail:   <full error output>
+```
+
+**Logging requirements:**
+- The `logs/` directory must be created automatically if it does not exist
+- A `.gitignore` entry for `logs/` must be created automatically by the tool
+- Passwords must never appear in log files under any circumstances
+- Each step must be logged as it executes — do not buffer and write at the end
+- The log file must be written even if the operation fails partway through
+- On completion, display the log file path in the UI so the user can find it
+
+---
+
 ## File Changes Required
 
 - **New file:** `ui/recovery.py` — Recovery Tools screen (PySide6)
+- **New file:** `logs/.gitkeep` — ensures logs directory exists in repo
 - **Modified file:** `ui/dashboard.py` — add "Recovery & Reset" button that
   opens the Recovery Tools screen. Make minimal changes only — add the button
   and the navigation call, nothing else.
+- **Modified file:** `.gitignore` — add `logs/*.log` entry if not already present
 - **No changes** to any phase files, config files, or other UI screens
 
 ---
