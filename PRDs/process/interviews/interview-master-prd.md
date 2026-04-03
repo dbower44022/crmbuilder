@@ -255,7 +255,7 @@ is a persona. "John Smith" is not.
 The major functional areas the CRM must support (domains), and within
 each domain, the specific business processes that need to be defined.
 This is the most important topic — it establishes the scope and
-structure for the entire Phase 2 effort.
+structure for the entire implementation effort.
 
 This topic has two parts: first identify the domains, then drill into
 each domain to identify its processes.
@@ -412,7 +412,9 @@ more naturally in the conversation.
 ### Establishing Domain Processing Order
 
 After all domains and their processes are identified, determine
-the order in which domains should be processed in Phase 2:
+the order in which domains should be processed. This order governs
+Domain Overviews (Phase 3), Process Definition (Phase 5), Domain
+Reconciliation (Phase 6), and YAML Generation (Phase 8):
 
 > "Now let's decide which domain to tackle first. The principle is:
 > start with the domain that has the most data and the most processes,
