@@ -1,7 +1,7 @@
 # CRM Builder — Master PRD Interview Guide
 
-**Version:** 1.1
-**Last Updated:** 03-30-26 17:30
+**Version:** 1.2
+**Last Updated:** 04-03-26 18:00
 **Purpose:** AI interviewer guide for Phase 1 — Master PRD
 **Governing Process:** PRDs/application/CRM-Builder-Document-Production-Process.docx
 
@@ -32,7 +32,7 @@ implementation's repository at `PRDs/{Implementation}-Master-PRD.docx`.
 ## What the Master PRD Must Contain
 
 The interview must gather enough information to produce a Master PRD
-with four sections:
+with five sections:
 
 1. **Organization Overview** — mission, operating context, why a CRM
    is needed
@@ -45,7 +45,13 @@ with four sections:
    one-line description, implementation tier, business value as a
    bulleted list, and key capabilities as a bulleted list), and
    key data categories
-4. **System Scope** — in scope, out of scope, key integrations
+4. **Cross-Domain Services** — one section per service with service
+   name, purpose description, capabilities it provides to domains,
+   and any entities it may own. Written in sufficient detail that
+   domain process documents can reference services generically
+   (e.g., "Use the Notes Service to add notes to a contact")
+   without needing to know internal mechanics
+5. **System Scope** — in scope, out of scope, key integrations
    described generically by function
 
 The Key Business Domains section also includes:
@@ -60,6 +66,9 @@ The Master PRD also establishes:
   with the most entities first)
 - The sequence of processes within each domain — sequential lifecycle
   processes first, then asynchronous processes
+- The list of Cross-Domain Services — shared platform capabilities
+  (such as Notes, Email, Calendar, Surveys) that are not owned by
+  any single domain but are consumed by multiple domains
 - Identifiers for each persona (MST-PER-001, MST-PER-002, etc.)
   and domain (MST-DOM-001, MST-DOM-002, etc.)
 - An implementation tier for each process
@@ -127,8 +136,8 @@ Before diving in, establish the administrator's CRM background:
 
 ## Interview Topics
 
-The interview covers five topic areas. The AI should work through all
-five but does not need to follow them in strict order — follow the
+The interview covers six topic areas. The AI should work through all
+six but does not need to follow them in strict order — follow the
 natural flow of conversation. Use the topic checklist to ensure nothing
 is missed before wrapping up.
 
@@ -137,8 +146,9 @@ is missed before wrapping up.
 - [ ] 1. Organization Overview
 - [ ] 2. Personas
 - [ ] 3. Business Domains and Processes
-- [ ] 4. System Scope
-- [ ] 5. Constraints and Priorities
+- [ ] 4. Cross-Domain Services
+- [ ] 5. System Scope
+- [ ] 6. Constraints and Priorities
 
 ---
 
@@ -414,11 +424,89 @@ the order in which domains should be processed in Phase 2:
 
 ---
 
-## Topic 4 — System Scope
+## Topic 4 — Cross-Domain Services
+
+**What the AI is trying to learn:**
+Whether any capabilities discussed during the domain and process
+exploration are shared across multiple domains rather than owned by
+a single domain. Cross-Domain Services are platform capabilities —
+such as Notes, Email, Calendar, or Surveys — that multiple domains
+consume but no single domain owns. Services are structurally parallel
+to domains: they can own entities, define processes, and produce
+their own reconciled Service PRD. But their purpose is to provide
+shared capabilities, not to fulfill a standalone business function.
+
+This topic works best after domains and processes have been identified,
+because the AI can now look across the domain landscape and spot
+capabilities that appeared in more than one domain.
+
+**Opening question:**
+> "As we talked through the domains and processes, I noticed some
+> capabilities that came up in more than one domain. Before we move
+> on, I want to check whether any of those are shared services —
+> things like notes, email, calendaring, or surveys — that aren't
+> really owned by any one domain but are used across several.
+>
+> Did anything like that come up, or are there shared capabilities
+> your organization relies on that we should call out separately?"
+
+**Follow-up probes (use as needed):**
+- "You mentioned [capability] in both [Domain A] and [Domain B].
+  Is that something each domain handles independently, or is it
+  a shared service that works the same way everywhere?"
+- "Are there tools or functions that multiple teams rely on — things
+  like a shared notes system, a common email workflow, or a
+  calendar integration?"
+- "For [capability] — does it have its own data? For example, does
+  it create its own records, or does it just add information to
+  records that belong to other domains?"
+- "Who is responsible for how [capability] works? Is it managed
+  centrally, or does each domain configure it independently?"
+
+**For each service, capture:**
+- A clear service name (full name, not a short code — e.g.,
+  "Notes Service" not "NS")
+- Purpose — what shared capability it provides
+- Capabilities — the specific functions it offers to consuming
+  domains, described in enough detail that a process document
+  could reference the service generically (e.g., "Use the Notes
+  Service to add notes to a contact")
+- Consuming domains — which domains use this service
+- Entities it may own — whether the service has its own data
+  objects (e.g., a Survey service might own Survey and Survey
+  Response entities)
+
+**Distinguishing services from domain processes:**
+
+Not every shared concept is a service. The test is whether the
+capability is consumed by multiple domains and has no natural
+single owner. If a capability is primarily used by one domain
+with occasional use by another, it likely belongs in the primary
+domain. If it is genuinely shared — used broadly and managed
+centrally — it is a service.
+
+> "Let me check my understanding: [capability] is used by
+> [Domain A], [Domain B], and [Domain C], and no single domain
+> owns it. That sounds like a Cross-Domain Service. Does that
+> feel right, or does it belong more naturally in one domain?"
+
+**Signs you have enough:**
+- All shared capabilities identified with clear service names
+- Each service has a purpose and capability description
+- Consuming domains are identified for each service
+- Entities owned by the service are noted (if any)
+- Each service description is detailed enough that a domain
+  process document could reference it generically without
+  knowing internal mechanics
+- Clear distinction made between services and domain processes
+
+---
+
+## Topic 5 — System Scope
 
 **What the AI is trying to learn:**
 What is in scope and out of scope for the CRM, and what external
-integrations are needed. This becomes Section 4 of the Master PRD.
+integrations are needed. This becomes Section 5 of the Master PRD.
 
 **Opening question:**
 > "Let's define the boundaries of this CRM. Based on everything
@@ -452,7 +540,7 @@ name. "Bulk email communication platform" not a specific product.
 
 ---
 
-## Topic 5 — Constraints and Priorities
+## Topic 6 — Constraints and Priorities
 
 **What the AI is trying to learn:**
 Timeline, technical constraints, and implementation priorities. This
@@ -498,9 +586,11 @@ Summarize the key findings back to the administrator. Present:
    and CRM capabilities)
 2. The domains identified (with codes and identifiers)
 3. The process list for each domain (with sequence and tiers)
-4. The implementation tier summary across all domains
-5. The recommended domain processing order
-6. The system scope (in/out/integrations)
+4. The Cross-Domain Services identified (with names, purposes,
+   and consuming domains)
+5. The implementation tier summary across all domains
+6. The recommended domain processing order
+7. The system scope (in/out/integrations)
 
 > "Let me summarize what we've established before I produce the
 > Master PRD..."
@@ -523,7 +613,10 @@ the following structure:
    business processes (each with one-line description, tier badge,
    business value as bulleted list, key capabilities as bulleted
    list), and key data categories
-4. **System Scope** — in scope, out of scope, integrations
+4. **Cross-Domain Services** — one section per service with service
+   name, purpose description, capabilities it provides to domains,
+   and any entities it may own
+5. **System Scope** — in scope, out of scope, integrations
    described by function
 
 Commit the document to the repository at:
@@ -531,20 +624,18 @@ Commit the document to the repository at:
 
 ### Next Steps
 
-> "The Master PRD is complete. The next step is Phase 2 — Process
-> Definition. We'll work through one business process at a time,
-> starting with [first domain] in this order:
+> "The Master PRD is complete. The next step is Phase 2 — Entity
+> Definition. We'll start with an Entity Discovery conversation
+> where you upload the Master PRD and we walk through each domain
+> and its processes to identify every entity the system needs to
+> track. That produces the Entity Inventory.
 >
-> 1. [First process]
-> 2. [Second process]
-> ...
+> After that, we'll define each entity one at a time in dependency
+> order — foundational entities first, then the entities that
+> reference them.
 >
-> Each process gets its own conversation. For each one, you'll
-> upload the Master PRD plus any process documents we've already
-> completed for that domain.
->
-> Would you like to start the first process conversation now, or
-> schedule it for another time?"
+> Would you like to start the Entity Discovery conversation now,
+> or schedule it for another time?"
 
 ---
 
@@ -590,5 +681,6 @@ discover them now than during Phase 2.
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.2 | 04-03-26 | Added Cross-Domain Services: new Topic 4 interview section, added to Master PRD contents and output structure, added to summary checklist, added to "also establishes" list. Renumbered Topics 4–5 to 5–6. Fixed Next Steps to correctly reference Phase 2 — Entity Definition (was incorrectly pointing to Process Definition). |
 | 1.1 | 03-30-26 | Updated persona format (Responsibilities + What the CRM Provides, both bulleted). Added implementation tier system (Core, Important, Enhancement, Out of Scope). Added Business Value and Key Capabilities as bulleted lists per process. Updated document production structure to match. |
 | 1.0 | 03-30-26 | Initial release. Replaces discovery-interview.md. |
