@@ -1,7 +1,7 @@
 # CRM Builder — Entity Definition Guide
 
-**Version:** 1.1
-**Last Updated:** 04-02-26 14:00
+**Version:** 1.2
+**Last Updated:** 04-04-26 21:30
 **Purpose:** AI guide for Phase 2 — Entity Definition
 **Governing Process:** PRDs/process/CRM-Builder-Document-Production-Process.docx
 
@@ -186,6 +186,11 @@ Present the proposed mapping:
 >
 > Does this mapping make sense? Any concepts that should be
 > combined or separated differently?"
+
+**Note:** These mappings are preliminary. The Entity PRD
+conversation (Phase 2b) is where Native/Custom and Entity Type
+are authoritatively determined based on the entity's full
+requirements.
 
 ### Step 3 — Resolve Questions
 
@@ -467,6 +472,14 @@ being worked on. If some domains have not yet completed their
 process documents, note the incomplete domains and flag the entity
 for update when those domains are defined.
 
+**Native/Custom is determined in the Entity PRD, not the Entity
+Inventory.** The Entity Inventory may record preliminary
+Native/Custom and Entity Type assessments, but these are not
+authoritative. The Entity PRD conversation establishes the
+definitive determination based on the entity's full requirements.
+Entities added to the inventory before their requirements are
+fully defined should use TBD for Native/Custom and Entity Type.
+
 ---
 
 ## Important AI Behaviors During Entity Definition
@@ -545,5 +558,6 @@ Document Production Process.
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.2 | 04-04-26 | Added Native/Custom determination principle: Entity Inventory assessments are preliminary; Entity PRD is authoritative. Added note to Step 2 (Propose Entity Mapping) and new Critical Rule. |
 | 1.1 | 04-02-26 | Added batched-decision approach to AI behaviors. Added generator template reference and usage instructions. Added reference implementation note (Contact Entity PRD). Added Section 9 (Decisions Made) to Entity PRD structure. Updated State the Plan to reflect batched workflow. Replaced "ask about each field" with three-bucket batching. Added prior Entity PRD cross-referencing guidance. |
 | 1.0 | 04-01-26 | Initial release. |
