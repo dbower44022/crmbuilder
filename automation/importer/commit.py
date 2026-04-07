@@ -27,6 +27,7 @@ class CommitResult:
     created_ids: dict[str, list[int]]  # table_name -> list of new ids
     import_status: str  # 'imported', 'partial', 'rejected'
     has_updates: bool  # True if any update operations were committed
+    master_write_errors: list[str] = dataclasses.field(default_factory=list)
 
 
 def commit_batch(
@@ -72,19 +73,22 @@ def commit_batch(
     else:
         import_status = "partial"
 
-    # Map from batch_id to newly created id for intra-batch FK resolution
+    # Separate Client records (master db) from other records (client db).
+    # Per ISS-010, master writes must happen AFTER the client transaction
+    # succeeds to prevent cross-database inconsistency on rollback.
+    client_table_records: list[ProposedRecord] = []
+    other_records: list[ProposedRecord] = []
+    for rec in accepted_records:
+        if rec.table_name == "Client":
+            client_table_records.append(rec)
+        else:
+            other_records.append(rec)
+
+    # Phase 1 — Client transaction (atomic, all-or-nothing)
     batch_id_to_real_id: dict[str, int] = {}
 
     with transaction(conn):
-        for rec in accepted_records:
-            if rec.table_name == "Client":
-                # Client updates go to master db
-                if master_conn is not None:
-                    _commit_client_update(master_conn, rec, ai_session_id, now)
-                    updated_count += 1
-                    has_updates = True
-                continue
-
+        for rec in other_records:
             # Resolve intra-batch references
             resolved_values = dict(rec.values)
             for fk_col, batch_ref in rec.intra_batch_refs.items():
@@ -119,12 +123,25 @@ def commit_batch(
                     old_values, resolved_values, now,
                 )
 
-        # Update AISession
+        # Update AISession inside the same transaction
         conn.execute(
             "UPDATE AISession SET import_status = ?, completed_at = ?, "
             "updated_at = ? WHERE id = ?",
             (import_status, now, now, ai_session_id),
         )
+
+    # Phase 2 — Master writes (after client transaction succeeds)
+    master_write_errors: list[str] = []
+    if master_conn is not None:
+        for rec in client_table_records:
+            try:
+                _commit_client_update(master_conn, rec, ai_session_id, now)
+                updated_count += 1
+                has_updates = True
+            except Exception as exc:
+                master_write_errors.append(
+                    f"Failed to update Client id={rec.target_id}: {exc}"
+                )
 
     return CommitResult(
         created_count=created_count,
@@ -134,6 +151,7 @@ def commit_batch(
         created_ids=created_ids,
         import_status=import_status,
         has_updates=has_updates,
+        master_write_errors=master_write_errors,
     )
 
 

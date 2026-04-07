@@ -32,6 +32,11 @@ class ImportResult:
     commit_result: CommitResult
     trigger_result: TriggerResult
 
+    @property
+    def master_write_errors(self) -> list[str]:
+        """Warnings from master database writes that failed after client commit."""
+        return self.commit_result.master_write_errors
+
 
 class ImportProcessor:
     """Public API for the Import Processor.

@@ -242,7 +242,73 @@ class TestClientUpdate:
             conn, 1, _batch([rec]), master_conn=master_conn,
         )
         assert result.updated_count == 1
+        assert result.master_write_errors == []
 
+        row = master_conn.execute(
+            "SELECT organization_overview FROM Client WHERE id = 1"
+        ).fetchone()
+        assert row[0] == "New overview"
+
+    def test_client_db_failure_does_not_touch_master(self, conn, master_conn):
+        """ISS-010: If a client-db write fails, master.Client must NOT be modified."""
+        # Get the current master value
+        original = master_conn.execute(
+            "SELECT organization_overview FROM Client WHERE id = 1"
+        ).fetchone()[0]
+
+        client_rec = _rec("Client", {"organization_overview": "Should not persist"},
+                          action="update", target_id=1)
+        # This Domain create will succeed, but the Process will fail (missing domain_id)
+        good_rec = _rec("Domain", {
+            "name": "Good", "code": "GD", "sort_order": 1,
+            "is_service": False, "created_by_session_id": 1,
+        })
+        bad_rec = _rec("Process", {
+            "name": "Bad", "code": "BAD", "sort_order": 1,
+            "created_by_session_id": 1,
+            # Missing domain_id — NOT NULL constraint violation
+        })
+
+        with pytest.raises(sqlite3.IntegrityError):
+            commit_batch(
+                conn, 1, _batch([client_rec, good_rec, bad_rec]),
+                master_conn=master_conn,
+            )
+
+        # Master should be unchanged — the Client write should never have happened
+        current = master_conn.execute(
+            "SELECT organization_overview FROM Client WHERE id = 1"
+        ).fetchone()[0]
+        assert current == original
+
+        # Client db should also be unchanged (transaction rolled back)
+        row = conn.execute("SELECT id FROM Domain WHERE code = 'GD'").fetchone()
+        assert row is None
+
+    def test_master_write_after_successful_client_commit(self, conn, master_conn):
+        """ISS-010: Happy path — Client update happens after client transaction succeeds."""
+        client_rec = _rec("Client", {"organization_overview": "New overview"},
+                          action="update", target_id=1)
+        domain_rec = _rec("Domain", {
+            "name": "Mentoring", "code": "MN", "sort_order": 1,
+            "is_service": False, "created_by_session_id": 1,
+        })
+
+        result = commit_batch(
+            conn, 1, _batch([client_rec, domain_rec]),
+            master_conn=master_conn,
+        )
+
+        # Both writes should succeed
+        assert result.created_count == 1  # Domain
+        assert result.updated_count == 1  # Client
+        assert result.master_write_errors == []
+
+        # Verify client db
+        row = conn.execute("SELECT code FROM Domain WHERE code = 'MN'").fetchone()
+        assert row is not None
+
+        # Verify master db
         row = master_conn.execute(
             "SELECT organization_overview FROM Client WHERE id = 1"
         ).fetchone()
