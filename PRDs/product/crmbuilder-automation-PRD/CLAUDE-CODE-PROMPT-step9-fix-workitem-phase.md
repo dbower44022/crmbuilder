@@ -4,7 +4,7 @@
 
 You completed Step 9 (database layer) and the work was reviewed. The implementation is largely correct — 168 tests passing, all 25 tables present, both v1.6 schema findings (Dependency UNIQUE, LayoutRow CHECK) correctly applied, DEC-053 tier column correctly added, and CHECK constraints on enumerated TEXT columns broadly applied per the Section 2.3 convention.
 
-One issue was found that needs to be corrected before Step 10 begins.
+One issue was found that needs to be corrected before Step 10 begins. The L2 PRD has been updated to v1.7 to resolve the underlying doc-drift that caused the issue — Section 6.3 no longer shows phase as a column, and Section 14.2.3 now contains an explicit item_type-to-phase mapping table aligned to the 12-phase Document Production Process.
 
 ## The Issue
 
@@ -17,13 +17,15 @@ phase TEXT NOT NULL CHECK (phase IN (
 )),
 ```
 
-**This column should not exist.** The L2 PRD explicitly resolved this question in Section 14.2.3 (Full Project Inventory):
+**This column should not exist.** The L2 PRD v1.7 explicitly resolves this in Section 14.2.3 (Full Project Inventory):
 
-> "Below the work queue, a collapsible section labeled 'All Work Items' shows every work item in the project grouped by phase. **The application maintains a static mapping from item_type to phase number (for example, entity_prd maps to Phase 2, process_definition maps to Phase 5). This mapping is not stored in the database because it is defined by the methodology and does not vary per client.** Each phase group has a header showing the phase number, phase name, and a completion indicator..."
+> "The application maintains a static mapping from item_type to phase number, defined in the table below. This mapping is not stored in the database because it is defined by the methodology and does not vary per client. For three item_types (domain_overview, process_definition, domain_reconciliation), the phase number depends on whether the related Domain has is_service = TRUE — services consume Phase 4 (Cross-Domain Service Definition), while regular domains consume Phases 3, 5, and 6."
 
-This was a design decision (Finding 7 from the v1.6 schema validation session). The reasoning: phase is fully derived from item_type via a static, one-to-one mapping that does not change per client. Storing it as a column creates redundant data and the possibility of inconsistency.
+Section 14.2.3 then contains an explicit table mapping all item_types to their phases. This is application-level logic — not a schema column.
 
-Additionally, even if the column were correct in principle, the CHECK constraint enumerates only 11 phases — but the Document Production Process has **12 phases** (see `CLAUDE.md` and `PRDs/process/CRM-Builder-Document-Production-Process.docx`). So the column was both wrong by design and also wrong in its enumeration.
+Section 6.3 (the WorkItem table definition) in v1.7 no longer shows phase as a column. The original Step 9 prompt was based on v1.6, which still had phase in Section 6.3 — that doc-drift is what led to the wrong implementation.
+
+This was a design decision (Finding 7 from the v1.6 schema validation session). The reasoning: phase is fully derived from item_type via a static mapping that does not change per client. Storing it as a column creates redundant data and the possibility of inconsistency.
 
 ## What I Want From You
 
