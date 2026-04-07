@@ -131,15 +131,19 @@ def create_client_database():
     # 4.4 FieldOption
     c.execute("""
         CREATE TABLE FieldOption (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            field_id    INTEGER NOT NULL,
-            value       TEXT NOT NULL,
-            label       TEXT NOT NULL,
-            description TEXT,
-            style       TEXT,
-            sort_order  INTEGER,
-            is_default  BOOLEAN NOT NULL DEFAULT 0,
-            FOREIGN KEY (field_id) REFERENCES Field(id)
+            id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+            field_id              INTEGER NOT NULL,
+            value                 TEXT NOT NULL,
+            label                 TEXT NOT NULL,
+            description           TEXT,
+            style                 TEXT,
+            sort_order            INTEGER,
+            is_default            BOOLEAN NOT NULL DEFAULT 0,
+            created_at            TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at            TEXT NOT NULL DEFAULT (datetime('now')),
+            created_by_session_id INTEGER,
+            FOREIGN KEY (field_id) REFERENCES Field(id),
+            FOREIGN KEY (created_by_session_id) REFERENCES AISession(id)
         )
     """)
 
@@ -221,6 +225,7 @@ def create_client_database():
             triggers              TEXT,
             completion_criteria   TEXT,
             sort_order            INTEGER NOT NULL,
+            tier                  TEXT,
             created_at            TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at            TEXT NOT NULL DEFAULT (datetime('now')),
             created_by_session_id INTEGER,
@@ -278,6 +283,7 @@ def create_client_database():
             process_step_id INTEGER,
             role            TEXT NOT NULL,
             description     TEXT,
+            created_at      TEXT NOT NULL DEFAULT (datetime('now')),
             FOREIGN KEY (process_id) REFERENCES Process(id),
             FOREIGN KEY (entity_id) REFERENCES Entity(id),
             FOREIGN KEY (process_step_id) REFERENCES ProcessStep(id)
@@ -293,6 +299,7 @@ def create_client_database():
             process_step_id INTEGER,
             usage           TEXT NOT NULL,
             description     TEXT,
+            created_at      TEXT NOT NULL DEFAULT (datetime('now')),
             FOREIGN KEY (process_id) REFERENCES Process(id),
             FOREIGN KEY (field_id) REFERENCES Field(id),
             FOREIGN KEY (process_step_id) REFERENCES ProcessStep(id)
@@ -307,6 +314,7 @@ def create_client_database():
             persona_id  INTEGER NOT NULL,
             role        TEXT NOT NULL,
             description TEXT,
+            created_at  TEXT NOT NULL DEFAULT (datetime('now')),
             FOREIGN KEY (process_id) REFERENCES Process(id),
             FOREIGN KEY (persona_id) REFERENCES Persona(id)
         )
@@ -390,7 +398,12 @@ def create_client_database():
             domain_id             INTEGER,
             entity_id             INTEGER,
             process_id            INTEGER,
-            phase                 TEXT NOT NULL,
+            phase                 TEXT NOT NULL
+                                  CHECK (phase IN (
+                                      'Phase 1', 'Phase 2', 'Phase 3', 'Phase 4',
+                                      'Phase 5', 'Phase 6', 'Phase 7', 'Phase 8',
+                                      'Phase 9', 'Phase 10', 'Phase 11'
+                                  )),
             status                TEXT NOT NULL,
             blocked_reason        TEXT,
             status_before_blocked TEXT,          -- Section 9.9
@@ -420,7 +433,8 @@ def create_client_database():
             work_item_id  INTEGER NOT NULL,
             depends_on_id INTEGER NOT NULL,
             FOREIGN KEY (work_item_id) REFERENCES WorkItem(id),
-            FOREIGN KEY (depends_on_id) REFERENCES WorkItem(id)
+            FOREIGN KEY (depends_on_id) REFERENCES WorkItem(id),
+            UNIQUE (work_item_id, depends_on_id)
         )
     """)
 
@@ -496,7 +510,12 @@ def create_client_database():
             created_at      TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
             FOREIGN KEY (work_item_id) REFERENCES WorkItem(id),
-            CHECK (generation_mode IN ('final', 'draft'))
+            CHECK (generation_mode IN ('final', 'draft')),
+            CHECK (document_type IN (
+                'master_prd', 'entity_inventory', 'entity_prd',
+                'domain_overview', 'process_document', 'domain_prd',
+                'yaml_program_files', 'crm_evaluation_report'
+            ))
         )
     """)
 
@@ -539,7 +558,8 @@ def create_client_database():
             is_full_width   BOOLEAN NOT NULL DEFAULT 0,
             FOREIGN KEY (panel_id) REFERENCES LayoutPanel(id),
             FOREIGN KEY (cell_1_field_id) REFERENCES Field(id),
-            FOREIGN KEY (cell_2_field_id) REFERENCES Field(id)
+            FOREIGN KEY (cell_2_field_id) REFERENCES Field(id),
+            CHECK (cell_1_field_id IS NOT NULL OR cell_2_field_id IS NOT NULL)
         )
     """)
 
