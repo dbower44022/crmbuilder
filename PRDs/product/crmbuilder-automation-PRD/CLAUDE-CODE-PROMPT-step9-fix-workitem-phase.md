@@ -29,6 +29,32 @@ This was a design decision (Finding 7 from the v1.6 schema validation session). 
 
 ## What I Want From You
 
+### 0. Verify the issue is real before doing anything else
+
+**Do not assume this fix is already done.** The L2 PRD v1.7 was updated by Doug AFTER the original Step 9 implementation was committed. The code in `automation/db/client_schema.py` was written against L2 PRD v1.6, which still showed phase as a column in Section 6.3. The schema code has not been touched since the original Step 9 commit. The PRD changing does not change the code.
+
+Before doing anything else, run this command and report the output verbatim:
+
+```bash
+grep -n "phase" automation/db/client_schema.py
+```
+
+Expected output (the issue is real):
+```
+360:    phase TEXT NOT NULL CHECK (phase IN (
+361:        'Phase 1', 'Phase 2', 'Phase 3', 'Phase 4', 'Phase 5',
+362:        'Phase 6', 'Phase 7', 'Phase 8', 'Phase 9', 'Phase 10', 'Phase 11'
+363:    )),
+```
+
+(Line numbers may differ slightly.)
+
+If grep returns those lines or anything similar, the issue is real and you must continue with the fix.
+
+If grep returns no matches in `WORK_ITEM_TABLE`, stop and report: "The phase column is not present in client_schema.py. There is nothing to fix in the schema. Should I check the tests for stale references?"
+
+Do not skip this verification step. Do not infer the state of the code from the state of the PRD.
+
 ### 1. Explain why you added the phase column
 
 Before making the fix, please explain in your response:
@@ -57,14 +83,30 @@ In `automation/tests/test_client_schema.py`:
 
 ### 4. Verify
 
-Run:
+Run these commands and confirm each:
 
 ```bash
+# 1. The phase column must be gone from the schema
+grep -n "phase" automation/db/client_schema.py
+```
+
+Expected: zero matches anywhere in `WORK_ITEM_TABLE`. If grep finds any reference to phase inside the WorkItem table definition, the fix is not complete.
+
+```bash
+# 2. The test suite must pass
 uv run pytest automation/tests/ -v
+```
+
+Expected: all tests pass. The number of tests will be lower than 168 because phase-specific tests have been removed.
+
+```bash
+# 3. The linter must be clean
 uv run ruff check automation/
 ```
 
-Both must pass before you commit.
+Expected: no errors.
+
+All three checks must pass before you commit.
 
 ### 5. Commit
 
