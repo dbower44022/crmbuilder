@@ -1,11 +1,12 @@
 """Conflict detection for the Import Processor.
 
-Implements L2 PRD Section 11.5 — five conflict types:
+Implements L2 PRD Section 11.5 — six conflict types:
 1. Identifier uniqueness
 2. Type mismatches
 3. Referential integrity
 4. Duplicate detection
 5. Orphaned updates
+6. Required field missing
 """
 
 from __future__ import annotations
@@ -14,6 +15,37 @@ import sqlite3
 
 from automation.importer.identifiers import check_uniqueness, validate_format
 from automation.importer.proposed import Conflict, ProposedBatch, ProposedRecord
+
+# Required (NOT NULL) columns per table that must be non-empty in proposed records.
+# Hand-maintained — see test_importer_conflicts.py for the drift-detection test.
+# Excludes: id, created_at, updated_at, created_by_session_id, and BOOLEAN columns
+# with DEFAULT values (is_native, is_required, read_only, audited, is_sorted,
+# display_as_label, is_service, tab_break, hidden, is_full_width, is_default,
+# audited_foreign, requires_review, reviewed).
+REQUIRED_COLUMNS: dict[str, list[str]] = {
+    "Domain": ["name", "code"],
+    "Entity": ["name", "code", "entity_type"],
+    "Field": ["entity_id", "name", "label", "field_type"],
+    "FieldOption": ["field_id", "value", "label"],
+    "Relationship": [
+        "name", "description", "entity_id", "entity_foreign_id",
+        "link_type", "link", "link_foreign", "label", "label_foreign",
+    ],
+    "Persona": ["name", "code"],
+    "BusinessObject": ["name", "status"],
+    "Process": ["domain_id", "name", "code", "sort_order"],
+    "ProcessStep": ["process_id", "name", "step_type", "sort_order"],
+    "Requirement": ["identifier", "process_id", "description", "status"],
+    "ProcessEntity": ["process_id", "entity_id", "role"],
+    "ProcessField": ["process_id", "field_id", "usage"],
+    "ProcessPersona": ["process_id", "persona_id", "role"],
+    "Decision": ["identifier", "title", "description", "status"],
+    "OpenIssue": ["identifier", "title", "description", "status"],
+    "LayoutPanel": ["entity_id", "label", "sort_order", "layout_mode"],
+    "LayoutRow": ["panel_id", "sort_order"],
+    "LayoutTab": ["panel_id", "label", "category", "sort_order"],
+    "ListColumn": ["entity_id", "field_id", "sort_order"],
+}
 
 # Tables that have a foreign key we should check, mapped to the FK column
 # and the target table.
@@ -99,6 +131,9 @@ def detect_conflicts(
 
         # 6. Orphaned updates
         record.conflicts.extend(_check_orphaned_updates(conn, record))
+
+        # 7. Required field check
+        record.conflicts.extend(_check_required_fields(record))
 
     return batch
 
@@ -316,4 +351,32 @@ def _check_orphaned_updates(
             ),
         ))
 
+    return conflicts
+
+
+def _check_required_fields(record: ProposedRecord) -> list[Conflict]:
+    """Check that all required columns have non-empty values.
+
+    Empty strings, None, and missing keys are all treated as missing.
+    Updates only modify the fields they touch, so required fields
+    untouched by the update remain valid — skip updates entirely.
+    """
+    if record.action == "update":
+        return []
+
+    required = REQUIRED_COLUMNS.get(record.table_name, [])
+    conflicts: list[Conflict] = []
+    for col in required:
+        # Skip columns resolved by intra-batch references — they will
+        # be populated at commit time
+        if col in record.intra_batch_refs:
+            continue
+        value = record.values.get(col)
+        if value is None or (isinstance(value, str) and value.strip() == ""):
+            conflicts.append(Conflict(
+                severity="error",
+                conflict_type="required_field_missing",
+                message=f"Required field '{col}' is missing or empty",
+                field_name=col,
+            ))
     return conflicts

@@ -1,9 +1,11 @@
 """Tests for automation.importer.conflicts — conflict detection."""
 
+import re
+
 import pytest
 
 from automation.db.migrations import run_client_migrations
-from automation.importer.conflicts import detect_conflicts
+from automation.importer.conflicts import REQUIRED_COLUMNS, detect_conflicts
 from automation.importer.proposed import ProposedBatch, ProposedRecord
 
 
@@ -179,3 +181,135 @@ class TestSeverityAssignment:
         type_conflicts = [c for c in rec.conflicts
                           if c.conflict_type == "type_mismatch"]
         assert all(c.severity == "info" for c in type_conflicts)
+
+
+class TestRequiredFields:
+    def test_empty_name_produces_error(self, conn):
+        rec = _rec("Domain", {"name": "", "code": "ED"})
+        detect_conflicts(conn, _batch([rec]))
+        req_conflicts = [c for c in rec.conflicts
+                         if c.conflict_type == "required_field_missing"]
+        name_conflicts = [c for c in req_conflicts if c.field_name == "name"]
+        assert len(name_conflicts) == 1
+        assert name_conflicts[0].severity == "error"
+
+    def test_empty_code_produces_error(self, conn):
+        rec = _rec("Domain", {"name": "Education", "code": ""})
+        detect_conflicts(conn, _batch([rec]))
+        req_conflicts = [c for c in rec.conflicts
+                         if c.conflict_type == "required_field_missing"]
+        code_conflicts = [c for c in req_conflicts if c.field_name == "code"]
+        assert len(code_conflicts) == 1
+        assert code_conflicts[0].severity == "error"
+
+    def test_populated_fields_no_conflict(self, conn):
+        rec = _rec("Domain", {"name": "Education", "code": "ED"})
+        detect_conflicts(conn, _batch([rec]))
+        req_conflicts = [c for c in rec.conflicts
+                         if c.conflict_type == "required_field_missing"]
+        assert len(req_conflicts) == 0
+
+    def test_intra_batch_ref_not_flagged(self, conn):
+        """entity_id via intra_batch_refs should NOT produce a required field conflict."""
+        rec = _rec("Field", {
+            "name": "status", "label": "Status", "field_type": "varchar",
+        }, intra_refs={"entity_id": "batch:entity:CON"})
+        detect_conflicts(conn, _batch([rec]))
+        req_conflicts = [c for c in rec.conflicts
+                         if c.conflict_type == "required_field_missing"
+                         and c.field_name == "entity_id"]
+        assert len(req_conflicts) == 0
+
+    def test_update_skips_required_check(self, conn):
+        """Updates don't need all required fields — only fields being changed."""
+        rec = _rec("Domain", {"name": "Updated"},
+                    action="update", target_id=1)
+        detect_conflicts(conn, _batch([rec]))
+        req_conflicts = [c for c in rec.conflicts
+                         if c.conflict_type == "required_field_missing"]
+        assert len(req_conflicts) == 0
+
+    def test_missing_field_flagged(self, conn):
+        """A create with a completely missing required key should be flagged."""
+        rec = _rec("Domain", {"name": "Test"})  # missing 'code'
+        detect_conflicts(conn, _batch([rec]))
+        req_conflicts = [c for c in rec.conflicts
+                         if c.conflict_type == "required_field_missing"
+                         and c.field_name == "code"]
+        assert len(req_conflicts) == 1
+
+
+class TestRequiredColumnsDriftDetection:
+    """Verify REQUIRED_COLUMNS stays in sync with the schema.
+
+    Parses CREATE TABLE statements from client_schema.py, extracts NOT NULL
+    columns, and asserts every one is present in REQUIRED_COLUMNS (unless
+    excluded). This test fails loudly if a NOT NULL column is added to the
+    schema without updating the map.
+    """
+
+    # Columns excluded from the required check — auto-populated or boolean defaults
+    EXCLUDED_COLUMNS = frozenset({
+        "id",
+        "created_at", "updated_at",
+        "created_by_session_id",
+        # BOOLEAN columns with DEFAULT values
+        "is_native", "is_required", "read_only", "audited", "is_sorted",
+        "display_as_label", "is_service", "tab_break", "hidden",
+        "is_full_width", "is_default", "audited_foreign",
+        "requires_review", "reviewed",
+    })
+
+    # Tables managed outside the import processor
+    EXCLUDED_TABLES = frozenset({
+        "WorkItem", "Dependency", "AISession", "ChangeLog",
+        "ChangeImpact", "GenerationLog", "schema_version",
+    })
+
+    def test_all_not_null_columns_are_in_required_columns(self):
+        from automation.db.client_schema import ALL_CLIENT_TABLES
+
+        missing: list[str] = []
+
+        for ddl in ALL_CLIENT_TABLES:
+            # Extract table name
+            table_match = re.search(r"CREATE TABLE (\w+)", ddl)
+            if not table_match:
+                continue
+            table_name = table_match.group(1)
+
+            if table_name in self.EXCLUDED_TABLES:
+                continue
+
+            # Extract column definitions (stop at FOREIGN KEY / CHECK / UNIQUE lines)
+            for line in ddl.split("\n"):
+                line = line.strip().rstrip(",")
+                if not line or line.startswith("CREATE") or line.startswith(")"):
+                    continue
+                if line.startswith("FOREIGN KEY") or line.startswith("CHECK") or line.startswith("UNIQUE"):
+                    continue
+
+                # Parse column name and check for NOT NULL
+                col_match = re.match(r"(\w+)\s+\w+", line)
+                if not col_match:
+                    continue
+                col_name = col_match.group(1)
+
+                if col_name in self.EXCLUDED_COLUMNS:
+                    continue
+
+                if "NOT NULL" not in line:
+                    continue
+
+                # Check if it has a DEFAULT — columns with DEFAULT are auto-populated
+                if "DEFAULT" in line:
+                    continue
+
+                # This is a NOT NULL column without DEFAULT — must be in REQUIRED_COLUMNS
+                required = REQUIRED_COLUMNS.get(table_name, [])
+                if col_name not in required:
+                    missing.append(f"{table_name}.{col_name}")
+
+        assert missing == [], (
+            f"NOT NULL columns missing from REQUIRED_COLUMNS: {missing}"
+        )
