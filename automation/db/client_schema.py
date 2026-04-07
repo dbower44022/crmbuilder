@@ -357,10 +357,6 @@ CREATE TABLE WorkItem (
     domain_id INTEGER,
     entity_id INTEGER,
     process_id INTEGER,
-    phase TEXT NOT NULL CHECK (phase IN (
-        'Phase 1', 'Phase 2', 'Phase 3', 'Phase 4', 'Phase 5',
-        'Phase 6', 'Phase 7', 'Phase 8', 'Phase 9', 'Phase 10', 'Phase 11'
-    )),
     status TEXT NOT NULL CHECK (status IN (
         'not_started', 'ready', 'in_progress', 'complete', 'blocked'
     )),

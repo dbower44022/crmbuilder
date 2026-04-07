@@ -27,12 +27,12 @@ def client_db(tmp_path):
     conn.close()
 
 
-def _insert_work_item(conn, item_type="master_prd", phase="Phase 1",
+def _insert_work_item(conn, item_type="master_prd",
                        status="not_started", **kwargs):
     """Helper to insert a WorkItem and return its id."""
-    cols = "item_type, phase, status"
-    vals = "?, ?, ?"
-    params = [item_type, phase, status]
+    cols = "item_type, status"
+    vals = "?, ?"
+    params = [item_type, status]
     for k, v in kwargs.items():
         cols += f", {k}"
         vals += ", ?"
@@ -923,10 +923,10 @@ class TestWorkItemTable:
     def test_create_work_item(self, client_db):
         wi_id = _insert_work_item(client_db)
         row = client_db.execute(
-            "SELECT item_type, phase, status FROM WorkItem WHERE id = ?",
+            "SELECT item_type, status FROM WorkItem WHERE id = ?",
             (wi_id,),
         ).fetchone()
-        assert row == ("master_prd", "Phase 1", "not_started")
+        assert row == ("master_prd", "not_started")
 
     def test_item_type_check_all_valid(self, client_db):
         valid_types = [
@@ -935,23 +935,12 @@ class TestWorkItemTable:
             "stakeholder_review", "yaml_generation", "crm_selection",
             "crm_deployment", "crm_configuration", "verification",
         ]
-        for i, it in enumerate(valid_types):
-            _insert_work_item(client_db, item_type=it, phase=f"Phase {i + 1}" if i < 11 else "Phase 11")
+        for it in valid_types:
+            _insert_work_item(client_db, item_type=it)
 
     def test_item_type_check_rejects_invalid(self, client_db):
         with pytest.raises(sqlite3.IntegrityError):
             _insert_work_item(client_db, item_type="invalid_type")
-
-    def test_phase_check(self, client_db):
-        for i in range(1, 12):
-            _insert_work_item(
-                client_db, phase=f"Phase {i}",
-                item_type="master_prd" if i == 1 else "verification",
-            )
-
-    def test_phase_check_rejects_invalid(self, client_db):
-        with pytest.raises(sqlite3.IntegrityError):
-            _insert_work_item(client_db, phase="Phase 0")
 
     def test_status_check(self, client_db):
         for status in ("not_started", "ready", "in_progress", "complete", "blocked"):
@@ -964,8 +953,8 @@ class TestWorkItemTable:
     def test_status_before_blocked_check(self, client_db):
         for sbb in ("not_started", "ready", "in_progress", "complete"):
             client_db.execute(
-                "INSERT INTO WorkItem (item_type, phase, status, "
-                "status_before_blocked) VALUES ('master_prd', 'Phase 1', "
+                "INSERT INTO WorkItem (item_type, status, "
+                "status_before_blocked) VALUES ('master_prd', "
                 "'blocked', ?)",
                 (sbb,),
             )
@@ -973,8 +962,8 @@ class TestWorkItemTable:
 
     def test_status_before_blocked_null_allowed(self, client_db):
         client_db.execute(
-            "INSERT INTO WorkItem (item_type, phase, status, "
-            "status_before_blocked) VALUES ('master_prd', 'Phase 1', "
+            "INSERT INTO WorkItem (item_type, status, "
+            "status_before_blocked) VALUES ('master_prd', "
             "'not_started', NULL)"
         )
         client_db.commit()
@@ -982,22 +971,22 @@ class TestWorkItemTable:
     def test_status_before_blocked_rejects_invalid(self, client_db):
         with pytest.raises(sqlite3.IntegrityError):
             client_db.execute(
-                "INSERT INTO WorkItem (item_type, phase, status, "
-                "status_before_blocked) VALUES ('master_prd', 'Phase 1', "
+                "INSERT INTO WorkItem (item_type, status, "
+                "status_before_blocked) VALUES ('master_prd', "
                 "'blocked', 'invalid')"
             )
 
     def test_domain_fk(self, client_db):
         did = _insert_domain(client_db)
         _insert_work_item(
-            client_db, item_type="domain_overview", phase="Phase 3",
+            client_db, item_type="domain_overview",
             domain_id=did,
         )
 
     def test_domain_fk_rejects_invalid(self, client_db):
         with pytest.raises(sqlite3.IntegrityError):
             _insert_work_item(
-                client_db, item_type="domain_overview", phase="Phase 3",
+                client_db, item_type="domain_overview",
                 domain_id=9999,
             )
 
@@ -1006,7 +995,7 @@ class TestDependencyTable:
     def test_create_dependency(self, client_db):
         wi1 = _insert_work_item(client_db)
         wi2 = _insert_work_item(
-            client_db, item_type="business_object_discovery", phase="Phase 2",
+            client_db, item_type="business_object_discovery",
         )
         client_db.execute(
             "INSERT INTO Dependency (work_item_id, depends_on_id) VALUES (?, ?)",
@@ -1017,7 +1006,7 @@ class TestDependencyTable:
     def test_unique_constraint(self, client_db):
         wi1 = _insert_work_item(client_db)
         wi2 = _insert_work_item(
-            client_db, item_type="business_object_discovery", phase="Phase 2",
+            client_db, item_type="business_object_discovery",
         )
         client_db.execute(
             "INSERT INTO Dependency (work_item_id, depends_on_id) VALUES (?, ?)",
