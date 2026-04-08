@@ -7,10 +7,12 @@ from pathlib import Path
 from PySide6.QtCore import QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
+    QButtonGroup,
     QHBoxLayout,
     QMainWindow,
     QProgressBar,
     QPushButton,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -72,7 +74,44 @@ class MainWindow(QMainWindow):
 
         central = QWidget()
         self.setCentralWidget(central)
-        main_layout = QVBoxLayout(central)
+        outer_layout = QVBoxLayout(central)
+
+        # Mode selector bar — persistent at the top
+        mode_bar = QHBoxLayout()
+        mode_bar.setContentsMargins(8, 4, 8, 4)
+
+        self._mode_group = QButtonGroup(self)
+        self._deploy_mode_btn = QPushButton("Deployment")
+        self._deploy_mode_btn.setCheckable(True)
+        self._deploy_mode_btn.setChecked(True)
+        self._req_mode_btn = QPushButton("Requirements")
+        self._req_mode_btn.setCheckable(True)
+
+        _mode_btn_style = (
+            "QPushButton { padding: 6px 16px; font-size: 13px; border: 1px solid #BDBDBD; "
+            "border-radius: 4px; background-color: #FAFAFA; } "
+            "QPushButton:checked { background-color: #1F3864; color: white; border-color: #1F3864; }"
+        )
+        self._deploy_mode_btn.setStyleSheet(_mode_btn_style)
+        self._req_mode_btn.setStyleSheet(_mode_btn_style)
+
+        self._mode_group.addButton(self._deploy_mode_btn, 0)
+        self._mode_group.addButton(self._req_mode_btn, 1)
+        self._mode_group.idToggled.connect(self._on_mode_changed)
+
+        mode_bar.addWidget(self._deploy_mode_btn)
+        mode_bar.addWidget(self._req_mode_btn)
+        mode_bar.addStretch()
+        outer_layout.addLayout(mode_bar)
+
+        # Content stack — switches between Deployment and Requirements modes
+        self._mode_stack = QStackedWidget()
+        outer_layout.addWidget(self._mode_stack, stretch=1)
+
+        # --- Deployment mode container (index 0) ---
+        deploy_container = QWidget()
+        main_layout = QVBoxLayout(deploy_container)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
         # Top section: instance panel + program panel + action buttons
         top_layout = QHBoxLayout()
@@ -160,6 +199,21 @@ class MainWindow(QMainWindow):
         self.report_btn.clicked.connect(self._on_view_report)
         bottom_layout.addWidget(self.report_btn)
         main_layout.addLayout(bottom_layout)
+
+        self._mode_stack.addWidget(deploy_container)  # index 0
+
+        # --- Requirements mode container (index 1) ---
+        from automation.ui.requirements_window import RequirementsWindow
+        self._requirements_window = RequirementsWindow(parent=self)
+        self._mode_stack.addWidget(self._requirements_window)  # index 1
+
+        # Default to Deployment mode
+        self._mode_stack.setCurrentIndex(0)
+
+    def _on_mode_changed(self, button_id: int, checked: bool) -> None:
+        """Handle mode selector toggle."""
+        if checked:
+            self._mode_stack.setCurrentIndex(button_id)
 
     def _on_instance_selected(self, profile: InstanceProfile | None) -> None:
         """Handle instance selection change."""
@@ -653,6 +707,12 @@ class MainWindow(QMainWindow):
         QDesktopServices.openUrl(
             QUrl.fromLocalFile(str(self.state.last_report_path))
         )
+
+    def closeEvent(self, event) -> None:
+        """Clean up resources on window close."""
+        if hasattr(self, "_requirements_window"):
+            self._requirements_window.cleanup()
+        super().closeEvent(event)
 
     def _update_button_states(self) -> None:
         """Refresh any dynamic button labels. Buttons are never disabled."""
