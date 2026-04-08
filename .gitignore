@@ -32,6 +32,9 @@ reports/*.json
 
 *.docx#
 
+# Runtime databases (master.db, client databases)
+automation/data/
+
 # Client data — belongs in client repos, not here
 data/programs/cbm_*.yaml
 data/programs/*.yaml
