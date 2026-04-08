@@ -91,8 +91,27 @@ def _client_v1(conn: sqlite3.Connection) -> None:
         conn.execute(stmt)
 
 
+def _client_v2(conn: sqlite3.Connection) -> None:
+    """Add action_required column to ChangeImpact (ISS-012).
+
+    Deferred from Step 13 because Step 9 schema was locked.
+    Step 15 needs this column for administrator review actions
+    per L2 PRD Section 14.6.2.
+
+    Idempotent: skips ALTER if the column already exists.
+    """
+    cols = conn.execute("PRAGMA table_info(ChangeImpact)").fetchall()
+    col_names = {row[1] for row in cols}
+    if "action_required" not in col_names:
+        conn.execute(
+            "ALTER TABLE ChangeImpact "
+            "ADD COLUMN action_required INTEGER NOT NULL DEFAULT 0"
+        )
+
+
 CLIENT_MIGRATIONS: list[tuple[int, Migration]] = [
     (1, _client_v1),
+    (2, _client_v2),
 ]
 
 

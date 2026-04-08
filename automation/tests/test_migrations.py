@@ -84,7 +84,7 @@ class TestClientMigrations:
         row = conn.execute(
             "SELECT MAX(version) FROM schema_version"
         ).fetchone()
-        assert row[0] == 1
+        assert row[0] == 2
         conn.close()
 
     def test_idempotent(self, tmp_path):
@@ -102,7 +102,7 @@ class TestClientMigrations:
         versions = conn2.execute(
             "SELECT COUNT(*) FROM schema_version"
         ).fetchone()
-        assert versions[0] == 1
+        assert versions[0] == 2
         conn2.close()
 
     def test_foreign_keys_enabled(self, tmp_path):
@@ -131,5 +131,5 @@ class TestClientMigrations:
         versions = conn.execute(
             "SELECT COUNT(*) FROM schema_version"
         ).fetchone()
-        assert versions[0] == 1
+        assert versions[0] == 2
         conn.close()

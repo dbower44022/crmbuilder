@@ -434,6 +434,7 @@ CREATE TABLE ChangeImpact (
     requires_review BOOLEAN NOT NULL DEFAULT TRUE,
     reviewed BOOLEAN NOT NULL DEFAULT FALSE,
     reviewed_at TIMESTAMP,
+    action_required BOOLEAN NOT NULL DEFAULT FALSE,
     FOREIGN KEY (change_log_id) REFERENCES ChangeLog(id)
 );
 """
