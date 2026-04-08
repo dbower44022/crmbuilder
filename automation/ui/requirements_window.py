@@ -171,6 +171,9 @@ class RequirementsWindow(QWidget):
         actions = self._detail_view._actions
         actions.navigate_to_session.connect(self._on_navigate_to_session)
         actions.navigate_to_import.connect(self._on_navigate_to_import)
+        self._detail_view._session_tab.navigate_to_session.connect(
+            lambda wid: self._on_navigate_to_session(wid, "clarification")
+        )
 
         # Pass database connection to the impacts tab for review actions
         # (done in _on_work_item_selected when conn is available)
@@ -293,7 +296,7 @@ class RequirementsWindow(QWidget):
         self._detail_view.load_item(work_item_id, self._client_conn)
         self._content_stack.setCurrentIndex(_IDX_DETAIL)
 
-    def _on_navigate_to_session(self, work_item_id: int) -> None:
+    def _on_navigate_to_session(self, work_item_id: int, session_type: str = "initial") -> None:
         """Handle Generate Prompt — push session view onto drill-down stack."""
         if not self._client_conn:
             return
@@ -306,7 +309,7 @@ class RequirementsWindow(QWidget):
         # Replace the session placeholder with a real SessionView
         old = self._content_stack.widget(_IDX_SESSION)
         session_view = SessionView(
-            work_item_id, self._client_conn,
+            work_item_id, session_type, self._client_conn,
             return_callback=self._pop_drill_down,
         )
         self._content_stack.removeWidget(old)

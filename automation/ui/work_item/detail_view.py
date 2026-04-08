@@ -94,7 +94,7 @@ class WorkItemDetailView(QWidget):
 
         # Sessions
         sessions = load_sessions(self._conn, self._work_item_id)
-        self._session_tab.update_sessions(sessions)
+        self._session_tab.update_sessions(sessions, self._work_item_id)
 
         # Documents
         docs = load_documents(self._conn, self._work_item_id)

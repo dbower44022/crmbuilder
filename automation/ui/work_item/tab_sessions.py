@@ -3,6 +3,7 @@
 Read-only display of AI session records.
 """
 
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -12,7 +13,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from automation.ui.common.toast import show_toast
 from automation.ui.work_item.work_item_logic import SessionRow
 
 
@@ -20,12 +20,16 @@ class SessionCard(QWidget):
     """An expandable card for a single AI session.
 
     :param session: The session data.
+    :param work_item_id: The owning work item ID (used for navigation).
     :param parent: Parent widget.
     """
 
-    def __init__(self, session: SessionRow, parent=None) -> None:
+    generate_requested = Signal(int)  # Emits work_item_id
+
+    def __init__(self, session: SessionRow, work_item_id: int = 0, parent=None) -> None:
         super().__init__(parent)
         self._session = session
+        self._work_item_id = work_item_id
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 4, 8, 4)
@@ -81,12 +85,12 @@ class SessionCard(QWidget):
             view_btn.clicked.connect(self._show_raw_output)
             detail_layout.addWidget(view_btn)
 
-        # Generate Prompt placeholder for unprocessed clarification sessions
+        # Generate Prompt for unprocessed clarification sessions
         if session.session_type == "clarification" and session.import_status == "pending":
             gen_btn = QPushButton("Generate Prompt")
             gen_btn.setStyleSheet("font-size: 11px;")
             gen_btn.clicked.connect(
-                lambda: show_toast(self, "Prompt generation coming in Step 15b")
+                lambda: self.generate_requested.emit(self._work_item_id)
             )
             detail_layout.addWidget(gen_btn)
 
@@ -122,15 +126,18 @@ class SessionsTab(QWidget):
     :param parent: Parent widget.
     """
 
+    navigate_to_session = Signal(int)  # Emits work_item_id
+
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._layout = QVBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
 
-    def update_sessions(self, sessions: list[SessionRow]) -> None:
+    def update_sessions(self, sessions: list[SessionRow], work_item_id: int = 0) -> None:
         """Refresh the tab with new session data.
 
         :param sessions: Session rows, descending by date.
+        :param work_item_id: The owning work item ID (for navigation).
         """
         while self._layout.count():
             child = self._layout.takeAt(0)
@@ -139,7 +146,8 @@ class SessionsTab(QWidget):
 
         if sessions:
             for session in sessions:
-                card = SessionCard(session)
+                card = SessionCard(session, work_item_id)
+                card.generate_requested.connect(self.navigate_to_session.emit)
                 self._layout.addWidget(card)
         else:
             empty = QLabel("No sessions recorded")
