@@ -9,7 +9,13 @@ from __future__ import annotations
 import sqlite3
 
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QHBoxLayout, QInputDialog, QPushButton, QWidget
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QInputDialog,
+    QPushButton,
+    QTabWidget,
+    QWidget,
+)
 
 from automation.ui.common.confirmation import confirm_action
 from automation.ui.common.error_display import show_info
@@ -52,6 +58,8 @@ class HeaderActions(QWidget):
     """
 
     action_completed = Signal()  # Emitted after any state-changing action
+    navigate_to_session = Signal(int)  # work_item_id — drill-down to session view
+    navigate_to_import = Signal(int)  # work_item_id — drill-down to import view
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -118,13 +126,21 @@ class HeaderActions(QWidget):
         elif action == "unblock":
             self._do_unblock()
         elif action == "generate_prompt":
-            show_toast(self, "Prompt generation coming in Step 15b")
+            self.navigate_to_session.emit(self._item.id)
         elif action == "run_import":
-            show_toast(self, "Import review coming in Step 15b")
+            self.navigate_to_import.emit(self._item.id)
         elif action == "generate_document":
             show_toast(self, "Document generation coming in Step 15c")
         elif action == "view_impact_analysis":
-            show_toast(self, "Impact analysis display coming in Step 15b")
+            # Per Section 14.3.3, the Impacts tab is the entry point.
+            # Find the parent QTabWidget and switch to the Impacts tab (index 3).
+            parent = self.parent()
+            while parent is not None:
+                tabs = parent.findChild(QTabWidget)
+                if tabs is not None:
+                    tabs.setCurrentIndex(3)
+                    break
+                parent = parent.parent()
 
     def _do_start(self) -> None:
         if confirm_action(self, "Start Work", "Start working on this item?"):

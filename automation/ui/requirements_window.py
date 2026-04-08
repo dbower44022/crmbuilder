@@ -2,7 +2,9 @@
 
 Sidebar navigation, client selector, drill-down stack, and breadcrumbs.
 The sidebar has four entries: Dashboard, Data Browser, Documents, Impact Review.
-Only Dashboard is functional in Step 15a.
+Dashboard and Impact Review are functional. Data Browser and Documents are Step 15c.
+
+Drill-down views: Work Item Detail, Session Orchestration, Import Review.
 """
 
 from __future__ import annotations
@@ -30,6 +32,7 @@ from automation.ui.common.confirmation import confirm_action
 from automation.ui.common.readable_first import format_work_item_name
 from automation.ui.common.toast import show_toast
 from automation.ui.dashboard.dashboard_view import DashboardView
+from automation.ui.impact.impact_view import ImpactView
 from automation.ui.navigation import NavEntry, NavigationStack
 from automation.ui.work_item.detail_view import WorkItemDetailView
 
@@ -37,6 +40,15 @@ logger = logging.getLogger(__name__)
 
 # Default master database location — under automation/data/
 _DEFAULT_MASTER_DB = Path(__file__).resolve().parent.parent / "data" / "master.db"
+
+# Content stack indices
+_IDX_DASHBOARD = 0
+_IDX_DETAIL = 1
+_IDX_DATA_BROWSER = 2
+_IDX_DOCUMENTS = 3
+_IDX_IMPACT_REVIEW = 4
+_IDX_SESSION = 5
+_IDX_IMPORT = 6
 
 
 class PlaceholderView(QWidget):
@@ -67,6 +79,7 @@ class RequirementsWindow(QWidget):
         self._nav_stack = NavigationStack(NavEntry("Dashboard", "dashboard"))
 
         self._build_ui()
+        self._wire_header_actions()
         self._load_clients()
         self._client_context.on_change(self._on_client_changed)
 
@@ -120,24 +133,47 @@ class RequirementsWindow(QWidget):
         # Content stack
         self._content_stack = QStackedWidget()
 
-        # Dashboard (index 0)
+        # Index 0: Dashboard
         self._dashboard = DashboardView(self._client_context)
         self._dashboard.work_item_selected.connect(self._on_work_item_selected)
         self._content_stack.addWidget(self._dashboard)
 
-        # Work Item Detail (index 1) — pushed onto stack, not a sidebar entry
+        # Index 1: Work Item Detail — pushed onto stack, not a sidebar entry
         self._detail_view = WorkItemDetailView()
         self._detail_view.navigate_to_item.connect(self._on_work_item_selected)
         self._detail_view.item_changed.connect(self._on_item_changed)
         self._content_stack.addWidget(self._detail_view)
 
-        # Placeholders for sidebar entries (indices 2, 3, 4)
+        # Index 2: Data Browser placeholder
         self._content_stack.addWidget(PlaceholderView("Data Browser", "Step 15c"))
+
+        # Index 3: Documents placeholder
         self._content_stack.addWidget(PlaceholderView("Documents", "Step 15c"))
-        self._content_stack.addWidget(PlaceholderView("Impact Review", "Step 15b"))
+
+        # Index 4: Impact Review (real view)
+        self._impact_view = ImpactView()
+        self._impact_view.item_changed.connect(self._on_item_changed)
+        self._content_stack.addWidget(self._impact_view)
+
+        # Index 5: Session View placeholder (created dynamically)
+        self._session_placeholder = QWidget()
+        self._content_stack.addWidget(self._session_placeholder)
+
+        # Index 6: Import View placeholder (created dynamically)
+        self._import_placeholder = QWidget()
+        self._content_stack.addWidget(self._import_placeholder)
 
         main_area.addWidget(self._content_stack, stretch=1)
         layout.addLayout(main_area, stretch=1)
+
+    def _wire_header_actions(self) -> None:
+        """Connect header action signals for drill-down navigation."""
+        actions = self._detail_view._actions
+        actions.navigate_to_session.connect(self._on_navigate_to_session)
+        actions.navigate_to_import.connect(self._on_navigate_to_import)
+
+        # Pass database connection to the impacts tab for review actions
+        # (done in _on_work_item_selected when conn is available)
 
     def _load_clients(self) -> None:
         """Load clients from the master database into the combo box."""
@@ -198,7 +234,7 @@ class RequirementsWindow(QWidget):
         self._nav_stack.reset()
         self._update_breadcrumbs()
         self._sidebar.setCurrentRow(0)
-        self._content_stack.setCurrentIndex(0)
+        self._content_stack.setCurrentIndex(_IDX_DASHBOARD)
 
         if client:
             # Open client database
@@ -219,18 +255,20 @@ class RequirementsWindow(QWidget):
 
         if index == 0:
             # Dashboard
-            self._content_stack.setCurrentIndex(0)
+            self._content_stack.setCurrentIndex(_IDX_DASHBOARD)
             if self._client_conn:
                 self._dashboard.refresh(self._client_conn)
         elif index == 1:
             # Data Browser placeholder
-            self._content_stack.setCurrentIndex(2)
+            self._content_stack.setCurrentIndex(_IDX_DATA_BROWSER)
         elif index == 2:
             # Documents placeholder
-            self._content_stack.setCurrentIndex(3)
+            self._content_stack.setCurrentIndex(_IDX_DOCUMENTS)
         elif index == 3:
-            # Impact Review placeholder
-            self._content_stack.setCurrentIndex(4)
+            # Impact Review
+            self._content_stack.setCurrentIndex(_IDX_IMPACT_REVIEW)
+            if self._client_conn:
+                self._impact_view.refresh(self._client_conn)
 
     def _on_work_item_selected(self, work_item_id: int) -> None:
         """Handle work item click — push detail view onto drill-down stack."""
@@ -249,8 +287,67 @@ class RequirementsWindow(QWidget):
         self._nav_stack.push(NavEntry(label, "work_item", {"id": work_item_id}))
         self._update_breadcrumbs()
 
+        # Pass connection to the impacts tab for review actions
+        self._detail_view._impact_tab.set_connection(self._client_conn)
+
         self._detail_view.load_item(work_item_id, self._client_conn)
-        self._content_stack.setCurrentIndex(1)
+        self._content_stack.setCurrentIndex(_IDX_DETAIL)
+
+    def _on_navigate_to_session(self, work_item_id: int) -> None:
+        """Handle Generate Prompt — push session view onto drill-down stack."""
+        if not self._client_conn:
+            return
+
+        from automation.ui.session.session_view import SessionView
+
+        self._nav_stack.push(NavEntry("Generate Prompt", "session", {"id": work_item_id}))
+        self._update_breadcrumbs()
+
+        # Replace the session placeholder with a real SessionView
+        old = self._content_stack.widget(_IDX_SESSION)
+        session_view = SessionView(
+            work_item_id, self._client_conn,
+            return_callback=self._pop_drill_down,
+        )
+        self._content_stack.removeWidget(old)
+        old.deleteLater()
+        self._content_stack.insertWidget(_IDX_SESSION, session_view)
+        self._content_stack.setCurrentIndex(_IDX_SESSION)
+
+    def _on_navigate_to_import(self, work_item_id: int) -> None:
+        """Handle Import Results — push import view onto drill-down stack."""
+        if not self._client_conn:
+            return
+
+        from automation.ui.importer.import_view import ImportView
+
+        self._nav_stack.push(NavEntry("Import Review", "import", {"id": work_item_id}))
+        self._update_breadcrumbs()
+
+        # Replace the import placeholder with a real ImportView
+        old = self._content_stack.widget(_IDX_IMPORT)
+        import_view = ImportView(
+            work_item_id, self._client_conn,
+            return_callback=self._pop_drill_down,
+        )
+        self._content_stack.removeWidget(old)
+        old.deleteLater()
+        self._content_stack.insertWidget(_IDX_IMPORT, import_view)
+        self._content_stack.setCurrentIndex(_IDX_IMPORT)
+
+    def _pop_drill_down(self) -> None:
+        """Pop the drill-down stack and return to the previous view."""
+        self._nav_stack.pop()
+        self._update_breadcrumbs()
+
+        current = self._nav_stack.current
+        if current.view_type == "dashboard":
+            self._content_stack.setCurrentIndex(_IDX_DASHBOARD)
+            if self._client_conn:
+                self._dashboard.refresh(self._client_conn)
+        elif current.view_type == "work_item" and current.view_data:
+            self._detail_view.load_item(current.view_data["id"], self._client_conn)
+            self._content_stack.setCurrentIndex(_IDX_DETAIL)
 
     def _on_item_changed(self) -> None:
         """Handle work item state change — refresh dashboard data."""
@@ -295,12 +392,12 @@ class RequirementsWindow(QWidget):
 
         current = self._nav_stack.current
         if current.view_type == "dashboard":
-            self._content_stack.setCurrentIndex(0)
+            self._content_stack.setCurrentIndex(_IDX_DASHBOARD)
             if self._client_conn:
                 self._dashboard.refresh(self._client_conn)
         elif current.view_type == "work_item" and current.view_data:
             self._detail_view.load_item(current.view_data["id"], self._client_conn)
-            self._content_stack.setCurrentIndex(1)
+            self._content_stack.setCurrentIndex(_IDX_DETAIL)
 
     def cleanup(self) -> None:
         """Close database connections on shutdown."""
