@@ -270,14 +270,107 @@ def create_domain_prd() -> None:
     doc.save(str(FIXTURES / "MN" / "CBM-Domain-PRD-Mentoring.docx"))
 
 
+def create_heading2_workflow_process() -> None:
+    """Create a process doc with Heading 2 subsections in the workflow section.
+
+    Regression test for Bug #5: the step extractor used to break on any
+    Heading (including Heading 2), losing all steps in documents that
+    organize workflow sub-flows under Heading 2 subsections.
+    """
+    doc = Document()
+
+    header = doc.add_table(rows=4, cols=2)
+    header.cell(0, 0).text = "Process Code"
+    header.cell(0, 1).text = "TD-SUBSECT"
+    header.cell(1, 0).text = "Domain"
+    header.cell(1, 1).text = "TD"
+    header.cell(2, 0).text = "Process Name"
+    header.cell(2, 1).text = "Test Subsection Workflow"
+    header.cell(3, 0).text = "Version"
+    header.cell(3, 1).text = "1.0"
+
+    doc.add_heading("1. Process Purpose", level=1)
+    doc.add_paragraph("Test process for Heading 2 subsection handling.")
+
+    doc.add_heading("4. Process Workflow", level=1)
+    doc.add_heading("4.1 First Subsection", level=2)
+    doc.add_paragraph("1. Step one of first subsection")
+    doc.add_paragraph("2. Step two of first subsection")
+    doc.add_paragraph("3. Step three of first subsection")
+    doc.add_heading("4.2 Second Subsection", level=2)
+    doc.add_paragraph("1. Step four from second subsection")
+    doc.add_paragraph("2. Step five from second subsection")
+    doc.add_heading("5. Process Completion", level=1)
+    doc.add_paragraph("Process is complete when all sub-flows finish.")
+
+    (FIXTURES / "TD").mkdir(exist_ok=True)
+    doc.save(str(FIXTURES / "TD" / "TD-SUBSECT.docx"))
+
+
+def create_headerless_req_process() -> None:
+    """Create a process doc with a requirements table that has no header row.
+
+    Regression test for Bug #6: the requirements-table detector used to
+    require a literal ['ID', 'Requirement'] header row, missing tables
+    where the first row is already data.
+    """
+    doc = Document()
+
+    header = doc.add_table(rows=4, cols=2)
+    header.cell(0, 0).text = "Process Code"
+    header.cell(0, 1).text = "TD-NOHDR"
+    header.cell(1, 0).text = "Domain"
+    header.cell(1, 1).text = "TD"
+    header.cell(2, 0).text = "Process Name"
+    header.cell(2, 1).text = "Test Headerless Requirements"
+    header.cell(3, 0).text = "Version"
+    header.cell(3, 1).text = "1.0"
+
+    doc.add_heading("1. Process Purpose", level=1)
+    doc.add_paragraph("Test process for headerless requirements table.")
+
+    doc.add_heading("4. Process Workflow", level=1)
+    doc.add_paragraph("Single step process.", style="List Paragraph")
+
+    doc.add_heading("6. System Requirements", level=1)
+    # Requirements table WITHOUT a header row — first row is data
+    req_table = doc.add_table(rows=2, cols=2)
+    req_table.cell(0, 0).text = "TD-NOHDR-REQ-001"
+    req_table.cell(0, 1).text = "First requirement description"
+    req_table.cell(1, 0).text = "TD-NOHDR-REQ-002"
+    req_table.cell(1, 1).text = "Second requirement description"
+
+    # Decoy field table — should NOT be detected as requirements
+    doc.add_heading("7. Process Data", level=1)
+    dat_table = doc.add_table(rows=2, cols=6)
+    dat_table.cell(0, 0).text = "ID"
+    dat_table.cell(0, 1).text = "Field Name"
+    dat_table.cell(0, 2).text = "Type"
+    dat_table.cell(0, 3).text = "Required"
+    dat_table.cell(0, 4).text = "Values"
+    dat_table.cell(0, 5).text = "Description"
+    dat_table.cell(1, 0).text = "TD-NOHDR-DAT-001"
+    dat_table.cell(1, 1).text = "testField"
+    dat_table.cell(1, 2).text = "varchar"
+    dat_table.cell(1, 3).text = "No"
+    dat_table.cell(1, 4).text = ""
+    dat_table.cell(1, 5).text = "A test field"
+
+    (FIXTURES / "TD").mkdir(exist_ok=True)
+    doc.save(str(FIXTURES / "TD" / "TD-NOHDR.docx"))
+
+
 if __name__ == "__main__":
     FIXTURES.mkdir(parents=True, exist_ok=True)
     (FIXTURES / "entities").mkdir(exist_ok=True)
     (FIXTURES / "MN").mkdir(exist_ok=True)
+    (FIXTURES / "TD").mkdir(exist_ok=True)
 
     create_master_prd()
     create_entity_inventory()
     create_contact_entity_prd()
     create_intake_process()
     create_domain_prd()
+    create_heading2_workflow_process()
+    create_headerless_req_process()
     print(f"Fixtures created in {FIXTURES}")

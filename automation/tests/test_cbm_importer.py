@@ -255,6 +255,19 @@ class TestProcessDocumentParser:
         assert not report.errors
 
 
+class TestProcessDocumentHeading2Steps:
+    """Bug #5: workflow step extractor must not break on Heading 2 subsections."""
+
+    def test_heading2_subsections_yield_all_steps(self):
+        from automation.cbm_import.parsers.process_document import parse
+        data, report = parse(FIXTURES / "TD" / "TD-SUBSECT.docx")
+
+        assert len(data["steps"]) == 5, (
+            f"Expected 5 steps across two Heading 2 subsections, got {len(data['steps'])}"
+        )
+        assert not report.errors
+
+
 class TestDomainPrdParser:
 
     def test_parse_mentoring_fixture(self):

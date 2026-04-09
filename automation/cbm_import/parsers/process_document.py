@@ -139,10 +139,14 @@ def _extract_steps_from_doc(doc, workflow_heading_idx: int) -> list[dict]:
         text = para.text.strip()
         style_name = para.style.name if para.style else ""
 
-        # Stop at next Heading (section boundary)
-        if style_name and style_name.startswith("Heading"):
+        # Stop at next top-level section (Heading 1 only)
+        if style_name == "Heading 1":
             if in_section or sort_order > 0:
                 break
+            continue
+
+        # Skip sub-section headings (Heading 2, Heading 3) without breaking
+        if style_name and style_name.startswith("Heading"):
             continue
 
         if not text:
