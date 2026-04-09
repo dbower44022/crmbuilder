@@ -93,6 +93,15 @@ def create_entity_inventory() -> None:
     inv_table.cell(3, 2).text = "Base"
     inv_table.cell(3, 3).text = "Custom"
 
+    # Decoy detail table (Bug #3 regression test — should be ignored)
+    detail = doc.add_table(rows=3, cols=2)
+    detail.cell(0, 0).text = "Entity Type"
+    detail.cell(0, 1).text = "Person"
+    detail.cell(1, 0).text = "Display Name"
+    detail.cell(1, 1).text = "Contact"
+    detail.cell(2, 0).text = "Activity Stream"
+    detail.cell(2, 1).text = "Yes"
+
     doc.save(str(FIXTURES / "CBM-Entity-Inventory.docx"))
 
 
@@ -197,11 +206,12 @@ def create_intake_process() -> None:
     doc.add_paragraph("MST-PER-003: Client Administrator — reviews and approves intake")
 
     doc.add_heading("4. Process Workflow", level=1)
-    doc.add_paragraph("1. Prospective client submits Phase 1 Mentoring Request form")
-    doc.add_paragraph("2. System creates Account, Contact, and Engagement records")
-    doc.add_paragraph("3. Client Administrator receives notification of new submission")
-    doc.add_paragraph("4. Administrator reviews submission for eligibility")
-    doc.add_paragraph("5. If eligible, advances engagement to MN-MATCH process")
+    # Use List Paragraph style to match real CBM documents (Bug #2)
+    doc.add_paragraph("Prospective client submits Phase 1 Mentoring Request form", style="List Paragraph")
+    doc.add_paragraph("System creates Account, Contact, and Engagement records", style="List Paragraph")
+    doc.add_paragraph("Client Administrator receives notification of new submission", style="List Paragraph")
+    doc.add_paragraph("Administrator reviews submission for eligibility", style="List Paragraph")
+    doc.add_paragraph("If eligible, advances engagement to MN-MATCH process", style="List Paragraph")
 
     doc.add_heading("5. Process Completion", level=1)
     doc.add_paragraph(
@@ -210,9 +220,16 @@ def create_intake_process() -> None:
     )
 
     doc.add_heading("6. System Requirements", level=1)
-    doc.add_paragraph("MN-INTAKE-REQ-001: System shall accept mentoring request form submissions")
-    doc.add_paragraph("MN-INTAKE-REQ-002: System shall auto-create linked Account, Contact, and Engagement records")
-    doc.add_paragraph("MN-INTAKE-REQ-003: System shall notify Client Administrator of new submissions")
+    # Use table format to match real CBM documents (Bug #1)
+    req_table = doc.add_table(rows=4, cols=2)
+    req_table.cell(0, 0).text = "ID"
+    req_table.cell(0, 1).text = "Requirement"
+    req_table.cell(1, 0).text = "MN-INTAKE-REQ-001"
+    req_table.cell(1, 1).text = "System shall accept mentoring request form submissions"
+    req_table.cell(2, 0).text = "MN-INTAKE-REQ-002"
+    req_table.cell(2, 1).text = "System shall auto-create linked Account, Contact, and Engagement records"
+    req_table.cell(3, 0).text = "MN-INTAKE-REQ-003"
+    req_table.cell(3, 1).text = "System shall notify Client Administrator of new submissions"
 
     doc.add_heading("7. Process Data", level=1)
     doc.add_paragraph("Entities referenced: Contact, Account, Engagement")
