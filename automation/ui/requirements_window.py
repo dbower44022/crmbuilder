@@ -26,12 +26,14 @@ from PySide6.QtWidgets import (
 )
 
 from automation.db.migrations import run_client_migrations, run_master_migrations
+from automation.ui.browser.browser_view import BrowserView
 from automation.ui.client_context import ClientContext, ClientInfo, load_clients
 from automation.ui.common.client_indicator import ClientIndicator
 from automation.ui.common.confirmation import confirm_action
 from automation.ui.common.readable_first import format_work_item_name
 from automation.ui.common.toast import show_toast
 from automation.ui.dashboard.dashboard_view import DashboardView
+from automation.ui.documents.documents_view import DocumentsView
 from automation.ui.impact.impact_view import ImpactView
 from automation.ui.navigation import NavEntry, NavigationStack
 from automation.ui.work_item.detail_view import WorkItemDetailView
@@ -144,11 +146,13 @@ class RequirementsWindow(QWidget):
         self._detail_view.item_changed.connect(self._on_item_changed)
         self._content_stack.addWidget(self._detail_view)
 
-        # Index 2: Data Browser placeholder
-        self._content_stack.addWidget(PlaceholderView("Data Browser", "Step 15c"))
+        # Index 2: Data Browser
+        self._browser_view = BrowserView()
+        self._content_stack.addWidget(self._browser_view)
 
-        # Index 3: Documents placeholder
-        self._content_stack.addWidget(PlaceholderView("Documents", "Step 15c"))
+        # Index 3: Documents
+        self._documents_view = DocumentsView()
+        self._content_stack.addWidget(self._documents_view)
 
         # Index 4: Impact Review (real view)
         self._impact_view = ImpactView()
@@ -171,8 +175,18 @@ class RequirementsWindow(QWidget):
         actions = self._detail_view._actions
         actions.navigate_to_session.connect(self._on_navigate_to_session)
         actions.navigate_to_import.connect(self._on_navigate_to_import)
+        actions.navigate_to_documents.connect(self._on_navigate_to_documents)
         self._detail_view._session_tab.navigate_to_session.connect(
             lambda wid: self._on_navigate_to_session(wid, "clarification")
+        )
+        self._detail_view._doc_tab.navigate_to_documents.connect(
+            self._on_navigate_to_documents
+        )
+
+        # Dashboard staleness banner → Documents view filtered to stale
+        self._dashboard._staleness_banner.view_stale_clicked.disconnect()
+        self._dashboard._staleness_banner.view_stale_clicked.connect(
+            self._on_view_stale_documents
         )
 
         # Pass database connection to the impacts tab for review actions
@@ -262,11 +276,16 @@ class RequirementsWindow(QWidget):
             if self._client_conn:
                 self._dashboard.refresh(self._client_conn)
         elif index == 1:
-            # Data Browser placeholder
+            # Data Browser
             self._content_stack.setCurrentIndex(_IDX_DATA_BROWSER)
+            if self._client_conn:
+                self._browser_view.refresh(self._client_conn)
         elif index == 2:
-            # Documents placeholder
+            # Documents
             self._content_stack.setCurrentIndex(_IDX_DOCUMENTS)
+            if self._client_conn:
+                self._documents_view.set_scope()
+                self._documents_view.refresh(self._client_conn, self._master_db_path)
         elif index == 3:
             # Impact Review
             self._content_stack.setCurrentIndex(_IDX_IMPACT_REVIEW)
@@ -337,6 +356,34 @@ class RequirementsWindow(QWidget):
         old.deleteLater()
         self._content_stack.insertWidget(_IDX_IMPORT, import_view)
         self._content_stack.setCurrentIndex(_IDX_IMPORT)
+
+    def _on_navigate_to_documents(self, work_item_id: int) -> None:
+        """Handle Generate Document — navigate to Documents view scoped to a work item."""
+        if not self._client_conn:
+            return
+        self._documents_view.set_scope(work_item_id=work_item_id)
+        self._documents_view.refresh(self._client_conn, self._master_db_path)
+        self._sidebar.setCurrentRow(2)  # Documents sidebar entry
+
+    def _on_view_stale_documents(self) -> None:
+        """Handle View Stale Documents click — navigate to Documents view filtered to stale."""
+        if not self._client_conn:
+            return
+        self._documents_view.set_scope(stale_only=True)
+        self._documents_view.refresh(self._client_conn, self._master_db_path)
+        self._sidebar.setCurrentRow(2)  # Documents sidebar entry
+
+    def navigate_to_browser_record(self, table_name: str, record_id: int) -> None:
+        """Navigate to a specific record in the Data Browser (called from other views).
+
+        :param table_name: Table name.
+        :param record_id: Record ID.
+        """
+        if not self._client_conn:
+            return
+        self._browser_view.refresh(self._client_conn)
+        self._browser_view.navigate_to(table_name, record_id)
+        self._sidebar.setCurrentRow(1)  # Data Browser sidebar entry
 
     def _pop_drill_down(self) -> None:
         """Pop the drill-down stack and return to the previous view."""

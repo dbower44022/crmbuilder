@@ -120,6 +120,7 @@ class DashboardView(QWidget):
         self._inventory.update_groups(groups)
 
     def _on_view_stale(self) -> None:
-        """Handle View Stale Documents click — placeholder for Step 15c."""
-        from automation.ui.common.toast import show_toast
-        show_toast(self, "Stale documents view coming in Step 15c")
+        """Handle View Stale Documents click — emits signal to RequirementsWindow."""
+        # The signal is wired in RequirementsWindow._wire_header_actions
+        # to navigate to the Documents view filtered to stale documents.
+        self._staleness_banner.view_stale_clicked.emit()

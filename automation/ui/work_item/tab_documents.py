@@ -3,10 +3,10 @@
 Read-only display of document generation log entries.
 """
 
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from automation.ui.common.staleness_indicators import StalenessIndicator
-from automation.ui.common.toast import show_toast
 from automation.ui.work_item.work_item_logic import DocumentRow
 
 
@@ -52,25 +52,26 @@ class DocumentsTab(QWidget):
     :param parent: Parent widget.
     """
 
+    navigate_to_documents = Signal(int)  # work_item_id
+
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._layout = QVBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
+        self._work_item_id: int | None = None
 
         # Staleness indicator at top
         self._staleness = StalenessIndicator()
         self._layout.addWidget(self._staleness)
 
-        # Generate Document action — placeholder for Step 15c
+        # Generate Document action — navigates to Documents view
         self._gen_btn = QPushButton("Generate Document")
         self._gen_btn.setStyleSheet(
             "QPushButton { background-color: #FFA726; color: white; "
             "border-radius: 4px; padding: 6px 12px; font-size: 12px; } "
             "QPushButton:hover { background-color: #FB8C00; }"
         )
-        self._gen_btn.clicked.connect(
-            lambda: show_toast(self, "Document generation coming in Step 15c")
-        )
+        self._gen_btn.clicked.connect(self._on_generate)
         self._layout.addWidget(self._gen_btn)
 
         self._docs_container = QWidget()
@@ -78,12 +79,20 @@ class DocumentsTab(QWidget):
         self._docs_layout.setContentsMargins(0, 0, 0, 0)
         self._layout.addWidget(self._docs_container)
 
-    def update_documents(self, docs: list[DocumentRow], is_stale: bool = False) -> None:
+    def _on_generate(self) -> None:
+        """Navigate to Documents view scoped to this work item."""
+        if self._work_item_id is not None:
+            self.navigate_to_documents.emit(self._work_item_id)
+
+    def update_documents(self, docs: list[DocumentRow], is_stale: bool = False, work_item_id: int | None = None) -> None:
         """Refresh the tab with new document data.
 
         :param docs: Document rows, descending by date.
         :param is_stale: Whether the documents are stale.
+        :param work_item_id: The current work item ID.
         """
+        if work_item_id is not None:
+            self._work_item_id = work_item_id
         self._staleness.set_stale(is_stale)
 
         while self._docs_layout.count():

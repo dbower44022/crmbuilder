@@ -8,8 +8,11 @@ from __future__ import annotations
 import sqlite3
 
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QTabWidget, QVBoxLayout, QWidget
 
+from automation.ui.mode_integration.deployment_guidance import (
+    get_guidance_message,
+)
 from automation.ui.work_item.header import WorkItemHeader
 from automation.ui.work_item.header_actions import HeaderActions
 from automation.ui.work_item.tab_dependencies import DependenciesTab
@@ -51,6 +54,16 @@ class WorkItemDetailView(QWidget):
         self._actions.action_completed.connect(self._on_action_completed)
         layout.addWidget(self._actions)
 
+        # Deployment guidance banner (hidden by default)
+        self._guidance_banner = QLabel()
+        self._guidance_banner.setStyleSheet(
+            "font-size: 12px; color: #1565C0; background-color: #E3F2FD; "
+            "padding: 10px; border-radius: 4px; margin: 4px 8px;"
+        )
+        self._guidance_banner.setWordWrap(True)
+        self._guidance_banner.setVisible(False)
+        layout.addWidget(self._guidance_banner)
+
         # Tabbed area
         self._tabs = QTabWidget()
         self._dep_tab = DependenciesTab()
@@ -88,6 +101,14 @@ class WorkItemDetailView(QWidget):
         self._header.update_item(item)
         self._actions.set_context(item, self._conn)
 
+        # Deployment guidance (Section 14.9.2)
+        guidance = get_guidance_message(item.item_type)
+        if guidance:
+            self._guidance_banner.setText(guidance)
+            self._guidance_banner.setVisible(True)
+        else:
+            self._guidance_banner.setVisible(False)
+
         # Dependencies
         deps = load_dependencies(self._conn, self._work_item_id)
         self._dep_tab.update_dependencies(deps, item.status)
@@ -98,7 +119,7 @@ class WorkItemDetailView(QWidget):
 
         # Documents
         docs = load_documents(self._conn, self._work_item_id)
-        self._doc_tab.update_documents(docs)
+        self._doc_tab.update_documents(docs, work_item_id=self._work_item_id)
 
         # Impacts
         impacts = load_impacts(self._conn, self._work_item_id)

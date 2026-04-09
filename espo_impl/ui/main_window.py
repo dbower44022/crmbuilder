@@ -211,9 +211,50 @@ class MainWindow(QMainWindow):
         self._mode_stack.setCurrentIndex(0)
 
     def _on_mode_changed(self, button_id: int, checked: bool) -> None:
-        """Handle mode selector toggle."""
-        if checked:
-            self._mode_stack.setCurrentIndex(button_id)
+        """Handle mode selector toggle with instance/client auto-selection."""
+        if not checked:
+            return
+
+        self._mode_stack.setCurrentIndex(button_id)
+
+        # Section 14.9.3: Auto-select associated client/instance
+        try:
+            from automation.ui.mode_integration.instance_association import (
+                find_client_for_instance,
+                find_instance_for_client,
+                get_client_crm_platform,
+            )
+
+            if button_id == 1:
+                # Switching to Requirements mode — auto-select matching client
+                if self.state.instance and self.state.instance.project_folder:
+                    rw = self._requirements_window
+                    clients = []
+                    for i in range(1, rw._client_combo.count()):
+                        c = rw._client_combo.itemData(i)
+                        if c:
+                            clients.append(c)
+                    idx = find_client_for_instance(
+                        self.state.instance.project_folder, clients
+                    )
+                    if idx is not None:
+                        rw._client_combo.setCurrentIndex(idx + 1)  # +1 for placeholder
+
+            elif button_id == 0:
+                # Switching to Deployment mode — auto-select matching instance
+                rw = self._requirements_window
+                client = rw._client_context.client
+                if client:
+                    crm_platform = get_client_crm_platform(
+                        rw._master_db_path, client.id
+                    )
+                    if crm_platform:
+                        profiles = self.instance_panel._profiles
+                        idx = find_instance_for_client(crm_platform, profiles)
+                        if idx is not None:
+                            self.instance_panel.list_widget.setCurrentRow(idx)
+        except Exception:
+            pass  # Auto-select is best-effort
 
     def _on_instance_selected(self, profile: InstanceProfile | None) -> None:
         """Handle instance selection change."""

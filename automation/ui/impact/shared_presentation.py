@@ -79,15 +79,17 @@ class ImpactRow(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(12, 2, 8, 2)
 
-        # Affected record link (placeholder — Data Browser navigation in Step 15c)
+        # Affected record link — navigates to Data Browser
         link = QPushButton(f"{impact.affected_table} #{impact.affected_record_id}")
         link.setStyleSheet(
             "font-size: 11px; border: none; color: #1565C0; "
             "text-decoration: underline; padding: 0;"
         )
         link.setCursor(Qt.CursorShape.PointingHandCursor)
+        table = impact.affected_table
+        record_id = impact.affected_record_id
         link.clicked.connect(
-            lambda: show_toast(self, "Data Browser navigation coming in Step 15c")
+            lambda checked, t=table, r=record_id: self._navigate_to_browser(t, r)
         )
         layout.addWidget(link)
 
@@ -121,6 +123,17 @@ class ImpactRow(QWidget):
         # Subdued styling for informational impacts
         if not impact.requires_review:
             self.setStyleSheet("background-color: #FAFAFA;")
+
+    def _navigate_to_browser(self, table_name: str, record_id: int) -> None:
+        """Navigate to a record in the Data Browser."""
+        # Walk up the widget tree to find RequirementsWindow
+        parent = self.parent()
+        while parent is not None:
+            if hasattr(parent, "navigate_to_browser_record"):
+                parent.navigate_to_browser_record(table_name, record_id)
+                return
+            parent = parent.parent()
+        show_toast(self, f"Navigate to {table_name} #{record_id}")
 
 
 class ImpactTableGroup(QWidget):
