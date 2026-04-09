@@ -47,6 +47,7 @@ class DocumentsView(QWidget):
         super().__init__(parent)
         self._conn: sqlite3.Connection | None = None
         self._master_db_path: str | None = None
+        self._project_folder: str | None = None
         self._scoped_work_item_id: int | None = None
         self._filter_stale_only: bool = False
         self._entries: list[DocumentEntry] = []
@@ -111,6 +112,13 @@ class DocumentsView(QWidget):
         else:
             self._title.setText("Documents")
 
+    def set_project_folder(self, project_folder: str | None) -> None:
+        """Set the project folder for document generation.
+
+        :param project_folder: Path to the client project repository root.
+        """
+        self._project_folder = project_folder
+
     def refresh(self, conn: sqlite3.Connection, master_db_path: str | None = None) -> None:
         """Reload the inventory from the database.
 
@@ -166,9 +174,17 @@ class DocumentsView(QWidget):
         if not self._conn:
             return
 
+        if not self._project_folder:
+            show_toast(
+                self,
+                "No project folder configured for this client. "
+                "Associate an instance in Deployment mode.",
+            )
+            return
+
         try:
             from automation.docgen.generator import DocumentGenerator
-            docgen = DocumentGenerator(self._conn, project_folder=None)
+            docgen = DocumentGenerator(self._conn, project_folder=self._project_folder)
             results = docgen.generate_batch(selected_ids, mode="final")
 
             success = sum(1 for r in results if not r.error)
@@ -191,9 +207,17 @@ class DocumentsView(QWidget):
         if not self._conn:
             return
 
+        if not self._project_folder:
+            show_toast(
+                self,
+                "No project folder configured for this client. "
+                "Associate an instance in Deployment mode.",
+            )
+            return
+
         try:
             from automation.docgen.generator import DocumentGenerator
-            docgen = DocumentGenerator(self._conn, project_folder=None)
+            docgen = DocumentGenerator(self._conn, project_folder=self._project_folder)
             result = docgen.generate(work_item_id, mode=mode)
 
             if result.error:

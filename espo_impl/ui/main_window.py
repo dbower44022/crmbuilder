@@ -217,6 +217,14 @@ class MainWindow(QMainWindow):
 
         self._mode_stack.setCurrentIndex(button_id)
 
+        # Pass instance profiles to RequirementsWindow for project_folder resolution
+        try:
+            self._requirements_window.set_instance_profiles(
+                self.instance_panel._profiles
+            )
+        except Exception:
+            pass
+
         # Section 14.9.3: Auto-select associated client/instance
         try:
             from automation.ui.mode_integration.instance_association import (

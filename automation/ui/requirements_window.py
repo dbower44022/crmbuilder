@@ -79,6 +79,7 @@ class RequirementsWindow(QWidget):
         self._client_context = ClientContext()
         self._client_conn: sqlite3.Connection | None = None
         self._nav_stack = NavigationStack(NavEntry("Dashboard", "dashboard"))
+        self._instance_profiles: list = []  # Set by MainWindow for project_folder lookup
 
         self._build_ui()
         self._wire_header_actions()
@@ -285,6 +286,7 @@ class RequirementsWindow(QWidget):
             self._content_stack.setCurrentIndex(_IDX_DOCUMENTS)
             if self._client_conn:
                 self._documents_view.set_scope()
+                self._documents_view.set_project_folder(self._resolve_project_folder())
                 self._documents_view.refresh(self._client_conn, self._master_db_path)
         elif index == 3:
             # Impact Review
@@ -362,6 +364,7 @@ class RequirementsWindow(QWidget):
         if not self._client_conn:
             return
         self._documents_view.set_scope(work_item_id=work_item_id)
+        self._documents_view.set_project_folder(self._resolve_project_folder())
         self._documents_view.refresh(self._client_conn, self._master_db_path)
         self._sidebar.setCurrentRow(2)  # Documents sidebar entry
 
@@ -370,6 +373,7 @@ class RequirementsWindow(QWidget):
         if not self._client_conn:
             return
         self._documents_view.set_scope(stale_only=True)
+        self._documents_view.set_project_folder(self._resolve_project_folder())
         self._documents_view.refresh(self._client_conn, self._master_db_path)
         self._sidebar.setCurrentRow(2)  # Documents sidebar entry
 
@@ -448,6 +452,30 @@ class RequirementsWindow(QWidget):
         elif current.view_type == "work_item" and current.view_data:
             self._detail_view.load_item(current.view_data["id"], self._client_conn)
             self._content_stack.setCurrentIndex(_IDX_DETAIL)
+
+    def _resolve_project_folder(self) -> str | None:
+        """Derive the project_folder from the client's associated instance profile."""
+        client = self._client_context.client
+        if not client or not self._instance_profiles:
+            return None
+        try:
+            from automation.ui.mode_integration.instance_association import (
+                get_project_folder_for_client,
+            )
+            return get_project_folder_for_client(
+                self._master_db_path, client.id, self._instance_profiles
+            )
+        except Exception:
+            return None
+
+    def set_instance_profiles(self, profiles: list) -> None:
+        """Set instance profiles for project_folder resolution.
+
+        Called by MainWindow to provide instance profiles from the Deployment side.
+
+        :param profiles: List of InstanceProfile objects.
+        """
+        self._instance_profiles = profiles
 
     def cleanup(self) -> None:
         """Close database connections on shutdown."""

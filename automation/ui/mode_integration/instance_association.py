@@ -62,6 +62,28 @@ def find_client_for_instance(
     return None
 
 
+def get_project_folder_for_client(
+    master_db_path: str,
+    client_id: int,
+    instance_profiles: list,
+) -> str | None:
+    """Find the project_folder for a client by matching crm_platform to instances.
+
+    :param master_db_path: Path to the master database.
+    :param client_id: Client ID.
+    :param instance_profiles: List of InstanceProfile objects.
+    :returns: project_folder path string, or None if no match.
+    """
+    crm_platform = get_client_crm_platform(master_db_path, client_id)
+    if not crm_platform:
+        return None
+    idx = find_instance_for_client(crm_platform, instance_profiles)
+    if idx is None:
+        return None
+    profile = instance_profiles[idx]
+    return getattr(profile, "project_folder", None)
+
+
 def get_client_crm_platform(
     master_db_path: str, client_id: int
 ) -> str | None:
