@@ -86,10 +86,10 @@ class CBMImporter:
             # Phase 4: Import Process Documents
             for domain_dir in sorted(self._prds.iterdir()):
                 if not domain_dir.is_dir() or domain_dir.name in (
-                    "entities", "Archive", "WorkflowDiagrams", "services"
+                    "entities", "Archive", "WorkflowDiagrams", "services", "Graphics"
                 ):
                     continue
-                for proc_file in sorted(domain_dir.glob("*.docx")):
+                for proc_file in sorted(domain_dir.rglob("*.docx")):
                     if proc_file.name.startswith("~"):
                         continue
                     if any(kw in proc_file.name for kw in ("Domain-PRD", "Domain-Overview", "SubDomain")):
@@ -516,8 +516,8 @@ class CBMImporter:
                 report.merge(r)
 
         for d in sorted(self._prds.iterdir()):
-            if d.is_dir() and d.name not in ("entities", "Archive", "WorkflowDiagrams", "services"):
-                for f in sorted(d.glob("*.docx")):
+            if d.is_dir() and d.name not in ("entities", "Archive", "WorkflowDiagrams", "services", "Graphics"):
+                for f in sorted(d.rglob("*.docx")):
                     if not f.name.startswith("~") and not any(
                         kw in f.name for kw in ("Domain-PRD", "Domain-Overview", "SubDomain")
                     ):

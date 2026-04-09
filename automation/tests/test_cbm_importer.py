@@ -294,6 +294,81 @@ class TestProcessDocumentHeaderlessRequirements:
             )
 
 
+class TestImporterSubdomainRecursion:
+    """Bug #8: process discovery must recurse into sub-domain directories."""
+
+    def test_rglob_discovers_nested_processes(self, tmp_path):
+        """Process docs in sub-directories must be found by the importer."""
+        from docx import Document
+
+        # Build a minimal fixture PRDs tree with nested sub-domain
+        prds = tmp_path / "PRDs"
+        prds.mkdir()
+
+        # Master PRD (required by importer)
+        doc = Document()
+        doc.add_table(rows=1, cols=2)
+        doc.save(str(prds / "CBM-Master-PRD.docx"))
+
+        # Entity Inventory (required by importer)
+        doc = Document()
+        doc.add_table(rows=1, cols=2)
+        doc.save(str(prds / "CBM-Entity-Inventory.docx"))
+
+        # Domain directory with a top-level process and a nested one
+        td_dir = prds / "TD"
+        td_dir.mkdir()
+
+        # Domain overview (should be filtered out)
+        doc = Document()
+        doc.save(str(td_dir / "CBM-Domain-Overview-TestDomain.docx"))
+
+        # Top-level process
+        doc = Document()
+        header = doc.add_table(rows=2, cols=2)
+        header.cell(0, 0).text = "Process Code"
+        header.cell(0, 1).text = "TD-DIRECT"
+        header.cell(1, 0).text = "Domain"
+        header.cell(1, 1).text = "TD"
+        doc.add_heading("4. Process Workflow", level=1)
+        doc.add_paragraph("1. Direct step", style="List Paragraph")
+        doc.save(str(td_dir / "TD-DIRECT.docx"))
+
+        # Sub-domain directory
+        sub_dir = td_dir / "SUB"
+        sub_dir.mkdir()
+
+        # SubDomain overview (should be filtered out)
+        doc = Document()
+        doc.save(str(sub_dir / "CBM-SubDomain-Overview-Sub.docx"))
+
+        # Nested process
+        doc = Document()
+        header = doc.add_table(rows=2, cols=2)
+        header.cell(0, 0).text = "Process Code"
+        header.cell(0, 1).text = "TD-SUB-NESTED"
+        header.cell(1, 0).text = "Domain"
+        header.cell(1, 1).text = "TD"
+        doc.add_heading("4. Process Workflow", level=1)
+        doc.add_paragraph("1. Nested step", style="List Paragraph")
+        doc.save(str(sub_dir / "TD-SUB-NESTED.docx"))
+
+        # Run dry-run via the importer
+        from automation.cbm_import.importer import CBMImporter
+        importer = CBMImporter(
+            client_db_path=tmp_path / "client.db",
+            master_db_path=tmp_path / "master.db",
+            cbm_repo_path=tmp_path,
+        )
+        report = importer.import_all(dry_run=True)
+
+        # Both processes should be discovered
+        assert report.parsed.get("Process", 0) >= 2, (
+            f"Expected at least 2 processes (top-level + nested), "
+            f"got {report.parsed.get('Process', 0)}"
+        )
+
+
 class TestDomainPrdParser:
 
     def test_parse_mentoring_fixture(self):
