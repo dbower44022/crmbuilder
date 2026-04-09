@@ -282,6 +282,49 @@ class CBMImporter:
                     self._conn.rollback()
                     report.record_skipped(path.name, "Field", field["name"], "Duplicate field")
 
+            for rel in data.get("relationships", []):
+                target_entity_name = rel.get("entity_foreign", "")
+                if not target_entity_name:
+                    report.record_skipped(
+                        path.name, "Relationship", rel.get("name", "?"),
+                        "No target entity specified",
+                    )
+                    continue
+
+                target_entity_id = self._resolve("Entity", "name", target_entity_name)
+                if not target_entity_id:
+                    report.record_skipped(
+                        path.name, "Relationship", rel.get("name", "?"),
+                        f"Target entity not found: {target_entity_name}",
+                    )
+                    continue
+
+                rel_name = rel["name"]
+                try:
+                    self._conn.execute(
+                        "INSERT INTO Relationship (entity_id, entity_foreign_id, name, "
+                        "link_type, link, link_foreign, label, label_foreign, "
+                        "description, created_by_session_id) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        (
+                            entity_id,
+                            target_entity_id,
+                            rel_name,
+                            rel.get("link_type", "oneToMany"),
+                            rel_name,
+                            e_name[0].lower() + e_name[1:] if e_name else "",
+                            _camel_to_label(rel_name),
+                            e_name,
+                            "",
+                            session_id,
+                        ),
+                    )
+                    self._conn.commit()
+                    report.record_imported("Relationship")
+                except sqlite3.IntegrityError:
+                    self._conn.rollback()
+                    report.record_skipped(path.name, "Relationship", rel_name, "Duplicate")
+
         except Exception as e:
             report.add_error(f"Entity PRD import failed for {entity_name}: {e}")
         return report
@@ -532,3 +575,10 @@ class CBMImporter:
 
 def _now() -> str:
     return datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _camel_to_label(name: str) -> str:
+    """Convert camelCase name to a space-separated label."""
+    import re
+    label = re.sub(r"([a-z])([A-Z])", r"\1 \2", name)
+    return label[0].upper() + label[1:] if label else label

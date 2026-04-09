@@ -369,6 +369,132 @@ class TestImporterSubdomainRecursion:
         )
 
 
+class TestImportEntityPrdRelationships:
+    """Bug #9: relationships parsed by Entity PRD must be written to DB."""
+
+    def _make_entity_prd_with_relationship(self, path, entity_name, rel_name, rel_target, link_type):
+        """Create a minimal Entity PRD .docx with one relationship."""
+        from docx import Document
+        doc = Document()
+        header = doc.add_table(rows=3, cols=2)
+        header.cell(0, 0).text = "Entity"
+        header.cell(0, 1).text = entity_name
+        header.cell(1, 0).text = "Entity Type"
+        header.cell(1, 1).text = "Base"
+        header.cell(2, 0).text = "Native/Custom"
+        header.cell(2, 1).text = "Custom"
+
+        doc.add_heading("3. Relationships", level=1)
+        rel_table = doc.add_table(rows=2, cols=3)
+        rel_table.cell(0, 0).text = "Relationship Name"
+        rel_table.cell(0, 1).text = "Type"
+        rel_table.cell(0, 2).text = "Related Entity"
+        rel_table.cell(1, 0).text = rel_name
+        rel_table.cell(1, 1).text = link_type
+        rel_table.cell(1, 2).text = rel_target
+        doc.save(str(path))
+
+    def test_relationship_imported_to_db(self, tmp_path):
+        from automation.cbm_import.importer import CBMImporter
+        from automation.db.migrations import (
+            run_client_migrations,
+            run_master_migrations,
+        )
+
+        client_db = tmp_path / "client.db"
+        master_db = tmp_path / "master.db"
+        master_conn = run_master_migrations(str(master_db))
+        master_conn.close()
+        conn = run_client_migrations(str(client_db))
+
+        # Seed two entities
+        conn.execute(
+            "INSERT INTO Entity (name, code, entity_type, is_native) VALUES (?, ?, ?, ?)",
+            ("Contact", "CONTACT", "Person", True),
+        )
+        conn.execute(
+            "INSERT INTO Entity (name, code, entity_type, is_native) VALUES (?, ?, ?, ?)",
+            ("Engagement", "ENGAGEMENT", "Base", False),
+        )
+        conn.commit()
+
+        # Create a minimal work item so _create_session works
+        conn.execute(
+            "INSERT INTO WorkItem (item_type, status) VALUES ('entity_prd', 'in_progress')"
+        )
+        conn.commit()
+        conn.close()
+
+        prd_path = tmp_path / "PRDs" / "entities"
+        prd_path.mkdir(parents=True)
+        self._make_entity_prd_with_relationship(
+            prd_path / "Contact-Entity-PRD.docx",
+            "Contact", "engagements", "Engagement", "oneToMany",
+        )
+
+        importer = CBMImporter(str(client_db), str(master_db), str(tmp_path))
+        importer._conn = run_client_migrations(str(client_db))
+        report = importer.import_entity_prd("Contact", prd_path / "Contact-Entity-PRD.docx")
+        importer._conn.close()
+
+        import sqlite3
+        conn = sqlite3.connect(str(client_db))
+        rows = conn.execute(
+            "SELECT name, link_type, entity_id, entity_foreign_id FROM Relationship"
+        ).fetchall()
+        conn.close()
+
+        assert len(rows) == 1
+        assert rows[0][0] == "engagements"
+        assert rows[0][1] == "oneToMany"
+        assert report.imported.get("Relationship", 0) == 1
+
+    def test_relationship_skipped_when_target_missing(self, tmp_path):
+        from automation.cbm_import.importer import CBMImporter
+        from automation.db.migrations import (
+            run_client_migrations,
+            run_master_migrations,
+        )
+
+        client_db = tmp_path / "client.db"
+        master_db = tmp_path / "master.db"
+        master_conn = run_master_migrations(str(master_db))
+        master_conn.close()
+        conn = run_client_migrations(str(client_db))
+
+        # Only seed Contact — Engagement does NOT exist
+        conn.execute(
+            "INSERT INTO Entity (name, code, entity_type, is_native) VALUES (?, ?, ?, ?)",
+            ("Contact", "CONTACT", "Person", True),
+        )
+        conn.execute(
+            "INSERT INTO WorkItem (item_type, status) VALUES ('entity_prd', 'in_progress')"
+        )
+        conn.commit()
+        conn.close()
+
+        prd_path = tmp_path / "PRDs" / "entities"
+        prd_path.mkdir(parents=True)
+        self._make_entity_prd_with_relationship(
+            prd_path / "Contact-Entity-PRD.docx",
+            "Contact", "engagements", "Engagement", "oneToMany",
+        )
+
+        importer = CBMImporter(str(client_db), str(master_db), str(tmp_path))
+        importer._conn = run_client_migrations(str(client_db))
+        report = importer.import_entity_prd("Contact", prd_path / "Contact-Entity-PRD.docx")
+        importer._conn.close()
+
+        import sqlite3
+        conn = sqlite3.connect(str(client_db))
+        rel_count = conn.execute("SELECT COUNT(*) FROM Relationship").fetchone()[0]
+        conn.close()
+
+        assert rel_count == 0
+        assert report.imported.get("Relationship", 0) == 0
+        assert any("Target entity not found" in s.reason for s in report.skipped)
+
+
 class TestDomainPrdParser:
 
     def test_parse_mentoring_fixture(self):
