@@ -104,7 +104,7 @@ class CBMImporter:
                     if svc_dir.is_dir():
                         for proc_file in sorted(svc_dir.glob("*.docx")):
                             if not proc_file.name.startswith("~"):
-                                r = self.import_process(proc_file.stem, proc_file)
+                                r = self.import_process(proc_file.stem, proc_file, is_service=True)
                                 report.merge(r)
             self._mark_type_complete("process_definition")
 
@@ -329,7 +329,13 @@ class CBMImporter:
             report.add_error(f"Entity PRD import failed for {entity_name}: {e}")
         return report
 
-    def import_process(self, process_code: str, path: Path | None = None) -> ImportReport:
+    def import_process(
+        self,
+        process_code: str,
+        path: Path | None = None,
+        *,
+        is_service: bool = False,
+    ) -> ImportReport:
         """Import a single Process Document."""
         report = ImportReport()
         if path is None or not path.exists():
@@ -350,6 +356,8 @@ class CBMImporter:
             process_id = self._resolve("Process", "code", code)
             if not process_id:
                 domain_id = self._resolve("Domain", "code", proc_data.get("domain_code", ""))
+                if not domain_id and is_service:
+                    domain_id = self._ensure_services_domain(session_id)
                 if domain_id:
                     self._conn.execute(
                         "INSERT INTO Process (domain_id, name, code, description, triggers, "
@@ -542,6 +550,29 @@ class CBMImporter:
             self._conn.commit()
         except sqlite3.IntegrityError:
             self._conn.rollback()
+
+    def _ensure_services_domain(self, session_id: int) -> int:
+        """Get the ID of the Services domain, creating it if needed.
+
+        Service documents (e.g. NOTES-MANAGE) are structurally parallel to
+        domain processes but live under a synthetic 'Services' domain row
+        with is_service=TRUE.
+
+        :param session_id: AISession ID for created_by_session_id.
+        :returns: The Services domain ID.
+        """
+        if self._conn is None:
+            return 0
+        existing = self._resolve("Domain", "code", "SVC")
+        if existing:
+            return existing
+        self._conn.execute(
+            "INSERT INTO Domain (name, code, description, sort_order, is_service) "
+            "VALUES (?, ?, ?, ?, ?)",
+            ("Services", "SVC", "Cross-domain services", 99, True),
+        )
+        self._conn.commit()
+        return self._resolve("Domain", "code", "SVC") or 0
 
     def _parse_dry_run(self) -> ImportReport:
         report = ImportReport()

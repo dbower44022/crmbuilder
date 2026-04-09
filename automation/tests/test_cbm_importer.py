@@ -495,6 +495,104 @@ class TestImportEntityPrdRelationships:
         assert any("Target entity not found" in s.reason for s in report.skipped)
 
 
+class TestImportServiceProcess:
+    """Bug #10: service documents must auto-create a Services domain."""
+
+    def _make_service_process(self, path, code):
+        """Create a minimal service process .docx with empty Domain."""
+        from docx import Document
+        doc = Document()
+        header = doc.add_table(rows=3, cols=2)
+        header.cell(0, 0).text = "Process Code"
+        header.cell(0, 1).text = code
+        header.cell(1, 0).text = "Domain"
+        header.cell(1, 1).text = ""  # Empty — services have no domain
+        header.cell(2, 0).text = "Process Name"
+        header.cell(2, 1).text = "Test Service Process"
+        doc.add_heading("1. Process Purpose", level=1)
+        doc.add_paragraph("A service process for testing.")
+        doc.add_heading("4. Process Workflow", level=1)
+        doc.add_paragraph("1. Single service step")
+        doc.save(str(path))
+
+    def test_service_process_creates_svc_domain(self, tmp_path):
+        from automation.cbm_import.importer import CBMImporter
+        from automation.db.migrations import (
+            run_client_migrations,
+            run_master_migrations,
+        )
+
+        client_db = tmp_path / "client.db"
+        master_db = tmp_path / "master.db"
+        master_conn = run_master_migrations(str(master_db))
+        master_conn.close()
+        conn = run_client_migrations(str(client_db))
+        conn.execute(
+            "INSERT INTO WorkItem (item_type, status) VALUES ('process_definition', 'in_progress')"
+        )
+        conn.commit()
+        conn.close()
+
+        proc_path = tmp_path / "SVC-TEST.docx"
+        self._make_service_process(proc_path, "SVC-TEST")
+
+        importer = CBMImporter(str(client_db), str(master_db), str(tmp_path))
+        importer._conn = run_client_migrations(str(client_db))
+        report = importer.import_process("SVC-TEST", proc_path, is_service=True)
+        importer._conn.close()
+
+        import sqlite3
+        conn = sqlite3.connect(str(client_db))
+
+        # Services domain should exist
+        svc_domain = conn.execute(
+            "SELECT id, name, code, is_service FROM Domain WHERE code = 'SVC'"
+        ).fetchone()
+        assert svc_domain is not None
+        assert svc_domain[3] == 1  # is_service=True
+
+        # Process should reference the SVC domain
+        proc = conn.execute(
+            "SELECT code, domain_id FROM Process WHERE code = 'SVC-TEST'"
+        ).fetchone()
+        assert proc is not None
+        assert proc[1] == svc_domain[0]
+
+        conn.close()
+        assert report.imported.get("Process", 0) == 1
+
+    def test_regular_process_does_not_use_svc_domain(self, tmp_path):
+        from automation.cbm_import.importer import CBMImporter
+        from automation.db.migrations import (
+            run_client_migrations,
+            run_master_migrations,
+        )
+
+        client_db = tmp_path / "client.db"
+        master_db = tmp_path / "master.db"
+        master_conn = run_master_migrations(str(master_db))
+        master_conn.close()
+        conn = run_client_migrations(str(client_db))
+        conn.execute(
+            "INSERT INTO WorkItem (item_type, status) VALUES ('process_definition', 'in_progress')"
+        )
+        conn.commit()
+        conn.close()
+
+        # Service process with empty domain but is_service=False
+        proc_path = tmp_path / "XX-TEST.docx"
+        self._make_service_process(proc_path, "XX-TEST")
+
+        importer = CBMImporter(str(client_db), str(master_db), str(tmp_path))
+        importer._conn = run_client_migrations(str(client_db))
+        report = importer.import_process("XX-TEST", proc_path, is_service=False)
+        importer._conn.close()
+
+        # Should be skipped — no domain, not a service
+        assert report.imported.get("Process", 0) == 0
+        assert any("Could not resolve domain" in s.reason for s in report.skipped)
+
+
 class TestDomainPrdParser:
 
     def test_parse_mentoring_fixture(self):
