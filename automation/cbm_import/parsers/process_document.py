@@ -199,33 +199,59 @@ def _extract_requirements_from_tables(tables: list[list[list[str]]]) -> list[dic
     """
     reqs: list[dict] = []
     seen: set[str] = set()
+    _REQ_ID_RE = re.compile(r"^[A-Z][A-Z0-9\-]+-REQ-\d+$")
+
     for table in tables:
         if len(table) < 2:
             continue
         header = [c.strip().lower() for c in table[0]]
         # Match tables where first col is 'id' and second col contains 'requirement'
-        if len(header) < 2:
-            continue
-        if header[0] != "id" or "requirement" not in header[1]:
-            continue
-        # This is a requirements table
-        for row in table[1:]:
-            if len(row) < 2:
+        if len(header) >= 2 and header[0] == "id" and "requirement" in header[1]:
+            # Header-based detection: skip header row, parse data rows
+            for row in table[1:]:
+                if len(row) < 2:
+                    continue
+                identifier = row[0].strip()
+                description = row[1].strip()
+                if not identifier or not description:
+                    continue
+                if not re.search(r"REQ-\d+", identifier):
+                    continue
+                if identifier not in seen:
+                    seen.add(identifier)
+                    reqs.append({
+                        "identifier": identifier,
+                        "description": description,
+                        "priority": "must",
+                    })
+
+    # Content-based fallback: scan for tables whose first data cell matches
+    # a requirement identifier pattern (e.g. MR-DEPART-REQ-001).
+    # The -REQ- infix distinguishes from field (-DAT-) and issue (-ISS-) tables.
+    if not reqs:
+        for table in tables:
+            if not table or len(table[0]) < 2:
                 continue
-            identifier = row[0].strip()
-            description = row[1].strip()
-            if not identifier or not description:
-                continue
-            # Only accept rows with requirement-like identifiers
-            if not re.search(r"REQ-\d+", identifier):
-                continue
-            if identifier not in seen:
-                seen.add(identifier)
-                reqs.append({
-                    "identifier": identifier,
-                    "description": description,
-                    "priority": "must",
-                })
+            first_cell = table[0][0].strip()
+            if _REQ_ID_RE.match(first_cell):
+                for row in table:
+                    if len(row) < 2:
+                        continue
+                    identifier = row[0].strip()
+                    description = row[1].strip()
+                    if not identifier or not description:
+                        continue
+                    if not _REQ_ID_RE.match(identifier):
+                        continue
+                    if identifier not in seen:
+                        seen.add(identifier)
+                        reqs.append({
+                            "identifier": identifier,
+                            "description": description,
+                            "priority": "must",
+                        })
+                break  # Only use the first matching table
+
     return reqs
 
 

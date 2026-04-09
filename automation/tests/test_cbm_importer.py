@@ -268,6 +268,32 @@ class TestProcessDocumentHeading2Steps:
         assert not report.errors
 
 
+class TestProcessDocumentHeaderlessRequirements:
+    """Bug #6: requirements table without a header row must be detected."""
+
+    def test_headerless_requirements_detected(self):
+        from automation.cbm_import.parsers.process_document import parse
+        data, report = parse(FIXTURES / "TD" / "TD-NOHDR.docx")
+
+        assert len(data["requirements"]) == 2, (
+            f"Expected 2 requirements from headerless table, got {len(data['requirements'])}"
+        )
+        req_ids = {r["identifier"] for r in data["requirements"]}
+        assert "TD-NOHDR-REQ-001" in req_ids
+        assert "TD-NOHDR-REQ-002" in req_ids
+        assert not report.errors
+
+    def test_dat_table_not_detected_as_requirements(self):
+        """Field tables (-DAT- identifiers) must not be mistaken for requirements."""
+        from automation.cbm_import.parsers.process_document import parse
+        data, _ = parse(FIXTURES / "TD" / "TD-NOHDR.docx")
+
+        for req in data["requirements"]:
+            assert "-DAT-" not in req["identifier"], (
+                f"Field table row wrongly detected as requirement: {req['identifier']}"
+            )
+
+
 class TestDomainPrdParser:
 
     def test_parse_mentoring_fixture(self):
