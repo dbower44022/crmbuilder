@@ -65,9 +65,12 @@ def parse(path: str | Path) -> tuple[dict, ImportReport]:
     report.record_parsed("Domain", len(domains))
 
     # Process inventory — scan for process tables or lists
+    # Note: Process parse count is NOT recorded here. The authoritative
+    # Process count comes from individual process documents being parsed.
+    # The Master PRD's role is to provide inventory metadata (domain
+    # associations, expected process codes), not to create Process records.
     processes = _extract_processes(paragraphs, tables, domains)
     data["processes"] = processes
-    report.record_parsed("Process", len(processes))
 
     return data, report
 
