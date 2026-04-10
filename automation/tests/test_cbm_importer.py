@@ -86,6 +86,44 @@ class TestParseFieldTable:
         fields = parse_field_table(rows)
         assert len(fields) == 1
 
+    def test_merged_description_rows_not_parsed_as_fields(self):
+        """Merged description rows (python-docx repeats text in every cell) must be
+        attached to the previous field, not created as separate field records."""
+        desc1 = "The discriminator field for the Contact entity type classification."
+        desc2 = "The name the contact prefers to be called in informal settings."
+        desc3 = "Primary email address used for all CRM communications."
+        rows = [
+            ["Field Name", "Type", "Required", "Values", "Default", "ID"],
+            ["contactType", "multiEnum", "Yes", "Client | Mentor", "—", "DAT-001"],
+            # Merged description row: same text in every cell
+            [desc1, desc1, desc1, desc1, desc1, desc1],
+            ["preferredName", "varchar", "No", "", "—", "DAT-002"],
+            [desc2, desc2, desc2, desc2, desc2, desc2],
+            ["primaryEmail", "email", "Yes", "", "—", "DAT-003"],
+            [desc3, desc3, desc3, desc3, desc3, desc3],
+        ]
+        fields = parse_field_table(rows)
+        assert len(fields) == 3, f"Expected 3 fields, got {len(fields)}: {[f.get('field_name') for f in fields]}"
+        assert fields[0]["field_name"] == "contactType"
+        assert fields[0]["description"] == desc1
+        assert fields[1]["field_name"] == "preferredName"
+        assert fields[1]["description"] == desc2
+        assert fields[2]["field_name"] == "primaryEmail"
+        assert fields[2]["description"] == desc3
+
+    def test_long_field_name_treated_as_description(self):
+        """Field names over 200 chars are descriptions, not real fields."""
+        long_desc = "A" * 250
+        rows = [
+            ["Field Name", "Type"],
+            ["contactType", "enum"],
+            [long_desc, ""],
+        ]
+        fields = parse_field_table(rows)
+        assert len(fields) == 1
+        assert fields[0]["field_name"] == "contactType"
+        assert fields[0]["description"] == long_desc
+
 
 class TestExtractEnumValues:
 

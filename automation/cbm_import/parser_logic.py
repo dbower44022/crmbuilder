@@ -114,6 +114,31 @@ def parse_field_table(
             i += 1
             continue
 
+        # Detect merged description rows: python-docx returns merged cells
+        # with the same text in every cell. Check 3+ cells to avoid false
+        # positives (e.g., field name "email" with type "email").
+        if len(row) >= 3:
+            second_cell = row[1].strip()
+            third_cell = row[2].strip()
+            if first_cell and second_cell and first_cell == second_cell == third_cell:
+                # Merged description row — attach to previous field
+                if fields:
+                    prev_desc = fields[-1].get("description", "")
+                    if first_cell not in prev_desc:
+                        fields[-1]["description"] = first_cell
+                i += 1
+                continue
+
+        # Safety net: field names are short camelCase identifiers, never
+        # longer than ~40 chars. Anything over 200 is a description.
+        if len(first_cell) > 200:
+            if fields:
+                prev_desc = fields[-1].get("description", "")
+                if first_cell not in prev_desc:
+                    fields[-1]["description"] = first_cell
+            i += 1
+            continue
+
         field: dict[str, str] = {}
         for j, cell in enumerate(row):
             if j < len(headers):
@@ -125,14 +150,14 @@ def parse_field_table(
         if i + 1 < len(rows):
             next_row = rows[i + 1]
             # A description row typically has content only in the first cell
-            # or spans the entire row
             if len(next_row) >= 1 and next_row[0].strip():
                 all_others_empty = all(
                     not c.strip() for c in next_row[1:]
                 ) if len(next_row) > 1 else True
                 if all_others_empty and not re.match(r"^[a-z]", next_row[0].strip()):
-                    # This looks like a description row
-                    pass  # Don't consume it as we can't be sure
+                    # Consume the description row and attach to this field
+                    field["description"] = next_row[0].strip()
+                    i += 1
 
         if field.get("field_name"):
             fields.append(field)
