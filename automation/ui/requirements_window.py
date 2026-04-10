@@ -1,8 +1,8 @@
 """Requirements mode container (Section 14.1).
 
 Sidebar navigation, client selector, drill-down stack, and breadcrumbs.
-The sidebar has four entries: Dashboard, Data Browser, Documents, Impact Review.
-Dashboard and Impact Review are functional. Data Browser and Documents are Step 15c.
+The sidebar has four entries: Requirements Dashboard, Data Browser, Documents, Impact Review.
+Requirements Dashboard and Impact Review are functional. Data Browser and Documents are Step 15c.
 
 Drill-down views: Work Item Detail, Session Orchestration, Import Review.
 """
@@ -78,7 +78,7 @@ class RequirementsWindow(QWidget):
         self._master_db_path = str(master_db_path or _DEFAULT_MASTER_DB)
         self._client_context = ClientContext()
         self._client_conn: sqlite3.Connection | None = None
-        self._nav_stack = NavigationStack(NavEntry("Dashboard", "dashboard"))
+        self._nav_stack = NavigationStack(NavEntry("Requirements Dashboard", "dashboard"))
         self._instance_profiles: list = []  # Set by MainWindow for project_folder lookup
 
         self._build_ui()
@@ -127,7 +127,7 @@ class RequirementsWindow(QWidget):
             "QListWidget::item:selected { "
             "   background-color: #E3F2FD; color: #1565C0; font-weight: bold; }"
         )
-        for label in ("Dashboard", "Data Browser", "Documents", "Impact Review"):
+        for label in ("Requirements Dashboard", "Data Browser", "Documents", "Impact Review"):
             self._sidebar.addItem(label)
         self._sidebar.setCurrentRow(0)
         self._sidebar.currentRowChanged.connect(self._on_sidebar_changed)

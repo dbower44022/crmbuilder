@@ -131,7 +131,7 @@ class WorkflowEngine:
         return calculate_status(self._conn, work_item_id)
 
     def get_available_work(self) -> list[dict]:
-        """Return available work items for the Project Dashboard.
+        """Return available work items for the Requirements Dashboard.
 
         Returns in_progress items first, then ready items, each group
         ordered by phase then domain sort_order.

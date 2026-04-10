@@ -1,6 +1,6 @@
 """Dashboard data assembly logic — pure Python, no Qt.
 
-Assembles work item data for the Project Dashboard display.
+Assembles work item data for the Requirements Dashboard display.
 All database queries and data shaping happen here; the Qt widgets
 are thin display layers that consume these results.
 """

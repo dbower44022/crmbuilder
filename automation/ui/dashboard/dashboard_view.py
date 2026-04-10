@@ -29,7 +29,7 @@ from automation.ui.dashboard.work_queue import WorkQueue
 
 
 class DashboardView(QWidget):
-    """The Project Dashboard — Section 14.2.
+    """The Requirements Dashboard — Section 14.2.
 
     :param client_context: The shared client context.
     :param parent: Parent widget.

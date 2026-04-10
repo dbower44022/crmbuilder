@@ -32,7 +32,7 @@ ACTION_LABELS: dict[str, str] = {
     "block": "Block",
     "unblock": "Unblock",
     "generate_prompt": "Generate Prompt",
-    "run_import": "Run Import",
+    "run_import": "Import Results",
     "generate_document": "Generate Document",
     "view_impact_analysis": "View Impacts",
 }

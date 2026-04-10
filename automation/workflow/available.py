@@ -16,7 +16,7 @@ from automation.workflow.phases import get_phase
 
 
 def get_available_work(conn: sqlite3.Connection) -> list[dict]:
-    """Return available work items ordered for the Project Dashboard.
+    """Return available work items ordered for the Requirements Dashboard.
 
     Items are returned in two groups: in_progress first, then ready.
     Within each group, items are ordered by phase ascending, then by
