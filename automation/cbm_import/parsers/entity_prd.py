@@ -70,6 +70,10 @@ def parse(path: str | Path) -> tuple[dict, ImportReport]:
     if header_table:
         header = parse_header_table(header_table)
         entity_name = header.get("Entity", header.get("Entity Name", ""))
+        # Strip parenthetical type annotation:
+        # "Account (Native — Company Type)" → "Account"
+        if "(" in entity_name:
+            entity_name = entity_name[:entity_name.index("(")].strip()
         data["entity"] = {
             "name": entity_name,
             "entity_type": header.get("Entity Type", "Base"),

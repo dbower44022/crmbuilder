@@ -273,6 +273,28 @@ class TestEntityPrdParser:
 
         assert not report.errors
 
+    def test_entity_name_strips_parenthetical(self, tmp_path):
+        """Entity name 'Engagement (Custom — Base Type)' must become 'Engagement'."""
+        from docx import Document
+
+        from automation.cbm_import.parsers.entity_prd import parse
+
+        doc = Document()
+        header = doc.add_table(rows=3, cols=2)
+        header.cell(0, 0).text = "Entity"
+        header.cell(0, 1).text = "Engagement (Custom — Base Type)"
+        header.cell(1, 0).text = "Entity Type"
+        header.cell(1, 1).text = "Base"
+        header.cell(2, 0).text = "Native/Custom"
+        header.cell(2, 1).text = "Custom"
+
+        path = tmp_path / "Engagement-Entity-PRD.docx"
+        doc.save(str(path))
+
+        data, report = parse(path)
+        assert data["entity"]["name"] == "Engagement"
+        assert "(" not in data["entity"]["name"]
+
 
 class TestProcessDocumentParser:
 
