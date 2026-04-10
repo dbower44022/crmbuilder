@@ -155,6 +155,19 @@ class TestResolveOutputPath:
         assert "MN-SUB" in str(path)
         assert path.name == "MN-SUB-PROC.docx"
 
+    def test_domain_prd_sanitizes_identifier_in_name(self, conn, master_conn, tmp_path):
+        """Domain name with raw identifier must be sanitized in filename."""
+        _seed_basic(conn)
+        # Update domain name to include section number and identifier
+        conn.execute(
+            "UPDATE Domain SET name = '3.5 MST-DOM-003 — Client Recruiting' WHERE id = 1"
+        )
+        conn.commit()
+        path = resolve_output_path(DocumentType.DOMAIN_PRD, conn, 5, tmp_path, master_conn)
+        assert "MST-DOM-003" not in path.name
+        assert "3.5" not in path.name
+        assert "Client Recruiting" in path.name
+
     def test_invalid_work_item(self, conn, tmp_path):
         _seed_basic(conn)
         with pytest.raises(ValueError, match="not found"):

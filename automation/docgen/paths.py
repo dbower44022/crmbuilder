@@ -18,6 +18,7 @@ Sub-domains nest: PRDs/{parent_code}/{subdomain_code}/{PROCESS-CODE}.docx
 
 from __future__ import annotations
 
+import re
 import sqlite3
 from pathlib import Path
 
@@ -140,7 +141,7 @@ def resolve_output_path(
         row = conn.execute(
             "SELECT name FROM Domain WHERE id = ?", (domain_id,)
         ).fetchone()
-        domain_name = row[0] if row else "Unknown"
+        domain_name = _sanitize_filename_part(row[0] if row else "Unknown")
         parts = _get_domain_path_parts(conn, domain_id)
         return root / "PRDs" / Path(*parts) / f"{client}-Domain-PRD-{domain_name}.docx"
 
@@ -163,3 +164,16 @@ def resolve_output_path(
         return root / "PRDs" / f"{client}-CRM-Evaluation-Report.docx"
 
     raise ValueError(f"Unknown document type: {doc_type}")
+
+
+def _sanitize_filename_part(name: str) -> str:
+    """Strip section numbers and identifiers from a name for use in filenames.
+
+    Handles raw domain names like '3.5 MST-DOM-003 — Client Recruiting'
+    and returns 'Client Recruiting'.
+    """
+    # Strip leading section numbers (e.g., "3.5 ")
+    name = re.sub(r"^\d+(\.\d+)*\s+", "", name)
+    # Strip identifier patterns (e.g., "MST-DOM-003 — " or "MST-DOM-003 - ")
+    name = re.sub(r"^[A-Z]+-[A-Z]+-\d+\s*[—–\-:]\s*", "", name)
+    return name.strip()
