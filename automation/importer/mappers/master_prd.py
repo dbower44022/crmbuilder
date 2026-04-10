@@ -66,7 +66,7 @@ def map_payload(
             "code": domain_code,
             "description": d.get("description"),
             "sort_order": d.get("sort_order"),
-            "is_service": False,
+            "is_service": bool(d.get("is_service", False)),
             "created_by_session_id": ai_session_id,
         }
         records.append(ProposedRecord(

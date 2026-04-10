@@ -144,3 +144,28 @@ class TestMasterPrdMapper:
         )
         client_recs = [r for r in batch.records if r.table_name == "Client"]
         assert len(client_recs) == 0
+
+    def test_top_level_service_domain(self, conn, master_conn):
+        """Top-level Domain records honor payload is_service flag (DEC-020).
+
+        Cross-Domain Services are top-level Domain records with
+        is_service=True and never have sub-domains.
+        """
+        payload = {
+            "organization_overview": "Test",
+            "personas": [],
+            "domains": [
+                {"name": "Mentoring", "code": "MN", "description": "",
+                 "sort_order": 1},
+                {"name": "Notes", "code": "NOTES", "description": "Notes service",
+                 "sort_order": 90, "is_service": True},
+            ],
+            "processes": [],
+        }
+        batch = map_payload(
+            conn, _work_item(), payload, "initial", 1, master_conn=master_conn,
+        )
+        domain_recs = [r for r in batch.records if r.table_name == "Domain"]
+        by_code = {r.values["code"]: r for r in domain_recs}
+        assert by_code["MN"].values["is_service"] is False
+        assert by_code["NOTES"].values["is_service"] is True
