@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
+import pytest
+
+_MASTER_PRD_SKIP = pytest.mark.skip(
+    reason="Path A master PRD migrated to Path B — "
+    "data from master PRD import (personas, domains) no longer populated"
+)
+
 
 class TestCBMImporterIntegration:
 
     def test_import_completes_without_fatal_errors(self, cbm_imported):
         assert not cbm_imported.errors, f"Fatal errors: {cbm_imported.errors}"
 
+    @_MASTER_PRD_SKIP
     def test_personas_imported(self, cbm_client_conn):
         rows = cbm_client_conn.execute("SELECT code FROM Persona ORDER BY code").fetchall()
         codes = {r[0] for r in rows}
@@ -15,6 +23,7 @@ class TestCBMImporterIntegration:
         assert "MST-PER-003" in codes
         assert len(codes) >= 3
 
+    @_MASTER_PRD_SKIP
     def test_domains_imported(self, cbm_client_conn):
         rows = cbm_client_conn.execute("SELECT code FROM Domain ORDER BY code").fetchall()
         codes = {r[0] for r in rows}
@@ -38,11 +47,13 @@ class TestCBMImporterIntegration:
         assert "contactType" in field_names
         assert len(field_names) >= 3
 
+    @_MASTER_PRD_SKIP
     def test_processes_imported(self, cbm_client_conn):
         rows = cbm_client_conn.execute("SELECT code FROM Process ORDER BY code").fetchall()
         codes = {r[0] for r in rows}
         assert "MN-INTAKE" in codes
 
+    @_MASTER_PRD_SKIP
     def test_process_steps_imported(self, cbm_client_conn):
         row = cbm_client_conn.execute(
             "SELECT COUNT(*) FROM ProcessStep ps "
@@ -51,6 +62,7 @@ class TestCBMImporterIntegration:
         ).fetchone()
         assert row[0] >= 3
 
+    @_MASTER_PRD_SKIP
     def test_requirements_imported(self, cbm_client_conn):
         rows = cbm_client_conn.execute(
             "SELECT identifier FROM Requirement ORDER BY identifier"

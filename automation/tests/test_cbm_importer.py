@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from automation.cbm_import.parser_logic import (
     extract_enum_values,
     extract_section_text,
@@ -215,6 +217,7 @@ class TestImportReport:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skip(reason="Path A master PRD migrated to Path B")
 class TestMasterPrdParser:
 
     def test_parse_fixture(self):

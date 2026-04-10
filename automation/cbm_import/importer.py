@@ -18,7 +18,6 @@ from automation.cbm_import.parsers import (
     entity_prd,
     process_document,
 )
-from automation.cbm_import.parsers import master_prd as master_prd_parser
 from automation.cbm_import.reporter import ImportReport
 from automation.db.migrations import run_client_migrations, run_master_migrations
 from automation.workflow.engine import WorkflowEngine
@@ -58,9 +57,17 @@ class CBMImporter:
             engine = WorkflowEngine(self._conn)
 
             # Phase 1: Create project + import Master PRD data
+            # Master PRD import has migrated to Path B. The work item
+            # graph is still needed so the remaining phases can proceed.
             master_wi_id = engine.create_project()
-            r = self.import_master_prd(master_wi_id)
-            report.merge(r)
+            try:
+                r = self.import_master_prd(master_wi_id)
+                report.merge(r)
+            except NotImplementedError:
+                report.add_warning(
+                    "Master PRD import skipped — migrated to Path B. "
+                    "Use ImportProcessor for master PRD imports."
+                )
             engine.start(master_wi_id)
             engine.complete(master_wi_id)
             engine.after_master_prd_import()
@@ -132,55 +139,16 @@ class CBMImporter:
         return report
 
     def import_master_prd(self, work_item_id: int | None = None) -> ImportReport:
-        """Import the Master PRD document."""
-        report = ImportReport()
-        path = self._prds / "CBM-Master-PRD.docx"
-        if not path.exists():
-            report.add_error(f"Master PRD not found: {path}")
-            return report
+        """Import the Master PRD document.
 
-        try:
-            data, parse_report = master_prd_parser.parse(path)
-            report.merge(parse_report)
-            if self._conn is None:
-                return report
-
-            session_id = self._create_session(work_item_id or 1, "Master PRD bootstrap import")
-
-            for persona in data.get("personas", []):
-                self._insert_ignore(
-                    "Persona", "name, code, description, created_by_session_id",
-                    (persona["name"], persona["code"], persona.get("description", ""), session_id),
-                )
-                report.record_imported("Persona")
-
-            for i, domain in enumerate(data.get("domains", []), 1):
-                self._insert_ignore(
-                    "Domain", "name, code, description, sort_order, is_service",
-                    (domain["name"], domain["code"], domain.get("description", ""), i, False),
-                )
-                report.record_imported("Domain")
-
-            for proc in data.get("processes", []):
-                domain_id = self._resolve("Domain", "code", proc.get("domain_code", ""))
-                if domain_id:
-                    self._insert_ignore(
-                        "Process", "domain_id, name, code, sort_order",
-                        (domain_id, proc["name"], proc["code"], proc.get("sort_order", 1)),
-                    )
-                    report.record_imported("Process")
-
-            if self._master_conn and data.get("organization_overview"):
-                self._master_conn.execute(
-                    "UPDATE Client SET organization_overview = ? WHERE code = 'CBM'",
-                    (data["organization_overview"],),
-                )
-                self._master_conn.commit()
-
-        except Exception as e:
-            report.add_error(f"Master PRD import failed: {e}")
-            logger.exception("Master PRD import failed")
-        return report
+        .. deprecated::
+            Master PRD imports must go through Path B:
+            automation.importer.parsers.master_prd_docx + ImportProcessor.
+        """
+        raise NotImplementedError(
+            "Master PRD imports must go through Path B: "
+            "automation.importer.parsers.master_prd_docx + ImportProcessor."
+        )
 
     def import_entity_inventory(self, work_item_id: int | None = None) -> ImportReport:
         """Import the Entity Inventory document."""
@@ -576,8 +544,8 @@ class CBMImporter:
 
     def _parse_dry_run(self) -> ImportReport:
         report = ImportReport()
+        # Master PRD parsing has migrated to Path B — skip in dry run.
         for path, parser in [
-            (self._prds / "CBM-Master-PRD.docx", master_prd_parser),
             (self._prds / "CBM-Entity-Inventory.docx", entity_inventory),
         ]:
             if path.exists():
