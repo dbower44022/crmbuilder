@@ -237,6 +237,31 @@ class TestMasterPrdParser:
 
         assert not report.errors
 
+    def test_persona_descriptions_extracted(self):
+        """Personas followed by description paragraphs must capture the descriptions."""
+        from automation.cbm_import.parsers.master_prd import _extract_personas
+
+        # Build paragraphs simulating a Master PRD persona section
+        paras = [
+            "2. Personas",
+            "MST-PER-001 — System Administrator",
+            "Manages all CRM configuration and user access.",
+            "Responsible for data integrity and system maintenance.",
+            "MST-PER-002 — Program Director",
+            "Oversees mentoring program operations.",
+            "3. Domains",
+        ]
+
+        personas = _extract_personas(paras, [])
+        assert len(personas) == 2
+
+        per1 = next(p for p in personas if p["code"] == "MST-PER-001")
+        assert "Manages all CRM configuration" in per1["description"]
+        assert "data integrity" in per1["description"]
+
+        per2 = next(p for p in personas if p["code"] == "MST-PER-002")
+        assert "mentoring program operations" in per2["description"]
+
 
 class TestEntityInventoryParser:
 

@@ -111,18 +111,45 @@ def _extract_personas(
                     name = code
                 personas.append({"code": code, "name": name, "description": desc})
 
-    # Also search paragraphs
-    for para in paragraphs:
-        match = re.search(r"(MST-PER-\d+)\s*[:\-–—]\s*(.+?)(?:\s*[:\-–—]\s*(.+))?$", para)
-        if match:
-            code = match.group(1)
-            if code not in seen_codes:
-                seen_codes.add(code)
-                personas.append({
-                    "code": code,
-                    "name": match.group(2).strip(),
-                    "description": (match.group(3) or "").strip(),
-                })
+    # Also search paragraphs and capture description text that follows
+    # each persona heading until the next persona or section heading.
+    persona_pattern = re.compile(
+        r"(MST-PER-\d+)\s*[:\-–—]\s*(.+?)(?:\s*[:\-–—]\s*(.+))?$"
+    )
+    section_pattern = re.compile(r"^\d+(\.\d+)*\.\s+\S")
+
+    for i, para in enumerate(paragraphs):
+        match = persona_pattern.search(para)
+        if not match:
+            continue
+
+        code = match.group(1)
+
+        # Collect description paragraphs following this heading
+        desc_lines: list[str] = []
+        for j in range(i + 1, len(paragraphs)):
+            next_text = paragraphs[j].strip()
+            if not next_text:
+                continue
+            if persona_pattern.search(next_text) or section_pattern.match(next_text):
+                break
+            desc_lines.append(next_text)
+
+        full_desc = "\n".join(desc_lines).strip()
+
+        if code not in seen_codes:
+            seen_codes.add(code)
+            personas.append({
+                "code": code,
+                "name": match.group(2).strip(),
+                "description": full_desc or (match.group(3) or "").strip(),
+            })
+        elif full_desc:
+            # Update existing persona (found in table) with richer description
+            for p in personas:
+                if p["code"] == code and len(full_desc) > len(p.get("description", "")):
+                    p["description"] = full_desc
+                    break
 
     return sorted(personas, key=lambda p: p["code"])
 
