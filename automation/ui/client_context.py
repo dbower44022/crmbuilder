@@ -28,9 +28,9 @@ class ClientInfo:
 
 
 class ClientContext:
-    """Holds the currently selected client for Requirements mode.
+    """Holds the currently selected client for the Requirements tab.
 
-    All Requirements mode screens read from this context to know
+    All Requirements tab screens read from this context to know
     which client database to query.
     """
 

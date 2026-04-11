@@ -178,7 +178,7 @@ class DocumentsView(QWidget):
             show_toast(
                 self,
                 "No project folder configured for this client. "
-                "Associate an instance in Deployment mode.",
+                "Associate an instance in the Deployment tab.",
             )
             return
 
@@ -211,7 +211,7 @@ class DocumentsView(QWidget):
             show_toast(
                 self,
                 "No project folder configured for this client. "
-                "Associate an instance in Deployment mode.",
+                "Associate an instance in the Deployment tab.",
             )
             return
 

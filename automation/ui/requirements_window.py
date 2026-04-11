@@ -1,4 +1,4 @@
-"""Requirements mode container (Section 14.1).
+"""Requirements tab container (Section 14.1).
 
 Sidebar navigation, client selector, drill-down stack, and breadcrumbs.
 The sidebar has four entries: Requirements Dashboard, Data Browser, Documents, Impact Review.
@@ -67,7 +67,7 @@ class PlaceholderView(QWidget):
 
 
 class RequirementsWindow(QWidget):
-    """The Requirements mode container — sidebar + content area.
+    """The Requirements tab container — sidebar + content area.
 
     :param master_db_path: Path to the master database. Defaults to automation/data/master.db.
     :param active_context: Optional ActiveClientContext.  When provided, the
@@ -248,7 +248,7 @@ class RequirementsWindow(QWidget):
         if self._client_context.is_selected:
             if not confirm_action(
                 self, "Change Client",
-                "Changing the client will reset all Requirements mode state. Continue?"
+                "Changing the client will reset all Requirements tab state. Continue?"
             ):
                 # Revert combo to previous selection
                 self._client_combo.blockSignals(True)

@@ -1,1 +1,1 @@
-"""Automation UI — Requirements mode panels for CRM Builder."""
+"""Automation UI — Requirements tab panels for CRM Builder."""

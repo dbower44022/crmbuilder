@@ -35,7 +35,7 @@ class TestDeploymentGuidance:
     def test_guidance_message_exists(self):
         msg = get_guidance_message("crm_deployment")
         assert msg is not None
-        assert "Deployment mode" in msg
+        assert "Deployment tab" in msg
 
     def test_no_guidance_for_normal_item(self):
         msg = get_guidance_message("entity_prd")
