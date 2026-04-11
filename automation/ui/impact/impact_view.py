@@ -1,6 +1,6 @@
 """Impact Review sidebar view (Section 14.6.5).
 
-The administrator's dedicated workspace for reviewing impacts.
+The implementor's dedicated workspace for reviewing impacts.
 Two sections: Unresolved Changes at top, Flagged Work Items below.
 
 Design decision: resolved change sets are removed from the list

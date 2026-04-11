@@ -317,7 +317,7 @@ def save_record(
     :param table_name: Table of the record.
     :param record_id: Record ID.
     :param changes: Dict of field_name -> new_value.
-    :param rationale: Administrator's rationale.
+    :param rationale: Implementor's rationale.
     """
     if not changes:
         return
@@ -368,7 +368,7 @@ def delete_record(
     :param conn: Database connection.
     :param table_name: Table of the record.
     :param record_id: Record ID.
-    :param rationale: Administrator's rationale.
+    :param rationale: Implementor's rationale.
     """
     now = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
 

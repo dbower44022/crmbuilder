@@ -2,7 +2,7 @@
 
 Implements L2 PRD Section 13.5 Step 3 — checks data dictionaries for
 completeness and produces warnings (not errors). The validator never blocks
-generation; it returns warnings that the administrator can review.
+generation; it returns warnings that the implementor can review.
 """
 
 from __future__ import annotations

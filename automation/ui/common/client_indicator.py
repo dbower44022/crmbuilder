@@ -1,6 +1,6 @@
 """Client context indicator widget (Section 14.10.11).
 
-Shows the currently selected client in the Requirements mode header.
+Shows the currently selected client in the Requirements tab header.
 """
 
 from PySide6.QtCore import Qt

@@ -1,4 +1,4 @@
-"""Dashboard container view (Section 14.2).
+"""Requirements Dashboard container view (Section 14.2).
 
 Assembles the summary bar, staleness banner, work queue,
 filter controls, and full project inventory.

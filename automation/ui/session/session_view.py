@@ -1,7 +1,7 @@
 """Session orchestration container (Section 14.4).
 
 Pushed onto the drill-down stack from header_actions.py when
-the administrator clicks "Generate Prompt".
+the implementor clicks "Generate Prompt".
 """
 
 from __future__ import annotations

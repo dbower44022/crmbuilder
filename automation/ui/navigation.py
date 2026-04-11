@@ -34,7 +34,7 @@ class NavigationStack:
     def __init__(self, root: NavEntry) -> None:
         """Initialize with a root entry that cannot be popped.
 
-        :param root: The root navigation entry (e.g. Dashboard).
+        :param root: The root navigation entry (e.g. Requirements Dashboard).
         """
         self._stack: list[NavEntry] = [root]
 
@@ -98,6 +98,6 @@ def build_breadcrumb_text(stack: NavigationStack, separator: str = " > ") -> str
 
     :param stack: The navigation stack.
     :param separator: Separator between breadcrumb segments.
-    :returns: A string like "Dashboard > Work Item: Contact PRD".
+    :returns: A string like "Requirements Dashboard > Work Item: Contact PRD".
     """
     return separator.join(entry.label for entry in stack.breadcrumbs)

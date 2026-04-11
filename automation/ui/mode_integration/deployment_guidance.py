@@ -3,12 +3,12 @@
 Pure Python — no PySide6 imports.
 
 Provides guidance text for work items that are performed outside
-Requirements mode (crm_deployment, crm_configuration, verification).
+the Requirements tab (crm_deployment, crm_configuration, verification).
 """
 
 from __future__ import annotations
 
-# Work item types that are performed in Deployment mode
+# Work item types that are performed in the Deployment tab
 DEPLOYMENT_WORK_ITEM_TYPES = {
     "crm_deployment",
     "crm_configuration",
@@ -18,20 +18,20 @@ DEPLOYMENT_WORK_ITEM_TYPES = {
 GUIDANCE_MESSAGES: dict[str, str] = {
     "crm_deployment": (
         "This work item covers CRM instance deployment, which is performed in "
-        "Deployment mode. Switch to Deployment mode to provision and configure "
+        "the Deployment tab. Switch to the Deployment tab to provision and configure "
         "the CRM instance. Once deployment is complete, return here to mark "
         "this work item as complete."
     ),
     "crm_configuration": (
         "This work item covers CRM configuration, which is performed in "
-        "Deployment mode using YAML program files. Switch to Deployment mode, "
+        "the Deployment tab using YAML program files. Switch to the Deployment tab, "
         "select the program files, and run them against the CRM instance. "
         "Once configuration is verified, return here to mark this work item "
         "as complete."
     ),
     "verification": (
         "This work item covers post-deployment verification. Switch to "
-        "Deployment mode and use the Verify action to confirm that the CRM "
+        "the Deployment tab and use the Verify action to confirm that the CRM "
         "instance matches the expected configuration. Once verification "
         "passes, return here to mark this work item as complete."
     ),
@@ -39,7 +39,7 @@ GUIDANCE_MESSAGES: dict[str, str] = {
 
 
 def is_deployment_work_item(item_type: str) -> bool:
-    """Check if a work item type is performed in Deployment mode.
+    """Check if a work item type is performed in the Deployment tab.
 
     :param item_type: The WorkItem.item_type value.
     :returns: True if this is a deployment/configuration/verification work item.

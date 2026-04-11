@@ -100,7 +100,7 @@ class DocumentsView(QWidget):
         """Set the view scope before refreshing.
 
         :param work_item_id: Scope to a single work item (from header action).
-        :param stale_only: Show only stale documents (from dashboard link).
+        :param stale_only: Show only stale documents (from Requirements Dashboard link).
         """
         self._scoped_work_item_id = work_item_id
         self._filter_stale_only = stale_only
@@ -178,7 +178,7 @@ class DocumentsView(QWidget):
             show_toast(
                 self,
                 "No project folder configured for this client. "
-                "Associate an instance in Deployment mode.",
+                "Associate an instance in the Deployment tab.",
             )
             return
 
@@ -211,7 +211,7 @@ class DocumentsView(QWidget):
             show_toast(
                 self,
                 "No project folder configured for this client. "
-                "Associate an instance in Deployment mode.",
+                "Associate an instance in the Deployment tab.",
             )
             return
 

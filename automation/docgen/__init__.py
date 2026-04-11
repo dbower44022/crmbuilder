@@ -2,7 +2,7 @@
 
 Implements L2 PRD Section 13 — reads committed database records and produces
 formatted deliverables (Word documents and YAML program files). The generator
-runs on administrator demand and never modifies work items.
+runs on implementor demand and never modifies work items.
 
 Eight document types are supported, each mapped to a work item type:
 
