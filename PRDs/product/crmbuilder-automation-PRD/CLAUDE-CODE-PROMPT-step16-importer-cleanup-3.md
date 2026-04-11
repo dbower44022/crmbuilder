@@ -184,7 +184,7 @@ cp automation/data/cbm-client.db automation/data/cbm-client.db.before-round3
 
 # Re-run the import (this will be additive on top of the existing DB)
 python -m automation.cbm_import \
-    --cbm-repo /home/doug/Dropbox/Projects/ClevelandBusinessMentoring \
+    --cbm-repo /home/doug/Dropbox/Projects/ClevelandBusinessMentors \
     --client-db automation/data/cbm-client.db \
     --master-db automation/data/master.db
 ```
@@ -421,7 +421,7 @@ mv automation/data/cbm-client.db automation/data/cbm-client.db.round2
 
 # Run a fresh import
 python -m automation.cbm_import \
-    --cbm-repo /home/doug/Dropbox/Projects/ClevelandBusinessMentoring \
+    --cbm-repo /home/doug/Dropbox/Projects/ClevelandBusinessMentors \
     --client-db automation/data/cbm-client.db \
     --master-db automation/data/master.db
 ```

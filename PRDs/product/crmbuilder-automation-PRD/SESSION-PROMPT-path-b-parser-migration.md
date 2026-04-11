@@ -120,13 +120,16 @@ The following infrastructure from the master PRD migration is reusable:
 
 ## CBM File Locations
 
-**Important:** Doug has two directories:
-- `~/Dropbox/Projects/ClevelandBusinessMentoring/` — the git repo clone
-- `~/Dropbox/Projects/ClevelandBusinessMentors/` — working directory with
-  additional files (CR-PARTNER-MANAGE.docx, CR-PARTNER-PROSPECT.docx)
-
-Some CBM documents exist in the working directory but haven't been pushed
-to the git repo. When testing, use the `ClevelandBusinessMentors` path.
+Doug's local clone of the CBM repo is at
+`~/Dropbox/Projects/ClevelandBusinessMentors/`. This is the single
+source of truth for CBM documents on his machine. Note the short name
+(`Mentors`, not `Mentoring`) — the GitHub repo is named
+`dbower44022/ClevelandBusinessMentoring`, but the local directory uses
+the short form. A previous session incorrectly claimed two separate
+directories existed (`ClevelandBusinessMentoring` and
+`ClevelandBusinessMentors`); the long-named stale clone was deleted on
+04-10-26 after it was discovered to be 42 commits behind and sparse-
+checkout incomplete. Only the short-named directory exists now.
 
 ---
 

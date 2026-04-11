@@ -214,7 +214,7 @@ rm automation/data/cbm-client.db
 
 # Re-import
 python -m automation.cbm_import \
-    --cbm-repo /home/doug/Dropbox/Projects/ClevelandBusinessMentoring \
+    --cbm-repo /home/doug/Dropbox/Projects/ClevelandBusinessMentors \
     --client-db automation/data/cbm-client.db \
     --master-db automation/data/master.db
 ```

@@ -126,9 +126,9 @@ After the fix, re-parse MR-DEPART.docx and NOTES-MANAGE.docx:
 
 ```python
 from automation.cbm_import.parsers.process_document import parse
-data, report = parse('/home/doug/Dropbox/Projects/ClevelandBusinessMentoring/PRDs/MR/MR-DEPART.docx')
+data, report = parse('/home/doug/Dropbox/Projects/ClevelandBusinessMentors/PRDs/MR/MR-DEPART.docx')
 print(f"MR-DEPART steps: {len(data['steps'])}")  # Expect 10-15
-data, report = parse('/home/doug/Dropbox/Projects/ClevelandBusinessMentoring/PRDs/services/NOTES/NOTES-MANAGE.docx')
+data, report = parse('/home/doug/Dropbox/Projects/ClevelandBusinessMentors/PRDs/services/NOTES/NOTES-MANAGE.docx')
 print(f"NOTES-MANAGE steps: {len(data['steps'])}")  # Expect 8-15
 ```
 
@@ -199,7 +199,7 @@ After the fix, re-parse MR-DEPART.docx:
 
 ```python
 from automation.cbm_import.parsers.process_document import parse
-data, report = parse('/home/doug/Dropbox/Projects/ClevelandBusinessMentoring/PRDs/MR/MR-DEPART.docx')
+data, report = parse('/home/doug/Dropbox/Projects/ClevelandBusinessMentors/PRDs/MR/MR-DEPART.docx')
 print(f"MR-DEPART requirements: {len(data['requirements'])}")  # Expect 3-5
 for r in data['requirements']:
     print(f"  {r['identifier']}: {r['description'][:60]}")
@@ -316,7 +316,7 @@ After the fix, run a dry-run against the full CBM repo and check the Process cou
 
 ```bash
 python -m automation.cbm_import \
-    --cbm-repo /home/doug/Dropbox/Projects/ClevelandBusinessMentoring \
+    --cbm-repo /home/doug/Dropbox/Projects/ClevelandBusinessMentors \
     --client-db /tmp/verify-cbm.db \
     --master-db /tmp/verify-master.db \
     --dry-run
@@ -356,7 +356,7 @@ Open these documents with python-docx and confirm the symptoms:
 - **Bug #6:** Open `PRDs/MR/MR-DEPART.docx`. List all tables with their first row. Confirm that the requirements table does not have a `['ID', 'Requirement']` header row.
 - **Bug #8:** List `PRDs/CR/PARTNER/` contents. Confirm that `CR-PARTNER-PROSPECT.docx` and `CR-PARTNER-MANAGE.docx` exist.
 
-If the CBM repo is not available in your environment, ask Doug. Doug's local path is `/home/doug/Dropbox/Projects/ClevelandBusinessMentoring`.
+If the CBM repo is not available in your environment, ask Doug. Doug's local path is `/home/doug/Dropbox/Projects/ClevelandBusinessMentors`.
 
 ### 2. Apply the fixes in order
 
@@ -378,7 +378,7 @@ After all three commits are in, run a dry-run against the full CBM repository:
 
 ```bash
 python -m automation.cbm_import \
-    --cbm-repo /home/doug/Dropbox/Projects/ClevelandBusinessMentoring \
+    --cbm-repo /home/doug/Dropbox/Projects/ClevelandBusinessMentors \
     --client-db /tmp/verify-cbm.db \
     --master-db /tmp/verify-master.db \
     --dry-run

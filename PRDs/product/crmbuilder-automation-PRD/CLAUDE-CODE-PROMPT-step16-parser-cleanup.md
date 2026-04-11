@@ -30,7 +30,7 @@ Several counts are off relative to the real CBM repository. Review identified fo
 
 This is a **small, targeted follow-up**. Four bugs, four separate commits so they can be reviewed independently. All fixes are localized to `automation/cbm_import/parsers/` and `automation/cbm_import/parser_logic.py` — no changes to the importer orchestration, the database layer, the workflow engine, or the UI.
 
-The CBM repository lives at `dbower44022/ClevelandBusinessMentoring`. Your development environment may or may not have it cloned. If it's not already available, Doug can share individual sample documents; otherwise use the CBM repo as a real-world verification source. Doug's local path is `/home/doug/Dropbox/Projects/ClevelandBusinessMentoring`.
+The CBM repository lives at `dbower44022/ClevelandBusinessMentoring`. Your development environment may or may not have it cloned. If it's not already available, Doug can share individual sample documents; otherwise use the CBM repo as a real-world verification source. Doug's local path is `/home/doug/Dropbox/Projects/ClevelandBusinessMentors`.
 
 **Before touching code**, read three sample CBM documents to understand the real structure:
 
@@ -87,7 +87,7 @@ Before committing, run a dry-run against the full CBM repo and check the Require
 
 ```bash
 python -m automation.cbm_import \
-    --cbm-repo /home/doug/Dropbox/Projects/ClevelandBusinessMentoring \
+    --cbm-repo /home/doug/Dropbox/Projects/ClevelandBusinessMentors \
     --client-db /tmp/verify-cbm.db \
     --master-db /tmp/verify-master.db \
     --dry-run
