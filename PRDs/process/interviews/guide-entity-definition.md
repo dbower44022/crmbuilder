@@ -264,6 +264,16 @@ domains:
 | Engagement| ✓  |    |    |    |
 | Session   | ✓  |    |    |    |
 
+**Section 6: Interview Transcript**
+A complete but condensed record of the Entity Discovery
+conversation — every question asked, every answer given, and every
+decision made — organized by topic area with Q/A pairs and inline
+Decision callouts. See **Interview Transcript Format** at the end
+of Phase 2b for the full specification. Topic groupings for the
+Entity Inventory transcript typically include the entity concepts
+discussed, native vs. custom determinations, discriminator
+decisions on shared entities, and cross-domain entity scope.
+
 ### State Next Step
 
 > "The Entity Inventory is complete. The next step is to produce
@@ -437,6 +447,66 @@ of the decision and its rationale. Decisions that affect other
 Entity PRDs should be cross-referenced (e.g., "Primary Contact is
 on the Account-Contact relationship — see Account Entity PRD").
 
+**Section 10: Interview Transcript**
+A complete but condensed record of the Entity PRD conversation
+itself — every question asked, every answer given, and every
+decision made — organized by topic area with Q/A pairs and inline
+Decision callouts. Topic groupings for an Entity PRD transcript
+typically include field-by-field discussions, relationship
+decisions, dynamic logic rules, and cross-entity impacts. See
+**Interview Transcript Format** below for the full specification.
+
+### Interview Transcript Format
+
+This format applies to **both** Section 6 of the Entity Inventory
+(Phase 2a) and Section 10 of each Entity PRD (Phase 2b). It mirrors
+Topic 7 of `interview-master-prd.md` and Section 11 of
+`interview-process-definition.md` so the transcript convention is
+consistent across all interview-driven documents.
+
+The transcript is organized by **topic area**, not chronologically.
+Group related exchanges under descriptive subheadings that
+correspond to the subject matter discussed. Within each topic
+group, use **Q/A pairs**:
+
+> **Q:** [The question asked — condensed to its essential content]
+>
+> **A:** [The answer given — condensed to its essential content]
+
+Condense conversational filler, false starts, and back-and-forth
+clarification into clean Q/A pairs, but preserve all substantive
+information. If three exchanges were needed to arrive at an
+answer, combine them into one Q/A pair that captures the final
+understanding. Never drop information — if it was discussed, it
+must appear.
+
+When a Q/A exchange results in a decision — especially one that
+changes prior content, resolves an ambiguity, or establishes a new
+rule — add a **Decision:** callout immediately after the Q/A pair:
+
+> **Decision:** [What was decided and why it matters. Reference
+> the prior content that changed if applicable.]
+
+Decision callouts are inline with the topic, not collected into a
+separate section. (For Entity PRDs, decisions are also recorded
+formally in Section 9 with their `{ENTITY-CODE}-DEC-NNN`
+identifiers; the inline callouts in the transcript do not replace
+Section 9, they sit alongside it next to the discussion that
+produced them.)
+
+**What to include:** every Q&A condensed but complete; all
+decisions with inline callouts; all conflicts identified and their
+resolution; all TBD items with the specific question that needs
+answering; all cross-entity impacts surfaced during the session.
+
+**What not to include:** greetings and conversational filler; the
+AI's internal reasoning or analysis; duplicate information.
+
+**Signs you have enough:** every substantive exchange from the
+session is captured; all decisions have inline callouts; a
+reviewer who was not present could reconstruct the full reasoning
+behind every decision in the document.
+
 ---
 
 ## Critical Rules
@@ -558,6 +628,7 @@ Document Production Process.
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.3 | 04-11-26 | Added Interview Transcript as Section 6 of the Entity Inventory (Phase 2a) and Section 10 of each Entity PRD (Phase 2b). Added a shared Interview Transcript Format spec at the end of the Entity PRD Structure section, mirroring Topic 7 of interview-master-prd.md and Section 11 of interview-process-definition.md. Captures all Q&A condensed but complete, organized by topic area with inline Decision callouts, so reviewers can reconstruct the reasoning behind every entity and field decision. Inline Decision callouts in the transcript sit alongside the formal Section 9 Decisions Made entries, not in place of them. |
 | 1.2 | 04-04-26 | Added Native/Custom determination principle: Entity Inventory assessments are preliminary; Entity PRD is authoritative. Added note to Step 2 (Propose Entity Mapping) and new Critical Rule. |
 | 1.1 | 04-02-26 | Added batched-decision approach to AI behaviors. Added generator template reference and usage instructions. Added reference implementation note (Contact Entity PRD). Added Section 9 (Decisions Made) to Entity PRD structure. Updated State the Plan to reflect batched workflow. Replaced "ask about each field" with three-bucket batching. Added prior Entity PRD cross-referencing guidance. |
 | 1.0 | 04-01-26 | Initial release. |

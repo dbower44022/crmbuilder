@@ -53,6 +53,11 @@ with five sections:
    without needing to know internal mechanics
 5. **System Scope** — in scope, out of scope, key integrations
    described generically by function
+6. **Interview Transcript** — a complete but condensed record of
+   the interview itself, organized by topic area, with Q/A pairs
+   and inline Decision callouts. Captures every question asked
+   and every answer given so future reviewers can reconstruct the
+   reasoning behind every decision in the document.
 
 The Key Business Domains section also includes:
 
@@ -149,6 +154,7 @@ is missed before wrapping up.
 - [ ] 4. Cross-Domain Services
 - [ ] 5. System Scope
 - [ ] 6. Constraints and Priorities
+- [ ] 7. Interview Transcript
 
 ---
 
@@ -571,6 +577,82 @@ informs scope decisions but is not a formal section of the Master PRD
 
 ---
 
+## Topic 7 — Interview Transcript
+
+**What the AI is trying to produce:**
+A complete but condensed record of the interview — every question
+asked, every answer given, and every decision made — organized for
+easy reference by future reviewers. This becomes Section 6 of the
+Master PRD.
+
+The transcript is not gathered through a separate round of
+questions. It is assembled by the AI from the full interview
+conversation at the end of the session, immediately before
+Document Production.
+
+### 7.1 Format
+
+The transcript is organized by **topic area**, not chronologically.
+Group related exchanges under descriptive subheadings that
+correspond to the subject matter discussed (e.g., "Mission and
+Operating Context," "Persona Responsibilities," "Domain
+Boundaries," "Tier Assignments," "Cross-Domain Services," "System
+Scope"). This makes it easy to find specific decisions later
+without reading the entire transcript.
+
+Within each topic group, use **Q/A pairs**:
+
+> **Q:** [The question asked — condensed to its essential content]
+>
+> **A:** [The answer given — condensed to its essential content]
+
+Condense conversational filler, false starts, and back-and-forth
+clarification into clean Q/A pairs, but preserve all substantive
+information. If three exchanges were needed to arrive at an
+answer, combine them into one Q/A pair that captures the final
+understanding. Never drop information — if it was discussed, it
+must appear.
+
+### 7.2 Decision Callouts
+
+When a Q/A exchange results in a decision — especially one that
+changes prior content, resolves an ambiguity, or establishes a new
+rule — add a **Decision:** callout immediately after the Q/A pair:
+
+> **Decision:** [What was decided and why it matters. Reference
+> the prior content that changed if applicable.]
+
+Decision callouts are inline with the topic, not collected into a
+separate section. This keeps each decision next to the discussion
+that produced it.
+
+### 7.3 What to Include
+
+- Every question asked by the AI and every answer from the
+  administrator, condensed but complete
+- All decisions made, with inline Decision callouts
+- All conflicts identified between answers and their resolution
+- All TBD items identified with the specific question that
+  needs answering
+- All scope discoveries and how they were handled
+- All updates to prior assumptions made during the interview
+
+### 7.4 What Not to Include
+
+- Greetings, pleasantries, and conversational filler
+- The AI's internal reasoning or analysis (only the questions
+  and answers matter)
+- Duplicate information — if the same topic was revisited,
+  combine into one Q/A group with the final answer
+
+**Signs you have enough:**
+- Every substantive exchange from the interview is captured
+- All decisions have inline callouts
+- A reviewer who was not present could reconstruct the full
+  reasoning behind every decision in the document
+
+---
+
 ## Closing the Interview
 
 ### Coverage Check
@@ -620,6 +702,13 @@ the following structure:
    and any entities it may own
 5. **System Scope** — in scope, out of scope, integrations
    described by function
+6. **Interview Transcript** — assembled by the AI from the full
+   interview conversation, organized by topic area with Q/A pairs
+   and inline Decision callouts as specified in Topic 7
+
+All six sections use numbered headings consistently in the Word
+document output (e.g., "1. Organization Overview", "2. Personas",
+... "6. Interview Transcript").
 
 Commit the document to the repository at:
 `PRDs/{Implementation}-Master-PRD.docx`
@@ -683,6 +772,7 @@ discover them now than during Phase 2.
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.3 | 04-11-26 | Added Interview Transcript as Section 6 of the Master PRD and Topic 7 of the interview, mirroring Section 11 of the Process Definition guide. Captures all interview Q&A condensed but complete, organized by topic area with inline Decision callouts, so future reviewers can reconstruct the reasoning behind every decision in the document. Updated topic checklist and Document Production block to include the new section and to specify consistent numbered headings across all six sections. |
 | 1.2 | 04-03-26 | Added Cross-Domain Services: new Topic 4 interview section, added to Master PRD contents and output structure, added to summary checklist, added to "also establishes" list. Renumbered Topics 4–5 to 5–6. Fixed Next Steps to correctly reference Phase 2 — Entity Definition (was incorrectly pointing to Process Definition). |
 | 1.1 | 03-30-26 | Updated persona format (Responsibilities + What the CRM Provides, both bulleted). Added implementation tier system (Core, Important, Enhancement, Out of Scope). Added Business Value and Key Capabilities as bulleted lists per process. Updated document production structure to match. |
 | 1.0 | 03-30-26 | Initial release. Replaces discovery-interview.md. |

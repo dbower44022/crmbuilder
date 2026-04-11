@@ -36,7 +36,7 @@ implementation's repository at
 
 ## What the Domain PRD Must Contain
 
-The Domain PRD has six sections:
+The Domain PRD has seven sections:
 
 | # | Section | Content |
 |---|---------|---------|
@@ -46,6 +46,7 @@ The Domain PRD has six sections:
 | 4 | Data Reference | Consolidated view of all data in the domain, organized by entity, with full field-level detail. |
 | 5 | Decisions Made | Record of all decisions made during the process definition conversations. |
 | 6 | Open Issues | Unresolved questions requiring answers before implementation. |
+| 7 | Interview Transcript | Condensed Q&A record of the reconciliation conversation itself, organized by topic area with inline Decision callouts. Covers only the reconciliation session — process-level Q&A remains in the source process documents. |
 
 ---
 
@@ -361,6 +362,64 @@ Assign new identifiers for reconciliation issues:
 |----|-------|----------|-----------------|--------|
 | [ID] | [Issue] | [Specific question] | [Stakeholder] | [Process name or Reconciliation] |
 
+### Section 7: Interview Transcript
+
+A complete but condensed record of the **reconciliation
+conversation itself** — every question asked, every answer given,
+and every decision made during the reconciliation session. This
+covers only the reconciliation discussion. Q&A from the original
+process definition sessions remains in Section 11 of each source
+process document and is **not** duplicated here.
+
+The transcript is organized by **topic area**, not chronologically.
+Typical topic groupings for a reconciliation transcript include
+field definition conflicts, status value conflicts, persona role
+conflicts, cross-process gaps, and any cross-cutting design
+questions surfaced during assembly.
+
+Within each topic group, use **Q/A pairs**:
+
+> **Q:** [The question asked — condensed to its essential content]
+>
+> **A:** [The answer given — condensed to its essential content]
+
+Condense conversational filler into clean Q/A pairs but preserve
+all substantive information. Never drop information — if it was
+discussed, it must appear.
+
+When a Q/A exchange results in a reconciliation decision, add a
+**Decision:** callout immediately after the Q/A pair:
+
+> **Decision:** [What was decided and why. Reference the
+> `[DOMAIN]-RECON-DEC-NNN` identifier from Section 5.]
+
+Inline Decision callouts in the transcript sit alongside the
+formal Section 5 Decisions Made entries, not in place of them.
+Each reconciliation decision should appear in both places: once
+formally in the Section 5 table with its identifier, and once
+inline in the transcript next to the discussion that produced it.
+
+**What to include:** every reconciliation Q&A condensed but
+complete; all reconciliation decisions with inline callouts;
+all conflicts identified and how each was resolved; all new open
+issues surfaced during reconciliation.
+
+**What not to include:** greetings and conversational filler;
+the AI's internal reasoning; Q&A from the original process
+definition sessions (those live in the process documents);
+duplicate information.
+
+**Signs you have enough:** every substantive exchange from the
+reconciliation session is captured; all reconciliation decisions
+have inline callouts cross-referencing their Section 5 ID; a
+reviewer who was not present could reconstruct the full reasoning
+behind every reconciliation decision.
+
+This section mirrors Topic 7 of `interview-master-prd.md`,
+Section 11 of `interview-process-definition.md`, and Section 6 /
+Section 10 of `guide-entity-definition.md`, so the transcript
+convention is consistent across all interview-driven documents.
+
 ---
 
 ## Step 3 — Review
@@ -385,6 +444,9 @@ Walk through each section:
 >
 > **Open Issues:** [N] issues requiring resolution before
 > implementation.
+>
+> **Interview Transcript:** [N] reconciliation topic groups
+> captured with inline Decision callouts.
 >
 > Would you like to review any section in detail before I
 > produce the final document?"
@@ -454,5 +516,6 @@ generation in Phase 5.
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.2 | 04-11-26 | Reversed the v1.1 Interview Transcript exclusion. Added Interview Transcript as Section 7 of the Domain PRD, scoped to the reconciliation conversation only — Q&A from the original process definition sessions remains in Section 11 of each source process document and is not duplicated. Inline Decision callouts in the transcript sit alongside the formal Section 5 Decisions Made entries (each reconciliation decision appears in both places, cross-referenced by its [DOMAIN]-RECON-DEC-NNN identifier). Updated Step 3 Review walkthrough to mention the new section. Brings reconciliation into parity with the master, entity, and process definition guides for transcript capture. |
 | 1.1 | 04-01-26 | Updated Business Processes section from 6 to 8 required sections per process to match the current 11-section process document format (v2.4). Added Process Triggers and Process Completion as separate sections. Added explicit exclusion list (Open Issues, Updates to Prior Documents, Interview Transcript) with rationale. Changed Process Data and Data Collected to narrative summaries referencing Section 4 Data Reference instead of duplicating field tables. |
 | 1.0 | 03-30-26 | Initial release. |
