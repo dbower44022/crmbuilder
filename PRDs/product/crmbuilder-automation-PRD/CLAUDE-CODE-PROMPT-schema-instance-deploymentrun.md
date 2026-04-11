@@ -1,0 +1,225 @@
+# Claude Code Prompt — Schema Migrations for L2 PRD v1.16 Deployment Tab
+
+## Purpose
+
+L2 PRD v1.16 introduces a new Deployment tab with its own schema support
+(Instance table, DeploymentRun table) and expands the Client table with
+new columns driving the tab restructure. This prompt implements **only the
+schema layer** — no UI, no business logic, no data migration from the
+legacy `data/instances/*.json` files. Schema is the foundation for all
+subsequent prompts in this series.
+
+This is **Prompt A** of a five-prompt sequence (A–E) implementing L2 PRD
+v1.16 design items. Later prompts depend on this one being in place:
+
+- **Prompt A** (this file): Schema migrations
+- Prompt B: Tab restructure + Clients tab UI
+- Prompt C: Deployment tab shell + Instance storage migration (reads
+  legacy JSON files and populates the new Instance table)
+- Prompt D: Deploy Wizard rewrite (three scenarios)
+- Prompt E: Terminology sweeps (administrator → implementor,
+  Dashboard → Requirements Dashboard)
+
+## Authoritative Source
+
+All schema definitions in this prompt come from
+`PRDs/product/crmbuilder-automation-PRD/crmbuilder-automation-l2-PRD.docx`
+(v1.16). The specific sections to reference are:
+
+- **Section 3.1** — Client table (rewritten in v1.14)
+- **Section 6.5** — Instance table (added in v1.14)
+- **Section 6.6** — DeploymentRun table (added in v1.14)
+- **DEC-067** — Per-client Instance table with credentials
+- **DEC-073** — Client.crm_platform and Client.deployment_model columns
+- **ISS-017** — Migration of legacy JSON instance profiles (scoped to
+  Prompt C, NOT this prompt)
+- **ISS-018** — Encrypted credential storage (deferred; credentials are
+  stored as plaintext in v1)
+
+Read the relevant sections of the L2 PRD before writing any code. The
+exact column lists, CHECK constraints, default values, and foreign key
+relationships are specified there.
+
+## Scope — What This Prompt Does
+
+### Master database changes
+
+Rewrite `automation/db/master_schema.py` so `CLIENT_TABLE` matches L2 PRD
+v1.16 §3.1. Additions to the existing definition:
+
+- `project_folder TEXT NOT NULL` — absolute path to the client repo
+- `deployment_model TEXT` — CHECK constraint: `self_hosted`, `cloud_hosted`,
+  `bring_your_own`, or NULL
+- `last_opened_at TIMESTAMP` — nullable, updated when the client is
+  selected on the Clients tab
+
+The existing `database_path` column is **retained** for backward
+compatibility with existing rows but becomes deprecated and unused. Do
+not drop it in this migration. A future prompt may remove it once all
+code paths stop reading it.
+
+The existing `crm_platform` column must have a CHECK constraint added
+that restricts it to the values listed in L2 PRD §14.12.6 (currently
+just `EspoCRM`) or NULL. Since SQLite cannot add a CHECK constraint via
+ALTER TABLE on an existing column, this is handled in the fresh-table
+path in `master_schema.py` for new databases. For existing databases,
+the migration leaves the column unconstrained — the application enforces
+the constraint in code until a future full-table rebuild. Document this
+tradeoff in a code comment.
+
+Add a new migration `_master_v2` in `automation/db/migrations.py`. The
+migration must be **idempotent** — check for column existence via
+`PRAGMA table_info(Client)` before each `ALTER TABLE ADD COLUMN`.
+
+The `project_folder` column is declared `NOT NULL` in the fresh-table
+definition. For existing rows, the migration must populate it before the
+NOT NULL constraint would be violated. Because SQLite's `ALTER TABLE ADD
+COLUMN` with NOT NULL requires a default, the migration adds the column
+as nullable, backfills values from `database_path` (strip the
+`/.crmbuilder/{code}.db` suffix), and leaves the column nullable on
+existing databases. Fresh databases get the NOT NULL constraint from the
+rewritten `CLIENT_TABLE` definition. Document this tradeoff in a code
+comment as well.
+
+Backfill logic for `project_folder`:
+
+```python
+# For each existing row, derive project_folder from database_path
+# by stripping the trailing /.crmbuilder/{code}.db segment.
+# Example: /home/user/cbm/.crmbuilder/CBM.db -> /home/user/cbm
+```
+
+If a row's `database_path` does not end with `/.crmbuilder/{code}.db`,
+leave `project_folder` as NULL and log a warning — the application will
+handle the NULL case by showing that client in the "unreachable" state
+on the Clients tab.
+
+### Client database changes
+
+Add two new table definitions to `automation/db/client_schema.py`:
+
+1. **Instance table** — per L2 PRD §6.5. Stores CRM instance profiles
+   for this client. Columns include at minimum: `id`, `name`, `code`,
+   `description`, `environment`, `url`, `username`, `password`,
+   `is_default`, `crm_platform`, `created_at`, `updated_at`. Refer to
+   §6.5 for the exact column list, types, NOT NULL flags, UNIQUE
+   constraints, CHECK constraints, and defaults.
+
+2. **DeploymentRun table** — per L2 PRD §6.6. Records each execution of
+   the Deploy Wizard. Columns include at minimum: `id`, `instance_id`
+   (FK to Instance.id), `scenario`, `crm_platform`, `started_at`,
+   `completed_at`, `outcome`, `error_message`. Refer to §6.6 for the
+   exact column list and constraints.
+
+Add both to `ALL_CLIENT_TABLES` in the same file.
+
+Add a new migration `_client_v3` in `automation/db/migrations.py` that
+executes the `CREATE TABLE` statements for Instance and DeploymentRun.
+The migration uses `CREATE TABLE IF NOT EXISTS` for idempotency.
+
+### Tests
+
+Add test coverage in `tests/db/` following the existing patterns.
+Specifically:
+
+1. **`tests/db/test_master_migrations.py`** (or extend existing file):
+   - Test that a fresh master database created via
+     `run_master_migrations` has `project_folder`, `deployment_model`,
+     and `last_opened_at` columns on Client.
+   - Test that the CHECK constraint on `crm_platform` rejects invalid
+     values on a fresh database and accepts `EspoCRM` and NULL.
+   - Test that the CHECK constraint on `deployment_model` rejects
+     invalid values and accepts `self_hosted`, `cloud_hosted`,
+     `bring_your_own`, and NULL.
+   - Test the master_v2 migration path: create a database at the v1
+     schema manually (with the old `CLIENT_TABLE` definition), insert a
+     row with a realistic `database_path` like
+     `/tmp/test_client/.crmbuilder/TEST.db`, run migrations, and assert
+     that `project_folder` is backfilled to `/tmp/test_client`.
+   - Test the master_v2 migration is idempotent — running it twice does
+     not fail or duplicate columns.
+   - Test the edge case where `database_path` does not match the
+     expected pattern: the migration leaves `project_folder` NULL.
+
+2. **`tests/db/test_client_migrations.py`** (or extend existing file):
+   - Test that a fresh client database has Instance and DeploymentRun
+     tables with the expected columns.
+   - Test the CHECK constraints on Instance columns (refer to §6.5 for
+     the list — at minimum `environment` and `crm_platform`).
+   - Test the CHECK constraint on DeploymentRun.scenario (values:
+     `self_hosted`, `cloud_hosted`, `bring_your_own`).
+   - Test the CHECK constraint on DeploymentRun.outcome (values:
+     `success`, `failure`).
+   - Test that the FK from DeploymentRun.instance_id to Instance.id is
+     enforced (insert a DeploymentRun row with a bogus instance_id and
+     assert it fails with an integrity error).
+   - Test the client_v3 migration idempotency: run it twice, assert no
+     error.
+   - Test the client_v3 migration on a database at v2: create the v2
+     schema, run migrations, assert Instance and DeploymentRun now
+     exist.
+
+3. **Instance.is_default uniqueness**: §6.5 specifies that exactly one
+   instance per client may have `is_default = TRUE`. Add a test that
+   attempts to insert two rows with `is_default = 1` and asserts the
+   second insert fails (via a UNIQUE partial index or CHECK constraint,
+   whichever §6.5 specifies).
+
+All tests must pass. Run the full test suite with
+`uv run pytest tests/ -v` and confirm zero failures.
+
+### Lint
+
+`uv run ruff check automation/ tests/` must pass clean.
+
+## Explicitly Out of Scope
+
+Do NOT do any of the following in this prompt. They are scoped to later
+prompts in the series:
+
+- **No UI changes.** Do not touch anything in `automation/ui/`. The
+  Clients tab, Deployment tab, Deploy Wizard, and all other v1.16 UI
+  changes are in Prompts B and beyond.
+- **No data migration from legacy JSON files.** The existing
+  `data/instances/*.json` files remain in place and unused by this
+  prompt. Prompt C will read them and populate the new Instance table.
+- **No changes to `deploy_config.py` / `instance_profile.py` / any
+  legacy deployment code** in `espo_impl/`. Those files remain as-is
+  until Prompts C and D replace them.
+- **No terminology sweeps.** Do not rename `administrator` → `implementor`
+  anywhere in this prompt. That is Prompt E.
+- **No encryption of the Instance.password column.** Per ISS-018,
+  credentials are stored as plaintext in v1. Do not add encryption
+  logic or key management.
+
+## Completion Criteria
+
+Before marking this prompt complete:
+
+1. `automation/db/master_schema.py` contains the rewritten Client table
+   definition matching L2 PRD §3.1.
+2. `automation/db/client_schema.py` contains the new Instance and
+   DeploymentRun table definitions matching §6.5 and §6.6.
+3. `automation/db/migrations.py` contains `_master_v2` and `_client_v3`
+   migration functions, both idempotent, both listed in their
+   respective `*_MIGRATIONS` arrays.
+4. All new tests pass; all existing tests still pass.
+5. `uv run ruff check automation/ tests/` passes clean.
+6. A brief summary comment is added at the top of `migrations.py`
+   referencing L2 PRD v1.16 §3.1, §6.5, §6.6 as the source.
+7. No UI files are modified.
+8. No legacy deployment code files in `espo_impl/` are modified.
+
+## Commit
+
+Commit with the message:
+
+    L2 PRD v1.16 Prompt A: schema migrations for Instance, DeploymentRun
+
+    - master_v2: add project_folder, deployment_model, last_opened_at
+      to Client; backfill project_folder from database_path
+    - client_v3: add Instance table (§6.5) and DeploymentRun table (§6.6)
+    - tests for both migrations, idempotency, CHECK constraints, FK
+    - no UI changes, no legacy JSON migration (deferred to Prompt C)
+
+Push to `main` on the `dbower44022/crmbuilder` repo.
