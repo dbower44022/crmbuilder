@@ -1,10 +1,10 @@
-"""Pre-commit analysis for direct administrator edits.
+"""Pre-commit analysis for direct implementor edits.
 
 Implements L2 PRD Section 12.5 — evaluates the downstream impact of a
 proposed edit or delete before the change is committed.
 
 Pre-commit analysis does NOT write ChangeImpact rows. The caller (future
-UI in Step 15) presents them to the administrator, who either confirms
+UI in Step 15) presents them to the implementor, who either confirms
 (with rationale) or cancels.
 """
 
@@ -21,7 +21,7 @@ class ProposedImpact:
     """An in-memory impact record for pre-commit analysis.
 
     Same shape as AffectedRecord but named distinctly to indicate these
-    are not persisted until the administrator confirms.
+    are not persisted until the implementor confirms.
     """
 
     affected_table: str
@@ -54,7 +54,7 @@ def analyze_proposed_change(
     :param change_type: 'update' or 'delete'.
     :param new_values: For updates, dict of field_name -> new_value.
         Not used by queries but available for future refinement.
-    :param rationale: Administrator's rationale for the change.
+    :param rationale: Implementor's rationale for the change.
         Accepted but not enforced (UI responsibility).
     :returns: List of ProposedImpact objects (not persisted).
     """

@@ -24,7 +24,7 @@ def store_revision_reason(work_item_id: int, reason: str) -> None:
     """Store a revision reason for later use by PromptGenerator.
 
     :param work_item_id: The work item being reopened.
-    :param reason: The administrator's revision reason.
+    :param reason: The implementor's revision reason.
     """
     _revision_reasons[work_item_id] = reason
 

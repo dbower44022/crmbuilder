@@ -80,7 +80,7 @@ def get_session_instructions_preamble(session_type: str) -> str | None:
     if session_type == "clarification":
         return (
             "**CLARIFICATION SESSION**\n\n"
-            "The administrator has a follow-up question about a completed session. "
+            "The implementor has a follow-up question about a completed session. "
             "Answer based on the provided context. Do NOT conduct a full interview. "
             "If the clarification reveals an error or needed correction, produce a "
             "structured output block following the standard format. If no correction "

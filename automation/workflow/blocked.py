@@ -1,7 +1,7 @@
 """Blocked state handling for CRM Builder Automation work items.
 
 Implements L2 PRD Section 9.8:
-- 9.8.1 Causes: upstream revision (automatic) or administrator action (manual)
+- 9.8.1 Causes: upstream revision (automatic) or implementor action (manual)
 - 9.8.2 Unblocking: automatic (upstream revision resolved) or manual
 - 9.8.3 Blocked reason format: UPSTREAM_REVISION: prefix for automatic
 
@@ -29,9 +29,9 @@ def is_automatic_block(blocked_reason: str | None) -> bool:
 
 
 def block(conn: sqlite3.Connection, work_item_id: int, reason: str) -> None:
-    """Manually block a work item (administrator-initiated).
+    """Manually block a work item (implementor-initiated).
 
-    Section 9.8.1: The administrator blocks a work item for a reason outside
+    Section 9.8.1: The implementor blocks a work item for a reason outside
     the dependency graph. Can be applied to any status except not_started.
 
     :param conn: An open sqlite3.Connection.
@@ -65,7 +65,7 @@ def block(conn: sqlite3.Connection, work_item_id: int, reason: str) -> None:
 
 
 def unblock(conn: sqlite3.Connection, work_item_id: int) -> None:
-    """Manually unblock a work item (administrator-initiated).
+    """Manually unblock a work item (implementor-initiated).
 
     Section 9.8.2: Restores the item to status_before_blocked and clears
     blocked_reason and status_before_blocked. If the restored status is

@@ -261,7 +261,7 @@ def add_entity(conn: sqlite3.Connection, entity_id: int) -> int:
     Since business_object_discovery is already complete at this point, the
     new work item is set to ready.
 
-    The administrator is responsible for adding this entity_prd as a
+    The implementor is responsible for adding this entity_prd as a
     dependency to relevant domain_overview work items.
 
     :param conn: An open sqlite3.Connection.

@@ -159,7 +159,7 @@ def _include_crm_deployment(conn: sqlite3.Connection, _wi: dict,
 
     Since there's no explicit 'infrastructure' scope flag, we include global
     records only. Infrastructure-scoped records would need to be identified
-    by the administrator via tagging — for now, global is the safe baseline.
+    by the implementor via tagging — for now, global is the safe baseline.
     """
     return _get_global(conn, table)
 

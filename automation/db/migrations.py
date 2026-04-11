@@ -8,6 +8,7 @@ Migration sources:
   - _master_v1: Initial Client table (L2 PRD §3.1 original)
   - _master_v2: L2 PRD v1.16 §3.1 — add project_folder, deployment_model,
     last_opened_at to Client; backfill project_folder from database_path
+  - _master_v3: Rebuild Client table — relax NOT NULL on database_path
   - _client_v1: Initial 25-table client schema (L2 PRD §4–§8)
   - _client_v2: Add action_required to ChangeImpact (ISS-012)
   - _client_v3: L2 PRD v1.16 §6.5 Instance table, §6.6 DeploymentRun table
@@ -15,8 +16,11 @@ Migration sources:
 
 import logging
 import re
+import shutil
 import sqlite3
 from collections.abc import Callable
+from datetime import UTC, datetime
+from pathlib import Path
 
 from automation.db.client_schema import (
     DEPLOYMENT_RUN_TABLE,
@@ -195,19 +199,119 @@ MASTER_MIGRATIONS: list[tuple[int, Migration]] = [
 ]
 
 
-def run_master_migrations(db_path: str) -> sqlite3.Connection:
+def _heal_null_project_folders(
+    conn: sqlite3.Connection,
+    overrides: dict[str, str] | None,
+) -> int:
+    """Repair Client rows that have NULL project_folder before v3 runs.
+
+    Applies overrides from the caller (keyed by Client.code), then
+    returns the number of rows healed. Rows that cannot be repaired are
+    left alone — v3's own pre-check will abort with a clear error.
+
+    :param conn: Open connection to the master database.
+    :param overrides: Mapping of client code → project_folder path.
+    :returns: Number of rows updated.
+    """
+    if not overrides:
+        return 0
+
+    rows = conn.execute(
+        "SELECT id, code FROM Client WHERE project_folder IS NULL"
+    ).fetchall()
+
+    healed = 0
+    for row_id, code in rows:
+        folder = overrides.get(code)
+        if folder:
+            conn.execute(
+                "UPDATE Client SET project_folder = ? WHERE id = ?",
+                (folder, row_id),
+            )
+            healed += 1
+            logger.info(
+                "Healed Client id=%d code=%s: set project_folder=%s",
+                row_id,
+                code,
+                folder,
+            )
+        else:
+            logger.warning(
+                "Client id=%d code=%s has NULL project_folder and no "
+                "override supplied; leaving unhealed",
+                row_id,
+                code,
+            )
+
+    # Warn about override keys that don't match any NULL-project_folder row
+    null_codes = {code for _, code in rows}
+    for code in overrides:
+        if code not in null_codes:
+            logger.warning(
+                "Override for code=%s does not match any Client row with "
+                "NULL project_folder; ignoring",
+                code,
+            )
+
+    if healed:
+        conn.commit()
+    return healed
+
+
+def _backup_master_db(db_path: str) -> str | None:
+    """Create a timestamped backup of the master database.
+
+    :param db_path: Path to the master database.
+    :returns: Path to the backup file, or None if backup failed.
+    """
+    src = Path(db_path)
+    if not src.exists():
+        return None
+    ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    backup_path = src.parent / f"{src.stem}.db.pre-v3-heal-{ts}"
+    try:
+        shutil.copy2(str(src), str(backup_path))
+        logger.info("Master database backed up to %s", backup_path)
+        return str(backup_path)
+    except OSError as exc:
+        logger.error("Failed to back up master database: %s", exc)
+        raise
+
+
+def run_master_migrations(
+    db_path: str,
+    *,
+    project_folder_overrides: dict[str, str] | None = None,
+) -> sqlite3.Connection:
     """Open the master database and apply any pending migrations.
 
     Creates the schema_version table if it does not exist. Returns the
     open connection so callers can use it immediately.
 
+    Before applying migrations, runs a heal step that repairs Client rows
+    with NULL project_folder using the provided overrides. A backup of
+    the database is created before any heal modifications.
+
     :param db_path: Path to the master database file.
+    :param project_folder_overrides: Optional mapping of client code to
+        project folder path for healing NULL project_folder values.
     :returns: An open sqlite3.Connection with all migrations applied.
     """
     conn = open_connection(db_path)
     conn.execute(MASTER_VERSION_TABLE)
     conn.commit()
     current = _get_current_version(conn)
+
+    # Heal step: fix NULL project_folder rows before v3 runs
+    if current < 3 and project_folder_overrides:
+        # Check if there are rows that need healing
+        bad_rows = conn.execute(
+            "SELECT 1 FROM Client WHERE project_folder IS NULL"
+        ).fetchone()
+        if bad_rows:
+            _backup_master_db(db_path)
+            _heal_null_project_folders(conn, project_folder_overrides)
+
     for version, migrate_fn in MASTER_MIGRATIONS:
         if version > current:
             _apply_migration(conn, version, migrate_fn)
@@ -228,7 +332,7 @@ def _client_v2(conn: sqlite3.Connection) -> None:
     """Add action_required column to ChangeImpact (ISS-012).
 
     Deferred from Step 13 because Step 9 schema was locked.
-    Step 15 needs this column for administrator review actions
+    Step 15 needs this column for implementor review actions
     per L2 PRD Section 14.6.2.
 
     Idempotent: skips ALTER if the column already exists.

@@ -6,10 +6,10 @@ processing, work item mapping, and staleness detection.
 
 The engine has two modes:
 - Post-commit analysis: runs after AI session imports (Section 12.1).
-- Pre-commit analysis: runs before direct administrator edits (Section 12.5).
+- Pre-commit analysis: runs before direct implementor edits (Section 12.5).
 
 The engine never modifies work items. Per Section 12.1, it surfaces
-information and the administrator decides how to act.
+information and the implementor decides how to act.
 """
 
 from __future__ import annotations
@@ -169,13 +169,13 @@ class ImpactAnalysisEngine:
         """Analyze a proposed direct edit before commit.
 
         Returns in-memory impact objects without writing them. The caller
-        (future UI) presents them to the administrator for confirmation.
+        (future UI) presents them to the implementor for confirmation.
 
         :param table_name: Table of the record being modified.
         :param record_id: ID of the record being modified.
         :param change_type: 'update' or 'delete'.
         :param new_values: For updates, dict of field_name -> new_value.
-        :param rationale: Administrator's rationale (accepted, not enforced).
+        :param rationale: Implementor's rationale (accepted, not enforced).
         :returns: List of ProposedImpact objects (not persisted).
         """
         return analyze_proposed_change(
