@@ -324,6 +324,7 @@ class TestEntityPrdParser:
         assert "(" not in data["entity"]["name"]
 
 
+@pytest.mark.skip(reason="Path A process document parser tombstoned — migrated to Path B")
 class TestProcessDocumentParser:
 
     def test_parse_intake_fixture(self):
@@ -343,6 +344,7 @@ class TestProcessDocumentParser:
         assert not report.errors
 
 
+@pytest.mark.skip(reason="Path A process document parser tombstoned — migrated to Path B")
 class TestProcessDocumentHeading2Steps:
     """Bug #5: workflow step extractor must not break on Heading 2 subsections."""
 
@@ -356,6 +358,7 @@ class TestProcessDocumentHeading2Steps:
         assert not report.errors
 
 
+@pytest.mark.skip(reason="Path A process document parser tombstoned — migrated to Path B")
 class TestProcessDocumentHeaderlessRequirements:
     """Bug #6: requirements table without a header row must be detected."""
 
@@ -382,6 +385,7 @@ class TestProcessDocumentHeaderlessRequirements:
             )
 
 
+@pytest.mark.skip(reason="Path A process document parser tombstoned — migrated to Path B")
 class TestImporterSubdomainRecursion:
     """Bug #8: process discovery must recurse into sub-domain directories."""
 
@@ -583,6 +587,7 @@ class TestImportEntityPrdRelationships:
         assert any("Target entity not found" in s.reason for s in report.skipped)
 
 
+@pytest.mark.skip(reason="Path A process document parser tombstoned — migrated to Path B")
 class TestImportServiceProcess:
     """Bug #10: service documents must auto-create a Services domain."""
 

@@ -50,6 +50,19 @@ def map_payload(
             proc_values["completion_criteria"] = (
                 json.dumps(completion) if isinstance(completion, dict) else str(completion)
             )
+
+        # Resolve domain_id from source_metadata (Bug 5 fix):
+        # sub_domain_code takes precedence over domain_code
+        source_metadata = payload.get("source_metadata", {})
+        resolve_code = (
+            source_metadata.get("sub_domain_code")
+            or source_metadata.get("domain_code")
+        )
+        if resolve_code:
+            domain_id = resolve_by_code(conn, "Domain", "code", resolve_code)
+            if domain_id is not None:
+                proc_values["domain_id"] = domain_id
+
         if proc_values:
             records.append(ProposedRecord(
                 table_name="Process",

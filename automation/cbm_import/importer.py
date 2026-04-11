@@ -313,6 +313,14 @@ class CBMImporter:
         try:
             data, parse_report = process_document.parse(path)
             report.merge(parse_report)
+        except NotImplementedError:
+            report.add_warning(
+                f"Process import skipped for {process_code} — migrated to Path B. "
+                "Use ImportProcessor for process document imports."
+            )
+            return report
+
+        try:
             if self._conn is None:
                 return report
 
@@ -563,8 +571,14 @@ class CBMImporter:
                     if not f.name.startswith("~") and not any(
                         kw in f.name for kw in ("Domain-PRD", "Domain-Overview", "SubDomain")
                     ):
-                        _, r = process_document.parse(f)
-                        report.merge(r)
+                        try:
+                            _, r = process_document.parse(f)
+                            report.merge(r)
+                        except NotImplementedError:
+                            report.add_warning(
+                                f"Process dry run skipped for {f.name} — "
+                                "migrated to Path B."
+                            )
                 for f in sorted(d.glob("*Domain-PRD*.docx")):
                     if not f.name.startswith("~"):
                         _, r = domain_prd.parse(f)

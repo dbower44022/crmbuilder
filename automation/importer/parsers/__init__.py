@@ -37,3 +37,7 @@ class ParseReport:
 
 class MasterPrdParseError(Exception):
     """Raised when CBM-Master-PRD.docx is structurally unparseable."""
+
+
+class ProcessDocParseError(Exception):
+    """Raised when a process document .docx is structurally unparseable."""
