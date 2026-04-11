@@ -1,4 +1,4 @@
-"""Filter controls for the dashboard (Section 14.2.4).
+"""Filter controls for the Requirements Dashboard (Section 14.2.4).
 
 Domain, phase, and status filters with removable tags.
 """
@@ -10,7 +10,7 @@ from automation.workflow.phases import PHASE_NAMES
 
 
 class FilterBar(QWidget):
-    """Filter controls for the dashboard inventory and work queue.
+    """Filter controls for the Requirements Dashboard inventory and work queue.
 
     :param parent: Parent widget.
     """

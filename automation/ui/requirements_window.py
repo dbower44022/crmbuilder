@@ -157,7 +157,7 @@ class RequirementsWindow(QWidget):
         # Content stack
         self._content_stack = QStackedWidget()
 
-        # Index 0: Dashboard
+        # Index 0: Requirements Dashboard
         self._dashboard = DashboardView(self._client_context)
         self._dashboard.work_item_selected.connect(self._on_work_item_selected)
         self._content_stack.addWidget(self._dashboard)
@@ -205,7 +205,7 @@ class RequirementsWindow(QWidget):
             self._on_navigate_to_documents
         )
 
-        # Dashboard staleness banner → Documents view filtered to stale
+        # Requirements Dashboard staleness banner → Documents view filtered to stale
         self._dashboard._staleness_banner.view_stale_clicked.disconnect()
         self._dashboard._staleness_banner.view_stale_clicked.connect(
             self._on_view_stale_documents
@@ -328,7 +328,7 @@ class RequirementsWindow(QWidget):
         self._update_breadcrumbs()
 
         if index == 0:
-            # Dashboard
+            # Requirements Dashboard
             self._content_stack.setCurrentIndex(_IDX_DASHBOARD)
             if self._client_conn:
                 self._dashboard.refresh(self._client_conn)
@@ -460,7 +460,7 @@ class RequirementsWindow(QWidget):
             self._content_stack.setCurrentIndex(_IDX_DETAIL)
 
     def _on_item_changed(self) -> None:
-        """Handle work item state change — refresh dashboard data."""
+        """Handle work item state change — refresh Requirements Dashboard data."""
         if self._client_conn:
             self._dashboard.refresh(self._client_conn)
 
