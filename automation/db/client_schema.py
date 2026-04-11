@@ -1,12 +1,13 @@
 """Client database schema for CRM Builder Automation.
 
 Each client implementation has its own SQLite database with tables organized
-into five layers: Requirements, Cross-Reference, Management, Audit, and Layout.
-Schema defined in L2 PRD Sections 4-8, with additional columns from Sections
-9.9, 10.10, and 13.13.
+into five layers: Requirements, Cross-Reference, Management, Audit, and Layout,
+plus deployment tables. Schema defined in L2 PRD v1.16 Sections 4-8, with
+Instance (§6.5) and DeploymentRun (§6.6) added in v1.14, and additional
+columns from Sections 9.9, 10.10, and 13.13.
 """
 
-CLIENT_SCHEMA_VERSION = 1
+CLIENT_SCHEMA_VERSION = 3
 
 SCHEMA_VERSION_TABLE = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -525,6 +526,65 @@ CREATE TABLE ListColumn (
 """
 
 # ---------------------------------------------------------------------------
+# Deployment Layer (Sections 6.5, 6.6)
+# ---------------------------------------------------------------------------
+
+# L2 PRD v1.16 §6.5 — Instance table.
+# Stores CRM instance profiles for the client. The is_default partial
+# unique index ensures at most one row has is_default = TRUE.
+# The code CHECK constraint mirrors the convention used elsewhere:
+# ^[A-Z][A-Z0-9]{1,9}$ (2-10 uppercase letters/digits, starts with letter).
+INSTANCE_TABLE = """
+CREATE TABLE Instance (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    code TEXT NOT NULL UNIQUE
+        CHECK (
+            length(code) >= 2 AND length(code) <= 10
+            AND substr(code, 1, 1) GLOB '[A-Z]'
+            AND code NOT GLOB '*[^A-Z0-9]*'
+        ),
+    description TEXT,
+    environment TEXT NOT NULL CHECK (environment IN ('test', 'staging', 'production')),
+    url TEXT,
+    username TEXT,
+    password TEXT,
+    is_default BOOLEAN NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+# Partial unique index: at most one row may have is_default = TRUE.
+INSTANCE_DEFAULT_INDEX = """
+CREATE UNIQUE INDEX IF NOT EXISTS idx_instance_one_default
+    ON Instance (is_default) WHERE is_default = 1;
+"""
+
+# L2 PRD v1.16 §6.6 — DeploymentRun table.
+# Records each execution of the Deploy Wizard against an instance.
+# Rows are append-only; the deployment history is part of the audit trail.
+# The crm_platform CHECK constraint enumerates the same platforms as
+# Client.crm_platform in master_schema.py §3.1 / §14.12.6; the two
+# must remain synchronized when new platforms are added (DEC-075).
+DEPLOYMENT_RUN_TABLE = """
+CREATE TABLE DeploymentRun (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    instance_id INTEGER NOT NULL,
+    scenario TEXT NOT NULL CHECK (scenario IN ('self_hosted', 'cloud_hosted', 'bring_your_own')),
+    crm_platform TEXT NOT NULL CHECK (crm_platform IN ('EspoCRM')),
+    started_at TIMESTAMP NOT NULL,
+    completed_at TIMESTAMP,
+    outcome TEXT CHECK (outcome IS NULL OR outcome IN ('success', 'failure', 'cancelled')),
+    failure_reason TEXT,
+    log_path TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (instance_id) REFERENCES Instance(id)
+);
+"""
+
+# ---------------------------------------------------------------------------
 # Table ordering — AISession must be created before tables that reference it
 # ---------------------------------------------------------------------------
 
@@ -567,6 +627,10 @@ ALL_CLIENT_TABLES = [
     LAYOUT_ROW_TABLE,
     LAYOUT_TAB_TABLE,
     LIST_COLUMN_TABLE,
+    # Deployment layer (§6.5, §6.6)
+    INSTANCE_TABLE,
+    INSTANCE_DEFAULT_INDEX,
+    DEPLOYMENT_RUN_TABLE,
 ]
 
 
