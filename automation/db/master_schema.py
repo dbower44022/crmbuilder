@@ -5,7 +5,7 @@ implementation managed by CRM Builder. Schema defined in L2 PRD v1.16
 Section 3.1.
 """
 
-MASTER_SCHEMA_VERSION = 2
+MASTER_SCHEMA_VERSION = 3
 
 SCHEMA_VERSION_TABLE = """
 CREATE TABLE IF NOT EXISTS schema_version (

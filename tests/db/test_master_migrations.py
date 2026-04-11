@@ -1,8 +1,9 @@
 """Tests for master database schema and migrations.
 
-Covers the Client table definition from L2 PRD v1.16 §3.1 and the
+Covers the Client table definition from L2 PRD v1.16 §3.1, the
 _master_v2 migration that adds project_folder, deployment_model, and
-last_opened_at columns.
+last_opened_at columns, and the _master_v3 migration that rebuilds the
+Client table to relax the database_path NOT NULL constraint.
 """
 
 import sqlite3
@@ -167,11 +168,11 @@ class TestFreshMasterDatabase:
                 "VALUES ('Test', 'ABCDEFGHIJK', '/tmp/test')"
             )
 
-    def test_schema_version_is_2(self, db: sqlite3.Connection) -> None:
+    def test_schema_version_is_3(self, db: sqlite3.Connection) -> None:
         row = db.execute(
             "SELECT MAX(version) FROM schema_version"
         ).fetchone()
-        assert row[0] == 2
+        assert row[0] == 3
 
 
 # ---------------------------------------------------------------------------
@@ -223,8 +224,8 @@ class TestMasterV2Migration:
         assert row[0] == "/tmp/test_client"
         conn.close()
 
-    def test_backfill_edge_case_no_match(self, tmp_path: Path) -> None:
-        """database_path that doesn't match the pattern leaves project_folder NULL."""
+    def test_backfill_edge_case_no_match_aborts_v3(self, tmp_path: Path) -> None:
+        """database_path that doesn't match leaves project_folder NULL; v3 aborts."""
         db_path = tmp_path / "master.db"
         self._create_v1_db(db_path)
         conn = sqlite3.connect(str(db_path))
@@ -235,12 +236,8 @@ class TestMasterV2Migration:
         conn.commit()
         conn.close()
 
-        conn = run_master_migrations(str(db_path))
-        row = conn.execute(
-            "SELECT project_folder FROM Client WHERE code = 'ODD'"
-        ).fetchone()
-        assert row[0] is None
-        conn.close()
+        with pytest.raises(RuntimeError, match="NULL project_folder"):
+            run_master_migrations(str(db_path))
 
     def test_idempotency(self, tmp_path: Path) -> None:
         """Running migrations twice does not fail or duplicate columns."""
@@ -252,20 +249,21 @@ class TestMasterV2Migration:
         conn = run_master_migrations(str(db_path))
         cols = _col_names(conn, "Client")
         assert "project_folder" in cols
-        # Verify schema_version has exactly version 1 and 2, no duplicates.
+        # Verify schema_version has exactly versions 1, 2, 3, no duplicates.
         versions = conn.execute(
             "SELECT version FROM schema_version ORDER BY version"
         ).fetchall()
-        assert [v[0] for v in versions] == [1, 2]
+        assert [v[0] for v in versions] == [1, 2, 3]
         conn.close()
 
-    def test_existing_crm_platform_not_constrained(
+    def test_v3_rebuild_enforces_crm_platform_check(
         self, tmp_path: Path
     ) -> None:
-        """On a migrated (non-fresh) database, crm_platform has no CHECK.
+        """v3 table rebuild now enforces the crm_platform CHECK constraint.
 
-        The migration cannot add a CHECK to an existing column in SQLite.
-        The application enforces it in code instead.
+        v2 could not add a CHECK to an existing column, but v3 rebuilds
+        the table from master_schema.py which includes the constraint.
+        Non-conforming data causes the migration to fail.
         """
         db_path = tmp_path / "master.db"
         self._create_v1_db(db_path)
@@ -276,10 +274,248 @@ class TestMasterV2Migration:
         )
         conn.commit()
         conn.close()
-        # Migration should succeed even with a non-conforming value.
+        # v3 rejects the non-conforming crm_platform during table rebuild.
+        with pytest.raises(sqlite3.IntegrityError):
+            run_master_migrations(str(db_path))
+
+
+# ---------------------------------------------------------------------------
+# Migration path tests (v1 → v2 → v3)
+# ---------------------------------------------------------------------------
+
+
+class TestMasterV3Migration:
+    """Tests for the _master_v3 migration (Client table rebuild)."""
+
+    def _create_v1_db_with_row(self, path: Path) -> None:
+        """Create a v1-era master database with one Client row."""
+        conn = sqlite3.connect(str(path))
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute(_SCHEMA_VERSION_TABLE)
+        conn.execute(_V1_CLIENT_TABLE)
+        conn.execute(
+            "INSERT INTO schema_version (version) VALUES (1)"
+        )
+        conn.execute(
+            "INSERT INTO Client (name, code, database_path, description, "
+            "organization_overview, crm_platform) "
+            "VALUES ('Acme Corp', 'ACME', "
+            "'/tmp/acme/.crmbuilder/ACME.db', 'Test client', "
+            "'An overview', 'EspoCRM')"
+        )
+        conn.commit()
+        conn.close()
+
+    def _col_info(
+        self, conn: sqlite3.Connection, table: str
+    ) -> dict[str, dict]:
+        """Return column metadata keyed by name.
+
+        Each value is a dict with keys: cid, name, type, notnull, dflt_value, pk.
+        """
+        rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+        return {
+            row[1]: {
+                "cid": row[0],
+                "name": row[1],
+                "type": row[2],
+                "notnull": row[3],
+                "dflt_value": row[4],
+                "pk": row[5],
+            }
+            for row in rows
+        }
+
+    def test_happy_path_database_path_nullable(self, tmp_path: Path) -> None:
+        """v1-era db → all migrations → database_path is nullable."""
+        db_path = tmp_path / "master.db"
+        self._create_v1_db_with_row(db_path)
+
+        conn = run_master_migrations(str(db_path))
+
+        # database_path should now be nullable (notnull == 0)
+        col_info = self._col_info(conn, "Client")
+        assert col_info["database_path"]["notnull"] == 0
+
+        # All original row data preserved
+        row = conn.execute(
+            "SELECT name, code, database_path, description, "
+            "organization_overview, crm_platform, project_folder "
+            "FROM Client WHERE code = 'ACME'"
+        ).fetchone()
+        assert row[0] == "Acme Corp"
+        assert row[1] == "ACME"
+        assert row[2] == "/tmp/acme/.crmbuilder/ACME.db"
+        assert row[3] == "Test client"
+        assert row[4] == "An overview"
+        assert row[5] == "EspoCRM"
+        # project_folder was backfilled by v2
+        assert row[6] == "/tmp/acme"
+
+        # INSERT without database_path succeeds
+        conn.execute(
+            "INSERT INTO Client (name, code, project_folder) "
+            "VALUES ('New Client', 'NEW', '/tmp/new')"
+        )
+        conn.commit()
+        new_row = conn.execute(
+            "SELECT database_path FROM Client WHERE code = 'NEW'"
+        ).fetchone()
+        assert new_row[0] is None
+
+        conn.close()
+
+    def test_preserves_row_identity(self, tmp_path: Path) -> None:
+        """id, created_at, and updated_at are preserved across rebuild."""
+        db_path = tmp_path / "master.db"
+        self._create_v1_db_with_row(db_path)
+
+        # Record original values before migration
+        conn = sqlite3.connect(str(db_path))
+        orig = conn.execute(
+            "SELECT id, created_at, updated_at FROM Client WHERE code = 'ACME'"
+        ).fetchone()
+        orig_id, orig_created, orig_updated = orig
+        conn.close()
+
         conn = run_master_migrations(str(db_path))
         row = conn.execute(
-            "SELECT crm_platform FROM Client WHERE code = 'OLD'"
+            "SELECT id, created_at, updated_at FROM Client WHERE code = 'ACME'"
         ).fetchone()
-        assert row[0] == "WordPress"
+        assert row[0] == orig_id
+        assert row[1] == orig_created
+        assert row[2] == orig_updated
         conn.close()
+
+    def test_precheck_aborts_on_null_project_folder(
+        self, tmp_path: Path
+    ) -> None:
+        """v3 aborts with actionable message if project_folder is NULL."""
+        db_path = tmp_path / "master.db"
+        self._create_v1_db_with_row(db_path)
+
+        # Insert a row with non-matching database_path so v2 leaves
+        # project_folder NULL
+        conn = sqlite3.connect(str(db_path))
+        conn.execute(
+            "INSERT INTO Client (name, code, database_path) "
+            "VALUES ('Bad Client', 'BAD', '/weird/path.db')"
+        )
+        conn.commit()
+        conn.close()
+
+        with pytest.raises(RuntimeError, match="NULL project_folder") as exc_info:
+            run_master_migrations(str(db_path))
+
+        # Error message lists the offending row
+        assert "BAD" in str(exc_info.value)
+
+        # Database is unchanged: Client table still present, no Client_new
+        conn = sqlite3.connect(str(db_path))
+        assert _table_exists(conn, "Client")
+        assert not _table_exists(conn, "Client_new")
+        # Original rows still intact
+        count = conn.execute("SELECT COUNT(*) FROM Client").fetchone()[0]
+        assert count == 2
+        conn.close()
+
+    def test_idempotency_via_version_tracking(self, tmp_path: Path) -> None:
+        """Running migrations twice: v3 runs exactly once."""
+        db_path = tmp_path / "master.db"
+        self._create_v1_db_with_row(db_path)
+
+        conn = run_master_migrations(str(db_path))
+        conn.close()
+
+        # Run again — should be a no-op
+        conn = run_master_migrations(str(db_path))
+        versions = conn.execute(
+            "SELECT version FROM schema_version ORDER BY version"
+        ).fetchall()
+        assert [v[0] for v in versions] == [1, 2, 3]
+
+        # Table still works
+        conn.execute(
+            "INSERT INTO Client (name, code, project_folder) "
+            "VALUES ('Another', 'AN', '/tmp/an')"
+        )
+        conn.commit()
+        conn.close()
+
+    def test_fresh_database_reaches_v3(self, tmp_path: Path) -> None:
+        """A fresh database created via run_master_migrations is at v3."""
+        db_path = tmp_path / "master.db"
+        conn = run_master_migrations(str(db_path))
+
+        version = conn.execute(
+            "SELECT MAX(version) FROM schema_version"
+        ).fetchone()[0]
+        assert version == 3
+
+        # Schema is correct — database_path is nullable
+        col_info = self._col_info(conn, "Client")
+        assert col_info["database_path"]["notnull"] == 0
+        assert col_info["project_folder"]["notnull"] == 1
+
+        # INSERT without database_path works
+        conn.execute(
+            "INSERT INTO Client (name, code, project_folder) "
+            "VALUES ('Fresh', 'FR', '/tmp/fresh')"
+        )
+        conn.commit()
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Integration test: end-to-end create_client on migrated v1 database
+# ---------------------------------------------------------------------------
+
+
+class TestCreateClientIntegration:
+    """Regression test: create_client succeeds on a migrated v1 database."""
+
+    def test_create_client_on_migrated_v1_database(
+        self, tmp_path: Path
+    ) -> None:
+        """Reproduces the NOT NULL constraint failure and confirms the fix."""
+        from automation.core.create_client import (
+            CreateClientParams,
+            create_client,
+        )
+        from automation.db.migrations import run_client_migrations
+
+        # Step 1: Create a v1-era master database
+        master_path = tmp_path / "master.db"
+        conn = sqlite3.connect(str(master_path))
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute(_SCHEMA_VERSION_TABLE)
+        conn.execute(_V1_CLIENT_TABLE)
+        conn.execute("INSERT INTO schema_version (version) VALUES (1)")
+        conn.commit()
+        conn.close()
+
+        # Step 2: Run migrations (v2 + v3)
+        conn = run_master_migrations(str(master_path))
+        conn.close()
+
+        # Step 3: Create a project folder on disk (required by validation)
+        project_folder = tmp_path / "test_project"
+        project_folder.mkdir()
+
+        # Step 4: Call create_client — this was the failing operation
+        result = create_client(
+            params=CreateClientParams(
+                name="Test Client",
+                code="TC",
+                description="Integration test",
+                project_folder=str(project_folder),
+            ),
+            master_db_path=str(master_path),
+            run_migrations=run_client_migrations,
+        )
+
+        assert result.success, f"create_client failed: {result.error}"
+        assert result.client is not None
+        assert result.client.name == "Test Client"
+        assert result.client.code == "TC"
+        assert result.client.project_folder == str(project_folder)

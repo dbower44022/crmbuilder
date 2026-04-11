@@ -29,10 +29,11 @@ from automation.db.client_schema import (
 )
 from automation.db.connection import open_connection
 from automation.db.master_schema import (
-    SCHEMA_VERSION_TABLE as MASTER_VERSION_TABLE,
+    CLIENT_TABLE,
+    get_master_schema_sql,
 )
 from automation.db.master_schema import (
-    get_master_schema_sql,
+    SCHEMA_VERSION_TABLE as MASTER_VERSION_TABLE,
 )
 
 logger = logging.getLogger(__name__)
@@ -123,9 +124,74 @@ def _master_v2(conn: sqlite3.Connection) -> None:
             )
 
 
+def _master_v3(conn: sqlite3.Connection) -> None:
+    """Rebuild Client table to match current master_schema.py definition.
+
+    Relaxes the NOT NULL constraint on database_path that exists in pre-v1.16
+    databases. Uses the SQLite 12-step table redefinition pattern because
+    ALTER COLUMN is not supported.
+
+    Pre-check: aborts if any Client rows have NULL project_folder, since the
+    new table enforces NOT NULL on that column.
+    """
+    # Pre-check: ensure no rows have NULL project_folder
+    bad_rows = conn.execute(
+        "SELECT id, code FROM Client WHERE project_folder IS NULL"
+    ).fetchall()
+    if bad_rows:
+        lines = [
+            f"  - Client id={row[0]} code={row[1]}" for row in bad_rows
+        ]
+        raise RuntimeError(
+            "Cannot apply master migration v3: the following Client rows have "
+            "NULL project_folder and cannot be migrated to the new schema. "
+            "Resolve manually before running the migration.\n"
+            + "\n".join(lines)
+        )
+
+    # Build CREATE TABLE Client_new from the canonical CLIENT_TABLE constant
+    create_new = CLIENT_TABLE.replace(
+        "CREATE TABLE Client", "CREATE TABLE Client_new", 1
+    )
+
+    # Save and disable Python's automatic transaction handling so we can
+    # control BEGIN/COMMIT/ROLLBACK explicitly (required because the rebuild
+    # mixes DDL and DML, and Python's implicit commit-before-DDL would break
+    # atomicity).
+    fk_setting = conn.execute("PRAGMA foreign_keys").fetchone()[0]
+    orig_isolation = conn.isolation_level
+    conn.isolation_level = None
+
+    try:
+        conn.execute("PRAGMA foreign_keys = OFF")
+        conn.execute("BEGIN")
+        conn.execute(create_new)
+        conn.execute(
+            "INSERT INTO Client_new "
+            "(id, name, code, description, database_path, "
+            "organization_overview, project_folder, crm_platform, "
+            "deployment_model, last_opened_at, created_at, updated_at) "
+            "SELECT id, name, code, description, database_path, "
+            "organization_overview, project_folder, crm_platform, "
+            "deployment_model, last_opened_at, created_at, updated_at "
+            "FROM Client"
+        )
+        conn.execute("DROP TABLE Client")
+        conn.execute("ALTER TABLE Client_new RENAME TO Client")
+        conn.execute("COMMIT")
+    except Exception:
+        conn.execute("ROLLBACK")
+        conn.execute("DROP TABLE IF EXISTS Client_new")
+        raise
+    finally:
+        conn.execute(f"PRAGMA foreign_keys = {'ON' if fk_setting else 'OFF'}")
+        conn.isolation_level = orig_isolation
+
+
 MASTER_MIGRATIONS: list[tuple[int, Migration]] = [
     (1, _master_v1),
     (2, _master_v2),
+    (3, _master_v3),
 ]
 
 
