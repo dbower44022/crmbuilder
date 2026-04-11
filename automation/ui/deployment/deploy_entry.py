@@ -1,8 +1,4 @@
-"""Deploy sidebar entry — history table + stub wizard button (Section 14.12.4).
-
-The "Start Deploy Wizard" button is wired up but launches a stub dialog.
-Prompt D will replace the stub with the real wizard.
-"""
+"""Deploy sidebar entry — history table + wizard button (Section 14.12.4)."""
 
 from __future__ import annotations
 
@@ -56,6 +52,8 @@ class DeployEntry(QWidget):
         self._conn: sqlite3.Connection | None = None
         self._instance: InstanceRow | None = None
         self._runs: list[DeploymentRunRow] = []
+        self._master_db_path: str | None = None
+        self._client_id: int | None = None
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -94,6 +92,17 @@ class DeployEntry(QWidget):
             0, QHeaderView.ResizeMode.Stretch
         )
         layout.addWidget(self._table, stretch=1)
+
+    def set_client_context(
+        self, master_db_path: str, client_id: int,
+    ) -> None:
+        """Set the client context needed for the wizard.
+
+        :param master_db_path: Path to the master database.
+        :param client_id: Active client ID.
+        """
+        self._master_db_path = master_db_path
+        self._client_id = client_id
 
     def refresh(
         self,
@@ -147,9 +156,42 @@ class DeployEntry(QWidget):
             )
 
     def _on_start_wizard(self) -> None:
-        """Handle Start Deploy Wizard click — stub for Prompt D."""
-        QMessageBox.information(
-            self,
-            "Deploy Wizard",
-            "Deploy Wizard not yet implemented \u2014 see Prompt D.",
+        """Handle Start Deploy Wizard click — launch the real wizard."""
+        if not self._conn:
+            QMessageBox.warning(
+                self, "No Connection",
+                "No client database connection available.",
+            )
+            return
+
+        if not self._master_db_path or not self._client_id:
+            QMessageBox.warning(
+                self, "No Client",
+                "No active client. Select a client from the Clients tab first.",
+            )
+            return
+
+        from automation.core.deployment.wizard_logic import get_pre_selection
+        from automation.ui.deployment.deploy_wizard.wizard_dialog import DeployWizard
+
+        pre = get_pre_selection(self._master_db_path, self._client_id)
+        wizard = DeployWizard(
+            conn=self._conn,
+            pre_selection=pre,
+            master_db_path=self._master_db_path,
+            client_id=self._client_id,
+            parent=self,
         )
+        wizard.exec()
+
+        # Refresh history table after wizard completes
+        if self._conn:
+            self._runs = load_deployment_runs(self._conn)
+            if self._runs:
+                self._empty_label.setVisible(False)
+                self._table.setVisible(True)
+                self._populate_table()
+            else:
+                self._empty_label.setText(_EMPTY_NO_RUNS)
+                self._empty_label.setVisible(True)
+                self._table.setVisible(False)

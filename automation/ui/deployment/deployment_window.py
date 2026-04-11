@@ -61,11 +61,13 @@ class DeploymentWindow(QWidget):
     :param parent: Parent widget.
     """
 
-    def __init__(self, active_context=None, parent=None) -> None:
+    def __init__(self, active_context=None, master_db_path: str | None = None, parent=None) -> None:
         super().__init__(parent)
         self._active_context = active_context
+        self._master_db_path = master_db_path
         self._conn: sqlite3.Connection | None = None
         self._project_folder: str | None = None
+        self._client_id: int | None = None
 
         self._build_ui()
 
@@ -153,8 +155,15 @@ class DeploymentWindow(QWidget):
         if client_obj is not None:
             self._conn = self._active_context.connection
             self._project_folder = client_obj.project_folder
+            self._client_id = client_obj.id
             self._no_client_label.setVisible(False)
             self._main_area.setVisible(True)
+
+            # Pass client context to deploy entry for wizard launch
+            if self._master_db_path and self._client_id:
+                self._deploy_entry.set_client_context(
+                    self._master_db_path, self._client_id,
+                )
 
             # Refresh picker, then the current entry
             if self._conn:
@@ -164,6 +173,7 @@ class DeploymentWindow(QWidget):
         else:
             self._conn = None
             self._project_folder = None
+            self._client_id = None
             self._no_client_label.setVisible(True)
             self._main_area.setVisible(False)
 

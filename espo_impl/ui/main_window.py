@@ -132,6 +132,7 @@ class MainWindow(QMainWindow):
         # Tab 2: Deployment
         self._deployment_window = DeploymentWindow(
             active_context=self._active_context,
+            master_db_path=self._master_db_path,
             parent=self,
         )
         self._tabs.addTab(
