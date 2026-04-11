@@ -2,8 +2,9 @@
 
 Covers the Client table definition from L2 PRD v1.16 §3.1, the
 _master_v2 migration that adds project_folder, deployment_model, and
-last_opened_at columns, and the _master_v3 migration that rebuilds the
-Client table to relax the database_path NOT NULL constraint.
+last_opened_at columns, the _master_v3 migration that rebuilds the
+Client table to relax the database_path NOT NULL constraint, and the
+pre-v3 heal step that repairs NULL project_folder rows via overrides.
 """
 
 import sqlite3
@@ -519,3 +520,145 @@ class TestCreateClientIntegration:
         assert result.client.name == "Test Client"
         assert result.client.code == "TC"
         assert result.client.project_folder == str(project_folder)
+
+
+# ---------------------------------------------------------------------------
+# Heal step tests (pre-v3 NULL project_folder repair via overrides)
+# ---------------------------------------------------------------------------
+
+
+class TestMasterHealStep:
+    """Tests for the _heal_null_project_folders step and backup."""
+
+    def _create_v2_db_with_null_folder(
+        self, path: Path, code: str = "CBM", db_path_val: str = "/some/path.db"
+    ) -> None:
+        """Create a v2 master DB with one Client row that has NULL project_folder."""
+        conn = sqlite3.connect(str(path))
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute(_SCHEMA_VERSION_TABLE)
+        conn.execute(_V1_CLIENT_TABLE)
+        conn.execute("INSERT INTO schema_version (version) VALUES (1)")
+        conn.execute("INSERT INTO schema_version (version) VALUES (2)")
+        # Add v2 columns manually (simulating v2 already applied)
+        conn.execute("ALTER TABLE Client ADD COLUMN project_folder TEXT")
+        conn.execute("ALTER TABLE Client ADD COLUMN deployment_model TEXT")
+        conn.execute("ALTER TABLE Client ADD COLUMN last_opened_at TIMESTAMP")
+        conn.execute(
+            "INSERT INTO Client (name, code, database_path) "
+            "VALUES ('Test Client', ?, ?)",
+            (code, db_path_val),
+        )
+        conn.commit()
+        conn.close()
+
+    def test_override_heals_row_and_v3_succeeds(self, tmp_path: Path) -> None:
+        """Override present with matching code → row healed, v3 passes."""
+        db_path = tmp_path / "master.db"
+        self._create_v2_db_with_null_folder(db_path)
+
+        conn = run_master_migrations(
+            str(db_path),
+            project_folder_overrides={"CBM": "/home/test/project"},
+        )
+
+        # project_folder was set by heal step
+        row = conn.execute(
+            "SELECT project_folder FROM Client WHERE code = 'CBM'"
+        ).fetchone()
+        assert row[0] == "/home/test/project"
+
+        # v3 ran successfully — schema version is 3
+        version = conn.execute(
+            "SELECT MAX(version) FROM schema_version"
+        ).fetchone()[0]
+        assert version == 3
+        conn.close()
+
+    def test_no_override_leaves_row_and_v3_aborts(self, tmp_path: Path) -> None:
+        """Override file absent → row untouched, v3 pre-check aborts."""
+        db_path = tmp_path / "master.db"
+        self._create_v2_db_with_null_folder(db_path)
+
+        with pytest.raises(RuntimeError, match="NULL project_folder"):
+            run_master_migrations(str(db_path))
+
+    def test_override_unknown_code_warns_not_errors(
+        self, tmp_path: Path
+    ) -> None:
+        """Override references a code that doesn't exist → warning, not error."""
+        db_path = tmp_path / "master.db"
+        self._create_v2_db_with_null_folder(db_path)
+
+        # Override has wrong code — the CBM row won't be healed, v3 aborts
+        with pytest.raises(RuntimeError, match="NULL project_folder"):
+            run_master_migrations(
+                str(db_path),
+                project_folder_overrides={"WRONG": "/some/path"},
+            )
+
+    def test_backup_created_before_heal(self, tmp_path: Path) -> None:
+        """Master DB backup file is created before heal runs."""
+        db_path = tmp_path / "master.db"
+        self._create_v2_db_with_null_folder(db_path)
+
+        # Count files before
+        files_before = set(tmp_path.iterdir())
+
+        conn = run_master_migrations(
+            str(db_path),
+            project_folder_overrides={"CBM": "/home/test/project"},
+        )
+        conn.close()
+
+        # A backup file should exist
+        files_after = set(tmp_path.iterdir())
+        new_files = files_after - files_before
+        backup_files = [f for f in new_files if "pre-v3-heal" in f.name]
+        assert len(backup_files) == 1
+
+    def test_no_backup_when_no_heal_needed(self, tmp_path: Path) -> None:
+        """No backup when overrides are provided but no rows need healing."""
+        db_path = tmp_path / "master.db"
+        # Create a fresh DB (no NULL project_folder rows)
+        conn = run_master_migrations(str(db_path))
+        conn.close()
+
+        files_before = set(tmp_path.iterdir())
+
+        # Run again with overrides — should be no-op
+        conn = run_master_migrations(
+            str(db_path),
+            project_folder_overrides={"CBM": "/home/test/project"},
+        )
+        conn.close()
+
+        files_after = set(tmp_path.iterdir())
+        new_files = files_after - files_before
+        backup_files = [f for f in new_files if "pre-v3-heal" in f.name]
+        assert len(backup_files) == 0
+
+    def test_override_applied_then_v3_rebuild_succeeds(
+        self, tmp_path: Path
+    ) -> None:
+        """Full end-to-end: override → heal → v3 rebuild → database_path nullable."""
+        db_path = tmp_path / "master.db"
+        self._create_v2_db_with_null_folder(db_path)
+
+        conn = run_master_migrations(
+            str(db_path),
+            project_folder_overrides={"CBM": "/home/test/project"},
+        )
+
+        # database_path is now nullable after v3 rebuild
+        col_info = conn.execute("PRAGMA table_info(Client)").fetchall()
+        db_path_col = [c for c in col_info if c[1] == "database_path"][0]
+        assert db_path_col[3] == 0  # notnull == 0
+
+        # Insert without database_path works
+        conn.execute(
+            "INSERT INTO Client (name, code, project_folder) "
+            "VALUES ('New', 'NW', '/tmp/new')"
+        )
+        conn.commit()
+        conn.close()

@@ -292,6 +292,44 @@ class TestFreshClientDatabase:
 # ---------------------------------------------------------------------------
 
 
+class TestClientV3MigrationWiring:
+    """Integration test: pre-v3 client DB gains Instance/DeploymentRun on open."""
+
+    def _create_v2_db(self, path: Path) -> None:
+        """Create a minimal database at schema version 2 (no Instance tables)."""
+        conn = sqlite3.connect(str(path))
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute(_SCHEMA_VERSION_TABLE)
+        for stmt in _MINIMAL_V2_TABLES:
+            conn.execute(stmt)
+        conn.execute("INSERT INTO schema_version (version) VALUES (1)")
+        conn.execute("INSERT INTO schema_version (version) VALUES (2)")
+        conn.commit()
+        conn.close()
+
+    def test_existing_client_db_upgraded_on_open(self, tmp_path: Path) -> None:
+        """A pre-v3 client database gains Instance/DeploymentRun via run_client_migrations."""
+        db_path = tmp_path / "client.db"
+        self._create_v2_db(db_path)
+
+        # Verify tables don't exist yet
+        conn = sqlite3.connect(str(db_path))
+        assert not _table_exists(conn, "Instance")
+        assert not _table_exists(conn, "DeploymentRun")
+        conn.close()
+
+        # Open through run_client_migrations (same path as active_client_context)
+        conn = run_client_migrations(str(db_path))
+        assert _table_exists(conn, "Instance")
+        assert _table_exists(conn, "DeploymentRun")
+
+        version = conn.execute(
+            "SELECT MAX(version) FROM schema_version"
+        ).fetchone()[0]
+        assert version == 3
+        conn.close()
+
+
 class TestClientV3Migration:
     """Tests for _client_v3 on a pre-existing v2 database."""
 

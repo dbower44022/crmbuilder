@@ -520,7 +520,15 @@ class ClientsTab(QWidget):
         # Attempt activation — row selection and activation are the same gesture
         result = check_reachability(client.project_folder, client.code)
         if result.is_reachable:
-            self._active_context.set_active_client(client)
+            error = self._active_context.set_active_client(client)
+            if error:
+                from PySide6.QtWidgets import QMessageBox
+
+                QMessageBox.warning(
+                    self,
+                    "Client Activation Failed",
+                    f"Could not activate client {client.name}:\n\n{error}",
+                )
 
     # ------------------------------------------------------------------
     # Inline editing (detail view)
@@ -644,7 +652,15 @@ class ClientsTab(QWidget):
         self._detail_stack.setCurrentIndex(_DETAIL_VIEW)
 
         # Activate the new client
-        self._active_context.set_active_client(client)
+        error = self._active_context.set_active_client(client)
+        if error:
+            from PySide6.QtWidgets import QMessageBox
+
+            QMessageBox.warning(
+                self,
+                "Client Activation Failed",
+                f"Client was created but could not be activated:\n\n{error}",
+            )
 
     # ------------------------------------------------------------------
     # Helpers

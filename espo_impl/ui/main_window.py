@@ -1,5 +1,6 @@
 """Main application window — three-tab architecture (DEC-055)."""
 
+import json
 import logging
 import sqlite3
 from pathlib import Path
@@ -8,6 +9,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
+    QMessageBox,
     QStackedWidget,
     QTabWidget,
     QVBoxLayout,
@@ -66,13 +68,22 @@ class MainWindow(QMainWindow):
         self.base_dir = base_dir
         self._master_db_path = str(_DEFAULT_MASTER_DB)
 
-        # Ensure master database exists
+        # Ensure master database exists and run migrations
         Path(self._master_db_path).parent.mkdir(parents=True, exist_ok=True)
+        overrides = self._load_migration_overrides()
         try:
-            conn = run_master_migrations(self._master_db_path)
+            conn = run_master_migrations(
+                self._master_db_path,
+                project_folder_overrides=overrides,
+            )
             conn.close()
-        except Exception:
-            logger.warning("Could not initialize master database at %s", self._master_db_path)
+        except Exception as exc:
+            logger.error(
+                "Could not initialize master database at %s: %s",
+                self._master_db_path,
+                exc,
+            )
+            self._show_migration_failure(exc)
 
         # Active client context — shared across all tabs
         self._active_context = ActiveClientContext(
@@ -84,6 +95,51 @@ class MainWindow(QMainWindow):
 
         self._build_ui()
         self._restore_state()
+
+    def _load_migration_overrides(self) -> dict[str, str] | None:
+        """Load project_folder overrides from migration-overrides.json.
+
+        :returns: Override dict or None if the file is absent or invalid.
+        """
+        overrides_path = (
+            Path(self._master_db_path).parent / "migration-overrides.json"
+        )
+        if not overrides_path.exists():
+            return None
+        try:
+            with open(overrides_path) as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                return data
+            logger.warning("migration-overrides.json is not a JSON object")
+        except (json.JSONDecodeError, OSError) as exc:
+            logger.warning("Could not read migration-overrides.json: %s", exc)
+        return None
+
+    def _show_migration_failure(self, exc: Exception) -> None:
+        """Show a blocking error dialog for master migration failure.
+
+        :param exc: The exception that caused the failure.
+        """
+        overrides_path = (
+            Path(self._master_db_path).parent / "migration-overrides.json"
+        )
+        QMessageBox.critical(
+            None,
+            "Database Migration Failed",
+            "The master database migration failed and CRM Builder cannot "
+            "start correctly.\n\n"
+            f"Error: {exc}\n\n"
+            "If this error mentions NULL project_folder, you can fix it by "
+            "creating or updating the override file at:\n"
+            f"  {overrides_path}\n\n"
+            "The file should be a JSON object mapping client codes to "
+            "project folder paths, e.g.:\n"
+            '  {"CBM": "/path/to/project/folder"}\n\n'
+            "After fixing, restart the application.",
+        )
+        import sys
+        sys.exit(1)
 
     def _build_ui(self) -> None:
         """Build the main window layout with three-tab architecture."""
@@ -179,6 +235,13 @@ class MainWindow(QMainWindow):
                 error = self._active_context.set_active_client(client)
                 if error is None:
                     restored_client = True
+                else:
+                    logger.error(
+                        "Could not restore client %s (id=%d): %s",
+                        client.name,
+                        client.id,
+                        error,
+                    )
 
         if restored_client and tab_name:
             tab_index = _TAB_INDICES.get(tab_name, _TAB_CLIENTS)
