@@ -19,7 +19,7 @@ from automation.core.active_client_state import Client
 from automation.db.migrations import run_master_migrations
 from automation.ui.active_client_context import ActiveClientContext
 from automation.ui.clients_tab import ClientsTab
-from automation.ui.deployment_tab_stub import DeploymentTabStub
+from automation.ui.deployment.deployment_window import DeploymentWindow
 
 logger = logging.getLogger(__name__)
 
@@ -129,10 +129,13 @@ class MainWindow(QMainWindow):
             self._req_wrapper, "Requirements (no client selected)"
         )
 
-        # Tab 2: Deployment (stub)
-        self._deployment_stub = DeploymentTabStub()
+        # Tab 2: Deployment
+        self._deployment_window = DeploymentWindow(
+            active_context=self._active_context,
+            parent=self,
+        )
         self._tabs.addTab(
-            self._deployment_stub, "Deployment (no client selected)"
+            self._deployment_window, "Deployment (no client selected)"
         )
 
         # Tab change persistence
@@ -211,6 +214,8 @@ class MainWindow(QMainWindow):
         """Clean up resources on window close."""
         if hasattr(self, "_requirements_window"):
             self._requirements_window.cleanup()
+        if hasattr(self, "_deployment_window"):
+            self._deployment_window.cleanup()
         if hasattr(self, "_active_context"):
             self._active_context.cleanup()
         super().closeEvent(event)

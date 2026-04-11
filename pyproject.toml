@@ -16,6 +16,7 @@ dependencies = [
 
 [project.scripts]
 crmbuilder = "espo_impl.main:main"
+crmbuilder-migrate-instances = "automation.migrations.instance_json_migration:main"
 
 [build-system]
 requires = ["hatchling"]
