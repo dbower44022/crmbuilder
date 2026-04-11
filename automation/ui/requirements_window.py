@@ -70,21 +70,41 @@ class RequirementsWindow(QWidget):
     """The Requirements mode container — sidebar + content area.
 
     :param master_db_path: Path to the master database. Defaults to automation/data/master.db.
+    :param active_context: Optional ActiveClientContext.  When provided, the
+        client combo is hidden and client selection is driven externally by the
+        Clients tab via the active-client context signal.
     :param parent: Parent widget.
     """
 
-    def __init__(self, master_db_path: str | Path | None = None, parent=None) -> None:
+    def __init__(
+        self,
+        master_db_path: str | Path | None = None,
+        active_context=None,
+        parent=None,
+    ) -> None:
         super().__init__(parent)
         self._master_db_path = str(master_db_path or _DEFAULT_MASTER_DB)
+        self._active_context = active_context
         self._client_context = ClientContext()
         self._client_conn: sqlite3.Connection | None = None
+        self._owns_connection = active_context is None
         self._nav_stack = NavigationStack(NavEntry("Requirements Dashboard", "dashboard"))
         self._instance_profiles: list = []  # Set by MainWindow for project_folder lookup
 
         self._build_ui()
         self._wire_header_actions()
-        self._load_clients()
-        self._client_context.on_change(self._on_client_changed)
+
+        if self._active_context is not None:
+            # Driven by ActiveClientContext — hide the combo, subscribe to signal
+            self._client_combo.setVisible(False)
+            self._client_label.setVisible(False)
+            self._active_context.active_client_changed.connect(
+                self._on_active_client_changed
+            )
+        else:
+            # Legacy mode — client combo drives selection
+            self._load_clients()
+            self._client_context.on_change(self._on_client_changed)
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -94,7 +114,8 @@ class RequirementsWindow(QWidget):
         top_bar = QHBoxLayout()
         top_bar.setContentsMargins(8, 8, 8, 4)
 
-        top_bar.addWidget(QLabel("Client:"))
+        self._client_label = QLabel("Client:")
+        top_bar.addWidget(self._client_label)
         self._client_combo = QComboBox()
         self._client_combo.setMinimumWidth(200)
         self._client_combo.currentIndexChanged.connect(self._on_client_combo_changed)
@@ -240,9 +261,44 @@ class RequirementsWindow(QWidget):
 
         self._client_context.select(client)
 
+    def _on_active_client_changed(self, client_obj) -> None:
+        """Handle active-client context change — bridge to internal state.
+
+        Called when the ActiveClientContext signal fires.  The connection
+        is owned by the ActiveClientContext, so we only take a reference.
+        """
+        if client_obj is not None:
+            # Bridge to internal ClientContext for subview compatibility
+            client_info = ClientInfo(
+                id=client_obj.id,
+                name=client_obj.name,
+                code=client_obj.code,
+                database_path=client_obj.database_path,
+            )
+            self._client_conn = self._active_context.connection
+            self._client_context.select(client_info)
+            self._client_indicator.set_client_name(client_obj.name)
+
+            # Reset navigation on client change
+            self._nav_stack.reset()
+            self._update_breadcrumbs()
+            self._sidebar.setCurrentRow(0)
+            self._content_stack.setCurrentIndex(_IDX_DASHBOARD)
+
+            if self._client_conn:
+                self._dashboard.refresh(self._client_conn)
+        else:
+            self._client_conn = None
+            self._client_context.clear()
+            self._client_indicator.set_client_name("")
+            self._nav_stack.reset()
+            self._update_breadcrumbs()
+            self._sidebar.setCurrentRow(0)
+            self._content_stack.setCurrentIndex(_IDX_DASHBOARD)
+
     def _on_client_changed(self, client: ClientInfo | None) -> None:
-        """Handle client context change — refresh all views."""
-        if self._client_conn:
+        """Handle client context change — refresh all views (legacy combo mode)."""
+        if self._owns_connection and self._client_conn:
             self._client_conn.close()
             self._client_conn = None
 
@@ -454,7 +510,17 @@ class RequirementsWindow(QWidget):
             self._content_stack.setCurrentIndex(_IDX_DETAIL)
 
     def _resolve_project_folder(self) -> str | None:
-        """Derive the project_folder from the client's associated instance profile."""
+        """Derive the project_folder for the active client.
+
+        When driven by ActiveClientContext, uses the client's project_folder
+        directly.  In legacy mode, falls back to instance association lookup.
+        """
+        # ActiveClientContext mode — project_folder is on the Client object
+        if self._active_context is not None:
+            ac = self._active_context.client
+            return ac.project_folder if ac else None
+
+        # Legacy mode — resolve via instance association
         client = self._client_context.client
         if not client or not self._instance_profiles:
             return None
@@ -479,6 +545,6 @@ class RequirementsWindow(QWidget):
 
     def cleanup(self) -> None:
         """Close database connections on shutdown."""
-        if self._client_conn:
+        if self._owns_connection and self._client_conn:
             self._client_conn.close()
-            self._client_conn = None
+        self._client_conn = None
