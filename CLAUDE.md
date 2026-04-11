@@ -16,6 +16,16 @@ This is NOT the CBM client repository. Client-specific YAML files and
 generated documentation live in the client's own repository (e.g.,
 `ClevelandBusinessMentoring`), not here.
 
+**Note on the CBM repo's local directory name.** The GitHub repo is
+named `dbower44022/ClevelandBusinessMentoring`, but Doug's local clone
+is at `~/Dropbox/Projects/ClevelandBusinessMentors/` — the short form
+(ending in `Mentors`, not `Mentoring`). When Claude Code or a session
+prompt refers to a local path on Doug's machine, use the short name.
+When referring to the GitHub repo itself (clone URL, remote name, PR
+links), use the long name. A previous two-directory split (both long
+and short names as separate clones) was reconciled on 04-10-26; only
+the short-named clone now exists locally.
+
 ## Commands
 
 ```bash
