@@ -13,11 +13,13 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QApplication,
     QFileDialog,
     QHBoxLayout,
     QHeaderView,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QPushButton,
     QSplitter,
     QStackedWidget,
@@ -33,6 +35,10 @@ from automation.core.client_reachability import check_reachability
 from automation.core.create_client import (
     CreateClientParams,
     create_client,
+)
+from automation.core.master_prd_prompt import (
+    build_master_prd_prompt,
+    save_master_prd_prompt,
 )
 from automation.ui.active_client_context import ActiveClientContext
 
@@ -314,6 +320,24 @@ class ClientsTab(QWidget):
         reach_layout.addStretch()
         layout.addWidget(self._reachability_widget)
 
+        # Start Master PRD Interview button
+        self._detail_start_master_prd_btn = QPushButton(
+            "Start Master PRD Interview"
+        )
+        self._detail_start_master_prd_btn.setStyleSheet(
+            "QPushButton { padding: 6px 16px; font-size: 12px; "
+            "background-color: #FFA726; color: white; border: none; "
+            "border-radius: 3px; } "
+            "QPushButton:hover { background-color: #FB8C00; }"
+        )
+        self._detail_start_master_prd_btn.clicked.connect(
+            self._on_start_master_prd_clicked
+        )
+        layout.addWidget(
+            self._detail_start_master_prd_btn,
+            alignment=Qt.AlignmentFlag.AlignRight,
+        )
+
         layout.addStretch()
         return widget
 
@@ -575,6 +599,65 @@ class ClientsTab(QWidget):
             self._selected_client.description = new_desc
         except sqlite3.Error:
             pass
+
+    def _on_start_master_prd_clicked(self) -> None:
+        """Generate the Master PRD interview prompt and copy to clipboard."""
+        if self._selected_client is None:
+            QMessageBox.information(self, "No Client", "Select a client first.")
+            return
+
+        repo_root = Path(__file__).resolve().parent.parent.parent
+        guide_path = (
+            repo_root / "PRDs" / "process" / "interviews"
+            / "interview-master-prd.md"
+        )
+        if not guide_path.exists():
+            QMessageBox.warning(
+                self,
+                "Guide Not Found",
+                f"Master PRD interview guide not found at {guide_path}.",
+            )
+            return
+
+        prompt_text = build_master_prd_prompt(self._selected_client, guide_path)
+        QApplication.clipboard().setText(prompt_text)
+
+        saved_path = None
+        client = self._selected_client
+        if client.project_folder and Path(client.project_folder).is_dir():
+            try:
+                saved_path = save_master_prd_prompt(
+                    prompt_text, client.project_folder, client.code
+                )
+            except OSError as exc:
+                QMessageBox.information(
+                    self,
+                    "Master PRD Prompt Ready",
+                    f"Prompt copied to clipboard.\n\n"
+                    f"(Could not save file: {exc})\n\n"
+                    f"Paste it into a new Claude.ai conversation to "
+                    f"begin the Master PRD interview.",
+                )
+                return
+
+        if saved_path:
+            QMessageBox.information(
+                self,
+                "Master PRD Prompt Ready",
+                f"Prompt copied to clipboard.\n\n"
+                f"Saved to:\n{saved_path}\n\n"
+                f"Paste it into a new Claude.ai conversation to "
+                f"begin the Master PRD interview.",
+            )
+        else:
+            QMessageBox.information(
+                self,
+                "Master PRD Prompt Ready",
+                "Prompt copied to clipboard.\n\n"
+                "(Project folder not set or unreachable — file not saved.)\n\n"
+                "Paste it into a new Claude.ai conversation to "
+                "begin the Master PRD interview.",
+            )
 
     # ------------------------------------------------------------------
     # Create Client
