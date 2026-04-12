@@ -42,12 +42,14 @@ class ImportView(QWidget):
         work_item_id: int,
         conn: sqlite3.Connection,
         return_callback=None,
+        master_db_path: str | None = None,
         parent=None,
     ) -> None:
         super().__init__(parent)
         self._work_item_id = work_item_id
         self._conn = conn
         self._return_callback = return_callback
+        self._master_db_path = master_db_path
         self._state = ImportState()
         self._batch = None
         self._ai_session_id: int | None = None
@@ -97,6 +99,15 @@ class ImportView(QWidget):
             return row[0]
         return None
 
+    def _open_master_conn(self) -> sqlite3.Connection | None:
+        """Open a connection to the master database, or None if unavailable."""
+        if self._master_db_path:
+            try:
+                return sqlite3.connect(self._master_db_path)
+            except sqlite3.Error:
+                pass
+        return None
+
     def _clear_stage(self) -> None:
         while self._stage_area.count():
             child = self._stage_area.takeAt(0)
@@ -130,7 +141,8 @@ class ImportView(QWidget):
 
         try:
             from automation.importer.pipeline import ImportProcessor
-            processor = ImportProcessor(self._conn)
+            master_conn = self._open_master_conn()
+            processor = ImportProcessor(self._conn, master_conn=master_conn)
 
             # Stage 1: Receive
             self._ai_session_id = processor.receive(self._work_item_id, raw_text)
@@ -239,7 +251,8 @@ class ImportView(QWidget):
 
         try:
             from automation.importer.pipeline import ImportProcessor
-            processor = ImportProcessor(self._conn)
+            master_conn = self._open_master_conn()
+            processor = ImportProcessor(self._conn, master_conn=master_conn)
 
             accepted_ids = compute_accepted_record_ids(self._state)
             self._commit_result = processor.commit(

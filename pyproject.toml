@@ -30,6 +30,7 @@ dev = [
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
     "ruff>=0.15.7",
+    "jsonschema>=4.0",
 ]
 
 [tool.pytest.ini_options]

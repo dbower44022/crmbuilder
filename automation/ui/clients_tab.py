@@ -601,63 +601,107 @@ class ClientsTab(QWidget):
             pass
 
     def _on_start_master_prd_clicked(self) -> None:
-        """Generate the Master PRD interview prompt and copy to clipboard."""
+        """Generate the Master PRD interview prompt and copy to clipboard.
+
+        Creates a master_prd WorkItem and AISession in the client database
+        so the Import Results flow is available on the Requirements tab
+        after the interview completes.
+        """
         if self._selected_client is None:
             QMessageBox.information(self, "No Client", "Select a client first.")
             return
 
-        repo_root = Path(__file__).resolve().parent.parent.parent
-        guide_path = (
-            repo_root / "PRDs" / "process" / "interviews"
-            / "interview-master-prd.md"
-        )
-        if not guide_path.exists():
-            QMessageBox.warning(
+        client = self._selected_client
+        db_path = client.database_path
+        if not Path(db_path).exists():
+            QMessageBox.information(
                 self,
-                "Guide Not Found",
-                f"Master PRD interview guide not found at {guide_path}.",
+                "Database Not Found",
+                f"Client database not found at:\n{db_path}\n\n"
+                "The client may not have been fully created.",
             )
             return
 
-        prompt_text = build_master_prd_prompt(self._selected_client, guide_path)
+        # Ensure WorkItem exists and is in_progress, then create AISession.
+        try:
+            conn = sqlite3.connect(db_path)
+            try:
+                row = conn.execute(
+                    "SELECT id, status FROM WorkItem "
+                    "WHERE item_type = 'master_prd'"
+                ).fetchone()
+
+                if row is None:
+                    from automation.workflow.graph import create_project
+                    wid = create_project(conn)
+                    status = "ready"
+                else:
+                    wid, status = row
+
+                if status == "ready":
+                    from automation.workflow.transitions import start
+                    start(conn, wid)
+                elif status != "in_progress":
+                    QMessageBox.information(
+                        self,
+                        "Work Item Not Available",
+                        f"The Master PRD work item is '{status}'.\n\n"
+                        "It must be 'ready' or 'in_progress' to "
+                        "generate a new prompt.",
+                    )
+                    return
+
+                prompt_text = build_master_prd_prompt(
+                    client, work_item_id=wid,
+                )
+
+                conn.execute(
+                    "INSERT INTO AISession (work_item_id, session_type, "
+                    "generated_prompt, import_status, started_at) "
+                    "VALUES (?, 'initial', ?, 'pending', CURRENT_TIMESTAMP)",
+                    (wid, prompt_text),
+                )
+                conn.commit()
+            finally:
+                conn.close()
+        except (sqlite3.Error, FileNotFoundError, ValueError) as exc:
+            QMessageBox.warning(
+                self,
+                "Prompt Generation Failed",
+                f"Could not set up the Master PRD session:\n\n{exc}",
+            )
+            return
+
         QApplication.clipboard().setText(prompt_text)
 
         saved_path = None
-        client = self._selected_client
         if client.project_folder and Path(client.project_folder).is_dir():
             try:
                 saved_path = save_master_prd_prompt(
                     prompt_text, client.project_folder, client.code
                 )
-            except OSError as exc:
-                QMessageBox.information(
-                    self,
-                    "Master PRD Prompt Ready",
-                    f"Prompt copied to clipboard.\n\n"
-                    f"(Could not save file: {exc})\n\n"
-                    f"Paste it into a new Claude.ai conversation to "
-                    f"begin the Master PRD interview.",
-                )
-                return
+            except OSError:
+                pass  # Non-critical; prompt is already on clipboard
 
+        msg_parts = [
+            "Prompt copied to clipboard.",
+            f"\nWork Item ID: {wid}",
+        ]
         if saved_path:
-            QMessageBox.information(
-                self,
-                "Master PRD Prompt Ready",
-                f"Prompt copied to clipboard.\n\n"
-                f"Saved to:\n{saved_path}\n\n"
-                f"Paste it into a new Claude.ai conversation to "
-                f"begin the Master PRD interview.",
-            )
-        else:
-            QMessageBox.information(
-                self,
-                "Master PRD Prompt Ready",
-                "Prompt copied to clipboard.\n\n"
-                "(Project folder not set or unreachable — file not saved.)\n\n"
-                "Paste it into a new Claude.ai conversation to "
-                "begin the Master PRD interview.",
-            )
+            msg_parts.append(f"\nSaved to:\n{saved_path}")
+        msg_parts.append(
+            "\nPaste it into a new Claude.ai conversation to begin "
+            "the Master PRD interview.\n\n"
+            "When the interview is complete, go to the Requirements "
+            "tab, select the Master PRD work item, and click "
+            "'Import Results' to paste the JSON output."
+        )
+
+        QMessageBox.information(
+            self,
+            "Master PRD Prompt Ready",
+            "\n".join(msg_parts),
+        )
 
     # ------------------------------------------------------------------
     # Create Client

@@ -16,7 +16,11 @@ from automation.db.connection import transaction
 from automation.importer.commit import CommitResult, commit_batch
 from automation.importer.conflicts import detect_conflicts
 from automation.importer.mappers import map_payload
-from automation.importer.parser import parse_and_validate
+from automation.importer.parser import (
+    parse_layer1,
+    parse_layer2,
+    parse_layer3,
+)
 from automation.importer.proposed import ProposedBatch
 from automation.importer.triggers import TriggerResult, run_triggers
 from automation.prompts.output_format import PROMPTABLE_ITEM_TYPES
@@ -135,10 +139,19 @@ class ImportProcessor:
                 f"Work item type '{item_type}' is not importable"
             )
 
-        # Parse and validate
-        envelope = parse_and_validate(
-            raw_output, item_type, work_item_id, session_type,
+        # Parse and validate — patch null envelope fields from DB context
+        # so the AI doesn't have to echo back system-assigned values.
+        envelope = parse_layer1(raw_output)
+        if envelope.get("work_item_id") is None:
+            envelope["work_item_id"] = work_item_id
+        if envelope.get("session_type") is None:
+            envelope["session_type"] = session_type
+        if envelope.get("work_item_type") is None:
+            envelope["work_item_type"] = item_type
+        parse_layer2(
+            envelope, item_type, work_item_id, session_type,
         )
+        parse_layer3(envelope)
 
         # Store structured_output
         with transaction(self._conn):

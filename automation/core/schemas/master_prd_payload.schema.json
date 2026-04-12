@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "master_prd payload",
+  "description": "Payload structure for the master_prd work item type. Consumed by the Prompt Generator (Section 10) and validated by the Import Processor (Section 11.2, Layer 3).",
+  "type": "object",
+  "required": [
+    "organization_overview",
+    "personas",
+    "domains",
+    "processes",
+    "cross_domain_services",
+    "system_scope",
+    "interview_transcript"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "organization_overview": {
+      "type": "string",
+      "description": "Narrative prose describing the organization's mission, operating context, and CRM rationale."
+    },
+    "personas": {
+      "type": "array",
+      "description": "One entry per persona identified during the Master PRD interview.",
+      "items": {
+        "type": "object",
+        "required": ["name", "code", "description", "responsibilities", "crm_capabilities"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Persona role name (e.g. 'Mentor', 'Program Coordinator')."
+          },
+          "code": {
+            "type": "string",
+            "description": "Unique persona identifier (e.g. 'MST-PER-001')."
+          },
+          "description": {
+            "type": "string",
+            "description": "Brief description of the persona's relationship to the organization."
+          },
+          "responsibilities": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Bulleted list of what this persona does in their role."
+          },
+          "crm_capabilities": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Bulleted list of capabilities the CRM provides to support this role."
+          }
+        }
+      }
+    },
+    "domains": {
+      "type": "array",
+      "description": "Top-level key business domains. Sub-domains are nested within their parent.",
+      "items": {
+        "type": "object",
+        "required": ["name", "code", "description", "sort_order"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Domain display name."
+          },
+          "code": {
+            "type": "string",
+            "description": "2-4 uppercase letter domain code (e.g. 'MN', 'MR')."
+          },
+          "description": {
+            "type": "string",
+            "description": "Domain purpose description."
+          },
+          "sort_order": {
+            "type": "integer",
+            "description": "Processing order (1-based)."
+          },
+          "sub_domains": {
+            "type": "array",
+            "description": "Optional nested sub-domains.",
+            "items": {
+              "type": "object",
+              "required": ["name", "code", "description", "sort_order"],
+              "additionalProperties": false,
+              "properties": {
+                "name": { "type": "string" },
+                "code": { "type": "string" },
+                "description": { "type": "string" },
+                "sort_order": { "type": "integer" },
+                "is_service": {
+                  "type": "boolean",
+                  "description": "True if this sub-domain is a service domain.",
+                  "default": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "processes": {
+      "type": "array",
+      "description": "All business processes across all domains, grouped by domain.",
+      "items": {
+        "type": "object",
+        "required": ["name", "code", "description", "sort_order", "tier", "business_value", "key_capabilities", "domain_code"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Process display name."
+          },
+          "code": {
+            "type": "string",
+            "description": "Process code (e.g. 'MN-INTAKE')."
+          },
+          "description": {
+            "type": "string",
+            "description": "One-line process description."
+          },
+          "sort_order": {
+            "type": "integer",
+            "description": "Sequence within parent domain (1-based)."
+          },
+          "tier": {
+            "type": "string",
+            "enum": ["core", "important", "enhancement"],
+            "description": "Implementation tier."
+          },
+          "business_value": {
+            "type": "string",
+            "description": "Why this process matters to the organization."
+          },
+          "key_capabilities": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Specific CRM capabilities this process requires."
+          },
+          "domain_code": {
+            "type": "string",
+            "description": "Code of the parent domain this process belongs to."
+          }
+        }
+      }
+    },
+    "cross_domain_services": {
+      "type": "array",
+      "description": "Shared platform capabilities consumed by multiple domains.",
+      "items": {
+        "type": "object",
+        "required": ["name", "code", "description", "capabilities", "consuming_domains", "owned_entities"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Service name (e.g. 'Notes Service')."
+          },
+          "code": {
+            "type": "string",
+            "description": "2-4 uppercase letter service code (e.g. 'NOTE')."
+          },
+          "description": {
+            "type": "string",
+            "description": "What shared capability this service provides."
+          },
+          "capabilities": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Specific functions the service offers to consuming domains."
+          },
+          "consuming_domains": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Domain codes that use this service."
+          },
+          "owned_entities": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Entity names owned by this service (may be empty)."
+          }
+        }
+      }
+    },
+    "system_scope": {
+      "type": "object",
+      "description": "System scope boundaries for the CRM implementation.",
+      "required": ["in_scope", "out_of_scope", "integrations"],
+      "additionalProperties": false,
+      "properties": {
+        "in_scope": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Functions and areas included in the CRM implementation."
+        },
+        "out_of_scope": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Functions explicitly excluded from the CRM implementation."
+        },
+        "integrations": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "External system integrations described by function (no product names)."
+        }
+      }
+    },
+    "interview_transcript": {
+      "type": "string",
+      "description": "Complete but condensed record of the interview organized by topic area, with Q/A pairs and inline Decision callouts."
+    }
+  }
+}

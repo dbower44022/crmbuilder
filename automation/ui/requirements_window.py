@@ -409,6 +409,7 @@ class RequirementsWindow(QWidget):
         import_view = ImportView(
             work_item_id, self._client_conn,
             return_callback=self._pop_drill_down,
+            master_db_path=self._master_db_path,
         )
         self._content_stack.removeWidget(old)
         old.deleteLater()

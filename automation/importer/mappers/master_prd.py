@@ -134,6 +134,29 @@ def map_payload(
             intra_batch_refs=intra_refs,
         ))
 
+    # Cross-domain services -> Domain records with is_service=True
+    for i, svc in enumerate(payload.get("cross_domain_services", [])):
+        svc_code = svc.get("code", "")
+        if not svc_code:
+            # Auto-generate: SVC + index (e.g. SVC1, SVC2)
+            svc_code = f"SVC{i + 1}"
+        svc_values: dict[str, Any] = {
+            "name": svc.get("name", ""),
+            "code": svc_code,
+            "description": svc.get("description"),
+            "sort_order": svc.get("sort_order", i + 1),
+            "is_service": True,
+            "created_by_session_id": ai_session_id,
+        }
+        records.append(ProposedRecord(
+            table_name="Domain",
+            action="create",
+            target_id=None,
+            values=svc_values,
+            source_payload_path=f"payload.cross_domain_services[{i}]",
+            batch_id=f"batch:domain:{svc_code}" if svc_code else None,
+        ))
+
     # Decisions and open issues from envelope
     if envelope:
         records.extend(map_decisions(
