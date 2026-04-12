@@ -359,10 +359,31 @@ def _client_v3(conn: sqlite3.Connection) -> None:
     )
 
 
+def _client_v4(conn: sqlite3.Connection) -> None:
+    """Add identifier column to Domain for MST-DOM-NNN style identifiers.
+
+    Idempotent: skips ALTER if the column already exists.
+    Guard: skips if Domain table does not exist (pre-v1 databases).
+    """
+    tables = {
+        row[0]
+        for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )
+    }
+    if "Domain" not in tables:
+        return
+    cols = conn.execute("PRAGMA table_info(Domain)").fetchall()
+    col_names = {row[1] for row in cols}
+    if "identifier" not in col_names:
+        conn.execute("ALTER TABLE Domain ADD COLUMN identifier TEXT")
+
+
 CLIENT_MIGRATIONS: list[tuple[int, Migration]] = [
     (1, _client_v1),
     (2, _client_v2),
     (3, _client_v3),
+    (4, _client_v4),
 ]
 
 

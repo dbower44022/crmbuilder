@@ -67,6 +67,10 @@
             "type": "string",
             "description": "2-4 uppercase letter domain code (e.g. 'MN', 'MR')."
           },
+          "identifier": {
+            "type": "string",
+            "description": "MST-DOM-NNN identifier (e.g. 'MST-DOM-001')."
+          },
           "description": {
             "type": "string",
             "description": "Domain purpose description."
@@ -85,6 +89,7 @@
               "properties": {
                 "name": { "type": "string" },
                 "code": { "type": "string" },
+                "identifier": { "type": "string" },
                 "description": { "type": "string" },
                 "sort_order": { "type": "integer" },
                 "is_service": {

@@ -280,11 +280,11 @@ class TestFreshClientDatabase:
         )
         db.commit()
 
-    def test_schema_version_is_3(self, db: sqlite3.Connection) -> None:
+    def test_schema_version_is_4(self, db: sqlite3.Connection) -> None:
         row = db.execute(
             "SELECT MAX(version) FROM schema_version"
         ).fetchone()
-        assert row[0] == 3
+        assert row[0] == 4
 
 
 # ---------------------------------------------------------------------------
@@ -326,7 +326,7 @@ class TestClientV3MigrationWiring:
         version = conn.execute(
             "SELECT MAX(version) FROM schema_version"
         ).fetchone()[0]
-        assert version == 3
+        assert version == 4
         conn.close()
 
 
@@ -366,5 +366,5 @@ class TestClientV3Migration:
         versions = conn.execute(
             "SELECT version FROM schema_version ORDER BY version"
         ).fetchall()
-        assert [v[0] for v in versions] == [1, 2, 3]
+        assert [v[0] for v in versions] == [1, 2, 3, 4]
         conn.close()

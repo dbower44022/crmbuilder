@@ -40,11 +40,12 @@ class PersonaPayload(TypedDict):
 class SubDomainPayload(TypedDict, total=False):
     """A sub-domain nested inside a domain entry.
 
-    ``is_service`` is optional (defaults to ``False``).
+    ``is_service`` and ``identifier`` are optional.
     """
 
     name: str
     code: str
+    identifier: str
     description: str
     sort_order: int
     is_service: bool
@@ -53,11 +54,12 @@ class SubDomainPayload(TypedDict, total=False):
 class DomainPayload(TypedDict, total=False):
     """A top-level domain entry.
 
-    ``sub_domains`` is optional (empty array if absent).
+    ``sub_domains`` and ``identifier`` are optional.
     """
 
     name: str
     code: str
+    identifier: str
     description: str
     sort_order: int
     sub_domains: list[SubDomainPayload]

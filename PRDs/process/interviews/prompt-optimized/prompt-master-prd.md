@@ -471,12 +471,14 @@ The `payload` object must contain exactly these seven top-level keys:
     {
       "name": "Domain display name",
       "code": "2-4 uppercase letter code (e.g. 'MN')",
+      "identifier": "MST-DOM-NNN identifier (e.g. 'MST-DOM-001')",
       "description": "Domain purpose description.",
       "sort_order": 1,
       "sub_domains": [
         {
           "name": "Sub-domain name",
           "code": "Sub-domain code",
+          "identifier": "MST-DOM-NNN identifier",
           "description": "Sub-domain purpose.",
           "sort_order": 1,
           "is_service": false

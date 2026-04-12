@@ -64,6 +64,7 @@ def map_payload(
         domain_values: dict[str, Any] = {
             "name": d.get("name", ""),
             "code": domain_code,
+            "identifier": d.get("identifier"),
             "description": d.get("description"),
             "sort_order": d.get("sort_order"),
             "is_service": bool(d.get("is_service", False)),
@@ -84,6 +85,7 @@ def map_payload(
             sd_values: dict[str, Any] = {
                 "name": sd.get("name", ""),
                 "code": sd_code,
+                "identifier": sd.get("identifier"),
                 "description": sd.get("description"),
                 "sort_order": sd.get("sort_order"),
                 "is_service": bool(sd.get("is_service", False)),

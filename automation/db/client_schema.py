@@ -25,6 +25,7 @@ CREATE TABLE Domain (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     code TEXT NOT NULL UNIQUE,
+    identifier TEXT,
     description TEXT,
     sort_order INTEGER,
     parent_domain_id INTEGER,
