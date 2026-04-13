@@ -23,6 +23,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from automation.db.client_schema import (
+    CONFIGURATION_RUN_TABLE,
     DEPLOYMENT_RUN_TABLE,
     INSTANCE_DEFAULT_INDEX,
     INSTANCE_TABLE,
@@ -379,11 +380,25 @@ def _client_v4(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE Domain ADD COLUMN identifier TEXT")
 
 
+def _client_v5(conn: sqlite3.Connection) -> None:
+    """ConfigurationRun table — audit trail for YAML configuration runs.
+
+    Tracks each time a YAML file is run/checked against an instance,
+    including the file version and content hash for change detection.
+    """
+    conn.execute(
+        CONFIGURATION_RUN_TABLE.replace(
+            "CREATE TABLE ", "CREATE TABLE IF NOT EXISTS "
+        )
+    )
+
+
 CLIENT_MIGRATIONS: list[tuple[int, Migration]] = [
     (1, _client_v1),
     (2, _client_v2),
     (3, _client_v3),
     (4, _client_v4),
+    (5, _client_v5),
 ]
 
 

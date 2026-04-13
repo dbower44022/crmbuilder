@@ -74,6 +74,7 @@ class YamlFileInfo:
     path: str
     last_modified: str
     last_run_outcome: str | None
+    version: str | None = None
 
 
 @dataclasses.dataclass
@@ -359,6 +360,18 @@ def load_yaml_files(project_folder: str | None) -> list[YamlFileInfo]:
         for p in programs_dir.rglob(pattern):
             rel = p.relative_to(programs_dir)
             stat = p.stat()
+
+            # Read content_version from the YAML front-matter
+            version = None
+            try:
+                import yaml
+
+                raw = yaml.safe_load(p.read_text(encoding="utf-8"))
+                if isinstance(raw, dict):
+                    version = str(raw.get("content_version", "")) or None
+            except Exception:
+                pass
+
             results.append(YamlFileInfo(
                 name=str(rel),
                 path=str(p),
@@ -366,9 +379,97 @@ def load_yaml_files(project_folder: str | None) -> list[YamlFileInfo]:
                     timespec="seconds"
                 ),
                 last_run_outcome=None,
+                version=version,
             ))
     results.sort(key=lambda f: f.name)
     return results
+
+
+# ---------------------------------------------------------------------------
+# Configuration run history
+# ---------------------------------------------------------------------------
+
+@dataclasses.dataclass
+class ConfigurationRunRecord:
+    """Most recent configuration run for a file + instance pair."""
+
+    id: int
+    file_name: str
+    file_version: str | None
+    file_hash: str | None
+    operation: str
+    outcome: str
+    completed_at: str | None
+
+
+def record_configuration_run(
+    conn: sqlite3.Connection,
+    *,
+    instance_id: int,
+    file_name: str,
+    file_version: str | None,
+    file_hash: str | None,
+    operation: str,
+    outcome: str,
+    error_message: str | None,
+    started_at: str,
+    completed_at: str,
+) -> int:
+    """Insert a ConfigurationRun row.
+
+    :param conn: Per-client database connection.
+    :returns: The new row ID.
+    """
+    cursor = conn.execute(
+        "INSERT INTO ConfigurationRun "
+        "(instance_id, file_name, file_version, file_hash, operation, "
+        "outcome, error_message, started_at, completed_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (instance_id, file_name, file_version, file_hash, operation,
+         outcome, error_message, started_at, completed_at),
+    )
+    conn.commit()
+    return cursor.lastrowid
+
+
+def load_last_runs(
+    conn: sqlite3.Connection, instance_id: int
+) -> dict[str, ConfigurationRunRecord]:
+    """Load the most recent configuration run per file for an instance.
+
+    :param conn: Per-client database connection.
+    :param instance_id: The instance to query.
+    :returns: Dict mapping file_name → most recent ConfigurationRunRecord.
+    """
+    # Check if table exists (handles databases before v5 migration)
+    table_exists = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' "
+        "AND name='ConfigurationRun'"
+    ).fetchone()
+    if not table_exists:
+        return {}
+
+    rows = conn.execute(
+        "SELECT cr.id, cr.file_name, cr.file_version, cr.file_hash, "
+        "cr.operation, cr.outcome, cr.completed_at "
+        "FROM ConfigurationRun cr "
+        "INNER JOIN ("
+        "  SELECT file_name, MAX(id) AS max_id "
+        "  FROM ConfigurationRun "
+        "  WHERE instance_id = ? "
+        "  GROUP BY file_name"
+        ") latest ON cr.id = latest.max_id "
+        "ORDER BY cr.file_name",
+        (instance_id,),
+    ).fetchall()
+    result: dict[str, ConfigurationRunRecord] = {}
+    for r in rows:
+        rec = ConfigurationRunRecord(
+            id=r[0], file_name=r[1], file_version=r[2], file_hash=r[3],
+            operation=r[4], outcome=r[5], completed_at=r[6],
+        )
+        result[rec.file_name] = rec
+    return result
 
 
 # ---------------------------------------------------------------------------

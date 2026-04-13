@@ -6,6 +6,7 @@ completion percentage, and a cancel button.
 
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime
 from pathlib import Path
 
@@ -221,7 +222,16 @@ class ConfigureProgressDialog(QDialog):
 
         file_info, program = self._pending.pop(0)
         self._current_file_info = file_info
+        self._current_program = program
         self._current_file_idx += 1
+        self._current_started_at = datetime.now().isoformat(timespec="seconds")
+
+        # Compute file hash for change detection
+        try:
+            raw = Path(file_info.path).read_bytes()
+            self._current_file_hash = hashlib.sha256(raw).hexdigest()
+        except OSError:
+            self._current_file_hash = None
 
         op_label = "Running" if self._operation == "run" else "Checking"
         self._status_label.setText(
@@ -269,19 +279,53 @@ class ConfigureProgressDialog(QDialog):
         """Handle successful completion of one file."""
         self._worker = None
         self._append_log("Completed successfully.", "success")
-        if self._current_file_info:
-            now = datetime.now().strftime("%Y-%m-%d %H:%M")
-            self._file_results[self._current_file_info.path] = ("success", now)
+        self._record_run("success")
         self._run_next()
 
     def _on_worker_error(self, error: str) -> None:
         """Handle failure of one file."""
         self._worker = None
         self._append_log(f"Error: {error}", "error")
-        if self._current_file_info:
-            now = datetime.now().strftime("%Y-%m-%d %H:%M")
-            self._file_results[self._current_file_info.path] = ("error", now)
+        self._record_run("error", error)
         self._run_next()
+
+    def _record_run(self, outcome: str, error_message: str | None = None) -> None:
+        """Record the run result in memory and in the database."""
+        if not self._current_file_info:
+            return
+
+        now = datetime.now()
+        now_display = now.strftime("%Y-%m-%d %H:%M")
+        now_iso = now.isoformat(timespec="seconds")
+        self._file_results[self._current_file_info.path] = (outcome, now_display)
+
+        # Persist to ConfigurationRun table
+        if self._conn and self._instance:
+            try:
+                from automation.ui.deployment.deployment_logic import (
+                    record_configuration_run,
+                )
+
+                file_version = None
+                if self._current_program:
+                    file_version = self._current_program.content_version
+
+                record_configuration_run(
+                    self._conn,
+                    instance_id=self._instance.id,
+                    file_name=self._current_file_info.name,
+                    file_version=file_version,
+                    file_hash=self._current_file_hash,
+                    operation=self._operation,
+                    outcome=outcome,
+                    error_message=error_message,
+                    started_at=self._current_started_at,
+                    completed_at=now_iso,
+                )
+            except Exception as exc:
+                self._append_log(
+                    f"Warning: could not save run record: {exc}", "warning"
+                )
 
     # ── Cancel ─────────────────────────────────────────────────────
 

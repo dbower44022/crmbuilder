@@ -585,6 +585,28 @@ CREATE TABLE DeploymentRun (
 );
 """
 
+# ConfigurationRun — audit trail for YAML configuration runs.
+# Records each time a YAML program file is run (or checked) against an
+# instance, including the file's content_version and a SHA-256 hash of the
+# file contents so the application can determine whether the file has changed
+# since it was last applied.
+CONFIGURATION_RUN_TABLE = """
+CREATE TABLE ConfigurationRun (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    instance_id INTEGER NOT NULL,
+    file_name TEXT NOT NULL,
+    file_version TEXT,
+    file_hash TEXT,
+    operation TEXT NOT NULL CHECK (operation IN ('run', 'verify')),
+    outcome TEXT NOT NULL CHECK (outcome IN ('success', 'error')),
+    error_message TEXT,
+    started_at TIMESTAMP NOT NULL,
+    completed_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (instance_id) REFERENCES Instance(id)
+);
+"""
+
 # ---------------------------------------------------------------------------
 # Table ordering — AISession must be created before tables that reference it
 # ---------------------------------------------------------------------------

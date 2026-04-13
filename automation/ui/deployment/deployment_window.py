@@ -30,22 +30,22 @@ from automation.ui.deployment.instance_picker import InstancePicker
 from automation.ui.deployment.instances_entry import InstancesEntry
 from automation.ui.deployment.output_entry import OutputEntry
 from automation.ui.deployment.phase_banner import PhaseBanner
-from automation.ui.deployment.verify_entry import VerifyEntry
+from automation.ui.deployment.run_history_entry import RunHistoryEntry
 
 logger = logging.getLogger(__name__)
 
-# Sidebar entry names — must match Section 14.12.1 order
-_ENTRIES = ["Instances", "Deploy", "Configure", "Verify", "Output"]
+# Sidebar entry names
+_ENTRIES = ["Instances", "Deploy", "Configure", "Run History", "Output"]
 
 # Content stack indices
 _IDX_INSTANCES = 0
 _IDX_DEPLOY = 1
 _IDX_CONFIGURE = 2
-_IDX_VERIFY = 3
+_IDX_RUN_HISTORY = 3
 _IDX_OUTPUT = 4
 
 # Entries that show the phase status banner (§14.12.2)
-_BANNER_ENTRIES = {"Deploy", "Configure", "Verify"}
+_BANNER_ENTRIES = {"Deploy", "Configure"}
 
 _NO_CLIENT_MSG = (
     "No client is currently active.\n\n"
@@ -133,8 +133,8 @@ class DeploymentWindow(QWidget):
         self._configure_entry = ConfigureEntry()
         self._stack.addWidget(self._configure_entry)  # 2
 
-        self._verify_entry = VerifyEntry()
-        self._stack.addWidget(self._verify_entry)  # 3
+        self._run_history_entry = RunHistoryEntry()
+        self._stack.addWidget(self._run_history_entry)  # 3
 
         self._output_entry = OutputEntry()
         self._stack.addWidget(self._output_entry)  # 4
@@ -253,8 +253,10 @@ class DeploymentWindow(QWidget):
             self._configure_entry.refresh(
                 self._conn, instance, self._project_folder, has_instances
             )
-        elif index == _IDX_VERIFY:
-            self._verify_entry.refresh(self._conn, instance, has_instances)
+        elif index == _IDX_RUN_HISTORY:
+            self._run_history_entry.refresh(
+                self._conn, instance, self._project_folder, has_instances
+            )
         elif index == _IDX_OUTPUT:
             self._output_entry.refresh(self._conn, instance, has_instances)
 
