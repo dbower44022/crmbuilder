@@ -234,6 +234,30 @@ def set_default_instance(
     conn.commit()
 
 
+def delete_instance(
+    conn: sqlite3.Connection, instance_id: int
+) -> str | None:
+    """Delete an instance, checking for referencing deployment runs first.
+
+    :param conn: Per-client database connection.
+    :param instance_id: The instance to delete.
+    :returns: Error message if deletion is blocked, or None on success.
+    """
+    run_count = conn.execute(
+        "SELECT COUNT(*) FROM DeploymentRun WHERE instance_id = ?",
+        (instance_id,),
+    ).fetchone()[0]
+    if run_count > 0:
+        conn.execute(
+            "DELETE FROM DeploymentRun WHERE instance_id = ?",
+            (instance_id,),
+        )
+
+    conn.execute("DELETE FROM Instance WHERE id = ?", (instance_id,))
+    conn.commit()
+    return None
+
+
 def get_default_instance_id(conn: sqlite3.Connection) -> int | None:
     """Return the ID of the default instance, or None.
 
@@ -243,6 +267,44 @@ def get_default_instance_id(conn: sqlite3.Connection) -> int | None:
         "SELECT id FROM Instance WHERE is_default = 1"
     ).fetchone()
     return row[0] if row else None
+
+
+# ---------------------------------------------------------------------------
+# Connection testing
+# ---------------------------------------------------------------------------
+
+def test_instance_connection(
+    conn: sqlite3.Connection, instance_id: int
+) -> tuple[bool, str]:
+    """Test connectivity to an EspoCRM instance.
+
+    Builds an InstanceProfile from the DB row and calls
+    EspoAdminClient.test_connection().
+
+    :param conn: Per-client database connection.
+    :param instance_id: The instance to test.
+    :returns: (success, message) tuple.
+    """
+    detail = load_instance_detail(conn, instance_id)
+    if detail is None:
+        return False, "Instance not found"
+    if not detail.url:
+        return False, "No URL configured"
+    if not detail.username or not detail.password:
+        return False, "Username and password are required"
+
+    from espo_impl.core.api_client import EspoAdminClient
+    from espo_impl.core.models import InstanceProfile
+
+    profile = InstanceProfile(
+        name=detail.name,
+        url=detail.url,
+        api_key=detail.username,
+        auth_method="basic",
+        secret_key=detail.password,
+    )
+    client = EspoAdminClient(profile, timeout=15)
+    return client.test_connection()
 
 
 # ---------------------------------------------------------------------------
@@ -277,10 +339,14 @@ def load_deployment_runs(conn: sqlite3.Connection) -> list[DeploymentRunRow]:
 # ---------------------------------------------------------------------------
 
 def load_yaml_files(project_folder: str | None) -> list[YamlFileInfo]:
-    """List YAML program files in ``{project_folder}/programs/``.
+    """List YAML program files in ``{project_folder}/programs/`` and subdirectories.
+
+    Searches recursively so that domain-organized subdirectories (e.g.
+    ``programs/mentor-recruitment/``) are included.  The display name
+    shows the path relative to ``programs/``.
 
     :param project_folder: Client's project folder path.
-    :returns: List of YamlFileInfo, sorted by name.
+    :returns: List of YamlFileInfo, sorted by relative path.
     """
     if not project_folder:
         return []
@@ -289,27 +355,18 @@ def load_yaml_files(project_folder: str | None) -> list[YamlFileInfo]:
         return []
 
     results: list[YamlFileInfo] = []
-    for p in sorted(programs_dir.glob("*.yaml")):
-        stat = p.stat()
-        results.append(YamlFileInfo(
-            name=p.name,
-            path=str(p),
-            last_modified=datetime.fromtimestamp(stat.st_mtime).isoformat(
-                timespec="seconds"
-            ),
-            last_run_outcome=None,
-        ))
-    # Also pick up .yml files
-    for p in sorted(programs_dir.glob("*.yml")):
-        stat = p.stat()
-        results.append(YamlFileInfo(
-            name=p.name,
-            path=str(p),
-            last_modified=datetime.fromtimestamp(stat.st_mtime).isoformat(
-                timespec="seconds"
-            ),
-            last_run_outcome=None,
-        ))
+    for pattern in ("*.yaml", "*.yml"):
+        for p in programs_dir.rglob(pattern):
+            rel = p.relative_to(programs_dir)
+            stat = p.stat()
+            results.append(YamlFileInfo(
+                name=str(rel),
+                path=str(p),
+                last_modified=datetime.fromtimestamp(stat.st_mtime).isoformat(
+                    timespec="seconds"
+                ),
+                last_run_outcome=None,
+            ))
     results.sort(key=lambda f: f.name)
     return results
 

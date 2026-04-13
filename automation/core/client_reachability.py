@@ -54,11 +54,17 @@ def check_reachability(
             error=f"Project folder does not exist: {project_folder}",
         )
 
-    db_path = folder / ".crmbuilder" / f"{code}.db"
+    db_dir = folder / ".crmbuilder"
+    db_path = db_dir / f"{code}.db"
     if not db_path.is_file():
+        # First activation — the directory and database will be created
+        # by run_client_migrations. Just verify the parent folder is
+        # writable.
+        if db_dir.exists() or folder.is_dir():
+            return ReachabilityResult(is_reachable=True)
         return ReachabilityResult(
             is_reachable=False,
-            error=f"Database file not found: {db_path}",
+            error=f"Cannot create database — project folder not writable: {folder}",
         )
 
     try:

@@ -171,6 +171,57 @@ def run_remote(
     return exit_code, "\n".join(output_lines)
 
 
+# ── Pre-flight checks ─────────────────────────────────────────────────
+
+# OS families accepted by the EspoCRM installer script (v2.7.0).
+SUPPORTED_OS_FAMILIES = {"ubuntu", "debian", "mint"}
+
+
+def check_server_os(
+    ssh: paramiko.SSHClient,
+    log_callback: Callable[[str], None],
+) -> tuple[bool, str]:
+    """Check that the remote server runs an OS supported by the EspoCRM installer.
+
+    Reads /etc/os-release and checks the NAME field against the set of
+    operating systems the installer script accepts.
+
+    :param ssh: Connected SSH client.
+    :param log_callback: Line callback for live output.
+    :returns: (supported, error_message). error_message is empty on success.
+    """
+    exit_code, output = run_remote(
+        ssh,
+        "grep '^NAME=' /etc/os-release 2>/dev/null "
+        "| sed 's/NAME=//' | tr -d '\"'",
+        log_callback,
+    )
+
+    if exit_code != 0 or not output.strip():
+        return False, (
+            "Could not determine the server operating system.\n"
+            "Ensure /etc/os-release exists on the server.\n\n"
+            "The EspoCRM installer requires Ubuntu, Debian, or Linux Mint.\n"
+            "Recommendation: Rebuild this Droplet with Ubuntu 22.04 LTS "
+            "(or 24.04 LTS)."
+        )
+
+    os_name = output.strip()
+    os_lower = os_name.lower()
+
+    for family in SUPPORTED_OS_FAMILIES:
+        if family in os_lower:
+            log_callback(f"Server OS: {os_name}")
+            return True, ""
+
+    return False, (
+        f"Server OS '{os_name}' is not supported by the EspoCRM installer.\n"
+        f"Supported operating systems: Ubuntu, Debian, or Linux Mint.\n\n"
+        f"Recommendation: Rebuild this Droplet with Ubuntu 22.04 LTS "
+        f"(or 24.04 LTS) and re-run deployment."
+    )
+
+
 # ── Deployment phases ──────────────────────────────────────────────────
 
 
@@ -265,6 +316,21 @@ def phase2_install_espocrm(
         ssh, install_cmd, log_callback, get_pty=True
     )
     if exit_code != 0:
+        # Detect specific installer failures and provide actionable messages
+        output_lower = output.lower()
+        if "not supported" in output_lower:
+            return False, (
+                "The EspoCRM installer reported that this server's OS is "
+                "not supported. Supported: Ubuntu, Debian, or Linux Mint. "
+                "Rebuild the Droplet with Ubuntu 22.04 LTS (or 24.04 LTS) "
+                "and re-run deployment."
+            )
+        if "port" in output_lower and "already in use" in output_lower:
+            return False, (
+                "A required port is already in use on the server. "
+                "Check for existing web servers (Apache, Nginx) and "
+                "stop them before retrying."
+            )
         return False, f"EspoCRM installer failed (exit {exit_code})"
 
     return True, ""

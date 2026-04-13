@@ -124,6 +124,7 @@ class DeploymentWindow(QWidget):
 
         self._instances_entry = InstancesEntry()
         self._instances_entry.instance_created.connect(self._on_instance_created)
+        self._instances_entry.navigate_requested.connect(self._on_navigate)
         self._stack.addWidget(self._instances_entry)  # 0
 
         self._deploy_entry = DeployEntry()
@@ -137,6 +138,9 @@ class DeploymentWindow(QWidget):
 
         self._output_entry = OutputEntry()
         self._stack.addWidget(self._output_entry)  # 4
+
+        # Give configure entry a reference to the output entry for log streaming
+        self._configure_entry.set_output_entry(self._output_entry)
 
         body.addWidget(self._stack, stretch=1)
         main_layout.addLayout(body, stretch=1)
@@ -159,9 +163,12 @@ class DeploymentWindow(QWidget):
             self._no_client_label.setVisible(False)
             self._main_area.setVisible(True)
 
-            # Pass client context to deploy entry for wizard launch
+            # Pass client context for wizard launch
             if self._master_db_path and self._client_id:
                 self._deploy_entry.set_client_context(
+                    self._master_db_path, self._client_id,
+                )
+                self._instances_entry.set_client_context(
                     self._master_db_path, self._client_id,
                 )
 
@@ -209,6 +216,11 @@ class DeploymentWindow(QWidget):
         """Handle instance creation/update from the Instances entry."""
         if self._conn:
             self._picker.refresh(self._conn)
+
+    def _on_navigate(self, sidebar_index: int) -> None:
+        """Handle navigation request from an entry (e.g. Instances → Configure)."""
+        if 0 <= sidebar_index < len(_ENTRIES):
+            self._sidebar.setCurrentRow(sidebar_index)
 
     # ------------------------------------------------------------------
     # Banner

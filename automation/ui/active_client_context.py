@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 from datetime import UTC, datetime
+from pathlib import Path
 
 from PySide6.QtCore import QObject, Signal
 
@@ -73,12 +74,19 @@ class ActiveClientContext(QObject):
         :param client: The client to activate.
         :returns: None on success, or an error string on failure.
         """
+        # Step 0: Ensure the .crmbuilder directory and database exist
+        # so the Deployment tab can activate without requiring the
+        # Requirements tab to have run first.
+        if client.project_folder:
+            db_path = Path(client.database_path)
+            db_path.parent.mkdir(parents=True, exist_ok=True)
+
         # Step 1: Reachability check
         result = check_reachability(client.project_folder, client.code)
         if not result.is_reachable:
             return result.error
 
-        # Step 2 & 3: Open new database
+        # Step 2 & 3: Open new database (applies pending migrations)
         try:
             new_conn = run_client_migrations(client.database_path)
         except Exception as exc:

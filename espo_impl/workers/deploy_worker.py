@@ -6,6 +6,7 @@ from PySide6.QtCore import QThread, Signal
 
 from espo_impl.core.deploy_manager import (
     check_dns,
+    check_server_os,
     cleanup_phase1,
     cleanup_phase2,
     connect_ssh,
@@ -77,6 +78,20 @@ class DeployWorker(QThread):
 
     def _run_phases(self, ssh) -> None:
         """Run phases starting from start_phase."""
+        # Pre-flight OS check (only when starting from Phase 1 or 2)
+        if self.start_phase <= 2:
+            self._log("Checking server OS compatibility...")
+            supported, error = check_server_os(ssh, self._log)
+            if not supported:
+                self._log(error, "error")
+                self.phase_started.emit(max(self.start_phase, 1))
+                self.phase_failed.emit(
+                    max(self.start_phase, 1),
+                    "Server OS is not supported — see log for details",
+                )
+                self.deployment_finished.emit(False)
+                return
+
         # Phase 1
         if self.start_phase <= 1:
             # DNS check before Phase 1
