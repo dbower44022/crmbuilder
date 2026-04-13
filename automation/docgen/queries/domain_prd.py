@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import sqlite3
 
+from automation.docgen.queries import get_client_row
+
 
 def query(
     conn: sqlite3.Connection,
@@ -39,9 +41,7 @@ def query(
     }
 
     if master_conn:
-        row = master_conn.execute(
-            "SELECT name, code FROM Client ORDER BY id LIMIT 1"
-        ).fetchone()
+        row = get_client_row(master_conn, conn, columns="name, code")
         if row:
             data["client_name"] = row[0]
             data["client_short_name"] = row[1]

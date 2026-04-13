@@ -112,6 +112,19 @@ class DocumentsView(QWidget):
         else:
             self._title.setText("Documents")
 
+    def _open_master_conn(self) -> sqlite3.Connection | None:
+        """Open a read-only connection to the master database.
+
+        :returns: sqlite3.Connection or None if path is unavailable.
+        """
+        if not self._master_db_path:
+            return None
+        try:
+            return sqlite3.connect(self._master_db_path)
+        except Exception:
+            logger.warning("Could not open master database at %s", self._master_db_path)
+            return None
+
     def set_project_folder(self, project_folder: str | None) -> None:
         """Set the project folder for document generation.
 
@@ -184,7 +197,9 @@ class DocumentsView(QWidget):
 
         try:
             from automation.docgen.generator import DocumentGenerator
-            docgen = DocumentGenerator(self._conn, project_folder=self._project_folder)
+            master_conn = self._open_master_conn()
+            docgen = DocumentGenerator(self._conn, master_conn=master_conn,
+                                       project_folder=self._project_folder)
             results = docgen.generate_batch(selected_ids, mode="final")
 
             success = sum(1 for r in results if not r.error)
@@ -217,7 +232,9 @@ class DocumentsView(QWidget):
 
         try:
             from automation.docgen.generator import DocumentGenerator
-            docgen = DocumentGenerator(self._conn, project_folder=self._project_folder)
+            master_conn = self._open_master_conn()
+            docgen = DocumentGenerator(self._conn, master_conn=master_conn,
+                                       project_folder=self._project_folder)
             result = docgen.generate(work_item_id, mode=mode)
 
             if result.error:

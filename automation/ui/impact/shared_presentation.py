@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from automation.ui.common.status_row_styling import apply_impact_row_style
 from automation.ui.common.toast import show_toast
 from automation.ui.impact.impact_logic import (
     ImpactDisplayRow,
@@ -120,9 +121,14 @@ class ImpactRow(QWidget):
             status_label.setStyleSheet(f"font-size: 10px; color: {color}; font-weight: bold;")
             layout.addWidget(status_label)
 
-        # Subdued styling for informational impacts
+        # Row styling based on review state
         if not impact.requires_review:
-            self.setStyleSheet("background-color: #FAFAFA;")
+            review_key = "informational"
+        elif impact.reviewed:
+            review_key = "flagged" if impact.action_required else "reviewed"
+        else:
+            review_key = "unreviewed"
+        apply_impact_row_style(self, review_key)
 
     def _navigate_to_browser(self, table_name: str, record_id: int) -> None:
         """Navigate to a record in the Data Browser."""

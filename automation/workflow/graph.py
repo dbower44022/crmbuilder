@@ -75,6 +75,49 @@ def _find_work_item(
     return row[0] if row else None
 
 
+def _ensure_work_item(
+    conn: sqlite3.Connection,
+    item_type: str,
+    *,
+    status: str = "not_started",
+    domain_id: int | None = None,
+    entity_id: int | None = None,
+    process_id: int | None = None,
+) -> tuple[int, bool]:
+    """Return (work_item_id, created) — find existing or insert new.
+
+    Idempotent: returns the existing work item ID if one already matches,
+    otherwise creates a new one.
+
+    :returns: Tuple of (work_item_id, True if newly created).
+    """
+    existing = _find_work_item(
+        conn, item_type,
+        domain_id=domain_id, entity_id=entity_id, process_id=process_id,
+    )
+    if existing is not None:
+        return existing, False
+    wid = _insert_work_item(
+        conn, item_type, status=status,
+        domain_id=domain_id, entity_id=entity_id, process_id=process_id,
+    )
+    return wid, True
+
+
+def _ensure_dependency(
+    conn: sqlite3.Connection,
+    work_item_id: int,
+    depends_on_id: int,
+) -> None:
+    """Insert a Dependency row if it does not already exist."""
+    existing = conn.execute(
+        "SELECT 1 FROM Dependency WHERE work_item_id = ? AND depends_on_id = ?",
+        (work_item_id, depends_on_id),
+    ).fetchone()
+    if existing is None:
+        _insert_dependency(conn, work_item_id, depends_on_id)
+
+
 def _recalculate_all(conn: sqlite3.Connection) -> None:
     """Recalculate status for all not_started work items."""
     rows = conn.execute(
@@ -109,13 +152,28 @@ def after_master_prd_import(conn: sqlite3.Connection) -> None:
 
     Section 9.4.2: Creates business_object_discovery depending on master_prd.
     Recalculates — if master_prd is complete, business_object_discovery
-    transitions to ready.
+    transitions to ready.  Idempotent — skips creation if the work item
+    already exists.
 
     :param conn: An open sqlite3.Connection.
     """
     master_prd_id = _find_work_item(conn, "master_prd")
     if master_prd_id is None:
         raise ValueError("master_prd work item not found")
+
+    # Guard: skip if business_object_discovery already exists
+    existing_bod = _find_work_item(conn, "business_object_discovery")
+    if existing_bod is not None:
+        # Recalculate status in case upstream changed
+        with transaction(conn):
+            new_status = calculate_status(conn, existing_bod)
+            if new_status == "ready":
+                conn.execute(
+                    "UPDATE WorkItem SET status = 'ready', updated_at = CURRENT_TIMESTAMP "
+                    "WHERE id = ? AND status != 'ready'",
+                    (existing_bod,),
+                )
+        return
 
     with transaction(conn):
         bod_id = _insert_work_item(conn, "business_object_discovery")
@@ -159,12 +217,12 @@ def after_business_object_discovery_import(conn: sqlite3.Connection) -> None:
         # One per entity, depends on business_object_discovery
         entity_prd_ids: dict[int, int] = {}  # entity_id -> work_item_id
         for entity_id, primary_domain_id in entities:
-            wid = _insert_work_item(
+            wid, _ = _ensure_work_item(
                 conn, "entity_prd",
                 domain_id=primary_domain_id,
                 entity_id=entity_id,
             )
-            _insert_dependency(conn, wid, bod_id)
+            _ensure_dependency(conn, wid, bod_id)
             entity_prd_ids[entity_id] = wid
 
         # -- Domain Overview (Phase 3) --
@@ -172,14 +230,14 @@ def after_business_object_discovery_import(conn: sqlite3.Connection) -> None:
         # entity whose primary_domain_id matches this domain
         domain_overview_ids: dict[int, int] = {}  # domain_id -> work_item_id
         for (domain_id,) in domains:
-            wid = _insert_work_item(
+            wid, _ = _ensure_work_item(
                 conn, "domain_overview", domain_id=domain_id,
             )
-            _insert_dependency(conn, wid, bod_id)
+            _ensure_dependency(conn, wid, bod_id)
             # Add dependencies on entity PRDs for entities in this domain
             for entity_id, primary_domain_id in entities:
                 if primary_domain_id == domain_id:
-                    _insert_dependency(conn, wid, entity_prd_ids[entity_id])
+                    _ensure_dependency(conn, wid, entity_prd_ids[entity_id])
             domain_overview_ids[domain_id] = wid
 
         # -- Process Definitions (Phase 5) --
@@ -188,15 +246,15 @@ def after_business_object_discovery_import(conn: sqlite3.Connection) -> None:
         process_def_ids: dict[int, int] = {}  # process_id -> work_item_id
         prev_process_in_domain: dict[int, int] = {}  # domain_id -> last process work_item_id
         for process_id, domain_id, _sort_order in processes:
-            wid = _insert_work_item(
+            wid, _ = _ensure_work_item(
                 conn, "process_definition",
                 domain_id=domain_id,
                 process_id=process_id,
             )
-            _insert_dependency(conn, wid, domain_overview_ids[domain_id])
+            _ensure_dependency(conn, wid, domain_overview_ids[domain_id])
             # Chain to prior process in same domain
             if domain_id in prev_process_in_domain:
-                _insert_dependency(conn, wid, prev_process_in_domain[domain_id])
+                _ensure_dependency(conn, wid, prev_process_in_domain[domain_id])
             prev_process_in_domain[domain_id] = wid
             process_def_ids[process_id] = wid
 
@@ -204,51 +262,51 @@ def after_business_object_discovery_import(conn: sqlite3.Connection) -> None:
         # One per domain, depends on all process_definitions in that domain
         domain_recon_ids: dict[int, int] = {}  # domain_id -> work_item_id
         for (domain_id,) in domains:
-            wid = _insert_work_item(
+            wid, _ = _ensure_work_item(
                 conn, "domain_reconciliation", domain_id=domain_id,
             )
             for process_id, proc_domain_id, _ in processes:
                 if proc_domain_id == domain_id:
-                    _insert_dependency(conn, wid, process_def_ids[process_id])
+                    _ensure_dependency(conn, wid, process_def_ids[process_id])
             domain_recon_ids[domain_id] = wid
 
         # -- Stakeholder Review (Phase 7) --
         # One per domain, depends on domain_reconciliation
         stakeholder_ids: dict[int, int] = {}  # domain_id -> work_item_id
         for (domain_id,) in domains:
-            wid = _insert_work_item(
+            wid, _ = _ensure_work_item(
                 conn, "stakeholder_review", domain_id=domain_id,
             )
-            _insert_dependency(conn, wid, domain_recon_ids[domain_id])
+            _ensure_dependency(conn, wid, domain_recon_ids[domain_id])
             stakeholder_ids[domain_id] = wid
 
         # -- YAML Generation (Phase 8) --
         # One per domain, depends on stakeholder_review
         yaml_gen_ids: dict[int, int] = {}  # domain_id -> work_item_id
         for (domain_id,) in domains:
-            wid = _insert_work_item(
+            wid, _ = _ensure_work_item(
                 conn, "yaml_generation", domain_id=domain_id,
             )
-            _insert_dependency(conn, wid, stakeholder_ids[domain_id])
+            _ensure_dependency(conn, wid, stakeholder_ids[domain_id])
             yaml_gen_ids[domain_id] = wid
 
         # -- CRM Selection (Phase 9) --
         # Singleton, depends on all yaml_generation items
-        crm_selection_id = _insert_work_item(conn, "crm_selection")
+        crm_selection_id, _ = _ensure_work_item(conn, "crm_selection")
         for yg_id in yaml_gen_ids.values():
-            _insert_dependency(conn, crm_selection_id, yg_id)
+            _ensure_dependency(conn, crm_selection_id, yg_id)
 
         # -- CRM Deployment (Phase 10) --
-        crm_deployment_id = _insert_work_item(conn, "crm_deployment")
-        _insert_dependency(conn, crm_deployment_id, crm_selection_id)
+        crm_deployment_id, _ = _ensure_work_item(conn, "crm_deployment")
+        _ensure_dependency(conn, crm_deployment_id, crm_selection_id)
 
         # -- CRM Configuration (Phase 11) --
-        crm_config_id = _insert_work_item(conn, "crm_configuration")
-        _insert_dependency(conn, crm_config_id, crm_deployment_id)
+        crm_config_id, _ = _ensure_work_item(conn, "crm_configuration")
+        _ensure_dependency(conn, crm_config_id, crm_deployment_id)
 
         # -- Verification (Phase 12) --
-        verification_id = _insert_work_item(conn, "verification")
-        _insert_dependency(conn, verification_id, crm_config_id)
+        verification_id, _ = _ensure_work_item(conn, "verification")
+        _ensure_dependency(conn, verification_id, crm_config_id)
 
         # Full recalculation pass
         _recalculate_all(conn)
@@ -281,18 +339,18 @@ def add_entity(conn: sqlite3.Connection, entity_id: int) -> int:
     primary_domain_id = row[0]
 
     with transaction(conn):
-        wid = _insert_work_item(
+        wid, created = _ensure_work_item(
             conn, "entity_prd",
             domain_id=primary_domain_id,
             entity_id=entity_id,
         )
-        _insert_dependency(conn, wid, bod_id)
+        _ensure_dependency(conn, wid, bod_id)
         # BOD is complete, so this should be ready
         new_status = calculate_status(conn, wid)
         if new_status == "ready":
             conn.execute(
                 "UPDATE WorkItem SET status = 'ready', updated_at = CURRENT_TIMESTAMP "
-                "WHERE id = ?",
+                "WHERE id = ? AND status != 'ready'",
                 (wid,),
             )
     return wid

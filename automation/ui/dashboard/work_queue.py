@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 from automation.ui.common.readable_first import format_work_item_name
 from automation.ui.common.staleness_indicators import StalenessIndicator
 from automation.ui.common.status_badges import StatusBadge
+from automation.ui.common.status_row_styling import apply_work_item_row_style
 from automation.ui.dashboard.dashboard_logic import WorkItemRow
 
 
@@ -67,6 +68,8 @@ class WorkQueueRow(QWidget):
         # Staleness indicator (for display only — data calculated elsewhere)
         self._staleness = StalenessIndicator(False)
         layout.addWidget(self._staleness)
+
+        apply_work_item_row_style(self, item.status)
 
     def mousePressEvent(self, event) -> None:
         self.clicked.emit(self._item_id)

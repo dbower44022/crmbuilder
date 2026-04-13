@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from automation.ui.common.status_row_styling import apply_session_row_style
 from automation.ui.work_item.work_item_logic import SessionRow
 
 
@@ -96,6 +97,8 @@ class SessionCard(QWidget):
 
         self._detail.setVisible(False)
         layout.addWidget(self._detail)
+
+        apply_session_row_style(self, session.import_status)
 
     def _toggle(self) -> None:
         visible = not self._detail.isVisible()

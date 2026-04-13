@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from automation.ui.common.readable_first import format_work_item_name
 from automation.ui.common.status_badges import StatusBadge
+from automation.ui.common.status_row_styling import apply_work_item_row_style
 from automation.ui.work_item.work_item_logic import DependencyRow
 
 
@@ -41,6 +42,8 @@ class DependencyItemRow(QWidget):
 
         badge = StatusBadge(dep.status)
         layout.addWidget(badge)
+
+        apply_work_item_row_style(self, dep.status)
 
     def mousePressEvent(self, event) -> None:
         self.clicked.emit(self._work_item_id)

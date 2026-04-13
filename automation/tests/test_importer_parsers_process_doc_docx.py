@@ -161,11 +161,17 @@ class TestMNIntake:
         assert "payload" in envelope
 
     def test_source_metadata(self):
-        envelope_json, _ = parse(FIXTURE_MN, _work_item())
+        envelope_json, report = parse(FIXTURE_MN, _work_item())
         meta = json.loads(envelope_json)["payload"]["source_metadata"]
         assert meta["domain_code"] == "MN"
         assert meta["process_code"] == "MN-INTAKE"
         assert "sub_domain_code" not in meta
+        assert meta["version"] == "2.3"
+        assert meta["process_name"] == "MN-INTAKE"  # fallback — no Process Name row
+        assert any(
+            w.category == "missing_optional_header_row"
+            for w in report.warnings
+        )
 
     def test_personas(self):
         envelope_json, _ = parse(FIXTURE_MN, _work_item())
@@ -186,7 +192,9 @@ class TestMNIntake:
     def test_requirements(self):
         envelope_json, _ = parse(FIXTURE_MN, _work_item())
         reqs = json.loads(envelope_json)["payload"]["system_requirements"]
-        assert len(reqs) == 9
+        assert len(reqs) == 13
+        assert reqs[0]["identifier"] == "MN-INTAKE-REQ-001"
+        assert reqs[-1]["identifier"] == "MN-INTAKE-REQ-013"
         for r in reqs:
             assert r["identifier"].startswith("MN-INTAKE-REQ-")
             assert r["priority"] == "must"
@@ -224,7 +232,7 @@ class TestMNIntake:
 
 
 # -------------------------------------------------------------------------
-# 2 — Real document: CR-PARTNER-MANAGE (skipped until fixture exists)
+# 2 — Real document: CR-PARTNER-MANAGE
 # -------------------------------------------------------------------------
 
 
@@ -238,20 +246,70 @@ class TestCRPartnerManage:
         assert "payload" in envelope
 
     def test_source_metadata_with_subdomain(self):
-        envelope_json, _ = parse(FIXTURE_CR, _work_item())
+        envelope_json, report = parse(FIXTURE_CR, _work_item())
         meta = json.loads(envelope_json)["payload"]["source_metadata"]
+        assert meta["process_code"] == "CR-PARTNER-MANAGE"
         assert meta["domain_code"] == "CR"
         assert meta["sub_domain_code"] == "CR-PARTNER"
-        assert meta["process_code"].startswith("CR-PARTNER-")
+        assert meta["version"] == "1.0"
+        assert meta["process_name"] == "CR-PARTNER-MANAGE"  # fallback
+        assert any(
+            w.category == "missing_optional_header_row"
+            for w in report.warnings
+        )
+
+    def test_personas(self):
+        envelope_json, _ = parse(FIXTURE_CR, _work_item())
+        personas = json.loads(envelope_json)["payload"]["personas"]
+        assert len(personas) == 1
+        assert personas[0]["identifier"] == "MST-PER-008"
+        assert personas[0]["name"] == "Partner Coordinator"
 
     def test_workflow_format_b(self):
         envelope_json, _ = parse(FIXTURE_CR, _work_item())
         steps = json.loads(envelope_json)["payload"]["workflow"]
-        assert len(steps) >= 5
+        assert len(steps) == 10
+        assert steps[0]["name"] == "Liaison Touchpoints"
+        assert steps[9]["name"] == "Partner Contact Management"
         for s in steps:
             assert s["step_type"] == "action"
-        sort_orders = [s["sort_order"] for s in steps]
-        assert sort_orders == list(range(1, len(steps) + 1))
+
+    def test_requirements(self):
+        envelope_json, _ = parse(FIXTURE_CR, _work_item())
+        reqs = json.loads(envelope_json)["payload"]["system_requirements"]
+        assert len(reqs) == 18
+
+    def test_process_data(self):
+        envelope_json, _ = parse(FIXTURE_CR, _work_item())
+        pd = json.loads(envelope_json)["payload"]["process_data"]
+        assert len(pd) == 7
+        names = [e["entity_name"] for e in pd]
+        assert "Engagement" in names
+        assert "Session" in names
+
+    def test_data_collected(self):
+        envelope_json, _ = parse(FIXTURE_CR, _work_item())
+        dc = json.loads(envelope_json)["payload"]["data_collected"]
+        assert len(dc) == 5
+        names = [e["entity_name"] for e in dc]
+        assert "Account" in names
+        assert "Partnership Agreement" in names
+
+    def test_open_issues(self):
+        envelope_json, report = parse(FIXTURE_CR, _work_item())
+        issues = json.loads(envelope_json)["open_issues"]
+        assert len(issues) == 3
+        ids = {i["identifier"] for i in issues}
+        assert ids == {
+            "CR-PARTNER-MANAGE-ISS-001",
+            "CR-PARTNER-MANAGE-ISS-002",
+            "CR-PARTNER-MANAGE-ISS-003",
+        }
+        # Second table flagged
+        assert any(
+            w.category == "multiple_tables" and "Section 9" in w.location
+            for w in report.warnings
+        )
 
 
 # -------------------------------------------------------------------------

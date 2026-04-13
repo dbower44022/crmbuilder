@@ -14,7 +14,6 @@ from PySide6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
 from automation.ui.client_context import ClientContext
 from automation.ui.dashboard.dashboard_logic import (
     build_phase_groups,
-    build_work_queue,
     compute_summary,
     filter_items,
     get_stale_count,
@@ -25,7 +24,6 @@ from automation.ui.dashboard.filters import FilterBar
 from automation.ui.dashboard.inventory import ProjectInventory
 from automation.ui.dashboard.staleness_summary import StalenessSummaryBanner
 from automation.ui.dashboard.summary_bar import SummaryBar
-from automation.ui.dashboard.work_queue import WorkQueue
 
 
 class DashboardView(QWidget):
@@ -67,11 +65,6 @@ class DashboardView(QWidget):
         content_layout = QVBoxLayout(content)
         content_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Work queue
-        self._work_queue = WorkQueue()
-        self._work_queue.item_clicked.connect(self.work_item_selected.emit)
-        content_layout.addWidget(self._work_queue)
-
         # Inventory
         self._inventory = ProjectInventory()
         self._inventory.item_clicked.connect(self.work_item_selected.emit)
@@ -106,16 +99,13 @@ class DashboardView(QWidget):
         self._apply_filters()
 
     def _apply_filters(self) -> None:
-        """Re-filter and update the work queue and inventory."""
+        """Re-filter and update the inventory."""
         filtered = filter_items(
             self._all_items,
             domain_filter=self._filter_bar.domain_filter,
             phase_filter=self._filter_bar.phase_filter,
             status_filter=self._filter_bar.status_filter,
         )
-        queue = build_work_queue(filtered)
-        self._work_queue.update_items(queue)
-
         groups = build_phase_groups(filtered)
         self._inventory.update_groups(groups)
 

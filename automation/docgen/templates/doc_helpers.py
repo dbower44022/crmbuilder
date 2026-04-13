@@ -409,14 +409,26 @@ def add_two_col_table(doc, h1: str, h2: str, rows: list[tuple[str, str]],
 # Metadata table (key-value pairs)
 # ---------------------------------------------------------------------------
 
-def add_meta_table(doc, pairs: list[tuple[str, str]],
+def add_meta_table(doc, pairs: list[tuple[str, str | list[str]]],
                    widths: list[int] | None = None) -> object:
-    """Add a metadata key-value table (no header row, shaded keys)."""
+    """Add a metadata key-value table (no header row, shaded keys).
+
+    Values may be a plain string or a list of strings.  When a list is
+    provided, each item is rendered as a bulleted paragraph inside the
+    value cell.
+    """
     from automation.docgen.templates.formatting import META_COL_WIDTHS_PROCESS
     w = widths or META_COL_WIDTHS_PROCESS
 
     table = doc.add_table(rows=0, cols=2)
     table.autofit = False
+
+    # Set the table grid column widths so Word respects the requested sizes
+    tbl_grid = table._tbl.find(qn("w:tblGrid"))
+    if tbl_grid is not None:
+        for i, grid_col in enumerate(tbl_grid.findall(qn("w:gridCol"))):
+            if i < len(w):
+                grid_col.set(qn("w:w"), str(w[i]))
 
     for key, value in pairs:
         row = table.add_row()
@@ -428,10 +440,33 @@ def add_meta_table(doc, pairs: list[tuple[str, str]],
 
         # Value cell
         val_cell = row.cells[1]
-        _format_cell(val_cell, value, size=SMALL_SIZE)
+        if isinstance(value, list):
+            _format_cell_bulleted(val_cell, value)
+        else:
+            _format_cell(val_cell, value, size=SMALL_SIZE)
+        _apply_standard_borders(val_cell)
+        _apply_standard_margins(val_cell)
         _set_cell_width(val_cell, w[1])
 
     return table
+
+
+def _format_cell_bulleted(cell, items: list[str]) -> None:
+    """Write a list of items as bulleted paragraphs inside a cell."""
+    cell.text = ""
+    # Use the first (default) paragraph for the first bullet
+    for i, item in enumerate(items):
+        if i == 0:
+            p = cell.paragraphs[0]
+        else:
+            p = cell.add_paragraph()
+        run = p.add_run(f"\u2022 {item}")
+        run.font.name = FONT_NAME
+        run.font.size = SMALL_SIZE
+        # Tight spacing between bullets
+        pf = p.paragraph_format
+        pf.space_before = Pt(0)
+        pf.space_after = Pt(1)
 
 
 # ---------------------------------------------------------------------------

@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 from automation.ui.common.status_badges import StatusBadge
+from automation.ui.common.status_row_styling import apply_document_row_style
 from automation.ui.common.toast import show_toast
 from automation.ui.documents.documents_logic import DocumentEntry, DocumentStatus
 
@@ -122,9 +123,7 @@ class DocumentRow(QWidget):
             self._staleness = StalenessExpansion(entry)
             layout.addWidget(self._staleness)
 
-        self.setStyleSheet(
-            "DocumentRow { border-bottom: 1px solid #E0E0E0; }"
-        )
+        apply_document_row_style(self, entry.document_status)
 
     @property
     def is_selected(self) -> bool:

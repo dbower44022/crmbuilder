@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 
 from automation.ui.common.readable_first import format_work_item_name
 from automation.ui.common.status_badges import StatusBadge
+from automation.ui.common.status_row_styling import apply_work_item_row_style
 from automation.ui.dashboard.dashboard_logic import PhaseGroup, WorkItemRow
 
 
@@ -48,6 +49,8 @@ class InventoryItemRow(QWidget):
             reason = QLabel(f"Blocked: {item.blocked_reason}")
             reason.setStyleSheet("font-size: 11px; color: #C62828;")
             layout.addWidget(reason)
+
+        apply_work_item_row_style(self, item.status)
 
     def mousePressEvent(self, event) -> None:
         self.clicked.emit(self._item_id)

@@ -258,8 +258,16 @@ def _parse_header_table(
                 f"domain code prefix '{domain_code}-'"
             )
 
-    # Process Name
-    result["process_name"] = meta.get("Process Name", "")
+    # Process Name — optional; falls back to process code when absent
+    process_name_raw = meta.get("Process Name", "")
+    if process_name_raw:
+        result["process_name"] = process_name_raw
+    else:
+        result["process_name"] = process_code
+        report.warn(
+            "missing_optional_header_row", "Process Name",
+            "Process Name row absent \u2014 defaulting to process code",
+        )
 
     # Optional metadata fields
     for field in ("Version", "Status", "Last Updated"):

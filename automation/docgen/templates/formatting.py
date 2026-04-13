@@ -98,6 +98,9 @@ META_COL_WIDTHS_PROCESS = [2400, 6960]
 # Metadata table column widths (Entity PRD)
 META_COL_WIDTHS_ENTITY = [2800, 6560]
 
+# Metadata table column widths (Master PRD persona/domain detail: 30%/70%)
+META_COL_WIDTHS_MASTER_PRD = [2808, 6552]
+
 # ---------------------------------------------------------------------------
 # Cell margins (in DXA, matching JS templates)
 # ---------------------------------------------------------------------------
