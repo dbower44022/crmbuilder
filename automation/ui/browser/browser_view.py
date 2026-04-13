@@ -55,7 +55,7 @@ class BrowserView(QWidget):
         # Left: navigation tree
         self._tree = NavigationTree()
         self._tree.record_selected.connect(self._on_record_selected)
-        self._tree.setMaximumWidth(300)
+        self._tree.setMinimumWidth(200)
 
         # Right: content stack
         self._right_stack = QStackedWidget()
@@ -92,8 +92,9 @@ class BrowserView(QWidget):
         splitter = QSplitter()
         splitter.addWidget(self._tree)
         splitter.addWidget(self._right_stack)
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 1)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 2)
+        splitter.setSizes([450, 550])
         layout.addWidget(splitter)
 
     def refresh(self, conn: sqlite3.Connection) -> None:

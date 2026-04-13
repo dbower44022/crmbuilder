@@ -78,11 +78,17 @@ class NavigationTree(QWidget):
         """Populate the QTreeWidget from TreeNode data."""
         self._tree.clear()
         for node in roots:
-            item = self._create_item(node)
+            item = self._create_item(node, [])
             self._tree.addTopLevelItem(item)
 
-    def _create_item(self, node: TreeNode) -> QTreeWidgetItem:
-        """Create a QTreeWidgetItem from a TreeNode."""
+    def _create_item(
+        self, node: TreeNode, ancestors: list[str]
+    ) -> QTreeWidgetItem:
+        """Create a QTreeWidgetItem from a TreeNode.
+
+        :param node: The tree node data.
+        :param ancestors: List of ancestor labels for building the tooltip path.
+        """
         label = node.label
         if node.expandable and node.child_count > 0:
             label = f"{node.label} ({node.child_count})"
@@ -90,8 +96,18 @@ class NavigationTree(QWidget):
         item = QTreeWidgetItem([label])
         item.setData(0, Qt.ItemDataRole.UserRole, node)
 
+        # Build multiline tooltip with hierarchy path
+        tooltip_lines = [label]
+        if ancestors:
+            path = " > ".join(ancestors)
+            tooltip_lines.append(f"\nPath: {path}")
+        if node.table_name:
+            tooltip_lines.append(f"Table: {node.table_name}")
+        item.setToolTip(0, "\n".join(tooltip_lines))
+
+        child_ancestors = [*ancestors, node.label]
         for child in node.children:
-            item.addChild(self._create_item(child))
+            item.addChild(self._create_item(child, child_ancestors))
 
         return item
 
