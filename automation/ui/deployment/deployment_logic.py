@@ -412,6 +412,7 @@ def record_configuration_run(
     operation: str,
     outcome: str,
     error_message: str | None,
+    log_output: str | None,
     started_at: str,
     completed_at: str,
 ) -> int:
@@ -423,10 +424,10 @@ def record_configuration_run(
     cursor = conn.execute(
         "INSERT INTO ConfigurationRun "
         "(instance_id, file_name, file_version, file_hash, operation, "
-        "outcome, error_message, started_at, completed_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "outcome, error_message, log_output, started_at, completed_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (instance_id, file_name, file_version, file_hash, operation,
-         outcome, error_message, started_at, completed_at),
+         outcome, error_message, log_output, started_at, completed_at),
     )
     conn.commit()
     return cursor.lastrowid
@@ -472,6 +473,25 @@ def load_last_runs(
     return result
 
 
+def load_run_log(
+    conn: sqlite3.Connection, run_id: int
+) -> tuple[str | None, str | None, str | None]:
+    """Load the log output for a specific configuration run.
+
+    :param conn: Per-client database connection.
+    :param run_id: The ConfigurationRun.id.
+    :returns: (file_name, completed_at, log_output) or (None, None, None).
+    """
+    row = conn.execute(
+        "SELECT file_name, completed_at, log_output "
+        "FROM ConfigurationRun WHERE id = ?",
+        (run_id,),
+    ).fetchone()
+    if row is None:
+        return None, None, None
+    return row[0], row[1], row[2]
+
+
 # ---------------------------------------------------------------------------
 # Phase status banner
 # ---------------------------------------------------------------------------
@@ -481,7 +501,7 @@ def load_last_runs(
 ENTRY_TO_WORK_ITEM_TYPE: dict[str, str] = {
     "Deploy": "crm_deployment",
     "Configure": "crm_configuration",
-    "Verify": "verification",
+    "Run History": "verification",
 }
 
 

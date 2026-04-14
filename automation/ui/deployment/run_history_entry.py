@@ -13,12 +13,15 @@ import sqlite3
 from pathlib import Path
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
     QComboBox,
+    QDialog,
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QMessageBox,
+    QPlainTextEdit,
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
@@ -29,6 +32,13 @@ from PySide6.QtWidgets import (
 from automation.ui.deployment.deployment_logic import (
     InstanceRow,
     load_instances,
+    load_run_log,
+)
+
+_PRIMARY_STYLE = (
+    "QPushButton { background-color: #1565C0; color: white; "
+    "border-radius: 4px; padding: 6px 14px; font-size: 12px; } "
+    "QPushButton:hover { background-color: #0D47A1; }"
 )
 
 _EMPTY_NO_INSTANCES = (
@@ -66,6 +76,7 @@ class RunHistoryEntry(QWidget):
         self._instance: InstanceRow | None = None
         self._project_folder: str | None = None
         self._runs: list[tuple] = []
+        self._run_ids: list[int] = []  # parallel to table rows
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -94,6 +105,11 @@ class RunHistoryEntry(QWidget):
         filter_bar.addWidget(self._operation_filter)
 
         filter_bar.addStretch()
+
+        self._view_log_btn = QPushButton("View Log")
+        self._view_log_btn.setStyleSheet(_PRIMARY_STYLE)
+        self._view_log_btn.clicked.connect(self._on_view_log)
+        filter_bar.addWidget(self._view_log_btn)
 
         self._refresh_btn = QPushButton("Refresh")
         self._refresh_btn.clicked.connect(self._on_refresh_click)
@@ -210,7 +226,7 @@ class RunHistoryEntry(QWidget):
             where_sql = "WHERE " + " AND ".join(where_clauses)
 
         rows = self._conn.execute(
-            "SELECT cr.file_name, cr.file_version, cr.operation, "
+            "SELECT cr.id, cr.file_name, cr.file_version, cr.operation, "
             "cr.outcome, i.name, cr.started_at, cr.completed_at, "
             "cr.file_hash "
             "FROM ConfigurationRun cr "
@@ -234,14 +250,16 @@ class RunHistoryEntry(QWidget):
         """Fill the table from query results."""
         self._table.setSortingEnabled(False)
         self._table.setRowCount(len(rows))
+        self._run_ids = []
 
         programs_dir = None
         if self._project_folder:
             programs_dir = Path(self._project_folder) / "programs"
 
         for row_idx, r in enumerate(rows):
-            file_name, file_version, operation, outcome, inst_name, \
+            run_id, file_name, file_version, operation, outcome, inst_name, \
                 started_at, completed_at, file_hash = r
+            self._run_ids.append(run_id)
 
             self._table.setItem(row_idx, 0, QTableWidgetItem(file_name))
             self._table.setItem(
@@ -323,3 +341,57 @@ class RunHistoryEntry(QWidget):
 
     def _on_refresh_click(self) -> None:
         self._load_and_display()
+
+    # ── View Log ───────────────────────────────────────────────────
+
+    def _on_view_log(self) -> None:
+        """Show the stored log output for the selected run."""
+        row = self._table.currentRow()
+        if row < 0 or row >= len(self._run_ids):
+            QMessageBox.information(
+                self, "No Selection",
+                "Select a run in the table first.",
+            )
+            return
+
+        if not self._conn:
+            return
+
+        run_id = self._run_ids[row]
+        file_name, completed_at, log_output = load_run_log(
+            self._conn, run_id
+        )
+
+        if log_output is None:
+            QMessageBox.information(
+                self, "No Log Available",
+                "No log output was recorded for this run.\n\n"
+                "Logs are captured for runs made after this feature "
+                "was added.",
+            )
+            return
+
+        ts = (completed_at or "")[:19].replace("T", " ")
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Run Log — {file_name} ({ts})")
+        dialog.setMinimumSize(750, 550)
+
+        layout = QVBoxLayout(dialog)
+
+        viewer = QPlainTextEdit()
+        viewer.setReadOnly(True)
+        viewer.setPlainText(log_output)
+        viewer.setFont(QFont("Monospace", 10))
+        viewer.setStyleSheet(
+            "QPlainTextEdit { background-color: #1E1E1E; color: #D4D4D4; }"
+        )
+        layout.addWidget(viewer)
+
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(dialog.accept)
+        btn_row.addWidget(close_btn)
+        layout.addLayout(btn_row)
+
+        dialog.exec()

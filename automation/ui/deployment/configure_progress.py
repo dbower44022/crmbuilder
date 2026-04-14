@@ -101,6 +101,7 @@ class ConfigureProgressDialog(QDialog):
         self._current_file_idx = 0
         self._total_files = len(files)
         self._current_file_info: YamlFileInfo | None = None
+        self._current_log_lines: list[str] = []
         # Per-file results: maps file path → (outcome, timestamp)
         self._file_results: dict[str, tuple[str, str]] = {}
 
@@ -225,6 +226,7 @@ class ConfigureProgressDialog(QDialog):
         self._current_program = program
         self._current_file_idx += 1
         self._current_started_at = datetime.now().isoformat(timespec="seconds")
+        self._current_log_lines = []
 
         # Compute file hash for change detection
         try:
@@ -264,6 +266,7 @@ class ConfigureProgressDialog(QDialog):
         """Handle a line of output from the RunWorker."""
         level = _COLOR_TO_LEVEL.get(color, "info")
         self._append_log(text, level)
+        self._current_log_lines.append(text)
 
         # Heuristic: lines starting with known result markers count as
         # completed operations for progress tracking.
@@ -310,6 +313,8 @@ class ConfigureProgressDialog(QDialog):
                 if self._current_program:
                     file_version = self._current_program.content_version
 
+                log_text = "\n".join(self._current_log_lines)
+
                 record_configuration_run(
                     self._conn,
                     instance_id=self._instance.id,
@@ -319,6 +324,7 @@ class ConfigureProgressDialog(QDialog):
                     operation=self._operation,
                     outcome=outcome,
                     error_message=error_message,
+                    log_output=log_text,
                     started_at=self._current_started_at,
                     completed_at=now_iso,
                 )
