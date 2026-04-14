@@ -17,7 +17,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from espo_impl.core.models import InstanceProfile
+from espo_impl.core.models import InstanceProfile, InstanceRole
+
+_ROLE_BADGES: dict[InstanceRole, str] = {
+    InstanceRole.SOURCE: "[SRC]",
+    InstanceRole.TARGET: "[TGT]",
+    InstanceRole.BOTH: "[S+T]",
+}
 from espo_impl.ui.instance_dialog import InstanceDialog
 
 logger = logging.getLogger(__name__)
@@ -95,6 +101,11 @@ class InstancePanel(QWidget):
                 continue
             try:
                 data = json.loads(path.read_text(encoding="utf-8"))
+                role_str = data.get("role", "target")
+                try:
+                    role = InstanceRole(role_str)
+                except ValueError:
+                    role = InstanceRole.TARGET
                 profile = InstanceProfile(
                     name=data["name"],
                     url=data["url"],
@@ -102,9 +113,11 @@ class InstancePanel(QWidget):
                     auth_method=data.get("auth_method", "api_key"),
                     secret_key=data.get("secret_key"),
                     project_folder=data.get("project_folder"),
+                    role=role,
                 )
                 self._profiles.append(profile)
-                self.list_widget.addItem(profile.name)
+                badge = _ROLE_BADGES[profile.role]
+                self.list_widget.addItem(f"{badge}  {profile.name}")
             except (json.JSONDecodeError, KeyError) as exc:
                 logger.warning("Failed to load instance %s: %s", path, exc)
 
@@ -119,6 +132,7 @@ class InstancePanel(QWidget):
             "url": profile.url,
             "api_key": profile.api_key,
             "auth_method": profile.auth_method,
+            "role": profile.role.value,
         }
         if profile.secret_key:
             data["secret_key"] = profile.secret_key

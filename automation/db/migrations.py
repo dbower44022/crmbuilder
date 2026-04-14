@@ -393,12 +393,78 @@ def _client_v5(conn: sqlite3.Connection) -> None:
     )
 
 
+def _client_v6(conn: sqlite3.Connection) -> None:
+    """Add log_output column to ConfigurationRun for stored run output."""
+    cols = conn.execute("PRAGMA table_info(ConfigurationRun)").fetchall()
+    col_names = {row[1] for row in cols}
+    if "log_output" not in col_names:
+        conn.execute(
+            "ALTER TABLE ConfigurationRun ADD COLUMN log_output TEXT"
+        )
+
+
+def _client_v7(conn: sqlite3.Connection) -> None:
+    """Rebuild ConfigurationRun to allow 'audit' in operation CHECK constraint.
+
+    SQLite cannot ALTER CHECK constraints, so the table is rebuilt using
+    the 12-step redefinition pattern.
+    """
+    tables = {
+        row[0]
+        for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )
+    }
+    if "ConfigurationRun" not in tables:
+        # Table doesn't exist yet; v5 will create it with the updated CHECK
+        return
+
+    create_new = CONFIGURATION_RUN_TABLE.replace(
+        "CREATE TABLE ConfigurationRun",
+        "CREATE TABLE ConfigurationRun_new",
+        1,
+    )
+
+    fk_setting = conn.execute("PRAGMA foreign_keys").fetchone()[0]
+    orig_isolation = conn.isolation_level
+    conn.isolation_level = None
+
+    try:
+        conn.execute("PRAGMA foreign_keys = OFF")
+        conn.execute("BEGIN")
+        conn.execute(create_new)
+        conn.execute(
+            "INSERT INTO ConfigurationRun_new "
+            "(id, instance_id, file_name, file_version, file_hash, "
+            "operation, outcome, error_message, log_output, "
+            "started_at, completed_at, created_at) "
+            "SELECT id, instance_id, file_name, file_version, file_hash, "
+            "operation, outcome, error_message, log_output, "
+            "started_at, completed_at, created_at "
+            "FROM ConfigurationRun"
+        )
+        conn.execute("DROP TABLE ConfigurationRun")
+        conn.execute(
+            "ALTER TABLE ConfigurationRun_new RENAME TO ConfigurationRun"
+        )
+        conn.execute("COMMIT")
+    except Exception:
+        conn.execute("ROLLBACK")
+        conn.execute("DROP TABLE IF EXISTS ConfigurationRun_new")
+        raise
+    finally:
+        conn.execute(f"PRAGMA foreign_keys = {'ON' if fk_setting else 'OFF'}")
+        conn.isolation_level = orig_isolation
+
+
 CLIENT_MIGRATIONS: list[tuple[int, Migration]] = [
     (1, _client_v1),
     (2, _client_v2),
     (3, _client_v3),
     (4, _client_v4),
     (5, _client_v5),
+    (6, _client_v6),
+    (7, _client_v7),
 ]
 
 

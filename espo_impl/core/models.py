@@ -5,6 +5,14 @@ from enum import Enum
 from pathlib import Path
 
 
+class InstanceRole(Enum):
+    """Role of an EspoCRM instance in the workflow."""
+
+    SOURCE = "source"
+    TARGET = "target"
+    BOTH = "both"
+
+
 @dataclass
 class InstanceProfile:
     """An EspoCRM instance connection profile.
@@ -15,6 +23,7 @@ class InstanceProfile:
     :param auth_method: Authentication method ("api_key" or "hmac").
     :param secret_key: Secret key for HMAC authentication.
     :param project_folder: Path to client project directory.
+    :param role: Instance role — source (audit), target (deploy/configure), or both.
     """
 
     name: str
@@ -23,6 +32,7 @@ class InstanceProfile:
     auth_method: str = "api_key"
     secret_key: str | None = None
     project_folder: str | None = None
+    role: InstanceRole = InstanceRole.TARGET
 
     @property
     def programs_dir(self) -> Path | None:

@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from automation.ui.deployment.audit_entry import AuditEntry
 from automation.ui.deployment.configure_entry import ConfigureEntry
 from automation.ui.deployment.deploy_entry import DeployEntry
 from automation.ui.deployment.deployment_logic import (
@@ -35,14 +36,15 @@ from automation.ui.deployment.run_history_entry import RunHistoryEntry
 logger = logging.getLogger(__name__)
 
 # Sidebar entry names
-_ENTRIES = ["Instances", "Deploy", "Configure", "Run History", "Output"]
+_ENTRIES = ["Instances", "Deploy", "Configure", "Run History", "Audit", "Output"]
 
 # Content stack indices
 _IDX_INSTANCES = 0
 _IDX_DEPLOY = 1
 _IDX_CONFIGURE = 2
 _IDX_RUN_HISTORY = 3
-_IDX_OUTPUT = 4
+_IDX_AUDIT = 4
+_IDX_OUTPUT = 5
 
 # Entries that show the phase status banner (§14.12.2)
 _BANNER_ENTRIES = {"Deploy", "Configure"}
@@ -136,11 +138,15 @@ class DeploymentWindow(QWidget):
         self._run_history_entry = RunHistoryEntry()
         self._stack.addWidget(self._run_history_entry)  # 3
 
-        self._output_entry = OutputEntry()
-        self._stack.addWidget(self._output_entry)  # 4
+        self._audit_entry = AuditEntry()
+        self._stack.addWidget(self._audit_entry)  # 4
 
-        # Give configure entry a reference to the output entry for log streaming
+        self._output_entry = OutputEntry()
+        self._stack.addWidget(self._output_entry)  # 5
+
+        # Give configure and audit entries a reference to the output entry
         self._configure_entry.set_output_entry(self._output_entry)
+        self._audit_entry.set_output_entry(self._output_entry)
 
         body.addWidget(self._stack, stretch=1)
         main_layout.addLayout(body, stretch=1)
@@ -255,6 +261,10 @@ class DeploymentWindow(QWidget):
             )
         elif index == _IDX_RUN_HISTORY:
             self._run_history_entry.refresh(
+                self._conn, instance, self._project_folder, has_instances
+            )
+        elif index == _IDX_AUDIT:
+            self._audit_entry.refresh(
                 self._conn, instance, self._project_folder, has_instances
             )
         elif index == _IDX_OUTPUT:

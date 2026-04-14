@@ -1,6 +1,6 @@
 # CRM Builder — User Guide
 
-**Version:** 4.1
+**Version:** 5.0
 **Last Updated:** April 2026
 
 ---
@@ -20,12 +20,14 @@ The core workflow is:
    platforms and a recommendation is made
 3. **Deploy an instance** — CRM Builder provisions a new instance or
    connects to an existing one
-4. **Configure** — fields, layouts, and relationships are deployed
+4. **Audit an existing instance** — read the current configuration
+   of a live CRM and produce YAML files as a starting point
+5. **Configure** — fields, layouts, and relationships are deployed
    from declarative YAML files
-5. **Verify and maintain** — configuration is checked against the
+6. **Verify and maintain** — configuration is checked against the
    spec at any time; changes are managed through the same workflow
 
-The current release focuses on Steps 3–5 for EspoCRM. Steps 1 and 2
+The current release focuses on Steps 3–6 for EspoCRM. Steps 1 and 2
 are under development.
 
 ---
@@ -97,12 +99,34 @@ An instance profile stores the connection details for a CRM instance.
    - **URL** — the CRM instance base URL
    - **Auth Method** — see Authentication Methods below
    - **Credentials** — API key, or username and password
+   - **Role** — see Instance Roles below
    - **Project Folder** — click **Browse** to select the client
      folder on your filesystem
 3. Click **Save**
 
 CRM Builder creates `programs/`, `reports/`, and `Implementation Docs/`
 subdirectories inside the project folder automatically.
+
+### Instance Roles
+
+Each instance has a role that determines which operations are available:
+
+| Role | Badge | Operations | When to Use |
+|------|-------|-----------|-------------|
+| **Target** | `[TGT]` | Deploy, Configure | Default — instances you manage and configure |
+| **Source** | `[SRC]` | Audit | Existing instances you want to read from |
+| **Both** | `[S+T]` | All | Same instance for auditing and configuring |
+
+The instance list shows a role badge next to each name so you can
+tell at a glance which is which.
+
+**When do you need a Source instance?** When you want to audit an
+existing CRM that was configured manually — or migrate configuration
+from one instance to another. The audit reads the CRM's current
+fields, layouts, and relationships and produces YAML files you can
+edit and apply elsewhere.
+
+Existing instances created before this feature default to **Target**.
 
 ### Authentication Methods
 
@@ -385,6 +409,149 @@ files are produced on completion.
 - **Boolean fixed values** — `"true"` / `"false"` strings are
   converted to the correct boolean type
 - **Empty values** — empty string values are excluded from the import
+
+---
+
+## Auditing an Existing CRM
+
+The Audit feature reads the current configuration of a live CRM
+instance and produces YAML program files — the same format used by
+Configure. This gives you a starting point when:
+
+- Adopting CRM Builder on a CRM that was configured manually
+- Capturing a baseline before making changes
+- Migrating configuration from one CRM instance to another
+
+### Before You Start
+
+1. Create an instance profile for the CRM you want to audit (see
+   Managing Instances above)
+2. Set its **Role** to **Source** (or **Both** if you also plan to
+   configure it)
+3. Ensure the instance URL and credentials are correct — the audit
+   needs read access to the CRM's Metadata API
+
+### Running an Audit
+
+1. Open the **Deployment** tab
+2. Select the source instance from the picker at the top
+3. Click **Audit** in the sidebar
+4. Review the **Source Instance** info panel to confirm the correct
+   CRM is selected
+5. Adjust the **Audit Scope** checkboxes if needed:
+
+| Option | Default | What It Does |
+|--------|---------|-------------|
+| Custom entity fields | On | Include custom fields on custom entities |
+| Native entity custom fields | On | Include custom fields added to Contact, Account, etc. |
+| Detail layouts | On | Capture detail view panel/row/tab structure |
+| List layouts | On | Capture list view column definitions |
+| Relationships | On | Discover links between entities |
+| Include native fields | Off | Include built-in fields (firstName, etc.) that normally exist by default |
+
+6. Click **Start Audit**
+
+### What Happens During the Audit
+
+A progress dialog appears showing real-time output:
+
+```
+[AUDIT]    Connecting to https://crm.example.com ...
+[AUDIT]    Connection successful.
+[AUDIT]    Discovering entities ...
+[AUDIT]    Found 8 custom entities, 3 native entities with custom fields
+[AUDIT]    Contact — extracting 12 custom fields ...
+[AUDIT]    Contact — 12 fields extracted
+[AUDIT]    Contact — detail layout (3 panels, 14 rows)
+[AUDIT]    Contact — list layout (8 columns)
+[AUDIT]    Engagement — extracting 6 custom fields ...
+[AUDIT]    Discovering relationships ...
+[AUDIT]    Found 8 relationships
+[AUDIT]    Writing YAML files to audit-20260414-103000/ ...
+[AUDIT]    Inserting database records ...
+[AUDIT]    Audit complete — 12 files written, 142 DB records.
+```
+
+The audit follows a best-effort strategy: if a single entity or field
+fails to read, the audit logs a warning and continues with the rest.
+Only connection failures or filesystem errors stop the audit entirely.
+
+### What the Audit Produces
+
+**YAML files** are written to a timestamped folder inside your
+project's `programs/` directory:
+
+```
+~/Projects/CBM/programs/audit-20260414-103000/
+├── Contact.yaml           # Native entity with custom fields
+├── Engagement.yaml        # Custom entity
+├── Dues.yaml              # Custom entity
+├── Session.yaml           # Custom entity
+└── relationships.yaml     # All discovered relationships
+```
+
+Each entity file follows the standard YAML program file format
+(see Writing YAML Program Files). You can immediately open, edit,
+and re-apply these files through the Configure workflow.
+
+**Database records** are also inserted into the client database
+(Entity, Field, FieldOption, Relationship, and Layout rows) for use
+by the Requirements tab and other CRM Builder features.
+
+### After the Audit
+
+- Click **Open Output Folder** to view the generated YAML files in
+  your file manager
+- Switch to the **Configure** sidebar entry — the new YAML files
+  appear in the program file list
+- Edit the YAML files to add descriptions, adjust field options, or
+  remove fields you don't need
+- Run the files against a target instance to replicate or modify the
+  configuration
+
+### How Names Are Translated
+
+The CRM stores custom names with platform prefixes (`cContactType`,
+`CEngagement`). The audit reverses these to natural names
+(`contactType`, `Engagement`) — the same names you would write in
+YAML by hand.
+
+| What the CRM Stores | What the YAML Shows | Rule |
+|---------------------|---------------------|------|
+| `cContactType` | `contactType` | Strip `c`, lowercase next letter |
+| `CEngagement` | `Engagement` | Strip `C` from custom entity |
+| `CSessions` | `Session` | Known name mapping (plural → singular) |
+| `Contact` | `Contact` | Native entity — unchanged |
+
+Fields that exist by default on every entity of that type (like
+`firstName` on Contact) are excluded unless you check the
+**Include native fields** option.
+
+### What Is Not Captured
+
+Some information exists only in your YAML source files and is not
+stored in the CRM's configuration:
+
+- **Field descriptions** — business rationale and PRD references
+- **Field tooltips** — hover text for end users
+- **Field categories** — the tab grouping label
+- **Option descriptions** — explanations of individual enum values
+
+After auditing, you'll want to add these documentation properties
+manually. They are important for the generated reference manual and
+for stakeholder review.
+
+### Migration Workflow
+
+To migrate configuration from one CRM to another:
+
+1. Create the source CRM as a **Source** instance
+2. Create the target CRM as a **Target** instance (or deploy a new
+   one through the Deploy workflow)
+3. Run an audit on the source instance
+4. Review and edit the generated YAML files
+5. Select the target instance and run the YAML files through Configure
+6. Verify the target instance matches the expected configuration
 
 ---
 
@@ -892,6 +1059,28 @@ Your program file contains `action: delete_and_create` or
 only on test instances or when doing a clean rebuild with no live
 data. Click **Cancel** to safely abort.
 
+### Audit shows "Connection failed"
+Verify the source instance URL and credentials. The audit needs the
+same level of API access as Configure — an admin API key or Basic
+auth with admin credentials. Try editing the instance and
+re-entering the credentials.
+
+### Audit produces empty YAML files
+The CRM may have no custom fields. If all fields are native
+(built-in), the audit has nothing to capture unless you check
+**Include native fields** in the scope options.
+
+### Audit is missing some entities
+The audit excludes system entities (Preferences, AuthToken,
+ScheduledJob, etc.) that are internal to the CRM platform. Only
+customizable entities — custom entities and native entities like
+Contact and Account — are included.
+
+### Audit YAML fails validation when run through Configure
+Some field types or configurations returned by the CRM may not
+match the supported YAML schema. Check the YAML file for fields
+with unusual types and adjust them manually.
+
 ### Recovery — SSH connection fails
 Verify that the instance's deployment configuration has the correct
 IP address and SSH key path. The SSH key must be accessible on your
@@ -923,6 +1112,7 @@ then edit the instance in CRM Builder and enter the new API key.
 
 | Version | Date | Changes |
 |---|---|---|
+| 5.0 | April 2026 | Added CRM Audit feature (auditing existing instances, instance roles, migration workflow) |
 | 4.1 | April 2026 | Added Recovery Tools section (Reset Admin Credentials, Full Database Reset) and related troubleshooting entries |
 | 4.0 | March 2026 | Rewritten for new documentation structure. Updated to reflect project folder model, content versioning, layout and relationship configuration, import wizard, and Generate Docs |
 | 3.0 | March 2026 | Added data import wizard |

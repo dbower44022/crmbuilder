@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from PySide6.QtWidgets import (
+    QButtonGroup,
     QComboBox,
     QDialog,
     QDialogButtonBox,
@@ -13,10 +14,11 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QRadioButton,
     QWidget,
 )
 
-from espo_impl.core.models import InstanceProfile
+from espo_impl.core.models import InstanceProfile, InstanceRole
 
 AUTH_METHODS = [
     ("API Key", "api_key"),
@@ -53,6 +55,7 @@ class InstanceDialog(QDialog):
                 self.secret_input.setText(profile.secret_key)
             if profile.project_folder:
                 self.folder_input.setText(profile.project_folder)
+            self._role_buttons[profile.role].setChecked(True)
         else:
             self.setWindowTitle("Add Instance")
 
@@ -87,6 +90,22 @@ class InstanceDialog(QDialog):
         layout.addRow(self.secret_label, self.secret_input)
         self.secret_label.setVisible(False)
         self.secret_input.setVisible(False)
+
+        # Instance role
+        role_layout = QHBoxLayout()
+        self.role_group = QButtonGroup(self)
+        self._role_buttons: dict[InstanceRole, QRadioButton] = {}
+        for role, label in [
+            (InstanceRole.TARGET, "Target"),
+            (InstanceRole.SOURCE, "Source"),
+            (InstanceRole.BOTH, "Both"),
+        ]:
+            btn = QRadioButton(label)
+            self.role_group.addButton(btn)
+            self._role_buttons[role] = btn
+            role_layout.addWidget(btn)
+        self._role_buttons[InstanceRole.TARGET].setChecked(True)
+        layout.addRow("Role:", role_layout)
 
         # Project folder
         folder_layout = QHBoxLayout()
@@ -192,6 +211,12 @@ class InstanceDialog(QDialog):
             if auth_method in ("hmac", "basic")
             else None
         )
+        role = InstanceRole.TARGET
+        for r, btn in self._role_buttons.items():
+            if btn.isChecked():
+                role = r
+                break
+
         return InstanceProfile(
             name=self.name_input.text().strip(),
             url=self.url_input.text().strip(),
@@ -199,4 +224,5 @@ class InstanceDialog(QDialog):
             auth_method=auth_method,
             secret_key=secret_key,
             project_folder=self.folder_input.text().strip() or None,
+            role=role,
         )

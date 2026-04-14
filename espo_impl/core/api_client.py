@@ -202,6 +202,58 @@ class EspoAdminClient:
         url = f"{self.profile.api_url}/Admin/rebuild"
         return self._request("POST", url)
 
+    # --- Metadata discovery endpoints (audit) ---
+
+    def get_all_scopes(self) -> tuple[int, dict[str, dict] | None]:
+        """Fetch all entity scopes from metadata.
+
+        :returns: Tuple of (status_code, {scopeName: {entity, isCustom, ...}} or None).
+        """
+        url = f"{self.profile.api_url}/Metadata?key=scopes"
+        return self._request("GET", url)
+
+    def get_entity_full_metadata(
+        self, entity: str
+    ) -> tuple[int, dict[str, Any] | None]:
+        """Fetch complete entityDefs for an entity.
+
+        :param entity: EspoCRM entity name (e.g., "Contact", "CEngagement").
+        :returns: Tuple of (status_code, full entityDefs dict or None).
+        """
+        url = f"{self.profile.api_url}/Metadata?key=entityDefs.{entity}"
+        return self._request("GET", url)
+
+    def get_all_links(
+        self, entity: str
+    ) -> tuple[int, dict[str, dict] | None]:
+        """Fetch all link definitions for an entity.
+
+        :param entity: EspoCRM entity name.
+        :returns: Tuple of (status_code, {linkName: {type, entity, foreign, ...}} or None).
+        """
+        url = f"{self.profile.api_url}/Metadata?key=entityDefs.{entity}.links"
+        return self._request("GET", url)
+
+    def get_language_translations(
+        self, entity: str, language: str = "en_US"
+    ) -> tuple[int, dict[str, Any] | None]:
+        """Fetch translated labels for an entity's fields and links.
+
+        :param entity: EspoCRM entity name.
+        :param language: Language code (default: "en_US").
+        :returns: Tuple of (status_code, translation dict or None).
+        """
+        url = (
+            f"{self.profile.api_url}/Metadata"
+            f"?key=i18n.{language}.{entity}"
+        )
+        status, body = self._request("GET", url)
+        if status == 200 and body:
+            return status, body
+        # Fallback: try the I18n endpoint
+        url = f"{self.profile.api_url}/I18n?language={language}"
+        return self._request("GET", url)
+
     # --- Relationship Manager endpoints ---
 
     def get_link(
