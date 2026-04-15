@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 
 class InstanceRole(Enum):
@@ -204,6 +205,40 @@ class DuplicateCheck:
 
 
 @dataclass
+class OrderByClause:
+    """A single sort specification in a saved view.
+
+    :param field: Field name to sort by.
+    :param direction: Sort direction — ``asc`` or ``desc``.
+    """
+
+    field: str
+    direction: str = "asc"
+
+
+@dataclass
+class SavedView:
+    """A predefined list-view filter from the ``savedViews:`` block.
+
+    :param id: Stable identifier for drift detection; unique within the entity.
+    :param name: User-visible label shown in the CRM's list-view selector.
+    :param description: Optional descriptive text.
+    :param columns: Field names to show in display order.
+    :param filter: Parsed condition expression AST (from Section 11).
+    :param order_by: Sort specification(s).
+    :param filter_raw: Original raw filter data (for round-tripping).
+    """
+
+    id: str
+    name: str
+    description: str | None = None
+    columns: list[str] | None = None
+    filter: Any = None  # ConditionNode from condition_expression
+    order_by: list[OrderByClause] = field(default_factory=list)
+    filter_raw: Any = None
+
+
+@dataclass
 class EntityDefinition:
     """Entity definition from a YAML program file.
 
@@ -229,6 +264,7 @@ class EntityDefinition:
     description: str | None = None
     settings: EntitySettings | None = None
     duplicate_checks: list[DuplicateCheck] = field(default_factory=list)
+    saved_views: list[SavedView] = field(default_factory=list)
     settings_raw: dict | None = None
     duplicate_checks_raw: list | None = None
     saved_views_raw: list | None = None
@@ -392,6 +428,26 @@ class DuplicateCheckResult:
     error: str | None = None
 
 
+class SavedViewStatus(Enum):
+    """Outcome status for a saved-view operation."""
+
+    CREATED = "created"
+    UPDATED = "updated"
+    SKIPPED = "skipped"
+    DRIFT = "drift"
+    ERROR = "error"
+
+
+@dataclass
+class SavedViewResult:
+    """Result of processing a single saved view."""
+
+    entity: str
+    view_id: str
+    status: SavedViewStatus
+    error: str | None = None
+
+
 class FieldStatus(Enum):
     """Outcome status for a single field operation."""
 
@@ -451,6 +507,11 @@ class RunSummary:
     duplicate_checks_skipped: int = 0
     duplicate_checks_drift: int = 0
     duplicate_checks_failed: int = 0
+    saved_views_created: int = 0
+    saved_views_updated: int = 0
+    saved_views_skipped: int = 0
+    saved_views_drift: int = 0
+    saved_views_failed: int = 0
 
 
 @dataclass
@@ -479,6 +540,7 @@ class RunReport:
     tooltip_results: list[TooltipResult] = field(default_factory=list)
     settings_results: list[SettingsResult] = field(default_factory=list)
     duplicate_check_results: list[DuplicateCheckResult] = field(default_factory=list)
+    saved_view_results: list[SavedViewResult] = field(default_factory=list)
 
 
 @dataclass

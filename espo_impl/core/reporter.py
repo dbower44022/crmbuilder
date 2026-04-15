@@ -11,6 +11,7 @@ from espo_impl.core.models import (
     LayoutResult,
     RelationshipResult,
     RunReport,
+    SavedViewResult,
     SettingsResult,
     TooltipResult,
 )
@@ -156,6 +157,23 @@ class Reporter:
             lines.append(f"  Skipped               : {report.summary.settings_skipped}")
             lines.append(f"  Failed                : {report.summary.settings_failed}")
 
+        if report.saved_view_results:
+            lines.append("")
+            for result in report.saved_view_results:
+                status_str = result.status.value.upper()
+                line = f"  {result.entity}.savedViews[{result.view_id}] : {status_str}"
+                if result.error:
+                    line += f" \u2014 {result.error}"
+                lines.append(line)
+            lines.append("")
+            total_sv = len(report.saved_view_results)
+            lines.append(f"Total saved views        : {total_sv}")
+            lines.append(f"  Created               : {report.summary.saved_views_created}")
+            lines.append(f"  Updated               : {report.summary.saved_views_updated}")
+            lines.append(f"  Skipped               : {report.summary.saved_views_skipped}")
+            lines.append(f"  Drift                 : {report.summary.saved_views_drift}")
+            lines.append(f"  Failed                : {report.summary.saved_views_failed}")
+
         if report.duplicate_check_results:
             lines.append("")
             for result in report.duplicate_check_results:
@@ -219,6 +237,10 @@ class Reporter:
             "duplicate_check_results": [
                 self._duplicate_check_result_to_dict(r)
                 for r in report.duplicate_check_results
+            ],
+            "saved_view_results": [
+                self._saved_view_result_to_dict(r)
+                for r in report.saved_view_results
             ],
         }
         path.write_text(
@@ -307,6 +329,21 @@ class Reporter:
         return {
             "entity": result.entity,
             "rule_id": result.rule_id,
+            "status": result.status.value,
+            "error": result.error,
+        }
+
+    def _saved_view_result_to_dict(
+        self, result: SavedViewResult
+    ) -> dict:
+        """Convert a SavedViewResult to a JSON-serializable dict.
+
+        :param result: Single saved-view result.
+        :returns: Dict for JSON report.
+        """
+        return {
+            "entity": result.entity,
+            "view_id": result.view_id,
             "status": result.status.value,
             "error": result.error,
         }

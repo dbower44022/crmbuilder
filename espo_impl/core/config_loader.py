@@ -6,6 +6,7 @@ from typing import Any
 
 import yaml
 
+from espo_impl.core.condition_expression import parse_condition, validate_condition
 from espo_impl.core.models import (
     SUPPORTED_ENTITY_TYPES,
     VALID_NORMALIZE_VALUES,
@@ -18,9 +19,11 @@ from espo_impl.core.models import (
     EntitySettings,
     FieldDefinition,
     LayoutSpec,
+    OrderByClause,
     PanelSpec,
     ProgramFile,
     RelationshipDefinition,
+    SavedView,
     TabSpec,
 )
 
@@ -167,6 +170,9 @@ class ConfigLoader:
                     duplicate_checks_raw
                 )
 
+                # Parse saved views into typed models
+                saved_views = self._parse_saved_views(saved_views_raw)
+
                 entities.append(EntityDefinition(
                     name=entity_name,
                     fields=fields,
@@ -180,6 +186,7 @@ class ConfigLoader:
                     description=entity_data.get("description"),
                     settings=settings,
                     duplicate_checks=duplicate_checks,
+                    saved_views=saved_views,
                     settings_raw=settings_raw,
                     duplicate_checks_raw=duplicate_checks_raw,
                     saved_views_raw=saved_views_raw,
@@ -276,6 +283,9 @@ class ConfigLoader:
 
         # Validate duplicate checks
         errors.extend(self._validate_duplicate_checks(entity))
+
+        # Validate saved views
+        errors.extend(self._validate_saved_views(entity))
 
         # Validate layouts
         for layout_type, layout_spec in entity.layouts.items():
@@ -667,6 +677,140 @@ class ConfigLoader:
                 alertTo=item.get("alertTo"),
             ))
         return checks
+
+    def _parse_saved_views(
+        self, raw: list | None,
+    ) -> list[SavedView]:
+        """Parse a raw ``savedViews:`` list into typed models.
+
+        :param raw: Raw list from YAML (or None).
+        :returns: List of SavedView instances.
+        """
+        if not raw or not isinstance(raw, list):
+            return []
+        views: list[SavedView] = []
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+
+            # Parse filter via condition_expression
+            filter_raw = item.get("filter")
+            parsed_filter = None
+            if filter_raw is not None:
+                try:
+                    parsed_filter = parse_condition(filter_raw)
+                except ValueError:
+                    # Validation will catch this; store None
+                    pass
+
+            # Parse orderBy — single object or list of objects
+            order_by: list[OrderByClause] = []
+            raw_order = item.get("orderBy")
+            if isinstance(raw_order, dict):
+                order_by.append(OrderByClause(
+                    field=str(raw_order.get("field", "")),
+                    direction=str(raw_order.get("direction", "asc")),
+                ))
+            elif isinstance(raw_order, list):
+                for ob in raw_order:
+                    if isinstance(ob, dict):
+                        order_by.append(OrderByClause(
+                            field=str(ob.get("field", "")),
+                            direction=str(ob.get("direction", "asc")),
+                        ))
+
+            # Parse columns
+            columns = item.get("columns")
+            if isinstance(columns, list):
+                columns = [str(c) for c in columns]
+            else:
+                columns = None
+
+            views.append(SavedView(
+                id=str(item.get("id", "")),
+                name=str(item.get("name", "")),
+                description=item.get("description"),
+                columns=columns,
+                filter=parsed_filter,
+                order_by=order_by,
+                filter_raw=filter_raw,
+            ))
+        return views
+
+    def _validate_saved_views(
+        self, entity: EntityDefinition
+    ) -> list[str]:
+        """Validate the entity's ``savedViews:`` block per spec Section 10.
+
+        :param entity: Entity definition to validate.
+        :returns: List of error messages.
+        """
+        errors: list[str] = []
+        if not entity.saved_views:
+            return errors
+
+        field_names = {f.name for f in entity.fields}
+        seen_ids: set[str] = set()
+
+        for view in entity.saved_views:
+            prefix = f"{entity.name}.savedViews[{view.id or '(no id)'}]"
+
+            # id is required and must be unique
+            if not view.id:
+                errors.append(f"{prefix}: missing required property 'id'")
+            elif view.id in seen_ids:
+                errors.append(
+                    f"{prefix}: duplicate id '{view.id}' within entity"
+                )
+            seen_ids.add(view.id)
+
+            # name is required
+            if not view.name:
+                errors.append(f"{prefix}: missing required property 'name'")
+
+            # filter is required
+            if view.filter_raw is None:
+                errors.append(f"{prefix}: missing required property 'filter'")
+            elif view.filter is None:
+                # parse_condition failed at load time
+                try:
+                    parse_condition(view.filter_raw)
+                except ValueError as exc:
+                    errors.append(f"{prefix}.filter: {exc}")
+            else:
+                # Validate field references in filter
+                filter_errors = validate_condition(view.filter, field_names)
+                for err in filter_errors:
+                    errors.append(f"{prefix}.filter: {err}")
+
+            # columns field-reference checks
+            if view.columns:
+                for col in view.columns:
+                    if col not in field_names:
+                        errors.append(
+                            f"{prefix}.columns: field '{col}' not found "
+                            f"on entity '{entity.name}'"
+                        )
+
+            # orderBy validation
+            for ob in view.order_by:
+                ob_prefix = f"{prefix}.orderBy"
+                if not ob.field:
+                    errors.append(
+                        f"{ob_prefix}: missing required property 'field'"
+                    )
+                elif ob.field not in field_names:
+                    errors.append(
+                        f"{ob_prefix}: field '{ob.field}' not found "
+                        f"on entity '{entity.name}'"
+                    )
+                if ob.direction not in ("asc", "desc"):
+                    errors.append(
+                        f"{ob_prefix}: invalid direction '{ob.direction}' "
+                        f"(must be 'asc' or 'desc')"
+                    )
+
+        return errors
 
     def _validate_settings(self, entity: EntityDefinition) -> list[str]:
         """Validate the entity's ``settings:`` block per spec Section 10.

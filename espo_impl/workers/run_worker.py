@@ -22,11 +22,16 @@ from espo_impl.core.models import (
     InstanceProfile,
     ProgramFile,
     RelationshipStatus,
+    SavedViewStatus,
     SettingsStatus,
 )
 from espo_impl.core.relationship_manager import (
     RelationshipManager,
     RelationshipManagerError,
+)
+from espo_impl.core.saved_view_manager import (
+    SavedViewManager,
+    SavedViewManagerError,
 )
 
 
@@ -199,6 +204,31 @@ class RunWorker(QThread):
         else:
             self._duplicate_check_results = []
 
+        # Step 4b: Apply saved views
+        has_saved_views = any(
+            e.saved_views and e.action != EntityAction.DELETE
+            for e in self.program.entities
+        )
+        if has_saved_views:
+            self.output_line.emit("", "white")
+            self.output_line.emit(
+                "=== SAVED VIEWS ===", "white"
+            )
+            sv_mgr = SavedViewManager(
+                client, self.output_line.emit
+            )
+            try:
+                sv_results = sv_mgr.process_saved_views(
+                    self.program
+                )
+            except SavedViewManagerError as exc:
+                self.finished_error.emit(str(exc))
+                return
+
+            self._saved_view_results = sv_results
+        else:
+            self._saved_view_results = []
+
         # Step 5: Process fields
         has_fields = any(
             e.fields and e.action != EntityAction.DELETE
@@ -240,6 +270,22 @@ class RunWorker(QThread):
                     report.summary.duplicate_checks_drift += 1
                 elif dr.status == DuplicateCheckStatus.ERROR:
                     report.summary.duplicate_checks_failed += 1
+
+        if self._saved_view_results:
+            report.saved_view_results.extend(
+                self._saved_view_results
+            )
+            for svr in self._saved_view_results:
+                if svr.status == SavedViewStatus.CREATED:
+                    report.summary.saved_views_created += 1
+                elif svr.status == SavedViewStatus.UPDATED:
+                    report.summary.saved_views_updated += 1
+                elif svr.status == SavedViewStatus.SKIPPED:
+                    report.summary.saved_views_skipped += 1
+                elif svr.status == SavedViewStatus.DRIFT:
+                    report.summary.saved_views_drift += 1
+                elif svr.status == SavedViewStatus.ERROR:
+                    report.summary.saved_views_failed += 1
 
         # Step 6: Process layouts
         has_layouts = any(
