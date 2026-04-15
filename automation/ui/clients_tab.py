@@ -339,6 +339,21 @@ class ClientsTab(QWidget):
         )
 
         layout.addStretch()
+
+        # Delete Client button (danger zone, pinned to bottom)
+        self._detail_delete_btn = QPushButton("Delete Client")
+        self._detail_delete_btn.setStyleSheet(
+            "QPushButton { padding: 6px 16px; font-size: 12px; "
+            "background-color: #E53935; color: white; border: none; "
+            "border-radius: 3px; } "
+            "QPushButton:hover { background-color: #C62828; }"
+        )
+        self._detail_delete_btn.clicked.connect(self._on_delete_client)
+        layout.addWidget(
+            self._detail_delete_btn,
+            alignment=Qt.AlignmentFlag.AlignRight,
+        )
+
         return widget
 
     def _populate_detail(self, client: Client) -> None:
@@ -702,6 +717,67 @@ class ClientsTab(QWidget):
             "Master PRD Prompt Ready",
             "\n".join(msg_parts),
         )
+
+    # ------------------------------------------------------------------
+    # Delete Client
+    # ------------------------------------------------------------------
+
+    def _on_delete_client(self) -> None:
+        """Delete the selected client after confirmation."""
+        if not self._selected_client:
+            QMessageBox.information(self, "No Client", "Select a client first.")
+            return
+
+        client = self._selected_client
+
+        reply = QMessageBox.warning(
+            self,
+            "Delete Client",
+            f"Are you sure you want to delete '{client.name}' ({client.code})?\n\n"
+            "This will remove the client from CRM Builder and delete its "
+            "database (requirements, workflow, configuration history).\n\n"
+            "The project folder and its files (programs, reports, PRDs) "
+            "will NOT be deleted.\n\n"
+            "This action cannot be undone.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        # If this is the active client, deactivate first
+        if (self._active_context.client
+                and self._active_context.client.id == client.id):
+            self._active_context.clear()
+
+        # Delete the client database file
+        db_path = Path(client.database_path)
+        if db_path.exists():
+            try:
+                db_path.unlink()
+            except OSError:
+                pass  # Non-critical; master row deletion is what matters
+
+        # Delete the master DB row
+        try:
+            conn = sqlite3.connect(self._master_db_path)
+            try:
+                conn.execute(
+                    "DELETE FROM Client WHERE id = ?", (client.id,)
+                )
+                conn.commit()
+            finally:
+                conn.close()
+        except sqlite3.Error as exc:
+            QMessageBox.warning(
+                self, "Delete Failed",
+                f"Could not delete client: {exc}",
+            )
+            return
+
+        self._selected_client = None
+        self._refresh_list()
+        self._detail_stack.setCurrentIndex(_DETAIL_EMPTY)
 
     # ------------------------------------------------------------------
     # Create Client

@@ -294,9 +294,9 @@ def _migrate_one_file(
             )
             return
         try:
-            conn = sqlite3.connect(db_path)
-            # Ensure Instance table exists (should from migrations)
-            conn.execute("SELECT 1 FROM Instance LIMIT 0")
+            from automation.db.migrations import run_client_migrations
+
+            conn = run_client_migrations(db_path)
             client_conns[client_id] = conn
         except Exception as exc:
             report.skipped += 1
