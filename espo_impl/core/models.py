@@ -98,6 +98,8 @@ class FieldDefinition:
     tooltip: str | None = None
     required_when_raw: list | dict | None = None
     visible_when_raw: list | dict | None = None
+    required_when: Any = None  # ConditionNode from condition_expression
+    visible_when: Any = None  # ConditionNode from condition_expression
     formula_raw: dict | None = None
     externally_populated: bool = False
 
@@ -130,6 +132,7 @@ class PanelSpec:
     hidden: bool = False
     dynamicLogicVisible: dict | None = None
     visible_when_raw: list | dict | None = None
+    visible_when: Any = None  # ConditionNode from condition_expression
     rows: list | None = None
     tabs: list[TabSpec] | None = None
     description: str | None = None

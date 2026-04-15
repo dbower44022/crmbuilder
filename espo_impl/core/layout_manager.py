@@ -12,6 +12,7 @@ from collections.abc import Callable
 from typing import Any
 
 from espo_impl.core.api_client import EspoAdminClient
+from espo_impl.core.condition_expression import render_condition
 from espo_impl.core.models import (
     EntityDefinition,
     EntityLayoutStatus,
@@ -275,6 +276,17 @@ class LayoutManager:
         rows = rows_override if rows_override is not None else panel.rows
         api_rows = self._build_rows(rows or [], custom_field_names)
 
+        # Determine dynamic-logic visibility:
+        # visibleWhen (v1.1) takes precedence over dynamicLogicVisible (deprecated)
+        if panel.visible_when is not None:
+            dynamic_vis = self._build_visible_when(
+                panel.visible_when, custom_field_names
+            )
+        else:
+            dynamic_vis = self._build_dynamic_logic(
+                panel.dynamicLogicVisible, custom_field_names
+            )
+
         panel_dict: dict[str, Any] = {
             "customLabel": panel.label,
             "tabBreak": panel.tabBreak,
@@ -283,9 +295,7 @@ class LayoutManager:
             "hidden": panel.hidden,
             "noteText": None,
             "noteStyle": "info",
-            "dynamicLogicVisible": self._build_dynamic_logic(
-                panel.dynamicLogicVisible, custom_field_names
-            ),
+            "dynamicLogicVisible": dynamic_vis,
             "dynamicLogicStyled": None,
             "rows": api_rows,
         }
@@ -314,6 +324,16 @@ class LayoutManager:
                     tab.category, field_definitions, custom_field_names
                 )
 
+            # visibleWhen (v1.1) takes precedence
+            if panel.visible_when is not None:
+                dynamic_vis = self._build_visible_when(
+                    panel.visible_when, custom_field_names
+                )
+            else:
+                dynamic_vis = self._build_dynamic_logic(
+                    panel.dynamicLogicVisible, custom_field_names
+                )
+
             is_first = i == 0
             tab_panel = {
                 "customLabel": tab.label,
@@ -323,9 +343,7 @@ class LayoutManager:
                 "hidden": panel.hidden,
                 "noteText": None,
                 "noteStyle": "info",
-                "dynamicLogicVisible": self._build_dynamic_logic(
-                    panel.dynamicLogicVisible, custom_field_names
-                ),
+                "dynamicLogicVisible": dynamic_vis,
                 "dynamicLogicStyled": None,
                 "rows": self._build_rows(rows, custom_field_names),
             }
@@ -419,6 +437,56 @@ class LayoutManager:
                     api_row.append(False)
             api_rows.append(api_row)
         return api_rows
+
+    def _build_visible_when(
+        self,
+        condition_node: Any,
+        custom_field_names: set[str],
+    ) -> dict:
+        """Translate a parsed visibleWhen condition to API format.
+
+        Renders the condition expression and resolves field names to
+        c-prefixed API names.
+
+        :param condition_node: Parsed condition AST.
+        :param custom_field_names: Set of custom field names.
+        :returns: API-formatted dynamic logic dict.
+        """
+        rendered = render_condition(condition_node)
+        return self._resolve_condition_fields(rendered, custom_field_names)
+
+    def _resolve_condition_fields(
+        self,
+        rendered: Any,
+        custom_field_names: set[str],
+    ) -> Any:
+        """Recursively resolve field names in a rendered condition to API names.
+
+        :param rendered: Rendered condition (dict or list).
+        :param custom_field_names: Set of custom field names.
+        :returns: Condition with resolved field names.
+        """
+        if isinstance(rendered, dict):
+            result = {}
+            for key, val in rendered.items():
+                if key == "field":
+                    result[key] = self._resolve_field_name(
+                        val, custom_field_names
+                    )
+                elif key in ("all", "any"):
+                    result[key] = [
+                        self._resolve_condition_fields(item, custom_field_names)
+                        for item in val
+                    ]
+                else:
+                    result[key] = val
+            return result
+        if isinstance(rendered, list):
+            return [
+                self._resolve_condition_fields(item, custom_field_names)
+                for item in rendered
+            ]
+        return rendered
 
     def _build_dynamic_logic(
         self,

@@ -7,6 +7,7 @@ from typing import Any
 
 from espo_impl.core.api_client import EspoAdminClient
 from espo_impl.core.comparator import FieldComparator
+from espo_impl.core.condition_expression import render_condition
 from espo_impl.core.models import (
     EntityAction,
     FieldDefinition,
@@ -584,6 +585,17 @@ class FieldManager:
         if field_def.maxLength is not None:
             payload["maxLength"] = field_def.maxLength
         # optionDescriptions is documentation-only — never included in API payloads
+
+        # Dynamic logic: requiredWhen / visibleWhen
+        if field_def.required_when is not None:
+            payload["dynamicLogicRequired"] = render_condition(
+                field_def.required_when
+            )
+        if field_def.visible_when is not None:
+            payload["dynamicLogicVisible"] = render_condition(
+                field_def.visible_when
+            )
+
         return payload
 
     def _build_report(

@@ -278,8 +278,10 @@ class ConfigLoader:
                 self._validate_field(entity.name, field_def, seen_names)
             )
 
+        # Validate field-level requiredWhen / visibleWhen conditions
+        errors.extend(self._validate_field_conditions(entity))
+
         # Validate settings
-        errors.extend(self._validate_settings(entity))
 
         # Validate duplicate checks
         errors.extend(self._validate_duplicate_checks(entity))
@@ -301,6 +303,23 @@ class ConfigLoader:
         :param data: Raw field data from YAML.
         :returns: FieldDefinition instance.
         """
+        # Parse requiredWhen and visibleWhen condition expressions
+        rw_raw = data.get("requiredWhen")
+        rw_parsed = None
+        if rw_raw is not None:
+            try:
+                rw_parsed = parse_condition(rw_raw)
+            except ValueError:
+                pass  # Validation will catch this
+
+        vw_raw = data.get("visibleWhen")
+        vw_parsed = None
+        if vw_raw is not None:
+            try:
+                vw_parsed = parse_condition(vw_raw)
+            except ValueError:
+                pass  # Validation will catch this
+
         return FieldDefinition(
             name=data.get("name", ""),
             type=data.get("type", ""),
@@ -322,8 +341,10 @@ class ConfigLoader:
             category=data.get("category"),
             description=data.get("description"),
             tooltip=data.get("tooltip"),
-            required_when_raw=data.get("requiredWhen"),
-            visible_when_raw=data.get("visibleWhen"),
+            required_when_raw=rw_raw,
+            visible_when_raw=vw_raw,
+            required_when=rw_parsed,
+            visible_when=vw_parsed,
             formula_raw=data.get("formula"),
             externally_populated=bool(data.get("externallyPopulated", False)),
         )
@@ -393,6 +414,15 @@ class ConfigLoader:
             if deprecation_warnings is not None:
                 deprecation_warnings.append(msg)
 
+        # Parse panel-level visibleWhen condition expression
+        panel_vw_raw = data.get("visibleWhen")
+        panel_vw_parsed = None
+        if panel_vw_raw is not None:
+            try:
+                panel_vw_parsed = parse_condition(panel_vw_raw)
+            except ValueError:
+                pass  # Validation will catch this
+
         return PanelSpec(
             label=data.get("label", ""),
             tabBreak=data.get("tabBreak", False),
@@ -400,7 +430,8 @@ class ConfigLoader:
             style=data.get("style", "default"),
             hidden=data.get("hidden", False),
             dynamicLogicVisible=dynamic_logic,
-            visible_when_raw=data.get("visibleWhen"),
+            visible_when_raw=panel_vw_raw,
+            visible_when=panel_vw_parsed,
             rows=data.get("rows"),
             tabs=tabs,
             description=data.get("description"),
@@ -491,6 +522,34 @@ class ConfigLoader:
                     f"'tabBreak' is true"
                 )
 
+            # Panel-level visibleWhen vs dynamicLogicVisible mutual exclusion
+            if (
+                panel.visible_when_raw is not None
+                and panel.dynamicLogicVisible is not None
+            ):
+                errors.append(
+                    f"{panel_prefix}: cannot set both 'visibleWhen' and "
+                    f"'dynamicLogicVisible' on the same panel"
+                )
+
+            # Panel-level visibleWhen condition validation
+            if panel.visible_when_raw is not None:
+                if panel.visible_when is None:
+                    try:
+                        parse_condition(panel.visible_when_raw)
+                    except ValueError as exc:
+                        errors.append(
+                            f"{panel_prefix}.visibleWhen: {exc}"
+                        )
+                else:
+                    vw_errors = validate_condition(
+                        panel.visible_when, field_names
+                    )
+                    for err in vw_errors:
+                        errors.append(
+                            f"{panel_prefix}.visibleWhen: {err}"
+                        )
+
             if panel.tabs:
                 for tab in panel.tabs:
                     if tab.category and tab.category not in field_categories:
@@ -563,6 +622,20 @@ class ConfigLoader:
                     "or absent — descriptions cannot be cross-referenced",
                     prefix,
                 )
+
+        # Mutual exclusion: required: true + requiredWhen
+        if field_def.required is True and field_def.required_when_raw is not None:
+            errors.append(
+                f"{prefix}: cannot set both 'required: true' and "
+                f"'requiredWhen' on the same field"
+            )
+
+        # Mutual exclusion: required: true + visibleWhen
+        if field_def.required is True and field_def.visible_when_raw is not None:
+            errors.append(
+                f"{prefix}: cannot set both 'required: true' and "
+                f"'visibleWhen' on the same field"
+            )
 
         if field_def.name:
             if field_def.name in seen_names:
@@ -677,6 +750,57 @@ class ConfigLoader:
                 alertTo=item.get("alertTo"),
             ))
         return checks
+
+    def _validate_field_conditions(
+        self, entity: EntityDefinition
+    ) -> list[str]:
+        """Validate field-level requiredWhen/visibleWhen conditions.
+
+        Checks condition-expression validity and field references
+        against the entity's field set.
+
+        :param entity: Entity definition to validate.
+        :returns: List of error messages.
+        """
+        errors: list[str] = []
+        field_names = {f.name for f in entity.fields}
+
+        for field_def in entity.fields:
+            prefix = f"{entity.name}.{field_def.name or '(unnamed)'}"
+
+            # requiredWhen condition validation
+            if field_def.required_when_raw is not None:
+                if field_def.required_when is None:
+                    try:
+                        parse_condition(field_def.required_when_raw)
+                    except ValueError as exc:
+                        errors.append(
+                            f"{prefix}.requiredWhen: {exc}"
+                        )
+                else:
+                    rw_errors = validate_condition(
+                        field_def.required_when, field_names
+                    )
+                    for err in rw_errors:
+                        errors.append(f"{prefix}.requiredWhen: {err}")
+
+            # visibleWhen condition validation
+            if field_def.visible_when_raw is not None:
+                if field_def.visible_when is None:
+                    try:
+                        parse_condition(field_def.visible_when_raw)
+                    except ValueError as exc:
+                        errors.append(
+                            f"{prefix}.visibleWhen: {exc}"
+                        )
+                else:
+                    vw_errors = validate_condition(
+                        field_def.visible_when, field_names
+                    )
+                    for err in vw_errors:
+                        errors.append(f"{prefix}.visibleWhen: {err}")
+
+        return errors
 
     def _parse_saved_views(
         self, raw: list | None,
