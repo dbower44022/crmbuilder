@@ -60,6 +60,8 @@ espo_impl/
 │   ├── layout_manager.py # Layout CHECK→ACT orchestration
 │   ├── relationship_manager.py # Relationship CHECK→ACT orchestration
 │   ├── entity_manager.py # Entity create/delete
+│   ├── condition_expression.py # Shared condition-expression parser/validator/evaluator (v1.1)
+│   ├── relative_date.py # Relative-date vocabulary resolver (v1.1)
 │   ├── comparator.py  # Field spec vs API state comparison
 │   ├── reporter.py    # .log and .json report generation
 │   ├── import_manager.py # Data import CHECK→ACT orchestration
@@ -95,6 +97,8 @@ PRDs/
 ├── product/           # CRM Builder product specs
 │   ├── CRMBuilder-PRD.md
 │   ├── app-*.md       # App-level specs (YAML schema, UI patterns, logging)
+│   ├── yaml-schema-gap-analysis-MR-pilot.md  # v1.1 design rationale
+│   ├── yaml-schema-prompts/  # Claude Code prompts for yaml-v1.1 series (A–H)
 │   └── features/      # Feature-level specs (feat-*.md)
 ├── process/           # Document production methodology
 │   ├── CRM-Builder-Document-Production-Process.docx
@@ -146,6 +150,66 @@ PRDs/
   panel is shown; result stored in `DeployConfig.cert_expiry_date`
 - `deploy_worker.py` follows the same QThread pattern as `run_worker.py` and
   `import_worker.py` — emit signals for log lines, phase status, and completion
+
+## YAML Schema v1.1 — Active Implementation Series
+
+The YAML program file schema is being extended from v1.0 to v1.1
+to cover capabilities identified in the MR-pilot gap analysis
+(`PRDs/product/yaml-schema-gap-analysis-MR-pilot.md`). The spec is
+`PRDs/product/app-yaml-schema.md` v1.1.
+
+**Implementation approach:** an eight-prompt Claude Code series
+(Prompts A through H) stored in `PRDs/product/yaml-schema-prompts/`.
+Prompts are executed sequentially; each builds on the prior.
+
+**Current state (04-15-26):**
+
+- **Prompt A (done):** Shared condition-expression
+  parser/validator/evaluator (`condition_expression.py`),
+  relative-date resolver (`relative_date.py`), loader plumbing for
+  all new entity-level and field-level keys (raw pass-through on
+  `EntityDefinition`, `FieldDefinition`, `PanelSpec`), deprecation
+  warnings for v1.0 top-level entity keys and panel-level
+  `dynamicLogicVisible:`.
+- **Prompts B–H (drafted, not executed):** All committed to
+  `PRDs/product/yaml-schema-prompts/`. Execute in order.
+
+**Series map:**
+
+| Prompt | Categories | What it adds |
+|---|---|---|
+| A | Section 11 | Condition expressions, relative dates, loader plumbing (**done**) |
+| B | 1, 2 | `settings:` block (with v1.0 deprecation merge), `duplicateChecks:` |
+| C | 3 | `savedViews:` with condition-expression filters |
+| D | 4, 5 | `requiredWhen:`, `visibleWhen:` (field + panel level) |
+| E | 7 | `emailTemplates:` with body-file resolution, merge-field validation |
+| F | 8 | `formula:` — aggregate, arithmetic (recursive-descent parser), concat |
+| G | 9 | `workflows:` — triggers, actions, cross-block template/arithmetic reuse |
+| H | 10 | `externallyPopulated:` flag, Verification Spec generator skeleton |
+
+Category 6 (Roles, field-level permissions) is deferred to v1.2.
+
+**Key modules from Prompt A (already shipped):**
+
+- `condition_expression.py` — public API: `parse_condition(raw)`,
+  `validate_condition(parsed, entity_field_names, related_entity_field_names=None)`,
+  `evaluate_condition(parsed, record, today=None)`,
+  `render_condition(parsed)`. AST: `LeafClause`, `AllNode`, `AnyNode`
+  (union type `ConditionNode`). Note: `render_condition` always emits
+  structured form (`{all: [...]}`) even for shorthand input.
+- `relative_date.py` — public API: `RELATIVE_DATE_TOKENS`,
+  `is_relative_date(value)`, `resolve_relative_date(value, today=None)`.
+- `models.py` — `EntityDefinition` carries `settings_raw`,
+  `duplicate_checks_raw`, `saved_views_raw`, `email_templates_raw`,
+  `workflows_raw`. `FieldDefinition` carries `required_when_raw`,
+  `visible_when_raw`, `formula_raw`, `externally_populated`.
+  `PanelSpec` carries `visible_when_raw`. `ProgramFile` carries
+  `deprecation_warnings`.
+
+**Orchestration order (will evolve as B–H execute):**
+
+EntitySettings → EmailTemplates → DuplicateChecks → SavedViews →
+Fields/Layouts/Relationships → Workflows
 
 ## Document Production Process
 
