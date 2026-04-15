@@ -8,6 +8,7 @@ from typing import Any
 from espo_impl.core.api_client import EspoAdminClient
 from espo_impl.core.comparator import FieldComparator
 from espo_impl.core.condition_expression import render_condition
+from espo_impl.core.formula_parser import render_arithmetic
 from espo_impl.core.models import (
     EntityAction,
     FieldDefinition,
@@ -596,7 +597,50 @@ class FieldManager:
                 field_def.visible_when
             )
 
+        # Formula rendering
+        if field_def.formula is not None:
+            payload["formula"] = self._render_formula(field_def.formula)
+
         return payload
+
+    @staticmethod
+    def _render_formula(formula: Any) -> dict[str, Any]:
+        """Convert a parsed Formula to a CRM API payload dict.
+
+        :param formula: Formula instance from models.
+        :returns: Dict suitable for the API formula field.
+        """
+        result: dict[str, Any] = {"type": formula.type}
+
+        if formula.type == "aggregate" and formula.aggregate is not None:
+            agg = formula.aggregate
+            result["function"] = agg.function
+            result["relatedEntity"] = agg.related_entity
+            result["via"] = agg.via
+            if agg.field is not None:
+                result["field"] = agg.field
+            if agg.pick_field is not None:
+                result["pickField"] = agg.pick_field
+            if agg.order_by is not None:
+                result["orderBy"] = {
+                    "field": agg.order_by.field,
+                    "direction": agg.order_by.direction,
+                }
+            if agg.join is not None:
+                result["join"] = agg.join
+            if agg.where is not None:
+                result["where"] = render_condition(agg.where)
+
+        elif formula.type == "arithmetic" and formula.arithmetic is not None:
+            arith = formula.arithmetic
+            result["expression"] = arith.expression
+            if arith.parsed is not None:
+                result["expressionRendered"] = render_arithmetic(arith.parsed)
+
+        elif formula.type == "concat" and formula.concat is not None:
+            result["parts"] = formula.concat.parts
+
+        return result
 
     def _build_report(
         self,

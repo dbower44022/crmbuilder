@@ -100,6 +100,7 @@ class FieldDefinition:
     visible_when_raw: list | dict | None = None
     required_when: Any = None  # ConditionNode from condition_expression
     visible_when: Any = None  # ConditionNode from condition_expression
+    formula: Any = None  # Formula from models
     formula_raw: dict | None = None
     externally_populated: bool = False
 
@@ -267,6 +268,73 @@ class EmailTemplate:
     audience: str | None = None
     body_content: str | None = None
     body_hash: str | None = None
+
+
+@dataclass
+class AggregateFormula:
+    """An aggregate formula specification (count, sum, avg, min, max, first, last).
+
+    :param function: Aggregate function name.
+    :param related_entity: Name of the related entity to aggregate over.
+    :param via: Relationship link name connecting to the related entity.
+    :param field: Field to aggregate (required for sum/avg/min/max).
+    :param pick_field: Field to pick (required for first/last).
+    :param order_by: Sort specification (required for first/last).
+    :param join: Multi-hop join path (list of dicts).
+    :param where: Parsed condition expression for filtering.
+    :param where_raw: Raw where clause data (for round-tripping).
+    """
+
+    function: str  # count, sum, avg, min, max, first, last
+    related_entity: str
+    via: str
+    field: str | None = None
+    pick_field: str | None = None
+    order_by: Any = None  # OrderByClause or None (for first/last)
+    join: list[dict] | None = None
+    where: Any = None  # ConditionNode from condition_expression
+    where_raw: Any = None
+
+
+@dataclass
+class ArithmeticFormula:
+    """An arithmetic formula specification.
+
+    :param expression: Raw arithmetic expression string.
+    :param parsed: Parsed AST node from formula_parser.
+    """
+
+    expression: str
+    parsed: Any = None  # ArithNode from formula_parser
+
+
+@dataclass
+class ConcatFormula:
+    """A string-concatenation formula specification.
+
+    :param parts: List of parts; each is ``{literal: str}``,
+        ``{field: str}``, or ``{lookup: {via: str, field: str}}``.
+    """
+
+    parts: list[dict]
+
+
+@dataclass
+class Formula:
+    """A parsed formula block attached to a field.
+
+    Exactly one of ``aggregate``, ``arithmetic``, or ``concat`` is set.
+
+    :param type: Formula type — ``"aggregate"``, ``"arithmetic"``, or ``"concat"``.
+    :param aggregate: Aggregate formula details (when type is ``"aggregate"``).
+    :param arithmetic: Arithmetic formula details (when type is ``"arithmetic"``).
+    :param concat: Concatenation formula details (when type is ``"concat"``).
+    """
+
+    type: str  # "aggregate", "arithmetic", "concat"
+    aggregate: AggregateFormula | None = None
+    arithmetic: ArithmeticFormula | None = None
+    concat: ConcatFormula | None = None
 
 
 @dataclass

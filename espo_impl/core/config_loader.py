@@ -9,18 +9,23 @@ from typing import Any
 import yaml
 
 from espo_impl.core.condition_expression import parse_condition, validate_condition
+from espo_impl.core.formula_parser import extract_field_refs, parse_arithmetic
 from espo_impl.core.models import (
     SUPPORTED_ENTITY_TYPES,
     VALID_NORMALIZE_VALUES,
     VALID_ON_MATCH_VALUES,
     VALID_SETTINGS_KEYS,
+    AggregateFormula,
+    ArithmeticFormula,
     ColumnSpec,
+    ConcatFormula,
     DuplicateCheck,
     EmailTemplate,
     EntityAction,
     EntityDefinition,
     EntitySettings,
     FieldDefinition,
+    Formula,
     LayoutSpec,
     OrderByClause,
     PanelSpec,
@@ -293,6 +298,9 @@ class ConfigLoader:
         # Validate field-level requiredWhen / visibleWhen conditions
         errors.extend(self._validate_field_conditions(entity))
 
+        # Validate field-level formula blocks
+        errors.extend(self._validate_formula_fields(entity))
+
         # Validate settings
 
         # Validate duplicate checks
@@ -335,6 +343,15 @@ class ConfigLoader:
             except ValueError:
                 pass  # Validation will catch this
 
+        # Parse formula block
+        formula_raw = data.get("formula")
+        formula_parsed = None
+        if formula_raw is not None and isinstance(formula_raw, dict):
+            try:
+                formula_parsed = self._parse_formula(formula_raw)
+            except ValueError:
+                pass  # Validation will catch this
+
         return FieldDefinition(
             name=data.get("name", ""),
             type=data.get("type", ""),
@@ -360,7 +377,8 @@ class ConfigLoader:
             visible_when_raw=vw_raw,
             required_when=rw_parsed,
             visible_when=vw_parsed,
-            formula_raw=data.get("formula"),
+            formula=formula_parsed,
+            formula_raw=formula_raw,
             externally_populated=bool(data.get("externallyPopulated", False)),
         )
 
@@ -814,6 +832,27 @@ class ConfigLoader:
                     )
                     for err in vw_errors:
                         errors.append(f"{prefix}.visibleWhen: {err}")
+
+        return errors
+
+    def _validate_formula_fields(
+        self, entity: EntityDefinition
+    ) -> list[str]:
+        """Validate formula blocks on all fields in an entity.
+
+        :param entity: Entity definition to validate.
+        :returns: List of error messages.
+        """
+        errors: list[str] = []
+        field_names = {f.name for f in entity.fields}
+
+        for field_def in entity.fields:
+            if field_def.formula_raw is not None or field_def.formula is not None:
+                errors.extend(
+                    self._validate_formula(
+                        entity.name, field_def, field_names,
+                    )
+                )
 
         return errors
 
@@ -1356,5 +1395,352 @@ class ConfigLoader:
                 f"{prefix}: invalid action '{rel.action}' "
                 f"(must be 'skip' or omitted)"
             )
+
+        return errors
+
+    # ------------------------------------------------------------------
+    # Formula parsing
+    # ------------------------------------------------------------------
+
+    VALID_AGGREGATE_FUNCTIONS: set[str] = {
+        "count", "sum", "avg", "min", "max", "first", "last",
+    }
+
+    def _parse_formula(self, raw: dict) -> Formula:
+        """Parse a raw ``formula:`` dict into a Formula model.
+
+        :param raw: Raw formula dict from YAML.
+        :returns: Formula instance.
+        :raises ValueError: On malformed input.
+        """
+        formula_type = raw.get("type")
+        if not formula_type:
+            raise ValueError("formula: missing required property 'type'")
+
+        if formula_type == "aggregate":
+            return self._parse_aggregate_formula(raw)
+        if formula_type == "arithmetic":
+            return self._parse_arithmetic_formula(raw)
+        if formula_type == "concat":
+            return self._parse_concat_formula(raw)
+
+        raise ValueError(
+            f"formula: unknown type '{formula_type}' "
+            f"(must be 'aggregate', 'arithmetic', or 'concat')"
+        )
+
+    def _parse_aggregate_formula(self, raw: dict) -> Formula:
+        """Parse an aggregate formula block."""
+        # Parse where clause
+        where_raw = raw.get("where")
+        where_parsed = None
+        if where_raw is not None:
+            try:
+                where_parsed = parse_condition(where_raw)
+            except ValueError:
+                pass  # Validation will catch
+
+        # Parse orderBy
+        order_by = None
+        raw_order = raw.get("orderBy")
+        if isinstance(raw_order, dict):
+            order_by = OrderByClause(
+                field=str(raw_order.get("field", "")),
+                direction=str(raw_order.get("direction", "asc")),
+            )
+
+        aggregate = AggregateFormula(
+            function=str(raw.get("function", "")),
+            related_entity=str(raw.get("relatedEntity", "")),
+            via=str(raw.get("via", "")),
+            field=raw.get("field"),
+            pick_field=raw.get("pickField"),
+            order_by=order_by,
+            join=raw.get("join"),
+            where=where_parsed,
+            where_raw=where_raw,
+        )
+        return Formula(type="aggregate", aggregate=aggregate)
+
+    def _parse_arithmetic_formula(self, raw: dict) -> Formula:
+        """Parse an arithmetic formula block."""
+        expression = str(raw.get("expression", ""))
+        parsed_ast = None
+        if expression:
+            try:
+                parsed_ast = parse_arithmetic(expression)
+            except ValueError:
+                pass  # Validation will catch
+
+        arithmetic = ArithmeticFormula(
+            expression=expression,
+            parsed=parsed_ast,
+        )
+        return Formula(type="arithmetic", arithmetic=arithmetic)
+
+    def _parse_concat_formula(self, raw: dict) -> Formula:
+        """Parse a concat formula block."""
+        parts = raw.get("parts", [])
+        if not isinstance(parts, list):
+            parts = []
+
+        concat = ConcatFormula(parts=parts)
+        return Formula(type="concat", concat=concat)
+
+    # ------------------------------------------------------------------
+    # Formula validation
+    # ------------------------------------------------------------------
+
+    def _validate_formula(
+        self,
+        entity_name: str,
+        field_def: FieldDefinition,
+        field_names: set[str],
+    ) -> list[str]:
+        """Validate a field's formula block.
+
+        :param entity_name: Name of the containing entity.
+        :param field_def: Field definition with formula.
+        :param field_names: All field names on this entity.
+        :returns: List of error messages.
+        """
+        errors: list[str] = []
+        prefix = f"{entity_name}.{field_def.name}.formula"
+        formula = field_def.formula
+
+        if formula is None:
+            # formula_raw is present but didn't parse
+            raw = field_def.formula_raw
+            if raw is not None and isinstance(raw, dict):
+                try:
+                    self._parse_formula(raw)
+                except ValueError as exc:
+                    errors.append(f"{prefix}: {exc}")
+            elif raw is not None:
+                errors.append(
+                    f"{prefix}: must be a mapping, got "
+                    f"{type(raw).__name__}"
+                )
+            return errors
+
+        # formula: requires readOnly: true
+        if field_def.readOnly is not True:
+            errors.append(
+                f"{prefix}: formula fields must have 'readOnly: true'"
+            )
+
+        # Validate by type
+        if formula.type == "aggregate":
+            errors.extend(
+                self._validate_aggregate_formula(prefix, formula.aggregate)
+            )
+        elif formula.type == "arithmetic":
+            errors.extend(
+                self._validate_arithmetic_formula(
+                    prefix, formula.arithmetic, field_names
+                )
+            )
+        elif formula.type == "concat":
+            errors.extend(
+                self._validate_concat_formula(
+                    prefix, formula.concat, field_names
+                )
+            )
+        else:
+            errors.append(
+                f"{prefix}: unknown type '{formula.type}' "
+                f"(must be 'aggregate', 'arithmetic', or 'concat')"
+            )
+
+        return errors
+
+    def _validate_aggregate_formula(
+        self, prefix: str, agg: AggregateFormula | None,
+    ) -> list[str]:
+        """Validate an aggregate formula.
+
+        :param prefix: Error message prefix.
+        :param agg: Aggregate formula to validate.
+        :returns: List of error messages.
+        """
+        errors: list[str] = []
+        if agg is None:
+            errors.append(f"{prefix}: missing aggregate data")
+            return errors
+
+        # function is required and must be valid
+        if not agg.function:
+            errors.append(
+                f"{prefix}: missing required property 'function'"
+            )
+        elif agg.function not in self.VALID_AGGREGATE_FUNCTIONS:
+            errors.append(
+                f"{prefix}: invalid function '{agg.function}' "
+                f"(must be one of: "
+                f"{', '.join(sorted(self.VALID_AGGREGATE_FUNCTIONS))})"
+            )
+
+        # relatedEntity and via are required
+        if not agg.related_entity:
+            errors.append(
+                f"{prefix}: missing required property 'relatedEntity'"
+            )
+        if not agg.via:
+            errors.append(
+                f"{prefix}: missing required property 'via'"
+            )
+
+        # Function-specific validations
+        if agg.function == "count":
+            if agg.field is not None:
+                errors.append(
+                    f"{prefix}: 'field' must not be set for "
+                    f"function 'count'"
+                )
+        elif agg.function in ("sum", "avg", "min", "max"):
+            if not agg.field:
+                errors.append(
+                    f"{prefix}: 'field' is required for "
+                    f"function '{agg.function}'"
+                )
+        elif agg.function in ("first", "last"):
+            if not agg.pick_field:
+                errors.append(
+                    f"{prefix}: 'pickField' is required for "
+                    f"function '{agg.function}'"
+                )
+            if agg.order_by is None:
+                errors.append(
+                    f"{prefix}: 'orderBy' is required for "
+                    f"function '{agg.function}'"
+                )
+            elif agg.order_by is not None:
+                if not agg.order_by.field:
+                    errors.append(
+                        f"{prefix}.orderBy: missing required "
+                        f"property 'field'"
+                    )
+                if agg.order_by.direction not in ("asc", "desc"):
+                    errors.append(
+                        f"{prefix}.orderBy: invalid direction "
+                        f"'{agg.order_by.direction}' "
+                        f"(must be 'asc' or 'desc')"
+                    )
+
+        # where clause — parse validation only (cross-entity field refs
+        # are deferred since the related entity fields aren't available here)
+        if agg.where_raw is not None and agg.where is None:
+            try:
+                parse_condition(agg.where_raw)
+            except ValueError as exc:
+                errors.append(f"{prefix}.where: {exc}")
+
+        return errors
+
+    def _validate_arithmetic_formula(
+        self,
+        prefix: str,
+        arith: ArithmeticFormula | None,
+        field_names: set[str],
+    ) -> list[str]:
+        """Validate an arithmetic formula.
+
+        :param prefix: Error message prefix.
+        :param arith: Arithmetic formula to validate.
+        :param field_names: Valid field names on the entity.
+        :returns: List of error messages.
+        """
+        errors: list[str] = []
+        if arith is None:
+            errors.append(f"{prefix}: missing arithmetic data")
+            return errors
+
+        if not arith.expression:
+            errors.append(
+                f"{prefix}: missing required property 'expression'"
+            )
+            return errors
+
+        if arith.parsed is None:
+            # parse failed — try again for the error message
+            try:
+                parse_arithmetic(arith.expression)
+            except ValueError as exc:
+                errors.append(f"{prefix}.expression: {exc}")
+            return errors
+
+        # Validate field references
+        refs = extract_field_refs(arith.parsed)
+        for ref in sorted(refs):
+            if ref not in field_names:
+                errors.append(
+                    f"{prefix}.expression: field '{ref}' not found "
+                    f"on entity"
+                )
+
+        return errors
+
+    def _validate_concat_formula(
+        self,
+        prefix: str,
+        concat: ConcatFormula | None,
+        field_names: set[str],
+    ) -> list[str]:
+        """Validate a concat formula.
+
+        :param prefix: Error message prefix.
+        :param concat: Concat formula to validate.
+        :param field_names: Valid field names on the entity.
+        :returns: List of error messages.
+        """
+        errors: list[str] = []
+        if concat is None:
+            errors.append(f"{prefix}: missing concat data")
+            return errors
+
+        if not concat.parts:
+            errors.append(
+                f"{prefix}: 'parts' must be a non-empty list"
+            )
+            return errors
+
+        for i, part in enumerate(concat.parts):
+            if not isinstance(part, dict):
+                errors.append(
+                    f"{prefix}.parts[{i}]: each part must be a mapping"
+                )
+                continue
+            keys = set(part.keys())
+            if keys == {"literal"}:
+                pass  # literals are always valid
+            elif keys == {"field"}:
+                field_name = part["field"]
+                if field_name not in field_names:
+                    errors.append(
+                        f"{prefix}.parts[{i}]: field '{field_name}' "
+                        f"not found on entity"
+                    )
+            elif keys == {"lookup"}:
+                lookup = part["lookup"]
+                if not isinstance(lookup, dict):
+                    errors.append(
+                        f"{prefix}.parts[{i}]: 'lookup' must be a mapping"
+                    )
+                else:
+                    if "via" not in lookup:
+                        errors.append(
+                            f"{prefix}.parts[{i}].lookup: missing "
+                            f"required property 'via'"
+                        )
+                    if "field" not in lookup:
+                        errors.append(
+                            f"{prefix}.parts[{i}].lookup: missing "
+                            f"required property 'field'"
+                        )
+            else:
+                errors.append(
+                    f"{prefix}.parts[{i}]: part must have exactly one "
+                    f"key: 'literal', 'field', or 'lookup'"
+                )
 
         return errors
