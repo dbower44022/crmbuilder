@@ -33,6 +33,9 @@ from espo_impl.core.models import (
     RelationshipDefinition,
     SavedView,
     TabSpec,
+    Workflow,
+    WorkflowAction,
+    WorkflowTrigger,
 )
 
 logger = logging.getLogger(__name__)
@@ -186,6 +189,9 @@ class ConfigLoader:
                     email_templates_raw, path.parent if path else None
                 )
 
+                # Parse workflows into typed models
+                workflows = self._parse_workflows(workflows_raw)
+
                 entities.append(EntityDefinition(
                     name=entity_name,
                     fields=fields,
@@ -201,6 +207,7 @@ class ConfigLoader:
                     duplicate_checks=duplicate_checks,
                     saved_views=saved_views,
                     email_templates=email_templates,
+                    workflows=workflows,
                     settings_raw=settings_raw,
                     duplicate_checks_raw=duplicate_checks_raw,
                     saved_views_raw=saved_views_raw,
@@ -247,6 +254,9 @@ class ConfigLoader:
 
         # Cross-block alertTemplate resolution
         errors.extend(self._validate_alert_template_refs(program))
+
+        # Cross-block workflow template resolution
+        errors.extend(self._validate_workflow_template_refs(program))
 
         for rel in program.relationships:
             errors.extend(self._validate_relationship(rel))
@@ -311,6 +321,9 @@ class ConfigLoader:
 
         # Validate email templates
         errors.extend(self._validate_email_templates(entity))
+
+        # Validate workflows
+        errors.extend(self._validate_workflows(entity))
 
         # Validate layouts
         for layout_type, layout_spec in entity.layouts.items():
@@ -1166,6 +1179,332 @@ class ConfigLoader:
                         )
         return errors
 
+    def _validate_workflow_template_refs(
+        self, program: ProgramFile
+    ) -> list[str]:
+        """Validate cross-block workflow sendEmail template references.
+
+        Each ``workflows[].actions[].template`` for ``sendEmail`` actions
+        must reference an ``id`` in the same entity's ``emailTemplates[]``.
+
+        :param program: Parsed program file.
+        :returns: List of error messages.
+        """
+        errors: list[str] = []
+        for entity in program.entities:
+            template_ids = {t.id for t in entity.email_templates}
+            for wf in entity.workflows:
+                for action in wf.actions:
+                    if action.type == "sendEmail" and action.template:
+                        if action.template not in template_ids:
+                            prefix = (
+                                f"{entity.name}.workflows"
+                                f"[{wf.id}]"
+                            )
+                            errors.append(
+                                f"{prefix}: sendEmail template "
+                                f"'{action.template}' does not match "
+                                f"any emailTemplates id on entity "
+                                f"'{entity.name}'"
+                            )
+        return errors
+
+    def _parse_workflows(
+        self, raw: list | None,
+    ) -> list[Workflow]:
+        """Parse a raw ``workflows:`` list into typed models.
+
+        :param raw: Raw list from YAML (or None).
+        :returns: List of Workflow instances.
+        """
+        if not raw or not isinstance(raw, list):
+            return []
+        workflows: list[Workflow] = []
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+
+            # Parse trigger
+            trigger = None
+            raw_trigger = item.get("trigger")
+            if isinstance(raw_trigger, dict):
+                from_val = raw_trigger.get("from")
+                to_val = raw_trigger.get("to")
+                trigger = WorkflowTrigger(
+                    event=str(raw_trigger.get("event", "")),
+                    field=raw_trigger.get("field"),
+                    from_values=from_val,
+                    to_values=to_val,
+                )
+
+            # Parse where clause via condition_expression
+            where_raw = item.get("where")
+            where_parsed = None
+            if where_raw is not None:
+                try:
+                    where_parsed = parse_condition(where_raw)
+                except ValueError:
+                    pass  # Validation will catch this
+
+            # Parse actions
+            actions: list[WorkflowAction] = []
+            raw_actions = item.get("actions", [])
+            if isinstance(raw_actions, list):
+                for act_data in raw_actions:
+                    if isinstance(act_data, dict):
+                        actions.append(WorkflowAction(
+                            type=str(act_data.get("type", "")),
+                            field=act_data.get("field"),
+                            value=act_data.get("value"),
+                            template=act_data.get("template"),
+                            to=act_data.get("to"),
+                        ))
+
+            workflows.append(Workflow(
+                id=str(item.get("id", "")),
+                name=str(item.get("name", "")),
+                trigger=trigger,
+                where=where_parsed,
+                where_raw=where_raw,
+                actions=actions,
+                description=item.get("description"),
+            ))
+        return workflows
+
+    _VALID_TRIGGER_EVENTS: set[str] = {
+        "onCreate", "onUpdate", "onFieldChange",
+        "onFieldTransition", "onDelete",
+    }
+
+    _VALID_ACTION_TYPES: set[str] = {
+        "setField", "clearField", "sendEmail", "sendInternalNotification",
+    }
+
+    def _validate_workflows(
+        self, entity: EntityDefinition
+    ) -> list[str]:
+        """Validate the entity's ``workflows:`` block.
+
+        :param entity: Entity definition to validate.
+        :returns: List of error messages.
+        """
+        errors: list[str] = []
+        if not entity.workflows:
+            return errors
+
+        field_names = {f.name for f in entity.fields}
+        seen_ids: set[str] = set()
+
+        for wf in entity.workflows:
+            prefix = f"{entity.name}.workflows[{wf.id or '(no id)'}]"
+
+            # id is required and must be unique
+            if not wf.id:
+                errors.append(f"{prefix}: missing required property 'id'")
+            elif wf.id in seen_ids:
+                errors.append(
+                    f"{prefix}: duplicate id '{wf.id}' within entity"
+                )
+            seen_ids.add(wf.id)
+
+            # name is required
+            if not wf.name:
+                errors.append(f"{prefix}: missing required property 'name'")
+
+            # trigger is required
+            if wf.trigger is None:
+                errors.append(
+                    f"{prefix}: missing required property 'trigger'"
+                )
+            else:
+                errors.extend(
+                    self._validate_workflow_trigger(
+                        prefix, wf.trigger, field_names
+                    )
+                )
+
+            # actions must be non-empty
+            if not wf.actions:
+                errors.append(
+                    f"{prefix}: 'actions' must be a non-empty list"
+                )
+            else:
+                for i, action in enumerate(wf.actions):
+                    errors.extend(
+                        self._validate_workflow_action(
+                            f"{prefix}.actions[{i}]",
+                            action,
+                            field_names,
+                        )
+                    )
+
+            # where clause validation
+            if wf.where_raw is not None:
+                if wf.where is None:
+                    try:
+                        parse_condition(wf.where_raw)
+                    except ValueError as exc:
+                        errors.append(f"{prefix}.where: {exc}")
+                else:
+                    wh_errors = validate_condition(wf.where, field_names)
+                    for err in wh_errors:
+                        errors.append(f"{prefix}.where: {err}")
+
+        return errors
+
+    def _validate_workflow_trigger(
+        self,
+        prefix: str,
+        trigger: WorkflowTrigger,
+        field_names: set[str],
+    ) -> list[str]:
+        """Validate a workflow trigger specification.
+
+        :param prefix: Error message prefix.
+        :param trigger: Trigger to validate.
+        :param field_names: Set of valid field names on the entity.
+        :returns: List of error messages.
+        """
+        errors: list[str] = []
+        t_prefix = f"{prefix}.trigger"
+
+        if not trigger.event:
+            errors.append(f"{t_prefix}: missing required property 'event'")
+            return errors
+
+        if trigger.event not in self._VALID_TRIGGER_EVENTS:
+            errors.append(
+                f"{t_prefix}: invalid event '{trigger.event}' "
+                f"(must be one of {sorted(self._VALID_TRIGGER_EVENTS)})"
+            )
+            return errors
+
+        if trigger.event == "onFieldChange":
+            if not trigger.field:
+                errors.append(
+                    f"{t_prefix}: 'field' is required for "
+                    f"onFieldChange trigger"
+                )
+            elif trigger.field not in field_names:
+                errors.append(
+                    f"{t_prefix}: field '{trigger.field}' not found "
+                    f"on entity"
+                )
+        elif trigger.event == "onFieldTransition":
+            if not trigger.field:
+                errors.append(
+                    f"{t_prefix}: 'field' is required for "
+                    f"onFieldTransition trigger"
+                )
+            elif trigger.field not in field_names:
+                errors.append(
+                    f"{t_prefix}: field '{trigger.field}' not found "
+                    f"on entity"
+                )
+            if trigger.from_values is None and trigger.to_values is None:
+                errors.append(
+                    f"{t_prefix}: onFieldTransition requires "
+                    f"'from' and/or 'to'"
+                )
+
+        return errors
+
+    def _validate_workflow_action(
+        self,
+        prefix: str,
+        action: WorkflowAction,
+        field_names: set[str],
+    ) -> list[str]:
+        """Validate a single workflow action.
+
+        :param prefix: Error message prefix.
+        :param action: Action to validate.
+        :param field_names: Set of valid field names on the entity.
+        :returns: List of error messages.
+        """
+        errors: list[str] = []
+
+        if not action.type:
+            errors.append(f"{prefix}: missing required property 'type'")
+            return errors
+
+        if action.type not in self._VALID_ACTION_TYPES:
+            errors.append(
+                f"{prefix}: invalid action type '{action.type}' "
+                f"(must be one of {sorted(self._VALID_ACTION_TYPES)})"
+            )
+            return errors
+
+        if action.type == "setField":
+            if not action.field:
+                errors.append(
+                    f"{prefix}: 'field' is required for setField"
+                )
+            elif action.field not in field_names:
+                errors.append(
+                    f"{prefix}: field '{action.field}' not found on entity"
+                )
+            if action.value is None:
+                errors.append(
+                    f"{prefix}: 'value' is required for setField"
+                )
+            elif isinstance(action.value, str) and action.value != "now":
+                # Try to parse as arithmetic expression
+                try:
+                    parse_arithmetic(action.value)
+                except ValueError:
+                    pass  # Literal string -- valid
+
+        elif action.type == "clearField":
+            if not action.field:
+                errors.append(
+                    f"{prefix}: 'field' is required for clearField"
+                )
+            elif action.field not in field_names:
+                errors.append(
+                    f"{prefix}: field '{action.field}' not found on entity"
+                )
+
+        elif action.type == "sendEmail":
+            if not action.template:
+                errors.append(
+                    f"{prefix}: 'template' is required for sendEmail"
+                )
+            if not action.to:
+                errors.append(
+                    f"{prefix}: 'to' is required for sendEmail"
+                )
+            elif "@" not in str(action.to):
+                # Must be a field name on the entity
+                if action.to not in field_names:
+                    errors.append(
+                        f"{prefix}: 'to' value '{action.to}' is neither "
+                        f"an email address nor a field on the entity"
+                    )
+
+        elif action.type == "sendInternalNotification":
+            if not action.template:
+                errors.append(
+                    f"{prefix}: 'template' is required for "
+                    f"sendInternalNotification"
+                )
+            if not action.to:
+                errors.append(
+                    f"{prefix}: 'to' is required for "
+                    f"sendInternalNotification"
+                )
+            elif not (
+                "@" in str(action.to)
+                or str(action.to).startswith("role:")
+                or str(action.to).startswith("user:")
+            ):
+                errors.append(
+                    f"{prefix}: 'to' value '{action.to}' must be an "
+                    f"email, 'role:<id>', or 'user:<id>'"
+                )
+
+        return errors
+
     def _validate_settings(self, entity: EntityDefinition) -> list[str]:
         """Validate the entity's ``settings:`` block per spec Section 10.
 
@@ -1744,3 +2083,4 @@ class ConfigLoader:
                 )
 
         return errors
+

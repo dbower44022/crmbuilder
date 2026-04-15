@@ -338,6 +338,64 @@ class Formula:
 
 
 @dataclass
+class WorkflowTrigger:
+    """Trigger specification for a workflow rule.
+
+    :param event: Trigger event — one of ``onCreate``, ``onUpdate``,
+        ``onFieldChange``, ``onFieldTransition``, ``onDelete``.
+    :param field: Field name (required for ``onFieldChange``/``onFieldTransition``).
+    :param from_values: Source value(s) for ``onFieldTransition``.
+    :param to_values: Target value(s) for ``onFieldChange``/``onFieldTransition``.
+    """
+
+    event: str  # onCreate, onUpdate, onFieldChange, onFieldTransition, onDelete
+    field: str | None = None
+    from_values: list[str] | str | None = None  # for onFieldTransition
+    to_values: list[str] | str | None = None  # for onFieldChange/onFieldTransition
+
+
+@dataclass
+class WorkflowAction:
+    """A single action within a workflow rule.
+
+    :param type: Action type — ``setField``, ``clearField``, ``sendEmail``,
+        or ``sendInternalNotification``.
+    :param field: Target field (for ``setField``/``clearField``).
+    :param value: Value to set (literal, ``"now"``, or arithmetic expression).
+    :param template: Email template id reference (for send actions).
+    :param to: Recipient (for send actions).
+    """
+
+    type: str  # setField, clearField, sendEmail, sendInternalNotification
+    field: str | None = None
+    value: Any = None
+    template: str | None = None
+    to: str | None = None
+
+
+@dataclass
+class Workflow:
+    """A workflow rule from the ``workflows:`` block.
+
+    :param id: Stable identifier for drift detection; unique within the entity.
+    :param name: Human-readable workflow name.
+    :param trigger: Trigger specification.
+    :param where: Parsed condition expression AST.
+    :param where_raw: Original raw where data (for round-tripping).
+    :param actions: List of actions to execute.
+    :param description: Optional business rationale.
+    """
+
+    id: str
+    name: str
+    trigger: WorkflowTrigger | None = None
+    where: Any = None  # ConditionNode
+    where_raw: Any = None
+    actions: list[WorkflowAction] = field(default_factory=list)
+    description: str | None = None
+
+
+@dataclass
 class EntityDefinition:
     """Entity definition from a YAML program file.
 
@@ -365,6 +423,7 @@ class EntityDefinition:
     duplicate_checks: list[DuplicateCheck] = field(default_factory=list)
     saved_views: list[SavedView] = field(default_factory=list)
     email_templates: list[EmailTemplate] = field(default_factory=list)
+    workflows: list[Workflow] = field(default_factory=list)
     settings_raw: dict | None = None
     duplicate_checks_raw: list | None = None
     saved_views_raw: list | None = None
@@ -568,6 +627,26 @@ class SavedViewResult:
     error: str | None = None
 
 
+class WorkflowStatus(Enum):
+    """Outcome status for a workflow operation."""
+
+    CREATED = "created"
+    UPDATED = "updated"
+    SKIPPED = "skipped"
+    DRIFT = "drift"
+    ERROR = "error"
+
+
+@dataclass
+class WorkflowResult:
+    """Result of processing a single workflow."""
+
+    entity: str
+    workflow_id: str
+    status: WorkflowStatus
+    error: str | None = None
+
+
 class FieldStatus(Enum):
     """Outcome status for a single field operation."""
 
@@ -637,6 +716,11 @@ class RunSummary:
     email_templates_skipped: int = 0
     email_templates_drift: int = 0
     email_templates_failed: int = 0
+    workflows_created: int = 0
+    workflows_updated: int = 0
+    workflows_skipped: int = 0
+    workflows_drift: int = 0
+    workflows_failed: int = 0
 
 
 @dataclass
@@ -667,6 +751,7 @@ class RunReport:
     duplicate_check_results: list[DuplicateCheckResult] = field(default_factory=list)
     saved_view_results: list[SavedViewResult] = field(default_factory=list)
     email_template_results: list[EmailTemplateResult] = field(default_factory=list)
+    workflow_results: list[WorkflowResult] = field(default_factory=list)
 
 
 @dataclass

@@ -29,6 +29,7 @@ from espo_impl.core.models import (
     RelationshipStatus,
     SavedViewStatus,
     SettingsStatus,
+    WorkflowStatus,
 )
 from espo_impl.core.relationship_manager import (
     RelationshipManager,
@@ -37,6 +38,10 @@ from espo_impl.core.relationship_manager import (
 from espo_impl.core.saved_view_manager import (
     SavedViewManager,
     SavedViewManagerError,
+)
+from espo_impl.core.workflow_manager import (
+    WorkflowManager,
+    WorkflowManagerError,
 )
 
 
@@ -457,5 +462,39 @@ class RunWorker(QThread):
             self.output_line.emit(
                 "===========================================", "white"
             )
+
+        # Step 8: Process workflows
+        has_workflows = any(
+            e.workflows and e.action != EntityAction.DELETE
+            for e in self.program.entities
+        )
+        if has_workflows:
+            self.output_line.emit("", "white")
+            self.output_line.emit(
+                "=== WORKFLOW OPERATIONS ===", "white"
+            )
+            wf_mgr = WorkflowManager(
+                client, self.output_line.emit
+            )
+            try:
+                wf_results = wf_mgr.process_workflows(
+                    self.program
+                )
+            except WorkflowManagerError as exc:
+                self.finished_error.emit(str(exc))
+                return
+
+            report.workflow_results.extend(wf_results)
+            for wr in wf_results:
+                if wr.status == WorkflowStatus.CREATED:
+                    report.summary.workflows_created += 1
+                elif wr.status == WorkflowStatus.UPDATED:
+                    report.summary.workflows_updated += 1
+                elif wr.status == WorkflowStatus.SKIPPED:
+                    report.summary.workflows_skipped += 1
+                elif wr.status == WorkflowStatus.DRIFT:
+                    report.summary.workflows_drift += 1
+                elif wr.status == WorkflowStatus.ERROR:
+                    report.summary.workflows_failed += 1
 
         self.finished_ok.emit(report)

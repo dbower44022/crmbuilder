@@ -15,6 +15,7 @@ from espo_impl.core.models import (
     SavedViewResult,
     SettingsResult,
     TooltipResult,
+    WorkflowResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -209,6 +210,23 @@ class Reporter:
             lines.append(f"  Drift                 : {report.summary.duplicate_checks_drift}")
             lines.append(f"  Failed                : {report.summary.duplicate_checks_failed}")
 
+        if report.workflow_results:
+            lines.append("")
+            for result in report.workflow_results:
+                status_str = result.status.value.upper()
+                line = f"  {result.entity}.workflows[{result.workflow_id}] : {status_str}"
+                if result.error:
+                    line += f" \u2014 {result.error}"
+                lines.append(line)
+            lines.append("")
+            total_wf = len(report.workflow_results)
+            lines.append(f"Total workflows          : {total_wf}")
+            lines.append(f"  Created               : {report.summary.workflows_created}")
+            lines.append(f"  Updated               : {report.summary.workflows_updated}")
+            lines.append(f"  Skipped               : {report.summary.workflows_skipped}")
+            lines.append(f"  Drift                 : {report.summary.workflows_drift}")
+            lines.append(f"  Failed                : {report.summary.workflows_failed}")
+
         lines.append("===========================================")
 
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -263,6 +281,10 @@ class Reporter:
             "email_template_results": [
                 self._email_template_result_to_dict(r)
                 for r in report.email_template_results
+            ],
+            "workflow_results": [
+                self._workflow_result_to_dict(r)
+                for r in report.workflow_results
             ],
         }
         path.write_text(
@@ -377,6 +399,21 @@ class Reporter:
         return {
             "entity": result.entity,
             "view_id": result.view_id,
+            "status": result.status.value,
+            "error": result.error,
+        }
+
+    def _workflow_result_to_dict(
+        self, result: WorkflowResult
+    ) -> dict:
+        """Convert a WorkflowResult to a JSON-serializable dict.
+
+        :param result: Single workflow result.
+        :returns: Dict for JSON report.
+        """
+        return {
+            "entity": result.entity,
+            "workflow_id": result.workflow_id,
             "status": result.status.value,
             "error": result.error,
         }
