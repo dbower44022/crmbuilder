@@ -601,6 +601,8 @@ class FieldManager:
         if field_def.formula is not None:
             payload["formula"] = self._render_formula(field_def.formula)
 
+        # externallyPopulated is a documentation-only flag (spec Section 6.1.4)
+        # — not sent to the CRM API as a field property
         return payload
 
     @staticmethod
