@@ -7,6 +7,7 @@ from pathlib import Path
 
 from espo_impl.core.models import (
     DuplicateCheckResult,
+    EmailTemplateResult,
     FieldResult,
     LayoutResult,
     RelationshipResult,
@@ -157,6 +158,23 @@ class Reporter:
             lines.append(f"  Skipped               : {report.summary.settings_skipped}")
             lines.append(f"  Failed                : {report.summary.settings_failed}")
 
+        if report.email_template_results:
+            lines.append("")
+            for result in report.email_template_results:
+                status_str = result.status.value.upper()
+                line = f"  {result.entity}.emailTemplates[{result.template_id}] : {status_str}"
+                if result.error:
+                    line += f" \u2014 {result.error}"
+                lines.append(line)
+            lines.append("")
+            total_et = len(report.email_template_results)
+            lines.append(f"Total email templates     : {total_et}")
+            lines.append(f"  Created               : {report.summary.email_templates_created}")
+            lines.append(f"  Updated               : {report.summary.email_templates_updated}")
+            lines.append(f"  Skipped               : {report.summary.email_templates_skipped}")
+            lines.append(f"  Drift                 : {report.summary.email_templates_drift}")
+            lines.append(f"  Failed                : {report.summary.email_templates_failed}")
+
         if report.saved_view_results:
             lines.append("")
             for result in report.saved_view_results:
@@ -241,6 +259,10 @@ class Reporter:
             "saved_view_results": [
                 self._saved_view_result_to_dict(r)
                 for r in report.saved_view_results
+            ],
+            "email_template_results": [
+                self._email_template_result_to_dict(r)
+                for r in report.email_template_results
             ],
         }
         path.write_text(
@@ -329,6 +351,17 @@ class Reporter:
         return {
             "entity": result.entity,
             "rule_id": result.rule_id,
+            "status": result.status.value,
+            "error": result.error,
+        }
+
+    def _email_template_result_to_dict(
+        self, result: EmailTemplateResult
+    ) -> dict:
+        """Convert an EmailTemplateResult to a JSON-serializable dict."""
+        return {
+            "entity": result.entity,
+            "template_id": result.template_id,
             "status": result.status.value,
             "error": result.error,
         }

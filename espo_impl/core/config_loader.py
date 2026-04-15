@@ -1,6 +1,8 @@
 """YAML program file loading and validation."""
 
+import hashlib
 import logging
+import re
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +16,7 @@ from espo_impl.core.models import (
     VALID_SETTINGS_KEYS,
     ColumnSpec,
     DuplicateCheck,
+    EmailTemplate,
     EntityAction,
     EntityDefinition,
     EntitySettings,
@@ -173,6 +176,11 @@ class ConfigLoader:
                 # Parse saved views into typed models
                 saved_views = self._parse_saved_views(saved_views_raw)
 
+                # Parse email templates into typed models
+                email_templates = self._parse_email_templates(
+                    email_templates_raw, path.parent if path else None
+                )
+
                 entities.append(EntityDefinition(
                     name=entity_name,
                     fields=fields,
@@ -187,6 +195,7 @@ class ConfigLoader:
                     settings=settings,
                     duplicate_checks=duplicate_checks,
                     saved_views=saved_views,
+                    email_templates=email_templates,
                     settings_raw=settings_raw,
                     duplicate_checks_raw=duplicate_checks_raw,
                     saved_views_raw=saved_views_raw,
@@ -230,6 +239,9 @@ class ConfigLoader:
 
         for entity in program.entities:
             errors.extend(self._validate_entity(entity))
+
+        # Cross-block alertTemplate resolution
+        errors.extend(self._validate_alert_template_refs(program))
 
         for rel in program.relationships:
             errors.extend(self._validate_relationship(rel))
@@ -288,6 +300,9 @@ class ConfigLoader:
 
         # Validate saved views
         errors.extend(self._validate_saved_views(entity))
+
+        # Validate email templates
+        errors.extend(self._validate_email_templates(entity))
 
         # Validate layouts
         for layout_type, layout_spec in entity.layouts.items():
@@ -934,6 +949,182 @@ class ConfigLoader:
                         f"(must be 'asc' or 'desc')"
                     )
 
+        return errors
+
+    def _parse_email_templates(
+        self, raw: list | None, yaml_dir: Path | None,
+    ) -> list[EmailTemplate]:
+        """Parse a raw ``emailTemplates:`` list into typed models.
+
+        :param raw: Raw list from YAML (or None).
+        :param yaml_dir: Directory containing the program YAML.
+        :returns: List of EmailTemplate instances.
+        """
+        if not raw or not isinstance(raw, list):
+            return []
+        templates: list[EmailTemplate] = []
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+
+            body_file = str(item.get("bodyFile", ""))
+            body_content = None
+            body_hash = None
+            if body_file and yaml_dir is not None:
+                body_path = yaml_dir / body_file
+                if body_path.is_file():
+                    body_content = body_path.read_text(encoding="utf-8")
+                    body_hash = hashlib.sha256(
+                        body_content.encode("utf-8")
+                    ).hexdigest()
+
+            merge_fields = item.get("mergeFields", [])
+            if not isinstance(merge_fields, list):
+                merge_fields = []
+
+            templates.append(EmailTemplate(
+                id=str(item.get("id", "")),
+                name=str(item.get("name", "")),
+                entity=str(item.get("entity", "")),
+                subject=str(item.get("subject", "")),
+                body_file=body_file,
+                merge_fields=[str(f) for f in merge_fields],
+                description=item.get("description"),
+                audience=item.get("audience"),
+                body_content=body_content,
+                body_hash=body_hash,
+            ))
+        return templates
+
+    def _validate_email_templates(
+        self, entity: EntityDefinition
+    ) -> list[str]:
+        """Validate the entity's ``emailTemplates:`` block per spec Section 10.
+
+        :param entity: Entity definition to validate.
+        :returns: List of error messages.
+        """
+        errors: list[str] = []
+        if not entity.email_templates:
+            return errors
+
+        field_names = {f.name for f in entity.fields}
+        seen_ids: set[str] = set()
+
+        for tmpl in entity.email_templates:
+            prefix = f"{entity.name}.emailTemplates[{tmpl.id or '(no id)'}]"
+
+            # id required and unique
+            if not tmpl.id:
+                errors.append(f"{prefix}: missing required property 'id'")
+            elif tmpl.id in seen_ids:
+                errors.append(
+                    f"{prefix}: duplicate id '{tmpl.id}' within entity"
+                )
+            seen_ids.add(tmpl.id)
+
+            # Required fields
+            if not tmpl.name:
+                errors.append(f"{prefix}: missing required property 'name'")
+            if not tmpl.entity:
+                errors.append(
+                    f"{prefix}: missing required property 'entity'"
+                )
+            elif tmpl.entity != entity.name:
+                errors.append(
+                    f"{prefix}: 'entity' value '{tmpl.entity}' does not "
+                    f"match parent entity '{entity.name}'"
+                )
+            if not tmpl.subject:
+                errors.append(
+                    f"{prefix}: missing required property 'subject'"
+                )
+            if not tmpl.body_file:
+                errors.append(
+                    f"{prefix}: missing required property 'bodyFile'"
+                )
+            elif tmpl.body_content is None:
+                errors.append(
+                    f"{prefix}: bodyFile '{tmpl.body_file}' not found"
+                )
+            if not tmpl.merge_fields:
+                errors.append(
+                    f"{prefix}: missing required property 'mergeFields'"
+                )
+
+            # mergeFields must reference real fields on entity
+            for mf in tmpl.merge_fields:
+                if mf not in field_names:
+                    errors.append(
+                        f"{prefix}.mergeFields: field '{mf}' not found "
+                        f"on entity '{entity.name}'"
+                    )
+
+            # Placeholder validation
+            merge_set = set(tmpl.merge_fields)
+            used_placeholders: set[str] = set()
+
+            # Extract {{...}} from subject
+            if tmpl.subject:
+                for match in re.finditer(r"\{\{(\w+)\}\}", tmpl.subject):
+                    ph = match.group(1)
+                    used_placeholders.add(ph)
+                    if ph not in merge_set:
+                        errors.append(
+                            f"{prefix}.subject: placeholder "
+                            f"'{{{{{ph}}}}}' not in mergeFields"
+                        )
+
+            # Extract {{...}} from body
+            if tmpl.body_content:
+                for match in re.finditer(
+                    r"\{\{(\w+)\}\}", tmpl.body_content
+                ):
+                    ph = match.group(1)
+                    used_placeholders.add(ph)
+                    if ph not in merge_set:
+                        errors.append(
+                            f"{prefix}.bodyFile: placeholder "
+                            f"'{{{{{ph}}}}}' not in mergeFields"
+                        )
+
+            # Every mergeField must be used
+            for mf in tmpl.merge_fields:
+                if mf not in used_placeholders:
+                    errors.append(
+                        f"{prefix}.mergeFields: '{mf}' is listed but "
+                        f"never used in subject or bodyFile"
+                    )
+
+        return errors
+
+    def _validate_alert_template_refs(
+        self, program: ProgramFile
+    ) -> list[str]:
+        """Validate cross-block alertTemplate references.
+
+        Each ``duplicateChecks[].alertTemplate`` must reference an ``id``
+        in the same entity's ``emailTemplates[]``.
+
+        :param program: Parsed program file.
+        :returns: List of error messages.
+        """
+        errors: list[str] = []
+        for entity in program.entities:
+            template_ids = {t.id for t in entity.email_templates}
+            for rule in entity.duplicate_checks:
+                if rule.alertTemplate is not None:
+                    if rule.alertTemplate not in template_ids:
+                        prefix = (
+                            f"{entity.name}.duplicateChecks"
+                            f"[{rule.id}]"
+                        )
+                        errors.append(
+                            f"{prefix}: alertTemplate "
+                            f"'{rule.alertTemplate}' does not match "
+                            f"any emailTemplates id on entity "
+                            f"'{entity.name}'"
+                        )
         return errors
 
     def _validate_settings(self, entity: EntityDefinition) -> list[str]:

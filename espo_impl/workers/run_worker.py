@@ -8,6 +8,10 @@ from espo_impl.core.duplicate_check_manager import (
     DuplicateCheckManager,
     DuplicateCheckManagerError,
 )
+from espo_impl.core.email_template_manager import (
+    EmailTemplateManager,
+    EmailTemplateManagerError,
+)
 from espo_impl.core.entity_manager import EntityManager, EntityManagerError
 from espo_impl.core.entity_settings_manager import (
     EntitySettingsManager,
@@ -17,6 +21,7 @@ from espo_impl.core.field_manager import FieldManager
 from espo_impl.core.layout_manager import LayoutManager, LayoutManagerError
 from espo_impl.core.models import (
     DuplicateCheckStatus,
+    EmailTemplateStatus,
     EntityAction,
     EntityLayoutStatus,
     InstanceProfile,
@@ -179,6 +184,31 @@ class RunWorker(QThread):
         else:
             self._settings_results = []
 
+        # Step 3b: Apply email templates (before duplicate checks)
+        has_email_templates = any(
+            e.email_templates and e.action != EntityAction.DELETE
+            for e in self.program.entities
+        )
+        if has_email_templates:
+            self.output_line.emit("", "white")
+            self.output_line.emit(
+                "=== EMAIL TEMPLATES ===", "white"
+            )
+            et_mgr = EmailTemplateManager(
+                client, self.output_line.emit
+            )
+            try:
+                et_results = et_mgr.process_email_templates(
+                    self.program
+                )
+            except EmailTemplateManagerError as exc:
+                self.finished_error.emit(str(exc))
+                return
+
+            self._email_template_results = et_results
+        else:
+            self._email_template_results = []
+
         # Step 4: Apply duplicate-check rules
         has_dup_checks = any(
             e.duplicate_checks and e.action != EntityAction.DELETE
@@ -286,6 +316,22 @@ class RunWorker(QThread):
                     report.summary.saved_views_drift += 1
                 elif svr.status == SavedViewStatus.ERROR:
                     report.summary.saved_views_failed += 1
+
+        if self._email_template_results:
+            report.email_template_results.extend(
+                self._email_template_results
+            )
+            for etr in self._email_template_results:
+                if etr.status == EmailTemplateStatus.CREATED:
+                    report.summary.email_templates_created += 1
+                elif etr.status == EmailTemplateStatus.UPDATED:
+                    report.summary.email_templates_updated += 1
+                elif etr.status == EmailTemplateStatus.SKIPPED:
+                    report.summary.email_templates_skipped += 1
+                elif etr.status == EmailTemplateStatus.DRIFT:
+                    report.summary.email_templates_drift += 1
+                elif etr.status == EmailTemplateStatus.ERROR:
+                    report.summary.email_templates_failed += 1
 
         # Step 6: Process layouts
         has_layouts = any(

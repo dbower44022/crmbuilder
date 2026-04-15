@@ -242,6 +242,34 @@ class SavedView:
 
 
 @dataclass
+class EmailTemplate:
+    """An email template from the ``emailTemplates:`` block.
+
+    :param id: Stable identifier; unique within the entity.
+    :param name: Human-readable template name.
+    :param entity: Entity the template operates against.
+    :param subject: Subject line (may contain ``{{mergeField}}`` placeholders).
+    :param body_file: Path to HTML body file, relative to program YAML.
+    :param merge_fields: Field names used as merge placeholders.
+    :param description: Optional business rationale.
+    :param audience: Documentation hint for recipients (free-form in v1.1).
+    :param body_content: Body HTML content (populated at load/validation time).
+    :param body_hash: SHA-256 hash of body content (for drift detection).
+    """
+
+    id: str
+    name: str
+    entity: str
+    subject: str
+    body_file: str
+    merge_fields: list[str]
+    description: str | None = None
+    audience: str | None = None
+    body_content: str | None = None
+    body_hash: str | None = None
+
+
+@dataclass
 class EntityDefinition:
     """Entity definition from a YAML program file.
 
@@ -268,6 +296,7 @@ class EntityDefinition:
     settings: EntitySettings | None = None
     duplicate_checks: list[DuplicateCheck] = field(default_factory=list)
     saved_views: list[SavedView] = field(default_factory=list)
+    email_templates: list[EmailTemplate] = field(default_factory=list)
     settings_raw: dict | None = None
     duplicate_checks_raw: list | None = None
     saved_views_raw: list | None = None
@@ -431,6 +460,26 @@ class DuplicateCheckResult:
     error: str | None = None
 
 
+class EmailTemplateStatus(Enum):
+    """Outcome status for an email-template operation."""
+
+    CREATED = "created"
+    UPDATED = "updated"
+    SKIPPED = "skipped"
+    DRIFT = "drift"
+    ERROR = "error"
+
+
+@dataclass
+class EmailTemplateResult:
+    """Result of processing a single email template."""
+
+    entity: str
+    template_id: str
+    status: EmailTemplateStatus
+    error: str | None = None
+
+
 class SavedViewStatus(Enum):
     """Outcome status for a saved-view operation."""
 
@@ -515,6 +564,11 @@ class RunSummary:
     saved_views_skipped: int = 0
     saved_views_drift: int = 0
     saved_views_failed: int = 0
+    email_templates_created: int = 0
+    email_templates_updated: int = 0
+    email_templates_skipped: int = 0
+    email_templates_drift: int = 0
+    email_templates_failed: int = 0
 
 
 @dataclass
@@ -544,6 +598,7 @@ class RunReport:
     settings_results: list[SettingsResult] = field(default_factory=list)
     duplicate_check_results: list[DuplicateCheckResult] = field(default_factory=list)
     saved_view_results: list[SavedViewResult] = field(default_factory=list)
+    email_template_results: list[EmailTemplateResult] = field(default_factory=list)
 
 
 @dataclass
