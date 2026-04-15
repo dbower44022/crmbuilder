@@ -95,6 +95,10 @@ class FieldDefinition:
     category: str | None = None
     description: str | None = None
     tooltip: str | None = None
+    required_when_raw: list | dict | None = None
+    visible_when_raw: list | dict | None = None
+    formula_raw: dict | None = None
+    externally_populated: bool = False
 
 
 @dataclass
@@ -124,6 +128,7 @@ class PanelSpec:
     style: str = "default"
     hidden: bool = False
     dynamicLogicVisible: dict | None = None
+    visible_when_raw: list | dict | None = None
     rows: list | None = None
     tabs: list[TabSpec] | None = None
     description: str | None = None
@@ -174,6 +179,11 @@ class EntityDefinition:
     disabled: bool = False
     layouts: dict[str, LayoutSpec] = field(default_factory=dict)
     description: str | None = None
+    settings_raw: dict | None = None
+    duplicate_checks_raw: list | None = None
+    saved_views_raw: list | None = None
+    email_templates_raw: list | None = None
+    workflows_raw: list | None = None
 
 
 @dataclass
@@ -263,6 +273,7 @@ class ProgramFile:
     source_path: Path | None = None
     content_version: str = "1.0.0"
     relationships: list[RelationshipDefinition] = field(default_factory=list)
+    deprecation_warnings: list[str] = field(default_factory=list)
 
     @property
     def has_delete_operations(self) -> bool:

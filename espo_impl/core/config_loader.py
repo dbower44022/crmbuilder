@@ -65,6 +65,13 @@ class ConfigLoader:
         if not isinstance(raw, dict):
             raise ValueError("YAML file must contain a mapping at the top level")
 
+        deprecation_warnings: list[str] = []
+
+        # Keys that moved from entity top-level to settings: in v1.1
+        _DEPRECATED_ENTITY_KEYS = {
+            "labelSingular", "labelPlural", "stream", "disabled",
+        }
+
         entities: list[EntityDefinition] = []
         raw_entities = raw.get("entities", {})
         if isinstance(raw_entities, dict):
@@ -80,6 +87,17 @@ class ConfigLoader:
                     action = EntityAction(raw_action)
                 else:
                     action = EntityAction.NONE
+
+                # Deprecation warnings for v1.0 top-level entity keys
+                for dep_key in _DEPRECATED_ENTITY_KEYS:
+                    if dep_key in entity_data:
+                        msg = (
+                            f"{entity_name}: '{dep_key}' at entity top level "
+                            f"is deprecated in v1.1; use 'settings.{dep_key}' "
+                            f"instead"
+                        )
+                        logger.warning(msg)
+                        deprecation_warnings.append(msg)
 
                 # Parse fields (list or dict format)
                 fields: list[FieldDefinition] = []
@@ -101,8 +119,17 @@ class ConfigLoader:
                     for layout_type, layout_data in raw_layout.items():
                         if isinstance(layout_data, dict):
                             layouts[layout_type] = self._parse_layout(
-                                layout_type, layout_data
+                                layout_type, layout_data,
+                                entity_name=entity_name,
+                                deprecation_warnings=deprecation_warnings,
                             )
+
+                # Pass-through entity-level v1.1 keys (raw, unparsed)
+                settings_raw = entity_data.get("settings")
+                duplicate_checks_raw = entity_data.get("duplicateChecks")
+                saved_views_raw = entity_data.get("savedViews")
+                email_templates_raw = entity_data.get("emailTemplates")
+                workflows_raw = entity_data.get("workflows")
 
                 entities.append(EntityDefinition(
                     name=entity_name,
@@ -115,6 +142,11 @@ class ConfigLoader:
                     disabled=entity_data.get("disabled", False),
                     layouts=layouts,
                     description=entity_data.get("description"),
+                    settings_raw=settings_raw,
+                    duplicate_checks_raw=duplicate_checks_raw,
+                    saved_views_raw=saved_views_raw,
+                    email_templates_raw=email_templates_raw,
+                    workflows_raw=workflows_raw,
                 ))
 
         # Parse relationships
@@ -132,6 +164,7 @@ class ConfigLoader:
             entities=entities,
             source_path=path,
             relationships=relationships,
+            deprecation_warnings=deprecation_warnings,
         )
 
     def validate_program(self, program: ProgramFile) -> list[str]:
@@ -235,15 +268,25 @@ class ConfigLoader:
             category=data.get("category"),
             description=data.get("description"),
             tooltip=data.get("tooltip"),
+            required_when_raw=data.get("requiredWhen"),
+            visible_when_raw=data.get("visibleWhen"),
+            formula_raw=data.get("formula"),
+            externally_populated=bool(data.get("externallyPopulated", False)),
         )
 
     def _parse_layout(
-        self, layout_type: str, data: dict[str, Any]
+        self,
+        layout_type: str,
+        data: dict[str, Any],
+        entity_name: str = "",
+        deprecation_warnings: list[str] | None = None,
     ) -> LayoutSpec:
         """Parse a layout definition from YAML.
 
         :param layout_type: Layout type (detail, edit, list).
         :param data: Raw layout data.
+        :param entity_name: Entity name for deprecation warning context.
+        :param deprecation_warnings: Accumulator for deprecation messages.
         :returns: LayoutSpec instance.
         """
         if layout_type == "list":
@@ -258,13 +301,24 @@ class ConfigLoader:
         panels: list[PanelSpec] = []
         for panel_data in data.get("panels", []):
             if isinstance(panel_data, dict):
-                panels.append(self._parse_panel(panel_data))
+                panels.append(self._parse_panel(
+                    panel_data,
+                    entity_name=entity_name,
+                    deprecation_warnings=deprecation_warnings,
+                ))
         return LayoutSpec(layout_type=layout_type, panels=panels)
 
-    def _parse_panel(self, data: dict[str, Any]) -> PanelSpec:
+    def _parse_panel(
+        self,
+        data: dict[str, Any],
+        entity_name: str = "",
+        deprecation_warnings: list[str] | None = None,
+    ) -> PanelSpec:
         """Parse a panel definition from YAML.
 
         :param data: Raw panel data.
+        :param entity_name: Entity name for deprecation warning context.
+        :param deprecation_warnings: Accumulator for deprecation messages.
         :returns: PanelSpec instance.
         """
         tabs: list[TabSpec] | None = None
@@ -272,13 +326,27 @@ class ConfigLoader:
         if isinstance(raw_tabs, list):
             tabs = [self._parse_tab(t) for t in raw_tabs if isinstance(t, dict)]
 
+        # Deprecation warning for dynamicLogicVisible
+        dynamic_logic = data.get("dynamicLogicVisible")
+        if dynamic_logic is not None:
+            panel_label = data.get("label", "(unnamed)")
+            msg = (
+                f"{entity_name}.panel[{panel_label}]: "
+                f"'dynamicLogicVisible' is deprecated in v1.1; "
+                f"use 'visibleWhen' instead"
+            )
+            logger.warning(msg)
+            if deprecation_warnings is not None:
+                deprecation_warnings.append(msg)
+
         return PanelSpec(
             label=data.get("label", ""),
             tabBreak=data.get("tabBreak", False),
             tabLabel=data.get("tabLabel"),
             style=data.get("style", "default"),
             hidden=data.get("hidden", False),
-            dynamicLogicVisible=data.get("dynamicLogicVisible"),
+            dynamicLogicVisible=dynamic_logic,
+            visible_when_raw=data.get("visibleWhen"),
             rows=data.get("rows"),
             tabs=tabs,
             description=data.get("description"),

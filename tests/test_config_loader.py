@@ -1173,6 +1173,221 @@ def test_content_version_defaults_when_absent(loader, tmp_path):
     assert program.content_version == "1.0.0"
 
 
+# --- v1.1 entity-level pass-through tests ---
+
+
+def test_v11_entity_level_keys_stash_raw(loader, tmp_path):
+    """v1.1 entity-level keys are stashed as raw values without validation."""
+    content = dedent("""\
+        version: "1.1"
+        description: "Test v1.1"
+        entities:
+          Contact:
+            settings:
+              labelSingular: "Contact"
+              labelPlural: "Contacts"
+              stream: true
+            duplicateChecks:
+              - fields: [email]
+                scope: Contact
+            savedViews:
+              - name: "Active Mentors"
+                filter:
+                  - { field: mentorStatus, op: equals, value: Active }
+            emailTemplates:
+              - name: "Welcome"
+                subject: "Welcome!"
+            workflows:
+              - name: "Auto-assign"
+                trigger: create
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+    """)
+    path = tmp_path / "v11_entity.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    entity = program.entities[0]
+    assert entity.settings_raw == {
+        "labelSingular": "Contact",
+        "labelPlural": "Contacts",
+        "stream": True,
+    }
+    assert isinstance(entity.duplicate_checks_raw, list)
+    assert len(entity.duplicate_checks_raw) == 1
+    assert isinstance(entity.saved_views_raw, list)
+    assert len(entity.saved_views_raw) == 1
+    assert isinstance(entity.email_templates_raw, list)
+    assert isinstance(entity.workflows_raw, list)
+
+
+def test_v11_entity_level_keys_default_none(loader, valid_yaml):
+    """v1.0 files without v1.1 keys default to None."""
+    program = loader.load_program(valid_yaml)
+    entity = program.entities[0]
+    assert entity.settings_raw is None
+    assert entity.duplicate_checks_raw is None
+    assert entity.saved_views_raw is None
+    assert entity.email_templates_raw is None
+    assert entity.workflows_raw is None
+
+
+# --- v1.1 field-level pass-through tests ---
+
+
+def test_v11_field_level_keys_stash_raw(loader, tmp_path):
+    """v1.1 field-level keys are stashed as raw values."""
+    content = dedent("""\
+        version: "1.1"
+        description: "Test v1.1"
+        entities:
+          Contact:
+            fields:
+              - name: mentorStatus
+                type: enum
+                label: "Mentor Status"
+                options:
+                  - Active
+                  - Inactive
+                requiredWhen:
+                  - { field: contactType, op: contains, value: Mentor }
+                visibleWhen:
+                  all:
+                    - { field: contactType, op: contains, value: Mentor }
+              - name: score
+                type: int
+                label: "Score"
+                formula:
+                  type: count
+                  relatedEntity: Session
+                externallyPopulated: true
+    """)
+    path = tmp_path / "v11_fields.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    f0 = program.entities[0].fields[0]
+    assert isinstance(f0.required_when_raw, list)
+    assert isinstance(f0.visible_when_raw, dict)
+    f1 = program.entities[0].fields[1]
+    assert isinstance(f1.formula_raw, dict)
+    assert f1.externally_populated is True
+
+
+def test_v11_field_level_keys_default(loader, valid_yaml):
+    """Fields without v1.1 keys have safe defaults."""
+    program = loader.load_program(valid_yaml)
+    f = program.entities[0].fields[0]
+    assert f.required_when_raw is None
+    assert f.visible_when_raw is None
+    assert f.formula_raw is None
+    assert f.externally_populated is False
+
+
+# --- Deprecation warning tests ---
+
+
+def test_deprecated_entity_top_level_keys_warn(loader, tmp_path):
+    """v1.0 top-level labelSingular/labelPlural/stream/disabled emit warnings."""
+    content = dedent("""\
+        version: "1.1"
+        description: "Test"
+        entities:
+          Engagement:
+            action: create
+            type: Base
+            labelSingular: "Engagement"
+            labelPlural: "Engagements"
+            stream: true
+            disabled: false
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+    """)
+    path = tmp_path / "deprecated_keys.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    # All four deprecated keys should produce warnings
+    assert len(program.deprecation_warnings) == 4
+    for key in ("labelSingular", "labelPlural", "stream", "disabled"):
+        assert any(key in w for w in program.deprecation_warnings), (
+            f"No deprecation warning for '{key}'"
+        )
+    # Values still populated for backward compatibility
+    entity = program.entities[0]
+    assert entity.labelSingular == "Engagement"
+    assert entity.labelPlural == "Engagements"
+    assert entity.stream is True
+    assert entity.disabled is False
+
+
+def test_v10_file_no_deprecation_warnings(loader, valid_yaml):
+    """v1.0 files without the deprecated keys produce no warnings."""
+    program = loader.load_program(valid_yaml)
+    assert program.deprecation_warnings == []
+
+
+def test_deprecated_dynamic_logic_visible_warns(loader, tmp_path):
+    """Panel-level dynamicLogicVisible emits a deprecation warning."""
+    content = dedent("""\
+        version: "1.1"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+            layout:
+              detail:
+                panels:
+                  - label: "Conditional"
+                    dynamicLogicVisible:
+                      conditionGroup:
+                        - type: equals
+                          attribute: contactType
+                          value: Mentor
+                    rows:
+                      - [foo]
+    """)
+    path = tmp_path / "deprecated_dlv.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    assert any("dynamicLogicVisible" in w for w in program.deprecation_warnings)
+    # Value still populated for backward compat
+    panel = program.entities[0].layouts["detail"].panels[0]
+    assert panel.dynamicLogicVisible is not None
+
+
+def test_panel_visible_when_stashed(loader, tmp_path):
+    """Panel-level visibleWhen is stashed on PanelSpec."""
+    content = dedent("""\
+        version: "1.1"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+            layout:
+              detail:
+                panels:
+                  - label: "Mentor Info"
+                    visibleWhen:
+                      - { field: contactType, op: contains, value: Mentor }
+                    rows:
+                      - [foo]
+    """)
+    path = tmp_path / "panel_vw.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    panel = program.entities[0].layouts["detail"].panels[0]
+    assert isinstance(panel.visible_when_raw, list)
+    assert len(panel.visible_when_raw) == 1
+
+
 def test_wysiwyg_field_type_supported(loader, tmp_path):
     content = dedent("""\
         version: "1.0"
