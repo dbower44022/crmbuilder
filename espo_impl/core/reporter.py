@@ -6,10 +6,12 @@ from datetime import datetime
 from pathlib import Path
 
 from espo_impl.core.models import (
+    DuplicateCheckResult,
     FieldResult,
     LayoutResult,
     RelationshipResult,
     RunReport,
+    SettingsResult,
     TooltipResult,
 )
 
@@ -137,6 +139,40 @@ class Reporter:
             lines.append(f"  No change / skipped   : {report.summary.tooltips_skipped}")
             lines.append(f"  Failed                : {report.summary.tooltips_failed}")
 
+        if report.settings_results:
+            lines.append("")
+            for result in report.settings_results:
+                status_str = result.status.value.upper()
+                line = f"  {result.entity} settings : {status_str}"
+                if result.changes:
+                    line += f" [{', '.join(result.changes)}]"
+                if result.error:
+                    line += f" \u2014 {result.error}"
+                lines.append(line)
+            lines.append("")
+            total_settings = len(report.settings_results)
+            lines.append(f"Total settings processed : {total_settings}")
+            lines.append(f"  Updated               : {report.summary.settings_updated}")
+            lines.append(f"  Skipped               : {report.summary.settings_skipped}")
+            lines.append(f"  Failed                : {report.summary.settings_failed}")
+
+        if report.duplicate_check_results:
+            lines.append("")
+            for result in report.duplicate_check_results:
+                status_str = result.status.value.upper()
+                line = f"  {result.entity}.duplicateChecks[{result.rule_id}] : {status_str}"
+                if result.error:
+                    line += f" \u2014 {result.error}"
+                lines.append(line)
+            lines.append("")
+            total_dc = len(report.duplicate_check_results)
+            lines.append(f"Total duplicate checks   : {total_dc}")
+            lines.append(f"  Created               : {report.summary.duplicate_checks_created}")
+            lines.append(f"  Updated               : {report.summary.duplicate_checks_updated}")
+            lines.append(f"  Skipped               : {report.summary.duplicate_checks_skipped}")
+            lines.append(f"  Drift                 : {report.summary.duplicate_checks_drift}")
+            lines.append(f"  Failed                : {report.summary.duplicate_checks_failed}")
+
         lines.append("===========================================")
 
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -175,6 +211,14 @@ class Reporter:
             "tooltip_results": [
                 self._tooltip_result_to_dict(r)
                 for r in report.tooltip_results
+            ],
+            "settings_results": [
+                self._settings_result_to_dict(r)
+                for r in report.settings_results
+            ],
+            "duplicate_check_results": [
+                self._duplicate_check_result_to_dict(r)
+                for r in report.duplicate_check_results
             ],
         }
         path.write_text(
@@ -235,6 +279,34 @@ class Reporter:
         return {
             "entity": result.entity,
             "field": result.field,
+            "status": result.status.value,
+            "error": result.error,
+        }
+
+    def _settings_result_to_dict(self, result: SettingsResult) -> dict:
+        """Convert a SettingsResult to a JSON-serializable dict.
+
+        :param result: Single settings result.
+        :returns: Dict for JSON report.
+        """
+        return {
+            "entity": result.entity,
+            "status": result.status.value,
+            "changes": result.changes,
+            "error": result.error,
+        }
+
+    def _duplicate_check_result_to_dict(
+        self, result: DuplicateCheckResult
+    ) -> dict:
+        """Convert a DuplicateCheckResult to a JSON-serializable dict.
+
+        :param result: Single duplicate-check result.
+        :returns: Dict for JSON report.
+        """
+        return {
+            "entity": result.entity,
+            "rule_id": result.rule_id,
             "status": result.status.value,
             "error": result.error,
         }

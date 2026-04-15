@@ -4,15 +4,25 @@ from PySide6.QtCore import QThread, Signal
 
 from espo_impl.core.api_client import EspoAdminClient
 from espo_impl.core.comparator import FieldComparator
+from espo_impl.core.duplicate_check_manager import (
+    DuplicateCheckManager,
+    DuplicateCheckManagerError,
+)
 from espo_impl.core.entity_manager import EntityManager, EntityManagerError
+from espo_impl.core.entity_settings_manager import (
+    EntitySettingsManager,
+    EntitySettingsManagerError,
+)
 from espo_impl.core.field_manager import FieldManager
 from espo_impl.core.layout_manager import LayoutManager, LayoutManagerError
 from espo_impl.core.models import (
+    DuplicateCheckStatus,
     EntityAction,
     EntityLayoutStatus,
     InstanceProfile,
     ProgramFile,
     RelationshipStatus,
+    SettingsStatus,
 )
 from espo_impl.core.relationship_manager import (
     RelationshipManager,
@@ -138,7 +148,58 @@ class RunWorker(QThread):
                 self.finished_error.emit(str(exc))
                 return
 
-        # Step 3: Process fields
+        # Step 3: Apply entity settings
+        has_settings = any(
+            e.settings is not None and e.action != EntityAction.DELETE
+            for e in self.program.entities
+        )
+        if has_settings:
+            self.output_line.emit("", "white")
+            self.output_line.emit(
+                "=== ENTITY SETTINGS ===", "white"
+            )
+            settings_mgr = EntitySettingsManager(
+                client, self.output_line.emit
+            )
+            try:
+                settings_results = settings_mgr.process_settings(
+                    self.program
+                )
+            except EntitySettingsManagerError as exc:
+                self.finished_error.emit(str(exc))
+                return
+
+            # Stash results on report later (report not built yet)
+            self._settings_results = settings_results
+        else:
+            self._settings_results = []
+
+        # Step 4: Apply duplicate-check rules
+        has_dup_checks = any(
+            e.duplicate_checks and e.action != EntityAction.DELETE
+            for e in self.program.entities
+        )
+        if has_dup_checks:
+            self.output_line.emit("", "white")
+            self.output_line.emit(
+                "=== DUPLICATE CHECK RULES ===", "white"
+            )
+            dup_mgr = DuplicateCheckManager(
+                client, self.output_line.emit
+            )
+            try:
+                dup_results = dup_mgr.process_duplicate_checks(
+                    self.program
+                )
+            except DuplicateCheckManagerError as exc:
+                self.finished_error.emit(str(exc))
+                return
+
+            self._duplicate_check_results = dup_results
+        else:
+            self._duplicate_check_results = []
+
+        # Step 5: Process fields
         has_fields = any(
             e.fields and e.action != EntityAction.DELETE
             for e in self.program.entities
@@ -153,7 +214,34 @@ class RunWorker(QThread):
         else:
             report = field_mgr._build_report(self.program, "run", [])
 
-        # Step 4: Process layouts
+        # Attach settings and duplicate-check results to the report
+        if self._settings_results:
+            report.settings_results.extend(self._settings_results)
+            for sr in self._settings_results:
+                if sr.status == SettingsStatus.UPDATED:
+                    report.summary.settings_updated += 1
+                elif sr.status == SettingsStatus.SKIPPED:
+                    report.summary.settings_skipped += 1
+                elif sr.status == SettingsStatus.ERROR:
+                    report.summary.settings_failed += 1
+
+        if self._duplicate_check_results:
+            report.duplicate_check_results.extend(
+                self._duplicate_check_results
+            )
+            for dr in self._duplicate_check_results:
+                if dr.status == DuplicateCheckStatus.CREATED:
+                    report.summary.duplicate_checks_created += 1
+                elif dr.status == DuplicateCheckStatus.UPDATED:
+                    report.summary.duplicate_checks_updated += 1
+                elif dr.status == DuplicateCheckStatus.SKIPPED:
+                    report.summary.duplicate_checks_skipped += 1
+                elif dr.status == DuplicateCheckStatus.DRIFT:
+                    report.summary.duplicate_checks_drift += 1
+                elif dr.status == DuplicateCheckStatus.ERROR:
+                    report.summary.duplicate_checks_failed += 1
+
+        # Step 6: Process layouts
         has_layouts = any(
             e.layouts and e.action != EntityAction.DELETE
             for e in self.program.entities
@@ -218,7 +306,7 @@ class RunWorker(QThread):
                 "===========================================", "white"
             )
 
-        # Step 5: Process relationships
+        # Step 7: Process relationships
         if self.program.relationships:
             self.output_line.emit("", "white")
             self.output_line.emit(

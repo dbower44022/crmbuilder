@@ -8,9 +8,14 @@ import yaml
 
 from espo_impl.core.models import (
     SUPPORTED_ENTITY_TYPES,
+    VALID_NORMALIZE_VALUES,
+    VALID_ON_MATCH_VALUES,
+    VALID_SETTINGS_KEYS,
     ColumnSpec,
+    DuplicateCheck,
     EntityAction,
     EntityDefinition,
+    EntitySettings,
     FieldDefinition,
     LayoutSpec,
     PanelSpec,
@@ -131,17 +136,50 @@ class ConfigLoader:
                 email_templates_raw = entity_data.get("emailTemplates")
                 workflows_raw = entity_data.get("workflows")
 
+                # Parse settings block into typed model
+                settings = self._parse_settings(settings_raw)
+
+                # Deprecation merge: top-level keys → settings when
+                # the settings block doesn't already carry the value
+                settings = self._deprecation_merge(
+                    entity_name, entity_data, settings,
+                    deprecation_warnings,
+                )
+
+                # Sync settings back to top-level fields for backward
+                # compatibility (entity_manager.py reads these directly)
+                label_singular = entity_data.get("labelSingular")
+                label_plural = entity_data.get("labelPlural")
+                stream_val = entity_data.get("stream", False)
+                disabled_val = entity_data.get("disabled", False)
+                if settings is not None:
+                    if settings.labelSingular is not None:
+                        label_singular = settings.labelSingular
+                    if settings.labelPlural is not None:
+                        label_plural = settings.labelPlural
+                    if settings.stream is not None:
+                        stream_val = settings.stream
+                    if settings.disabled is not None:
+                        disabled_val = settings.disabled
+
+                # Parse duplicate checks into typed models
+                duplicate_checks = self._parse_duplicate_checks(
+                    duplicate_checks_raw
+                )
+
                 entities.append(EntityDefinition(
                     name=entity_name,
                     fields=fields,
                     action=action,
                     type=entity_data.get("type"),
-                    labelSingular=entity_data.get("labelSingular"),
-                    labelPlural=entity_data.get("labelPlural"),
-                    stream=entity_data.get("stream", False),
-                    disabled=entity_data.get("disabled", False),
+                    labelSingular=label_singular,
+                    labelPlural=label_plural,
+                    stream=stream_val,
+                    disabled=disabled_val,
                     layouts=layouts,
                     description=entity_data.get("description"),
+                    settings=settings,
+                    duplicate_checks=duplicate_checks,
                     settings_raw=settings_raw,
                     duplicate_checks_raw=duplicate_checks_raw,
                     saved_views_raw=saved_views_raw,
@@ -232,6 +270,12 @@ class ConfigLoader:
             errors.extend(
                 self._validate_field(entity.name, field_def, seen_names)
             )
+
+        # Validate settings
+        errors.extend(self._validate_settings(entity))
+
+        # Validate duplicate checks
+        errors.extend(self._validate_duplicate_checks(entity))
 
         # Validate layouts
         for layout_type, layout_spec in entity.layouts.items():
@@ -518,6 +562,273 @@ class ConfigLoader:
             seen_names.add(field_def.name)
 
         return errors
+
+    @staticmethod
+    def _parse_settings(raw: dict | None) -> EntitySettings | None:
+        """Parse a raw ``settings:`` dict into an EntitySettings model.
+
+        :param raw: Raw settings dict from YAML (or None).
+        :returns: EntitySettings instance, or None if raw is None/empty.
+        """
+        if not raw or not isinstance(raw, dict):
+            return None
+        return EntitySettings(
+            labelSingular=raw.get("labelSingular"),
+            labelPlural=raw.get("labelPlural"),
+            stream=raw.get("stream"),
+            disabled=raw.get("disabled"),
+        )
+
+    @staticmethod
+    def _deprecation_merge(
+        entity_name: str,
+        entity_data: dict,
+        settings: EntitySettings | None,
+        deprecation_warnings: list[str],
+    ) -> EntitySettings | None:
+        """Merge deprecated top-level keys into the Settings model.
+
+        When a deprecated top-level key is present and the equivalent
+        ``settings.<key>`` is absent, the top-level value populates the
+        corresponding Settings field. When both are present,
+        ``settings.<key>`` wins and an additional conflict warning is
+        emitted.
+
+        :param entity_name: Entity name for warning messages.
+        :param entity_data: Raw entity YAML dict.
+        :param settings: Parsed EntitySettings (may be None).
+        :param deprecation_warnings: Accumulator for deprecation messages.
+        :returns: Updated EntitySettings (may create one if needed).
+        """
+        _DEPRECATED_ENTITY_KEYS = {
+            "labelSingular", "labelPlural", "stream", "disabled",
+        }
+        has_deprecated = any(k in entity_data for k in _DEPRECATED_ENTITY_KEYS)
+        if not has_deprecated:
+            return settings
+
+        # Ensure a settings object exists for merging
+        if settings is None:
+            settings = EntitySettings()
+
+        for dep_key in _DEPRECATED_ENTITY_KEYS:
+            if dep_key not in entity_data:
+                continue
+            top_val = entity_data[dep_key]
+            settings_val = getattr(settings, dep_key)
+            if settings_val is not None:
+                # Both present — settings wins, emit conflict warning
+                if top_val != settings_val:
+                    msg = (
+                        f"{entity_name}: both top-level '{dep_key}' and "
+                        f"'settings.{dep_key}' are set; "
+                        f"using settings.{dep_key}={settings_val!r} "
+                        f"(top-level value {top_val!r} ignored)"
+                    )
+                    logger.warning(msg)
+                    deprecation_warnings.append(msg)
+            else:
+                # Top-level present, settings absent — merge into settings
+                setattr(settings, dep_key, top_val)
+
+        return settings
+
+    @staticmethod
+    def _parse_duplicate_checks(
+        raw: list | None,
+    ) -> list[DuplicateCheck]:
+        """Parse a raw ``duplicateChecks:`` list into typed models.
+
+        :param raw: Raw list from YAML (or None).
+        :returns: List of DuplicateCheck instances.
+        """
+        if not raw or not isinstance(raw, list):
+            return []
+        checks: list[DuplicateCheck] = []
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+            raw_fields = item.get("fields", [])
+            if isinstance(raw_fields, str):
+                raw_fields = [raw_fields]
+            normalize_raw = item.get("normalize")
+            normalize = (
+                dict(normalize_raw)
+                if isinstance(normalize_raw, dict)
+                else None
+            )
+            checks.append(DuplicateCheck(
+                id=str(item.get("id", "")),
+                fields=list(raw_fields) if isinstance(raw_fields, list) else [],
+                onMatch=str(item.get("onMatch", "")),
+                message=item.get("message"),
+                normalize=normalize,
+                alertTemplate=item.get("alertTemplate"),
+                alertTo=item.get("alertTo"),
+            ))
+        return checks
+
+    def _validate_settings(self, entity: EntityDefinition) -> list[str]:
+        """Validate the entity's ``settings:`` block per spec Section 10.
+
+        :param entity: Entity definition to validate.
+        :returns: List of error messages.
+        """
+        errors: list[str] = []
+        if entity.settings_raw is None:
+            return errors
+        if not isinstance(entity.settings_raw, dict):
+            errors.append(
+                f"{entity.name}: 'settings' must be a mapping"
+            )
+            return errors
+
+        # Reject unknown keys
+        for key in entity.settings_raw:
+            if key not in VALID_SETTINGS_KEYS:
+                errors.append(
+                    f"{entity.name}.settings: unknown key '{key}'"
+                )
+
+        # Type checks
+        stream_val = entity.settings_raw.get("stream")
+        if stream_val is not None and not isinstance(stream_val, bool):
+            errors.append(
+                f"{entity.name}.settings.stream: must be a boolean"
+            )
+        disabled_val = entity.settings_raw.get("disabled")
+        if disabled_val is not None and not isinstance(disabled_val, bool):
+            errors.append(
+                f"{entity.name}.settings.disabled: must be a boolean"
+            )
+
+        # Label requirement for create actions is handled by the existing
+        # entity-level check in _validate_entity, which sees labels from
+        # either settings: or the deprecated top-level (via deprecation merge).
+
+        return errors
+
+    def _validate_duplicate_checks(
+        self, entity: EntityDefinition
+    ) -> list[str]:
+        """Validate the entity's ``duplicateChecks:`` block per spec Section 10.
+
+        :param entity: Entity definition to validate.
+        :returns: List of error messages.
+        """
+        errors: list[str] = []
+        if not entity.duplicate_checks:
+            return errors
+
+        field_names = {f.name for f in entity.fields}
+        seen_ids: set[str] = set()
+
+        for rule in entity.duplicate_checks:
+            prefix = f"{entity.name}.duplicateChecks[{rule.id or '(no id)'}]"
+
+            # id is required and must be unique
+            if not rule.id:
+                errors.append(f"{prefix}: missing required property 'id'")
+            elif rule.id in seen_ids:
+                errors.append(
+                    f"{prefix}: duplicate id '{rule.id}' within entity"
+                )
+            seen_ids.add(rule.id)
+
+            # fields must have at least one entry
+            if not rule.fields:
+                errors.append(
+                    f"{prefix}: 'fields' must list at least one field name"
+                )
+            else:
+                for fname in rule.fields:
+                    if fname not in field_names:
+                        errors.append(
+                            f"{prefix}: field '{fname}' not found on "
+                            f"entity '{entity.name}'"
+                        )
+
+            # onMatch validation
+            if not rule.onMatch:
+                errors.append(
+                    f"{prefix}: missing required property 'onMatch'"
+                )
+            elif rule.onMatch not in VALID_ON_MATCH_VALUES:
+                errors.append(
+                    f"{prefix}: invalid onMatch value '{rule.onMatch}' "
+                    f"(must be 'block' or 'warn')"
+                )
+
+            # block requires message
+            if rule.onMatch == "block" and not rule.message:
+                errors.append(
+                    f"{prefix}: 'message' is required when onMatch is 'block'"
+                )
+
+            # normalize validation
+            if rule.normalize:
+                for nfield, nvalue in rule.normalize.items():
+                    if nfield not in rule.fields:
+                        errors.append(
+                            f"{prefix}.normalize: key '{nfield}' is not "
+                            f"listed in 'fields'"
+                        )
+                    if nvalue not in VALID_NORMALIZE_VALUES:
+                        errors.append(
+                            f"{prefix}.normalize: invalid value "
+                            f"'{nvalue}' for field '{nfield}' "
+                            f"(must be one of: "
+                            f"{', '.join(sorted(VALID_NORMALIZE_VALUES))})"
+                        )
+
+            # alertTo shape validation (deferred cross-block check for
+            # alertTemplate to Prompt E)
+            if rule.alertTo is not None:
+                self._validate_alert_to(
+                    prefix, rule.alertTo, field_names, errors
+                )
+
+        return errors
+
+    @staticmethod
+    def _validate_alert_to(
+        prefix: str,
+        alert_to: str,
+        field_names: set[str],
+        errors: list[str],
+    ) -> None:
+        """Validate the shape of an ``alertTo`` value.
+
+        Must be one of: a field name on the entity, a literal email
+        address (contains ``@``), or ``role:<role-id>``.
+
+        :param prefix: Error message prefix.
+        :param alert_to: The alertTo value to validate.
+        :param field_names: Valid field names on the entity.
+        :param errors: Accumulator for error messages.
+        """
+        if not alert_to:
+            errors.append(f"{prefix}: 'alertTo' must not be empty")
+            return
+        # role:<role-id>
+        if alert_to.startswith("role:"):
+            role_id = alert_to[5:]
+            if not role_id:
+                errors.append(
+                    f"{prefix}: 'alertTo' role format requires an id "
+                    f"after 'role:'"
+                )
+            return
+        # literal email
+        if "@" in alert_to:
+            return
+        # field name
+        if alert_to in field_names:
+            return
+        errors.append(
+            f"{prefix}: 'alertTo' value '{alert_to}' is not a field name, "
+            f"a literal email address, or a 'role:<role-id>' string"
+        )
 
     def _parse_relationship(self, data: dict) -> RelationshipDefinition:
         """Parse a relationship definition from YAML.

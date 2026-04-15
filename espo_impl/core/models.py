@@ -154,6 +154,54 @@ class EntityAction(Enum):
 
 SUPPORTED_ENTITY_TYPES: set[str] = {"Base", "Person", "Company", "Event"}
 
+VALID_SETTINGS_KEYS: set[str] = {
+    "labelSingular", "labelPlural", "stream", "disabled",
+}
+
+VALID_NORMALIZE_VALUES: set[str] = {
+    "none", "lowercase-trim", "case-fold-trim", "e164",
+}
+
+VALID_ON_MATCH_VALUES: set[str] = {"block", "warn"}
+
+
+@dataclass
+class EntitySettings:
+    """Typed representation of the entity-level ``settings:`` block.
+
+    :param labelSingular: Singular display name for the entity.
+    :param labelPlural: Plural display name for the entity.
+    :param stream: Whether the activity-feed Stream panel is enabled.
+    :param disabled: Whether the entity is disabled in the CRM UI.
+    """
+
+    labelSingular: str | None = None
+    labelPlural: str | None = None
+    stream: bool | None = None
+    disabled: bool | None = None
+
+
+@dataclass
+class DuplicateCheck:
+    """A single duplicate-detection rule from the ``duplicateChecks:`` block.
+
+    :param id: Stable identifier for drift detection; unique within the entity.
+    :param fields: Field names whose combined values must be unique.
+    :param onMatch: Action on duplicate detection — ``block`` or ``warn``.
+    :param message: User-facing message (required when onMatch is ``block``).
+    :param normalize: Per-field normalization before comparison.
+    :param alertTemplate: Email template ID to send on match.
+    :param alertTo: Recipient — field name, literal email, or ``role:<role-id>``.
+    """
+
+    id: str
+    fields: list[str]
+    onMatch: str
+    message: str | None = None
+    normalize: dict[str, str] | None = None
+    alertTemplate: str | None = None
+    alertTo: str | None = None
+
 
 @dataclass
 class EntityDefinition:
@@ -179,6 +227,8 @@ class EntityDefinition:
     disabled: bool = False
     layouts: dict[str, LayoutSpec] = field(default_factory=dict)
     description: str | None = None
+    settings: EntitySettings | None = None
+    duplicate_checks: list[DuplicateCheck] = field(default_factory=list)
     settings_raw: dict | None = None
     duplicate_checks_raw: list | None = None
     saved_views_raw: list | None = None
@@ -304,6 +354,44 @@ class LayoutResult:
     error: str | None = None
 
 
+class SettingsStatus(Enum):
+    """Outcome status for an entity settings operation."""
+
+    UPDATED = "updated"
+    SKIPPED = "skipped"
+    ERROR = "error"
+
+
+@dataclass
+class SettingsResult:
+    """Result of applying settings for a single entity."""
+
+    entity: str
+    status: SettingsStatus
+    changes: list[str] | None = None
+    error: str | None = None
+
+
+class DuplicateCheckStatus(Enum):
+    """Outcome status for a duplicate-check rule operation."""
+
+    CREATED = "created"
+    UPDATED = "updated"
+    SKIPPED = "skipped"
+    DRIFT = "drift"
+    ERROR = "error"
+
+
+@dataclass
+class DuplicateCheckResult:
+    """Result of processing a single duplicate-check rule."""
+
+    entity: str
+    rule_id: str
+    status: DuplicateCheckStatus
+    error: str | None = None
+
+
 class FieldStatus(Enum):
     """Outcome status for a single field operation."""
 
@@ -355,6 +443,14 @@ class RunSummary:
     tooltips_updated: int = 0
     tooltips_skipped: int = 0
     tooltips_failed: int = 0
+    settings_updated: int = 0
+    settings_skipped: int = 0
+    settings_failed: int = 0
+    duplicate_checks_created: int = 0
+    duplicate_checks_updated: int = 0
+    duplicate_checks_skipped: int = 0
+    duplicate_checks_drift: int = 0
+    duplicate_checks_failed: int = 0
 
 
 @dataclass
@@ -381,6 +477,8 @@ class RunReport:
     layout_results: list[LayoutResult] = field(default_factory=list)
     relationship_results: list[RelationshipResult] = field(default_factory=list)
     tooltip_results: list[TooltipResult] = field(default_factory=list)
+    settings_results: list[SettingsResult] = field(default_factory=list)
+    duplicate_check_results: list[DuplicateCheckResult] = field(default_factory=list)
 
 
 @dataclass
