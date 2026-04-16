@@ -1,0 +1,8 @@
+{
+  "name": "CBM Test Instance",
+  "url": "https://cleveland-business-mentors.espocloud.com/",
+  "api_key": "admin",
+  "auth_method": "basic",
+  "secret_key": "11914281",
+  "project_folder": "/home/doug/Dropbox/Projects/ClevelandBusinessMentors"
+}

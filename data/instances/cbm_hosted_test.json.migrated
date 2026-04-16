@@ -1,0 +1,8 @@
+{
+  "name": "CBM_Hosted_Test",
+  "url": "https://crm-test.clevelandbusinessmentors.org/",
+  "api_key": "admin",
+  "auth_method": "basic",
+  "secret_key": "cbm-crm-test",
+  "project_folder": "/home/doug/Dropbox/Projects/ClevelandBusinessMentors"
+}
