@@ -42,6 +42,16 @@ def map_payload(
                      "plural_label", "description"):
             if key in metadata:
                 entity_update[key] = metadata[key]
+
+        # Bug 6: resolve primary_domain_code → primary_domain_id
+        primary_domain_code = metadata.get("primary_domain_code")
+        if primary_domain_code:
+            domain_id = resolve_by_code(
+                conn, "Domain", "code", primary_domain_code,
+            )
+            if domain_id is not None:
+                entity_update["primary_domain_id"] = domain_id
+
         if entity_update:
             records.append(ProposedRecord(
                 table_name="Entity",

@@ -35,9 +35,25 @@ class ParseReport:
         )
 
 
+    def info(self, category: str, location: str, message: str) -> None:
+        """Append an info-severity entry."""
+        self.warnings.append(
+            ParseWarning(
+                severity="info",
+                category=category,
+                location=location,
+                message=message,
+            )
+        )
+
+
 class MasterPrdParseError(Exception):
     """Raised when CBM-Master-PRD.docx is structurally unparseable."""
 
 
 class ProcessDocParseError(Exception):
     """Raised when a process document .docx is structurally unparseable."""
+
+
+class EntityPrdParseError(Exception):
+    """Raised when an Entity PRD .docx is structurally unparseable."""

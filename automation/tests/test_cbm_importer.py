@@ -282,6 +282,7 @@ class TestEntityInventoryParser:
         assert not report.errors
 
 
+@pytest.mark.skip(reason="Path A Entity PRD parser tombstoned — migrated to Path B entity_prd_docx.py")
 class TestEntityPrdParser:
 
     def test_parse_contact_fixture(self):
@@ -461,6 +462,7 @@ class TestImporterSubdomainRecursion:
         )
 
 
+@pytest.mark.skip(reason="Path A Entity PRD parser tombstoned — migrated to Path B entity_prd_docx.py")
 class TestImportEntityPrdRelationships:
     """Bug #9: relationships parsed by Entity PRD must be written to DB."""
 

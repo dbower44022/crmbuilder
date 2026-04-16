@@ -188,7 +188,12 @@ class CBMImporter:
         return report
 
     def import_entity_prd(self, entity_name: str, path: Path | None = None) -> ImportReport:
-        """Import a single Entity PRD document."""
+        """Import a single Entity PRD document.
+
+        .. deprecated::
+            Entity PRD imports must go through Path B:
+            automation.importer.parsers.entity_prd_docx + ImportProcessor.
+        """
         report = ImportReport()
         if path is None:
             path = self._prds / "entities" / f"{entity_name}-Entity-PRD.docx"
@@ -293,6 +298,11 @@ class CBMImporter:
                     self._conn.rollback()
                     report.record_skipped(path.name, "Relationship", rel_name, "Duplicate")
 
+        except NotImplementedError:
+            report.add_warning(
+                f"Entity PRD import skipped for {entity_name} — migrated "
+                "to Path B. Use ImportProcessor for entity PRD imports."
+            )
         except Exception as e:
             report.add_error(f"Entity PRD import failed for {entity_name}: {e}")
         return report
@@ -562,8 +572,14 @@ class CBMImporter:
 
         for f in sorted(self._prds.glob("entities/*-Entity-PRD*.docx")):
             if not f.name.startswith("~"):
-                _, r = entity_prd.parse(f)
-                report.merge(r)
+                try:
+                    _, r = entity_prd.parse(f)
+                    report.merge(r)
+                except NotImplementedError:
+                    report.add_warning(
+                        f"Entity PRD dry run skipped for {f.name} — "
+                        "migrated to Path B."
+                    )
 
         for d in sorted(self._prds.iterdir()):
             if d.is_dir() and d.name not in ("entities", "Archive", "WorkflowDiagrams", "services", "Graphics"):
