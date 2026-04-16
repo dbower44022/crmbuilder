@@ -57,3 +57,11 @@ class ProcessDocParseError(Exception):
 
 class EntityPrdParseError(Exception):
     """Raised when an Entity PRD .docx is structurally unparseable."""
+
+
+class EntityInventoryParseError(Exception):
+    """Raised when an Entity Inventory .docx is structurally unparseable."""
+
+
+class DomainPrdParseError(Exception):
+    """Raised when a Domain PRD .docx is structurally unparseable."""

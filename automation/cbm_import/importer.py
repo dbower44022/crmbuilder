@@ -12,12 +12,6 @@ import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 
-from automation.cbm_import.parsers import (
-    domain_prd,
-    entity_inventory,
-    entity_prd,
-    process_document,
-)
 from automation.cbm_import.reporter import ImportReport
 from automation.db.migrations import run_client_migrations, run_master_migrations
 from automation.workflow.engine import WorkflowEngine
@@ -151,40 +145,17 @@ class CBMImporter:
         )
 
     def import_entity_inventory(self, work_item_id: int | None = None) -> ImportReport:
-        """Import the Entity Inventory document."""
+        """Import the Entity Inventory document.
+
+        .. deprecated::
+            Entity Inventory imports must go through Path B:
+            automation.importer.parsers.entity_inventory_docx + ImportProcessor.
+        """
         report = ImportReport()
-        path = self._prds / "CBM-Entity-Inventory.docx"
-        if not path.exists():
-            report.add_error(f"Entity Inventory not found: {path}")
-            return report
-
-        try:
-            data, parse_report = entity_inventory.parse(path)
-            report.merge(parse_report)
-            if self._conn is None:
-                return report
-
-            session_id = self._create_session(work_item_id or 1, "Entity Inventory bootstrap")
-
-            for entity in data.get("entities", []):
-                self._insert_ignore(
-                    "Entity", "name, code, entity_type, is_native, created_by_session_id",
-                    (entity["name"], entity["code"], entity.get("entity_type", "Base"),
-                     entity.get("is_native", False), session_id),
-                )
-                report.record_imported("Entity")
-
-            for bo in data.get("business_objects", []):
-                entity_id = self._resolve("Entity", "name", bo.get("entity_name", ""))
-                self._insert_ignore(
-                    "BusinessObject", "name, status, resolution, resolved_to_entity_id, created_by_session_id",
-                    (bo["name"], bo.get("status", "unclassified"), bo.get("resolution"),
-                     entity_id, session_id),
-                )
-                report.record_imported("BusinessObject")
-
-        except Exception as e:
-            report.add_error(f"Entity Inventory import failed: {e}")
+        report.add_warning(
+            "Entity Inventory import skipped — migrated to Path B. "
+            "Use ImportProcessor for entity inventory imports."
+        )
         return report
 
     def import_entity_prd(self, entity_name: str, path: Path | None = None) -> ImportReport:
@@ -195,116 +166,10 @@ class CBMImporter:
             automation.importer.parsers.entity_prd_docx + ImportProcessor.
         """
         report = ImportReport()
-        if path is None:
-            path = self._prds / "entities" / f"{entity_name}-Entity-PRD.docx"
-        if not path.exists():
-            report.add_warning(f"Entity PRD not found: {path}")
-            return report
-
-        try:
-            data, parse_report = entity_prd.parse(path)
-            report.merge(parse_report)
-            if self._conn is None:
-                return report
-
-            entity_info = data.get("entity", {})
-            e_name = entity_info.get("name", entity_name)
-            wi_id = self._find_work_item("entity_prd") or 1
-            session_id = self._create_session(wi_id, f"Entity PRD import: {e_name}")
-
-            entity_id = self._resolve("Entity", "name", e_name)
-            if not entity_id:
-                self._conn.execute(
-                    "INSERT INTO Entity (name, code, entity_type, is_native, "
-                    "singular_label, plural_label, description, created_by_session_id) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    (e_name, e_name.upper(), entity_info.get("entity_type", "Base"),
-                     entity_info.get("is_native", False),
-                     entity_info.get("singular_label", e_name),
-                     entity_info.get("plural_label", ""), entity_info.get("description", ""),
-                     session_id),
-                )
-                self._conn.commit()
-                entity_id = self._resolve("Entity", "name", e_name)
-
-            for field in data.get("fields", []):
-                try:
-                    cursor = self._conn.execute(
-                        "INSERT INTO Field (entity_id, name, label, field_type, is_required, "
-                        "default_value, description, created_by_session_id) "
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                        (entity_id, field["name"], field.get("label", field["name"]),
-                         field.get("field_type", "varchar"), field.get("is_required", False),
-                         field.get("default_value"), field.get("description", ""), session_id),
-                    )
-                    self._conn.commit()
-                    field_id = cursor.lastrowid
-                    report.record_imported("Field")
-
-                    for opt in data.get("field_options", []):
-                        if opt["field_name"] == field["name"]:
-                            self._conn.execute(
-                                "INSERT INTO FieldOption (field_id, value, label, sort_order, "
-                                "created_by_session_id) VALUES (?, ?, ?, ?, ?)",
-                                (field_id, opt["value"], opt["label"],
-                                 opt.get("sort_order", 0), session_id),
-                            )
-                            self._conn.commit()
-                            report.record_imported("FieldOption")
-                except sqlite3.IntegrityError:
-                    self._conn.rollback()
-                    report.record_skipped(path.name, "Field", field["name"], "Duplicate field")
-
-            for rel in data.get("relationships", []):
-                target_entity_name = rel.get("entity_foreign", "")
-                if not target_entity_name:
-                    report.record_skipped(
-                        path.name, "Relationship", rel.get("name", "?"),
-                        "No target entity specified",
-                    )
-                    continue
-
-                target_entity_id = self._resolve("Entity", "name", target_entity_name)
-                if not target_entity_id:
-                    report.record_skipped(
-                        path.name, "Relationship", rel.get("name", "?"),
-                        f"Target entity not found: {target_entity_name}",
-                    )
-                    continue
-
-                rel_name = rel["name"]
-                try:
-                    self._conn.execute(
-                        "INSERT INTO Relationship (entity_id, entity_foreign_id, name, "
-                        "link_type, link, link_foreign, label, label_foreign, "
-                        "description, created_by_session_id) "
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                        (
-                            entity_id,
-                            target_entity_id,
-                            rel_name,
-                            rel.get("link_type", "oneToMany"),
-                            rel_name,
-                            e_name[0].lower() + e_name[1:] if e_name else "",
-                            _camel_to_label(rel_name),
-                            e_name,
-                            "",
-                            session_id,
-                        ),
-                    )
-                    self._conn.commit()
-                    report.record_imported("Relationship")
-                except sqlite3.IntegrityError:
-                    self._conn.rollback()
-                    report.record_skipped(path.name, "Relationship", rel_name, "Duplicate")
-
-        except NotImplementedError:
-            report.add_warning(
-                f"Entity PRD import skipped for {entity_name} — migrated "
-                "to Path B. Use ImportProcessor for entity PRD imports."
-            )
-        except Exception as e:
-            report.add_error(f"Entity PRD import failed for {entity_name}: {e}")
+        report.add_warning(
+            f"Entity PRD import skipped for {entity_name} — migrated "
+            "to Path B. Use ImportProcessor for entity PRD imports."
+        )
         return report
 
     def import_process(
@@ -314,142 +179,31 @@ class CBMImporter:
         *,
         is_service: bool = False,
     ) -> ImportReport:
-        """Import a single Process Document."""
+        """Import a single Process Document.
+
+        .. deprecated::
+            Process imports must go through Path B:
+            automation.importer.parsers.process_doc_docx + ImportProcessor.
+        """
         report = ImportReport()
-        if path is None or not path.exists():
-            report.add_warning(f"Process document not found for {process_code}")
-            return report
-
-        try:
-            data, parse_report = process_document.parse(path)
-            report.merge(parse_report)
-        except NotImplementedError:
-            report.add_warning(
-                f"Process import skipped for {process_code} — migrated to Path B. "
-                "Use ImportProcessor for process document imports."
-            )
-            return report
-
-        try:
-            if self._conn is None:
-                return report
-
-            proc_data = data.get("process", {})
-            code = proc_data.get("code", process_code)
-            wi_id = self._find_work_item("process_definition") or 1
-            session_id = self._create_session(wi_id, f"Process import: {code}")
-
-            process_id = self._resolve("Process", "code", code)
-            if not process_id:
-                domain_id = self._resolve("Domain", "code", proc_data.get("domain_code", ""))
-                if not domain_id and is_service:
-                    domain_id = self._ensure_services_domain(session_id)
-                if domain_id:
-                    self._conn.execute(
-                        "INSERT INTO Process (domain_id, name, code, description, triggers, "
-                        "completion_criteria, sort_order, created_by_session_id) "
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                        (domain_id, proc_data.get("name", code), code,
-                         proc_data.get("description", ""), proc_data.get("triggers", ""),
-                         proc_data.get("completion_criteria", ""), 1, session_id),
-                    )
-                    self._conn.commit()
-                    process_id = self._resolve("Process", "code", code)
-                    report.record_imported("Process")
-                else:
-                    report.record_skipped(path.name, "Process", code, "Could not resolve domain")
-                    return report
-            else:
-                self._conn.execute(
-                    "UPDATE Process SET description = ?, triggers = ?, completion_criteria = ? WHERE id = ?",
-                    (proc_data.get("description", ""), proc_data.get("triggers", ""),
-                     proc_data.get("completion_criteria", ""), process_id),
-                )
-                self._conn.commit()
-
-            for step in data.get("steps", []):
-                self._conn.execute(
-                    "INSERT INTO ProcessStep (process_id, name, description, step_type, "
-                    "sort_order, created_by_session_id) VALUES (?, ?, ?, ?, ?, ?)",
-                    (process_id, step["name"][:200], step.get("description", ""),
-                     step.get("step_type", "action"), step.get("sort_order", 0), session_id),
-                )
-                self._conn.commit()
-                report.record_imported("ProcessStep")
-
-            for req in data.get("requirements", []):
-                try:
-                    self._conn.execute(
-                        "INSERT INTO Requirement (identifier, process_id, description, "
-                        "priority, status, created_by_session_id) VALUES (?, ?, ?, ?, 'proposed', ?)",
-                        (req["identifier"], process_id, req.get("description", ""),
-                         req.get("priority", "must"), session_id),
-                    )
-                    self._conn.commit()
-                    report.record_imported("Requirement")
-                except sqlite3.IntegrityError:
-                    self._conn.rollback()
-                    report.record_skipped(path.name, "Requirement", req["identifier"], "Duplicate")
-
-            for persona_ref in data.get("personas", []):
-                persona_id = self._resolve("Persona", "code", persona_ref.get("code", ""))
-                if persona_id:
-                    try:
-                        self._conn.execute(
-                            "INSERT INTO ProcessPersona (process_id, persona_id, role) VALUES (?, ?, ?)",
-                            (process_id, persona_id, persona_ref.get("role", "performer")),
-                        )
-                        self._conn.commit()
-                        report.record_imported("ProcessPersona")
-                    except sqlite3.IntegrityError:
-                        self._conn.rollback()
-
-        except Exception as e:
-            report.add_error(f"Process import failed for {process_code}: {e}")
+        report.add_warning(
+            f"Process import skipped for {process_code} — migrated to Path B. "
+            "Use ImportProcessor for process document imports."
+        )
         return report
 
     def import_domain_prd(self, domain_code: str, path: Path | None = None) -> ImportReport:
-        """Import a single Domain PRD document."""
+        """Import a single Domain PRD document.
+
+        .. deprecated::
+            Domain PRD imports must go through Path B:
+            automation.importer.parsers.domain_prd_docx + ImportProcessor.
+        """
         report = ImportReport()
-        if path is None or not path.exists():
-            report.add_warning(f"Domain PRD not found: {path}")
-            return report
-
-        try:
-            data, parse_report = domain_prd.parse(path)
-            report.merge(parse_report)
-            if self._conn is None:
-                return report
-
-            code = data.get("domain_code", domain_code)
-            wi_id = self._find_work_item("domain_reconciliation") or 1
-            session_id = self._create_session(wi_id, f"Domain PRD import: {code}")
-
-            domain_id = self._resolve("Domain", "code", code)
-            if domain_id:
-                self._conn.execute(
-                    "UPDATE Domain SET domain_overview_text = ?, domain_reconciliation_text = ? WHERE id = ?",
-                    (data.get("domain_overview_text", ""),
-                     data.get("domain_reconciliation_text", ""), domain_id),
-                )
-                self._conn.commit()
-
-            for dec in data.get("decisions", []):
-                try:
-                    self._conn.execute(
-                        "INSERT INTO Decision (identifier, title, description, status, "
-                        "domain_id, created_by_session_id) VALUES (?, ?, ?, ?, ?, ?)",
-                        (dec["identifier"], dec["title"], dec.get("description", ""),
-                         dec.get("status", "locked"), domain_id, session_id),
-                    )
-                    self._conn.commit()
-                    report.record_imported("Decision")
-                except sqlite3.IntegrityError:
-                    self._conn.rollback()
-                    report.record_skipped(path.name, "Decision", dec["identifier"], "Duplicate")
-
-        except Exception as e:
-            report.add_error(f"Domain PRD import failed for {domain_code}: {e}")
+        report.add_warning(
+            f"Domain PRD import skipped for {domain_code} — migrated to Path B. "
+            "Use ImportProcessor for domain PRD imports."
+        )
         return report
 
     # ------------------------------------------------------------------
@@ -562,52 +316,12 @@ class CBMImporter:
 
     def _parse_dry_run(self) -> ImportReport:
         report = ImportReport()
-        # Master PRD parsing has migrated to Path B — skip in dry run.
-        for path, parser in [
-            (self._prds / "CBM-Entity-Inventory.docx", entity_inventory),
-        ]:
-            if path.exists():
-                _, r = parser.parse(path)
-                report.merge(r)
-
-        for f in sorted(self._prds.glob("entities/*-Entity-PRD*.docx")):
-            if not f.name.startswith("~"):
-                try:
-                    _, r = entity_prd.parse(f)
-                    report.merge(r)
-                except NotImplementedError:
-                    report.add_warning(
-                        f"Entity PRD dry run skipped for {f.name} — "
-                        "migrated to Path B."
-                    )
-
-        for d in sorted(self._prds.iterdir()):
-            if d.is_dir() and d.name not in ("entities", "Archive", "WorkflowDiagrams", "services", "Graphics"):
-                for f in sorted(d.rglob("*.docx")):
-                    if not f.name.startswith("~") and not any(
-                        kw in f.name for kw in ("Domain-PRD", "Domain-Overview", "SubDomain")
-                    ):
-                        try:
-                            _, r = process_document.parse(f)
-                            report.merge(r)
-                        except NotImplementedError:
-                            report.add_warning(
-                                f"Process dry run skipped for {f.name} — "
-                                "migrated to Path B."
-                            )
-                for f in sorted(d.glob("*Domain-PRD*.docx")):
-                    if not f.name.startswith("~"):
-                        _, r = domain_prd.parse(f)
-                        report.merge(r)
+        report.add_warning(
+            "All parsers have migrated to Path B. "
+            "Use ImportProcessor for dry run parsing."
+        )
         return report
 
 
 def _now() -> str:
     return datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
-
-
-def _camel_to_label(name: str) -> str:
-    """Convert camelCase name to a space-separated label."""
-    import re
-    label = re.sub(r"([a-z])([A-Z])", r"\1 \2", name)
-    return label[0].upper() + label[1:] if label else label
