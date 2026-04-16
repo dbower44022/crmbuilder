@@ -1,10 +1,10 @@
 # CRM Builder — YAML Generation Guide
 
-**Version:** 1.0
-**Last Updated:** 04-13-26 05:12
+**Version:** 1.1
+**Last Updated:** 04-15-26 17:30
 **Purpose:** AI guide for Phase 9 — YAML Generation
 **Governing Process:** `PRDs/process/CRM-Builder-Document-Production-Process.docx`
-**Schema Reference:** `PRDs/product/app-yaml-schema.md`
+**Schema Reference:** `PRDs/product/app-yaml-schema.md` (v1.1)
 
 ---
 
@@ -40,21 +40,34 @@ if many exceptions against prior YAML are found.
 | Manual Configuration List | `programs/{DOMAIN}/MANUAL-CONFIG.md` |
 | Exception List (if any exceptions) | `programs/{DOMAIN}/EXCEPTIONS.md` |
 
+Email-template body files (referenced by `emailTemplates:` entries)
+are an additional output and live in `programs/{DOMAIN}/templates/`.
+See Section "v1.1 YAML Constructs" for details.
+
 ---
 
 ## Methodology Extension Notice
 
 The process document (Section 3.9) specifies YAML + an Exception List
 as Phase 9 outputs. This guide adds a third required output, the
-**Manual Configuration List**, based on empirical evidence from prior
-CBM work that the YAML schema cannot express every configuration the
-target CRM requires to function (workflows, email templates, role
-field-level permissions, calculated-field formulas, duplicate-detection
-rules, stream/audit settings, saved views, integrations).
+**Manual Configuration List**, for configuration items that the
+target CRM requires but that the YAML schema does not express.
+
+In schema v1.1, the Manual Configuration List covers:
+
+- **Role-based field-level permissions** (Category 6 of the gap
+  analysis), deferred to v1.2.
+- **Integration mechanics** — connectors, OAuth, SMTP configuration,
+  webhook endpoints, scheduled syncs. The `externallyPopulated:`
+  field flag documents which fields depend on integrations, but the
+  integration setup itself is manual.
+- **Advanced automation** that uses trigger or action types deferred
+  to v1.2 (currently `onFirstTransition` and `createRelatedRecord`).
+- A small residual of domain-specific configuration the schema does
+  not yet cover.
 
 The process document should be updated to incorporate this extension
-once the MR pilot confirms the Manual Configuration List is correct in
-concept and in format.
+once the methodology stabilizes.
 
 ---
 
@@ -67,14 +80,16 @@ completely — do not leave business-language text in YAML comments
 where an implementation detail is needed.
 
 **Default wherever possible.** Every convention in Section "Default
-Conventions" below is a rule the AI applies automatically without
-asking. Only stop and ask when an explicit exception in this guide
-directs you to.
+Conventions" and the per-construct defaults in Section "v1.1 YAML
+Constructs" are rules the AI applies automatically without asking.
+Only stop and ask when an explicit trigger in this guide directs you
+to.
 
 **Do not invent requirements.** If the Domain PRD doesn't cover
 something needed for YAML (a field type, an option value, a
-cardinality), raise it as an exception rather than guessing. The PRD
-is the source of truth.
+cardinality, a duplicate-check field set, a workflow trigger), raise
+it as an exception rather than guessing. The PRD is the source of
+truth.
 
 **Prior YAML is authoritative for previously defined entities.** When
 the domain being processed adds fields to an entity already defined in
@@ -123,6 +138,11 @@ Before starting, state to the administrator:
 
 These are the rules the AI applies automatically. The administrator
 is not asked about any of these unless an exception arises.
+
+> See also: Section "v1.1 YAML Constructs" for the per-construct
+> defaults that govern `settings:`, `duplicateChecks:`, `savedViews:`,
+> `emailTemplates:`, `workflows:`, `requiredWhen:`, `visibleWhen:`,
+> `formula:`, and `externallyPopulated:`.
 
 ### Internal Field Names
 
@@ -180,10 +200,178 @@ is not asked about any of these unless an exception arises.
 
 ---
 
+## v1.1 YAML Constructs
+
+This section governs the entity-level and field-level constructs
+introduced in schema v1.1. Each construct entry lists when to emit
+it, the default the AI applies without asking, and the trigger that
+forces a stop-and-ask. Syntax details — example shapes, property
+tables, validation rules — live in `app-yaml-schema.md` v1.1; this
+guide intentionally does not duplicate them.
+
+The constructs are presented entity-level first, then field-level,
+matching the spec's ordering.
+
+### Entity-level constructs
+
+#### `settings:` block
+
+- **When to emit.** Always emit on custom entities. On native
+  entities, emit only the specific keys whose CRM defaults are being
+  overridden — omit the block entirely when no override is needed.
+- **Default.** Custom entities get `labelSingular`, `labelPlural`,
+  `stream: false`, `disabled: false`. `labelSingular` and
+  `labelPlural` are taken from the Entity PRD; `stream` is set to
+  `true` only if the PRD specifies an activity feed for the entity.
+  Never use the deprecated v1.0 top-level entity-config form
+  (`labelSingular`, `labelPlural`, `stream`, `disabled` outside
+  `settings:`).
+- **Stop and ask.** None — settings are fully defaulted.
+
+#### `duplicateChecks:` block
+
+- **When to emit.** Emit when the Domain PRD or Entity PRD mentions
+  duplicate prevention, uniqueness constraints, or "already exists"
+  scenarios.
+- **Default.** Derive `fields:`, `onMatch:`, and `message:` from the
+  PRD. Use `onMatch: block` when the PRD says "prevent" or "reject";
+  use `onMatch: warn` when the PRD says "flag" or "alert." For email
+  fields, default `normalize:` to `lowercase-trim`; for name and
+  address fields, `case-fold-trim`; for phone fields, `e164`. Assign
+  a stable `id:` derived from the entity name and the field set
+  (e.g., `contact-personal-email`).
+- **Stop and ask.** The PRD mentions duplicate detection but does
+  not specify which fields participate in the match.
+
+#### `savedViews:` block
+
+- **When to emit.** Emit when the Domain PRD defines named list
+  views, filtered views, or "quick filters."
+- **Default.** Translate the PRD's filter criteria into a
+  Section 11 condition expression — shorthand form for pure-AND
+  filters, structured form when OR is involved. `columns:` defaults
+  to the entity's list-layout column set unless the PRD specifies a
+  different column set for the view. `orderBy:` is taken from the
+  PRD; if the PRD specifies a sort field but no direction, default
+  to `asc`. Assign a stable `id:` derived from the view name.
+- **Stop and ask.** The PRD names a view but does not define its
+  filter criteria.
+
+#### `emailTemplates:` block
+
+- **When to emit.** Emit when the Domain PRD references named
+  emails, notifications, or correspondence the target CRM should
+  send.
+- **Default.** Register the template in the entity's
+  `emailTemplates:` block and create a placeholder HTML body file
+  at `programs/{DOMAIN}/templates/{template-id}.html` containing
+  the merge-field placeholders the template will use. Derive
+  `mergeFields:` from the PRD's description of what data appears in
+  the email; every entry must be a real field on the template's
+  `entity`. Set `audience:` only when the PRD identifies an
+  intended recipient (use the `role:<role-id>`, `user:<user-id>`,
+  or descriptive-string conventions from the spec). Reference the
+  template `id` from any duplicate-check `alertTemplate:` or
+  workflow `sendEmail` action that needs it.
+- **Stop and ask.** The PRD references an email but does not
+  specify which fields appear in the body.
+
+#### `workflows:` block
+
+- **When to emit.** Emit when the Domain PRD defines event-driven
+  automation: "when [event], do [action]," "on [field change],
+  set/clear [field]," "send [email] when [condition]."
+- **Default.** Map PRD trigger language to one of the v1.1 trigger
+  events: record creation → `onCreate`; field set to a specific
+  value → `onFieldChange`; field transition with from/to constraint
+  → `onFieldTransition`; record update (any field) → `onUpdate`;
+  record deletion → `onDelete`. Map PRD action language to one of
+  the four v1.1 actions: `setField`, `clearField`, `sendEmail`,
+  `sendInternalNotification`. Express additional gating conditions
+  in `where:` using the Section 11 expression. For `sendEmail`,
+  reference the `emailTemplates:` `id`, not the template name.
+- **Stop and ask.** The PRD describes an automation whose trigger
+  or action does not map to the v1.1 vocabulary (e.g., "the first
+  time the mentor is activated" → `onFirstTransition`, deferred to
+  v1.2; "create a related record" → `createRelatedRecord`, deferred
+  to v1.2). Such automations are recorded in the Manual
+  Configuration List under Advanced Automation, not as workflow
+  entries.
+
+### Field-level constructs
+
+#### `requiredWhen:`
+
+- **When to emit.** Emit when the Entity PRD describes a field as
+  "required when [condition]," "mandatory if [condition]," or
+  similar conditional-requirement language.
+- **Default.** Express the condition using the Section 11
+  construct — shorthand for pure-AND, structured for OR or mixed
+  logic. Set `required: false` (or omit `required:`); never set
+  both `required: true` and `requiredWhen:`.
+- **Stop and ask.** The PRD describes a conditional requirement
+  but the condition is ambiguous (cannot determine the field, the
+  operator, or the value).
+
+#### `visibleWhen:` (field-level and panel-level)
+
+- **When to emit.** Emit when the Entity PRD or Domain PRD says a
+  field or panel is "shown when," "visible when," "hidden unless,"
+  or similar conditional-visibility language. Field-level
+  `visibleWhen:` lives on the field; panel-level `visibleWhen:`
+  lives on the panel definition.
+- **Default.** Express the condition using the Section 11
+  construct. For panel-level visibility, always use `visibleWhen:`;
+  never use the deprecated v1.0 `dynamicLogicVisible:`. Never set
+  both `required: true` and `visibleWhen:` on the same field —
+  authors who want "required only when visible" use `requiredWhen:`
+  with the same condition.
+- **Stop and ask.** The PRD describes conditional visibility but
+  the condition is ambiguous.
+
+#### `formula:` block
+
+- **When to emit.** Emit when the Entity PRD describes a field as
+  "calculated," "derived," "computed," "auto-populated from
+  [other fields/entities]," "rolled up from," or similar.
+- **Default.** Choose the formula type from PRD intent:
+  `aggregate` for roll-ups across related entities (count, sum,
+  avg, min, max, first, last); `arithmetic` for computations from
+  same-record fields; `concat` for text assembly. Always set
+  `readOnly: true` on the field. For aggregates, use explicit
+  `join:` lists for multi-hop traversals. Express filtering
+  predicates with `where:` using the Section 11 construct, including
+  the relative-date vocabulary (`today`, `lastNDays:N`, etc.) where
+  the PRD specifies a time window.
+- **Stop and ask.** The PRD describes a calculation but the
+  formula is ambiguous, the formula type is unclear, or the
+  formula references entities or relationships not yet defined in
+  YAML.
+
+#### `externallyPopulated:` flag
+
+- **When to emit.** Emit when the Entity PRD says a field is
+  "populated by [external system]," "set by integration," "synced
+  from," or similar.
+- **Default.** Set `externallyPopulated: true` and include a
+  `description:` naming the external system (the Verification Spec
+  generator uses this in its External Integration Dependencies
+  section). Add a corresponding entry to the Manual Configuration
+  List under Integration Mechanics describing the integration the
+  field depends on.
+- **Stop and ask.** None — the flag is documentary; the
+  integration itself is always Manual Configuration.
+
+---
+
 ## When to Stop and Ask
 
-Stop the generation pass and ask the administrator only in these
-specific situations:
+Stop the generation pass and ask the administrator only in the
+specific situations listed below. The list is split into general
+situations that have applied since v1.0 and v1.1-specific situations
+introduced with the new constructs.
+
+### General
 
 1. **A required field property is missing from the PRDs.** Example:
    the PRD defines an enum field but lists no options, or defines a
@@ -205,7 +393,38 @@ specific situations:
 
 5. **A configuration item is clearly required but is not expressible
    in YAML.** Do not ask — add it to the Manual Configuration List
-   automatically and continue. See next section.
+   automatically and continue. See "The Manual Configuration List."
+
+### v1.1-specific
+
+1. **Duplicate detection without a field set.** The PRD mentions
+   duplicate prevention, uniqueness, or "already exists" handling
+   but does not specify which fields participate in the match.
+
+2. **Saved view without filter criteria.** The PRD names a list view
+   but does not define the filter criteria that select its records.
+
+3. **Ambiguous condition for `requiredWhen:` or `visibleWhen:`.**
+   The PRD describes a conditional requirement or visibility rule
+   but the condition is ambiguous — cannot determine the field, the
+   operator, or the value.
+
+4. **Calculated field with ambiguous or undefined references.** The
+   PRD describes a calculation but the formula type is unclear, or
+   the formula references entities or relationships not yet defined
+   in YAML.
+
+5. **Email template without merge-field specification.** The PRD
+   references an email but does not specify which fields appear in
+   the body. (Body content authoring is always manual; what the AI
+   needs from the PRD is the merge-field set.)
+
+6. **Workflow trigger or action outside the v1.1 vocabulary.** The
+   PRD describes an automation that does not map to the five v1.1
+   triggers or four v1.1 actions — typically because it requires
+   `onFirstTransition` or `createRelatedRecord`, both deferred to
+   v1.2. Record in the Manual Configuration List under Advanced
+   Automation rather than emitting a malformed workflow entry.
 
 Do not ask about: field internal names, layout structure, category
 groupings, link naming, description wording, default enum values,
@@ -220,34 +439,46 @@ not expressible in the CRM Builder YAML schema is recorded in the
 Manual Configuration List. The list is produced automatically during
 YAML generation — it does not require administrator interaction.
 
+### What moved into YAML in v1.1
+
+Schema v1.1 brought several previously-manual capability categories
+into YAML scope: stream and audit settings, duplicate detection,
+saved views, conditional requirement, conditional visibility, email
+templates, calculated-field formulas, and event-driven workflows
+(within the v1.1 trigger and action vocabulary). If the Domain PRD
+calls for any of these, emit the corresponding YAML construct from
+Section "v1.1 YAML Constructs" — do not add it to the Manual
+Configuration List.
+
+The categories below are what remains outside YAML scope after v1.1.
+
 ### Required Categories
 
-At minimum, the list covers the following categories (include only
-those that apply to the domain being processed):
+Include only those that apply to the domain being processed.
 
-- **Workflows** — event-driven automation (e.g., confirmation email
-  on record creation, status-change triggers).
-- **Email Templates** — named templates referenced by workflows.
 - **Role-Based Field Visibility** — which fields are visible or
-  editable to which roles beyond what the YAML role block expresses.
-- **Calculated Fields and Formulas** — formulas for derived fields
-  (e.g., `lastActivityDate`, engagement counts, badge levels).
-- **Duplicate Detection Rules** — matching criteria for duplicate
-  prevention or detection.
-- **Stream and Audit Logging** — per-entity stream settings, audit
-  log configuration.
-- **Saved Views and List Filters** — named list views referenced by
-  the Domain PRD.
-- **Integrations** — external system connections (Google Workspace,
-  marketing platforms, LMS, etc.).
+  editable to which roles. Category 6 of the gap analysis, deferred
+  to v1.2.
+- **Integration Mechanics** — connectors, OAuth flows, SMTP
+  configuration, webhook endpoints, scheduled syncs, credentials,
+  and transport configuration. The `externallyPopulated:` flag on
+  individual fields documents the dependency in YAML, but the
+  integration itself is configured manually.
+- **Advanced Automation** — automations that require trigger or
+  action types deferred to v1.2 (currently `onFirstTransition` and
+  `createRelatedRecord`), or other automations the v1.1 workflow
+  vocabulary cannot express.
+- **Anything else** — domain-specific configuration the YAML schema
+  does not yet cover. Use this category sparingly; an item that
+  arrives here often signals a schema gap worth logging for the next
+  schema revision.
 
 ### Item Format
 
 Each item in the list records:
 
 - **Category** (one of the categories above)
-- **Name** (the item's label, e.g., "Application Confirmation Email
-  Workflow")
+- **Name** (the item's label, e.g., "Mentor Application Roles")
 - **Source** (the Domain PRD requirement identifier or section that
   drives it, e.g., `MR-APPLY-REQ-003`)
 - **Description** (one or two sentences explaining what the
@@ -301,6 +532,23 @@ Phase 9 for a domain is complete when all of the following are true:
    `app-yaml-schema.md` (if a validator is available).
 7. The YAML files, Manual Configuration List, and Exception List are
    committed to the implementation repo in a single commit.
+8. Every conditional requirement and conditional visibility rule
+   defined in the Entity or Domain PRD is expressed as
+   `requiredWhen:` or `visibleWhen:` in YAML, or recorded in the
+   Exception List with a resolution.
+9. Every calculated, derived, computed, or rolled-up field defined
+   in the Entity PRD is expressed as a `formula:` block.
+10. Every event-driven automation defined in the Domain PRD is
+    either expressed as a `workflows:` entry or recorded in the
+    Manual Configuration List under Advanced Automation with a
+    reason.
+11. Every email template referenced by a workflow or duplicate-check
+    rule is registered in the entity's `emailTemplates:` block, and
+    a corresponding HTML body file exists at
+    `programs/{DOMAIN}/templates/{template-id}.html`.
+12. Every field populated by an external system is flagged
+    `externallyPopulated: true` and has a corresponding entry in
+    the Manual Configuration List under Integration Mechanics.
 
 ---
 
@@ -308,7 +556,8 @@ Phase 9 for a domain is complete when all of the following are true:
 
 **Default first, ask last.** The purpose of this phase is to produce
 YAML with minimum administrator interruption. Every default in
-Section "Default Conventions" is a question you do not ask. If you
+Section "Default Conventions" and every per-construct default in
+Section "v1.1 YAML Constructs" is a question you do not ask. If you
 find yourself about to ask something not in the "When to Stop and
 Ask" list, stop — apply the default.
 
@@ -339,3 +588,4 @@ of the YAML.
 | Version | Date | Changes |
 |---|---|---|
 | 1.0 | 04-13-26 | Initial release. Authored during the CBM MR pilot as the first Phase 9 execution under the document production methodology. Introduces the Manual Configuration List as a required Phase 9 output (methodology extension, to be back-propagated to the process document). |
+| 1.1 | 04-15-26 | Aligned with `app-yaml-schema.md` v1.1. Added Section "v1.1 YAML Constructs" covering nine new constructs (`settings:`, `duplicateChecks:`, `savedViews:`, `emailTemplates:`, `workflows:`, `requiredWhen:`, `visibleWhen:`, `formula:`, `externallyPopulated:`) with per-construct emit triggers, defaults, and stop-and-ask criteria. Split "When to Stop and Ask" into General and v1.1-specific subsections; added six v1.1-specific situations. Rewrote "Methodology Extension Notice" around v1.1 scope. Rewrote "Manual Configuration List" categories to reflect what remains outside YAML scope (Role-Based Field Visibility, Integration Mechanics, Advanced Automation, residual); added "What moved into YAML in v1.1" pointer. Appended completion criteria #8–#12 covering the new constructs. Added cross-reference from "Default Conventions" to the new constructs section. |
