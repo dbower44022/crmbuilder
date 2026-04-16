@@ -151,41 +151,34 @@ PRDs/
 - `deploy_worker.py` follows the same QThread pattern as `run_worker.py` and
   `import_worker.py` — emit signals for log lines, phase status, and completion
 
-## YAML Schema v1.1 — Active Implementation Series
+## YAML Schema v1.1 — Implementation Complete
 
-The YAML program file schema is being extended from v1.0 to v1.1
+The YAML program file schema was extended from v1.0 to v1.1
 to cover capabilities identified in the MR-pilot gap analysis
 (`PRDs/product/yaml-schema-gap-analysis-MR-pilot.md`). The spec is
 `PRDs/product/app-yaml-schema.md` v1.1.
 
 **Implementation approach:** an eight-prompt Claude Code series
 (Prompts A through H) stored in `PRDs/product/yaml-schema-prompts/`.
-Prompts are executed sequentially; each builds on the prior.
+Prompts were executed sequentially; each built on the prior.
 
 **Current state (04-15-26):**
 
-- **Prompt A (done):** Shared condition-expression
-  parser/validator/evaluator (`condition_expression.py`),
-  relative-date resolver (`relative_date.py`), loader plumbing for
-  all new entity-level and field-level keys (raw pass-through on
-  `EntityDefinition`, `FieldDefinition`, `PanelSpec`), deprecation
-  warnings for v1.0 top-level entity keys and panel-level
-  `dynamicLogicVisible:`.
-- **Prompts B–H (drafted, not executed):** All committed to
-  `PRDs/product/yaml-schema-prompts/`. Execute in order.
+- **All prompts (A–H) executed.** The full v1.1 schema is
+  implemented in the loader, validators, and deploy managers.
 
 **Series map:**
 
 | Prompt | Categories | What it adds |
 |---|---|---|
 | A | Section 11 | Condition expressions, relative dates, loader plumbing (**done**) |
-| B | 1, 2 | `settings:` block (with v1.0 deprecation merge), `duplicateChecks:` |
-| C | 3 | `savedViews:` with condition-expression filters |
-| D | 4, 5 | `requiredWhen:`, `visibleWhen:` (field + panel level) |
-| E | 7 | `emailTemplates:` with body-file resolution, merge-field validation |
-| F | 8 | `formula:` — aggregate, arithmetic (recursive-descent parser), concat |
-| G | 9 | `workflows:` — triggers, actions, cross-block template/arithmetic reuse |
-| H | 10 | `externallyPopulated:` flag, Verification Spec generator skeleton |
+| B | 1, 2 | `settings:` block (with v1.0 deprecation merge), `duplicateChecks:` (**done**) |
+| C | 3 | `savedViews:` with condition-expression filters (**done**) |
+| D | 4, 5 | `requiredWhen:`, `visibleWhen:` (field + panel level) (**done**) |
+| E | 7 | `emailTemplates:` with body-file resolution, merge-field validation (**done**) |
+| F | 8 | `formula:` — aggregate, arithmetic (recursive-descent parser), concat (**done**) |
+| G | 9 | `workflows:` — triggers, actions, cross-block template/arithmetic reuse (**done**) |
+| H | 10 | `externallyPopulated:` flag, Verification Spec generator skeleton (**done**) |
 
 Category 6 (Roles, field-level permissions) is deferred to v1.2.
 
@@ -206,7 +199,7 @@ Category 6 (Roles, field-level permissions) is deferred to v1.2.
   `PanelSpec` carries `visible_when_raw`. `ProgramFile` carries
   `deprecation_warnings`.
 
-**Orchestration order (will evolve as B–H execute):**
+**Orchestration order:**
 
 EntitySettings → EmailTemplates → DuplicateChecks → SavedViews →
 Fields/Layouts/Relationships → Workflows
