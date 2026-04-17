@@ -1,7 +1,7 @@
 # CRM Builder — Domain Reconciliation Guide
 
-**Version:** 1.1
-**Last Updated:** 04-01-26 07:00
+**Version:** 1.3
+**Last Updated:** 04-16-26 14:00
 **Purpose:** AI guide for Phase 3 — Domain Reconciliation
 **Governing Process:** PRDs/application/CRM-Builder-Document-Production-Process.docx
 
@@ -25,8 +25,9 @@ PRD.
 **Session length:** 30–60 minutes, depending on the number of
 processes and conflicts discovered.
 
-**Input:** Master PRD + all process documents for the domain
-(uploaded by the administrator).
+**Input:** Master PRD + Domain Overview + all process documents
+for the domain (uploaded by the administrator). For domains
+with sub-domains, also include all Sub-Domain Overview documents.
 
 **Output:** One Word document — the Domain PRD — committed to the
 implementation's repository at
@@ -42,7 +43,7 @@ The Domain PRD has seven sections:
 |---|---------|---------|
 | 1 | Domain Overview | Expanded business context for the domain. |
 | 2 | Personas | Domain-specific roles for each participating persona. |
-| 3 | Business Processes | One subsection per process, each containing all eight required sections from the process documents (see Step 2 for the section list and what is excluded). |
+| 3 | Business Processes | For flat domains, one subsection per process. For domains with sub-domains, one subsection per sub-domain containing its processes. Each process includes all eight required sections from the process documents (see Step 2 for the section list and what is excluded). |
 | 4 | Data Reference | Consolidated view of all data in the domain, organized by entity, with full field-level detail. |
 | 5 | Decisions Made | Record of all decisions made during the process definition conversations. |
 | 6 | Open Issues | Unresolved questions requiring answers before implementation. |
@@ -79,21 +80,47 @@ custodian.
 
 ### Verify Inputs
 
-Confirm all required documents are present:
+Confirm all required documents are present. The checklist format
+depends on whether the domain uses sub-domains.
+
+**For a domain without sub-domains:**
 
 > "For the [Domain Name] domain reconciliation, I need the
-> Master PRD and all process documents for this domain. Let me
-> verify what I have:
+> Master PRD, the Domain Overview, and all process documents
+> for this domain. Let me verify what I have:
 >
 > - Master PRD: ✓/✗
+> - Domain Overview ([Domain Code]): ✓/✗
 > - [Process 1]: ✓/✗
 > - [Process 2]: ✓/✗
 > - [Process N]: ✓/✗
 >
 > Is this the complete set, or are any documents missing?"
 
-**Do not proceed if any process documents are missing.** All
-processes must be defined before reconciliation begins.
+**For a domain with sub-domains:**
+
+> "For the [Domain Name] domain reconciliation, I need the
+> Master PRD, the Domain Overview, each Sub-Domain Overview,
+> and all process documents. Let me verify what I have:
+>
+> - Master PRD: ✓/✗
+> - Domain Overview ([Domain Code]): ✓/✗
+>
+> Sub-Domain: [Sub-Domain Name] ([Sub-Domain Code])
+> - Sub-Domain Overview: ✓/✗
+> - [Process 1]: ✓/✗
+> - [Process N]: ✓/✗
+>
+> Sub-Domain: [Sub-Domain Name] ([Sub-Domain Code])
+> - Sub-Domain Overview: ✓/✗
+> - [Process 1]: ✓/✗
+> - [Process N]: ✓/✗
+>
+> Is this the complete set, or are any documents missing?"
+
+**Do not proceed if any process documents or overview documents
+are missing.** All processes must be defined and all overview
+documents must be present before reconciliation begins.
 
 ### State the Plan
 
@@ -214,7 +241,26 @@ only become visible when all processes are viewed together.
 If the gap implies a missing process, follow the scope change
 protocol from the Document Production Process (Section 9).
 
-### 1.5 Present Conflict Summary
+### 1.5 Cross-Sub-Domain Conflicts
+
+For domains with sub-domains, repeat the checks in 1.1–1.4
+across sub-domain boundaries. Sub-domains are autonomous
+process areas that share a common domain purpose, but they
+often touch the same entities. Conflicts between sub-domains
+are more likely to go unnoticed because the process documents
+were written in separate sessions with separate context.
+
+**Check especially for:**
+- The same entity field defined differently in processes
+  belonging to different sub-domains
+- Status values or lifecycle stages defined in one sub-domain
+  that conflict with another sub-domain's assumptions
+- A sub-domain that expects data created by another sub-domain
+  but uses a different field name or structure
+- Persona responsibilities that overlap or conflict across
+  sub-domain boundaries
+
+### 1.6 Present Conflict Summary
 
 After checking all categories, present a summary:
 
@@ -238,14 +284,22 @@ following sections describe what goes into each part.
 
 ### Section 1: Domain Overview
 
-Synthesize from the Master PRD's domain description and the
-context established across all process documents. Expand the
-one-paragraph Master PRD description into a fuller picture of:
+Synthesize from the Domain Overview document, the Master PRD's
+domain description, and the context established across all
+process documents. For domains with sub-domains, incorporate
+the Sub-Domain Overview documents as well — these contain the
+sub-domain structure rationale, scope boundaries, and
+coordination points that belong in the domain-level overview.
+
+Expand into a fuller picture of:
 
 - What this domain covers and why it matters to the organization
 - The scope of the domain (what's included, what's explicitly
   handled elsewhere)
 - How this domain relates to other domains (if applicable)
+- For domains with sub-domains: the sub-domain structure, the
+  rationale for the decomposition, and how the sub-domains
+  coordinate with each other
 
 This section is written by the AI based on what the documents
 contain. Confirm with the administrator:
@@ -269,10 +323,16 @@ than by process.
 
 ### Section 3: Business Processes
 
-Include all eight required sections from each process document,
-in the dependency order established in the Master PRD. This is
-primarily a reorganization — the content comes directly from the
-process documents with any conflict resolutions applied.
+Include all eight required sections from each process document.
+For domains without sub-domains, list processes in the
+dependency order established in the Master PRD. For domains
+with sub-domains, organize processes under sub-domain headings
+— one heading per sub-domain, with its processes listed in
+dependency order beneath it. The sub-domain order should follow
+the sequence established in the Domain Overview document.
+
+The content comes directly from the process documents with any
+conflict resolutions applied.
 
 For each process, include these eight sections:
 1. Process Purpose
@@ -434,8 +494,12 @@ Walk through each section:
 >
 > **Personas:** [N] personas participate in this domain.
 >
-> **Business Processes:** [N] processes, in this order:
-> [list process names]
+> **Business Processes:** [N] processes across [N] sub-domains:
+> - [Sub-Domain Name]: [list process names]
+> - [Sub-Domain Name]: [list process names]
+>
+> [Or for flat domains: [N] processes, in this order:
+> [list process names]]
 >
 > **Data Reference:** [N] entities with [N] total fields.
 > [Note any entities that appear in many processes.]
@@ -465,8 +529,9 @@ Word document and commit it to the repository at:
 >
 > **If more domains need reconciliation:**
 > The next step is reconciliation for [next domain]. For that
-> conversation, upload the Master PRD plus all process documents
-> for [next domain].
+> conversation, upload the Master PRD, Domain Overview, and all
+> process documents for [next domain]. If it uses sub-domains,
+> include the Sub-Domain Overview documents as well.
 >
 > **If all domains are reconciled:**
 > All Domain PRDs are now complete. The next step is Phase 4 —
@@ -516,6 +581,7 @@ generation in Phase 5.
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.3 | 04-16-26 | Added sub-domain support throughout. Input verification now branches into flat-domain and sub-domain-structured checklists, requiring Domain Overview and Sub-Domain Overview documents. Added §1.5 Cross-Sub-Domain Conflicts as a new conflict detection category (renumbered Present Conflict Summary to §1.6). Updated Section 1 Domain Overview assembly to draw from Domain Overview and Sub-Domain Overview documents. Updated Section 3 Business Processes to organize processes under sub-domain headings when applicable. Updated the Section 3 description in the Domain PRD contents table. Updated the Step 3 review walkthrough and Step 4 next-step prompt to reflect sub-domain-aware inputs. Fixed header version (was stuck at 1.1, changelog already had 1.2). |
 | 1.2 | 04-11-26 | Reversed the v1.1 Interview Transcript exclusion. Added Interview Transcript as Section 7 of the Domain PRD, scoped to the reconciliation conversation only — Q&A from the original process definition sessions remains in Section 11 of each source process document and is not duplicated. Inline Decision callouts in the transcript sit alongside the formal Section 5 Decisions Made entries (each reconciliation decision appears in both places, cross-referenced by its [DOMAIN]-RECON-DEC-NNN identifier). Updated Step 3 Review walkthrough to mention the new section. Brings reconciliation into parity with the master, entity, and process definition guides for transcript capture. |
 | 1.1 | 04-01-26 | Updated Business Processes section from 6 to 8 required sections per process to match the current 11-section process document format (v2.4). Added Process Triggers and Process Completion as separate sections. Added explicit exclusion list (Open Issues, Updates to Prior Documents, Interview Transcript) with rationale. Changed Process Data and Data Collected to narrative summaries referencing Section 4 Data Reference instead of duplicating field tables. |
 | 1.0 | 03-30-26 | Initial release. |
