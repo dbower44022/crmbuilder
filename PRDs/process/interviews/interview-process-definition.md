@@ -1,7 +1,7 @@
 # CRM Builder — Process Definition Interview Guide
 
-**Version:** 2.4
-**Last Updated:** 03-31-26 18:15
+**Version:** 2.5
+**Last Updated:** 04-16-26 14:30
 **Purpose:** AI interviewer guide for Phase 2 — Process Definition
 **Governing Process:** PRDs/application/CRM-Builder-Document-Production-Process.docx
 
@@ -26,12 +26,16 @@ walking through the process together, step by step.
 **Session length:** 45–60 minutes. Stop at 60 minutes regardless of
 completion — schedule a follow-up rather than pushing through fatigue.
 
-**Input:** Master PRD + all previously completed process documents
-for this domain (uploaded by the administrator).
+**Input:** Master PRD + Domain Overview + all previously completed
+process documents for this domain (uploaded by the administrator).
+For processes within a sub-domain, also include the Sub-Domain
+Overview.
 
 **Output:** One Word document — the process document — committed to
 the implementation's repository at
-`PRDs/{domain_code}/{PROCESS-CODE}.docx`.
+`PRDs/{domain_code}/{PROCESS-CODE}.docx`. For processes within a
+sub-domain, use
+`PRDs/{domain_code}/{SUBDOMAIN_CODE}/{PROCESS-CODE}.docx`.
 
 ---
 
@@ -117,17 +121,27 @@ Before asking any questions, review the uploaded documents:
 
 1. Read the Master PRD to understand the organization, personas,
    and where this process fits in the domain.
-2. Read all prior process documents for this domain to understand
-   what data has already been defined, what field values exist,
-   and what status transitions are established.
-3. Note any entities and fields already defined by prior processes
+2. Read the Domain Overview to understand the domain's scope,
+   personas, and how this process relates to other processes
+   in the domain. For processes within a sub-domain, also read
+   the Sub-Domain Overview to understand sub-domain scope and
+   coordination points.
+3. Read all prior process documents for this domain (or
+   sub-domain, if applicable) to understand what data has
+   already been defined, what field values exist, and what
+   status transitions are established. For sub-domain-structured
+   domains, also review process documents from other sub-domains
+   in the same domain that touch shared entities.
+4. Note any entities and fields already defined by prior processes
    — you will need these for conflict checking during the interview.
 
 ### Confirm the Process
 
 > "Today we're defining the [Process Name] process in the
-> [Domain Name] domain. From the Master PRD, this process is
-> described as: '[one-line description from Master PRD].'
+> [Domain Name] domain. [If within a sub-domain: This process
+> belongs to the [Sub-Domain Name] sub-domain.] From the Master
+> PRD, this process is described as: '[one-line description
+> from Master PRD].'
 >
 > Does that still capture what this process is about, or has
 > your thinking evolved since we wrote the Master PRD?"
@@ -139,10 +153,10 @@ scope change protocol.
 
 ### State the Context from Prior Work
 
-If prior process documents exist for this domain:
+If prior process documents exist for this domain (or sub-domain):
 
 > "Before we dive in, let me summarize what's already been
-> established by prior processes in this domain:
+> established by prior processes in this [domain/sub-domain]:
 >
 > - [Process 1] defined [key entities/fields/statuses]
 > - [Process 2] defined [key entities/fields/statuses]
@@ -151,11 +165,11 @@ If prior process documents exist for this domain:
 > consistent. If anything we discuss today conflicts with what's
 > already defined, I'll flag it so we can resolve it."
 
-If this is the first process in the domain:
+If this is the first process in the domain (or sub-domain):
 
-> "This is the first process we're defining in [Domain Name],
-> so we're starting with a clean slate. The fields and data
-> we establish here will become the foundation that later
+> "This is the first process we're defining in [Domain/Sub-Domain
+> Name], so we're starting with a clean slate. The fields and
+> data we establish here will become the foundation that later
 > processes build on."
 
 ---
@@ -1020,23 +1034,40 @@ made during the interview.
 Commit the document to the repository at:
 `PRDs/{domain_code}/{PROCESS-CODE}.docx`
 
+For processes within a sub-domain:
+`PRDs/{domain_code}/{SUBDOMAIN_CODE}/{PROCESS-CODE}.docx`
+
 ### State Next Step
 
 > "The [Process Name] process document is complete. The next
 > step is [one of the following]:
 >
-> **If more processes remain in this domain:**
+> **If more processes remain in this sub-domain:**
 > The next process to define is [Process Name]. For that
-> conversation, upload the Master PRD plus all process
-> documents for this domain including the one we just
-> completed.
+> conversation, upload the Master PRD, Domain Overview,
+> Sub-Domain Overview, plus all process documents for this
+> sub-domain including the one we just completed.
+>
+> **If all processes in this sub-domain are complete but other
+> sub-domains remain:**
+> All processes for [Sub-Domain Name] are now defined. The
+> next sub-domain to define is [Sub-Domain Name]. For that
+> conversation, upload the Master PRD, Domain Overview,
+> and the Sub-Domain Overview for the next sub-domain.
+>
+> **If more processes remain in this domain (no sub-domains):**
+> The next process to define is [Process Name]. For that
+> conversation, upload the Master PRD, Domain Overview, plus
+> all process documents for this domain including the one we
+> just completed.
 >
 > **If all processes in this domain are complete:**
 > All processes for [Domain Name] are now defined. The next
 > step is Phase 3 — Domain Reconciliation, where I'll
 > synthesize all [N] process documents into the Domain PRD.
-> For that conversation, upload the Master PRD plus all
-> process documents for this domain.
+> For that conversation, upload the Master PRD, Domain
+> Overview, all Sub-Domain Overviews (if applicable), and
+> all process documents for this domain.
 >
 > **If this was the last process across all domains:**
 > All process definitions are complete across all domains.
@@ -1117,6 +1148,7 @@ redirect:
 
 | Version | Date | Changes |
 |---|---|---|
+| 2.5 | 04-16-26 | Added sub-domain support throughout. Updated Input to include Domain Overview and Sub-Domain Overview documents. Updated Output path with sub-domain directory variant. Expanded Context Review from 3 to 4 steps, adding Domain/Sub-Domain Overview reading and cross-sub-domain awareness for shared entities. Updated Confirm the Process to reference sub-domain context. Updated State the Context from Prior Work for sub-domain scoping. Updated Document Production commit path with sub-domain variant. Expanded State Next Step with sub-domain-aware completion logic (sub-domain complete, next sub-domain, domain complete). |
 | 2.4 | 03-31-26 | Added section numbering guidance to Document Production: all eleven sections use numbered headings consistently in the Word document output (e.g., "9. Open Issues", "10. Updates to Prior Documents", "11. Interview Transcript"). |
 | 2.3 | 03-31-26 | Added Open Issues as Section 9 and Updates to Prior Documents as Section 10. Interview Transcript moved from Section 9 to Section 11. Document now has eleven required sections. Added interview guide content for both new sections including format, consolidation, and completeness standards. Updated completeness check and summary template. |
 | 2.2 | 03-31-26 | Added address and relationship to the supported field type table (Section 8.3). Address is a composite field (street, city, state, zip). Relationship describes a connection to another entity in business terms, with implementation details deferred to Phase 5. Field type list now has 16 types. |
