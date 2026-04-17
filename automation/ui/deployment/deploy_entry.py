@@ -7,7 +7,6 @@ import sqlite3
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QMessageBox,
     QPushButton,
@@ -22,6 +21,7 @@ from automation.ui.deployment.deployment_logic import (
     InstanceRow,
     load_deployment_runs,
 )
+from espo_impl.ui.grid_helpers import enhance_table
 
 _PRIMARY_STYLE = (
     "QPushButton { background-color: #1565C0; color: white; "
@@ -87,9 +87,9 @@ class DeployEntry(QWidget):
         self._table.setSelectionBehavior(
             QTableWidget.SelectionBehavior.SelectRows
         )
-        self._table.horizontalHeader().setStretchLastSection(True)
-        self._table.horizontalHeader().setSectionResizeMode(
-            0, QHeaderView.ResizeMode.Stretch
+        enhance_table(
+            self._table,
+            context_menu_builder=self._context_menu_actions,
         )
         layout.addWidget(self._table, stretch=1)
 
@@ -136,6 +136,10 @@ class DeployEntry(QWidget):
         self._table.setVisible(True)
         self._populate_table()
 
+    def _context_menu_actions(self) -> list:
+        """Build context menu items based on current selection."""
+        return [("Start Deploy Wizard", self._on_start_wizard)]
+
     def _populate_table(self) -> None:
         self._table.setRowCount(len(self._runs))
         for row, run in enumerate(self._runs):
@@ -154,6 +158,7 @@ class DeployEntry(QWidget):
             self._table.setItem(
                 row, 5, QTableWidgetItem("View" if run.log_path else "—")
             )
+        self._table.resizeColumnsToContents()
 
     def _on_start_wizard(self) -> None:
         """Handle Start Deploy Wizard click — launch the real wizard."""

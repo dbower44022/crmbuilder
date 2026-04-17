@@ -16,7 +16,6 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QDialog,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QMessageBox,
     QPlainTextEdit,
@@ -34,6 +33,7 @@ from automation.ui.deployment.deployment_logic import (
     load_last_runs,
     load_yaml_files,
 )
+from espo_impl.ui.grid_helpers import enhance_table
 
 _PRIMARY_STYLE = (
     "QPushButton { background-color: #1565C0; color: white; "
@@ -140,9 +140,9 @@ class ConfigureEntry(QWidget):
         self._table.setSelectionMode(
             QAbstractItemView.SelectionMode.ExtendedSelection
         )
-        self._table.horizontalHeader().setStretchLastSection(True)
-        self._table.horizontalHeader().setSectionResizeMode(
-            0, QHeaderView.ResizeMode.Stretch
+        enhance_table(
+            self._table,
+            context_menu_builder=self._context_menu_actions,
         )
         layout.addWidget(self._table, stretch=1)
 
@@ -218,6 +218,19 @@ class ConfigureEntry(QWidget):
         self._table.setVisible(True)
         self._populate_table()
 
+    def _context_menu_actions(self) -> list:
+        """Build context menu items based on current selection."""
+        actions: list = []
+        selected = self._selected_files()
+        if selected:
+            actions.append(("Run Selected", self._on_run_selected))
+            actions.append(("Verify Selected", self._on_verify_selected))
+            actions.append(("View YAML", self._on_view_yaml))
+            actions.append(None)
+        actions.append(("Run All", self._on_run_all))
+        actions.append(("Verify All", self._on_verify_all))
+        return actions
+
     # ── Table ──────────────────────────────────────────────────────
 
     def _populate_table(self) -> None:
@@ -234,6 +247,7 @@ class ConfigureEntry(QWidget):
             elif outcome_text.startswith("Error"):
                 outcome_item.setForeground(QColor("#F44336"))
             self._table.setItem(row, 3, outcome_item)
+        self._table.resizeColumnsToContents()
 
     def _selected_files(self) -> list[YamlFileInfo]:
         """Return the YamlFileInfo objects for the currently selected rows."""

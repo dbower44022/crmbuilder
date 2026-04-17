@@ -1,6 +1,6 @@
-"""CRM Platform Comparison window.
+"""CRM Platform Comparison panel.
 
-Standalone window for browsing, comparing, and analyzing CRM platform
+Embeddable widget for browsing, comparing, and analyzing CRM platform
 API capabilities against the CRM Builder feature set.
 """
 
@@ -19,7 +19,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QListWidget,
     QListWidgetItem,
-    QMainWindow,
     QPushButton,
     QScrollArea,
     QSplitter,
@@ -220,8 +219,8 @@ def _format_price(platform: dict) -> str:
 
 # ─── Window ────────────────────────────────────────────────────────────
 
-class CrmCompareWindow(QMainWindow):
-    """Standalone window for CRM platform comparison and analysis.
+class CrmCompareWindow(QWidget):
+    """Panel for CRM platform comparison and analysis.
 
     :param base_dir: Project root directory.
     :param parent: Parent widget.
@@ -244,13 +243,8 @@ class CrmCompareWindow(QMainWindow):
             self._platforms = []
 
     def _build_ui(self) -> None:
-        """Build the main window layout."""
-        self.setWindowTitle("CRM Platform Comparison")
-        self.setMinimumSize(1100, 700)
-
-        central = QWidget()
-        self.setCentralWidget(central)
-        layout = QVBoxLayout(central)
+        """Build the panel layout."""
+        layout = QVBoxLayout(self)
 
         if not self._platforms:
             error_label = QLabel(
@@ -985,6 +979,10 @@ class CrmCompareWindow(QMainWindow):
         )
         layout.addWidget(self._pricing_table)
 
+        self._pricing_status = QLabel()
+        self._pricing_status.setStyleSheet("color: #757575; font-size: 12px;")
+        layout.addWidget(self._pricing_status)
+
         self._refresh_pricing_table()
         return tab
 
@@ -1059,4 +1057,4 @@ class CrmCompareWindow(QMainWindow):
         count_label = f"{len(filtered)} of {len(self._platforms)} platforms"
         if max_price < 500:
             count_label += f" at \u2264${max_price:.0f}/user/mo"
-        self.statusBar().showMessage(count_label)
+        self._pricing_status.setText(count_label)

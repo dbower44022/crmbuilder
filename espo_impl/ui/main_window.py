@@ -32,10 +32,11 @@ _DEFAULT_MASTER_DB = Path(__file__).resolve().parent.parent.parent / "automation
 _TAB_CLIENTS = 0
 _TAB_REQUIREMENTS = 1
 _TAB_DEPLOYMENT = 2
+_TAB_CRM_COMPARE = 3
 
 # Tab name ↔ preference key mapping
-_TAB_NAMES = {0: "clients", 1: "requirements", 2: "deployment"}
-_TAB_INDICES = {"clients": 0, "requirements": 1, "deployment": 2}
+_TAB_NAMES = {0: "clients", 1: "requirements", 2: "deployment", 3: "crm_compare"}
+_TAB_INDICES = {"clients": 0, "requirements": 1, "deployment": 2, "crm_compare": 3}
 
 
 class _RequirementsEmptyState(QWidget):
@@ -194,6 +195,14 @@ class MainWindow(QMainWindow):
         self._tabs.addTab(
             self._deployment_window, "Deployment (no client selected)"
         )
+
+        # Tab 3: CRM Compare
+        from espo_impl.ui.crm_compare_window import CrmCompareWindow
+
+        self._crm_compare_window = CrmCompareWindow(
+            base_dir=self.base_dir, parent=self
+        )
+        self._tabs.addTab(self._crm_compare_window, "CRM Compare")
 
         # Tab change persistence
         self._tabs.currentChanged.connect(self._on_tab_changed)

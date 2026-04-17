@@ -18,6 +18,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from espo_impl.ui.grid_helpers import enhance_list
+
 logger = logging.getLogger(__name__)
 
 
@@ -47,6 +49,10 @@ class ProgramPanel(QWidget):
 
         self.list_widget = QListWidget()
         self.list_widget.currentRowChanged.connect(self._on_selection_changed)
+        enhance_list(
+            self.list_widget,
+            context_menu_builder=self._context_menu_actions,
+        )
         group_layout.addWidget(self.list_widget)
 
         btn_layout = QHBoxLayout()
@@ -132,6 +138,17 @@ class ProgramPanel(QWidget):
             self.program_selected.emit(self._paths[row])
         else:
             self.program_selected.emit(None)
+
+    def _context_menu_actions(self) -> list:
+        """Build context menu items based on current selection."""
+        actions: list = [("Add Program", self._on_add)]
+        if self.list_widget.currentRow() >= 0:
+            actions.append(("Edit Program", self._on_edit))
+            actions.append(None)
+            actions.append(("Delete Program", self._on_delete))
+        actions.append(None)
+        actions.append(("Refresh", self._on_refresh))
+        return actions
 
     def _on_add(self) -> None:
         """Import a YAML file via file picker."""

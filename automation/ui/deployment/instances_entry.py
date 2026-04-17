@@ -16,7 +16,6 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -37,6 +36,7 @@ from automation.ui.deployment.deployment_logic import (
     set_default_instance,
     update_instance,
 )
+from espo_impl.ui.grid_helpers import enhance_table
 
 _PRIMARY_STYLE = (
     "QPushButton { background-color: #1565C0; color: white; "
@@ -198,11 +198,11 @@ class InstancesEntry(QWidget):
             QTableWidget.SelectionMode.SingleSelection
         )
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self._table.horizontalHeader().setStretchLastSection(True)
-        self._table.horizontalHeader().setSectionResizeMode(
-            0, QHeaderView.ResizeMode.Stretch
-        )
         self._table.currentCellChanged.connect(self._on_row_changed)
+        enhance_table(
+            self._table,
+            context_menu_builder=self._context_menu_actions,
+        )
         self._splitter.addWidget(self._table)
 
         # --- Detail pane ---
@@ -399,6 +399,8 @@ class InstancesEntry(QWidget):
             status_item.setForeground(QColor(color))
             self._table.setItem(row, 5, status_item)
 
+        self._table.resizeColumnsToContents()
+
         # Restore selection
         if self._selected_id is not None:
             for row, inst in enumerate(self._instances):
@@ -424,6 +426,20 @@ class InstancesEntry(QWidget):
                 status_item.setForeground(QColor(color))
                 self._table.setItem(row, 5, status_item)
                 break
+
+    def _context_menu_actions(self) -> list:
+        """Build context menu items based on current selection."""
+        actions: list = []
+        if self._selected_id is not None:
+            actions.append(("Test Connection", self._on_test_connection))
+            actions.append(("Configure Instance", self._on_configure))
+            actions.append(("Open in Browser", self._on_open_browser))
+            actions.append(None)
+            actions.append(("Save Changes", self._on_save))
+            actions.append(("Deploy Wizard", self._on_start_wizard))
+            actions.append(None)
+            actions.append(("Delete Instance", self._on_delete))
+        return actions
 
     # ── Row selection ──────────────────────────────────────────────
 

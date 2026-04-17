@@ -18,7 +18,6 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QMessageBox,
     QPlainTextEdit,
@@ -34,6 +33,7 @@ from automation.ui.deployment.deployment_logic import (
     load_instances,
     load_run_log,
 )
+from espo_impl.ui.grid_helpers import enhance_table
 
 _PRIMARY_STYLE = (
     "QPushButton { background-color: #1565C0; color: white; "
@@ -133,11 +133,11 @@ class RunHistoryEntry(QWidget):
         self._table.setSelectionBehavior(
             QTableWidget.SelectionBehavior.SelectRows
         )
-        self._table.horizontalHeader().setStretchLastSection(True)
-        self._table.horizontalHeader().setSectionResizeMode(
-            0, QHeaderView.ResizeMode.Stretch
-        )
         self._table.setSortingEnabled(True)
+        enhance_table(
+            self._table,
+            context_menu_builder=self._context_menu_actions,
+        )
         layout.addWidget(self._table, stretch=1)
 
     def refresh(
@@ -295,6 +295,7 @@ class RunHistoryEntry(QWidget):
             self._table.setItem(row_idx, 7, changed_item)
 
         self._table.setSortingEnabled(True)
+        self._table.resizeColumnsToContents()
 
     @staticmethod
     def _check_file_changed(
@@ -333,6 +334,15 @@ class RunHistoryEntry(QWidget):
             item = QTableWidgetItem("Yes — file modified")
             item.setForeground(QColor("#FFA726"))
         return item
+
+    def _context_menu_actions(self) -> list:
+        """Build context menu items based on current selection."""
+        actions: list = []
+        if self._table.currentRow() >= 0:
+            actions.append(("View Log", self._on_view_log))
+            actions.append(None)
+        actions.append(("Refresh", self._on_refresh_click))
+        return actions
 
     # ── Filter handlers ────────────────────────────────────────────
 

@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 )
 
 from espo_impl.core.models import InstanceProfile, InstanceRole
+from espo_impl.ui.grid_helpers import enhance_list
 
 _ROLE_BADGES: dict[InstanceRole, str] = {
     InstanceRole.SOURCE: "[SRC]",
@@ -55,6 +56,10 @@ class InstancePanel(QWidget):
 
         self.list_widget = QListWidget()
         self.list_widget.currentRowChanged.connect(self._on_selection_changed)
+        enhance_list(
+            self.list_widget,
+            context_menu_builder=self._context_menu_actions,
+        )
         group_layout.addWidget(self.list_widget)
 
         btn_layout = QHBoxLayout()
@@ -174,6 +179,15 @@ class InstancePanel(QWidget):
         (folder / "programs").mkdir(parents=True, exist_ok=True)
         (folder / "reports").mkdir(parents=True, exist_ok=True)
         (folder / "Implementation Docs").mkdir(parents=True, exist_ok=True)
+
+    def _context_menu_actions(self) -> list:
+        """Build context menu items based on current selection."""
+        actions: list = [("Add Instance", self._on_add)]
+        if self.list_widget.currentRow() >= 0:
+            actions.append(("Edit Instance", self._on_edit))
+            actions.append(None)
+            actions.append(("Delete Instance", self._on_delete))
+        return actions
 
     def _on_add(self) -> None:
         """Open dialog to add a new instance."""

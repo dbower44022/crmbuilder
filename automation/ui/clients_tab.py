@@ -16,7 +16,6 @@ from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -41,6 +40,7 @@ from automation.core.master_prd_prompt import (
     save_master_prd_prompt,
 )
 from automation.ui.active_client_context import ActiveClientContext
+from espo_impl.ui.grid_helpers import enhance_table
 
 # Default master database location
 _DEFAULT_MASTER_DB = Path(__file__).resolve().parent.parent / "data" / "master.db"
@@ -155,13 +155,11 @@ class ClientsTab(QWidget):
         self._table.setSortingEnabled(True)
         self._table.verticalHeader().setVisible(False)
 
-        header = self._table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-
         self._table.currentCellChanged.connect(self._on_row_selected)
+        enhance_table(
+            self._table,
+            context_menu_builder=self._context_menu_actions,
+        )
         left_layout.addWidget(self._table, stretch=1)
 
         # Empty state label (shown when no clients exist)
@@ -521,6 +519,7 @@ class ClientsTab(QWidget):
                 QTableWidgetItem(client.last_opened_at or "—"),
             )
         self._table.setSortingEnabled(True)
+        self._table.resizeColumnsToContents()
 
         # If no clients, show empty-state detail
         if not has_clients:
@@ -535,6 +534,17 @@ class ClientsTab(QWidget):
     # ------------------------------------------------------------------
     # Selection handling
     # ------------------------------------------------------------------
+
+    def _context_menu_actions(self) -> list:
+        """Build context menu items based on current selection."""
+        actions: list = []
+        if self._selected_client:
+            actions.append(
+                ("Start Master PRD Interview", self._on_start_master_prd_clicked)
+            )
+            actions.append(None)
+            actions.append(("Delete Client", self._on_delete_client))
+        return actions
 
     def _on_row_selected(self, current_row: int, current_col: int,
                          prev_row: int, prev_col: int) -> None:

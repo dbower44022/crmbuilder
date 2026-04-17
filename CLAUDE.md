@@ -98,13 +98,11 @@ PRDs/
 │   ├── CRMBuilder-PRD.md
 │   ├── app-*.md       # App-level specs (YAML schema, UI patterns, logging)
 │   ├── yaml-schema-gap-analysis-MR-pilot.md  # v1.1 design rationale
-│   ├── yaml-schema-prompts/  # Claude Code prompts for yaml-v1.1 series (A–H)
 │   └── features/      # Feature-level specs (feat-*.md)
 ├── process/           # Document production methodology
 │   ├── CRM-Builder-Document-Production-Process.docx
-│   ├── interviews/    # Interview guides (master, entity, process, reconciliation)
-│   └── templates/     # Document generation templates
-└── implementation/    # Claude Code task prompts (CLAUDE-CODE-PROMPT-*.md)
+│   └── interviews/    # Interview guides (master, entity, process, reconciliation)
+└── _archive/          # Completed prompt files (see _archive/INDEX.md)
 ```
 
 ## Key Patterns
@@ -159,7 +157,7 @@ to cover capabilities identified in the MR-pilot gap analysis
 `PRDs/product/app-yaml-schema.md` v1.1.
 
 **Implementation approach:** an eight-prompt Claude Code series
-(Prompts A through H) stored in `PRDs/product/yaml-schema-prompts/`.
+(Prompts A through H), now archived in `PRDs/_archive/yaml-schema-prompts/`.
 Prompts were executed sequentially; each built on the prior.
 
 **Current state (04-15-26):**
