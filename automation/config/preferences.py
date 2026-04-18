@@ -49,7 +49,7 @@ def get_last_active_tab() -> str | None:
         or ``None``.
     """
     value = _read_prefs().get("last_active_tab")
-    if value in ("clients", "requirements", "deployment"):
+    if value in ("clients", "requirements", "deployment", "crm_compare"):
         return value
     return None
 
@@ -71,6 +71,21 @@ def get_last_selected_client_id() -> int | None:
     if isinstance(value, int):
         return value
     return None
+
+
+def get_anthropic_api_key() -> str | None:
+    """Return the stored Anthropic API key, or None."""
+    return _read_prefs().get("anthropic_api_key")
+
+
+def set_anthropic_api_key(key: str) -> None:
+    """Persist the Anthropic API key.
+
+    :param key: API key string.
+    """
+    prefs = _read_prefs()
+    prefs["anthropic_api_key"] = key
+    _write_prefs(prefs)
 
 
 def set_last_selected_client_id(client_id: int | None) -> None:

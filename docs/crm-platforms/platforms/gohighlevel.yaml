@@ -1,0 +1,201 @@
+name: GoHighLevel
+slug: gohighlevel
+type: Cloud-based CRM & Marketing Automation Platform
+last_reviewed: 2026-04-17
+open_source: false
+license: "Proprietary"
+
+pricing:
+  free_tier: "14-day free trial"
+  min_paid_per_user_month: 97
+  full_admin_api_per_user_month: 297
+  enterprise_per_user_month: 297
+  currency: USD
+  notes: "Starter plan $97/month for 3 sub-accounts; Unlimited plan $297/month includes Basic API Access"
+
+api:
+  protocol: [REST]
+  format: [JSON]
+  version: "2.0"
+  auth_methods: ["OAuth 2.0"]
+  rate_limit: unknown
+  admin_auth: "Basic API Access available on Unlimited plan"
+
+# ─── Standard Entities ──────────────────────────────────────────────
+standard_entities:
+  contact: {name: Contact, api_name: contacts}
+  account: {name: Company, api_name: companies}
+  lead: {name: Lead, api_name: unknown}
+  opportunity: {name: Opportunity, api_name: opportunities}
+  case: {name: unknown, api_name: unknown}
+  task: {name: Task, api_name: unknown}
+  meeting: {name: Calendar, api_name: calendars}
+  call: {name: Call, api_name: unknown}
+  email: {name: Email, api_name: unknown}
+  document: {name: unknown, api_name: unknown}
+  campaign: {name: Campaign, api_name: campaigns}
+  target_list: {name: unknown, api_name: unknown}
+  user: {name: User, api_name: users}
+  team: {name: unknown, api_name: unknown}
+  label_renamable_via_api: unknown
+  label_rename_method: unknown
+
+# ─── Entity Management ─────────────────────────────────────────────
+entity_management:
+  create_entity:
+    rating: unknown
+    min_edition: unknown
+    method: unknown
+    max_entities: unknown
+    naming_convention: unknown
+  delete_entity:
+    rating: unknown
+    method: unknown
+  check_existence:
+    rating: unknown
+    method: unknown
+  entity_types:
+    available: unknown
+    notes: unknown
+  cache_rebuild:
+    rating: unknown
+    required: unknown
+    method: unknown
+  activity_stream:
+    rating: unknown
+
+# ─── Field Management ──────────────────────────────────────────────
+field_management:
+  create_field:
+    rating: partial
+    min_edition: unlimited
+    method: unknown
+
+  update_field:
+    rating: unknown
+    method: unknown
+
+  read_field_metadata:
+    rating: partial
+    method: "Custom Fields V2 API available"
+
+  field_type_coverage:
+    rating: unknown
+
+  field_property_coverage:
+    rating: unknown
+
+  field_types:
+    varchar: {equivalent: unknown, creatable: unknown}
+    text: {equivalent: unknown, creatable: unknown}
+    wysiwyg: {equivalent: unknown, creatable: unknown}
+    enum: {equivalent: unknown, creatable: unknown}
+    multiEnum: {equivalent: unknown, creatable: unknown}
+    bool: {equivalent: unknown, creatable: unknown}
+    int: {equivalent: unknown, creatable: unknown}
+    float: {equivalent: unknown, creatable: unknown}
+    date: {equivalent: unknown, creatable: unknown}
+    datetime: {equivalent: unknown, creatable: unknown}
+    currency: {equivalent: unknown, creatable: unknown}
+    url: {equivalent: unknown, creatable: unknown}
+    email: {equivalent: unknown, creatable: unknown}
+    phone: {equivalent: unknown, creatable: unknown}
+  all_current_types_supported: unknown
+
+  field_properties:
+    label: {supported: unknown, api_key: unknown}
+    required: {supported: unknown, api_key: unknown}
+    default: {supported: unknown, api_key: unknown}
+    readOnly: {supported: unknown, api_key: unknown}
+    audited: {supported: unknown, api_key: unknown}
+    description: {supported: unknown, api_key: unknown}
+    tooltip: {supported: unknown, api_key: unknown}
+    min: {supported: unknown, api_key: unknown}
+    max: {supported: unknown, api_key: unknown}
+    maxLength: {supported: unknown, api_key: unknown}
+    options: {supported: unknown, api_key: unknown}
+    translatedOptions: {supported: unknown, api_key: unknown}
+    optionDescriptions: {supported: unknown, api_key: unknown}
+    style: {supported: unknown, api_key: unknown}
+    isSorted: {supported: unknown, api_key: unknown}
+    displayAsLabel: {supported: unknown, api_key: unknown}
+    copyToClipboard: {supported: unknown, api_key: unknown}
+    category: {supported: unknown, api_key: unknown}
+
+# ─── Layout Management ─────────────────────────────────────────────
+layout_management:
+  read_layouts:
+    rating: unknown
+    method: unknown
+  write_layouts:
+    rating: unknown
+    method: unknown
+  detail_view: {supported: unknown}
+  edit_view: {supported: unknown}
+  list_view: {supported: unknown}
+  panels: {supported: unknown}
+  tabs: {supported: unknown}
+  conditional_visibility: {supported: unknown}
+  multiple_list_views: {supported: unknown, api_creatable: unknown}
+
+# ─── Relationship Management ───────────────────────────────────────
+relationship_management:
+  create_relationship:
+    rating: unknown
+    method: unknown
+  one_to_many: {supported: unknown}
+  many_to_one: {supported: unknown}
+  many_to_many: {supported: unknown}
+  link_labels: {supported: unknown}
+  audit_both_sides: {supported: unknown}
+  check_existence: {supported: unknown, method: unknown}
+  cascade_delete: {supported: unknown}
+
+# ─── Data Operations ───────────────────────────────────────────────
+data_operations:
+  create_record: {rating: partial, method: "Available for contacts, companies, opportunities, campaigns"}
+  read_record: {rating: partial, method: "Available for contacts, companies, opportunities, campaigns"}
+  update_record: {rating: partial, method: "Available for contacts, companies, opportunities, campaigns"}
+  delete_record: {rating: partial, method: "Available for contacts, companies, opportunities, campaigns"}
+  search_by_field: {rating: partial, method: "Available for supported entities"}
+  search_by_email: {rating: partial, method: "Available for contacts"}
+  upsert: {rating: unknown, method: unknown}
+  batch_create: {rating: unknown, method: unknown}
+  bulk_import: {rating: unknown, method: unknown}
+  query_language: {rating: unknown, method: unknown}
+
+# ─── Workflow Automation ──────────────────────────────────────────
+workflow_automation:
+  create_rules: {rating: unknown, notes: "Platform mentions 'Workflows & Automations' with API available but details unclear"}
+  create_flows: {rating: unknown, notes: "Platform mentions 'Workflows & Automations' with API available but details unclear"}
+  approval_processes: {rating: unknown}
+  validation_rules: {rating: unknown}
+  scheduled_actions: {rating: unknown}
+  email_from_template: {rating: unknown}
+
+# ─── Roles & Permissions ──────────────────────────────────────────
+roles_permissions:
+  create_roles: {rating: unknown}
+  module_permissions: {rating: unknown}
+  field_level_security: {rating: unknown}
+  record_level_rules: {rating: unknown}
+  user_management: {rating: partial, notes: "Users API available"}
+
+# ─── Dashboards & Reports ─────────────────────────────────────────
+dashboards_reports:
+  create_dashboards: {rating: unknown, notes: "Platform mentions 'User/Agent Reporting' but API access unclear"}
+  create_reports: {rating: unknown, notes: "Platform mentions 'User/Agent Reporting' but API access unclear"}
+  saved_views: {rating: unknown}
+
+# ─── Email Templates ──────────────────────────────────────────────
+email_templates:
+  crud_templates: {rating: unknown, notes: "Platform has extensive email/SMS capabilities with Email API available but template management unclear"}
+  merge_fields: {rating: unknown}
+  html_body: {rating: unknown}
+
+# ─── Webhooks & Events ────────────────────────────────────────────
+webhooks_events:
+  outbound_webhooks: {rating: partial, notes: "Webhook Integration Guide available in API documentation"}
+  event_subscriptions: {rating: unknown}
+  sync_async: {rating: unknown}
+  retry_on_failure: {rating: unknown}

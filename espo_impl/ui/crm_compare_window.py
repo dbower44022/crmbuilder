@@ -270,6 +270,64 @@ class CrmCompareWindow(QWidget):
         if index == 1:
             self._refresh_compare_tab()
 
+    def _on_research_platform(self) -> None:
+        """Open the platform research dialog for a new platform."""
+        from espo_impl.ui.research_dialog import ResearchDialog
+
+        dialog = ResearchDialog(base_dir=self._base_dir, parent=self)
+        dialog.platform_saved.connect(self.refresh_platforms)
+        dialog.exec()
+
+    def _on_update_platform(self) -> None:
+        """Open the research dialog pre-configured for the selected platform."""
+        row = self._platform_list.currentRow()
+        if row < 0 or row >= len(self._platforms):
+            from PySide6.QtWidgets import QMessageBox
+
+            QMessageBox.information(
+                self,
+                "No Platform Selected",
+                "Select a platform from the list first, then click "
+                "Update Selected to re-research it with new URLs.",
+            )
+            return
+
+        slug = self._platforms[row].get("slug", "")
+        if not slug:
+            return
+
+        from espo_impl.ui.research_dialog import ResearchDialog
+
+        dialog = ResearchDialog(
+            base_dir=self._base_dir, update_slug=slug, parent=self
+        )
+        dialog.platform_saved.connect(self.refresh_platforms)
+        dialog.exec()
+
+    def refresh_platforms(self) -> None:
+        """Reload platform data and rebuild all dynamic lists."""
+        self._load_data()
+        # Rebuild platform browse list
+        self._platform_list.clear()
+        for p in self._platforms:
+            tier_num, _ = _calculate_tier(p)
+            self._platform_list.addItem(f"{p['name']}  (Tier {tier_num})")
+        # Rebuild compare checkbox list
+        self._compare_list.clear()
+        for p in self._platforms:
+            item = QListWidgetItem(p["name"])
+            item.setFlags(
+                Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable
+            )
+            item.setCheckState(Qt.CheckState.Unchecked)
+            self._compare_list.addItem(item)
+        # Rebuild gaps combo
+        self._gaps_combo.clear()
+        for p in self._platforms:
+            self._gaps_combo.addItem(p.get("name", "?"))
+        # Refresh pricing table
+        self._refresh_pricing_table()
+
     # ─── Shared helpers ────────────────────────────────────────────
 
     def _rating_label(self, rating: str) -> QLabel:
@@ -351,6 +409,25 @@ class CrmCompareWindow(QWidget):
             self._platform_list.addItem(f"{p['name']}  (Tier {tier_num})")
         self._platform_list.currentRowChanged.connect(self._on_platform_selected)
         browse_layout.addWidget(self._platform_list)
+
+        btn_row = QHBoxLayout()
+        research_btn = QPushButton("Research New")
+        research_btn.setStyleSheet(
+            "background-color: #FFA726; color: white; font-weight: bold; "
+            "padding: 6px 12px; border-radius: 4px;"
+        )
+        research_btn.clicked.connect(self._on_research_platform)
+        btn_row.addWidget(research_btn)
+
+        update_btn = QPushButton("Update Selected")
+        update_btn.setStyleSheet(
+            "background-color: #FFA726; color: white; font-weight: bold; "
+            "padding: 6px 12px; border-radius: 4px;"
+        )
+        update_btn.clicked.connect(self._on_update_platform)
+        btn_row.addWidget(update_btn)
+        browse_layout.addLayout(btn_row)
+
         browse_group.setLayout(browse_layout)
         left_layout.addWidget(browse_group)
 
