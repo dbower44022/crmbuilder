@@ -1,9 +1,10 @@
 # CRM Builder — Master PRD Interview Guide
 
 **Version:** 1.2
-**Last Updated:** 04-03-26 18:00
+**Last Updated:** 04-20-26
 **Purpose:** AI interviewer guide for Phase 1 — Master PRD
-**Governing Process:** PRDs/application/CRM-Builder-Document-Production-Process.docx
+**Governing Process:** `PRDs/process/CRM-Builder-Document-Production-Process.docx`
+**Authoring contract:** `authoring-standards.md` (Section 11 review checklist).
 
 ---
 
