@@ -1,9 +1,10 @@
 # CRM Builder — Domain Reconciliation Guide
 
-**Version:** 1.3
-**Last Updated:** 04-16-26 14:00
+**Version:** 1.5
+**Last Updated:** 04-20-26
 **Purpose:** AI guide for Phase 3 — Domain Reconciliation
-**Governing Process:** PRDs/application/CRM-Builder-Document-Production-Process.docx
+**Governing Process:** PRDs/process/CRM-Builder-Document-Production-Process.docx
+**See also:** `guide-carry-forward-updates.md` — for post-reconciliation updates driven by upstream scope changes, Phase 9 exceptions, or stakeholder-review decisions.
 
 ---
 
@@ -58,6 +59,32 @@ product names or implementation technologies in the Domain PRD.
 
 **One topic at a time.** When conflicts are discovered, present them
 one at a time and wait for resolution before proceeding to the next.
+Each conflict presentation must inline the actual conflicting content
+from each process document — not just identifiers or section pointers.
+The administrator should be able to decide the conflict from the
+approval request alone, without opening other documents.
+
+**Carry-forward updates use a different pattern.** If this reconciliation
+session reveals that already-written dependent documents (Entity PRDs,
+Sub-Domain Overviews, other Domain PRDs) need updates to reflect a
+reconciliation decision, those updates are **not** performed inline
+during this session. They are scoped out as carry-forward work
+governed by `guide-carry-forward-updates.md`, which uses a two-gate
+pattern (single Decision Approval + single Execute-and-Report) to
+avoid per-document approval churn.
+
+**Required-field completeness is a reconciliation exit criterion.** A
+reconciliation session may not close with any required enum-type field
+(dropdown, multi-select, checklist) whose value list is not enumerated.
+If a required enum field has TBD values in the process documents,
+either resolve the values during this session with the administrator
+or obtain an explicit scope decision to defer the field out of the
+implementation. Shipping a Domain PRD with required enum fields that
+have no enumerated values **blocks Phase 9 YAML generation** — the
+Phase 9 session will stall on a Show-and-Ask until the values are
+decided, at which point the decision has to carry-forward through
+every dependent document. Resolve it here, where the domain context
+is fresh and the administrator is already engaged.
 
 **Identifiers are preserved.** All identifiers assigned during Phase 2
 process conversations carry forward unchanged. New identifiers are
@@ -260,18 +287,54 @@ were written in separate sessions with separate context.
 - Persona responsibilities that overlap or conflict across
   sub-domain boundaries
 
-### 1.6 Present Conflict Summary
+### 1.6 Required-Field Completeness Check
 
-After checking all categories, present a summary:
+Before presenting the conflict summary, sweep every entity for
+required enum-type fields and verify each has an enumerated value
+list in the process documents.
 
-> "I've completed my conflict check. Here's what I found:
+**Check for:**
+- Required dropdown, multi-select, or checklist fields whose value
+  list is empty, marked TBD, or described narratively without the
+  values themselves
+- Required fields whose type or required-status is still open
+
+**When an incomplete required field is found:**
+
+> "I found a required field that isn't completable as defined:
+>
+> - Entity: [Entity Name]
+> - Field: [Field Name] ([Field ID])
+> - Current state in [Process document]: [exact text — e.g., "type: enum, required: true, values: TBD — will be decided in stakeholder review"]
+>
+> This will block Phase 9 YAML generation. We need to either:
+> (a) enumerate the values now, or
+> (b) explicitly defer this field out of the implementation (it will not appear in the generated CRM configuration until a later implementation phase).
+>
+> Which path do you want to take?"
+
+Record the resolution — either the enumerated values or the scope
+deferral — as a reconciliation decision (`[DOMAIN]-RECON-DEC-NNN`).
+
+If the administrator cannot resolve the values in this session and
+does not want to defer the field, **do not close the session**.
+Document the blocker as an open issue, produce a partial Domain PRD
+if helpful, and flag that reconciliation is not complete.
+
+### 1.7 Present Conflict Summary
+
+After checking all categories and required-field completeness,
+present a summary:
+
+> "I've completed my conflict and completeness check. Here's what I found:
 >
 > - Field conflicts: [N] (all resolved above)
 > - Status conflicts: [N] (all resolved above)
 > - Persona conflicts: [N] (all resolved above)
 > - Cross-process gaps: [N] (all resolved above)
+> - Required fields with incomplete definitions: [N] (all resolved above — enumerated or deferred out of scope)
 >
-> [Or: No conflicts found — the process documents are consistent.]
+> [Or: No conflicts found — the process documents are consistent and all required fields are completable.]
 >
 > Ready for me to assemble the Domain PRD?"
 
@@ -358,10 +421,21 @@ For each process, include these eight sections:
 **Sections excluded per process (with rationale):**
 - Open Issues — compiled into Domain PRD Section 6, not repeated
   per process
-- Updates to Prior Documents — these have already been applied to
-  the process documents and are not needed in the Domain PRD
 - Interview Transcript — source material for the process document,
   not domain-level content
+
+**Note — "Updates to Prior Documents" is no longer a process-document
+section.** As of `interview-process-definition.md` v2.6, prior-document
+updates discovered during a process-definition interview are captured
+as standalone carry-forward request drafts in
+`{implementation}/PRDs/{domain_code}/carry-forward/` and executed per
+`guide-carry-forward-updates.md`. They are not part of the process
+document and therefore not part of the Domain PRD. Process documents
+produced before v2.6 may still contain a populated Section 10; treat
+its contents as historical — carry-forward work implied by those
+entries should already have been completed, and any residual items
+surface as reconciliation conflicts in Step 1, not as a dedicated
+section of the Domain PRD.
 
 **Apply conflict resolutions:** Where a conflict was resolved
 in Step 1, use the resolved definition. Do not carry forward
@@ -428,8 +502,10 @@ A complete but condensed record of the **reconciliation
 conversation itself** — every question asked, every answer given,
 and every decision made during the reconciliation session. This
 covers only the reconciliation discussion. Q&A from the original
-process definition sessions remains in Section 11 of each source
-process document and is **not** duplicated here.
+process definition sessions remains in Section 10 of each source
+process document (or Section 11 in documents produced before
+`interview-process-definition.md` v2.6) and is **not** duplicated
+here.
 
 The transcript is organized by **topic area**, not chronologically.
 Typical topic groupings for a reconciliation transcript include
@@ -476,9 +552,10 @@ reviewer who was not present could reconstruct the full reasoning
 behind every reconciliation decision.
 
 This section mirrors Topic 7 of `interview-master-prd.md`,
-Section 11 of `interview-process-definition.md`, and Section 6 /
-Section 10 of `guide-entity-definition.md`, so the transcript
-convention is consistent across all interview-driven documents.
+Section 10 of `interview-process-definition.md` (v2.6+), and
+Section 6 / Section 10 of `guide-entity-definition.md`, so the
+transcript convention is consistent across all interview-driven
+documents.
 
 ---
 
@@ -581,6 +658,8 @@ generation in Phase 5.
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.5 | 04-20-26 | Updated the Section 3 Business Processes exclusion rationale for "Updates to Prior Documents" to reflect `interview-process-definition.md` v2.6: that section no longer exists in process documents; prior-document updates are captured as carry-forward request drafts and executed per `guide-carry-forward-updates.md`. Pre-v2.6 process documents with populated Section 10 are treated as historical. |
+| 1.4 | 04-20-26 | Added cross-reference to the new `guide-carry-forward-updates.md` (governs post-reconciliation updates under a two-gate pattern). Strengthened the "One topic at a time" rule to require inlined before/after content in every conflict presentation — no bare identifiers or section pointers. Added explicit carve-out that carry-forward work is scoped out of reconciliation sessions, not performed inline. Added a new Critical Rule: required enum-type fields must be completable (values enumerated or explicitly deferred out of scope) before a reconciliation session may close — shipping with TBD enums blocks Phase 9 YAML generation. Added §1.6 Required-Field Completeness Check as a new Step 1 pass (renumbered Present Conflict Summary to §1.7). Updated §1.7 summary template to include a required-field completeness line. Addresses approval-churn and Phase 9 stall findings from the CBM MR pilot (PILOT-FINDINGS Finding 5 and Finding 6). |
 | 1.3 | 04-16-26 | Added sub-domain support throughout. Input verification now branches into flat-domain and sub-domain-structured checklists, requiring Domain Overview and Sub-Domain Overview documents. Added §1.5 Cross-Sub-Domain Conflicts as a new conflict detection category (renumbered Present Conflict Summary to §1.6). Updated Section 1 Domain Overview assembly to draw from Domain Overview and Sub-Domain Overview documents. Updated Section 3 Business Processes to organize processes under sub-domain headings when applicable. Updated the Section 3 description in the Domain PRD contents table. Updated the Step 3 review walkthrough and Step 4 next-step prompt to reflect sub-domain-aware inputs. Fixed header version (was stuck at 1.1, changelog already had 1.2). |
 | 1.2 | 04-11-26 | Reversed the v1.1 Interview Transcript exclusion. Added Interview Transcript as Section 7 of the Domain PRD, scoped to the reconciliation conversation only — Q&A from the original process definition sessions remains in Section 11 of each source process document and is not duplicated. Inline Decision callouts in the transcript sit alongside the formal Section 5 Decisions Made entries (each reconciliation decision appears in both places, cross-referenced by its [DOMAIN]-RECON-DEC-NNN identifier). Updated Step 3 Review walkthrough to mention the new section. Brings reconciliation into parity with the master, entity, and process definition guides for transcript capture. |
 | 1.1 | 04-01-26 | Updated Business Processes section from 6 to 8 required sections per process to match the current 11-section process document format (v2.4). Added Process Triggers and Process Completion as separate sections. Added explicit exclusion list (Open Issues, Updates to Prior Documents, Interview Transcript) with rationale. Changed Process Data and Data Collected to narrative summaries referencing Section 4 Data Reference instead of duplicating field tables. |

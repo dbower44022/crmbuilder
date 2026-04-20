@@ -1,9 +1,10 @@
 # CRM Builder — Process Definition Interview Guide
 
-**Version:** 2.5
-**Last Updated:** 04-16-26 14:30
+**Version:** 2.6
+**Last Updated:** 04-20-26
 **Purpose:** AI interviewer guide for Phase 2 — Process Definition
-**Governing Process:** PRDs/application/CRM-Builder-Document-Production-Process.docx
+**Governing Process:** PRDs/process/CRM-Builder-Document-Production-Process.docx
+**See also:** `guide-carry-forward-updates.md` — used when this interview discovers that a previously-completed process document needs to change (see "Handling Discovered Updates to Prior Documents" below).
 
 ---
 
@@ -41,9 +42,9 @@ sub-domain, use
 
 ## What the Process Document Must Contain
 
-Every process document must contain all eleven of the following sections.
+Every process document must contain all ten of the following sections.
 Sections 7 and 8 must meet the field-level detail standard. A process
-document is not complete until all eleven sections are present and meet
+document is not complete until all ten sections are present and meet
 their respective standards.
 
 | # | Section | Content |
@@ -57,8 +58,15 @@ their respective standards.
 | 7 | Process Data | Fields this process references or uses to support its work. Grouped by entity with full field-level detail. |
 | 8 | Data Collected | Fields this process creates or updates (new data). Grouped by entity with full field-level detail. |
 | 9 | Open Issues | Unresolved questions, TBD items, and research tasks identified during the interview. Each with a unique identifier. |
-| 10 | Updates to Prior Documents | Changes needed to previously completed process documents discovered during this interview. |
-| 11 | Interview Transcript | Condensed record of all interview questions, answers, and decisions from the session. |
+| 10 | Interview Transcript | Condensed record of all interview questions, answers, and decisions from the session. |
+
+**Note — Updates to Prior Documents are no longer a process-document section.**
+When this interview discovers that a previously-completed process document needs to
+change, the discovery is not recorded inside this process document. Instead, the AI
+produces a separate **carry-forward request draft** as a second output artifact. See
+"Handling Discovered Updates to Prior Documents" below for the procedure and
+"guide-carry-forward-updates.md" for the request format and the session pattern that
+applies the updates.
 
 ### Field-Level Detail Standard
 
@@ -176,10 +184,10 @@ If this is the first process in the domain (or sub-domain):
 
 ## Interview Structure
 
-The interview walks through the eleven required sections in a natural
+The interview walks through the ten required sections in a natural
 conversation order. The AI does not need to announce section numbers
 to the administrator — the conversation should flow naturally. But
-the AI must ensure all eleven sections are covered before wrapping up.
+the AI must ensure all ten sections are covered before wrapping up.
 
 ### Section Checklist
 
@@ -192,8 +200,12 @@ the AI must ensure all eleven sections are covered before wrapping up.
 - [ ] 7. Process Data
 - [ ] 8. Data Collected
 - [ ] 9. Open Issues
-- [ ] 10. Updates to Prior Documents
-- [ ] 11. Interview Transcript
+- [ ] 10. Interview Transcript
+
+Separately, if the interview surfaces any updates needed to prior documents, produce
+a carry-forward request draft (see "Handling Discovered Updates to Prior Documents").
+The carry-forward request is a second output artifact, not a section of this process
+document.
 
 ---
 
@@ -820,71 +832,108 @@ Present the list for confirmation.
 
 ---
 
-## Section 10 — Updates to Prior Documents
+## Handling Discovered Updates to Prior Documents
 
-**What the AI is trying to capture:**
-Changes needed to previously completed process documents that
-were discovered during this interview. These are not open issues
-— they are known changes that need to be applied.
+**This is process-conduct guidance, not a process-document section.** The
+carry-forward request produced under this procedure is a second output
+artifact of the session; it does not appear inside the process document
+itself.
 
-### 10.1 Collecting Updates
+Updates to prior documents emerge when the current interview reveals that
+a previously-completed process document is incomplete or inconsistent with
+what has just been established. Common examples:
 
-Updates to prior documents emerge when the current interview
-reveals that a prior process document is incomplete or
-inconsistent. Common examples:
-
-- A field that should have been defined in a prior process but
-  was not (e.g., Engagement Contacts auto-assignment belongs
-  in MN-INTAKE but was discovered during MN-ENGAGE)
-- A status value or enum value that needs to be added to a
-  field defined in a prior process
-- A workflow step in a prior process that needs clarification
-  based on what was learned in this interview
+- A field that should have been defined in a prior process but was not
+  (e.g., Engagement Contacts auto-assignment belongs in MN-INTAKE but was
+  discovered during MN-ENGAGE)
+- A status value or enum value that needs to be added to a field defined
+  in a prior process
+- A workflow step in a prior process that needs clarification based on
+  what was learned in this interview
 - A requirement that needs to be added to a prior process
 
-### 10.2 Update Format
+### Collecting Discoveries During the Interview
 
-Each update should specify:
+As soon as the AI recognizes that a prior document needs updating, note
+the discovery internally (and in the Interview Transcript — see Section 10)
+but **do not pause the interview to author the update**. Complete the
+process-definition work first. Updates to prior documents are handled as a
+separate step at the end of the session.
 
-- Which prior document needs updating (process code and name)
-- What specifically needs to change
-- Why the change is needed (reference the current interview's
-  requirement or decision that triggered it)
+### Drafting the Carry-Forward Request
 
-### 10.3 Consolidation
+At the end of the interview, after the process document is confirmed, the
+AI produces one carry-forward request draft **per discovered update**. Each
+draft is a standalone Markdown file following the Gate 1 Decision Approval
+template in `guide-carry-forward-updates.md`:
 
-Before closing the interview, review all conflicts and updates
-noted during the session:
+- **One request per semantic decision.** If this interview discovered three
+  separate updates needed in prior documents, produce three carry-forward
+  request drafts, not one combined draft.
+- **Inline before/after content.** For each draft, quote the exact text from
+  the prior document that needs to change (Before) and the exact replacement
+  text (After). Do not use bare identifiers or section pointers.
+- **Cite the source.** The Source line of the draft cites this process-
+  definition session (process code, session date) and the specific
+  requirement or decision that triggered the discovery.
+- **Enumerate the propagation.** If the update cascades beyond the one prior
+  document (for example, it also affects the Domain Overview or a Sub-Domain
+  Overview), include every affected document in the propagation table.
 
-> "During this interview, we identified [N] updates needed to
-> prior documents. Let me list them for confirmation."
+### Output Location
 
-If no updates were identified:
+Each carry-forward request draft is saved by the administrator at:
 
-> "No updates to prior documents were identified during this
-> interview."
+`{implementation}/PRDs/{domain_code}/carry-forward/SESSION-PROMPT-carry-forward-{slug}.md`
 
-The section should still appear in the document even if empty,
-with a note that no updates were needed.
+Where `{slug}` is a short, human-readable identifier for the specific
+decision (e.g., `mn-intake-add-engagement-contacts-field`,
+`cr-marketing-howdidyouhear-8-value-enum`).
+
+The AI should emit the draft content in a clearly labeled code block at the
+end of the session, along with the suggested filename, so the administrator
+can save it directly.
+
+### Presenting the Drafts to the Administrator
+
+At the close of the interview, after presenting the process document summary,
+present the carry-forward drafts:
+
+> "During this interview I identified [N] updates needed to prior documents.
+> I've drafted a carry-forward request for each one. These are separate
+> artifacts — not part of the process document. Save each draft to
+> `{implementation}/PRDs/{domain_code}/carry-forward/` and run one carry-
+> forward session per draft before we move to the next process.
+>
+> Draft 1 of [N]: [short title]
+> [complete markdown content following guide-carry-forward-updates.md Gate 1]
+>
+> Draft 2 of [N]: ..."
+
+If no updates to prior documents were identified:
+
+> "No updates to prior documents were identified during this interview."
+
+No carry-forward drafts are produced in that case.
 
 **Signs you have enough:**
-- Every conflict or gap identified during the interview is
-  captured as an update
-- Each update clearly identifies the target document and the
-  specific change needed
-- Updates are actionable — someone could apply them without
-  needing additional context
+- Every conflict or gap discovered during the interview that affects a prior
+  document has been drafted as a carry-forward request
+- Each draft is independently actionable — it follows the Gate 1 Decision
+  Approval template with inlined before/after content
+- The administrator can save each draft directly as a file and run a carry-
+  forward session from it without further authoring
 
 ---
 
-## Section 11 — Interview Transcript
+## Section 10 — Interview Transcript
 
 **What the AI is trying to produce:**
 A complete but condensed record of the interview — every question
 asked, every answer given, and every decision made — organized for
 easy reference by future reviewers.
 
-### 9.1 Format
+### 10.1 Format
 
 The transcript is organized by **topic area**, not chronologically.
 Group related exchanges under descriptive subheadings that correspond
@@ -904,7 +953,7 @@ information. If three exchanges were needed to arrive at an answer,
 combine them into one Q/A pair that captures the final understanding.
 Never drop information — if it was discussed, it must appear.
 
-### 9.2 Decision Callouts
+### 10.2 Decision Callouts
 
 When a Q/A exchange results in a decision — especially one that
 changes prior content, resolves an ambiguity, or establishes a new
@@ -917,7 +966,7 @@ Decision callouts are inline with the topic, not collected into a
 separate section. This keeps each decision next to the discussion
 that produced it.
 
-### 9.3 What to Include
+### 10.3 What to Include
 
 - Every question asked by the AI and every answer from the
   administrator, condensed but complete
@@ -929,9 +978,11 @@ that produced it.
 - All scope discoveries and whether they were handled inline
   or deferred to the Master PRD
 - All updates needed to prior documents identified during
-  the interview
+  the interview (these are also drafted as separate carry-
+  forward request artifacts — see "Handling Discovered Updates
+  to Prior Documents" above)
 
-### 9.4 What Not to Include
+### 10.4 What Not to Include
 
 - Greetings, pleasantries, and conversational filler
 - The AI's internal reasoning or analysis (only the questions
@@ -965,7 +1016,10 @@ verify it meets the required standard:
 7. Process Data — field-level detail for every supporting field? ✓/✗
 8. Data Collected — field-level detail for every field? ✓/✗
 9. Open Issues — all TBDs captured with identifiers? ✓/✗
-10. Updates to Prior Documents — all discovered changes documented? ✓/✗
+10. Interview Transcript — topic-organized Q/A with inline Decision callouts? ✓/✗
+
+Separately: if any updates to prior documents were discovered, is a carry-
+forward request draft prepared for each one? ✓/✗
 
 If any section is incomplete:
 > "Section [N] isn't quite at the level of detail we need.
@@ -987,19 +1041,19 @@ If any section is incomplete:
 > - Process Data: [N] supporting fields across [N] entities
 > - Data Collected: [N] new fields across [N] entities
 > - Open Issues: [N] ([first ID] through [last ID])
-> - Updates to Prior Documents: [N]
 > - TBD items: [N]
+> - Carry-forward request drafts prepared (separate artifacts): [N]
 >
 > Does that feel complete?"
 
 ### Document Production
 
 After confirmation, produce the process document as a Word
-document with all eleven required sections.
+document with all ten required sections.
 
 All sections use numbered headings in the Word document:
 "1. Process Purpose", "2. Process Triggers", through
-"11. Interview Transcript". Every section is numbered
+"10. Interview Transcript". Every section is numbered
 consistently — no unnumbered headings for any section.
 
 For Sections 7 and 8, present field data in tables grouped
@@ -1016,13 +1070,8 @@ and research task identified during the interview. Each issue
 receives a unique ISS identifier. If no open issues were
 identified, include the section with a note that none were found.
 
-Section 10 (Updates to Prior Documents) must list every change
-needed to previously completed process documents. If no updates
-were identified, include the section with a note that none
-were needed.
-
-Section 11 (Interview Transcript) must follow the format
-defined in the Section 11 interview guide above: condensed
+Section 10 (Interview Transcript) must follow the format
+defined in the Section 10 interview guide above: condensed
 Q/A pairs organized by topic area with inline Decision
 callouts. The transcript must capture all substantive
 exchanges from the interview without dropping information,
@@ -1030,6 +1079,15 @@ but should condense conversational filler into clean Q/A
 pairs. This provides an audit trail and allows future
 reviewers to understand the reasoning behind every decision
 made during the interview.
+
+**Carry-forward request drafts are separate artifacts.** If the
+interview discovered updates needed to prior documents, each draft
+is emitted as Markdown content in the session (following the Gate 1
+template in `guide-carry-forward-updates.md`) alongside the suggested
+filename. Drafts are saved by the administrator at
+`{implementation}/PRDs/{domain_code}/carry-forward/` and executed
+as separate carry-forward sessions before the next process interview.
+These drafts are not embedded in the process document.
 
 Commit the document to the repository at:
 `PRDs/{domain_code}/{PROCESS-CODE}.docx`
@@ -1148,6 +1206,7 @@ redirect:
 
 | Version | Date | Changes |
 |---|---|---|
+| 2.6 | 04-20-26 | Eliminated "Updates to Prior Documents" as a process-document section. Process documents now have ten sections (was eleven). Interview Transcript renumbered from Section 11 to Section 10, with its subsection numbers corrected from the pre-existing 9.1–9.4 mislabeling to 10.1–10.4. Replaced the old Section 10 guidance with a new "Handling Discovered Updates to Prior Documents" process-conduct block: when the interview surfaces a need to update a prior document, the AI drafts a standalone **carry-forward request** (per `guide-carry-forward-updates.md` Gate 1 template) as a second session output artifact, saved by the administrator under `{implementation}/PRDs/{domain_code}/carry-forward/` and executed as a separate carry-forward session. Updated checklist, summary template, completeness check, and Document Production guidance to reflect the ten-section structure and the separate carry-forward-draft output. Addresses the approval-churn findings from the CBM MR pilot (PILOT-FINDINGS Finding 6 and related): the dual-record problem (Section 10 entries + standalone session prompts) and the open-loop problem (Section 10 entries that rotted without being applied) are both resolved by making the carry-forward request the single authoritative record. |
 | 2.5 | 04-16-26 | Added sub-domain support throughout. Updated Input to include Domain Overview and Sub-Domain Overview documents. Updated Output path with sub-domain directory variant. Expanded Context Review from 3 to 4 steps, adding Domain/Sub-Domain Overview reading and cross-sub-domain awareness for shared entities. Updated Confirm the Process to reference sub-domain context. Updated State the Context from Prior Work for sub-domain scoping. Updated Document Production commit path with sub-domain variant. Expanded State Next Step with sub-domain-aware completion logic (sub-domain complete, next sub-domain, domain complete). |
 | 2.4 | 03-31-26 | Added section numbering guidance to Document Production: all eleven sections use numbered headings consistently in the Word document output (e.g., "9. Open Issues", "10. Updates to Prior Documents", "11. Interview Transcript"). |
 | 2.3 | 03-31-26 | Added Open Issues as Section 9 and Updates to Prior Documents as Section 10. Interview Transcript moved from Section 9 to Section 11. Document now has eleven required sections. Added interview guide content for both new sections including format, consolidation, and completeness standards. Updated completeness check and summary template. |
