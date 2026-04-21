@@ -1,0 +1,163 @@
+# HubSpot — auto-generated 2026-04-21
+# Tier: 2 — Strong but Gaps
+# Validation: OK
+# See pipedrive.mapping-report.md for per-capability provenance.
+
+name: HubSpot
+slug: hubspot
+type: Cloud CRM (SaaS)
+deployment: HubSpot-hosted only
+open_source: false
+license: Proprietary
+pricing:
+  free_tier: Free CRM (1M contacts, 2 users)
+  min_paid_per_user_month: 20
+  full_admin_api_per_user_month: 150
+  enterprise_per_user_month: 150
+  currency: USD
+api:
+  protocol:
+  - REST
+  format:
+  - JSON
+  version: v3/v4
+  auth_methods:
+  - OAuth 2.0
+  - Private App tokens
+  rate_limit: 100-190 req/10sec by edition; 250K-1M/day
+  admin_auth: Super Admin or account-level access
+last_reviewed: '2026-04-21'
+entity_management:
+  create_entity:
+    rating: full
+  delete_entity:
+    rating: full
+  check_existence:
+    rating: unknown
+  entity_types:
+    rating: unknown
+  cache_rebuild:
+    rating: unknown
+    notes: No dedicated facet. Most CRMs don't require explicit cache rebuilds; EspoCRM does. Left as
+      unknown so reviewer can set per-CRM.
+  activity_stream:
+    rating: full
+field_management:
+  create_field:
+    rating: full
+  update_field:
+    rating: full
+  read_field_metadata:
+    rating: full
+  field_type_coverage:
+    rating: unknown
+  field_property_coverage:
+    rating: partial
+layout_management:
+  read_layouts:
+    rating: partial
+  write_layouts:
+    rating: partial
+  detail_view:
+    rating: partial
+  edit_view:
+    rating: partial
+  list_view:
+    rating: partial
+  panels:
+    rating: none
+  tabs:
+    rating: none
+  conditional_visibility:
+    rating: none
+  multiple_list_views:
+    rating: unknown
+relationship_management:
+  create_relationship:
+    rating: full
+    notes: Most discriminating sub-field. OTO is degenerate in many CRMs; aggregating worst-of under-claims.
+      MTM is the useful signal.
+  one_to_many:
+    rating: full
+  many_to_one:
+    rating: full
+  many_to_many:
+    rating: full
+  link_labels:
+    rating: partial
+  audit_both_sides:
+    rating: partial
+  check_existence:
+    rating: unknown
+  cascade_delete:
+    rating: unknown
+data_operations:
+  create_record:
+    rating: full
+  read_record:
+    rating: full
+  update_record:
+    rating: full
+  delete_record:
+    rating: full
+  search_by_field:
+    rating: full
+    notes: Basic single-field record search is universal where an OpenAPI spec exists. The entity.search.multi_attribute_filter
+      facet covers advanced/compound search, not basic search — so not mapped here.
+  search_by_email:
+    rating: full
+  upsert:
+    rating: full
+  batch_create:
+    rating: full
+  bulk_import:
+    rating: unknown
+  query_language:
+    rating: full
+workflow_automation:
+  create_rules:
+    rating: partial
+  create_flows:
+    rating: unknown
+  approval_processes:
+    rating: unknown
+  validation_rules:
+    rating: partial
+  scheduled_actions:
+    rating: partial
+  email_from_template:
+    rating: full
+roles_permissions:
+  create_roles:
+    rating: unknown
+  module_permissions:
+    rating: unknown
+  field_level_security:
+    rating: unknown
+  record_level_rules:
+    rating: partial
+  user_management:
+    rating: unknown
+dashboards_reports:
+  create_dashboards:
+    rating: unknown
+  create_reports:
+    rating: unknown
+  saved_views:
+    rating: unknown
+email_templates:
+  crud_templates:
+    rating: unknown
+  merge_fields:
+    rating: unknown
+  html_body:
+    rating: unknown
+webhooks_events:
+  outbound_webhooks:
+    rating: full
+  event_subscriptions:
+    rating: full
+  sync_async:
+    rating: unknown
+  retry_on_failure:
+    rating: unknown
