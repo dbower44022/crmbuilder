@@ -1,7 +1,7 @@
 # CRM Builder — Inventory Reconciliation Interview Guide
 
-**Version:** 1.0
-**Last Updated:** 04-20-26
+**Version:** 1.1
+**Last Updated:** 04-21-26
 **Purpose:** AI interviewer guide for Phase 3 — Inventory Reconciliation
 **Governing Process:** `PRDs/process/CRM-Builder-Document-Production-Process.docx`
 **See also:** `interview-domain-discovery.md` — the upstream phase whose working artifact this phase reconciles. `interview-entity-prd.md` — the downstream phase that uses the durable Entity Inventory produced here.
@@ -54,24 +54,34 @@ persona backing depends on the reconciled entity set.
 Stop at 120 minutes regardless of completion — schedule a follow-up
 rather than pushing through fatigue.
 
-**Input:**
+**Input (new implementation path):**
 
 - Master PRD (current version, pre-reconciliation)
 - Domain Discovery Report (produced in Phase 2, confirmed saturated)
 
+**Input (implementations in flight — retrofit path):**
+
+For implementations that predate the Phase 2 / Phase 3 split (where
+a Domain Discovery Report was never produced and candidate
+inventories were captured informally during Master PRD drafting):
+
+- Master PRD (current version)
+- Current Entity Inventory (if one already exists, e.g., a pre-existing `{Implementation}-Entity-Inventory.docx`)
+- Any persona source already in use: the Master PRD's Personas section, plus backing attributions from `CLAUDE.md` or other implementation documents
+- Any domain reconciliation notes from prior informal sessions
+
+See "Implementations in Flight — Retrofit Path" below for the
+adapted session procedure.
+
 **Output (three artifacts, committed together as one deliverable):**
 
-| Artifact | Repository location |
-|---|---|
-| Entity Inventory | `PRDs/{Implementation}-Entity-Inventory.docx` |
-| Persona Inventory | `PRDs/{Implementation}-Persona-Inventory.docx` |
-| Updated Master PRD | `PRDs/{Implementation}-Master-PRD.docx` (in-place update) |
+| Artifact | Repository location | New implementation | In-flight retrofit |
+|---|---|---|---|
+| Entity Inventory | `PRDs/{Implementation}-Entity-Inventory.docx` | New document | Updated in place if already exists; otherwise new |
+| Persona Inventory | `PRDs/{Implementation}-Persona-Inventory.docx` | New document | New document (the split from Master PRD happens here) |
+| Updated Master PRD | `PRDs/{Implementation}-Master-PRD.docx` (in-place update) | Candidate domain list replaced | Personas section trimmed (full specs move to the Persona Inventory); domain list confirmed |
 
-**Cardinality:** Exactly one of each output per implementation. The
-Entity Inventory and Persona Inventory are produced here for the
-first time. The Master PRD was produced in Phase 1 and is updated in
-place by this phase — the candidate domain list is replaced with
-the reconciled list.
+**Cardinality:** Exactly one of each output per implementation.
 
 ---
 
@@ -565,6 +575,53 @@ has already begun on a revised domain — follow
 
 ---
 
+## Implementations in Flight — Retrofit Path
+
+Phase 3 was defined after the CBM pilot was already past Phase 1.
+Implementations that predate the Phase 2 / Phase 3 split (or that
+executed a pre-split equivalent of domain/entity/persona discovery
+during Master PRD drafting) often do not have a Domain Discovery
+Report to reconcile. They do have:
+
+- A Master PRD with a populated Personas section and a Key Data Categories section per domain.
+- An Entity Inventory already in use (for CBM, `CBM-Entity-Inventory.docx` v1.5 at the time this section was written).
+- Informal backing attributions (e.g., persona → entity mappings captured in `CLAUDE.md` rather than in a separate Persona Inventory).
+
+Forcing such an implementation to retroactively produce a Domain
+Discovery Report and then re-reconcile is churn without value. The
+work was done; it just wasn't done in the shape Phase 3 now
+expects. The retrofit path adapts Phase 3 to take the existing
+artifacts as its starting state.
+
+### Retrofit adjustments to the session procedure
+
+The interview structure is otherwise unchanged. Only these steps
+differ from the new-implementation path:
+
+- **Context Review (Before the Session Begins).** Replace "read the Domain Discovery Report" with "read the Master PRD's current Personas and Key Data Categories sections, the current Entity Inventory, and any backing attributions in `CLAUDE.md`". Compute the candidate tables from these sources.
+- **Section 1 Domain Reconciliation.** The Master PRD's domain list already exists and has typically been used by at least one downstream domain. The session confirms it rather than replacing a candidate list. If Phase 4 has already produced Domain Overviews or process documents for some domains, the domain list is effectively frozen for those domains — Rule 2.1 adjustments in this session become carry-forward requests rather than in-place edits.
+- **Section 2 Entity Reconciliation.** The Entity Inventory already exists. The session reviews each row for: canonical-name stability, completeness of source-domain attribution, alias preservation (aliases may not have been formally captured), and any shared-entity patterns that should have discriminators documented. Updates are applied in place.
+- **Section 3 Persona Reconciliation.** This is the substantive retrofit work: extracting personas from the Master PRD's Personas section into a separate Persona Inventory document, assigning `PER-NNN` IDs to personas that do not already have them (for CBM, the Master PRD already assigned `MST-PER-NNN` IDs — those are preserved and become the `PER-NNN` format), and confirming backing attributions. The goal is a durable Persona Inventory that subsequent guides can consume.
+- **Section 4 Master PRD Update.** Two adjustments:
+  - The Personas section is **trimmed** rather than rewritten — full persona responsibilities and what-the-CRM-provides narratives may move entirely to the Persona Inventory, leaving the Master PRD's Personas section as a summary table with `PER-NNN` references.
+  - The Revision History entry names this as a **retrofit reconciliation**, not a candidate-list replacement.
+
+### When retrofit is not worth running
+
+Do not run a retrofit Phase 3 purely to produce paperwork. Run it
+when one of these conditions is true:
+
+- A downstream guide blocks on a separate Persona Inventory being present (none currently do, because `guide-domain-overview.md` v1.1 accepts the Master PRD Personas section as equivalent).
+- Stakeholder review of the Master PRD has flagged that the Personas section has grown too detailed for a strategic document and would read better as a separate Persona Inventory.
+- A new persona is being added to the implementation and the administrator wants the addition to happen in a properly-formed Persona Inventory rather than by extending the Master PRD.
+
+If none of these apply, the retrofit is deferred. The
+implementation continues without a separate Persona Inventory, and
+downstream guides accept the Master PRD's Personas section plus
+backing notes as the persona source.
+
+---
+
 ## Closing the Session
 
 ### Completeness Check
@@ -652,4 +709,5 @@ Await explicit confirmation before closing.
 
 ## Changelog
 
-- **1.0** (04-20-26) — Initial release. Scoped to Phase 3 Inventory Reconciliation only, per `CRM-Builder-Document-Production-Process.docx` Section 3.3. Produces three atomic outputs: Entity Inventory (durable), Persona Inventory (durable, with PER-NNN IDs), and in-place Master PRD update. Encodes the domain-then-entity-then-persona ordering, shared-entity detection pattern, alias preservation from Phase 2 language, and `PER-NNN` assignment discipline. Structure aligned with `authoring-standards.md` v1.0. Scope-change protocol cross-links to Phase 2 re-discovery and Phase 1 Master PRD revision.
+- **1.1** (04-21-26) — Added Implementations in Flight — Retrofit Path section. v1.0 assumed every Phase 3 session reconciles a fresh Domain Discovery Report, which blocks implementations like CBM that predate the Phase 2 / Phase 3 split and do not have a Discovery Report but do have a Master PRD, an Entity Inventory, and persona backing notes in `CLAUDE.md`. The retrofit path adapts the session to take existing artifacts as input and produce the Persona Inventory as the only net-new document. Pilot-validation status: not yet exercised against CBM; CBM is currently not running a formal retrofit Phase 3 because `guide-domain-overview.md` v1.1 accepts Master PRD Personas as a persona source, so the retrofit is only needed when one of the triggering conditions listed in the new section applies.
+- **1.0** (04-20-26) — Initial release. Scoped to Phase 3 Inventory Reconciliation only, per `CRM-Builder-Document-Production-Process.docx` Section 3.3. Produces three atomic outputs: Entity Inventory (durable), Persona Inventory (durable, with PER-NNN IDs), and in-place Master PRD update. Encodes the domain-then-entity-then-persona ordering, shared-entity detection pattern, alias preservation from Phase 2 language, and `PER-NNN` assignment discipline. Structure aligned with `authoring-standards.md` v1.0. **Not pilot-validated; see v1.1 retrofit additions.**

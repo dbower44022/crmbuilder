@@ -1,7 +1,7 @@
 # CRM Builder — Entity PRD Interview Guide
 
-**Version:** 1.0
-**Last Updated:** 04-20-26
+**Version:** 1.1
+**Last Updated:** 04-21-26
 **Purpose:** AI interviewer guide for Phase 5 — Entity PRDs
 **Governing Process:** `PRDs/process/CRM-Builder-Document-Production-Process.docx`
 **See also:** `guide-carry-forward-updates.md` — used when this interview discovers that an already-completed process document, Domain Overview, or Entity PRD needs to change.
@@ -30,16 +30,29 @@ dedicated session; do not bundle two entities into one conversation.
 completion — schedule a follow-up rather than pushing through
 fatigue.
 
-**Input:**
+**Input (required):**
 
 - Master PRD
-- Entity Inventory (produced in Phase 3)
-- Persona Inventory (produced in Phase 3)
-- Domain Overview for every domain that lists this entity in its
-  Data Reference
+- Entity Inventory
+- Persona source — either a separate Persona Inventory document (the spec-compliant Phase 3 output) or the Master PRD's Personas section with backing captured in the Master PRD or the implementation's `CLAUDE.md`. Both are accepted (see `guide-domain-overview.md` Persona Source Compatibility).
+- Domain Overview for every domain that lists this entity in its Data Reference
 - Every Phase 4 process document that uses this entity
-- Every previously-completed Entity PRD for entities that have a
-  relationship to this entity
+
+**Input (optional, use when available):**
+
+- Every previously-completed Entity PRD for entities that have a relationship to this entity. Common on cross-domain entities — the Contact Entity PRD's decisions create requirements the later Account Entity PRD must incorporate.
+
+**On ordering with Phase 4.** Per process doc Rule 5.1, Entity PRDs
+are produced **after** Phase 4 process documents, not before. This
+was sometimes described as "retroactive" in earlier methodology
+drafts; it is now the normal order. Process documents surface the
+fields an entity actually needs, the enum values that actually
+appear, and the relationships that actually matter. Writing Entity
+PRDs before process documents guesses at these; writing them after
+records them. The Data Reference section of the Domain Overview
+(`guide-domain-overview.md` v1.1) explicitly annotates entities
+without Entity PRDs as "pending Phase 5" — resolving those
+annotations is the work of this session.
 
 **Output:** One Word document — the Entity PRD — committed to the
 implementation's repository at
@@ -138,11 +151,14 @@ State verification before proceeding:
 
 > "For the {EntityName} Entity PRD, I need to confirm the following are available:
 >
+> **Required:**
 > - Master PRD: ✓ / ✗
 > - Entity Inventory: ✓ / ✗
-> - Persona Inventory: ✓ / ✗
+> - Persona source — Persona Inventory document, or Master PRD Personas section with backing: ✓ / ✗
 > - Domain Overviews for every contributing domain: {list, with ✓ / ✗ per domain}
 > - Phase 4 process documents that use this entity: {list, with ✓ / ✗ per document}
+>
+> **Optional — will be used if available:**
 > - Previously-completed Entity PRDs for related entities: {list, with ✓ / ✗}
 >
 > Is this the complete set?"
@@ -609,4 +625,5 @@ Await explicit confirmation before starting a new session.
 
 ## Changelog
 
-- **1.0** (04-20-26) — Initial release as `interview-entity-prd.md`, scoped to Phase 5 only. Replaces the legacy `guide-entity-definition.md` v1.3. Archetype changed from hybrid (Phase 2a Entity Discovery + Phase 2b Entity PRDs) to interview archetype for a single phase. Phase 2a Entity Discovery content removed — candidate entity inventory is now produced during Phase 2 Domain Discovery and reconciled during Phase 3 Inventory Reconciliation, per `CRM-Builder-Document-Production-Process.docx`. Retroactive-Entity-Definition appendix removed — the phase sequence no longer creates the failure mode. Generator-template references removed (template file was never shipped). Structure aligned with `authoring-standards.md` v1.0. Scope-change protocol cross-linked to `guide-carry-forward-updates.md`. Session-start checklist and confirmation-gate discipline added per process doc Section 7.
+- **1.1** (04-21-26) — Paired with `guide-domain-overview.md` v1.1. Persona Inventory is no longer a hard input — the Master PRD's Personas section with backing captured in the Master PRD or `CLAUDE.md` is accepted as an equivalent persona source, matching the Domain Overview guide's treatment and the CBM pilot's actual state. Previously-completed related Entity PRDs moved from required to optional inputs. Added explicit framing on Phase 4 → Phase 5 ordering: what earlier methodology called "retroactive" Entity PRDs is now the normal order per process doc Rule 5.1; Entity PRDs record what process definition surfaced rather than guess at it. Pilot-validation status: aligned with CBM MN/MR/CR actual execution (Domain Overview and process documents first, Entity PRDs after); Funding domain Entity PRDs will be the next exercise of this v1.1.
+- **1.0** (04-20-26) — Initial release as `interview-entity-prd.md`, scoped to Phase 5 only. Replaces the legacy `guide-entity-definition.md` v1.3. Archetype changed from hybrid (Phase 2a Entity Discovery + Phase 2b Entity PRDs) to interview archetype for a single phase. Structure aligned with `authoring-standards.md` v1.0. Scope-change protocol cross-linked to `guide-carry-forward-updates.md`. **Not pilot-validated; see v1.1.**

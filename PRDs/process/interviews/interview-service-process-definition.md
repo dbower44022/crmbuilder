@@ -1,7 +1,7 @@
 # CRM Builder — Service Process Definition Interview Guide
 
-**Version:** 1.0
-**Last Updated:** 04-20-26
+**Version:** 1.1
+**Last Updated:** 04-21-26
 **Purpose:** AI interviewer guide for Phase 6 — Service Process Definition
 **Governing Process:** `PRDs/process/CRM-Builder-Document-Production-Process.docx`
 **See also:** `interview-process-definition.md` — the structurally-parallel guide for domain process documents. This guide defers to it for interview structure, section standards, and field-level detail rules, and documents only the service-specific differences.
@@ -37,13 +37,21 @@ document.
 Stop at 60 minutes regardless of completion — schedule a follow-up
 rather than pushing through fatigue.
 
-**Input:**
+**Input (required):**
 
 - Master PRD (with Cross-Domain Services section defining this service)
-- Service Overview (produced ahead of service process work if the service has more than a few processes — optional, same role as a Domain Overview)
+- Entity Inventory
 - All previously completed service process documents for this service
-- Entity PRDs for every entity this service uses (service-owned entities and entities borrowed from domains)
-- Entity PRDs for borrowed entities must exist before the service process that uses them; if a service owns entities not yet in the Entity Inventory, see "Service-Owned Entity Discovery" below
+
+**Input (optional, use when available):**
+
+- Service Overview (if the service has more than a few processes and a Service Overview has been produced — same role as a Domain Overview; see `guide-domain-overview.md`)
+- Entity PRDs for entities this service uses. Per process doc Rule 5.1, Entity PRDs come after process documents; service process work may run before the borrowed entities have completed Entity PRDs. When an Entity PRD exists, it informs field-level detail in Sections 7 and 8; when it does not, the process document cites the Entity Inventory row and proposes fields that will be reconciled into a later Phase 5 Entity PRD.
+
+If a service owns entities not yet in the Entity Inventory, see
+"Service-Owned Entity Discovery" below — this is a Phase 3
+Entity-Inventory update, not an Entity-PRD prerequisite for the
+current service process.
 
 **Output:** One Word document — the service process document —
 committed to the implementation's repository at:
@@ -238,4 +246,5 @@ Behaviors in `interview-process-definition.md`.
 
 ## Changelog
 
-- **1.0** (04-20-26) — Initial release. Scoped to Phase 6 Service Process Definition only, per `CRM-Builder-Document-Production-Process.docx` Section 3.6. Deferred-to-parent-guide pattern: body content inherits from `interview-process-definition.md`; this guide documents only service-specific differences (identifier format, cross-domain consumer scoping, service-owned entity discovery, Service Overview context option, repository path, carry-forward path). Structure aligned with `authoring-standards.md` v1.0.
+- **1.1** (04-21-26) — Same over-tightening fix applied to `guide-domain-overview.md` v1.1 and `interview-entity-prd.md` v1.1. v1.0 required Entity PRDs for borrowed entities before the service process could be defined; per process doc Rule 5.1 Entity PRDs come after process documents. Entity PRDs moved to optional inputs — when they exist they inform field-level detail, when they do not the Entity Inventory row is the authority and proposed fields become Phase 5 Entity PRD inputs. Pilot-validation status: not yet exercised; first use will be when CBM's Notes or Email service runs.
+- **1.0** (04-20-26) — Initial release. Scoped to Phase 6 Service Process Definition only, per `CRM-Builder-Document-Production-Process.docx` Section 3.6. Deferred-to-parent-guide pattern: body content inherits from `interview-process-definition.md`; this guide documents only service-specific differences. Structure aligned with `authoring-standards.md` v1.0. **Not pilot-validated; see v1.1.**

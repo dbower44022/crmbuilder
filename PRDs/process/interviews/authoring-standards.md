@@ -1,7 +1,7 @@
 # CRM Builder — Interview and Guide Authoring Standards
 
-**Version:** 1.0
-**Last Updated:** 04-20-26
+**Version:** 1.1
+**Last Updated:** 04-21-26
 **Purpose:** Authoring contract for every file under `PRDs/process/interviews/`
 **Governing Process:** `PRDs/process/CRM-Builder-Document-Production-Process.docx`
 
@@ -22,6 +22,40 @@ the conversation that produces those deliverables.
 
 The `.docx` process doc is the authority. If this file and the
 `.docx` ever disagree, the `.docx` wins and this file is corrected.
+
+### 1.1 When the `.docx` conflicts with itself
+
+The `.docx` process doc has occasionally grown internal
+inconsistencies as it has been revised. When authoring a guide,
+if two passages of the `.docx` appear to contradict each other,
+follow this resolution order:
+
+1. **Prefer the passage with explicit rationale.** A passage that states *why* (e.g., Rule 5.1's "Writing Entity PRDs before process work means guessing; writing them after means recording") is more load-bearing than a passage that only states *what*.
+2. **Prefer the passage that matches observed pilot practice.** If the CBM pilot (or another implementation that has reached the relevant phase) has executed one interpretation successfully, that interpretation has been validated and should win over an unvalidated alternative reading.
+3. **Surface the contradiction in the guide's Changelog.** Do not paper over it. Note which `.docx` passages conflict, which interpretation the guide adopts, and why. This creates a paper trail for a future `.docx` revision.
+4. **Flag the `.docx` for revision.** Internal inconsistencies should not persist — they produce rework every time a new guide is written or a new implementation is onboarded. The first guide that catches a contradiction should flag it to the administrator, who schedules a `.docx` revision pass.
+
+### 1.2 Validate guides against pilot practice before authoritative release
+
+A guide that has not been validated against at least one completed
+execution of its phase is a **draft** regardless of version number.
+The guide's Changelog entry should state whether the version is
+pilot-validated, and against which pilot. For example:
+
+```
+- **1.0** (MM-DD-YY) — Initial release. Not yet pilot-validated.
+- **1.1** (MM-DD-YY) — Revised based on CBM {domain} execution.
+  Pilot-validated for flat-domain case; sub-domain case not yet
+  exercised.
+```
+
+Guides released without pilot validation (as this entire authoring
+standards round was) are at elevated risk of over-tightening or
+spec-vs-practice divergence. The first pilot execution against an
+unvalidated guide should be treated as a test session, with the
+administrator prepared to pause and revise the guide if it blocks
+on preconditions the pilot has already demonstrably operated
+without.
 
 ---
 
@@ -590,6 +624,7 @@ the implementation's repository at `{path}`.
 
 ## Changelog
 
+- **1.1** (04-21-26) — Added Section 1.1 (resolution order when the `.docx` process doc conflicts with itself) and Section 1.2 (pilot-validation requirement before a guide is treated as authoritative). Triggered by the `guide-domain-overview.md` v1.0 → v1.1 episode: v1.0 over-tightened Section 3.4's Context Passing line into a hard precondition that contradicted Section 3.5 Rule 5.1 and blocked the CBM Funding Domain Overview session. Root cause was authoring from the `.docx` without spot-checking observed pilot practice. The new Section 1.1 gives authors a resolution protocol; Section 1.2 requires a pilot-validation note in the Changelog of every guide.
 - **1.0** (04-20-26) — Initial authoring standards, derived from
   `interview-master-prd.md` v1.2, `interview-process-definition.md`
   v2.6, `guide-domain-reconciliation.md` v1.5,
