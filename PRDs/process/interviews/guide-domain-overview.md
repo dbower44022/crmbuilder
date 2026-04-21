@@ -1,7 +1,7 @@
 # CRM Builder — Domain Overview Guide
 
-**Version:** 1.0
-**Last Updated:** 04-20-26
+**Version:** 1.1
+**Last Updated:** 04-21-26
 **Purpose:** AI guide for Phase 4a — Domain Overview (including Sub-Domain Overview)
 **Governing Process:** `PRDs/process/CRM-Builder-Document-Production-Process.docx`
 **See also:** `interview-process-definition.md` — the Phase 4b activity whose primary input is the Domain Overview produced here. `guide-domain-reconciliation.md` — the Phase 7 reconciliation whose input set includes this Domain Overview. `guide-carry-forward-updates.md` — used when this session discovers that an upstream Entity PRD or the Master PRD needs updating.
@@ -39,13 +39,21 @@ produce overviews for multiple domains in one session.
 entities or complex sub-domain structures. Stop at 90 minutes
 regardless — split the session if needed.
 
-**Inputs:**
+**Inputs (required):**
 
 - Master PRD (post-Phase-3 reconciled version)
 - Entity Inventory (produced in Phase 3)
-- Persona Inventory (produced in Phase 3)
-- Every Entity PRD for entities whose Entity Inventory row lists this domain as a source domain
-- For a Sub-Domain Overview: the parent Domain Overview (must be complete) plus the above inputs scoped to the sub-domain
+- Persona source: either a separate Persona Inventory document (the spec-compliant Phase 3 output), or the Master PRD's Personas section with backing information captured in it or in the implementation's `CLAUDE.md`. Implementations that predate the split of Persona Inventory from the Master PRD use the latter and it is accepted as equivalent — see "Persona Source Compatibility" below.
+
+**Inputs (optional, use when available):**
+
+- Entity PRDs for entities whose Entity Inventory row lists this domain as a source domain. Per process doc Rule 5.1, full Entity PRDs are produced in Phase 5 **after** Phase 4 process documents. The Domain Overview produces what it can from the Entity Inventory; any Entity PRDs that happen to exist (typically for cross-domain entities defined in an earlier domain's Phase 5 work) inform the Data Reference more richly.
+- Process documents already drafted for this domain — if Phase 4b has begun, these help calibrate the Data Reference's "Role in this Domain" characterization and the most-relevant-fields lists.
+
+**Inputs (Sub-Domain Overview):**
+
+- Parent Domain Overview (must be complete)
+- The required and optional inputs above, scoped to the sub-domain
 
 **Output:** One Word document — the Domain Overview — committed to
 the implementation's repository at:
@@ -58,10 +66,28 @@ sub-domains: one parent Domain Overview plus one Sub-Domain Overview
 per sub-domain.
 
 **Ordering constraint.** The Domain Overview session runs after
-Phase 3 Inventory Reconciliation has completed and after the Entity
-PRDs for every entity that participates in this domain are complete.
-If an entity participating in this domain is not yet defined, the
-Domain Overview is blocked until that Entity PRD is produced.
+Phase 3 Inventory Reconciliation has completed. It does **not**
+require Entity PRDs to be complete — per process doc Rule 5.1,
+Entity PRDs are produced in Phase 5 after Phase 4 process documents,
+and in practice many Entity PRDs are produced retroactively once the
+processes that use them have surfaced the fields and relationships
+they actually need. The Domain Overview's Data Reference (Section 4)
+is synthesized from the Entity Inventory, enriched with any Entity
+PRDs that already exist.
+
+**Persona Source Compatibility.** The spec calls for a Persona
+Inventory as a separate Phase 3 deliverable. Implementations that
+predate this split (where personas live in the Master PRD's
+Personas section with backing information captured in the Master
+PRD or the implementation's `CLAUDE.md`) are supported: the guide
+accepts either source. If a separate Persona Inventory exists, use
+it. If only the Master PRD has personas, use them and their backing
+from wherever the backing is captured — the Data Reference and
+Section 2 Personas don't change based on the source document.
+Implementations in flight should run Phase 3 to produce the
+separate Persona Inventory only when the work naturally reaches a
+Master PRD update point; forcing the split mid-flight produces
+churn without value.
 
 ---
 
@@ -74,9 +100,9 @@ respective standards.
 | # | Section | Content |
 |---|---------|---------|
 | 1 | Domain Purpose | Expanded business context for the domain. Drawn from and elaborating on the Master PRD's domain description. Answers: what business question does this domain serve, what would go wrong if the work wasn't done, and how does this domain relate to the organization's mission. For parent domains with sub-domains, also describes the sub-domain structure and the rationale for that organization. |
-| 2 | Personas | Every persona from the Persona Inventory that participates in this domain, scoped to their domain-specific role. Name, ID (`PER-NNN` from the Persona Inventory), domain-specific responsibilities, and what the CRM provides to them in this domain. For parent domains with sub-domains, also notes which personas span multiple sub-domains and which are sub-domain-specific. |
+| 2 | Personas | Every persona from the persona source (Persona Inventory or Master PRD Personas) that participates in this domain, scoped to their domain-specific role. Name, ID (`PER-NNN`), domain-specific responsibilities, and what the CRM provides to them in this domain. For parent domains with sub-domains, also notes which personas span multiple sub-domains and which are sub-domain-specific. |
 | 3 | Business Processes | The complete process inventory for the domain with lifecycle narrative, process relationships, and dependency ordering. Describes how the processes connect end-to-end. For flat domains, this is a single list. For domains with sub-domains, this lists the sub-domains and their rationale — individual process inventories live in the Sub-Domain Overview documents. |
-| 4 | Data Reference | The entities and fields relevant to this domain, assembled by reference to the completed Entity PRDs. For each entity participating in the domain: canonical name, one-sentence description, link to the full Entity PRD, and a list of the fields most relevant to this domain's processes. The Data Reference does **not** redefine entities or fields — it references the Entity PRDs. |
+| 4 | Data Reference | The entities and fields relevant to this domain. Assembled from the Entity Inventory, enriched by Entity PRDs where they exist. For each entity participating in the domain: canonical name, one-sentence description, link to the Entity PRD if one exists (otherwise a "Entity PRD pending Phase 5" note), and a list of the fields most relevant to this domain's processes (drawn from the Entity PRD when available, or proposed from the Master PRD and Phase 4 process documents when the Entity PRD does not yet exist). The Data Reference does **not** redefine entities or fields — it references the authoritative source for each. |
 
 **Completeness standard.** A Domain Overview is complete when all
 four sections are present; the process inventory in Section 3
@@ -84,34 +110,40 @@ matches the Master PRD's process list for this domain (with any
 additions noted); the dependency ordering in Section 3 has been
 confirmed with the administrator; the Data Reference in Section 4
 correctly identifies every entity whose Entity Inventory row lists
-this domain as a source domain; and every persona in Section 2 is
-traced to the Persona Inventory by ID.
+this domain as a source domain, with either a link to the Entity
+PRD or a "pending Phase 5" annotation per entity; and every persona
+in Section 2 is traced to its persona source by `PER-NNN` ID.
 
 **What the Domain Overview is not.** It is not a new requirements
 document. It does not introduce information that isn't already in
-the Master PRD or the Entity PRDs. If the synthesis surfaces a
-missing requirement or a Master PRD / Entity PRD inconsistency, that
-is a scope-change finding — see "Gap Identification" below.
+the Master PRD, the Entity Inventory, or an Entity PRD where one
+exists. If the synthesis surfaces a missing requirement or an
+inconsistency between sources, that is a scope-change finding — see
+"Gap Identification" below. The Domain Overview also is not a
+pre-Phase-5 Entity PRD substitute; if it ends up carrying
+field-level detail that belongs in an Entity PRD, that detail
+should be surfaced in a Phase 5 Entity PRD when one is produced,
+not treated as the durable field definition.
 
 ---
 
 ## Critical Rules
 
-1. **Reference, do not redefine.** Section 4 Data Reference points at the Entity PRDs; it does not re-specify fields or re-write entity descriptions. Duplicating Entity PRD content creates two sources of truth that drift.
+1. **Reference, do not redefine.** Section 4 Data Reference points at the Entity Inventory rows and, where they exist, the Entity PRDs; it does not re-specify fields or re-write entity descriptions. Duplicating Entity PRD or Entity Inventory content creates two sources of truth that drift.
 
-2. **Synthesis, not invention.** Every statement in the Domain Overview must trace to the Master PRD, the Persona Inventory, the Entity Inventory, or an Entity PRD. If the synthesis requires a statement that is not supported by any upstream document, that is a gap — surface it to the administrator, do not paper over it.
+2. **Synthesis, not invention.** Every statement in the Domain Overview must trace to the Master PRD, a persona source (Persona Inventory or Master PRD Personas section), the Entity Inventory, an Entity PRD (where one exists), or a process document (where one exists). If the synthesis requires a statement that is not supported by any upstream document, that is a gap — surface it to the administrator, do not paper over it.
 
 3. **Confirm the process inventory and dependency ordering interactively.** The process inventory and dependency order are the one set of facts in the Domain Overview that the upstream documents may not fully specify — the Master PRD establishes the processes, but the dependency ordering may need administrator input. Confirm explicitly (see Step 4).
 
-4. **Entity PRDs must exist before the Domain Overview.** If any entity whose Entity Inventory row lists this domain as a source domain does not yet have a completed Entity PRD, stop. The Domain Overview cannot be synthesized without complete Entity PRDs for its participating entities.
+4. **Entity PRDs are optional inputs, not prerequisites.** Per process doc Rule 5.1, Entity PRDs are produced in Phase 5 after Phase 4 process documents. The Domain Overview must not block on Entity PRDs being complete. For each entity participating in this domain: if an Entity PRD exists, the Data Reference links to it and draws field lists from it; if no Entity PRD exists yet, the Data Reference cites the Entity Inventory row and annotates "Entity PRD pending Phase 5". Both states are valid and expected.
 
-5. **Scope to this domain.** The Data Reference lists only entities that participate in this domain. A cross-domain entity (like Contact) is included in the Data Reference for every domain it participates in, but the field list in each Data Reference entry is scoped to the fields this domain's processes actually use.
+5. **Scope to this domain.** The Data Reference lists only entities that participate in this domain. A cross-domain entity (like Contact) is included in the Data Reference for every domain it participates in, but the field list in each Data Reference entry is scoped to the fields this domain's processes actually use (or, when process documents do not yet exist, the fields the Master PRD's domain description implies).
 
 6. **Sub-domain structure is captured in the parent overview only.** For domains with sub-domains: the parent Domain Overview describes the sub-domain structure and rationale. Each Sub-Domain Overview follows the standard four-section structure focused on its own scope — it does not re-describe the parent's sub-domain structure.
 
-7. **Persona IDs from the Persona Inventory are preserved.** Every persona in Section 2 carries its `PER-NNN` ID from the Persona Inventory. Do not reassign, renumber, or invent new IDs.
+7. **Persona IDs are preserved from whichever source provides them.** Every persona in Section 2 carries its `PER-NNN` ID from the persona source (Persona Inventory or Master PRD Personas section — both use the same ID format). Do not reassign, renumber, or invent new IDs.
 
-8. **Identifier discipline.** The Domain Overview does not introduce new identifiers. It references identifiers that already exist (persona IDs from the Persona Inventory, entity names from the Entity Inventory, process codes from the Master PRD or to-be-assigned in Phase 4b).
+8. **Identifier discipline.** The Domain Overview does not introduce new identifiers. It references identifiers that already exist (persona IDs from the persona source, entity names from the Entity Inventory, process codes from the Master PRD or to-be-assigned in Phase 4b).
 
 9. **No product names.** Domain Overviews are business-language documents. No CRM platform names.
 
@@ -137,28 +169,32 @@ is a scope-change finding — see "Gap Identification" below.
 
 > "For the {DomainName} Domain Overview, I need to confirm the following are available:
 >
+> **Required:**
 > - Master PRD: ✓ / ✗
 > - Entity Inventory: ✓ / ✗
-> - Persona Inventory: ✓ / ✗
-> - Entity PRDs for every entity participating in this domain: {list, with ✓ / ✗ per entity}
+> - Persona source — either a Persona Inventory document or the Master PRD's Personas section with backing: ✓ / ✗
 > - Parent Domain Overview (for a Sub-Domain Overview only): ✓ / ✗ / N/A
+>
+> **Optional — will be used if available:**
+> - Entity PRDs for entities participating in this domain: {list, with ✓ / ✗ / pending-Phase-5 per entity}
+> - Phase 4b process documents already drafted for this domain: {list, with ✓ / ✗ per process}
 >
 > Is this the complete set?"
 
-If any entity participating in this domain does not have a completed
-Entity PRD, stop. Report the missing Entity PRD(s) and request they
-be produced before resuming. Do not begin the Domain Overview with
-incomplete Entity PRDs.
+If a required input is missing, stop. If one or more entities do
+not yet have Entity PRDs, proceed — those entities will be
+referenced from the Entity Inventory with a "Phase 5 pending"
+annotation in the Data Reference. This is expected, not a blocker.
 
 ### State the Plan
 
 > "Here is how this session will work:
 >
-> 1. I will read the Master PRD's section on {DomainName}, the Persona Inventory, the Entity Inventory, and every Entity PRD for entities participating in this domain.
+> 1. I will read the Master PRD's section on {DomainName}, the persona source, the Entity Inventory, and any Entity PRDs and process documents that already exist for this domain.
 > 2. I will draft Section 1 (Domain Purpose) and Section 2 (Personas) from the upstream documents and present each for confirmation.
 > 3. I will present the process inventory from the Master PRD and propose a dependency ordering. You will confirm or adjust.
 > 4. I will draft Section 3 (Business Processes) incorporating the confirmed dependency ordering.
-> 5. I will draft Section 4 (Data Reference), scoped to the entities and fields this domain uses.
+> 5. I will draft Section 4 (Data Reference), scoped to the entities and fields this domain uses. For entities with Entity PRDs, I will link to them. For entities without Entity PRDs yet (pending Phase 5), I will cite the Entity Inventory row and annotate the entity as 'Entity PRD pending Phase 5'.
 > 6. I will surface any gaps in the upstream documents that the synthesis revealed.
 > 7. I will produce the Domain Overview document.
 >
@@ -171,9 +207,10 @@ incomplete Entity PRDs.
 Before synthesizing anything, read every input document. Specifically:
 
 - **Master PRD.** The `{DomainName}` section (domain purpose, personas involved, process list, key data categories). Also any Revision History entries that affected this domain.
-- **Persona Inventory.** Every row whose Notes or Source attribute this persona to `{DomainName}`. Also rows where the persona's backing entity participates in this domain.
+- **Persona source.** If a separate Persona Inventory document exists, read every row whose Notes or Source attribute the persona to `{DomainName}`, plus rows where the persona's backing entity participates in this domain. If no separate Persona Inventory exists, read the Master PRD's Personas section and the backing information for each (often captured in the Master PRD itself or the implementation's `CLAUDE.md`).
 - **Entity Inventory.** Every row whose source-domain column includes `{DomainName}`.
-- **Entity PRDs.** For every entity identified above, read the full Entity PRD. Note which fields each Entity PRD associates with this domain (the Domain(s) column on each custom field).
+- **Entity PRDs — only those that already exist.** For every entity identified above whose Entity PRD has been produced, read the full Entity PRD. Note which fields each associates with this domain. For entities without Entity PRDs, note them for a "pending Phase 5" annotation and plan to draw field suggestions for the Data Reference from the Master PRD and any Phase 4 process documents that already exist.
+- **Phase 4b process documents — those that exist.** If Phase 4b has begun for this domain, read the drafted process documents. They calibrate the "Role in this Domain" characterization and the most-relevant-fields lists, especially for entities without an Entity PRD.
 - **For a Sub-Domain Overview: the parent Domain Overview.** Section 3 of the parent identifies which processes belong to this sub-domain.
 
 Maintain three working notes while reading:
@@ -360,24 +397,26 @@ Await confirmation.
 
 ## Step 6 — Assemble Section 4: Data Reference
 
-Draft Section 4 from the Entity Inventory and Entity PRDs, scoped to
-this domain.
+Draft Section 4 from the Entity Inventory, enriched by any Entity
+PRDs that exist and any Phase 4 process documents already drafted
+for this domain.
 
 Structure:
 
 - **Opening paragraph.** One paragraph identifying which entities participate in this domain and how they relate to each other.
-- **Entity reference table.** One row per entity. Columns: Entity Name (link to the full Entity PRD), One-sentence Description (from the Entity Inventory), Role in this Domain (what this domain uses the entity for — create new records, read existing records, update status, build relationships), Most-Relevant Fields for this Domain (short list, not comprehensive).
+- **Entity reference table.** One row per entity. Columns: Entity Name (link to the Entity PRD if one exists, otherwise annotated "Entity PRD pending Phase 5"), One-sentence Description (from the Entity Inventory), Role in this Domain (what this domain uses the entity for — create new records, read existing records, update status, build relationships), Most-Relevant Fields for this Domain.
 - **Cross-domain entities flagged.** Entities whose Entity Inventory row lists more than one source domain. The Data Reference notes this explicitly so process definition conversations in this domain know that field additions to the entity affect other domains too.
 
-For each entity row, the "Most-Relevant Fields" list is typically 5–
-15 fields — enough to orient process definition conversations, not
-the comprehensive field list. The comprehensive list is in the
-Entity PRD.
+Most-Relevant Fields list, per entity:
 
-> "Reminder: the Data Reference references the Entity PRDs. It does
-> not redefine entities or fields. Anyone reading the Domain
-> Overview who needs full field detail follows the link to the
-> Entity PRD."
+- **If the Entity PRD exists.** Draw 5–15 fields from the Entity PRD, scoped to those the Entity PRD's "Domain(s)" column associates with this domain. The comprehensive field list remains in the Entity PRD.
+- **If the Entity PRD does not exist yet.** Propose 5–15 fields the domain's processes will likely read or write, drawn from the Master PRD's domain description, any Phase 4 process documents already drafted, and the Entity Inventory row. Annotate this list as "proposed, pending Phase 5 Entity PRD". Phase 5 will reconcile the proposed list into the Entity PRD.
+
+> "Reminder: the Data Reference references the authoritative source
+> for each entity. If an Entity PRD exists, it is the authority and
+> the Data Reference links to it. If no Entity PRD exists yet, the
+> Entity Inventory row is the authority and the proposed field list
+> is a Phase 5 input, not a durable field definition."
 
 Present Section 4 for administrator confirmation:
 
@@ -478,10 +517,10 @@ follow the process doc Section 10 protocol:
 Before producing the document, verify:
 
 - [ ] Section 1 Domain Purpose is drafted and administrator-confirmed.
-- [ ] Section 2 Personas lists every persona from the Persona Inventory that participates in this domain, each with a `PER-NNN` ID.
+- [ ] Section 2 Personas lists every persona from the persona source that participates in this domain, each with a `PER-NNN` ID.
 - [ ] Section 3 Business Processes reflects the administrator-confirmed process inventory and dependency ordering.
 - [ ] Section 4 Data Reference lists every entity whose Entity Inventory row includes this domain as a source domain.
-- [ ] Every entity in Section 4 has a link to its Entity PRD and a scoped fields-relevant-to-this-domain list.
+- [ ] Every entity in Section 4 has either a link to its Entity PRD or an "Entity PRD pending Phase 5" annotation, plus a scoped fields-relevant-to-this-domain list (drawn from the Entity PRD or proposed for Phase 5, respectively).
 - [ ] For a parent Domain Overview: sub-domain structure is described and cross-sub-domain dependencies are identified.
 - [ ] For a Sub-Domain Overview: scope is limited to this sub-domain; the parent Domain Overview's broader content is not duplicated.
 - [ ] Every gap surfaced in Step 7 is resolved (addressed now, carry-forward drafted, or explicitly set aside).
@@ -550,4 +589,5 @@ Await explicit confirmation.
 
 ## Changelog
 
-- **1.0** (04-20-26) — Initial release. Scoped to Phase 4a Domain Overview, including the parent Domain Overview and Sub-Domain Overview variants per `CRM-Builder-Document-Production-Process.docx` Section 3.4. Codifies the synthesis-with-one-gate archetype (silent read, draft Sections 1–2, interactive process-inventory and dependency-ordering gate, draft Sections 3–4, gap identification, document production). Entity-PRD-must-exist-first precondition is an explicit Critical Rule. Structure aligned with `authoring-standards.md` v1.0. Scope-change protocol cross-links to Entity PRD, Entity Inventory, Master PRD, and carry-forward paths.
+- **1.1** (04-21-26) — Reconciled with process doc Rule 5.1 and observed practice. v1.0's Critical Rule #4 required Entity PRDs to exist before the Domain Overview; Rule 5.1 says Entity PRDs are produced in Phase 5 **after** Phase 4 process documents, and the CBM pilot ran MN, MR, and CR domains with Domain Overview first and Entity PRDs retroactive. Rule #4 is now flipped: Entity PRDs are optional inputs that enrich the Data Reference when available; when absent, the Data Reference cites the Entity Inventory row and annotates "Entity PRD pending Phase 5". Related updates: Inputs list now separates required (Master PRD, Entity Inventory, persona source, parent Domain Overview for sub-domains) from optional (Entity PRDs, Phase 4b process documents that already exist). Verify Inputs prompt updated. Step 1 and Step 6 Data Reference procedure updated to produce proposed field lists for entities without Entity PRDs, annotated as Phase 5 inputs. Completeness standard updated. Also added Persona Source Compatibility: implementations that predate the Persona Inventory split (where personas live in the Master PRD with backing captured there or in `CLAUDE.md`) are accepted equivalents; forcing the split mid-flight produces churn without value.
+- **1.0** (04-20-26) — Initial release. Scoped to Phase 4a Domain Overview, including the parent Domain Overview and Sub-Domain Overview variants per `CRM-Builder-Document-Production-Process.docx` Section 3.4. Codifies the synthesis-with-one-gate archetype. **Superseded by v1.1.**
