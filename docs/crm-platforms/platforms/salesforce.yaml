@@ -1,232 +1,170 @@
-# Salesforce CRM Platform Profile
+# Salesforce — auto-generated 2026-04-22
+# Tier: 1 — Full Feature Coverage
+# Validation: OK
+# See pipedrive.mapping-report.md for per-capability provenance.
+
 name: Salesforce
 slug: salesforce
 type: Cloud CRM (SaaS)
-deployment: Salesforce-hosted only
-last_reviewed: 2026-03-30
+deployment: Salesforce-hosted only (Hyperforce on AWS/Azure/GCP under the hood)
 open_source: false
 license: Proprietary
-
 pricing:
-  free_tier: "Developer Edition (2 users, 5MB data, 15K API calls/day)"
+  free_tier: Developer Edition (2 users, 5 MB data, 15 K API calls/day)
   min_paid_per_user_month: 25
   full_admin_api_per_user_month: 165
   enterprise_per_user_month: 330
   currency: USD
-
+  notes: API access requires Enterprise+ by default; Professional needs the API Access add-on. Full Metadata
+    API (admin CRUD) unlocks at Enterprise ($165/user/mo).
 api:
-  protocol: [REST, SOAP, "Metadata API", "Tooling API", "Bulk API"]
-  format: [JSON, XML]
-  auth_methods: ["OAuth 2.0"]
-  rate_limit: "25 concurrent (prod); 15K-5M+ daily by edition"
-  admin_auth: "System Administrator profile"
-
-# ─── Standard Entities ──────────────────────────────────────────────
-standard_entities:
-  contact: {name: Contact, api_name: Contact}
-  account: {name: Account, api_name: Account}
-  lead: {name: Lead, api_name: Lead}
-  opportunity: {name: Opportunity, api_name: Opportunity}
-  case: {name: Case, api_name: Case}
-  task: {name: Task, api_name: Task}
-  meeting: {name: Event, api_name: Event}
-  call: {name: "Task (type=Call)", api_name: Task}
-  email: {name: EmailMessage, api_name: EmailMessage}
-  campaign: {name: Campaign, api_name: Campaign}
-  target_list: {name: CampaignMember, api_name: CampaignMember}
-  document: {name: ContentDocument, api_name: ContentDocument}
-  product: {name: Product2, api_name: Product2}
-  quote: {name: Quote, api_name: Quote}
-  user: {name: User, api_name: User}
-  team: {name: Group, api_name: Group}
-  label_renamable_via_api: true
-  label_rename_method: "CustomObjectTranslation metadata (display labels only; API names fixed)"
-
-# ─── Entity Management ─────────────────────────────────────────────
+  protocol:
+  - REST
+  - SOAP
+  - Metadata API
+  - Tooling API
+  - Bulk API 2.0
+  - Pub/Sub API (gRPC)
+  format:
+  - JSON
+  - XML
+  version: v66.0 (Spring '26)
+  auth_methods:
+  - OAuth 2.0 (Web Server / User-Agent / JWT Bearer / Device / Refresh / SAML Bearer / PKCE)
+  rate_limit: '100 K/day + 1 K/user (Enterprise); 25 concurrent long-running; Bulk 2.0: 150 M records/day'
+  admin_auth: System Administrator profile (or profile with Customize Application + Modify Metadata)
+last_reviewed: '2026-04-22'
 entity_management:
   create_entity:
     rating: full
-    min_edition: developer
-    method: "Metadata API createMetadata('CustomObject', ...)"
-    max_entities:
-      developer: 400
-      professional: 50
-      enterprise: 200
-      unlimited: 2000
-    naming_convention: "__c suffix"
-    notes: "Up to 10 components per createMetadata call. Requires deploymentStatus, sharingModel, nameField."
   delete_entity:
     rating: full
-    method: "Metadata API deleteMetadata('CustomObject', ...)"
   check_existence:
-    rating: full
-    method: "Metadata API readMetadata / describeSObject"
+    rating: unknown
   entity_types:
-    available: ["N/A — use Record Types for variants"]
-    record_types: true
-    record_type_notes: "Record Types provide per-type page layouts, picklist values, and business processes. Fully API-manageable."
-    activity_entities: true
-    person_accounts: true
+    rating: unknown
   cache_rebuild:
-    rating: full
-    required: true
-    method: "PublishXml or PublishAllXml action"
+    rating: unknown
+    notes: No dedicated facet. Most CRMs don't require explicit cache rebuilds; EspoCRM does. Left as
+      unknown so reviewer can set per-CRM.
   activity_stream:
-    supported: true
-    name: "Chatter / Feed Tracking"
-
-# ─── Field Management ──────────────────────────────────────────────
+    rating: full
 field_management:
   create_field:
     rating: full
-    min_edition: developer
-    method: "Metadata API createMetadata('CustomField', ...)"
-    max_fields_per_object: 500
-    naming_convention: "__c suffix"
-
   update_field:
     rating: full
-    method: "Metadata API updateMetadata('CustomField', ...)"
-
-  read_metadata:
+  read_field_metadata:
     rating: full
-    method: "describeSObject / readMetadata"
-
-  field_types:
-    varchar: {equivalent: Text, creatable: true}
-    text: {equivalent: LongTextArea, creatable: true}
-    wysiwyg: {equivalent: Html, creatable: true, notes: "Rich Text Area"}
-    enum: {equivalent: Picklist, creatable: true}
-    multiEnum: {equivalent: MultiselectPicklist, creatable: true}
-    bool: {equivalent: Checkbox, creatable: true}
-    int: {equivalent: "Number (scale=0)", creatable: true}
-    float: {equivalent: "Number (with scale)", creatable: true}
-    date: {equivalent: Date, creatable: true}
-    datetime: {equivalent: DateTime, creatable: true}
-    currency: {equivalent: Currency, creatable: true}
-    url: {equivalent: Url, creatable: true}
-    email: {equivalent: Email, creatable: true}
-    phone: {equivalent: Phone, creatable: true}
-  all_current_types_supported: true
-  additional_types:
-    - {name: AutoNumber, creatable: true}
-    - {name: Formula, creatable: true, notes: "Requires formula expression"}
-    - {name: "Roll-Up Summary", creatable: true, notes: "Requires summary operation config"}
-    - {name: Lookup, creatable: true}
-    - {name: MasterDetail, creatable: true, notes: "Max 2 per object"}
-    - {name: File, creatable: true}
-    - {name: Percent, creatable: true}
-    - {name: Time, creatable: true}
-    - {name: Location, creatable: true, notes: "Geolocation"}
-    - {name: EncryptedString, creatable: true}
-    - {name: ExternalLookup, creatable: true}
-    - {name: IndirectLookup, creatable: true}
-
-  field_properties:
-    label: {supported: true, api_key: label}
-    required: {supported: true, api_key: required}
-    default: {supported: true, api_key: defaultValue}
-    readOnly: {supported: true, api_key: "Layout behavior property", notes: "Set per-layout, not per-field"}
-    audited: {supported: true, api_key: trackHistory, notes: "Max 20 tracked fields per object"}
-    description: {supported: true, api_key: inlineHelpText}
-    tooltip: {supported: true, api_key: inlineHelpText, notes: "Same as description"}
-    min: {supported: true, api_key: "precision/scale"}
-    max: {supported: true, api_key: "precision/scale"}
-    maxLength: {supported: true, api_key: length}
-    options: {supported: true, api_key: "valueSet/picklist"}
-    translatedOptions: {supported: true, api_key: CustomObjectTranslation}
-    optionDescriptions: {supported: false}
-    style: {supported: false}
-    isSorted: {supported: false, notes: "Manual ordering via metadata"}
-    displayAsLabel: {supported: false}
-    copyToClipboard: {supported: false}
-    category: {supported: false}
-    unique: {supported: true, api_key: unique}
-    externalId: {supported: true, api_key: externalId}
-    formula: {supported: true, api_key: formula}
-    encrypted: {supported: true, api_key: encrypted, notes: "Shield Platform Encryption"}
-
-# ─── Layout Management ─────────────────────────────────────────────
+  field_type_coverage:
+    rating: unknown
+  field_property_coverage:
+    rating: full
 layout_management:
   read_layouts:
     rating: full
-    method: "readMetadata('Layout', ...) or REST Layout endpoint"
   write_layouts:
     rating: full
-    method: "updateMetadata('Layout', ...) or deploy()"
-    min_edition: enterprise
-    notes: "Dynamic Forms (FlexiPage) require Enterprise for full conditional visibility"
-  detail_view: {supported: true, notes: "Layout + FlexiPage metadata types"}
-  edit_view: {supported: true, notes: "Same layout as detail; field behavior property controls edit vs readonly"}
-  list_view: {supported: true, notes: "ListView metadata type"}
-  panels: {supported: true, notes: "LayoutSection with configurable columns"}
-  tabs: {supported: true, notes: "FlexiPage tabs (Lightning)"}
-  conditional_visibility: {supported: true, notes: "Dynamic Forms — field and section visibility rules based on record data, user profile, device"}
-  multiple_list_views: {supported: true, api_creatable: true, method: "ListView metadata type — full CRUD, define columns, filters, sort, visibility per object", notes: "Unlimited list views per object"}
-  field_width_control: {supported: true, notes: "1 or 2 column sections"}
-  empty_cell_handling: {supported: true, notes: "Empty LayoutItem"}
-
-# ─── Relationship Management ───────────────────────────────────────
+  detail_view:
+    rating: full
+  edit_view:
+    rating: full
+  list_view:
+    rating: full
+  panels:
+    rating: full
+  tabs:
+    rating: full
+  conditional_visibility:
+    rating: full
+  multiple_list_views:
+    rating: full
 relationship_management:
   create_relationship:
     rating: full
-    method: "Metadata API — create Lookup or MasterDetail CustomField"
-  one_to_many: {supported: true, method: "Lookup field type"}
-  many_to_one: {supported: true, method: "Lookup field (reverse side)"}
-  many_to_many: {supported: true, method: "Junction object with 2 Master-Detail fields"}
-  link_labels: {supported: true, api_key: relationshipLabel}
-  audit_both_sides: {supported: true, notes: "Per-field trackHistory"}
-  check_existence: {supported: true, method: "describeSObject / readMetadata"}
-  cascade_delete: {supported: true, options: [SetNull, Restrict, Cascade]}
-  polymorphic: {supported: true, notes: "Customer type (Account OR Contact)"}
-  self_referential: {supported: true, notes: "Hierarchy on User object"}
-  max_lookups_per_object: 40
-  max_master_detail_per_object: 2
-
-# ─── Data Operations ───────────────────────────────────────────────
+    notes: Most discriminating sub-field. OTO is degenerate in many CRMs; aggregating worst-of under-claims.
+      MTM is the useful signal.
+  one_to_many:
+    rating: full
+  many_to_one:
+    rating: full
+  many_to_many:
+    rating: full
+  link_labels:
+    rating: partial
+  audit_both_sides:
+    rating: partial
+  check_existence:
+    rating: unknown
+  cascade_delete:
+    rating: unknown
 data_operations:
-  create_record: {rating: full, method: "POST /sobjects/{object}/"}
-  read_record: {rating: full, method: "GET /sobjects/{object}/{id}"}
-  update_record: {rating: full, method: "PATCH /sobjects/{object}/{id}"}
-  delete_record: {rating: full, method: "DELETE /sobjects/{object}/{id}"}
-  search_by_field: {rating: full, method: "SOQL WHERE clause"}
-  search_by_email: {rating: full, method: "SOQL query on Email field"}
-  upsert: {rating: full, method: "Native upsert via external ID", notes: "PATCH /sobjects/{object}/{extIdField}/{extIdValue}"}
-  batch_create: {rating: full, method: "sObject Collections — 200 records/call"}
-  bulk_import: {rating: full, method: "Bulk API 2.0 — 150MB/job, async CSV"}
-  query_language: {name: "SOQL + SOSL", notes: "Full SQL-like query with relationship traversal, aggregates; SOSL for full-text search"}
-  max_results_per_query: 2000
-  max_results_with_pagination: 50000
-
-# ─── Future Capabilities ──────────────────────────────────────────
+  create_record:
+    rating: full
+  read_record:
+    rating: full
+  update_record:
+    rating: full
+  delete_record:
+    rating: full
+  search_by_field:
+    rating: full
+    notes: Basic single-field record search is universal where an OpenAPI spec exists. The entity.search.multi_attribute_filter
+      facet covers advanced/compound search, not basic search — so not mapped here.
+  search_by_email:
+    rating: full
+  upsert:
+    rating: full
+  batch_create:
+    rating: full
+  bulk_import:
+    rating: unknown
+  query_language:
+    rating: full
 workflow_automation:
-  create_rules: {rating: full, method: "Workflow metadata type"}
-  create_flows: {rating: full, method: "Flow metadata type"}
-  approval_processes: {rating: full, method: "ApprovalProcess metadata type"}
-  validation_rules: {rating: full, method: "Part of CustomObject metadata"}
-  scheduled_actions: {rating: full, method: "Scheduled Flows"}
-  email_from_template: {rating: full, method: "SendEmailFromTemplate action"}
-  trigger_types: ["Record change", "Schedule", "Platform Event"]
-
+  create_rules:
+    rating: full
+  create_flows:
+    rating: unknown
+  approval_processes:
+    rating: unknown
+  validation_rules:
+    rating: full
+  scheduled_actions:
+    rating: full
+  email_from_template:
+    rating: full
 roles_permissions:
-  create_roles: {rating: full, method: "Role metadata type"}
-  module_permissions: {rating: full, method: "Profile / PermissionSet metadata"}
-  field_level_security: {rating: full, method: "FieldPermission metadata"}
-  record_level_rules: {rating: full, method: "SharingRules metadata"}
-  user_management: {rating: full, method: "User sObject CRUD"}
-
+  create_roles:
+    rating: unknown
+  module_permissions:
+    rating: full
+  field_level_security:
+    rating: full
+  record_level_rules:
+    rating: full
+  user_management:
+    rating: unknown
 dashboards_reports:
-  create_dashboards: {rating: full, method: "Dashboard metadata + Analytics REST API"}
-  create_reports: {rating: full, method: "Report metadata + Analytics REST API"}
-  saved_views: {rating: full, method: "ListView metadata type"}
-
+  create_dashboards:
+    rating: full
+  create_reports:
+    rating: full
+  saved_views:
+    rating: unknown
 email_templates:
-  crud_templates: {rating: full, method: "EmailTemplate metadata type"}
-  merge_fields: {supported: true}
-  html_body: {supported: true, notes: "HTML, Visualforce templates"}
-
+  crud_templates:
+    rating: unknown
+  merge_fields:
+    rating: partial
+  html_body:
+    rating: unknown
 webhooks_events:
-  outbound_webhooks: {rating: indirect, method: "Outbound Messages (Workflow), Platform Events"}
-  event_subscriptions: {rating: full, method: "Platform Events, Change Data Capture (CDC)"}
-  sync_async: both
-  retry_on_failure: {supported: true, notes: "Outbound Messages retry"}
+  outbound_webhooks:
+    rating: full
+  event_subscriptions:
+    rating: full
+  sync_async:
+    rating: unknown
+  retry_on_failure:
+    rating: full
