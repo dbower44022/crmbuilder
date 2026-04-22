@@ -1,33 +1,38 @@
-# EspoCRM — auto-generated 2026-04-22
+# Salesforce — auto-generated 2026-04-22
 # Tier: 1 — Full Feature Coverage
 # Validation: OK
 # See pipedrive.mapping-report.md for per-capability provenance.
 
-name: EspoCRM
-slug: espocrm
-type: Open-source CRM (GPL v3)
-deployment: Self-hosted (Docker); vendor-hosted cloud optional
-open_source: true
-license: GPL v3
+name: Salesforce
+slug: salesforce
+type: Cloud CRM (SaaS)
+deployment: Salesforce-hosted only (Hyperforce on AWS/Azure/GCP under the hood)
+open_source: false
+license: Proprietary
 pricing:
-  free_tier: Free (self-hosted, unlimited)
-  min_paid_per_user_month: 15
-  full_admin_api_per_user_month: 0
-  enterprise_per_user_month: 0
+  free_tier: Developer Edition (2 users, 5 MB data, 15 K API calls/day)
+  min_paid_per_user_month: 25
+  full_admin_api_per_user_month: 165
+  enterprise_per_user_month: 330
   currency: USD
-  notes: Hosted plans from $15/user; self-hosted is fully free with complete API access
+  notes: API access requires Enterprise+ by default; Professional needs the API Access add-on. Full Metadata
+    API (admin CRUD) unlocks at Enterprise ($165/user/mo).
 api:
   protocol:
   - REST
+  - SOAP
+  - Metadata API
+  - Tooling API
+  - Bulk API 2.0
+  - Pub/Sub API (gRPC)
   format:
   - JSON
-  version: /api/v1/
+  - XML
+  version: v66.0 (Spring '26)
   auth_methods:
-  - API Key
-  - HMAC
-  - Basic Auth
-  rate_limit: Self-hosted (unlimited); cloud applies infra-level limits
-  admin_auth: Admin user with API Key
+  - OAuth 2.0 (Web Server / User-Agent / JWT Bearer / Device / Refresh / SAML Bearer / PKCE)
+  rate_limit: '100 K/day + 1 K/user (Enterprise); 25 concurrent long-running; Bulk 2.0: 150 M records/day'
+  admin_auth: System Administrator profile (or profile with Customize Application + Modify Metadata)
 last_reviewed: '2026-04-22'
 entity_management:
   create_entity:
@@ -54,7 +59,7 @@ field_management:
   field_type_coverage:
     rating: unknown
   field_property_coverage:
-    rating: partial
+    rating: full
 layout_management:
   read_layouts:
     rating: full
@@ -73,7 +78,7 @@ layout_management:
   conditional_visibility:
     rating: full
   multiple_list_views:
-    rating: unknown
+    rating: full
 relationship_management:
   create_relationship:
     rating: full
@@ -88,7 +93,7 @@ relationship_management:
   link_labels:
     rating: partial
   audit_both_sides:
-    rating: unknown
+    rating: partial
   check_existence:
     rating: unknown
   cascade_delete:
@@ -109,9 +114,9 @@ data_operations:
   search_by_email:
     rating: full
   upsert:
-    rating: none
+    rating: full
   batch_create:
-    rating: none
+    rating: partial
   bulk_import:
     rating: unknown
   query_language:
@@ -124,9 +129,9 @@ workflow_automation:
   approval_processes:
     rating: unknown
   validation_rules:
-    rating: indirect
+    rating: full
   scheduled_actions:
-    rating: partial
+    rating: full
   email_from_template:
     rating: full
 roles_permissions:
@@ -142,16 +147,16 @@ roles_permissions:
     rating: unknown
 dashboards_reports:
   create_dashboards:
-    rating: partial
+    rating: full
   create_reports:
-    rating: unknown
+    rating: full
   saved_views:
     rating: unknown
 email_templates:
   crud_templates:
     rating: unknown
   merge_fields:
-    rating: unknown
+    rating: partial
   html_body:
     rating: unknown
 webhooks_events:

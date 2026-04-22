@@ -1,4 +1,4 @@
-# Attio — auto-generated 2026-04-21
+# Attio — auto-generated 2026-04-22
 # Tier: 2 — Strong but Gaps
 # Validation: OK
 # See pipedrive.mapping-report.md for per-capability provenance.
@@ -28,7 +28,7 @@ api:
   - HTTP Basic
   rate_limit: 100 req/sec (reads), 25 req/sec (writes)
   admin_auth: API token with object_configuration:read-write scope
-last_reviewed: '2026-04-21'
+last_reviewed: '2026-04-22'
 entity_management:
   create_entity:
     rating: full
@@ -109,7 +109,7 @@ data_operations:
   search_by_email:
     rating: full
   upsert:
-    rating: none
+    rating: partial
   batch_create:
     rating: none
   bulk_import:

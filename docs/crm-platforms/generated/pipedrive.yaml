@@ -1,4 +1,4 @@
-# Pipedrive — auto-generated 2026-04-21
+# Pipedrive — auto-generated 2026-04-22
 # Tier: 3 — Fields Only
 # Validation: OK
 # See pipedrive.mapping-report.md for per-capability provenance.
@@ -25,7 +25,7 @@ api:
   - OAuth 2.0
   - API tokens
   rate_limit: 80 req/2sec (120 Enterprise)
-last_reviewed: '2026-04-21'
+last_reviewed: '2026-04-22'
 entity_management:
   create_entity:
     rating: none
