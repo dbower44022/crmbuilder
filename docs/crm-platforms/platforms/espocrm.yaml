@@ -28,17 +28,75 @@ api:
   - Basic Auth
   rate_limit: Self-hosted (unlimited); cloud applies infra-level limits
   admin_auth: Admin user with API Key
-last_reviewed: '2026-04-22'
+standard_entities:
+  contact:
+    name: Contact
+    api_name: Contact
+  account:
+    name: Account
+    api_name: Account
+  lead:
+    name: Lead
+    api_name: Lead
+  opportunity:
+    name: Opportunity
+    api_name: Opportunity
+  case:
+    name: Case
+    api_name: Case
+  task:
+    name: Task
+    api_name: Task
+  meeting:
+    name: Meeting
+    api_name: Meeting
+  call:
+    name: Call
+    api_name: Call
+  email:
+    name: Email
+    api_name: Email
+  document:
+    name: Document
+    api_name: Document
+  campaign:
+    name: Campaign
+    api_name: Campaign
+  target_list:
+    name: TargetList
+    api_name: TargetList
+  user:
+    name: User
+    api_name: User
+  team:
+    name: Team
+    api_name: Team
+  label_renamable_via_api: true
+  label_rename_method: PUT /api/v1/I18n — custom label overrides
 entity_management:
   create_entity:
+    min_edition: free
+    method: POST /api/v1/EntityManager/action/createEntity
+    max_entities: unlimited
+    naming_convention: C-prefix for custom entities (e.g., CMyEntity)
     rating: full
   delete_entity:
+    method: POST /api/v1/EntityManager/action/deleteEntity
     rating: full
   check_existence:
+    method: GET /api/v1/Metadata
     rating: unknown
   entity_types:
+    available:
+    - Base
+    - Person
+    - Company
+    - Event
+    notes: Person and Company types include built-in name/address fields
     rating: unknown
   cache_rebuild:
+    required: true
+    method: POST /api/v1/Admin/rebuild
     rating: unknown
     notes: No dedicated facet. Most CRMs don't require explicit cache rebuilds; EspoCRM does. Left as
       unknown so reviewer can set per-CRM.
@@ -46,67 +104,206 @@ entity_management:
     rating: full
 field_management:
   create_field:
+    min_edition: free
+    method: POST /api/v1/EntityManager/action/createField
     rating: full
   update_field:
+    method: PUT /api/v1/EntityManager/action/updateField
     rating: full
-  read_field_metadata:
+  read_metadata:
+    method: GET /api/v1/Metadata
     rating: full
+  field_types:
+    varchar:
+      equivalent: varchar
+      creatable: true
+    text:
+      equivalent: text
+      creatable: true
+    wysiwyg:
+      equivalent: wysiwyg
+      creatable: true
+    enum:
+      equivalent: enum
+      creatable: true
+    multiEnum:
+      equivalent: multiEnum
+      creatable: true
+    bool:
+      equivalent: bool
+      creatable: true
+    int:
+      equivalent: int
+      creatable: true
+    float:
+      equivalent: float
+      creatable: true
+    date:
+      equivalent: date
+      creatable: true
+    datetime:
+      equivalent: datetime
+      creatable: true
+    currency:
+      equivalent: currency
+      creatable: true
+    url:
+      equivalent: url
+      creatable: true
+    email:
+      equivalent: email
+      creatable: true
+    phone:
+      equivalent: phone
+      creatable: true
+  all_current_types_supported: true
+  field_properties:
+    label:
+      supported: true
+      api_key: label
+    required:
+      supported: true
+      api_key: required
+    default:
+      supported: true
+      api_key: default
+    readOnly:
+      supported: true
+      api_key: readOnly
+    audited:
+      supported: true
+      api_key: audited
+    description:
+      supported: true
+      api_key: description
+    tooltip:
+      supported: true
+      api_key: tooltipText
+    min:
+      supported: true
+      api_key: min
+    max:
+      supported: true
+      api_key: max
+    maxLength:
+      supported: true
+      api_key: maxLength
+    options:
+      supported: true
+      api_key: options
+    translatedOptions:
+      supported: true
+      api_key: translatedOptions
+    optionDescriptions:
+      supported: true
+      api_key: optionDescriptions
+    style:
+      supported: true
+      api_key: style
+    isSorted:
+      supported: true
+      api_key: isSorted
+    displayAsLabel:
+      supported: true
+      api_key: displayAsLabel
+    copyToClipboard:
+      supported: true
+      api_key: copyToClipboard
+    category:
+      supported: true
+      api_key: category
+    unique:
+      supported: true
+      api_key: isUnique
   field_type_coverage:
     rating: unknown
   field_property_coverage:
     rating: partial
 layout_management:
   read_layouts:
+    method: GET /api/v1/Layout/{entity}/{layoutType}
     rating: full
   write_layouts:
+    method: PUT /api/v1/Layout/{entity}/{layoutType}
     rating: full
   detail_view:
+    supported: true
     rating: full
   edit_view:
+    supported: true
     rating: full
   list_view:
+    supported: true
     rating: full
   panels:
+    supported: true
     rating: full
   tabs:
+    supported: true
     rating: full
   conditional_visibility:
+    supported: true
+    notes: conditionalVisible property on fields and panels
     rating: full
   multiple_list_views:
+    supported: true
+    api_creatable: false
+    notes: Users can save custom list views with different filters/columns via UI; list layout is a single
+      definition via API
     rating: unknown
+  field_width_control:
+    supported: true
+    notes: 2-column grid layout
+  empty_cell_handling:
+    supported: true
+    notes: false placeholder for empty cells
 relationship_management:
   create_relationship:
+    method: POST /api/v1/EntityManager/action/createLink
     rating: full
     notes: Most discriminating sub-field. OTO is degenerate in many CRMs; aggregating worst-of under-claims.
       MTM is the useful signal.
   one_to_many:
+    supported: true
     rating: full
   many_to_one:
+    supported: true
     rating: full
   many_to_many:
+    supported: true
     rating: full
   link_labels:
+    supported: true
     rating: partial
   audit_both_sides:
+    supported: true
     rating: unknown
   check_existence:
+    supported: true
+    method: GET /api/v1/Metadata
     rating: unknown
   cascade_delete:
     rating: unknown
 data_operations:
   create_record:
+    method: POST /api/v1/{entity}
     rating: full
   read_record:
+    method: GET /api/v1/{entity}/{id}
     rating: full
   update_record:
+    method: PUT /api/v1/{entity}/{id}
     rating: full
   delete_record:
+    method: DELETE /api/v1/{entity}/{id}
     rating: full
   search_by_field:
+    method: GET /api/v1/{entity} with where filters
     rating: full
     notes: Basic single-field record search is universal where an OpenAPI spec exists. The entity.search.multi_attribute_filter
       facet covers advanced/compound search, not basic search — so not mapped here.
   search_by_email:
+    method: GET /api/v1/{entity} with emailAddress filter
     rating: full
   upsert:
     rating: none
@@ -118,8 +315,10 @@ data_operations:
     rating: full
 workflow_automation:
   create_rules:
+    notes: Not yet researched
     rating: full
   create_flows:
+    notes: Not yet researched
     rating: unknown
   approval_processes:
     rating: unknown
@@ -131,10 +330,13 @@ workflow_automation:
     rating: full
 roles_permissions:
   create_roles:
+    notes: Not yet researched
     rating: unknown
   module_permissions:
+    notes: Not yet researched
     rating: full
   field_level_security:
+    notes: Not yet researched
     rating: full
   record_level_rules:
     rating: full
@@ -142,13 +344,16 @@ roles_permissions:
     rating: unknown
 dashboards_reports:
   create_dashboards:
+    notes: Not yet researched
     rating: partial
   create_reports:
+    notes: Not yet researched
     rating: unknown
   saved_views:
     rating: unknown
 email_templates:
   crud_templates:
+    notes: Not yet researched
     rating: unknown
   merge_fields:
     rating: unknown
@@ -156,10 +361,13 @@ email_templates:
     rating: unknown
 webhooks_events:
   outbound_webhooks:
+    notes: Not yet researched
     rating: full
   event_subscriptions:
+    notes: Not yet researched
     rating: full
   sync_async:
     rating: unknown
   retry_on_failure:
     rating: full
+last_reviewed: '2026-04-22'

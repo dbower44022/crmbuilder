@@ -28,96 +28,287 @@ api:
   - HTTP Basic
   rate_limit: 100 req/sec (reads), 25 req/sec (writes)
   admin_auth: API token with object_configuration:read-write scope
-last_reviewed: '2026-04-22'
+standard_entities:
+  people:
+    name: People
+    api_name: people
+    notes: Always active, cannot deactivate
+  companies:
+    name: Companies
+    api_name: companies
+    notes: Always active
+  deals:
+    name: Deals
+    api_name: deals
+    notes: Opt-in, must be activated
+  users:
+    name: Users
+    api_name: users
+    notes: Opt-in, for SaaS product users
+  workspaces:
+    name: Workspaces
+    api_name: workspaces
+    notes: Opt-in, customer accounts
+  label_renamable_via_api: false
 entity_management:
   create_entity:
+    min_edition: free
+    method: POST /v2/objects
+    max_entities:
+      free: 3
+      plus: more (unpublished)
+      enterprise: unlimited
+    naming_convention: api_slug (snake_case)
+    notes: Custom objects behave identically to standard objects
     rating: full
   delete_entity:
+    notes: No delete endpoint documented
     rating: none
   check_existence:
+    method: GET /v2/objects/{object}
     rating: unknown
   entity_types:
+    available:
+    - No type system — all objects are equivalent
     rating: unknown
   cache_rebuild:
+    notes: Not required — changes are immediate
     rating: unknown
-    notes: No dedicated facet. Most CRMs don't require explicit cache rebuilds; EspoCRM does. Left as
-      unknown so reviewer can set per-CRM.
   activity_stream:
+    supported: false
     rating: unknown
 field_management:
   create_field:
+    min_edition: free
+    method: POST /v2/objects/{object}/attributes
+    naming_convention: api_slug (snake_case)
     rating: partial
   update_field:
+    method: PATCH /v2/objects/{object}/attributes/{attribute}
     rating: full
-  read_field_metadata:
+  read_metadata:
+    method: GET /v2/objects/{object}/attributes
     rating: full
+  field_types:
+    varchar:
+      equivalent: text
+      creatable: true
+    text:
+      equivalent: text
+      creatable: true
+      notes: No separate long text type
+    wysiwyg:
+      equivalent: na
+      creatable: false
+      notes: No rich text attribute type
+    enum:
+      equivalent: select
+      creatable: true
+    multiEnum:
+      equivalent: select (is_multiselect)
+      creatable: true
+    bool:
+      equivalent: checkbox
+      creatable: true
+    int:
+      equivalent: number
+      creatable: true
+    float:
+      equivalent: number
+      creatable: true
+    date:
+      equivalent: date
+      creatable: true
+    datetime:
+      equivalent: timestamp
+      creatable: true
+    currency:
+      equivalent: currency
+      creatable: true
+    url:
+      equivalent: domain
+      creatable: true
+      notes: Domain type for web domains
+    email:
+      equivalent: email-address
+      creatable: true
+    phone:
+      equivalent: phone-number
+      creatable: true
+  all_current_types_supported: false
+  missing_types:
+  - wysiwyg
+  additional_types:
+  - name: rating
+    creatable: true
+  - name: status
+    creatable: true
+    notes: Pipeline/stage with time tracking
+  - name: record-reference
+    creatable: true
+    notes: Links to records of another object
+  - name: actor-reference
+    creatable: true
+    notes: References workspace members
+  - name: location
+    creatable: true
+    notes: Structured address/location
+  - name: personal-name
+    creatable: false
+    notes: System attribute only
+  field_properties:
+    label:
+      supported: true
+      api_key: title
+    required:
+      supported: true
+      api_key: is_required
+    default:
+      supported: true
+      api_key: default_value
+      notes: Supports static values and dynamic templates
+    readOnly:
+      supported: false
+    audited:
+      supported: false
+    description:
+      supported: true
+      api_key: description
+    tooltip:
+      supported: false
+    min:
+      supported: false
+    max:
+      supported: false
+    maxLength:
+      supported: false
+    options:
+      supported: true
+      api_key: config (for select type)
+    translatedOptions:
+      supported: false
+    optionDescriptions:
+      supported: false
+    style:
+      supported: false
+    isSorted:
+      supported: false
+    displayAsLabel:
+      supported: false
+    copyToClipboard:
+      supported: false
+    category:
+      supported: false
+    unique:
+      supported: true
+      api_key: is_unique
   field_type_coverage:
     rating: unknown
   field_property_coverage:
     rating: partial
 layout_management:
   read_layouts:
+    method: GET /v2/objects/{object}/views
+    notes: Returns saved view metadata (title, ID) but not field arrangement
     rating: partial
   write_layouts:
+    notes: No API control over record page layouts, attribute ordering, or widgets
     rating: none
   detail_view:
+    supported: false
     rating: none
   edit_view:
+    supported: false
     rating: none
   list_view:
+    supported: false
     rating: none
   panels:
+    supported: false
     rating: none
   tabs:
+    supported: false
     rating: none
   conditional_visibility:
+    supported: false
     rating: none
   multiple_list_views:
+    supported: true
+    api_creatable: false
+    notes: Saved views with filters/sorts configurable in UI; GET /v2/objects/{object}/views returns view
+      metadata but no create endpoint
     rating: unknown
 relationship_management:
   create_relationship:
+    min_edition: professional
+    method: POST /v2/objects/{object}/attributes with record-reference type + relationship config
+    notes: Automatically creates bidirectional reverse attribute; requires Pro plan
     rating: full
-    notes: Most discriminating sub-field. OTO is degenerate in many CRMs; aggregating worst-of under-claims.
-      MTM is the useful signal.
   one_to_many:
+    supported: true
     rating: full
   many_to_one:
+    supported: true
     rating: full
   many_to_many:
+    supported: true
     rating: full
   link_labels:
+    supported: true
+    notes: Relationship config includes title for reverse attribute
     rating: partial
   audit_both_sides:
+    supported: false
     rating: unknown
   check_existence:
+    supported: true
+    method: GET /v2/objects/{object}/attributes
     rating: unknown
   cascade_delete:
+    supported: false
     rating: unknown
+  polymorphic:
+    supported: false
+  self_referential:
+    supported: true
 data_operations:
   create_record:
+    method: POST /v2/objects/{object}/records
     rating: full
   read_record:
+    method: GET /v2/objects/{object}/records/{id}
     rating: full
   update_record:
+    method: PUT (overwrite) or PATCH (append) /v2/objects/{object}/records/{id}
     rating: full
   delete_record:
+    method: DELETE /v2/objects/{object}/records/{id}
     rating: full
   search_by_field:
+    method: POST /v2/objects/{object}/records/query with filter operators
     rating: full
     notes: Basic single-field record search is universal where an OpenAPI spec exists. The entity.search.multi_attribute_filter
       facet covers advanced/compound search, not basic search — so not mapped here.
   search_by_email:
+    method: Filter on email-address attribute or POST /v2/objects/records/search
     rating: full
   upsert:
+    method: PUT /v2/objects/{object}/records — asserts/upserts on unique attribute
     rating: partial
   batch_create:
+    notes: No batch/bulk endpoints; must iterate individual calls
     rating: none
   bulk_import:
+    notes: CSV import in UI only
     rating: unknown
   query_language:
+    name: Filter operators ($eq, $in, $contains, $lt, $gt, $and, $or)
+    notes: Path-based filtering through record-reference chains
     rating: full
+  max_results_per_query: 500
 workflow_automation:
   create_rules:
+    notes: Workflows are UI-configured only
     rating: none
   create_flows:
     rating: unknown
@@ -131,6 +322,7 @@ workflow_automation:
     rating: unknown
 roles_permissions:
   create_roles:
+    notes: Two access levels (Admin/Member) — UI only
     rating: unknown
   module_permissions:
     rating: none
@@ -139,6 +331,7 @@ roles_permissions:
   record_level_rules:
     rating: none
   user_management:
+    method: GET /v2/workspace_members
     rating: unknown
 dashboards_reports:
   create_dashboards:
@@ -146,20 +339,27 @@ dashboards_reports:
   create_reports:
     rating: unknown
   saved_views:
+    method: GET /v2/objects/{object}/views
     rating: unknown
 email_templates:
   crud_templates:
     rating: unknown
   merge_fields:
+    supported: false
     rating: none
   html_body:
+    supported: false
     rating: unknown
 webhooks_events:
   outbound_webhooks:
+    method: POST /v2/webhooks — 24 event types
     rating: full
   event_subscriptions:
+    notes: Record/list/attribute/note/comment/task events
     rating: partial
-  sync_async:
-    rating: unknown
+  sync_async: async
   retry_on_failure:
+    supported: true
+    notes: Up to 10 retries with exponential backoff over ~3 days
     rating: full
+last_reviewed: '2026-04-22'
