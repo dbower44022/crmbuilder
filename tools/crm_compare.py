@@ -164,35 +164,70 @@ def format_price(platform: dict) -> str:
     return " | ".join(parts) if parts else "N/A"
 
 
+REQUIRED_PLATFORM_KEYS = ["name", "slug", "type", "last_reviewed", "pricing", "api"]
+
+
+def _validate_platform_file(path: Path) -> list[str]:
+    """Validate a single platform YAML file. Returns a list of error strings."""
+    rel = path.relative_to(BASE_DIR)
+    errors: list[str] = []
+    try:
+        data = load_yaml(path)
+    except yaml.YAMLError as exc:
+        return [f"  ERROR: {rel}: YAML parse error: {exc}"]
+
+    if not isinstance(data, dict):
+        return [f"  ERROR: {rel}: top-level YAML is not a mapping"]
+
+    label = data.get("name") or data.get("slug") or str(rel)
+    for key in REQUIRED_PLATFORM_KEYS:
+        if key not in data:
+            errors.append(f"  ERROR: {rel} ({label}): missing required key '{key}'")
+
+    reviewed = data.get("last_reviewed")
+    if reviewed and not isinstance(reviewed, date):
+        try:
+            date.fromisoformat(str(reviewed))
+        except ValueError:
+            errors.append(
+                f"  ERROR: {rel} ({label}): invalid date format for last_reviewed: {reviewed}"
+            )
+
+    return errors
+
+
 def cmd_validate(args: argparse.Namespace) -> None:
-    """Validate all platform files against the schema."""
-    schema = load_schema()
-    valid_ratings = set(schema.get("ratings", []))  # noqa: F841 — reserved for future validation
-    platforms = load_platforms()
-    errors = 0
+    """Validate hand-authored and generated platform files against the schema."""
+    load_schema()  # reserved for future rating-value checks; fail fast if schema is broken
 
-    required_keys = ["name", "slug", "type", "last_reviewed", "pricing", "api"]
+    targets = [
+        ("platforms", PLATFORMS_DIR),
+        ("generated", GENERATED_DIR),
+    ]
 
-    for p in platforms:
-        name = p.get("name", p.get("_path", "unknown"))
-        for key in required_keys:
-            if key not in p:
-                print(f"  ERROR: {name}: missing required key '{key}'")
-                errors += 1
+    total_files = 0
+    total_errors = 0
+    for label, directory in targets:
+        if not directory.exists():
+            print(f"  skip: {label}/ does not exist")
+            continue
+        files = sorted(directory.glob("*.yaml"))
+        dir_errors = 0
+        for path in files:
+            file_errors = _validate_platform_file(path)
+            for err in file_errors:
+                print(err)
+            dir_errors += len(file_errors)
+        total_files += len(files)
+        total_errors += dir_errors
+        status = "OK" if dir_errors == 0 else f"{dir_errors} error(s)"
+        print(f"  {label}/: {len(files)} file(s), {status}")
 
-        reviewed = p.get("last_reviewed")
-        if reviewed and not isinstance(reviewed, date):
-            try:
-                date.fromisoformat(str(reviewed))
-            except ValueError:
-                print(f"  ERROR: {name}: invalid date format for last_reviewed: {reviewed}")
-                errors += 1
-
-    if errors == 0:
-        print(f"OK: {len(platforms)} platform files validated, no errors.")
+    if total_errors == 0:
+        print(f"OK: {total_files} platform file(s) validated, no errors.")
     else:
-        print(f"\nFound {errors} error(s) across {len(platforms)} platform files.")
-    sys.exit(1 if errors else 0)
+        print(f"\nFound {total_errors} error(s) across {total_files} platform file(s).")
+    sys.exit(1 if total_errors else 0)
 
 
 def cmd_stale(args: argparse.Namespace) -> None:
