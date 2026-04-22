@@ -108,7 +108,7 @@ data_operations:
   upsert:
     rating: none
   batch_create:
-    rating: none
+    rating: partial
   bulk_import:
     rating: unknown
   query_language:
