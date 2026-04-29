@@ -259,12 +259,19 @@ def _entity_prd_wi(conn: sqlite3.Connection, entity_id: int) -> list[int]:
 
 
 def _process_def_wi(conn: sqlite3.Connection, process_id: int) -> list[int]:
-    row = conn.execute(
+    """Return all process-scoped work items for ``process_id``.
+
+    Both ``process_definition`` (the requirements PRD) and
+    ``user_process_guide`` (the end-user how-to) read from the same
+    process scope, so a change to any owned record affects both.
+    """
+    rows = conn.execute(
         "SELECT id FROM WorkItem "
-        "WHERE process_id = ? AND item_type = 'process_definition'",
+        "WHERE process_id = ? "
+        "AND item_type IN ('process_definition', 'user_process_guide')",
         (process_id,),
-    ).fetchone()
-    return [row[0]] if row else []
+    ).fetchall()
+    return [r[0] for r in rows]
 
 
 _OWNERSHIP_FINDERS: dict[str, object] = {

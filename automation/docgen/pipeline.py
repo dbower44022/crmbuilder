@@ -50,6 +50,9 @@ from automation.docgen.queries import (
     process_document as q_process_document,
 )
 from automation.docgen.queries import (
+    user_process_guide as q_user_process_guide,
+)
+from automation.docgen.queries import (
     yaml_program as q_yaml_program,
 )
 from automation.docgen.templates import (
@@ -76,6 +79,9 @@ from automation.docgen.templates import (
     process_document_template as t_process_document,
 )
 from automation.docgen.templates import (
+    user_process_guide_template as t_user_process_guide,
+)
+from automation.docgen.templates import (
     yaml_program_template as t_yaml_program,
 )
 from automation.docgen.validation import ValidationWarning, validate
@@ -93,6 +99,7 @@ _TYPE_MODULES = {
     DocumentType.DOMAIN_PRD: (q_domain_prd, t_domain_prd),
     DocumentType.YAML_PROGRAM_FILES: (q_yaml_program, t_yaml_program),
     DocumentType.CRM_EVALUATION_REPORT: (q_crm_evaluation, t_crm_evaluation),
+    DocumentType.USER_PROCESS_GUIDE: (q_user_process_guide, t_user_process_guide),
 }
 
 
@@ -169,7 +176,15 @@ def run_pipeline(
     try:
         # ── Step 2: Query ───────────────────────────────────────────
         query_mod, template_mod = _TYPE_MODULES[doc_type]
-        data_dict = query_mod.query(conn, work_item_id, master_conn)
+        if doc_type == DocumentType.USER_PROCESS_GUIDE:
+            # User Process Guide query also needs the project folder so it
+            # can merge YAML program data with DB process records.
+            data_dict = query_mod.query(
+                conn, work_item_id, master_conn,
+                project_folder=project_folder,
+            )
+        else:
+            data_dict = query_mod.query(conn, work_item_id, master_conn)
 
         # For process documents, inject the diagram path
         if doc_type == DocumentType.PROCESS_DOCUMENT and project_folder:
@@ -269,7 +284,9 @@ def _get_document_name(
         row = conn.execute("SELECT name FROM Domain WHERE id = ?", (domain_id,)).fetchone()
         return row[0] if row else str(domain_id)
 
-    if doc_type == DocumentType.PROCESS_DOCUMENT and process_id:
+    if doc_type in (
+        DocumentType.PROCESS_DOCUMENT, DocumentType.USER_PROCESS_GUIDE,
+    ) and process_id:
         row = conn.execute(
             "SELECT name, code FROM Process WHERE id = ?", (process_id,)
         ).fetchone()

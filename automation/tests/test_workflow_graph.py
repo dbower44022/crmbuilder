@@ -325,10 +325,10 @@ class TestAfterBusinessObjectDiscoveryImport:
     def test_total_work_item_count(self, seeded_conn):
         conn, _ = seeded_conn
         # 1 master_prd + 1 bod + 3 entity_prd + 2 domain_overview +
-        # 3 process_def + 2 domain_recon + 2 stakeholder + 2 yaml_gen +
-        # 1 crm_selection + 1 crm_deployment + 1 crm_configuration + 1 verification
-        # = 20
-        assert _count_work_items(conn) == 20
+        # 3 process_def + 3 user_process_guide + 2 domain_recon +
+        # 2 stakeholder + 2 yaml_gen + 1 crm_selection + 1 crm_deployment +
+        # 1 crm_configuration + 1 verification = 23
+        assert _count_work_items(conn) == 23
 
 
 class TestMidProjectAdditions:

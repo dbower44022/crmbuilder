@@ -4,16 +4,19 @@ Implements L2 PRD Section 13.7.1 — computes the output file path for each
 document type given the work item, database connections, and project folder root.
 
 Path patterns:
-    Master PRD:         PRDs/{client}-Master-PRD.docx
-    Entity Inventory:   PRDs/{client}-Entity-Inventory.docx
-    Entity PRD:         PRDs/entities/{EntityName}-Entity-PRD.docx
-    Domain Overview:    PRDs/{domain_code}/{client}-Domain-Overview-{DomainName}.docx
-    Process Document:   PRDs/{domain_code}/{PROCESS-CODE}.docx
-    Domain PRD:         PRDs/{domain_code}/{client}-Domain-PRD-{DomainName}.docx
-    YAML Program:       programs/{entity_name}.yaml
-    CRM Evaluation:     PRDs/{client}-CRM-Evaluation-Report.docx
+    Master PRD:           PRDs/{client}-Master-PRD.docx
+    Entity Inventory:     PRDs/{client}-Entity-Inventory.docx
+    Entity PRD:           PRDs/entities/{EntityName}-Entity-PRD.docx
+    Domain Overview:      PRDs/{domain_code}/{client}-Domain-Overview-{DomainName}.docx
+    Process Document:     PRDs/{domain_code}/{PROCESS-CODE}.docx
+    Domain PRD:           PRDs/{domain_code}/{client}-Domain-PRD-{DomainName}.docx
+    YAML Program:         programs/{entity_name}.yaml
+    CRM Evaluation:       PRDs/{client}-CRM-Evaluation-Report.docx
+    User Process Guide:   PRDs/{domain_code}/{PROCESS-CODE}-user-guide.docx
 
 Sub-domains nest: PRDs/{parent_code}/{subdomain_code}/{PROCESS-CODE}.docx
+Sub-domains also nest for User Process Guide:
+    PRDs/{parent_code}/{subdomain_code}/{PROCESS-CODE}-user-guide.docx
 """
 
 from __future__ import annotations
@@ -134,6 +137,20 @@ def resolve_output_path(
         process_code, proc_domain_id = row
         parts = _get_domain_path_parts(conn, proc_domain_id)
         return root / "PRDs" / Path(*parts) / f"{process_code}.docx"
+
+    if doc_type == DocumentType.USER_PROCESS_GUIDE:
+        if process_id is None:
+            raise ValueError(
+                f"Work item {work_item_id} has no process_id for User Process Guide"
+            )
+        row = conn.execute(
+            "SELECT code, domain_id FROM Process WHERE id = ?", (process_id,)
+        ).fetchone()
+        if not row:
+            raise ValueError(f"Process {process_id} not found")
+        process_code, proc_domain_id = row
+        parts = _get_domain_path_parts(conn, proc_domain_id)
+        return root / "PRDs" / Path(*parts) / f"{process_code}-user-guide.docx"
 
     if doc_type == DocumentType.DOMAIN_PRD:
         if domain_id is None:

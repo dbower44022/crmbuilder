@@ -354,7 +354,8 @@ CREATE TABLE WorkItem (
         'master_prd', 'business_object_discovery', 'entity_prd',
         'domain_overview', 'process_definition', 'domain_reconciliation',
         'stakeholder_review', 'yaml_generation', 'crm_selection',
-        'crm_deployment', 'crm_configuration', 'verification'
+        'crm_deployment', 'crm_configuration', 'verification',
+        'user_process_guide'
     )),
     domain_id INTEGER,
     entity_id INTEGER,

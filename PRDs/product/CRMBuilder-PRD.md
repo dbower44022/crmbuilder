@@ -1,8 +1,8 @@
 # CRM Builder — Product Requirements Document
 
-**Version:** 4.0
+**Version:** 4.1
 **Status:** Current
-**Last Updated:** March 2026
+**Last Updated:** April 2026
 
 ---
 
@@ -10,6 +10,7 @@
 
 | Version | Date | Changes |
 |---|---|---|
+| 4.1 | April 2026 | Added Section 9.2 — User Process Guide Generator. Sibling `process_definition` work item now produces a CRM-aware how-to document per discovered process, combining DB process records with YAML program data. |
 | 4.0 | March 2026 | Restructured for new doc architecture. Added CRM Deployment phase. Separated requirements from implementation detail. |
 | 3.0 | March 2026 | Expanded vision — CRM-agnostic requirements, AI-assisted design, CRM selection engine |
 | 2.0 | March 2026 | Generalized from CBM-specific to multi-client tool |
@@ -432,7 +433,26 @@ derived from the YAML files and never edited manually.
 
 See `features/feat-doc-generator.md` for the full specification.
 
-### 9.2 Data Import
+### 9.2 User Process Guide Generator
+
+CRM Builder generates one User Process Guide per business process
+discovered during requirements work. Each guide is a CRM-aware
+how-to document that combines the business-language process narrative
+captured in Phase 4 (Process Definition) with the operational detail
+captured in the YAML program files — entity labels, field labels,
+panel/tab structure, allowed enum values, relationships. Each guide
+serves both end-users (operational how-to) and process owners (high-
+level walkthrough) in a single document.
+
+User Process Guides are produced as a ninth document type in the
+automation Document Generator pipeline, alongside the eight types
+defined in the L2 automation PRD. The output lands at
+`PRDs/{domain_code}/{PROCESS-CODE}-user-guide.docx` in the client
+project folder.
+
+See `features/feat-user-process-guide.md` for the full specification.
+
+### 9.3 Data Import
 
 CRM Builder supports importing records from external systems into the
 configured CRM instance. The import wizard guides the user through mapping
@@ -484,6 +504,8 @@ crmbuilder/                  ← tool repository
 - Layout management (detail view, list view, tab expansion, dynamic logic)
 - Relationship management
 - Documentation generation (Markdown + Word)
+- User Process Guide generation (one CRM-aware Word document per
+  discovered process, combining DB records with YAML program data)
 - Data import wizard (JSON → EspoCRM contacts, match-by-email, never-overwrite)
 - Run/Verify reporting (.log and .json)
 

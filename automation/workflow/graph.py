@@ -258,6 +258,14 @@ def after_business_object_discovery_import(conn: sqlite3.Connection) -> None:
             prev_process_in_domain[domain_id] = wid
             process_def_ids[process_id] = wid
 
+            # Sibling user_process_guide depends on its process_definition.
+            guide_id, _ = _ensure_work_item(
+                conn, "user_process_guide",
+                domain_id=domain_id,
+                process_id=process_id,
+            )
+            _ensure_dependency(conn, guide_id, wid)
+
         # -- Domain Reconciliation (Phase 6) --
         # One per domain, depends on all process_definitions in that domain
         domain_recon_ids: dict[int, int] = {}  # domain_id -> work_item_id
@@ -418,6 +426,14 @@ def add_process(conn: sqlite3.Connection, process_id: int) -> int:
         if recon_id is not None:
             _insert_dependency(conn, recon_id, wid)
 
+        # Sibling user_process_guide for the new process.
+        guide_id, _ = _ensure_work_item(
+            conn, "user_process_guide",
+            domain_id=domain_id,
+            process_id=process_id,
+        )
+        _ensure_dependency(conn, guide_id, wid)
+
         # Recalculate the new item's status
         new_status = calculate_status(conn, wid)
         if new_status == "ready":
@@ -425,6 +441,13 @@ def add_process(conn: sqlite3.Connection, process_id: int) -> int:
                 "UPDATE WorkItem SET status = 'ready', updated_at = CURRENT_TIMESTAMP "
                 "WHERE id = ?",
                 (wid,),
+            )
+        guide_status = calculate_status(conn, guide_id)
+        if guide_status == "ready":
+            conn.execute(
+                "UPDATE WorkItem SET status = 'ready', updated_at = CURRENT_TIMESTAMP "
+                "WHERE id = ?",
+                (guide_id,),
             )
 
     return wid
@@ -485,6 +508,15 @@ def add_domain(conn: sqlite3.Connection, domain_id: int) -> list[int]:
             pd_ids.append(pd_id)
             created_ids.append(pd_id)
 
+            # Sibling user_process_guide for each process in the domain.
+            guide_id = _insert_work_item(
+                conn, "user_process_guide",
+                domain_id=domain_id,
+                process_id=proc_id,
+            )
+            _insert_dependency(conn, guide_id, pd_id)
+            created_ids.append(guide_id)
+
         # Domain Reconciliation
         recon_id = _insert_work_item(
             conn, "domain_reconciliation", domain_id=domain_id,
@@ -516,3 +548,46 @@ def add_domain(conn: sqlite3.Connection, domain_id: int) -> list[int]:
         _recalculate_all(conn)
 
     return created_ids
+
+
+def backfill_user_process_guides(conn: sqlite3.Connection) -> list[int]:
+    """Create missing user_process_guide work items for existing processes.
+
+    Idempotent. Run once on databases that pre-date the User Process Guide
+    feature: scans every ``process_definition`` work item and ensures a
+    sibling ``user_process_guide`` exists, depending on the parent.
+
+    Each newly-created guide work item inherits status from its parent —
+    if the parent is ``complete``, the guide is set to ``ready``; otherwise
+    it stays at ``not_started`` and the standard recalculation pass picks
+    it up.
+
+    :param conn: Open client database connection.
+    :returns: List of newly-created user_process_guide work item ids.
+    """
+    rows = conn.execute(
+        "SELECT id, domain_id, process_id, status FROM WorkItem "
+        "WHERE item_type = 'process_definition'"
+    ).fetchall()
+
+    created: list[int] = []
+    with transaction(conn):
+        for pd_id, domain_id, process_id, pd_status in rows:
+            guide_id, was_created = _ensure_work_item(
+                conn, "user_process_guide",
+                domain_id=domain_id,
+                process_id=process_id,
+            )
+            _ensure_dependency(conn, guide_id, pd_id)
+            if was_created:
+                created.append(guide_id)
+                if pd_status == "complete":
+                    new_status = calculate_status(conn, guide_id)
+                    if new_status == "ready":
+                        conn.execute(
+                            "UPDATE WorkItem SET status = 'ready', "
+                            "updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                            (guide_id,),
+                        )
+        _recalculate_all(conn)
+    return created

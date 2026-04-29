@@ -127,7 +127,10 @@ def _build_scope_conditions(
             [entity_id] * 6 + [entity_id, entity_id],
         )
 
-    if item_type == "process_definition" and process_id is not None:
+    if (
+        item_type in ("process_definition", "user_process_guide")
+        and process_id is not None
+    ):
         return (
             "("
             "(ci.affected_table = 'Process' AND ci.affected_record_id = ?) OR "

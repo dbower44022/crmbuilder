@@ -181,6 +181,33 @@ def _validate_crm_evaluation(
     return warnings
 
 
+def _validate_user_process_guide(
+    doc_type: DocumentType, data: dict
+) -> list[ValidationWarning]:
+    warnings: list[ValidationWarning] = []
+    if not data.get("process"):
+        warnings.append(ValidationWarning(
+            doc_type, "process", "Process record not found.",
+        ))
+        return warnings
+    if not data.get("steps"):
+        warnings.append(ValidationWarning(
+            doc_type, "steps", "No process steps defined.",
+        ))
+    if not data.get("yaml_by_entity"):
+        warnings.append(ValidationWarning(
+            doc_type, "yaml_by_entity",
+            "No YAML program data merged in. Guide will lack CRM-specific "
+            "labels — confirm the project folder is configured and the "
+            "programs/ directory has YAML files.",
+        ))
+    for err in data.get("yaml_load_errors") or []:
+        warnings.append(ValidationWarning(
+            doc_type, "yaml_load_errors", err,
+        ))
+    return warnings
+
+
 _VALIDATORS = {
     DocumentType.MASTER_PRD: _validate_master_prd,
     DocumentType.ENTITY_INVENTORY: _validate_entity_inventory,
@@ -190,4 +217,5 @@ _VALIDATORS = {
     DocumentType.DOMAIN_PRD: _validate_domain_prd,
     DocumentType.YAML_PROGRAM_FILES: _validate_yaml_program,
     DocumentType.CRM_EVALUATION_REPORT: _validate_crm_evaluation,
+    DocumentType.USER_PROCESS_GUIDE: _validate_user_process_guide,
 }

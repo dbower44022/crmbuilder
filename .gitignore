@@ -41,3 +41,5 @@ data/programs/*.yaml
 data/instances/*.json
 PRDs/Implementation Docs/
 PRDs/generated/
+
+*.db

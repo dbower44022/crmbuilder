@@ -27,6 +27,7 @@ from automation.db.client_schema import (
     DEPLOYMENT_RUN_TABLE,
     INSTANCE_DEFAULT_INDEX,
     INSTANCE_TABLE,
+    WORK_ITEM_TABLE,
     get_client_schema_sql,
 )
 from automation.db.client_schema import (
@@ -457,6 +458,78 @@ def _client_v7(conn: sqlite3.Connection) -> None:
         conn.isolation_level = orig_isolation
 
 
+def _client_v8(conn: sqlite3.Connection) -> None:
+    """Rebuild WorkItem to allow 'user_process_guide' in item_type CHECK
+    constraint, then backfill user_process_guide work items for every
+    existing Process row.
+
+    SQLite cannot ALTER CHECK constraints, so the table is rebuilt using
+    the 12-step redefinition pattern. Skips entirely if the WorkItem
+    table does not yet exist (a fresh database created via _client_v1
+    already has the new constraint).
+    """
+    tables = {
+        row[0]
+        for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )
+    }
+    if "WorkItem" not in tables:
+        return
+
+    # If the existing WorkItem table already permits user_process_guide
+    # (e.g. a database created from the new schema after this migration's
+    # introduction), skip the rebuild — only backfill missing rows.
+    schema_row = conn.execute(
+        "SELECT sql FROM sqlite_master "
+        "WHERE type = 'table' AND name = 'WorkItem'"
+    ).fetchone()
+    needs_rebuild = bool(schema_row) and "user_process_guide" not in (schema_row[0] or "")
+
+    if needs_rebuild:
+        create_new = WORK_ITEM_TABLE.replace(
+            "CREATE TABLE WorkItem",
+            "CREATE TABLE WorkItem_new",
+            1,
+        )
+
+        fk_setting = conn.execute("PRAGMA foreign_keys").fetchone()[0]
+        orig_isolation = conn.isolation_level
+        conn.isolation_level = None
+
+        try:
+            conn.execute("PRAGMA foreign_keys = OFF")
+            conn.execute("BEGIN")
+            conn.execute(create_new)
+            conn.execute(
+                "INSERT INTO WorkItem_new "
+                "(id, item_type, domain_id, entity_id, process_id, status, "
+                "blocked_reason, status_before_blocked, started_at, "
+                "completed_at, created_at, updated_at) "
+                "SELECT id, item_type, domain_id, entity_id, process_id, "
+                "status, blocked_reason, status_before_blocked, started_at, "
+                "completed_at, created_at, updated_at FROM WorkItem"
+            )
+            conn.execute("DROP TABLE WorkItem")
+            conn.execute("ALTER TABLE WorkItem_new RENAME TO WorkItem")
+            conn.execute("COMMIT")
+        except Exception:
+            conn.execute("ROLLBACK")
+            conn.execute("DROP TABLE IF EXISTS WorkItem_new")
+            raise
+        finally:
+            conn.execute(
+                f"PRAGMA foreign_keys = {'ON' if fk_setting else 'OFF'}"
+            )
+            conn.isolation_level = orig_isolation
+
+    # Backfill user_process_guide work items for every process_definition
+    # that does not yet have a sibling guide. Lazy import to avoid circular
+    # imports at module load time.
+    from automation.workflow.graph import backfill_user_process_guides
+    backfill_user_process_guides(conn)
+
+
 CLIENT_MIGRATIONS: list[tuple[int, Migration]] = [
     (1, _client_v1),
     (2, _client_v2),
@@ -465,6 +538,7 @@ CLIENT_MIGRATIONS: list[tuple[int, Migration]] = [
     (5, _client_v5),
     (6, _client_v6),
     (7, _client_v7),
+    (8, _client_v8),
 ]
 
 
