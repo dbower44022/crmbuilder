@@ -3,8 +3,8 @@
 **Document type:** Active design work for an evolved methodology test (research / not adopted)
 **Repository:** `crmbuilder`
 **Path:** `PRDs/process/research/evolved-methodology/cbm-redo/cbm-redo-ground-rules.md`
-**Last Updated:** 04-30-26 16:55
-**Version:** 0.1 (initial draft)
+**Last Updated:** 04-30-26 17:25
+**Version:** 0.2 (revised after Step 1 repository survey)
 
 ---
 
@@ -26,12 +26,29 @@ The current 13-phase Document Production Process and existing interview guides r
 | Version | Date | Author | Summary |
 |---------|------|--------|---------|
 | 0.1 | 04-30-26 16:55 | Doug Bower / Claude | Initial draft. Establishes source material rules, legitimate-answer criteria, gap handling, comparison criteria, and confirmation bias mitigation for the simulated Phase 1 redo against CBM material. CBM-specific with generalization markers for future methodology tests. |
+| 0.2 | 04-30-26 17:25 | Doug Bower / Claude | §2.2 (in-bounds CBM artifacts) revised after Step 1 repository survey. Five revisions applied: added Cross-Domain Service docs to in-bounds; added Consolidated Design and equivalent synthesis documents to out-of-bounds; added product-specific implementation documentation to out-of-bounds; clarified Sub-Domain Overview handling within CR (out-of-bounds) vs. process documents within sub-domains (in-bounds); added explicit treatment of Archive content (in-bounds for factual claims, out-of-bounds for the Archive's own structural decisions). Also added Domain Overview documents to out-of-bounds (distinct from in-bounds Domain PRDs); added methodology tooling (generate-*.js, gap-analysis docs) to out-of-bounds; added narrow allowance for prior CRM evaluation docs as factual constraints sources only. No other sections changed. |
 
 ---
 
 ## Change Log
 
 **Version 0.1 (04-30-26 16:55):** Initial creation. Specifies what CBM artifacts count as the "client's voice" (moderate stance), what the simulated consultant is allowed to know about CBM, how gaps get logged when the source material can't answer a Phase 1 question, the comparison criteria for evaluating the redo against the original CBM engagement, and the confirmation-bias mitigations. Includes a planned validation pass with CBM scoped to specific findings. Generalization markers identify sections that would need parameterizing for a future test against a different client.
+
+**Version 0.2 (04-30-26 17:25):** §2.2 revised after Step 1 repository survey of `dbower44022/ClevelandBusinessMentoring`. The survey (committed separately as `cbm-redo-step-1-survey.md`) found that the v0.1 list was conservative but had gaps that the actual repo structure reveals. Revisions applied:
+
+1. **Added Cross-Domain Service docs to in-bounds.** `services/NOTES/NOTES-MANAGE.docx` is a process document for a service that spans domains; same operational-content-only rule as domain process documents. The v0.1 list addressed only domain documents and didn't cover services.
+
+2. **Added Consolidated Design and equivalent synthesis documents to out-of-bounds.** `CBM-Consolidated-Design.md` describes itself as "the single authoritative source for YAML generation" and resolves cross-domain conflicts — this is methodology-decision content. v0.1 listed "reconciliation documents" but didn't cover synthesis documents that aren't named "reconciliation."
+
+3. **Added product-specific implementation documentation to out-of-bounds.** `CBM-EspoCRM-HowTo.docx` and equivalents would contaminate the CRM Candidate Set work.
+
+4. **Clarified Sub-Domain Overview handling.** `CR/` has sub-domains (PARTNER, MARKETING, EVENTS, REACTIVATE) each with a `CBM-SubDomain-Overview-*.docx`. Sub-domain structure is methodology-decision content; the Overview documents are out-of-bounds. Process documents *within* sub-domains describe activities and remain in-bounds.
+
+5. **Added explicit treatment of Archive content.** `PRDs/Archive/` contains substantial pre-methodology material — legacy Master PRD, mission drafts, strategic planning notes, decisions log, prior CRM evaluation docs, etc. This is in-bounds for factual claims about CBM's mission, operations, and constraints, and particularly valuable because it predates the current methodology's interpretive decisions. The Archive's own structural decisions (categorization, prior priority calls) are out-of-bounds — the same operational-vs-methodology line that applies elsewhere applies within Archive content.
+
+Additional minor revisions implied by the survey: Domain Overview documents (distinct from Domain PRDs) added to out-of-bounds since they codify domain-structural decisions. Methodology tooling (generator scripts, gap-analysis documents) explicitly out-of-bounds. Workflow diagrams classified as not-primary-source. Narrow allowance for prior CRM evaluation docs as factual-constraints sources for the Initial CRM Candidate Set work, with their evaluative conclusions excluded.
+
+No other sections of this document were changed in v0.2. The §2.1 moderate stance, the §3 tier system, §4 gap handling, §5 comparison criteria, §6 confirmation bias mitigation, §7 validation pass scope, §8 findings document discipline, and §9 execution plan all remain as drafted in v0.1. The fourth domain (FU — Fundraising) was added to the in-bounds Domain PRD list since the v0.1 list named only three domains; this is a correction, not a substantive change.
 
 ---
 
@@ -82,25 +99,35 @@ The line between "factual claim" and "methodology decision" is sometimes fuzzy. 
 
 ### 2.2 In-bounds CBM artifacts
 
-The simulated CBM client may draw on the following CBM-owned documents in the `ClevelandBusinessMentoring` repository:
+The simulated CBM client may draw on the following CBM-owned documents in the `ClevelandBusinessMentoring` repository. This list was revised in v0.2 of this document after a survey of the actual repository contents (see `cbm-redo-step-1-survey.md` for the survey findings).
 
 **Allowed (factual claims only, per §2.1):**
 
 - The CBM Master PRD (for stated mission, organizational overview, stakeholder roles in operational terms)
-- Domain PRDs for MN (Mentoring), MR (Mentor Recruitment), and CR (Community Relationships) — only the **operational descriptions** of what CBM does in each area, not the structural choices about which domains exist, how they're named, or what's in each
-- Process documents (any domain) — only the **descriptions of activities CBM staff perform**, not the process boundary decisions (which work counts as "this process" vs. "that process")
-- Entity PRDs — only the **field descriptions and operational use of records**, not the entity boundaries themselves
+- Domain PRDs for MN (Mentoring), MR (Mentor Recruitment), CR (Client Recruiting), and FU (Fundraising) — only the **operational descriptions** of what CBM does in each area, not the structural choices about which domains exist, how they're named, or what's in each
+- Process documents within domain subdirectories (`MN/`, `MR/`, `CR/`, `FU/` and their sub-domain subdirectories) — only the **descriptions of activities CBM staff perform**, not the process boundary decisions (which work counts as "this process" vs. "that process")
+- Process documents within sub-domain subdirectories (`CR/PARTNER/`, `CR/MARKETING/`, `CR/EVENTS/`, `CR/REACTIVATE/`) — same operational-content-only rule. Note that the existence and naming of these sub-domains is itself a methodology decision; the Sub-Domain Overview documents that codify that decision are out-of-bounds (see below).
+- Cross-Domain Service process documents (`services/NOTES/NOTES-MANAGE.docx` and any future `services/` documents) — only the **descriptions of service activities**, not the structural decision to treat the service as cross-domain
+- Entity PRDs (`entities/*-Entity-PRD.docx`) — only the **field descriptions and operational use of records**, not the entity boundaries themselves
+- Pre-methodology Archive content (`PRDs/Archive/`) — for **factual claims about CBM's mission, operations, and constraints**. Particularly valuable: `Cleveland_Business_Mentors_Mission_tonysdraft (1).docx`, `STRATEGIC PLANNING SESSION (1).docx`, `CBM-PRD-Master.docx` (legacy Master PRD with operational mission language and Year 1 targets), `CBM-Decisions-Log.docx`. The Archive's own structural decisions (categorization, prior priority calls, prior PRD organization) remain out-of-bounds — the same operational-vs-methodology line that applies elsewhere applies within Archive content. Legacy CBM-PRD-CRM-* docs (Client, Mentor, Partners, Implementation) are heavily methodology-shaped and should be used cautiously: operational content within them counts; their structural decisions don't.
 - Any meeting transcripts or stakeholder review notes in the repository — these are typically the most direct expressions of the CBM client's voice and are highly weighted
+- For Initial CRM Candidate Set purposes only: factual constraints expressed in prior CRM evaluation documents (`Archive/espoCRM-vs-CiviCRM_comparison.docx`, `Archive/EspoCRM_Architecture_Guide.docx`) — budget statements, hosting preferences, team capacity descriptions count. The evaluative conclusions in these documents do not count.
 
 **Out-of-bounds entirely:**
 
 - The CBM CLAUDE.md
-- All prompt files (SESSION-PROMPT, UPDATE-PROMPT, CLAUDE-CODE-PROMPT)
-- Pilot findings documents
-- The reconciliation documents (which are by definition methodology decisions about how to organize CBM's information)
+- All prompt files (SESSION-PROMPT, UPDATE-PROMPT, CLAUDE-CODE-PROMPT) including those in `FU/carry-forward/`
+- Pilot findings documents (`pilot/PILOT-FINDINGS.md`)
+- Reconciliation documents (Entity Inventory at `CBM-Entity-Inventory.docx`; Persona Inventory if/when separate)
+- Consolidated Design and equivalent synthesis documents (`CBM-Consolidated-Design.md`) — these exist to support YAML generation or resolve cross-domain conflicts and are by definition methodology-decision content
+- Sub-Domain Overview documents (`CR/PARTNER/CBM-SubDomain-Overview-Partner.docx`, `CR/MARKETING/CBM-SubDomain-Overview-Marketing.docx`, `CR/EVENTS/CBM-SubDomain-Overview-Events.docx`, `CR/REACTIVATE/CBM-SubDomain-Overview-Reactivate.docx`, and any equivalents) — sub-domain structure is methodology-decision content
+- Domain Overview documents that explicitly codify domain-structural decisions (`CR/CBM-Domain-Overview-ClientRecruiting.docx`, `FU/CBM-Domain-Overview-Fundraising.docx`) — methodology-decision content. Note: this is distinct from the Domain *PRDs*, which contain operational content that is in-bounds.
+- Product-specific implementation documentation (`CBM-EspoCRM-HowTo.docx`, `Archive/EspoCRM_Architecture_Guide.docx` for its design content, `Archive/CBM-EspoCRM-Navigation-Design.docx`)
+- Methodology tooling: all `generate-*.js` scripts, gap-analysis documents (`MN/PHASE6-TEST-Gap-Analysis.md`)
+- Workflow diagrams as primary source — they are visual representations of content already in text documents, not independent factual sources. May be referred to where useful but are not the source.
 - This research stack and any of its commits
 
-**Generalization marker:** For a future test against a different client, the in-bounds list would parameterize as: *"Client-owned operational documentation, with all methodology-decision content (priority classifications, structural taxonomies, accumulated session context) excluded."*
+**Generalization marker:** For a future test against a different client, the in-bounds list would parameterize as: *"Client-owned operational documentation, with all methodology-decision content (priority classifications, structural taxonomies, accumulated session context) excluded."* The specific subdirectory names (MN, MR, CR, FU) and document names are CBM-specific; the operational-vs-methodology line is generic.
 
 ### 2.3 Why CLAUDE.md and prompt files are excluded
 
