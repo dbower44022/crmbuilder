@@ -777,6 +777,10 @@ class DeployConfig:
     admin_email: str
     cert_expiry_date: str | None = None
     deployed_at: str | None = None
+    current_espocrm_version: str | None = None
+    latest_espocrm_version: str | None = None
+    last_upgrade_at: str | None = None
+    last_backup_paths: list[str] = field(default_factory=list)
 
     @property
     def full_domain(self) -> str:

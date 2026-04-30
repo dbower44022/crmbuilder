@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 
 from espo_impl.core.deploy_manager import cert_days_remaining
 from espo_impl.core.models import DeployConfig, InstanceProfile
+from espo_impl.core.upgrade_manager import is_upgrade_available
 
 logger = logging.getLogger(__name__)
 
@@ -159,6 +160,12 @@ class DeployDashboard(QWidget):
         info_row.addWidget(self._cert_badge)
         header_layout.addLayout(info_row)
 
+        version_row = QHBoxLayout()
+        self._version_badge = QLabel("")
+        version_row.addWidget(self._version_badge)
+        version_row.addStretch()
+        header_layout.addLayout(version_row)
+
         self._edit_btn = QPushButton("Edit Configuration")
         self._edit_btn.clicked.connect(self._on_edit_config)
         header_layout.addWidget(self._edit_btn)
@@ -166,6 +173,8 @@ class DeployDashboard(QWidget):
         layout.addWidget(header)
 
         self.update_cert_badge(self.config.cert_expiry_date)
+        self.update_version_badge()
+        self._kick_off_version_check()
 
         # Phase cards
         self._phase_cards: list[PhaseCard] = []
@@ -189,6 +198,10 @@ class DeployDashboard(QWidget):
         btn_row.addWidget(self._retry_btn)
 
         btn_row.addStretch()
+
+        self._upgrade_btn = QPushButton("Upgrade EspoCRM")
+        self._upgrade_btn.clicked.connect(self._on_upgrade)
+        btn_row.addWidget(self._upgrade_btn)
 
         self._recovery_btn = QPushButton("Recovery && Reset")
         self._recovery_btn.setStyleSheet(
@@ -226,6 +239,61 @@ class DeployDashboard(QWidget):
         self._failed_phase: int | None = None
 
     # ── Public API ─────────────────────────────────────────────────
+
+    def update_version_badge(self) -> None:
+        """Refresh the EspoCRM version badge from current config state."""
+        current = self.config.current_espocrm_version
+        latest = self.config.latest_espocrm_version
+        if not current and not latest:
+            self._version_badge.setText("EspoCRM version: unknown")
+            self._version_badge.setStyleSheet(
+                "color: #9E9E9E; font-size: 11px;"
+            )
+            return
+
+        if is_upgrade_available(current, latest):
+            self._version_badge.setText(
+                f"EspoCRM {current} \u2192 {latest} available"
+            )
+            self._version_badge.setStyleSheet(
+                "color: #FFA726; font-weight: bold; font-size: 11px;"
+            )
+        else:
+            self._version_badge.setText(
+                f"EspoCRM {current or latest} \u2014 up to date"
+            )
+            self._version_badge.setStyleSheet(
+                "color: #4CAF50; font-size: 11px;"
+            )
+
+    def _kick_off_version_check(self) -> None:
+        """Spawn a background VersionCheckWorker if the instance is deployed."""
+        if self.config.deployed_at is None:
+            return
+        from espo_impl.workers.upgrade_worker import VersionCheckWorker
+
+        self._version_worker = VersionCheckWorker(self.config, self)
+        self._version_worker.versions_detected.connect(
+            self._on_versions_detected
+        )
+        self._version_worker.start()
+
+    def _on_versions_detected(self, current: str, latest: str) -> None:
+        """Persist detected versions and refresh the badge."""
+        from espo_impl.core.deploy_manager import save_deploy_config
+
+        changed = False
+        if current and current != self.config.current_espocrm_version:
+            self.config.current_espocrm_version = current
+            changed = True
+        if latest and latest != self.config.latest_espocrm_version:
+            self.config.latest_espocrm_version = latest
+            changed = True
+        self.update_version_badge()
+        if changed:
+            save_deploy_config(
+                self.instances_dir, self.profile.slug, self.config
+            )
 
     def update_cert_badge(self, expiry_date: str | None) -> None:
         """Update the SSL certificate status badge.
@@ -366,6 +434,33 @@ class DeployDashboard(QWidget):
         for card in self._phase_cards:
             card.set_status("not_started")
         self._failed_phase = None
+
+    def _on_upgrade(self) -> None:
+        """Open the Upgrade dialog."""
+        if self.config.deployed_at is None:
+            QMessageBox.warning(
+                self,
+                "No Deployment Found",
+                "No completed deployment found for this instance. "
+                "Please run Deploy All before attempting an upgrade.",
+            )
+            return
+
+        from espo_impl.ui.upgrade_dashboard import UpgradeDashboard
+
+        dialog = UpgradeDashboard(
+            self.profile, self.config, self.instances_dir, self
+        )
+        dialog.exec()
+        # After the dialog closes, re-read state for the badge.
+        from espo_impl.core.deploy_manager import load_deploy_config
+
+        updated = load_deploy_config(
+            self.instances_dir, self.profile.slug
+        )
+        if updated:
+            self.config = updated
+        self.update_version_badge()
 
     def _on_recovery(self) -> None:
         """Open the Recovery Tools dialog."""
