@@ -3,8 +3,8 @@
 **Document type:** Active design work for an evolved methodology test (research / not adopted)
 **Repository:** `crmbuilder`
 **Path:** `PRDs/process/research/evolved-methodology/cbm-redo/cbm-redo-ground-rules.md`
-**Last Updated:** 04-30-26 17:25
-**Version:** 0.2 (revised after Step 1 repository survey)
+**Last Updated:** 04-30-26 24:00
+**Version:** 0.3 (revised after CBM redo experiment with test-method corrections)
 
 ---
 
@@ -27,6 +27,7 @@ The current 13-phase Document Production Process and existing interview guides r
 |---------|------|--------|---------|
 | 0.1 | 04-30-26 16:55 | Doug Bower / Claude | Initial draft. Establishes source material rules, legitimate-answer criteria, gap handling, comparison criteria, and confirmation bias mitigation for the simulated Phase 1 redo against CBM material. CBM-specific with generalization markers for future methodology tests. |
 | 0.2 | 04-30-26 17:25 | Doug Bower / Claude | §2.2 (in-bounds CBM artifacts) revised after Step 1 repository survey. Five revisions applied: added Cross-Domain Service docs to in-bounds; added Consolidated Design and equivalent synthesis documents to out-of-bounds; added product-specific implementation documentation to out-of-bounds; clarified Sub-Domain Overview handling within CR (out-of-bounds) vs. process documents within sub-domains (in-bounds); added explicit treatment of Archive content (in-bounds for factual claims, out-of-bounds for the Archive's own structural decisions). Also added Domain Overview documents to out-of-bounds (distinct from in-bounds Domain PRDs); added methodology tooling (generate-*.js, gap-analysis docs) to out-of-bounds; added narrow allowance for prior CRM evaluation docs as factual constraints sources only. No other sections changed. |
+| 0.3 | 04-30-26 24:00 | Doug Bower / Claude | Revised after CBM redo experiment completion with test-method corrections per Step 9 §5.3. Four substantive revisions: §3 Tier 2 inference discipline tightened (positive support required in in-bounds material, not pattern-match plausibility); new §2.6 added specifying simulator interaction with pattern library content; §7 validation pass scope expanded beyond gap log entries; multi-stakeholder validation framed as the default standard for adoption-supporting tests, single-stakeholder explicitly framed as research stopgap. Smaller updates: §6 confirmation bias mitigation strengthened with within-simulation discipline; §2.4 pre-engagement scope clarified to allow operational role definitions per Phase 1 guide v0.2 §2.1. |
 
 ---
 
@@ -49,6 +50,24 @@ The current 13-phase Document Production Process and existing interview guides r
 Additional minor revisions implied by the survey: Domain Overview documents (distinct from Domain PRDs) added to out-of-bounds since they codify domain-structural decisions. Methodology tooling (generator scripts, gap-analysis documents) explicitly out-of-bounds. Workflow diagrams classified as not-primary-source. Narrow allowance for prior CRM evaluation docs as factual-constraints sources for the Initial CRM Candidate Set work, with their evaluative conclusions excluded.
 
 No other sections of this document were changed in v0.2. The §2.1 moderate stance, the §3 tier system, §4 gap handling, §5 comparison criteria, §6 confirmation bias mitigation, §7 validation pass scope, §8 findings document discipline, and §9 execution plan all remain as drafted in v0.1. The fourth domain (FU — Fundraising) was added to the in-bounds Domain PRD list since the v0.1 list named only three domains; this is a correction, not a substantive change.
+
+**Version 0.3 (04-30-26 24:00):** Revised after the CBM redo experiment completed (`cbm-redo/cbm-redo-step-9-final-findings.md`, committed 04-30-26). Test-method corrections per Step 9 §5.3:
+
+1. **§3.1 Tier 2 inference discipline tightened.** v0.2 defined Tier 2 as "supported by multiple supporting statements" without specifying what "supporting" means. The CBM redo Step 8 §2-3 found that "supporting" was being interpreted as pattern-matched plausibility against generic operations, which produced fabrications. v0.3 makes explicit that Tier 2 requires *positive support in in-bounds material* — content the simulated client could ground in something specific from CBM-owned documents. Pattern-matched plausibility from generic nonprofit operations (or generic any-org-type operations) does not qualify as Tier 2 support and must be treated as Tier 3 (declined or flagged).
+
+2. **New §2.6 added specifying simulator interaction with pattern library content.** v0.2 predates the pattern library specification (`pattern-library-specification.md`, committed 04-30-26). v0.3 specifies: the simulator may read library entry content per the same source-material discipline that applies to client artifacts; library Section A content can ground Tier 2 inferences (because Section A content is tested generalizations); library Section B content provides hypotheses to test, not Tier 2 support; library Section C content is treated as warning material the simulator must explicitly engage with.
+
+3. **§7 validation pass scope expanded.** v0.2 §7 framed the validation pass as tightly scoped to open gap log entries plus a brief approach check. The CBM redo Step 9 §5.2 found this scope was probably too narrow — some simulator claims that didn't get tested in the validation pass might also be fabrications. v0.3 expands validation pass scope to include broader operational-claim verification: in addition to gap log entries, the validation pass should test the major operational claims the simulator made during Sessions 1 and 2 against the real client's reality.
+
+4. **Multi-stakeholder validation framed as the default standard.** v0.2 §7 supported single-stakeholder validation without explicit caveats. The internal validation pass conducted in the CBM redo (Step 8) surfaced findings but acknowledged §1 limit that a separate stakeholder might produce different answers. v0.3 makes multi-stakeholder validation the default for any methodology test that supports adoption decisions; single-stakeholder validation is treated as a research stopgap with explicit limits documented.
+
+Smaller updates:
+
+5. **§6 (Confirmation bias mitigation) strengthened.** v0.2 §6 covered structural mitigations (rules locked before execution, gap log as primary output) and active-discipline mitigations (steelman the original methodology, no retroactive rule changes). v0.3 adds within-simulation discipline: a periodic self-check during the simulation asking "did the simulator generate content from in-bounds material or from pattern-matched plausibility?" The check is performed before each between-sessions or session-end synthesis, not just at validation time.
+
+6. **§2.4 (Pre-engagement scope) clarified.** v0.2 §2.4 limited pre-engagement reading to the Master PRD's mission and organizational overview sections, holding back personas and other methodology-organized content as out-of-scope. The CBM redo Step 8 §3.4 found this scope was too narrow — operational facts about role ownership (e.g., the Funding Coordinator role at CBM) live in methodology-organized form (the persona section) but are operational facts, not methodology decisions. v0.3 clarifies that operational role definitions are in-scope even when they appear in methodology-organized form, consistent with Phase 1 guide v0.2 §2.1.
+
+The §3 examples, §4 gap handling, §5 comparison criteria, §8 findings document discipline, and §9 execution plan remain substantively as drafted in v0.2.
 
 ---
 
@@ -143,11 +162,11 @@ Allowing the simulated consultant to read these would mean the consultant starts
 
 ### 2.4 What the consultant *is* allowed to know going in
 
-Per the Phase 1 guide §2 (Pre-Engagement Preparation), the consultant reviews materials the client provides. The simulated equivalents are:
+Per the Phase 1 guide v0.2 §2 (Pre-Engagement Preparation), the consultant reviews materials the client provides. The simulated equivalents are:
 
-- **Pre-engagement materials.** The simulated consultant may read the CBM Master PRD's mission and organizational overview sections only — analogous to what a real consultant would receive as a prospectus or initial intake document. This is more limited than what's actually available in the repo, but it's a more honest stand-in for "what a real consultant would have at engagement start."
-- **Pattern library.** No CBM-specific pattern library entry exists. The consultant operates in "no library entry" mode (per Phase 1 guide §8.1).
-- **Org type recognition.** The consultant may recognize CBM as a "nonprofit mentoring organization" and apply general consultant judgment about that org type, but may not draw on CBM-specific accumulated knowledge.
+- **Pre-engagement materials.** The simulated consultant may read the CBM Master PRD's mission section, organizational overview, and **operational role definitions (the persona section, treated as content about who owns what work rather than as methodology-organized content)**. The expansion of the scope in v0.3 of these ground rules — to include operational role definitions even when they appear in methodology-organized form — is a direct response to the CBM redo Step 8 §3.4 finding. The line is *facts about who owns what work* (in scope) versus *methodology decisions about how to organize that information* (out of scope). For CBM specifically, persona definitions like "Funding Coordinator owns donor relations" are operational facts and are in scope; persona category structures (e.g., the formal MST-PER-* identifier scheme) are methodology decisions and remain out of scope.
+- **Pattern library.** Per `pattern-library-specification.md` §4.1, the simulator consults the library entry for the org type if one exists. For CBM redo: the entry now exists at `pattern-library/pattern-library-entry-nonprofit-mentoring.md` (committed 04-30-26 after the redo's Phase 1 simulation). For redo Steps 1–9 the simulator operated without this entry; future similar simulations would have it available. See §2.6 for how the simulator interacts with library content when an entry exists.
+- **Org type recognition.** The simulator may recognize CBM as a "nonprofit volunteer-driven mentoring organization" and apply general consultant judgment about that org type. **However**, per the Tier 2 inference discipline in §3.1, generic-org-type judgment is not Tier 2 support. It is consultant background that informs what to listen for in Session 1 but cannot be the basis for Session 2 proposals or backbone decisions without library content or client statements grounding it.
 
 The simulated consultant should *not* read the Domain PRDs, process documents, Entity PRDs, or transcripts in advance. Those materials become available only as the simulated client cites them in response to the consultant's questions during the session.
 
@@ -165,6 +184,24 @@ The simulated client behaves as a **typical, reasonably articulate CBM stakehold
 
 If the consultant asks a question the in-bounds material can't answer, the simulated client says some version of "I'm not sure" or "I'd have to think about that" or "let me get back to you on that" — and the gap is logged (§4).
 
+### 2.6 Simulator interaction with pattern library content
+
+When a pattern library entry exists for the org type being tested, the simulator interacts with library content under the same source-material discipline that applies to client artifacts.
+
+**What the simulator may read:** library entries in their entirety, organized into Section A (tested generalizations), Section B (single-instance observations), and Section C (disconfirmed observations) per `pattern-library-specification.md` §3.
+
+**How library content interacts with the Tier system from §3.1:**
+
+- **Section A content** can ground Tier 2 inferences. Section A content is tested generalizations across multiple engagements; treating it as supporting evidence for inferences about a new client of the same org type is appropriate. The simulator should still verify Section A content against the specific client's reality during Session 1 (lightly) and Session 2 (substantively) per Phase 1 guide v0.2 §8.2.
+- **Section B content** does not ground Tier 2 inferences. Section B content is single-instance observations; using it as a basis for inferences about a new client risks treating one previous client's specifics as universal. Section B content provides hypotheses for Session 1 questions, not Tier 2 support for Session 2 proposals.
+- **Section C content** is treated as warning material. The simulator must explicitly engage with any Section C entry that touches the engagement — the Section C content names patterns that have failed at observed instances, and the simulator should verify with the client whether the pattern applies before proceeding.
+
+**Discipline against library-sanctioned pattern-matching:** Section A content provides legitimate Tier 2 support, but only if the simulator has actually read it. The simulator does not get credit for "the library probably says X" without verifying that the library entry actually says X. Library content is reference material to be cited explicitly, not a generalized reference to plausibility-by-pattern-match.
+
+**For the CBM redo Steps 1–9:** no library entry existed during the redo's simulation. Steps 1–9 operated under v0.1 / v0.2 of these ground rules with the consultant in "no library entry" mode (which was equivalent to "no Section A content"). The library entry that now exists (created from the redo's findings) was not available to the redo's simulation. Future similar tests would have the entry available and would operate under §2.6.
+
+**Generalization marker:** This section parameterizes naturally. For any future test against any client, library entries for the matched org type interact with the simulator under the rules above.
+
 ---
 
 ## 3. What Counts as a Legitimate Answer
@@ -175,9 +212,13 @@ When the simulated client gives an answer to a consultant question, the answer f
 
 **Tier 1 — Direct.** The answer is supported by an explicit statement in the in-bounds CBM material. The simulated client can give the answer with confidence. Most of the work in Session 1 Part A (operational mission) and Part B (domain identification) should produce Tier 1 answers, because the underlying factual claims about CBM's work are widely documented.
 
-**Tier 2 — Reasonable inference.** The answer is not directly stated in the in-bounds material but can be inferred from multiple supporting statements. The simulated client may give the answer but with explicit hedge — "I think we... but I'd want to confirm." These answers are logged as inferences in the gap log so the validation pass with CBM can confirm or correct them.
+**Tier 2 — Reasonable inference.** The answer is not directly stated in the in-bounds material but can be inferred from **positive support** in the in-bounds material — content that, when read together, makes the inference defensible. Positive support means actual content the simulator can point to: a sentence, a paragraph, a structural element from CBM-owned documents, or (if a library entry exists per §2.6) a Section A entry. The simulated client may give the answer but with explicit hedge — *"I think we... but I'd want to confirm."* These answers are logged as inferences in the gap log so the validation pass with CBM can confirm or correct them.
 
-**Tier 3 — Not supported.** The answer would require either methodology-decision content (excluded by §2.1) or pure invention. The simulated client must decline to answer — "I'd need to think about that" or "let me check on that and get back to you." These are logged as gaps. The consultant must proceed with the gap unfilled and note that fact in any subsequent proposal.
+**Critical: pattern-match plausibility is not Tier 2 support.** A common failure mode (surfaced by the CBM redo Step 8 §2-3) is the simulator generating content that is plausible because it matches generic operational patterns for similar organizations but is not actually supported by anything specific in the in-bounds material. *"This is what nonprofits typically do"* or *"this is the typical pattern for service-delivery organizations"* are pattern-matched plausibility, not positive support. Inferences grounded in pattern-match plausibility are **Tier 3**, not Tier 2. They must be declined by the simulated client and logged as gaps, not given confident hedged answers and treated as inferences.
+
+**The discipline test:** before treating an inference as Tier 2, the simulator must be able to point to specific in-bounds content (CBM-owned documents and, where applicable, library Section A entries) that makes the inference defensible. If the answer to *"what specifically supports this?"* is *"nothing directly, but it follows from generic patterns,"* the inference is Tier 3, not Tier 2.
+
+**Tier 3 — Not supported.** The answer would require either methodology-decision content (excluded by §2.1), pattern-match plausibility (excluded by the discipline test above), or pure invention. The simulated client must decline to answer — *"I'd need to think about that"* or *"let me check on that and get back to you."* These are logged as gaps. The consultant must proceed with the gap unfilled and note that fact in any subsequent proposal.
 
 ### 3.2 Examples of the three tiers (CBM-specific)
 
@@ -346,8 +387,9 @@ These mitigations are structural — they're in place because of how the experim
 These require active discipline during execution:
 
 - **Session-by-session pause for honest assessment.** After each simulated session, before continuing, write down: *what just happened that the methodology should be uncomfortable about?* Force the question explicitly. If the answer is consistently "nothing," that's a signal something is being suppressed.
+- **Pattern-match self-check at synthesis points.** Before each between-sessions synthesis (Step 4 in the execution plan) and at the end of each simulated session (Steps 3 and 5), the simulator performs a structured self-check: *for each substantive claim made or inference drawn, what specifically in the in-bounds material supports it?* If the supporting answer is "nothing directly, but it follows from generic patterns for this org type," the claim must be downgraded from Tier 2 to Tier 3. The check is performed before the synthesis is treated as complete, not after. **This is a v0.3 addition responding to the CBM redo Step 8 §2-3 finding that pattern-matched plausibility passed the v0.2 Tier 2 standard.**
 - **Steelman the original methodology.** When the redo produces an output that looks better than the original engagement's equivalent output, ask: *what could the original methodology produce that I'm not crediting?* Look for reasons the original engagement made the choices it did before concluding those choices were wrong.
-- **No retroactive rule adjustment.** If, during the redo, a rule in this document seems to be producing unfair results, don't change the rule. Run the redo to completion under the original rules, log the issue, and address it in a v0.2 of this document for any future test. Mid-test changes destroy the test's signal.
+- **No retroactive rule adjustment.** If, during the redo, a rule in this document seems to be producing unfair results, don't change the rule. Run the redo to completion under the original rules, log the issue, and address it in the next version of this document for any future test. Mid-test changes destroy the test's signal.
 - **Document the calls.** When the simulator makes a judgment call about whether content is factual vs. methodology-decision (§2.1), or whether an inference is Tier 2 vs. Tier 3, log the call in the gap log with reasoning. This makes the calls auditable later.
 
 ### 6.4 Mitigations after the redo
@@ -366,28 +408,70 @@ The validation pass takes specific findings from the redo to CBM and asks them t
 
 ### 7.2 Scope
 
-The validation pass should be **one short conversation** — 30–60 minutes — with whichever CBM stakeholder is most appropriate. It is not a methodology demonstration, not a sales conversation, not a redo of any session. CBM should be told upfront what the conversation is for and roughly how long it will take.
+The validation pass is a real conversation with the appropriate client stakeholder(s). For research-stopgap form: 30–60 minutes with one stakeholder. For the standard form (multi-stakeholder, see §7.6): typically two or three short conversations or one longer conversation, totaling 60–120 minutes across stakeholders.
+
+The validation pass is not a methodology demonstration, not a sales conversation, not a redo of any session. The client should be told upfront what the conversation is for and roughly how long it will take.
 
 ### 7.3 What gets carried into the validation pass
 
-From the redo's gap log, select:
+The validation pass scope is broader in v0.3 than in earlier versions of this document. The CBM redo Step 9 §5.2 found that v0.2's narrow scope (focused on open gap log entries) missed simulator claims that turned out to be fabricated but didn't appear in the gap log. v0.3 expands scope to include:
 
-- **All Tier 3 gaps that affected backbone composition.** If the redo proposed a backbone that included or excluded a process based on a Tier 3 gap, the gap goes to validation. *"Our analysis suggested X. Is that right?"*
+**Always carried (the gap log dimension):**
+
+- **All Tier 3 gaps that affected backbone composition.** If the simulation proposed a backbone that included or excluded a process based on a Tier 3 gap, the gap goes to validation. *"Our analysis suggested X. Is that right?"*
 - **All Tier 2 inferences that affected backbone composition.** Same logic, lower confidence — even more important to validate.
-- **Specific cross-domain dependencies the redo identified or missed.** The redo's workability check is the new methodology's signature move; the validation pass is the place to confirm whether the workability calls were right.
-- **The proposed CRM candidate set.** Validate whether the constraints inferred from the in-bounds material are correct, and whether the proposed candidates actually satisfy CBM's preferences.
+- **Specific cross-domain dependencies the simulation identified or missed.** The workability check is the new methodology's signature move; validation tests whether the workability calls were right.
+- **The proposed CRM candidate set.** Validate whether the constraints inferred from the in-bounds material are correct.
+
+**Always carried (the operational-claims dimension — new in v0.3):**
+
+- **The simulator's major operational claims about the client.** What did the simulation conclude about how the client operates, who owns what, what the funding model looks like, what the staffing structure is, what processes occur in what order? These claims may have been generated as Tier 1 (direct from in-bounds material) or Tier 2 (inferred from positive support), but the simulator could still have misread the source material or generated something the source material doesn't quite say. The validation pass tests these claims against the real client's reality, not just against the gap log.
+- **Patterns the simulator identified as typical of the org type.** When the simulator drew on library Section A content or general consultant judgment, those generalizations should be tested against the real client. Even if a generalization is "typical," it may not apply to this specific client.
+
+**Conditionally carried:**
+
+- **Open library-Section-B observations.** If the simulation drew on Section B content (single-instance observations from prior engagements), the validation pass tests whether those observations apply to the current client.
+- **Process-granularity decisions.** Where the simulator combined or split processes during between-sessions work, the granularity decisions are tested.
 
 ### 7.4 What stays out of the validation pass
 
-- Methodology meta-questions ("did this work better?"). The validation pass tests substantive findings, not methodological self-assessment.
-- Open-ended exploration ("what else should we know?"). The conversation has a defined scope; expanding it defeats the discipline.
-- Anything that would meaningfully consume CBM's time. The validation pass is a courtesy and a sanity check, not a workload.
+- **Methodology meta-questions** ("did the methodology work better?"). The validation pass tests substantive findings about the client, not methodological self-assessment.
+- **Anything that would meaningfully consume client time beyond the documented budget.** The validation pass is a sanity check, not a workload.
 
 ### 7.5 What to do with validation pass results
 
-The findings document records both the redo's conclusions and the validation pass's confirmations or corrections. Where validation pass and redo agree, the redo's conclusion stands. Where they conflict, the validation pass wins and the redo's conclusion is documented as an error.
+The findings document records both the simulation's conclusions and the validation pass's confirmations or corrections. Where validation pass and simulation agree, the simulation's conclusion stands. Where they conflict, the validation pass wins and the simulation's conclusion is documented as an error.
 
-A validation pass that produces many conflicts is a strong signal that the new Phase 1 has problems. A validation pass that produces zero conflicts is suspicious — either CBM rubber-stamped (because they're being polite or don't have time) or the redo somehow avoided all the places where it could be wrong, which is unlikely.
+A validation pass that produces many conflicts is a strong signal that Phase 1 has problems. A validation pass that produces zero conflicts is suspicious — either the client rubber-stamped (because they're being polite or don't have time) or the simulation somehow avoided all the places where it could be wrong, which is unlikely.
+
+### 7.6 Multi-stakeholder validation as the default standard (v0.3 addition)
+
+For methodology tests that support adoption decisions (i.e., tests whose findings will be used to recommend continuing, pausing, or rolling out the methodology), **multi-stakeholder validation is the default standard.** A single-stakeholder validation pass is a research stopgap, not a substitute.
+
+**Why multi-stakeholder is the default:**
+
+- Single-stakeholder validation reflects one perspective on operational reality. Different stakeholders within an organization frequently have different views on how the work actually happens, who owns what, and what's mission-critical. A multi-stakeholder pass surfaces variations that single-stakeholder validation cannot.
+- The internal validation pass conducted in the CBM redo (Step 8) acknowledged in §1 that a separate stakeholder might produce different answers. The redo's findings are signal but bounded by this limitation.
+
+**Stakeholder selection for multi-stakeholder validation:**
+
+Select stakeholders who together cover the operational territory the simulation made claims about. Typical selection:
+
+- **Operational owner of the central work.** For nonprofit mentoring orgs, this is typically the program director or matching coordinator.
+- **Operational owner of an adjacent function the simulation classified.** For nonprofit mentoring orgs, this is often the funding coordinator (since funding work was part of the simulation's scope).
+- **Strategic perspective when relevant.** For multi-stakeholder organizations with significant board involvement, a board member or executive director may be appropriate for strategic-fit questions.
+
+Three stakeholders is typically sufficient. More than three creates coordination overhead that exceeds the validation pass's value. Fewer than two is single-stakeholder territory.
+
+**For research-stopgap (single-stakeholder) form:**
+
+When multi-stakeholder validation is infeasible (e.g., during early research before broader engagement is justified), single-stakeholder validation is permitted **with explicit documentation of the limit**. The findings document must note that the validation pass was single-stakeholder and that a separate stakeholder might produce different answers. Findings derived from single-stakeholder validation should not support adoption decisions; they should support continued research.
+
+**The CBM redo's validation pass (Step 8)** was conducted as research-stopgap form (single-stakeholder, Doug as CBM operational owner) under v0.2 of these ground rules, before the v0.3 multi-stakeholder default existed. This is documented in `cbm-redo-step-9-final-findings.md` §6.4 as a step that should be followed up with a multi-stakeholder pass at the conclusion of the Phases 2–5 extension.
+
+### 7.7 What to do with validation pass results (renumbered from 7.5 in v0.3)
+
+(Content as in §7.5 above; this section is renumbered for clarity since §7.6 was added.)
 
 ---
 
