@@ -21,10 +21,13 @@ DigitalOcean Droplet via SSH, using the official EspoCRM installer script
 
 ```
 espo_impl/core/deploy_manager.py       # SSH execution, phase logic, config I/O
+espo_impl/core/upgrade_manager.py      # In-place upgrade phases + version detection
 espo_impl/core/models.py               # DeployConfig dataclass
 espo_impl/workers/deploy_worker.py     # DeployWorker + CertCheckWorker (QThread)
+espo_impl/workers/upgrade_worker.py    # UpgradeWorker + VersionCheckWorker (QThread)
 espo_impl/ui/deploy_wizard.py          # Six-step Setup Wizard modal dialog
-espo_impl/ui/deploy_dashboard.py       # Phase cards, log window, cert badge
+espo_impl/ui/deploy_dashboard.py       # Phase cards, log, cert badge, version badge
+espo_impl/ui/upgrade_dashboard.py      # Upgrade modal dialog
 espo_impl/ui/deploy_panel.py           # Context-switching panel in main window
 ```
 
@@ -48,6 +51,10 @@ class DeployConfig:
     admin_email: str             # EspoCRM admin email
     cert_expiry_date: str | None # SSL cert expiry (YYYY-MM-DD), set by Phase 3
     deployed_at: str | None      # ISO 8601 timestamp of last deployment
+    current_espocrm_version: str | None  # e.g., "8.4.0" — refreshed by VersionCheckWorker
+    latest_espocrm_version: str | None   # Latest stable from release-info.json
+    last_upgrade_at: str | None          # ISO 8601 timestamp of last upgrade
+    last_backup_paths: list[str]         # Recent /var/backups/espocrm/* paths (last 3)
 
     full_domain -> str           # Property: "{subdomain}.{base_domain}"
 ```
@@ -351,6 +358,83 @@ The instance profile URL is updated only here — never inside
 
 ---
 
+## 10a. Upgrade Feature (`core/upgrade_manager.py`)
+
+In-place upgrade of an already-deployed EspoCRM instance. Runs the
+EspoCRM CLI upgrader inside the running container after taking a
+database + data-volume backup. Mirrors the deploy_manager.py phase
+pattern.
+
+### 10a.1 Version Helpers
+
+```python
+def parse_version(value: str) -> tuple[int, int, int] | None
+def is_upgrade_available(current: str | None, latest: str | None) -> bool
+def is_major_upgrade(current: str | None, latest: str | None) -> bool
+```
+
+`parse_version` extracts a semver triple from any string containing
+`N.N.N`. `is_major_upgrade` returns True only when the major component
+increases.
+
+### 10a.2 Version Detection
+
+```python
+def get_current_version(ssh, log_callback=None) -> str | None
+def get_latest_version(timeout: int = 10) -> str | None
+```
+
+`get_current_version` runs `docker compose exec -T espocrm` and greps
+the running container's `data/config.php` for the version string.
+`get_latest_version` fetches `https://www.espocrm.com/downloads/release-info.json`
+and tries the keys `version`, `stable`, `latest` in order.
+
+### 10a.3 Upgrade Phases
+
+| Phase | Function | What it does |
+|-------|----------|---------------|
+| 1 | `phase1_pre_upgrade_checks` | Verify container is up; read current version; require ≥ 2 GB free on `/` |
+| 2 | `phase2_backup` | `mkdir /var/backups/espocrm/{ts}/`, `mariadb-dump \| gzip`, `tar -czf data.tar.gz`, prune to last 3 |
+| 3 | `phase3_run_upgrade` | `docker exec -u www-data espocrm php command.php upgrade -y`, then `clear-cache`, then re-read version |
+| 4 | `phase4_verify_upgrade` | Containers up, HTTPS 200, login page renders, version reads back |
+
+The MariaDB root password is passed via `MYSQL_PWD` env var on the
+`docker compose exec` and masked in the log via `mask_credentials()`.
+`BACKUP_RETENTION = 3` is the constant controlling the retention cap.
+
+### 10a.4 Upgrade Worker
+
+```python
+class UpgradeWorker(QThread):
+    log_line = Signal(str, str)
+    phase_started = Signal(int)
+    phase_completed = Signal(int)
+    phase_failed = Signal(int, str)
+    version_detected = Signal(str, str)   # current, latest
+    verify_results = Signal(list)
+    upgrade_finished = Signal(bool)
+```
+
+Saves `DeployConfig` after each phase so a failure mid-flow leaves the
+recorded state consistent with what actually ran.
+
+### 10a.5 VersionCheckWorker
+
+Same shape as `CertCheckWorker`. Runs each time the Deploy panel is
+shown for a deployed instance; emits `versions_detected(current, latest)`.
+The dashboard persists the result back to `DeployConfig` and updates the
+"EspoCRM X.Y.Z → A.B.C available" badge in the Environment header.
+
+### 10a.6 Upgrade Dashboard
+
+Modal `QDialog` with a Versions header, four `PhaseCard` widgets, log
+window, and a single Run Upgrade button. Two confirmation modals can
+intervene before the worker starts:
+- Major-version warning when `is_major_upgrade` is true
+- "No upgrade detected" prompt when versions appear equal
+
+---
+
 ## 11. Instance Panel Filter
 
 `instance_panel._load_instances()` skips files where `path.stem`
@@ -380,8 +464,22 @@ Tests in `tests/test_deploy_manager.py`:
 | Password masking | 5 | Each credential type, non-credential text, empty passwords |
 | Certificate expiry | 4 | Future date, past date, None input, correct calculation |
 
-SSH phase functions are not unit-tested — they require a live server and
-are validated by manual integration testing against a real Droplet.
+Tests in `tests/test_upgrade_manager.py`:
+
+| Category | Tests | What's Covered |
+|----------|-------|---------------|
+| Version parsing | 6 | Semver, `v` prefix, embedded version strings, malformed input |
+| Upgrade detection | 6 | `is_upgrade_available` and `is_major_upgrade` paths |
+| Phase 1 — pre-flight | 5 | Compose missing, container not running, version unreadable, success, low-disk |
+| Phase 2 — backup | 4 | Path recorded, dump failure, retention pruning, no-op under limit |
+| Phase 3 — upgrade | 2 | Success updates version + timestamp, "no upgrade" detection |
+| Phase 4 — verify | 1 | All four checks pass |
+
+SSH phase functions are not exercised against a real server in unit
+tests — they use `unittest.mock.patch` over `run_remote`. The `php
+command.php upgrade` invocation, the mariadb-dump pipe, and the
+release-info JSON shape are validated by manual integration testing
+against a live Droplet.
 
 ---
 

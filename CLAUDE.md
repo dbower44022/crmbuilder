@@ -65,7 +65,8 @@ espo_impl/
 │   ├── comparator.py  # Field spec vs API state comparison
 │   ├── reporter.py    # .log and .json report generation
 │   ├── import_manager.py # Data import CHECK→ACT orchestration
-│   └── deploy_manager.py # SSH execution, phase logic, deploy config read/write
+│   ├── deploy_manager.py # SSH execution, phase logic, deploy config read/write
+│   └── upgrade_manager.py # EspoCRM in-place upgrade (CLI upgrader inside container)
 ├── ui/                # PySide6 GUI components
 │   ├── main_window.py # Top-level window + state machine
 │   ├── instance_panel.py # Instance list + CRUD
@@ -76,11 +77,13 @@ espo_impl/
 │   ├── import_dialog.py # Four-step data import wizard
 │   ├── deploy_panel.py  # Deploy section in main window (context-driven)
 │   ├── deploy_wizard.py # Six-step Setup Wizard modal dialog
-│   └── deploy_dashboard.py # Deployment Dashboard (phases, log, cert status)
+│   ├── deploy_dashboard.py # Deployment Dashboard (phases, log, cert status)
+│   └── upgrade_dashboard.py # Upgrade modal dialog (phases, log, version display)
 └── workers/
     ├── run_worker.py  # QThread background operations
     ├── import_worker.py # QThread import background worker
-    └── deploy_worker.py # QThread background worker for SSH deployment phases
+    ├── deploy_worker.py # QThread background worker for SSH deployment phases
+    └── upgrade_worker.py # QThread upgrade worker + VersionCheckWorker
 
 data/
 └── instances/
@@ -148,6 +151,24 @@ PRDs/
   panel is shown; result stored in `DeployConfig.cert_expiry_date`
 - `deploy_worker.py` follows the same QThread pattern as `run_worker.py` and
   `import_worker.py` — emit signals for log lines, phase status, and completion
+
+## Upgrade Feature Patterns
+
+- The Upgrade EspoCRM button on the Deploy panel opens a modal dashboard
+  that runs four phases: pre-upgrade checks, backup, run upgrade, verify
+- Upgrades use the EspoCRM CLI upgrader (`docker exec espocrm php
+  command.php upgrade -y`) — never re-run the installer with `--clean`,
+  which would wipe data
+- Phase 2 takes a database dump (`mariadb-dump`) and tar of the data
+  volume to `/var/backups/espocrm/{timestamp}/`; only the last 3 backups
+  are retained
+- A background `VersionCheckWorker` runs each time the Deploy panel is
+  shown for a deployed instance. Current version is read from inside
+  the container; latest version comes from EspoCRM's release-info JSON
+- The upgrade flow does not re-apply YAML programs — Configure remains
+  a separate user action
+- Major-version jumps (e.g., 7.x → 8.x) trigger a confirmation modal
+  before the worker starts; minor/patch upgrades proceed directly
 
 ## YAML Schema v1.1 — Implementation Complete
 
@@ -318,5 +339,8 @@ drive changes to this methodology before the next domain is piloted.
 - Do not support HTTP-only or custom certificate SSL modes in v1.0
 - Do not log credential values — mask all passwords in SSH command strings
   before emitting them to the log window
+- Do not re-run `install.sh --clean` to "upgrade" an existing deployment —
+  it is destructive. Use `upgrade_manager.phase3_run_upgrade` which calls
+  the EspoCRM CLI upgrader inside the container
 - Do not add new top-level directories — all deployment code lives within
   the existing `espo_impl/` structure

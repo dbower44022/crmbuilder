@@ -242,6 +242,10 @@ After the first deployment, the Deploy panel shows the dashboard:
   - Green: valid (more than 30 days remaining)
   - Yellow: expiring soon (14–30 days)
   - Red: critical — renew now (less than 14 days)
+- EspoCRM version badge:
+  - Green: "EspoCRM X.Y.Z — up to date"
+  - Orange: "EspoCRM X.Y.Z → A.B.C available" when an upgrade is available
+  - Grey: "EspoCRM version: unknown" before the first version check
 
 **Phase Status Cards**
 Each phase shows its status: Not Started, Running, Completed, or Failed.
@@ -251,6 +255,8 @@ Failed phases show error detail.
 - **Deploy All** — runs all four phases from the beginning
 - **Run Verification Only** — runs Phase 4 checks without redeploying
 - **Retry Failed Phase** — restarts from the phase that failed
+- **Upgrade EspoCRM** — opens the upgrade modal (see *Upgrading EspoCRM* below)
+- **Recovery & Reset** — admin credential reset and full database reset
 
 **Log Window**
 Streams live output from all phases. Copy to clipboard or save to file
@@ -285,6 +291,87 @@ the certificate expiry date each time you select the instance, and shows
 a warning if renewal may have silently failed.
 
 You do not need to manage certificates manually.
+
+---
+
+## Upgrading EspoCRM
+
+CRM Builder can upgrade an already-deployed EspoCRM instance to the
+latest stable release. Each time you select a deployed instance, CRM
+Builder checks the EspoCRM release feed and the running container in
+the background; the version badge in the Deploy panel header tells
+you whether an upgrade is available.
+
+Click **Upgrade EspoCRM** in the Deploy panel to open the upgrade
+modal.
+
+### What the Upgrade Does
+
+The upgrade flow runs four phases:
+
+1. **Pre-upgrade Checks** — confirms the EspoCRM container is running,
+   reads the current version, and verifies at least 2 GB of free disk
+   space on the server.
+2. **Backup** — runs `mariadb-dump` of the EspoCRM database and a tar
+   archive of the data volume to `/var/backups/espocrm/{timestamp}/`
+   on the server. Only the **last 3 backups** are kept; older backups
+   are deleted automatically to bound disk use.
+3. **Run Upgrade** — runs the official EspoCRM CLI upgrader inside the
+   running container (`php command.php upgrade -y`) and clears the
+   application cache. EspoCRM's own upgrader handles database schema
+   migrations, file replacement, and custom-code preservation.
+4. **Verification** — confirms the containers are up, the site responds
+   over HTTPS, the login page renders, and the new version reads back
+   from inside the container.
+
+### Major-Version Upgrades
+
+If the available upgrade crosses a major version boundary (for example,
+7.5.12 → 8.0.0), CRM Builder shows a confirmation dialog warning that
+major upgrades may introduce breaking changes and recommending you
+review the EspoCRM release notes first. Click **Yes** to proceed or
+**Cancel** to back out.
+
+Minor and patch upgrades (e.g. 8.4.0 → 8.5.1) proceed without an
+extra confirmation.
+
+### After the Upgrade
+
+The dashboard's version badge refreshes to show the new current
+version, and the upgrade timestamp is saved in the deploy config.
+
+The upgrade flow does **not** re-apply your YAML programs. If a new
+EspoCRM release changes how a field or layout is configured, run
+**Validate** and **Run** in CRM Builder against your existing program
+files to bring the configuration back into line.
+
+### Rolling Back
+
+If the upgrade verification fails or the application doesn't behave
+correctly, the most recent backups remain on the server in
+`/var/backups/espocrm/`. Each contains:
+- `db.sql.gz` — gzipped MariaDB dump
+- `data.tar.gz` — tar archive of the EspoCRM data volume
+
+Restoring is a manual SSH operation — CRM Builder does not yet provide
+a one-click restore. The high-level steps:
+
+```bash
+# Stop containers
+cd /var/www/espocrm && docker compose down
+
+# Restore data volume
+tar -xzf /var/backups/espocrm/<timestamp>/data.tar.gz -C /var/www/espocrm
+
+# Restore database
+docker compose up -d espocrm-db
+gunzip < /var/backups/espocrm/<timestamp>/db.sql.gz \
+  | docker compose exec -T -e MYSQL_PWD=<root-password> espocrm-db \
+    mariadb -u root espocrm
+
+# Bring everything back up
+docker compose up -d
+```
 
 ---
 
