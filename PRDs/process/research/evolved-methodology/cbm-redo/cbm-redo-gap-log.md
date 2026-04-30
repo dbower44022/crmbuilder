@@ -3,8 +3,8 @@
 **Document type:** Captured execution artifact (rolling, updated through redo execution)
 **Repository:** `crmbuilder`
 **Path:** `PRDs/process/research/evolved-methodology/cbm-redo/cbm-redo-gap-log.md`
-**Last Updated:** 04-30-26 19:15
-**Version:** 0.2 (Session 1 + Step 4 entries)
+**Last Updated:** 04-30-26 19:55
+**Version:** 0.3 (Session 1 + Step 4 + Session 2 entries)
 
 ---
 
@@ -24,6 +24,7 @@ This document grows through Steps 3, 4, 5, and (if applicable) 6 of the executio
 |---------|------|--------|---------|
 | 0.1 | 04-30-26 18:30 | Doug Bower / Claude | Initial creation. Six entries from Step 3 (Session 1 simulation): G-001 through G-006. |
 | 0.2 | 04-30-26 19:15 | Doug Bower / Claude | Two entries added from Step 4 (between-sessions work): G-007 (Mentor Application & Initial Activation combination), G-008 (Client Application & Intake combination). Both are consultant judgment calls about process combination for iteration 1. |
+| 0.3 | 04-30-26 19:55 | Doug Bower / Claude | One new entry added from Step 5 (Session 2 simulation): G-009 (CiviCRM senior-accessibility evaluation criterion). G-007 and G-008 marked as resolved by Session 2 — client pushed back on the combinations and the backbone was updated to carry them as separate processes. The classification of donor recording also changed from deferred to supporting based on client pushback in Session 2. |
 
 ---
 
@@ -37,6 +38,29 @@ This document grows through Steps 3, 4, 5, and (if applicable) 6 of the executio
 - **G-008** — Client Application & Intake: parallel consultant judgment call combining Application and Intake/Qualification into a single iteration-1 process. The simulated client in Session 1 described these as distinct activities with the boundary acknowledged as fuzzy (G-001 is related). The combination simplifies the iteration 1 backbone; same question for client review.
 
 Both G-007 and G-008 are explicitly carried forward to Session 2 (Step 5) for client verification. They may also be carried to the validation pass with CBM (Step 8) depending on how Session 2 resolves them.
+
+**Version 0.3 (04-30-26 19:55):** One new entry from Step 5 (Session 2 simulation, recorded in `cbm-redo-step-5-session-2.md`):
+
+- **G-009** — CiviCRM senior-accessibility evaluation criterion: in Session 2 Part C, the client questioned including CiviCRM in the candidate set on senior-accessibility-of-UI grounds. After discussion the client agreed to keep CiviCRM in but with the explicit understanding that senior-accessibility would be an evaluation criterion surfaced during iteration 1 use. This is a finding worth capturing because it shapes what iteration 1's evaluation has to make visible — not just feature-by-feature comparison but specifically how each CRM feels in use to senior users.
+
+Resolutions of prior gaps in Session 2:
+
+- **G-007 resolved.** Client pushback in Session 2 §3.4 established that Mentor Application and Mentor Initial Activation are loosely coupled in time (weeks may pass between application and review; weeks may pass between review and activation). The consultant accepted the client's correction and updated the proposed backbone to carry them as two separate processes rather than one combined process. The simplification was tested and found wanting, and the test surfaced cleanly. **No carry-forward to validation pass needed.**
+- **G-008 resolved.** Same logic for Client Application and Client Intake — pushback from the client led to splitting them. **No carry-forward to validation pass needed.**
+
+Reclassification driven by Session 2:
+
+- **Donor Recording** moved from deferred to supporting per client pushback in Session 2 §3.5. The other three Donors/Funding processes (donor outreach, stewardship, reporting) remain deferred because they depend on donor recording being in place first. This is not a new gap; it's a classification update reflecting the deferred-not-dismissed framing.
+
+Updated carry-forward to validation pass:
+
+- **Definitely carry forward:** G-001 (intake/reactivation boundary), G-003 (donor scope between operational team and board), G-006 (where the operational/strategic line falls). All three remain — Session 2 didn't fully resolve them; they may need real-CBM verification.
+- **Carry forward only if relevant to iteration 1:** G-002 (joint events), G-004 (workshop follow-up). Iteration 1 does not include Workshops or Partner joint events, so these do not need carry-forward in this round.
+- **Carry forward conditional on iteration 1 outcome:** G-009 (senior-accessibility) becomes an iteration 1 evaluation criterion rather than a pre-deployment validation question.
+- **Resolved, no carry-forward:** G-007, G-008 (resolved in Session 2).
+- **Not relevant to validation pass:** G-005 (consultant process question).
+
+**Best estimate of validation pass scope: 3 substantive questions** (G-001, G-003, G-006), plus a brief check that the new methodology's overall approach feels reasonable. Tractable for a 30–60 minute conversation per ground rules §7.
 
 ---
 
@@ -110,67 +134,85 @@ Each entry uses the format specified in `cbm-redo-ground-rules.md` §4.2:
 - **What the simulator did:** Captured the general framing without forcing specifics. This is acceptable for Phase 1; the line has to get clearer for iteration 1's backbone composition (whether and which donor processes are in iteration 1) but not for the Phase 1 outputs themselves.
 - **Carried forward to validation pass with CBM?** Yes — paired with G-003 as a single validation question: "where does the line fall between operational donor work that the CRM should track and strategic donor work that lives outside the operational team's CRM use?"
 
-### G-007 — Mentor Application & Initial Activation combination
+### G-007 — Mentor Application & Initial Activation combination — RESOLVED in Session 2
 
 - **Session and moment:** Step 4, between-sessions process classification (§2.3 of `cbm-redo-step-4-between-sessions.md`)
 - **Question or proposal that hit the gap:** The proposed Prioritized Backbone needs a mission-critical process that produces matchable mentor records. The simulated client in Session 1 described Application/Screening and Onboarding/Training as separate activities. The consultant's analysis: full onboarding/training is supporting, but a *minimum activation* portion (enough to mark a screened mentor as available-for-matching) is mission-critical. The combination question: should iteration 1 carry one combined process (Application + Initial Activation) or two separate processes (Application as mission-critical, Initial Activation as a sub-component)?
 - **What the in-bounds material does say:** The current Master PRD describes Provisional → Active → Inactive → Departed mentor lifecycle states, suggesting that activation is a real distinct event after application/screening. The legacy materials don't specify the boundary. The simulated client in Session 1 described five activities including Application/Screening and Onboarding/Training as separate but did not explicitly address whether activation is a sub-step of onboarding or a separate event.
-- **Why it's a gap:** Tier 2 — consultant judgment call about process granularity for iteration 1. The combination simplifies the backbone but elides a real distinction CBM may consider important.
-- **What the simulator did:** Proposed the combined form for iteration 1 with the explicit acknowledgment that this is a consultant judgment call; the client may push back in Session 2 and want the activities separated. The proposed Prioritized Backbone §4.3.1 explicitly references this gap.
-- **Carried forward to validation pass with CBM?** Conditional. If Session 2 confirms the combination, no validation pass needed. If Session 2 surfaces uncertainty about whether the combination matches CBM's operational reality, validate with CBM.
+- **Why it's a gap:** Tier 2 — consultant judgment call about process granularity for iteration 1. The combination simplified the backbone but elided a real distinction CBM may consider important.
+- **What the simulator did:** Proposed the combined form for iteration 1 with the explicit acknowledgment that this was a consultant judgment call. The proposed Prioritized Backbone §4.3.1 explicitly referenced this gap.
+- **Resolution in Session 2:** The client pushed back in Session 2 §3.4, establishing that Mentor Application and Mentor Initial Activation are loosely coupled in time at CBM (weeks may pass between application and review; weeks between review and activation). The combination was incorrect for CBM's operational reality. The consultant accepted the correction and the proposed backbone was updated to carry them as two separate processes — Mentor Application and Mentor Initial Activation — both classified mission-critical for iteration 1. The simplification failed at first contact with the client; this is the right outcome.
+- **Carried forward to validation pass with CBM?** No — resolved in Session 2.
 
-### G-008 — Client Application & Intake combination
+### G-008 — Client Application & Intake combination — RESOLVED in Session 2
 
 - **Session and moment:** Step 4, between-sessions process classification (§2.4 of `cbm-redo-step-4-between-sessions.md`)
 - **Question or proposal that hit the gap:** Parallel to G-007 for the client side. The proposed backbone needs a mission-critical process that produces matchable client records. The simulated client described Application and Intake/Qualification as distinct activities (Session 1 §4.4) with the boundary acknowledged as fuzzy. The combination question: should iteration 1 carry one combined process or two?
 - **What the in-bounds material does say:** The current Master PRD describes a client lifecycle (applicant → active → inactive → closed) and the existing methodology distinguishes Application from Intake. The simulated client in Session 1 indicated the boundary is fuzzy — *"Intake is its own thing... but I can see the case either way; the boundary is fuzzy."*
-- **Why it's a gap:** Tier 2 — consultant judgment call. The simulated client themselves acknowledged the boundary is unclear; the consultant's combination call leverages that ambiguity to simplify the backbone but may not be what CBM wants.
-- **What the simulator did:** Proposed the combined form for iteration 1 with explicit acknowledgment that this is a consultant judgment call. The proposed Prioritized Backbone §4.3.2 explicitly references this gap.
-- **Carried forward to validation pass with CBM?** Conditional, same logic as G-007.
+- **Why it's a gap:** Tier 2 — consultant judgment call. The simulated client themselves acknowledged the boundary was unclear; the consultant's combination call leveraged that ambiguity to simplify the backbone but didn't match what CBM wanted.
+- **What the simulator did:** Proposed the combined form for iteration 1 with explicit acknowledgment that this was a consultant judgment call. The proposed Prioritized Backbone §4.3.2 explicitly referenced this gap.
+- **Resolution in Session 2:** Client applied the same loose-coupling-in-time framing from G-007 and the consultant accepted the same correction. Backbone updated to carry Client Application and Client Intake as two separate mission-critical processes for iteration 1.
+- **Carried forward to validation pass with CBM?** No — resolved in Session 2.
+
+### G-009 — CiviCRM senior-accessibility evaluation criterion
+
+- **Session and moment:** Step 5, Session 2 Part C (CRM candidate review, §4.3 of `cbm-redo-step-5-session-2.md`)
+- **Question or proposal that hit the gap:** Client questioned CiviCRM's inclusion in the candidate set on senior-accessibility-of-UI grounds, citing prior experience that CiviCRM's interface is dated and may not meet CBM's senior-accessible-UI requirement.
+- **What the in-bounds material does say:** The legacy Master PRD §3 establishes senior-accessible UI as a non-negotiable principle. The Archive's prior CRM evaluation document also rates CiviCRM's UI as "dated, complex" relative to EspoCRM's "clean, modern, mobile-ready" — but per ground rules §2.2, the evaluative conclusions of that document are out-of-bounds; the consultant should not have inherited that judgment. The client's senior-accessibility concern is independent and based on the client's own prior experience.
+- **Why it's a gap:** Tier 2 — the client has a prior about CiviCRM that the consultant cannot verify against in-bounds material without using the prior CRM evaluation's conclusion (which is out-of-bounds). The consultant accepted the client's framing as legitimate operational concern.
+- **What the simulator did:** Reframed the candidate-set debate as an evaluation-criterion clarification. CiviCRM stays in the candidate set; senior-accessibility becomes an explicit evaluation criterion that iteration 1's hands-on use will test.
+- **Carried forward to validation pass with CBM?** No — this is an iteration 1 evaluation criterion rather than a pre-deployment validation question. The iteration 1 evaluation will surface whether CBM's mentors find each candidate's UI senior-accessible enough for the work.
 
 ---
 
 ## 3. Gap Profile Observations
 
-### 3.1 Gap density
+### 3.1 Gap density and resolution
 
-Eight gaps total (six from Session 1 simulation, two from between-sessions consultant work). Per ground rules §4.1, this remains a moderate, expected number — not zero (which would be suspicious), not so many that the steps couldn't proceed.
+Nine entries logged across Steps 3, 4, and 5 of the redo. Two of those (G-007, G-008) were resolved in Session 2 — the consultant's between-sessions judgment calls were tested by client review and corrected. Seven entries remain open in some form.
+
+The two resolutions are themselves a healthy sign. The methodology produced consultant judgment calls during between-sessions work, the calls were tested in Session 2, and the test surfaced cleanly. This is the iterative model working as intended — proposals are made, tested, and corrected through client engagement rather than locked in upfront.
 
 ### 3.2 Gap clustering
 
-The eight gaps cluster around three themes:
+The nine entries cluster around four themes:
 
-**Cross-domain boundaries** (G-001, G-002, G-004, G-006) — places where the client's natural categorization of work has fuzzy edges between domains, and the in-bounds material doesn't resolve them. Consistent with the new methodology's expectation that boundary ambiguity surfaces and gets resolved through workability checks or iteration deployment, not through upfront elicitation.
+**Cross-domain boundaries** (G-001, G-002, G-004, G-006) — places where the client's natural categorization of work has fuzzy edges between domains. Consistent with the methodology's expectation that boundary ambiguity surfaces during elicitation and gets resolved through workability checks or iteration deployment.
 
-**Operational-strategic split** (G-003, G-006) — places where work spans the boundary between the operational team's CRM-trackable work and the board's relationship work. A real organizational pattern not unique to CBM.
+**Operational-strategic split** (G-003, G-006) — places where work spans the boundary between operational team's CRM-trackable work and board's relationship work. Relevant primarily for Donors/Funding domain.
 
-**Process-granularity judgment calls** (G-007, G-008) — places where the consultant's between-sessions work made simplification choices that may or may not match the client's operational reality. This is a new theme that emerged in Step 4 and reflects how the proposed backbone moves from elicited domains to constructed iteration scope.
+**Process-granularity judgment calls** (G-007, G-008) — both resolved in Session 2 as the simplifications failed at first contact with the client.
+
+**Empirical-comparison criteria** (G-009) — surfaced in Session 2 when the client's prior experience with a candidate raised a concern that the iteration 1 evaluation must specifically test.
 
 ### 3.3 Methodology-flagged moments
 
-The Phase 1 guide flags certain moments as discipline-sensitive: confident proposals, push-back, deferred-vs-elicited transitions. None of the Session 1 gaps occurred at those moments because Session 1 doesn't include the confident proposal moment (that's Session 2).
+The Phase 1 guide flags certain moments as discipline-sensitive: confident proposals, push-back, deferred-vs-elicited transitions. Session 2's Part B exercised all three:
 
-The Step 4 gaps (G-007, G-008) occurred at a different kind of discipline-sensitive moment: the between-sessions construction of the proposed backbone, where consultant judgment shapes the iteration 1 scope. The fact that gaps surfaced here is healthy — it shows the consultant is not silently smoothing over judgment calls but recording them for client verification.
+- The confident proposal opening (§3.2 of Step 5) landed cleanly — the client engaged rather than rubber-stamped
+- The push-back-and-engage moment (§3.4 — process combinations) led to a substantive change to the backbone
+- The deferred-not-dismissed transition (§3.5 — Donors/Funding) led to the donor recording reclassification
 
-### 3.4 Implications for Step 5 (Session 2 simulation)
+None of those moments produced a new gap. The discipline held.
 
-The proposed Prioritized Backbone presented in Session 2 carries the eight gaps with it. Session 2 has to handle:
+### 3.4 Implications for Steps 7 and 8
 
-- **G-007 and G-008 directly** — the consultant should present the combined form and explicitly invite the client to push back if the combination doesn't match operational reality.
-- **G-001, G-002, G-004 indirectly** — these affect what's deferred vs. supporting; the consultant should be ready to explain the deferral rationale per Phase 1 guide §5.4.
-- **G-003 and G-006 indirectly** — these affect why all Donors/Funding work is deferred; client may push back.
+For Step 7 (pre-validation findings draft):
 
-### 3.5 Implications for the validation pass with CBM (Step 8)
+- The redo's Phase 1 outputs are complete (Mission Statement, Domain Inventory, Prioritized Backbone, Initial CRM Candidate Set)
+- The gap log has nine entries with clear classification of which carry forward to validation
+- The comparison criteria from ground rules §5.2 should be applied to what was produced
 
-Of the eight gaps:
+For Step 8 (validation pass with CBM):
 
-- **Definitely carry forward:** G-001, G-003, G-006 (intake/reactivation boundary, donor scope, where the operational/strategic line falls)
-- **Carry forward only if relevant to iteration 1:** G-002, G-004 (joint events, workshop follow-up — only matter if those domains end up in iteration 1)
-- **Carry forward conditional on Session 2 outcome:** G-007, G-008 (process combinations — if Session 2 resolves cleanly, no validation pass needed; if Session 2 surfaces uncertainty, validate)
-- **Do not carry forward:** G-005 (about consultant's between-sessions process, not about findings to validate)
+- **Definitely carry forward:** G-001, G-003, G-006 (intake/reactivation boundary, donor scope, operational/strategic line)
+- **Carry forward only if relevant to iteration 1:** G-002, G-004 (joint events, workshop follow-up — not relevant given iteration 1 scope)
+- **Carry forward conditional on iteration 1 outcome:** G-009 (becomes iteration 1 evaluation criterion, not a pre-deployment validation question)
+- **Resolved, no carry-forward:** G-007, G-008
+- **Not relevant to validation pass:** G-005
 
-Best estimate of the validation pass scope: 3–5 questions for CBM, focused on operational scope boundaries and process granularity.
+**Best estimate of validation pass scope: 3 substantive questions** (G-001, G-003, G-006) plus a brief check on the new methodology's overall approach. Tractable for a 30–60 minute conversation per ground rules §7.
 
 ---
 
-*End of document. Will be updated as Steps 5 and (if applicable) 6 add entries.*
+*End of document. May be updated by Step 6 if Session 3 occurs (it did not, per Step 5 §7.4).*
