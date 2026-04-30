@@ -5,8 +5,8 @@
 **Document type:** Active design work for an evolved methodology (research / not adopted)
 **Repository:** `crmbuilder`
 **Path:** `PRDs/process/research/evolved-methodology/phase-1-interview-guide.md`
-**Last Updated:** 04-30-26 16:10
-**Version:** 0.1 (initial draft)
+**Last Updated:** 04-30-26 23:45
+**Version:** 0.2 (revised after CBM redo and pattern library specification)
 
 ---
 
@@ -23,12 +23,23 @@ This guide is **provisional**. It has not been used in a real engagement; the fi
 | Version | Date | Author | Summary |
 |---------|------|--------|---------|
 | 0.1 | 04-30-26 16:10 | Doug Bower / Claude | Initial draft of the Phase 1 interview guide for Mission and Backbone Identification. Two-session structure with optional third, pattern-library-aware, structured guide with worked examples for hard moments. |
+| 0.2 | 04-30-26 23:45 | Doug Bower / Claude | Revised after CBM redo experiment and pattern library specification. Three substantive revisions: §2 pre-engagement reading scope expanded to include operational role definitions; §3 and §5 Tier 2 inference discipline tightened to require positive support in in-bounds material rather than pattern-matched plausibility; §8 pattern library handling rewritten to reflect the actual library mechanics from the spec. Several smaller clarifications elsewhere. |
 
 ---
 
 ## Change Log
 
 **Version 0.1 (04-30-26 16:10):** Initial creation. Establishes the operational script for Phase 1 of the evolved methodology. Two sessions plus between-session draft work; structured walkthroughs with worked example dialog for confident-proposal moments, push-back moments, and deferred-vs-elicited transitions. Pattern library handling is structural, with explicit fallback to consultant judgment when no entry exists. Failure modes are documented for the most common ways Phase 1 can go wrong. Output specifications cover the four Phase 1 outputs (Mission Statement, Domain Inventory, Prioritized Backbone, Initial CRM Candidate Set).
+
+**Version 0.2 (04-30-26 23:45):** Revised after the CBM redo experiment (`cbm-redo/`, completed 04-30-26) and the pattern library specification (`pattern-library-specification.md`, committed 04-30-26). Three substantive revisions:
+
+- **§2 (Pre-engagement preparation) revised** to include operational role definitions in pre-engagement reading scope. The CBM redo Step 8 §3 finding established that the v0.1 scope was too narrow — holding back the persona section of the Master PRD as "methodology-organized content" cost the simulator access to operational facts about role ownership (e.g., the Funding Coordinator role at CBM) that a real consultant would benefit from at engagement start. The revised scope distinguishes "operational facts about who owns what work" (in scope) from "methodology-decision content about how to organize that information" (out of scope).
+
+- **§3 and §5 (Session 1 and Session 2 discipline) revised** to tighten the Tier 2 inference rule. The v0.1 implicit standard allowed Tier 2 inferences when supporting content existed in the in-bounds material; the CBM redo Step 8 §2-3 findings established that "supporting content" was being interpreted as "pattern-matched plausibility from generic operations," which produced fabrications. The revised rule requires Tier 2 inferences to have **positive support in in-bounds material** rather than pattern-matched plausibility, and the rule is now made explicit in §3.5 and §5.4 rather than implicit.
+
+- **§8 (Pattern library handling) rewritten** to reflect actual library mechanics from the now-existing `pattern-library-specification.md`. The v0.1 §8 referenced the library as a future artifact with concrete handling for "no library entry" mode and aspirational handling for "library entry exists" mode. With the spec and first entry (`pattern-library-entry-nonprofit-mentoring.md`) now committed, §8 has been replaced with concrete consultation steps from spec §4.1 and §4.2, the Section A/B/C content treatment, and the library-backed-vs-judgment-only framing distinction from spec §4.3.
+
+Smaller clarifications elsewhere: §1.4 (reading order) updated to reference the pattern library specification as required reading; §2.2 (consult the pattern library) expanded with concrete steps; §11 (connection to Phase 2) lightly updated; §12 (gaps) updated to remove items now covered.
 
 ---
 
@@ -59,6 +70,8 @@ The primary reader is the CRM Builder consultant who will run the sessions. Reas
 
 Read the guide end-to-end before Session 1, even if Session 1 is far off. The Between-Sessions Work section in particular determines what notes to take during Session 1. Going in without knowing what the next session needs makes Session 1 less efficient.
 
+Also read `pattern-library-specification.md` before running this guide for any engagement. The pattern library mechanics shape pre-engagement reading (§2.2 of this guide) and between-sessions consultant work (§4 of this guide). Without familiarity with the spec, the guide's library references will not be actionable.
+
 ---
 
 ## 2. Pre-Engagement Preparation
@@ -71,17 +84,26 @@ Typical pre-engagement materials include the org's mission statement, organizati
 
 - **The mission statement as the org states it.** This is the starting point for the operational mission discussion. If it is vague or aspirational, plan to translate it during Session 1; if it is operational already, plan to confirm and use it.
 - **Org type and size signals.** These feed pattern library lookup and CRM candidate selection.
+- **Operational role definitions.** Read content that defines who owns what work — which person handles which function, who reports to whom, what the staffing structure is. This is *operational fact* and is in scope for pre-engagement reading even when it appears in methodology-organized form (e.g., a persona section of an existing PRD). The relevant line is "facts about who owns what work" (in scope) versus "methodology decisions about how to organize information about that work" (out of scope). Operational role facts surface assumptions that pattern-matching against generic operations would otherwise get wrong; see §9 (Failure Modes) and the pattern library entry for the org type.
 - **Any pre-existing CRM commitments.** If the client has already chosen a CRM, the engagement may be single-deploy rather than multi-deploy. See §10.5 for handling.
 
 ### 2.2 Consult the pattern library
 
-For the org type identified, look up the pattern library entry. Pattern library entries (when they exist) contain typical mission-critical processes for orgs of this type, common cross-domain handoffs, defaults that have proven workable, and CRM candidates that have served similar engagements well.
+For the org type identified, look up the pattern library entry per `pattern-library-specification.md` §4.1. Pattern library entries (when they exist) contain typical mission-critical processes for orgs of this type, common cross-domain handoffs, defaults that have proven workable, and CRM candidates that have served similar engagements well. Per the spec, each entry has three content sections: **A — Tested generalizations** (use as defaults with light verification), **B — Single-instance observations** (use as starting hypotheses to test, not as defaults), and **C — Disconfirmed observations** (read as warnings about plausible patterns that have failed at observed instances).
 
-**If a pattern library entry exists for this org type:** use it as the starting point for the proposed backbone draft. Do not commit to it before Session 1; the client may diverge from typical patterns in important ways.
+**If a pattern library entry exists for this org type:**
 
-**If no pattern library entry exists for this org type:** rely on consultant judgment, drawing on prior engagement experience with similar orgs. Mark the proposed backbone as low-confidence in Session 2; the client should know extra verification is warranted.
+1. Read the entry end-to-end. Treat Section A content as defaults the consultant can apply confidently subject to client verification; treat Section B content as hypotheses to surface during Session 1; treat Section C content as warnings about patterns that may seem plausible but have failed.
+2. Use the entry's content categories (1 — mission and operational center through 10 — common pitfalls) to inform what to listen for in Session 1.
+3. Note where the client's pre-engagement materials appear to differ from the entry. These are items to verify in Session 1, not defaults to apply.
 
-The pattern library is a future artifact. As of this guide's drafting, no library exists; all engagements operate in the "no entry exists" mode.
+**If no pattern library entry exists for this org type:**
+
+Operate in "no library entry" mode. Rely on consultant judgment, drawing on prior engagement experience with similar organizations. Mark the proposed backbone as low-confidence in Session 2 (per §8.1); the client should know extra verification is warranted. The lack of a matching entry is itself information — it suggests the engagement may produce content that becomes the seed of a new entry.
+
+**Guarding against pattern-matching against generic operations:**
+
+The single most important discipline at this step is recognizing that *plausible-sounding patterns from generic operations are not a substitute for verified content.* Library Section A is verified. Library Section B is hypothesis. Generic plausibility (no library reference) is neither — it is a confirmation-bias trap. When the consultant catches themselves reasoning *"this is what nonprofit organizations typically do,"* without library content backing it, the right response is to flag the inference as a question for Session 1 rather than to carry it forward as an assumption. The CBM redo experiment surfaced two specific fabrications that propagated through the simulation because this discipline was not explicit; see `cbm-redo/cbm-redo-step-8-validation-pass.md` §6.3.
 
 ### 2.3 Prepare a draft Domain Inventory
 
@@ -119,6 +141,20 @@ Session 1 has four parts:
 **Part D — Pre-existing CRM context and constraints (10–15 minutes).** What has the client already considered? What are the hard constraints?
 
 A typical session runs 90–120 minutes. Going significantly over is a signal that one of the parts is fighting back; see §9 (Failure Modes).
+
+### 3.2.1 Cross-cutting discipline — inferences require positive support
+
+Across all four parts of Session 1, the consultant maintains a discipline about how to handle inferences from what the client says.
+
+When the consultant draws a conclusion that goes beyond what the client directly stated, the conclusion qualifies as a **legitimate Tier 2 inference** only if it has *positive support in something the client said or in pre-engagement materials* — not if it is plausibility-by-pattern-match against generic operations for similar organizations.
+
+The distinction matters because plausibility-by-pattern-match is a confirmation-bias trap. *"Most nonprofits do X, so this nonprofit probably does X"* is generic pattern-matching, not verified content. It produces conclusions that often turn out to be wrong about the specific client and that propagate through subsequent methodology outputs unnoticed.
+
+**The rule:** if the consultant catches themselves about to write down or proceed on something the client did not explicitly say, ask: *"What did the client actually say that supports this?"* If the answer is *"Nothing directly, but it follows from how similar orgs typically operate,"* the conclusion is **not** a legitimate Tier 2 inference. Capture it as a question to ask explicitly in Session 1 (or in Session 2 if the moment has passed), or as a Tier 3 gap in the gap log if the client cannot answer.
+
+**Where this matters most:** Part C (process surfacing) is densest with inference opportunities because the consultant is mapping client-named activities onto methodology categories. Part B (domain identification) is also high-risk because category structures are tempting to apply against generic patterns. Parts A and D are lower-risk because they elicit directly from the client.
+
+**Source:** the CBM redo experiment surfaced that the v0.1 of this guide was implicitly tolerant of pattern-match-as-Tier-2. See `cbm-redo/cbm-redo-step-8-validation-pass.md` §2 and §3 for two specific cases (fit/no-fit clients; operational-strategic donor split) where pattern-matched plausibility was treated as Tier 2 and turned out to be wrong about the specific client.
 
 ### 3.3 Part A — Operational mission
 
@@ -337,6 +373,8 @@ Get explicit confirmation. Move on.
 
 This is the heart of Session 2. The consultant presents the proposed Prioritized Backbone confidently, with grounded reasoning, and invites correction.
 
+**Discipline reminder — what the consultant can and cannot claim.** When presenting the proposed backbone, the consultant separates content backed by Session 1 client statements (which can be presented confidently as "based on what you said") from content based on inference or pattern library Section A defaults (which can be presented confidently but with a different framing) from content that comes from Section B observations or generic plausibility (which must be presented as hypotheses the client should verify rather than as confident proposals). The same Tier 2 discipline from §3.2.1 applies: inferences require positive support, not pattern-match plausibility. If the consultant catches themselves presenting something as backbone-warranted that has no client-statement or library-Section-A support, the right response is to mark that part of the proposal as low-confidence in the framing rather than to present it as if it were backed.
+
 **Worked example — the confident proposal opening:**
 
 > Consultant: "I want to walk you through what we think is the mission-critical backbone for your organization. This is our proposal for what we'd build first — the smallest set of connected processes that lets a real person at your org do the work end-to-end. Everything outside this set we'd defer to later iterations.
@@ -468,33 +506,77 @@ A short document containing:
 
 ## 8. Pattern Library Handling
 
-The pattern library is a future artifact that does not yet exist. This section documents how Phase 1 should behave once the library exists, and how it behaves in the meantime.
+The pattern library is specified in `pattern-library-specification.md`. This section is the operational view of how Phase 1 uses the library in practice. For library structure (what entries contain, how they're versioned, how content flows between Section A / B / C) refer to the spec; for the operational steps a consultant takes, this section is authoritative.
 
-### 8.1 When the library does not yet exist
+### 8.1 Three operating modes
 
-This is the current default. The consultant draws on prior engagement experience and judgment. The proposed backbone is marked as low-confidence; Session 2 includes an explicit acknowledgment:
+The Phase 1 guide distinguishes three modes based on what library content exists for the engagement's org type:
 
-> Consultant: "Because [client] is the first engagement of its type for us, this proposed backbone is based more on judgment than on accumulated patterns. We'd ask you to scrutinize it more carefully than usual — places where your instinct conflicts with our proposal are likely places where we got it wrong."
+**Mode A — Section A defaults available.** A library entry exists for the org type and contains tested generalizations (Section A content) covering one or more of the ten standard categories. The consultant uses Section A content as defaults during pre-engagement reading and between-sessions work. Verification happens during Session 1 lightly and Session 2 substantively, but the proposed backbone, candidate set, and supporting/deferred classifications can be grounded in Section A defaults with confident framing.
 
-This is honesty about CRM Builder's current state, not weakness. It invites the client to be a more active participant in shaping the backbone, which is appropriate when the methodology is operating without a knowledge base.
+**Mode B — Only Section B observations available.** A library entry exists but Section A is empty or doesn't cover the relevant categories. Section B content is reference material — single-source observations that can shape what to ask about and listen for, but cannot be applied as defaults. The consultant operates with a stronger client-verification stance: Session 2 proposals are framed as informed-by-similar-but-untested-patterns rather than as backed-by-tested-defaults.
 
-### 8.2 When a library entry exists for the org type
+**Mode C — No library entry for the org type.** The consultant operates with judgment alone, drawing on prior consultant experience with similar organizations. Session 2 proposals are explicitly marked as low-confidence; the client is invited to scrutinize them more carefully than usual.
 
-The consultant uses the entry as the starting point but does not treat it as authoritative. Library entries are based on prior engagements, which means they encode prior clients' situations — which may or may not match the current client's. Use the entry to:
+The mode is not all-or-nothing — a library entry may have Section A content for some categories (e.g., domain structure for the org type) and only Section B content for others (e.g., common backbone shapes). The consultant uses the appropriate mode per category, not for the engagement as a whole.
 
-- Pre-populate a draft backbone before Session 1
-- Identify likely cross-domain dependencies to listen for in Session 1 Part C
-- Pre-populate the CRM candidate set with products that have served similar engagements
+### 8.2 Mode A operational steps (Section A defaults available)
 
-In Session 2, present the proposed backbone confidently but make the library reference visible:
+When Section A content covers a category relevant to the engagement, the consultant:
 
-> Consultant: "We've worked with several similar organizations, and what we've seen consistently is [pattern]. Based on what you described last time, [client] looks like it follows that pattern with one variation: [specific variation]. The proposed backbone reflects the typical pattern adjusted for that variation. Does it match how you see your organization?"
+1. **In pre-engagement reading (§2.2):** uses Section A content as the basis for a draft backbone, draft candidate set, draft default classifications. These drafts are starting points for Session 1 verification, not pre-commitments.
 
-### 8.3 What gets contributed back to the library
+2. **In Session 1:** lightly verifies that the org behaves the way Section A describes. Asks pointed questions where the client's pre-engagement materials suggest divergence from Section A defaults.
 
-After Session 2, regardless of whether the engagement starts from a library entry or not, the consultant captures the engagement's findings as a candidate library contribution: typical mission-critical processes, common cross-domain dependencies that surfaced, defaults that were proposed (and later, in Phases 3–4, defaults that were validated or corrected).
+3. **In between-sessions work (§4):** carries Section A defaults forward into the proposed backbone where Session 1 confirmed the org matches the typical pattern; substitutes client-specific content where Session 1 surfaced divergence.
 
-The actual mechanism for capturing and using library contributions is a future design effort. For now, capture as notes for later structuring.
+4. **In Session 2 (§5):** presents the proposed backbone confidently with the library reference visible:
+
+> Consultant: "We've worked with similar organizations, and what we've seen consistently is [Section A content]. Based on what you described last time, [client] looks like it follows that pattern with one variation: [specific variation]. The proposed backbone reflects the typical pattern adjusted for that variation. Does it match how you see your organization?"
+
+5. **After the engagement:** captures contributions to Section A — observations that confirm or contradict the typical pattern, used to update Section A's confidence levels.
+
+### 8.3 Mode B operational steps (Section B observations available)
+
+When the relevant content lives only in Section B:
+
+1. **In pre-engagement reading (§2.2):** treats Section B content as hypotheses to surface in Session 1 rather than as defaults. Notes specifically which Section B observations to verify or contradict during the conversation.
+
+2. **In Session 1:** asks explicitly about topics covered by Section B content — *"some similar organizations we've worked with have been structured this way; does that match your situation?"*
+
+3. **In between-sessions work:** carries Section B content forward only where Session 1 explicitly confirmed it; otherwise treats the area as if no library content existed.
+
+4. **In Session 2:** presents the proposed backbone with library content visible but explicitly marked as untested:
+
+> Consultant: "Based on what you described last time, plus observations from similar but distinct organizations we've worked with, the proposed backbone is [proposal]. The reasoning that came from your description is [client-statement-backed parts]; the reasoning that came from observations of similar organizations and that we'd want you to scrutinize is [library-Section-B-backed parts]. Where do those break down for [client]?"
+
+5. **After the engagement:** captures contributions that may promote Section B content to Section A (if confirmed) or move it to Section C (if disconfirmed).
+
+### 8.4 Mode C operational steps (no library entry)
+
+When no library entry exists for the org type:
+
+1. **In pre-engagement reading:** rely on consultant judgment about similar org types. Be more cautious about applying any default that doesn't have direct support in the client's pre-engagement materials.
+
+2. **In Session 1:** ask more open-ended questions; resist the temptation to lead with assumed structures. The consultant's job in Mode C is to elicit, not to confirm.
+
+3. **In between-sessions work:** propose a backbone grounded in client-specific findings from Session 1 rather than in any pre-existing pattern.
+
+4. **In Session 2:** explicitly acknowledge low confidence:
+
+> Consultant: "Because [client] is the first engagement of this type for us, this proposed backbone is based more on judgment than on accumulated patterns. We'd ask you to scrutinize it more carefully than usual — places where your instinct conflicts with our proposal are likely places where we got it wrong."
+
+5. **After the engagement:** the engagement becomes the seed of a new library entry. Substantial documentation is required because the entry's first content all lives in Section B and needs to be detailed enough to inform future engagements.
+
+### 8.5 Section C usage (any mode)
+
+Section C content (disconfirmed observations) is read as a warning regardless of operating mode. When the consultant catches themselves about to make an assumption that matches a Section C entry, they should pause and verify with the client rather than assume. Section C content is the methodology's accumulated record of *patterns that look right but typically aren't.*
+
+The CBM redo experiment surfaced two specific Section C-style fabrications (fit/no-fit client screening; operational-strategic donor split). See `pattern-library/pattern-library-entry-nonprofit-mentoring.md` §C for the documented entries; see `cbm-redo/cbm-redo-step-8-validation-pass.md` §2 and §3 for how those fabrications surfaced and were corrected.
+
+### 8.6 Contribution capture
+
+After every engagement using this guide, regardless of operating mode, the consultant captures observations that should feed the library, per `pattern-library-specification.md` §5. These contributions go into the engagement's pre-validation findings document (the equivalent of `cbm-redo-step-7-pre-validation-findings.md` in the redo) and become input to the methodology owner's periodic library update.
 
 ---
 
@@ -599,11 +681,16 @@ The handoff from Phase 1 to Phase 2 is conceptual rather than ceremonial — the
 
 Acknowledged gaps to be addressed by future revisions or by separate artifacts:
 
-- **The pattern library specification.** The guide assumes a library exists in structure; the library itself is not yet specified.
 - **Templates for the four Phase 1 outputs.** §7 specifies content; actual document templates (with the methodology's standard formatting) are a separate artifact.
 - **Detailed scripts for the in-session synthesis at the end of Session 1 and Session 2.** §3.7 and §5.6 describe the synthesis activities; example wording is sparse compared to the worked examples elsewhere.
 - **Metrics for evaluating Phase 1 quality.** No measurement scheme exists for whether Phase 1 went well — currently the test is whether Phase 2 can proceed cleanly, which is a coarse signal.
 - **Coordination with Phase 0 / pre-engagement sales.** Some of the pre-engagement preparation work (§2.1, §2.4) overlaps with sales/intake activities that aren't part of the methodology proper. The seam between sales and Phase 1 deserves its own treatment eventually.
+- **Empirical measurement of session length.** §3.2 and §5.2 cite 90–120 minute targets for each session, but these are estimates rather than measured durations. Real-engagement experience under the new methodology may show that sessions take longer or shorter than the estimates; the guide should be revised against measurements once they exist.
+- **Multi-stakeholder Session-1 and Session-2 handling.** §10.2 addresses multi-stakeholder organizations briefly. As the methodology is applied to organizations with more complex stakeholder structures, this section will need expansion.
+
+**Resolved in v0.2 (no longer gaps):**
+
+- ~~The pattern library specification.~~ Specified in `pattern-library-specification.md` (committed 04-30-26). §8 of this guide updated to reference actual library mechanics.
 
 ---
 
