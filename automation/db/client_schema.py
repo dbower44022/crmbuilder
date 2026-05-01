@@ -586,6 +586,43 @@ CREATE TABLE DeploymentRun (
 );
 """
 
+# InstanceDeployConfig — server-connection details required to SSH back
+# into a deployed self-hosted Droplet for post-deploy operations
+# (Upgrade EspoCRM, Recovery & Reset, future maintenance features).
+# Added by migration _client_v9. One-to-one with Instance via the
+# UNIQUE constraint on instance_id; ON DELETE CASCADE prevents orphan
+# rows. All secret values (ssh_credential when auth_type='password',
+# db_root_password) live in the OS keyring; the *_ref columns store
+# opaque keyring reference IDs returned by automation/core/secrets.py.
+# For ssh_auth_type='key', ssh_credential_ref stores the key file path
+# directly (paths are not sensitive in the same way).
+# v1 of this layer supports self_hosted only; cloud-hosted and
+# bring-your-own scenarios cannot be SSHed into.
+INSTANCE_DEPLOY_CONFIG_TABLE = """
+CREATE TABLE InstanceDeployConfig (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    instance_id INTEGER NOT NULL UNIQUE,
+    scenario TEXT NOT NULL CHECK (scenario IN ('self_hosted')),
+    ssh_host TEXT NOT NULL,
+    ssh_port INTEGER NOT NULL DEFAULT 22,
+    ssh_username TEXT NOT NULL,
+    ssh_auth_type TEXT NOT NULL CHECK (ssh_auth_type IN ('key', 'password')),
+    ssh_credential_ref TEXT NOT NULL,
+    domain TEXT NOT NULL,
+    letsencrypt_email TEXT NOT NULL,
+    db_root_password_ref TEXT NOT NULL,
+    admin_email TEXT,
+    current_espocrm_version TEXT,
+    latest_espocrm_version TEXT,
+    last_upgrade_at TIMESTAMP,
+    last_backup_paths TEXT,
+    cert_expiry_date TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (instance_id) REFERENCES Instance(id) ON DELETE CASCADE
+);
+"""
+
 # ConfigurationRun — audit trail for YAML configuration runs.
 # Records each time a YAML program file is run (or checked) against an
 # instance, including the file's content_version and a SHA-256 hash of the
@@ -656,6 +693,8 @@ ALL_CLIENT_TABLES = [
     INSTANCE_TABLE,
     INSTANCE_DEFAULT_INDEX,
     DEPLOYMENT_RUN_TABLE,
+    # Server management layer (feat-server-management.md, _client_v9)
+    INSTANCE_DEPLOY_CONFIG_TABLE,
 ]
 
 

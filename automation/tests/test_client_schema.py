@@ -1431,6 +1431,8 @@ class TestAllTablesExist:
         "Decision", "OpenIssue", "WorkItem", "Dependency",
         "AISession", "ChangeLog", "ChangeImpact", "GenerationLog",
         "LayoutPanel", "LayoutRow", "LayoutTab", "ListColumn",
+        "Instance", "DeploymentRun",
+        "InstanceDeployConfig",
     ])
 
     def test_all_tables_present(self, client_db):
@@ -1447,4 +1449,4 @@ class TestAllTablesExist:
             "SELECT COUNT(*) FROM sqlite_master WHERE type='table' "
             "AND name NOT LIKE 'sqlite_%' AND name != 'schema_version'"
         ).fetchone()
-        assert rows[0] == 25
+        assert rows[0] == 28

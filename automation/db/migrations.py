@@ -26,6 +26,7 @@ from automation.db.client_schema import (
     CONFIGURATION_RUN_TABLE,
     DEPLOYMENT_RUN_TABLE,
     INSTANCE_DEFAULT_INDEX,
+    INSTANCE_DEPLOY_CONFIG_TABLE,
     INSTANCE_TABLE,
     WORK_ITEM_TABLE,
     get_client_schema_sql,
@@ -530,6 +531,35 @@ def _client_v8(conn: sqlite3.Connection) -> None:
     backfill_user_process_guides(conn)
 
 
+def _client_v9(conn: sqlite3.Connection) -> None:
+    """Add InstanceDeployConfig table for post-deploy server operations.
+
+    Stores SSH connection details and the server-side credentials
+    needed for Upgrade EspoCRM, Recovery & Reset, and future
+    maintenance features. One-to-one with Instance via UNIQUE
+    instance_id; ON DELETE CASCADE.
+
+    Idempotent via CREATE TABLE IF NOT EXISTS. Skips silently if the
+    Instance table does not yet exist (a fresh database created via
+    _client_v1 already includes both tables).
+
+    See PRDs/product/features/feat-server-management.md.
+    """
+    tables = {
+        row[0]
+        for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )
+    }
+    if "Instance" not in tables:
+        return
+    conn.execute(
+        INSTANCE_DEPLOY_CONFIG_TABLE.replace(
+            "CREATE TABLE ", "CREATE TABLE IF NOT EXISTS "
+        )
+    )
+
+
 CLIENT_MIGRATIONS: list[tuple[int, Migration]] = [
     (1, _client_v1),
     (2, _client_v2),
@@ -539,6 +569,7 @@ CLIENT_MIGRATIONS: list[tuple[int, Migration]] = [
     (6, _client_v6),
     (7, _client_v7),
     (8, _client_v8),
+    (9, _client_v9),
 ]
 
 
