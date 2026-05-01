@@ -191,3 +191,62 @@ def update_instance_from_wizard(
         (url, username, password, now, instance_id),
     )
     conn.commit()
+
+
+def persist_deploy_config_from_wizard(
+    conn: sqlite3.Connection,
+    instance_id: int,
+    config,
+) -> bool:
+    """Persist server-connection details from a successful self-hosted deploy.
+
+    Builds an ``InstanceDeployConfig`` from the ``SelfHostedConfig`` the
+    wizard already collected and writes it through the repo (which
+    routes secrets through the OS keyring). Idempotent: re-running for
+    the same instance updates the existing row and replaces stale
+    keyring entries.
+
+    Failure is non-fatal — the deploy itself has succeeded by the time
+    this is called. If the keyring rejects the write (headless system,
+    locked keychain), the user can re-enter the details via the
+    backfill dialog on first Upgrade or Recovery click.
+
+    :param conn: Per-client database connection.
+    :param instance_id: ``Instance.id`` of the just-deployed instance.
+    :param config: The ``SelfHostedConfig`` used by the wizard.
+    :returns: True if persisted; False if the write was skipped or
+        failed.
+    """
+    # Lazy imports so this module stays Qt-free *and* avoids a hard
+    # dependency on keyring at module load time (keyring import is
+    # cheap, but keeping the import local matches the rest of this
+    # module's lazy-import pattern for repo-style helpers).
+    from automation.core.deployment.deploy_config_repo import (
+        InstanceDeployConfig,
+        save_deploy_config,
+    )
+
+    try:
+        deploy_config = InstanceDeployConfig(
+            instance_id=instance_id,
+            scenario="self_hosted",
+            ssh_host=config.ssh_host,
+            ssh_port=config.ssh_port,
+            ssh_username=config.ssh_username,
+            ssh_auth_type=config.ssh_auth_type,
+            ssh_credential=config.ssh_credential,
+            domain=config.domain,
+            letsencrypt_email=config.letsencrypt_email,
+            db_root_password=config.db_root_password,
+            admin_email=config.admin_email,
+        )
+        save_deploy_config(conn, deploy_config)
+        return True
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning(
+            "Could not persist deploy config for instance %s: %s. "
+            "User will be prompted on first Upgrade or Recovery click.",
+            instance_id, exc,
+        )
+        return False

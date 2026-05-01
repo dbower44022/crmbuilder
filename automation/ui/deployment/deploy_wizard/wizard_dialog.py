@@ -41,6 +41,7 @@ from automation.core.deployment.wizard_logic import (
     finalize_deployment_run,
     find_matching_instances,
     insert_deployment_run,
+    persist_deploy_config_from_wizard,
     update_instance_from_wizard,
 )
 from automation.ui.deployment.deploy_wizard.deploy_worker import (
@@ -650,6 +651,9 @@ class DeployWizard(QDialog):
                 url=url,
                 username=config.admin_username,
                 password=config.admin_password,
+            )
+            persist_deploy_config_from_wizard(
+                self._conn, self._instance_id, config,
             )
             finalize_deployment_run(
                 self._conn, self._run_id, outcome="success",
