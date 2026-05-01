@@ -79,6 +79,12 @@ class DeployEntry(QWidget):
         self._upgrade_btn.setVisible(False)
         header.addWidget(self._upgrade_btn)
 
+        self._recovery_btn = QPushButton("Recovery && Reset")
+        self._recovery_btn.setStyleSheet(_SECONDARY_STYLE)
+        self._recovery_btn.clicked.connect(self._on_recovery)
+        self._recovery_btn.setVisible(False)
+        header.addWidget(self._recovery_btn)
+
         header.addStretch()
         layout.addLayout(header)
 
@@ -132,11 +138,13 @@ class DeployEntry(QWidget):
         self._conn = conn
         self._instance = instance
 
-        # Show the Upgrade button only for self-hosted instances. The
-        # presence of an InstanceDeployConfig with scenario=self_hosted
-        # is the gate; new self-hosted deployments use the backfill
-        # dialog if no config exists yet.
-        self._upgrade_btn.setVisible(self._instance_is_self_hosted())
+        # Show the Upgrade and Recovery buttons only for self-hosted
+        # instances. The presence of an InstanceDeployConfig with
+        # scenario=self_hosted is the gate; new self-hosted deployments
+        # use the backfill dialog if no config exists yet.
+        is_sh = self._instance_is_self_hosted()
+        self._upgrade_btn.setVisible(is_sh)
+        self._recovery_btn.setVisible(is_sh)
 
         if not has_instances:
             self._empty_label.setText(_EMPTY_NO_INSTANCES)
@@ -256,6 +264,48 @@ class DeployEntry(QWidget):
             return row[2] if row else None
         except Exception:
             return None
+
+    def _on_recovery(self) -> None:
+        """Handle Recovery & Reset click — open the recovery dialog.
+
+        Same backfill flow as Upgrade: if no InstanceDeployConfig
+        exists yet, open the connection dialog first.
+        """
+        from automation.core.deployment.deploy_config_repo import (
+            load_deploy_config,
+        )
+
+        if self._conn is None or self._instance is None:
+            return
+
+        config = load_deploy_config(self._conn, self._instance.id)
+        if config is None:
+            from automation.ui.deployment.connection_config_dialog import (
+                ConnectionConfigDialog,
+            )
+            dialog = ConnectionConfigDialog(
+                self._conn, self._instance.id, self._instance.name,
+                parent=self,
+            )
+            dialog.exec()
+            config = dialog.saved_config
+            if config is None:
+                return
+
+        db_path = self._db_path()
+        if db_path is None:
+            QMessageBox.warning(
+                self, "Database Unavailable",
+                "Could not determine the per-client database path.",
+            )
+            return
+
+        from automation.ui.deployment.recovery_dialog import RecoveryDialog
+
+        RecoveryDialog(
+            config, db_path, self._instance.id, self._instance.name,
+            parent=self,
+        ).exec()
 
     def _on_start_wizard(self) -> None:
         """Handle Start Deploy Wizard click — launch the real wizard."""
