@@ -1,10 +1,37 @@
 # CRM Builder — EspoCRM Deployment Implementation Reference
 
-**Version:** 1.0
-**Status:** Current
+**Version:** 1.0 (legacy)
+**Status:** Superseded — see `PRDs/product/features/feat-server-management.md`
 **Last Updated:** March 2026
 **Requirements:** PRDs/CBM-PRD-CRM-Deploy.md, PRDs/CBM-PRD-CRM-Deploy-Context.md
 **Maintained By:** Claude Code
+
+---
+
+## 0. ⚠️ Status Notice (May 2026)
+
+The implementation described below — `espo_impl/core/deploy_manager.py`,
+`espo_impl/ui/deploy_panel.py`, `espo_impl/ui/deploy_dashboard.py`, and
+the surrounding cluster — was **removed in May 2026**. It was orphaned
+when the app moved to the three-tab architecture and was kept around
+only as an internal reference. The current deployment + upgrade +
+recovery implementation lives under `automation/core/deployment/` and
+`automation/ui/deployment/`. See:
+
+- `PRDs/product/features/feat-server-management.md` — server-management
+  layer plan (data model, secrets store, upgrade + recovery ports)
+- `automation/core/deployment/ssh_deploy.py` — current deploy phase
+  logic (`SelfHostedConfig`, no Qt)
+- `automation/core/deployment/upgrade_ssh.py` — upgrade phases
+- `automation/core/deployment/recovery_ssh.py` — recovery primitives
+- `automation/core/deployment/deploy_config_repo.py` — persistent
+  `InstanceDeployConfig` (replaces the deleted `DeployConfig` and the
+  `data/instances/{slug}_deploy.json` file convention)
+- `automation/core/secrets.py` — OS-keyring secret storage
+
+The remainder of this document is preserved for historical context
+about the original phase logic, masking pattern, and verification
+shape — all of which carried forward into the new modules.
 
 ---
 

@@ -52,7 +52,7 @@ uv run python tools/generate_docs.py --programs /path/to/programs/
 
 ```
 espo_impl/
-├── core/              # Business logic — no GUI dependencies
+├── core/              # Configuration-side business logic (Requirements + YAML)
 │   ├── models.py      # Data models (dataclasses + enums)
 │   ├── api_client.py  # EspoCRM REST API wrapper
 │   ├── config_loader.py # YAML parsing + validation
@@ -64,31 +64,44 @@ espo_impl/
 │   ├── relative_date.py # Relative-date vocabulary resolver (v1.1)
 │   ├── comparator.py  # Field spec vs API state comparison
 │   ├── reporter.py    # .log and .json report generation
-│   ├── import_manager.py # Data import CHECK→ACT orchestration
-│   ├── deploy_manager.py # SSH execution, phase logic, deploy config read/write
-│   └── upgrade_manager.py # EspoCRM in-place upgrade (CLI upgrader inside container)
-├── ui/                # PySide6 GUI components
-│   ├── main_window.py # Top-level window + state machine
-│   ├── instance_panel.py # Instance list + CRUD
+│   └── import_manager.py # Data import CHECK→ACT orchestration
+├── ui/                # PySide6 dialogs that aren't part of the Deployment tab
+│   ├── main_window.py # Top-level window — three-tab architecture
+│   ├── instance_panel.py # (legacy panel; kept for shared widgets)
 │   ├── instance_dialog.py # Add/Edit instance modal
 │   ├── program_panel.py # Program file list
 │   ├── output_panel.py # Color-coded output
 │   ├── confirm_delete_dialog.py # Delete confirmation + entity name mapping
-│   ├── import_dialog.py # Four-step data import wizard
-│   ├── deploy_panel.py  # Deploy section in main window (context-driven)
-│   ├── deploy_wizard.py # Six-step Setup Wizard modal dialog
-│   ├── deploy_dashboard.py # Deployment Dashboard (phases, log, cert status)
-│   └── upgrade_dashboard.py # Upgrade modal dialog (phases, log, version display)
-└── workers/
-    ├── run_worker.py  # QThread background operations
-    ├── import_worker.py # QThread import background worker
-    ├── deploy_worker.py # QThread background worker for SSH deployment phases
-    └── upgrade_worker.py # QThread upgrade worker + VersionCheckWorker
+│   └── import_dialog.py # Four-step data import wizard
+└── workers/           # QThreads for the Configure / Verify / Audit / Import paths
+    ├── run_worker.py
+    ├── import_worker.py
+    ├── audit_worker.py
+    └── tooltip_worker.py
+
+automation/
+├── core/deployment/   # Deploy / Upgrade / Recovery business logic (no Qt)
+│   ├── ssh_deploy.py            # SSH helpers + four-phase deploy
+│   ├── wizard_logic.py          # Wizard DB writes (Instance, DeploymentRun)
+│   ├── deploy_config_repo.py    # InstanceDeployConfig CRUD (with keyring)
+│   ├── upgrade_ssh.py           # Four-phase EspoCRM in-place upgrade
+│   └── recovery_ssh.py          # Admin reset + full DB reset primitives
+├── core/secrets.py    # Keyring-backed secret storage
+├── ui/deployment/     # Deployment-tab UI (sidebar entries + modals)
+│   ├── deployment_window.py     # Tab container (sidebar + picker + content)
+│   ├── instance_picker.py       # Active-instance dropdown + version/cert badges
+│   ├── deploy_entry.py          # Deploy sidebar entry + Upgrade/Recovery buttons
+│   ├── deploy_wizard/           # Six-step Setup Wizard modal
+│   ├── connection_config_dialog.py # Backfill dialog for InstanceDeployConfig
+│   ├── upgrade_dialog.py        # Modal: Upgrade EspoCRM
+│   ├── upgrade_worker.py        # UpgradeWorker + VersionCheckWorker QThreads
+│   ├── recovery_dialog.py       # Modal: admin reset + full DB reset
+│   └── recovery_worker.py       # CredentialResetWorker + FullResetWorker
+└── db/                # Per-client SQLite schema + migrations
 
 data/
-└── instances/
-    ├── {slug}.json          # Instance profile (gitignored)
-    └── {slug}_deploy.json   # Deployment config per instance (gitignored)
+└── instances/         # Legacy JSON profile store (configuration side only)
+    └── {slug}.json    # Instance profile (gitignored)
 
 tools/
 └── docgen/            # Documentation generator
@@ -126,49 +139,53 @@ PRDs/
 - firstName/lastName are derived from record name or email when not mapped
 - Buttons are never disabled — click handlers show explanatory messages instead
 
-## Deployment Feature Patterns
+## Server Management Layer (feat-server-management.md)
 
-- Deploy panel content is driven by the selected instance — same pattern as
-  the Program panel responding to instance selection
-- `DeployConfig` is separate from `InstanceProfile` — an instance can exist
-  without a deploy config, and a deploy config can exist while the instance
-  is not yet reachable
-- The only interaction between `DeployConfig` and `InstanceProfile` is in
-  Phase 3: after successful deployment, `deploy_manager` writes
-  `https://{full_domain}` back to the instance profile's `url` field
-- Deploy config is stored as `{instance_slug}_deploy.json` in `data/instances/`
-- All passwords are masked before being included in any log output — never
-  log credential values, only placeholder strings like `[password]`
-- DNS validation runs before Phase 1 and again before Phase 2 SSL issuance;
-  it retries every 30 seconds up to a 10-minute timeout
-- The official EspoCRM installer script is downloaded fresh each run via wget
-  and run with `-y` (non-interactive) plus all config passed as flags
-- Docker is installed in Phase 1; the EspoCRM installer script handles all
-  container setup in Phase 2 — do not install Nginx, PHP, or MySQL manually
-- SSL is always Let's Encrypt (`--ssl --letsencrypt`) — no HTTP-only or
-  custom certificate paths in v1.0
-- Certificate expiry is checked in a background thread each time the Deploy
-  panel is shown; result stored in `DeployConfig.cert_expiry_date`
-- `deploy_worker.py` follows the same QThread pattern as `run_worker.py` and
-  `import_worker.py` — emit signals for log lines, phase status, and completion
+The Deployment tab handles four operations against an EspoCRM Droplet:
+deploy (the Setup Wizard), upgrade (Upgrade EspoCRM button), recovery
+(admin reset + full DB reset), and verification. All four share the
+same SSH connection and credentials, persisted in the
+`InstanceDeployConfig` table (per-client SQLite, migration `_client_v9`).
 
-## Upgrade Feature Patterns
-
-- The Upgrade EspoCRM button on the Deploy panel opens a modal dashboard
-  that runs four phases: pre-upgrade checks, backup, run upgrade, verify
-- Upgrades use the EspoCRM CLI upgrader (`docker exec espocrm php
-  command.php upgrade -y`) — never re-run the installer with `--clean`,
-  which would wipe data
-- Phase 2 takes a database dump (`mariadb-dump`) and tar of the data
-  volume to `/var/backups/espocrm/{timestamp}/`; only the last 3 backups
-  are retained
-- A background `VersionCheckWorker` runs each time the Deploy panel is
-  shown for a deployed instance. Current version is read from inside
-  the container; latest version comes from EspoCRM's release-info JSON
-- The upgrade flow does not re-apply YAML programs — Configure remains
-  a separate user action
-- Major-version jumps (e.g., 7.x → 8.x) trigger a confirmation modal
-  before the worker starts; minor/patch upgrades proceed directly
+- **Persistence model.** `Instance` carries the EspoCRM API credentials
+  (admin user/password). `InstanceDeployConfig` (1:1, FK + UNIQUE on
+  `instance_id`, `ON DELETE CASCADE`) carries SSH host/port/auth, db
+  root password, domain, and version-tracking fields. Secrets live in
+  the OS keyring via `automation/core/secrets.py` — the DB stores
+  opaque `crmbuilder:{uuid4}` reference IDs only. SSH key paths are
+  stored inline (paths aren't sensitive); SSH passwords and the db
+  root password round-trip through keyring.
+- **Wizard persistence.** On a successful self-hosted deploy,
+  `wizard_logic.persist_deploy_config_from_wizard` writes the
+  `InstanceDeployConfig` row immediately after `update_instance_from_wizard`.
+  Failure is non-fatal — the deploy succeeded; the user is prompted on
+  first Upgrade/Recovery click via `ConnectionConfigDialog` instead.
+- **Self-hosted gate (strict).** Upgrade and Recovery buttons are
+  visible only when the active instance's most recent successful
+  `DeploymentRun.scenario == 'self_hosted'` (or when an existing
+  `InstanceDeployConfig` already declares it). Cloud-hosted and
+  bring-your-own scenarios cannot be SSHed into; the buttons are
+  hidden, not disabled.
+- **Upgrade flow.** Four phases: pre-flight checks, backup
+  (mariadb-dump + tar of data volume to `/var/backups/espocrm/{ts}/`,
+  retention 3), `php command.php upgrade -y` inside the container,
+  verify. Major-version jumps (7.x → 8.x) trigger a confirmation
+  modal before the worker starts. Never re-run `install.sh --clean` to
+  upgrade — that wipes data.
+- **Recovery flow.** Admin reset issues a SQL UPDATE inside
+  `espocrm-db`; full reset tears down containers/volumes, removes
+  `/var/www/espocrm`, and re-runs install + post-install + verify.
+  Full reset is gated behind a typed `DELETE ALL DATA` phrase plus a
+  warning modal. Both operations write the new admin credentials back
+  to `Instance.username` / `Instance.password`.
+- **Common rules.** All passwords are masked in log output via
+  `mask_secrets()` from `upgrade_ssh.py`. SSL is always Let's Encrypt.
+  DNS validation runs before Phase 1 and Phase 2 of deploy with a
+  30-second retry interval and 10-minute timeout. Workers persist
+  state to `InstanceDeployConfig` after each phase so a mid-flow
+  failure leaves the recorded state consistent. The version badge in
+  the instance picker is fed by `VersionCheckWorker` on every
+  `instance_changed` signal.
 
 ## YAML Schema v1.1 — Implementation Complete
 
@@ -337,10 +354,15 @@ drive changes to this methodology before the next domain is piloted.
 - Do not create a `cbmadmin` non-root user — the installer runs as the
   configured SSH user (typically root on a fresh Droplet)
 - Do not support HTTP-only or custom certificate SSL modes in v1.0
-- Do not log credential values — mask all passwords in SSH command strings
-  before emitting them to the log window
+- Do not log credential values — pass all passwords through
+  `mask_secrets()` (or `mask_credentials()` for `SelfHostedConfig`)
+  before emitting to the log window
 - Do not re-run `install.sh --clean` to "upgrade" an existing deployment —
-  it is destructive. Use `upgrade_manager.phase3_run_upgrade` which calls
+  it is destructive. Use `upgrade_ssh.phase3_run_upgrade` which calls
   the EspoCRM CLI upgrader inside the container
+- Do not store secrets in plaintext columns — route through
+  `automation/core/secrets.py` (keyring-backed) and store opaque refs
+- Do not show the Upgrade or Recovery buttons for cloud-hosted or
+  bring-your-own scenarios — they cannot be SSHed into
 - Do not add new top-level directories — all deployment code lives within
   the existing `espo_impl/` structure

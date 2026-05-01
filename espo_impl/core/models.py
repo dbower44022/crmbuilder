@@ -754,35 +754,3 @@ class RunReport:
     workflow_results: list[WorkflowResult] = field(default_factory=list)
 
 
-@dataclass
-class DeployConfig:
-    """Deployment configuration for an EspoCRM instance on DigitalOcean.
-
-    Stored as {instance_slug}_deploy.json in data/instances/.
-    Separate from InstanceProfile — an instance can exist without a deploy
-    config, and a deploy config can exist while the instance is not yet
-    reachable (e.g. mid-deployment).
-    """
-
-    droplet_ip: str
-    ssh_key_path: str
-    ssh_user: str
-    base_domain: str
-    subdomain: str
-    letsencrypt_email: str
-    db_password: str
-    db_root_password: str
-    admin_username: str
-    admin_password: str
-    admin_email: str
-    cert_expiry_date: str | None = None
-    deployed_at: str | None = None
-    current_espocrm_version: str | None = None
-    latest_espocrm_version: str | None = None
-    last_upgrade_at: str | None = None
-    last_backup_paths: list[str] = field(default_factory=list)
-
-    @property
-    def full_domain(self) -> str:
-        """Fully qualified domain name for this deployment."""
-        return f"{self.subdomain}.{self.base_domain}"
