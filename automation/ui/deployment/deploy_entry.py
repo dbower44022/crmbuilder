@@ -29,6 +29,12 @@ _PRIMARY_STYLE = (
     "QPushButton:hover { background-color: #0D47A1; }"
 )
 
+_SECONDARY_STYLE = (
+    "QPushButton { background-color: #FFA726; color: white; "
+    "border-radius: 4px; padding: 8px 18px; font-size: 13px; } "
+    "QPushButton:hover { background-color: #FB8C00; }"
+)
+
 _EMPTY_NO_INSTANCES = (
     "No CRM instances have been created for this client yet.\n\n"
     "Go to the Instances entry to create one, or start the\n"
@@ -66,6 +72,13 @@ class DeployEntry(QWidget):
         self._wizard_btn.setStyleSheet(_PRIMARY_STYLE)
         self._wizard_btn.clicked.connect(self._on_start_wizard)
         header.addWidget(self._wizard_btn)
+
+        self._upgrade_btn = QPushButton("Upgrade EspoCRM")
+        self._upgrade_btn.setStyleSheet(_SECONDARY_STYLE)
+        self._upgrade_btn.clicked.connect(self._on_upgrade)
+        self._upgrade_btn.setVisible(False)
+        header.addWidget(self._upgrade_btn)
+
         header.addStretch()
         layout.addLayout(header)
 
@@ -119,6 +132,12 @@ class DeployEntry(QWidget):
         self._conn = conn
         self._instance = instance
 
+        # Show the Upgrade button only for self-hosted instances. The
+        # presence of an InstanceDeployConfig with scenario=self_hosted
+        # is the gate; new self-hosted deployments use the backfill
+        # dialog if no config exists yet.
+        self._upgrade_btn.setVisible(self._instance_is_self_hosted())
+
         if not has_instances:
             self._empty_label.setText(_EMPTY_NO_INSTANCES)
             self._empty_label.setVisible(True)
@@ -159,6 +178,84 @@ class DeployEntry(QWidget):
                 row, 5, QTableWidgetItem("View" if run.log_path else "—")
             )
         self._table.resizeColumnsToContents()
+
+    def _instance_is_self_hosted(self) -> bool:
+        """Return True iff the active instance is self-hosted.
+
+        Checks DeploymentRun rows first (the wizard's scenario record);
+        falls back to InstanceDeployConfig if no DeploymentRun exists.
+        Returns False when no instance is active.
+        """
+        if self._conn is None or self._instance is None:
+            return False
+        try:
+            row = self._conn.execute(
+                "SELECT scenario FROM DeploymentRun "
+                "WHERE instance_id = ? AND outcome = 'success' "
+                "ORDER BY completed_at DESC LIMIT 1",
+                (self._instance.id,),
+            ).fetchone()
+            if row:
+                return row[0] == "self_hosted"
+            row = self._conn.execute(
+                "SELECT scenario FROM InstanceDeployConfig "
+                "WHERE instance_id = ?",
+                (self._instance.id,),
+            ).fetchone()
+            return bool(row and row[0] == "self_hosted")
+        except Exception:
+            return False
+
+    def _on_upgrade(self) -> None:
+        """Handle Upgrade EspoCRM click — open the upgrade dialog.
+
+        If no InstanceDeployConfig exists yet for this instance, open
+        the backfill dialog first. Cancel collapses the whole flow.
+        """
+        from automation.core.deployment.deploy_config_repo import (
+            load_deploy_config,
+        )
+
+        if self._conn is None or self._instance is None:
+            return
+
+        config = load_deploy_config(self._conn, self._instance.id)
+        if config is None:
+            from automation.ui.deployment.connection_config_dialog import (
+                ConnectionConfigDialog,
+            )
+            dialog = ConnectionConfigDialog(
+                self._conn, self._instance.id, self._instance.name,
+                parent=self,
+            )
+            dialog.exec()
+            config = dialog.saved_config
+            if config is None:
+                return
+
+        db_path = self._db_path()
+        if db_path is None:
+            QMessageBox.warning(
+                self, "Database Unavailable",
+                "Could not determine the per-client database path.",
+            )
+            return
+
+        from automation.ui.deployment.upgrade_dialog import UpgradeDialog
+
+        UpgradeDialog(
+            config, db_path, self._instance.name, parent=self,
+        ).exec()
+
+    def _db_path(self) -> str | None:
+        """Read the file path of the active per-client SQLite connection."""
+        if self._conn is None:
+            return None
+        try:
+            row = self._conn.execute("PRAGMA database_list").fetchone()
+            return row[2] if row else None
+        except Exception:
+            return None
 
     def _on_start_wizard(self) -> None:
         """Handle Start Deploy Wizard click — launch the real wizard."""

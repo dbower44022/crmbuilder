@@ -3,6 +3,9 @@
 Populates from the active client's Instance table.  Displays each
 instance as ``"name (environment)"`` and defaults to the client's
 default instance on first load in a session.
+
+Also shows an EspoCRM version badge for self-hosted instances, fed by
+a background ``VersionCheckWorker`` triggered on selection change.
 """
 
 from __future__ import annotations
@@ -10,8 +13,16 @@ from __future__ import annotations
 import sqlite3
 
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QWidget
+from PySide6.QtWidgets import (
+    QComboBox,
+    QHBoxLayout,
+    QLabel,
+    QVBoxLayout,
+    QWidget,
+)
 
+from automation.core.deployment.deploy_config_repo import load_deploy_config
+from automation.core.deployment.upgrade_ssh import is_upgrade_available
 from automation.ui.deployment.deployment_logic import (
     InstanceRow,
     get_default_instance_id,
@@ -34,20 +45,36 @@ class InstancePicker(QWidget):
         super().__init__(parent)
         self._instances: list[InstanceRow] = []
         self._conn: sqlite3.Connection | None = None
+        self._version_worker = None
 
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+
+        picker_row = QHBoxLayout()
+        picker_row.setContentsMargins(0, 0, 0, 0)
 
         self._label = QLabel("Active Instance:")
         self._label.setStyleSheet("font-weight: bold; font-size: 13px;")
-        layout.addWidget(self._label)
+        picker_row.addWidget(self._label)
 
         self._combo = QComboBox()
         self._combo.setMinimumWidth(250)
         self._combo.currentIndexChanged.connect(self._on_selection_changed)
-        layout.addWidget(self._combo)
+        picker_row.addWidget(self._combo)
 
-        layout.addStretch()
+        picker_row.addStretch()
+
+        self._version_badge = QLabel("")
+        self._version_badge.setStyleSheet(
+            "color: #9E9E9E; font-size: 11px;"
+        )
+        picker_row.addWidget(self._version_badge)
+        outer.addLayout(picker_row)
+
+        # Connect to our own signal so the badge refreshes whenever the
+        # selection changes — both refresh() (programmatic) and user
+        # selection paths emit instance_changed.
+        self.instance_changed.connect(self._refresh_version_badge)
 
     @property
     def selected_instance(self) -> InstanceRow | None:
@@ -111,3 +138,79 @@ class InstancePicker(QWidget):
             self.instance_changed.emit(self._instances[index])
         else:
             self.instance_changed.emit(None)
+
+    def _refresh_version_badge(self, instance: InstanceRow | None) -> None:
+        """Update the EspoCRM version badge for the selected instance.
+
+        Reads any cached version state from InstanceDeployConfig
+        synchronously, then kicks off a background VersionCheckWorker
+        to refresh it.
+        """
+        if self._conn is None or instance is None:
+            self._version_badge.setText("")
+            return
+
+        config = load_deploy_config(self._conn, instance.id)
+        if config is None or config.scenario != "self_hosted":
+            self._version_badge.setText("")
+            return
+
+        self._render_badge(
+            config.current_espocrm_version,
+            config.latest_espocrm_version,
+        )
+        self._kick_off_version_check(config)
+
+    def _render_badge(
+        self, current: str | None, latest: str | None
+    ) -> None:
+        if not current and not latest:
+            self._version_badge.setText("EspoCRM version: unknown")
+            self._version_badge.setStyleSheet(
+                "color: #9E9E9E; font-size: 11px;"
+            )
+            return
+        if is_upgrade_available(current, latest):
+            self._version_badge.setText(
+                f"EspoCRM {current} \u2192 {latest} available"
+            )
+            self._version_badge.setStyleSheet(
+                "color: #FFA726; font-weight: bold; font-size: 11px;"
+            )
+        else:
+            self._version_badge.setText(
+                f"EspoCRM {current or latest} \u2014 up to date"
+            )
+            self._version_badge.setStyleSheet(
+                "color: #4CAF50; font-size: 11px;"
+            )
+
+    def _kick_off_version_check(self, config) -> None:
+        if self._version_worker is not None:
+            return
+        db_path = self._db_path()
+        if db_path is None:
+            return
+        from automation.ui.deployment.upgrade_worker import VersionCheckWorker
+
+        self._version_worker = VersionCheckWorker(config, db_path, self)
+        self._version_worker.versions_detected.connect(
+            self._on_versions_detected
+        )
+        self._version_worker.finished.connect(self._on_version_worker_done)
+        self._version_worker.start()
+
+    def _on_versions_detected(self, current: str, latest: str) -> None:
+        self._render_badge(current or None, latest or None)
+
+    def _on_version_worker_done(self) -> None:
+        self._version_worker = None
+
+    def _db_path(self) -> str | None:
+        if self._conn is None:
+            return None
+        try:
+            row = self._conn.execute("PRAGMA database_list").fetchone()
+            return row[2] if row else None
+        except Exception:
+            return None
