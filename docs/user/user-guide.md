@@ -1,7 +1,7 @@
 # CRM Builder — User Guide
 
-**Version:** 5.0
-**Last Updated:** April 2026
+**Version:** 5.1
+**Last Updated:** 05-02-26 18:15
 
 ---
 
@@ -150,6 +150,31 @@ filesystem:
 
 Selecting an instance automatically loads its program files. Reports
 and generated documentation are written to the same folder.
+
+### Deployment Record (Self-Hosted Instances)
+
+Self-hosted EspoCRM instances (those deployed via the Setup Wizard
+to a DigitalOcean Droplet) have a per-instance Deployment Record
+`.docx` capturing the as-deployed state — Droplet identification,
+hardware, OS, EspoCRM and component versions, TLS certificate, SSH
+access, credentials inventory by reference, and deployment history.
+
+The Deployment Record is produced automatically on every successful
+deploy and lands at:
+
+```
+{project_folder}/PRDs/deployment/{INSTANCE_CODE}-Instance-Deployment-Record.docx
+```
+
+To regenerate it on demand (after an upgrade, after a configuration
+change, or for an instance that predates the feature), select the
+instance, open the **Deployment** tab, and click **Generate Deployment
+Record**.
+
+For full details — including the new wizard step that collects
+documentation inputs, the regeneration dialog, and the backfill flow
+for instances added before this feature shipped — see the
+**EspoCRM Server Deployment Guide** (`docs/user-deployment.md`).
 
 ---
 
@@ -1112,6 +1137,7 @@ then edit the instance in CRM Builder and enter the new API key.
 
 | Version | Date | Changes |
 |---|---|---|
+| 5.1 | 05-02-26 18:15 | Added a "Deployment Record (Self-Hosted Instances)" subsection under Managing Instances → Project Folder, cross-referencing the EspoCRM Server Deployment Guide for the full feature documentation. |
 | 5.0 | April 2026 | Added CRM Audit feature (auditing existing instances, instance roles, migration workflow) |
 | 4.1 | April 2026 | Added Recovery Tools section (Reset Admin Credentials, Full Database Reset) and related troubleshooting entries |
 | 4.0 | March 2026 | Rewritten for new documentation structure. Updated to reflect project folder model, content versioning, layout and relationship configuration, import wizard, and Generate Docs |

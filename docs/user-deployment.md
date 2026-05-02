@@ -1,8 +1,8 @@
 # CRM Builder — EspoCRM Server Deployment Guide
 
-**Version:** 1.0
+**Version:** 1.1
 **Status:** Current
-**Last Updated:** March 2026
+**Last Updated:** 05-02-26 18:00
 
 ---
 
@@ -74,7 +74,7 @@ wait up to 10 minutes for propagation before proceeding.
 Click **Set Up Deployment** in the Deploy panel (visible when an instance
 is selected that doesn't yet have deployment configured).
 
-The wizard has six steps:
+The wizard has seven steps:
 
 ### Step 1 — Server Connection
 
@@ -103,7 +103,34 @@ The wizard has six steps:
 
 - **Let's Encrypt Email** — used for certificate expiry notifications
 
-### Step 6 — Review & Confirm
+### Step 6 — Documentation Inputs
+
+These values feed the Deployment Record document that is produced
+automatically when the deploy completes (see "After Deployment —
+Deployment Record" below). They are not used by the application
+itself; they document where each item is stored or who manages it.
+
+- **Domain Registrar** — the company where the domain is registered
+  (e.g., `Porkbun`)
+- **DNS Provider** — where DNS records are managed; often the same
+  as the registrar
+- **Droplet ID** — the numeric ID from the DigitalOcean dashboard
+  URL (`cloud.digitalocean.com/droplets/{ID}`); used to populate
+  direct links to the Droplet detail page and in-browser Console
+- **Backups Enabled** — check if DigitalOcean weekly backups are
+  enabled for this Droplet
+- **Admin Password — Password Manager Entry** — the exact name of
+  the password manager entry where the admin password is stored
+  (e.g., `CBM-ESPOCRM-Test Instance Admin`)
+- **DB Root Password — Password Manager Entry** — same convention
+  for the MariaDB root password entry
+- **Hosting Account — Password Manager Entry** — same convention
+  for the DigitalOcean account login
+
+The seven Documentation Inputs are persisted with the deploy
+configuration so they pre-fill on subsequent regenerations.
+
+### Step 7 — Review & Confirm
 
 Review all values. Passwords are masked by default — click **Show Passwords**
 to verify. Click **Save & Deploy** to save the configuration and begin
@@ -169,6 +196,97 @@ program files from CRM Builder (Validate → Run → Verify).
 CRM Builder automatically updates the instance profile URL after a
 successful deployment, so the Validate / Run / Verify buttons connect
 to the new instance immediately.
+
+---
+
+## After Deployment — Deployment Record
+
+When the deploy completes successfully, CRM Builder automatically
+generates a per-instance Deployment Record `.docx` capturing the
+as-deployed state. The file lands at:
+
+```
+{project_folder}/PRDs/deployment/{INSTANCE_CODE}-Instance-Deployment-Record.docx
+```
+
+The Deployment Record contains:
+
+- Droplet identification (region, public IPv4, hostname, Droplet ID,
+  direct links to the DigitalOcean detail page and in-browser Console)
+- Hardware and OS (CPU, memory, disk, kernel, Ubuntu release)
+- Firewall configuration and backups status
+- Domain and DNS (registrar, DNS provider, A-record details)
+- TLS certificate (issuer, dates, fingerprint, renewal arrangement)
+- EspoCRM application version and the five-container Docker stack
+  with each container's image and version
+- SSH access (authorized user, key algorithm, key fingerprint)
+- Credentials inventory — references to the password manager entries
+  for the admin password, the MariaDB root password, and the hosting
+  account login. **No credential values appear in the document.**
+- Deployment history timeline
+
+The Result page at the end of the Setup Wizard includes a
+**Reveal in File Manager** button that opens the containing folder,
+so you can confirm the file was produced.
+
+### Regenerating the Deployment Record
+
+The Deployment Record can be regenerated on demand from the
+Deployment tab. Click **Generate Deployment Record** in the Deploy
+panel. Use this when:
+
+- An EspoCRM upgrade has changed the application version
+- A configuration change has made the existing Record's values stale
+  (a password-manager entry rename, a backups status change, etc.)
+- The application's generator has gained content that wasn't present
+  when the Record was last produced
+
+The regeneration dialog pre-fills all Documentation Inputs from the
+persisted deploy configuration. The Proton Pass entry name fields
+also persist across regenerations after the first one. The default
+output mode overwrites the canonical filename; choose
+**Write versioned copy with timestamp suffix** to retain a snapshot
+without losing the canonical file.
+
+The document version increments automatically (`1.0` → `1.1` → `1.2`)
+on each regeneration that overwrites the canonical file. Versioned
+copies do not increment the canonical version.
+
+### Pre-Automation Instances
+
+Instances added to CRM Builder before the Deployment Record feature
+shipped (or instances created via the manual **Add Instance** flow
+without a deploy run) have no `InstanceDeployConfig` row. The first
+time you click **Generate Deployment Record** for such an instance,
+the Server Connection backfill dialog opens. Enter the SSH host,
+port, username, key path, domain, Let's Encrypt email, MariaDB root
+password, and admin email, then click **Save**. After the backfill
+completes, the regeneration dialog opens and the rest of the flow
+proceeds normally.
+
+The same backfill flow is invoked by the **Upgrade EspoCRM** and
+**Recovery & Reset** actions when an instance lacks a deploy
+configuration. Performing any of the three triggers the backfill
+once; subsequent uses of any of them go straight to the requested
+action.
+
+### Committing the Record to Your Client Repository
+
+The application writes the `.docx` but does not commit it to git.
+You decide when a regeneration represents a change worth committing.
+Typical commit triggers:
+
+- Initial Record produced for a new instance
+- Regeneration after an EspoCRM version upgrade
+- Regeneration after a configuration change that materially affects
+  the recorded values
+
+```bash
+cd ~/path/to/your/client-repo
+git add PRDs/deployment/{INSTANCE_CODE}-Instance-Deployment-Record.docx
+git commit -m "Regenerate Deployment Record for <reason>"
+git push
+```
 
 ---
 
@@ -345,6 +463,13 @@ EspoCRM release changes how a field or layout is configured, run
 **Validate** and **Run** in CRM Builder against your existing program
 files to bring the configuration back into line.
 
+After the upgrade, regenerate the per-instance Deployment Record so
+the recorded EspoCRM version reflects reality. Click
+**Generate Deployment Record** on the Deployment tab; the document
+version will increment automatically (e.g., `1.0` → `1.1`). Commit
+the regenerated `.docx` to your client repository alongside the
+upgrade notes.
+
 ### Rolling Back
 
 If the upgrade verification fails or the application doesn't behave
@@ -416,3 +541,12 @@ to apply changes.
   instance. If the domain isn't reachable yet, it returns Unknown.
 - After a successful deployment, close and reopen CRM Builder or
   reselect the instance to trigger a fresh check.
+
+---
+
+## Change Log
+
+| Version | Date | Changes |
+|---|---|---|
+| 1.1 | 05-02-26 18:00 | Added the new Setup Wizard "Documentation Inputs" step (now Step 6, with Review & Confirm becoming Step 7); added the "After Deployment — Deployment Record" section covering automatic generation, regeneration via the Deployment tab, the pre-automation backfill flow, and committing the Record to the client repository; added a Record-regeneration note to the "After the Upgrade" section. Reflects the deployment-record series shipped in the crmbuilder repo on 2026-05-02 (Prompts A through I). |
+| 1.0 | March 2026 | Initial release. Setup Wizard walkthrough, deployment phases, post-deploy connection, Deployment Dashboard, DNS / SSL guidance, Upgrade flow, troubleshooting. |
