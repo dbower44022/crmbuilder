@@ -171,11 +171,11 @@ const metaTable = new Table({
     new TableRow({ children: [labelCell("Scope", 2600),
       cell("Full lifecycle: pre-deploy prerequisites, the deploy itself, post-deploy verification and documentation", { width: 6760 })] }),
     new TableRow({ children: [labelCell("Version", 2600),
-      cell("1.1", { width: 6760 })] }),
+      cell("1.2", { width: 6760 })] }),
     new TableRow({ children: [labelCell("Status", 2600),
       cell("Active", { width: 6760 })] }),
     new TableRow({ children: [labelCell("Last Updated", 2600),
-      cell("05-02-26 06:50", { width: 6760 })] }),
+      cell("05-02-26 17:30", { width: 6760 })] }),
     new TableRow({ children: [labelCell("Companion Document", 2600),
       cell("Per-instance Deployment Records (e.g. ClevelandBusinessMentoring/PRDs/deployment/CBM-Test-Instance-Deployment-Record.docx)", { width: 6760 })] }),
   ],
@@ -189,6 +189,22 @@ children.push(stripedTable({
   columnWidths: [800, 1500, 7060],
   headers: ["Version", "Date", "Notes"],
   rows: [
+    ["1.2", "05-02-26 17:30",
+      "Section 11 (Post-Deploy \u2014 Produce the Deployment Record) "
+      + "rewritten end-to-end. The procedure described in v1.0 and v1.1 "
+      + "(copy a JS generator into a new client repo, edit the values, "
+      + "run with Node.js, validate with the office validator, commit) "
+      + "described a hand-driven workflow that no longer applies. The "
+      + "deployment-record series in the crmbuilder repo (Prompts A "
+      + "through I, including a successful smoke test on 2026-05-02) "
+      + "productized the Deployment Record artifact: every successful "
+      + "self-hosted deploy automatically produces the .docx via a "
+      + "Python generator inside the application, and the Generate "
+      + "Deployment Record action on the Deployment tab regenerates "
+      + "it on demand. Section 11 now describes the automated path "
+      + "and the ConnectionConfigDialog-based backfill flow that "
+      + "applies to instances deployed before the persistence layer "
+      + "existed."],
     ["1.1", "05-02-26 06:50",
       "Strengthened the SSH Host field row in Section 7.3 (Wizard Page 2 "
       + "\u2014 Server (SSH) Connection) with an explicit cross-reference "
@@ -726,53 +742,97 @@ children.push(para(
   + "as-deployed state \u2014 Droplet identification, hardware, OS, "
   + "EspoCRM and component versions, TLS certificate, SSH access, "
   + "credentials inventory by reference, and a deployment history "
-  + "timeline. The CBM Test Instance Deployment Record at "
-  + "ClevelandBusinessMentoring/PRDs/deployment/CBM-Test-Instance-Deployment-Record.docx "
-  + "is the canonical model."
+  + "timeline. The CRM Builder application produces this document "
+  + "automatically on every successful self-hosted deploy and provides "
+  + "an on-demand regeneration action for instances that need an "
+  + "updated Record (after an upgrade, after a state change, or "
+  + "after a configuration update affecting the captured values)."
 ));
 
-children.push(para("11.1 Capture As-Deployed Values", { heading: HeadingLevel.HEADING_2 }));
+children.push(para("11.1 Automatic Generation on Successful Deploy", { heading: HeadingLevel.HEADING_2 }));
 children.push(para(
-  "From your workstation, the values that go into the Record come from "
-  + "three sources:"
+  "When the Setup Wizard completes a self-hosted deploy successfully, "
+  + "the wizard's final page collects a small set of Documentation "
+  + "Inputs from the operator (Domain Registrar, DNS Provider, "
+  + "Droplet ID, weekly-backups status, and three password-manager "
+  + "entry names referencing the admin password, the database root "
+  + "password, and the hosting account login). These supplement the "
+  + "values the wizard already captured during the deploy itself. "
+  + "After the operator confirms, the application opens an SSH "
+  + "connection back to the freshly-deployed server, runs an "
+  + "inspection pass that captures the application version, component "
+  + "versions, and other on-server state, and writes a Deployment "
+  + "Record .docx to the client's project folder."
 ));
-children.push(bullet("On-server inspection via SSH \u2014 hardware, OS, kernel, swap, firewall, Docker version, container set, EspoCRM install location, crontab, authorized SSH keys, and (with one extra docker exec call each) the EspoCRM, MariaDB, and nginx component versions"));
-children.push(bullet("Live SSL certificate inspection \u2014 issuer, subject, dates, fingerprint via openssl s_client (no SSH required)"));
-children.push(bullet("DigitalOcean dashboard \u2014 Droplet ID, region, size, backup status, the Droplet detail and Console URLs"));
+children.push(para(
+  "Default output path:"
+));
+children.push(code("{project_folder}/PRDs/deployment/{INSTANCE_CODE}-Instance-Deployment-Record.docx"));
+children.push(para(
+  "If the path does not yet exist, the application creates the "
+  + "intermediate directories. The operator is given a Reveal in File "
+  + "Manager button on the wizard's Result page to confirm the file."
+));
+
+children.push(para("11.2 Regenerating an Existing Record", { heading: HeadingLevel.HEADING_2 }));
+children.push(para(
+  "The Generate Deployment Record action on the Deployment tab "
+  + "produces the same document on demand for any self-hosted "
+  + "instance. Use this when:"
+));
+children.push(bullet("An EspoCRM upgrade changed the application version. The new Record reflects the upgraded version."));
+children.push(bullet("A configuration change made the existing Record's values stale (a Proton Pass entry rename, a new email contact, a backups status change)."));
+children.push(bullet("The application's generator gained content that wasn't present when the Record was last produced."));
+children.push(bullet("An instance was added to the application before automatic Record generation existed (the CBM Test instance is the canonical example, deployed 2026-03-28 before the deployment-record series shipped)."));
 
 children.push(para(
-  "A diagnostic script that captures the SSH-side values in one pass "
-  + "is documented in the CBM Test Instance Deployment Record's "
-  + "production history (commit 964c841 in the ClevelandBusinessMentoring "
-  + "repo). Adapt that approach for new deployments rather than running "
-  + "ten ad-hoc SSH commands."
+  "Click Generate Deployment Record on the Deployment tab. Three "
+  + "things happen in sequence:"
+));
+children.push(numberedPara("If no InstanceDeployConfig row exists for this instance yet (instance was added pre-automation), the application opens the Server Connection backfill dialog. Enter SSH host, port, username, key path, domain, Let's Encrypt email, MariaDB root password, and admin email. Click Save. This populates the deploy config so the regeneration knows how to reach the server."));
+children.push(numberedPara("The application opens the Regenerate Deployment Record dialog. Documentation Inputs pre-fill from the persisted deploy config (registrar, DNS provider, Droplet ID, backups). The three Proton Pass entry name fields pre-fill from templated defaults; on first regeneration the operator edits them to match actual entry names."));
+children.push(numberedPara("Click Generate. The application opens an SSH connection, runs the inspection pass, generates the .docx, and writes to the canonical path (overwrite mode) or to a timestamped path (versioned-copy mode)."));
+
+children.push(para(
+  "The default output mode is Overwrite. The versioned-copy option "
+  + "produces a filename of the form "
+  + "{INSTANCE_CODE}-Instance-Deployment-Record-{YYYY-MM-DD-HHMMSS}.docx "
+  + "for retaining historical snapshots without losing the canonical "
+  + "filename."
 ));
 
-children.push(para("11.2 Generate the .docx", { heading: HeadingLevel.HEADING_2 }));
+children.push(para("11.3 Backfill Procedure for Pre-Automation Instances", { heading: HeadingLevel.HEADING_2 }));
 children.push(para(
-  "Copy the existing CBM generator as the starting point:"
+  "Instances deployed before the deployment-record series shipped "
+  + "(those without an InstanceDeployConfig row in the per-client "
+  + "database) need a one-time backfill before regeneration works. "
+  + "The CBM Test instance went through this exact procedure on "
+  + "2026-05-02. The detailed step-by-step is captured at:"
 ));
-children.push(code("cp ~/Dropbox/Projects/ClevelandBusinessMentors/PRDs/deployment/generate-deployment-record.js \\\n   <new-client>/PRDs/deployment/generate-deployment-record.js"));
+children.push(code("crmbuilder/PRDs/product/crmbuilder-automation-PRD/cbm-test-instance-backfill-procedure.md"));
 children.push(para(
-  "Edit the new generator to substitute the values captured in Section "
-  + "11.1, change the title block, and update the metadata. The "
-  + "structure (eleven sections plus front and back matter) is "
-  + "designed to apply to any deployment without modification."
+  "The procedure includes a keyring-bridge step for the MariaDB "
+  + "root password (using "
+  + "tools/diagnostics/bridge_password_to_keyring.py) and a worked "
+  + "table of values that were captured for CBM Test. New "
+  + "pre-automation instances follow the same shape with their own "
+  + "captured values."
 ));
-children.push(para(
-  "Run the generator and validate the output:"
-));
-children.push(code("cd <client>/PRDs/deployment\nnpm init -y && npm install docx\nnode generate-deployment-record.js\npython3 /mnt/skills/public/docx/scripts/office/validate.py CBM-Test-Instance-Deployment-Record.docx\nrm -rf node_modules package.json package-lock.json"));
 
-children.push(para("11.3 Commit", { heading: HeadingLevel.HEADING_2 }));
+children.push(para("11.4 Committing the Record to the Client Repository", { heading: HeadingLevel.HEADING_2 }));
 children.push(para(
-  "Commit the .docx and the generator script to the client's repository "
-  + "in a single commit, using a message that records the version and "
-  + "the deploy event the Record describes. The .docx is the canonical "
-  + "form; the generator is checked in alongside it so that future "
-  + "version bumps can re-run the generator rather than hand-editing the "
-  + "Word file."
+  "The application writes the .docx but does not commit it to git. "
+  + "The operator decides when a regeneration represents a change "
+  + "worth committing. Typical commit triggers:"
 ));
+children.push(bullet("Initial Record produced for a new instance"));
+children.push(bullet("Regeneration after an EspoCRM version upgrade"));
+children.push(bullet("Regeneration after a configuration change that materially affects the recorded values"));
+
+children.push(para(
+  "From the client repository:"
+));
+children.push(code("cd ~/Dropbox/Projects/<Client>\ngit add PRDs/deployment/{INSTANCE_CODE}-Instance-Deployment-Record.docx\ngit commit -m \"Regenerate Deployment Record for <reason>\"\ngit push"));
 children.push(blank());
 
 // ==============================
@@ -923,6 +983,26 @@ children.push(stripedTable({
   columnWidths: [800, 1500, 7060],
   headers: ["Version", "Date", "Changes"],
   rows: [
+    ["1.2", "05-02-26 17:30",
+      "Section 11 (Post-Deploy \u2014 Produce the Deployment Record) "
+      + "rewritten end-to-end to reflect the productized Deployment "
+      + "Record artifact. The previous Sections 11.1\u201311.3 "
+      + "described a hand-driven workflow (copy a JS generator into a "
+      + "new client repo, edit values, run with Node.js, validate, "
+      + "commit) that no longer applies. New Section 11.1 describes "
+      + "automatic generation on successful deploy via the wizard's "
+      + "Documentation Inputs page; new Section 11.2 covers on-demand "
+      + "regeneration via the Generate Deployment Record action on "
+      + "the Deployment tab; new Section 11.3 cross-references the "
+      + "backfill procedure for instances deployed before the "
+      + "deployment-record series shipped (cbm-test-instance-backfill"
+      + "-procedure.md); new Section 11.4 covers committing the "
+      + "regenerated .docx to the client repository. Companion "
+      + "change in the CBM repository: the JS generator and the "
+      + "v1.3 hand-produced .docx have been retired; the application"
+      + "-generated CBMTEST-Instance-Deployment-Record.docx is now "
+      + "the single canonical artifact. Metadata Last Updated bumped "
+      + "to 05-02-26 17:30."],
     ["1.1", "05-02-26 06:50",
       "Section 7.3 (Wizard Page 2 \u2014 Server (SSH) Connection) "
       + "field table updated. The SSH Host row's Recommended Value "
