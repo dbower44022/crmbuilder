@@ -33,6 +33,7 @@ from PySide6.QtWidgets import (
 )
 
 from automation.core.deployment.connectivity import ConnectivityResult
+from automation.core.deployment.deploy_config_repo import load_deploy_config
 from automation.core.deployment.record_generator import AdministratorInputs
 from automation.core.deployment.ssh_deploy import SelfHostedConfig
 from automation.core.deployment.wizard_logic import (
@@ -50,6 +51,10 @@ from automation.core.deployment.wizard_logic import (
 from automation.ui.deployment.deploy_wizard.deploy_worker import (
     ConnectivityWorker,
     SelfHostedWorker,
+)
+from automation.ui.deployment.deployment_logic import load_instance_detail
+from automation.ui.deployment.regenerate_record_dialog import (
+    launch_regeneration_dialog,
 )
 
 _PRIMARY_STYLE = (
@@ -1039,19 +1044,76 @@ class DeployWizard(QDialog):
         QDesktopServices.openUrl(QUrl.fromLocalFile(parent))
 
     def _on_generate_record_manually(self) -> None:
-        """Defer manual regeneration to deployment-record Prompt C.
+        """Launch the manual Deployment Record regeneration dialog.
 
-        Prompt B does not implement the regeneration UI; until Prompt C
-        ships, surface a simple modal with the failure detail and
-        guidance. This button is shown only when generation failed.
+        Resolves the active instance, its persisted ``InstanceDeployConfig``,
+        and the per-client database path from existing wizard state, then
+        defers to ``launch_regeneration_dialog`` from
+        :mod:`automation.ui.deployment.regenerate_record_dialog` — the
+        same entry point used by the Deployment tab's Generate Deployment
+        Record button. Shown only when automatic generation failed
+        during a successful deploy; if any prerequisite is missing,
+        surfaces a clear warning and directs the operator to the
+        Deployment tab instead of crashing.
         """
-        message = (
-            "Manual regeneration is not yet wired up. The Deployment "
-            "tab will gain a 'Generate Deployment Record' option once "
-            "deployment-record Prompt C is implemented.\n\n"
-            f"Failure detail: {self._record_generation_error or 'unknown'}"
+        if self._instance_id is None:
+            QMessageBox.warning(
+                self,
+                "Generate Deployment Record",
+                "Cannot regenerate the Deployment Record from this "
+                "wizard because no instance was created. Open the "
+                "Deployment tab and use the 'Generate Deployment "
+                "Record' action there instead.",
+            )
+            return
+
+        instance = load_instance_detail(self._conn, self._instance_id)
+        if instance is None:
+            QMessageBox.warning(
+                self,
+                "Generate Deployment Record",
+                "The instance row could not be loaded. Open the "
+                "Deployment tab and use the 'Generate Deployment "
+                "Record' action there instead.",
+            )
+            return
+
+        deploy_config = load_deploy_config(self._conn, self._instance_id)
+        if deploy_config is None:
+            QMessageBox.warning(
+                self,
+                "Generate Deployment Record",
+                "No InstanceDeployConfig is recorded for this "
+                "instance, so the regeneration dialog cannot reach "
+                "the server. Open the Deployment tab and use the "
+                "'Generate Deployment Record' action there once the "
+                "connection details are populated.",
+            )
+            return
+
+        project_folder = self._read_project_folder()
+        if not project_folder or not Path(project_folder).is_dir():
+            QMessageBox.warning(
+                self,
+                "Generate Deployment Record",
+                "The client's project folder is not configured or "
+                "does not exist on disk. Set it on the Client and "
+                "use the 'Generate Deployment Record' action on the "
+                "Deployment tab.",
+            )
+            return
+
+        db_path = self._conn.execute(
+            "PRAGMA database_list"
+        ).fetchone()[2]
+
+        launch_regeneration_dialog(
+            parent=self,
+            instance=instance,
+            deploy_config=deploy_config,
+            project_folder=project_folder,
+            db_path=db_path,
         )
-        QMessageBox.information(self, "Generate Deployment Record", message)
 
     # ------------------------------------------------------------------
     # Helpers
