@@ -244,6 +244,7 @@ def inspect_server_for_record_values(
     instance: InstanceDetail,
     deploy_config: InstanceDeployConfig,
     administrator_inputs: AdministratorInputs,
+    client_name: str,
 ) -> DeploymentRecordValues:
     """Capture live on-server state and assemble a DeploymentRecordValues.
 
@@ -261,6 +262,12 @@ def inspect_server_for_record_values(
     :param deploy_config: The InstanceDeployConfig row associated with
         the Instance.
     :param administrator_inputs: Values the administrator must supply.
+    :param client_name: The human-readable client name (e.g.,
+        "Cleveland Business Mentors"), looked up by the caller from
+        the master ``Client`` table. Distinct from
+        ``Instance.name``, which is the technical instance label
+        (e.g., "CBMTEST"); the rendered Deployment Record's title and
+        metadata block use this value.
     :returns: A populated :class:`DeploymentRecordValues` ready for
         :func:`generate_deployment_record`.
     """
@@ -326,7 +333,7 @@ def inspect_server_for_record_values(
         document_version=administrator_inputs.document_version,
         document_last_updated=datetime.now(UTC).strftime("%m-%d-%y %H:%M"),
         document_status=administrator_inputs.document_status,
-        client_name=getattr(instance, "name", ""),
+        client_name=client_name,
         instance_name=instance.code,
         instance_code=instance.code,
         environment=instance.environment,
@@ -426,22 +433,105 @@ def _run(
     return output
 
 
+VERSION_DEFAULTS_CONFIG_PATH = (
+    "/var/www/html/application/Espo/Resources/defaults/config.php"
+)
+
+VERSION_RETRIEVAL_STRATEGIES: tuple[tuple[str, str], ...] = (
+    # 1. PHP eval against the application defaults config — the
+    # canonical declaration of the running version. Verified against
+    # the live CBM Test Droplet (returns "9.3.4").
+    (
+        "defaults-php-eval",
+        'docker exec espocrm php -r '
+        '\'echo (require "'
+        + VERSION_DEFAULTS_CONFIG_PATH
+        + '")["version"] ?? "";\'',
+    ),
+    # 2. Pure-shell grep against the same file — fallback when PHP
+    # eval is unavailable (e.g. exec-time PHP wrapper changes).
+    (
+        "defaults-shell-grep",
+        "docker exec espocrm sh -c "
+        "\"grep -oE \\\"'version'[[:space:]]*=>[[:space:]]*'[^']+'\\\" "
+        + VERSION_DEFAULTS_CONFIG_PATH
+        + " | head -1 | sed -E \\\"s/.*'([^']+)'.*/\\1/\\\"\"",
+    ),
+    # 3. Legacy lookup against data/config.php — preserved for older
+    # installations that did write the version into the user config.
+    (
+        "data-config-php-eval",
+        'docker exec espocrm php -r '
+        '\'echo (require "/var/www/html/data/config.php")'
+        '["version"] ?? "";\'',
+    ),
+)
+
+
 def _read_espocrm_version(
     ssh: paramiko.SSHClient,
     log: Callable[[str, str], None],
 ) -> str | None:
-    """Read EspoCRM's version from inside the running container."""
-    cmd = (
-        "docker compose -f /var/www/espocrm/docker-compose.yml exec -T "
-        "espocrm grep -oE \"'version'\\s*=>\\s*'[^']+'\" data/config.php "
-        "| head -1 | sed -E \"s/.*'([^']+)'$/\\1/\""
+    """Read EspoCRM's version from inside the running container.
+
+    Tries multiple retrieval strategies in order of reliability,
+    falling through on empty or error result. Returns ``None`` if
+    every strategy fails; the caller renders the field as ``"unknown"``.
+
+    Strategies, in order:
+
+    1. PHP eval against
+       ``application/Espo/Resources/defaults/config.php`` — the
+       application's canonical version declaration.
+    2. Pure-shell ``grep`` over the same file — works when PHP eval
+       is not available.
+    3. PHP eval against ``data/config.php`` — legacy fallback for
+       older installations that mirrored the version into the user
+       config.
+
+    :param ssh: An open paramiko SSH client.
+    :param log: Logger callable used for warnings/info traces.
+    :returns: A bare ``X.Y.Z`` version string, or ``None`` if every
+        strategy fails.
+    """
+    for strategy_name, cmd in VERSION_RETRIEVAL_STRATEGIES:
+        try:
+            out = _run(ssh, cmd, log).strip()
+        except Exception as exc:
+            log(
+                f"Version retrieval strategy '{strategy_name}' "
+                f"failed: {exc}",
+                "warning",
+            )
+            continue
+        if not out:
+            log(
+                f"Version retrieval strategy '{strategy_name}' "
+                f"returned empty.",
+                "info",
+            )
+            continue
+        last_line = out.splitlines()[-1].strip()
+        match = re.search(r"(\d+\.\d+\.\d+)", last_line)
+        if match:
+            log(
+                f"EspoCRM version {match.group(1)} retrieved via "
+                f"strategy '{strategy_name}'.",
+                "info",
+            )
+            return match.group(1)
+        log(
+            f"Version retrieval strategy '{strategy_name}' returned "
+            f"output but no version pattern: {last_line[:80]}",
+            "warning",
+        )
+
+    log(
+        "All EspoCRM version retrieval strategies failed; "
+        "rendering 'unknown'.",
+        "warning",
     )
-    out = _run(ssh, cmd, log).strip()
-    if not out:
-        return None
-    last = out.splitlines()[-1].strip()
-    match = re.search(r"(\d+\.\d+\.\d+)", last)
-    return match.group(1) if match else None
+    return None
 
 
 def _read_ssh_key_fingerprint(
@@ -847,7 +937,7 @@ def _add_section_2_summary(
         ("Instance name and code", values.instance_code),
         ("Environment", values.environment.title()),
         ("Application URL", values.application_url),
-        ("Public IPv4", values.public_ipv4),
+        ("Public IPv4 (SSH Host)", values.public_ipv4),
         ("Hostname", values.hostname),
         ("Hosting provider", values.hosting_provider),
         ("Region", values.region),
@@ -898,7 +988,7 @@ def _add_section_3_droplet(
         ),
         ("Region", values.region),
         ("Hostname (server-side)", values.hostname),
-        ("Public IPv4", values.public_ipv4),
+        ("Public IPv4 (SSH Host)", values.public_ipv4),
         ("Droplet ID", values.droplet_id or _placeholder()),
         (
             "Droplet detail page",

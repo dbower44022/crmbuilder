@@ -45,6 +45,12 @@ class RegenerateRecordWorker(QThread):
         written. Parent directory will be created if it does not exist.
     :param db_path: Path to the per-client SQLite database; used to
         write back any changed administrator-input columns.
+    :param client_name: The human-readable client name (e.g.,
+        "Cleveland Business Mentors") looked up by the caller from
+        the master ``Client`` table. Distinct from
+        ``instance.name``, which is the technical instance label
+        (e.g., "CBMTEST"); the rendered Deployment Record's title
+        and metadata block use this value.
     :param parent: Parent QObject.
     """
 
@@ -59,6 +65,7 @@ class RegenerateRecordWorker(QThread):
         administrator_inputs: AdministratorInputs,
         output_path: Path,
         db_path: str,
+        client_name: str,
         parent=None,
     ) -> None:
         super().__init__(parent)
@@ -67,6 +74,7 @@ class RegenerateRecordWorker(QThread):
         self._administrator_inputs = administrator_inputs
         self._output_path = Path(output_path)
         self._db_path = db_path
+        self._client_name = client_name
 
     def _log(self, message: str, level: str = "info") -> None:
         self.log_line.emit(message, level)
@@ -95,6 +103,7 @@ class RegenerateRecordWorker(QThread):
                     self._instance,
                     self._deploy_config,
                     self._administrator_inputs,
+                    client_name=self._client_name,
                 )
             except Exception as exc:
                 self._log(f"Server inspection failed: {exc}", "error")

@@ -125,6 +125,9 @@ class RegenerateRecordDialog(QDialog):
     :param project_folder: Client project folder (absolute path).
     :param db_path: Path to the per-client SQLite database; passed to
         the worker so it can persist updated administrator inputs.
+    :param client_name: Human-readable client name from the master
+        ``Client`` table; passed through to the generator so the
+        rendered document title shows the client's display name.
     :param parent: Parent widget.
     """
 
@@ -134,6 +137,7 @@ class RegenerateRecordDialog(QDialog):
         deploy_config: InstanceDeployConfig,
         project_folder: str,
         db_path: str,
+        client_name: str,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -141,6 +145,7 @@ class RegenerateRecordDialog(QDialog):
         self._deploy_config = deploy_config
         self._project_folder = project_folder
         self._db_path = db_path
+        self._client_name = client_name
         self._worker = None
         self._generated_path: Path | None = None
 
@@ -378,6 +383,7 @@ class RegenerateRecordDialog(QDialog):
             administrator_inputs=administrator_inputs,
             output_path=output_path,
             db_path=self._db_path,
+            client_name=self._client_name,
             parent=self,
         )
         self._worker.log_line.connect(self.append_log)
@@ -428,6 +434,7 @@ def launch_regeneration_dialog(
     deploy_config: InstanceDeployConfig,
     project_folder: str,
     db_path: str,
+    client_name: str,
 ) -> None:
     """Open the regeneration dialog modal.
 
@@ -440,12 +447,15 @@ def launch_regeneration_dialog(
     :param deploy_config: The InstanceDeployConfig row.
     :param project_folder: Client project folder (absolute path).
     :param db_path: Path to the per-client SQLite database.
+    :param client_name: Human-readable client name from the master
+        ``Client`` table.
     """
     dialog = RegenerateRecordDialog(
         instance=instance,
         deploy_config=deploy_config,
         project_folder=project_folder,
         db_path=db_path,
+        client_name=client_name,
         parent=parent,
     )
     dialog.exec()

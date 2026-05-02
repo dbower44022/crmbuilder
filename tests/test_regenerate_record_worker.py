@@ -244,6 +244,7 @@ def test_worker_emits_completed_on_success(
         administrator_inputs=_make_admin_inputs(),
         output_path=output_path,
         db_path=db_path,
+        client_name="Cleveland Business Mentors",
     )
     captured = _collect_signals(worker)
 
@@ -277,6 +278,7 @@ def test_worker_emits_failed_on_inspection_error(
         administrator_inputs=_make_admin_inputs(),
         output_path=tmp_path / "out.docx",
         db_path=db_path,
+        client_name="Cleveland Business Mentors",
     )
     captured = _collect_signals(worker)
 
@@ -309,6 +311,7 @@ def test_worker_emits_failed_on_generation_error(
         administrator_inputs=_make_admin_inputs(),
         output_path=tmp_path / "out.docx",
         db_path=db_path,
+        client_name="Cleveland Business Mentors",
     )
     captured = _collect_signals(worker)
 
@@ -348,6 +351,7 @@ def test_worker_persists_changed_administrator_inputs(
         administrator_inputs=inputs,
         output_path=tmp_path / "out.docx",
         db_path=db_path,
+        client_name="Cleveland Business Mentors",
     )
 
     worker.run()

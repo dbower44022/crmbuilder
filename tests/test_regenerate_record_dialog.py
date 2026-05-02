@@ -185,6 +185,7 @@ def test_dialog_disables_generate_with_no_inputs(db, tmp_path):
         deploy_config=cfg,
         project_folder=str(tmp_path),
         db_path=db_path,
+        client_name="Cleveland Business Mentors",
     )
     try:
         # Default state has all required fields populated → enabled.
@@ -218,6 +219,7 @@ def test_dialog_prefills_from_deploy_config(db, tmp_path):
         deploy_config=cfg,
         project_folder=str(tmp_path),
         db_path=db_path,
+        client_name="Cleveland Business Mentors",
     )
     try:
         assert dialog._registrar_edit.text() == "Cloudflare"

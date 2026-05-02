@@ -860,6 +860,7 @@ class DeployWizard(QDialog):
             "PRAGMA database_list"
         ).fetchone()[2]
         project_folder = self._read_project_folder()
+        client_name = self._read_client_name()
 
         self._worker = SelfHostedWorker(
             config,
@@ -867,6 +868,7 @@ class DeployWizard(QDialog):
             instance_id=self._instance_id,
             db_path=db_path,
             project_folder=project_folder,
+            client_name=client_name,
             parent=self,
         )
         self._worker.log_line.connect(self._on_sh_log)
@@ -888,6 +890,25 @@ class DeployWizard(QDialog):
             try:
                 row = conn.execute(
                     "SELECT project_folder FROM Client WHERE id = ?",
+                    (self._client_id,),
+                ).fetchone()
+            finally:
+                conn.close()
+            if row and row[0]:
+                return row[0]
+        except Exception:
+            pass
+        return None
+
+    def _read_client_name(self) -> str | None:
+        """Look up the active client's display name from the master DB."""
+        if not self._master_db_path or not self._client_id:
+            return None
+        try:
+            conn = sqlite3.connect(self._master_db_path)
+            try:
+                row = conn.execute(
+                    "SELECT name FROM Client WHERE id = ?",
                     (self._client_id,),
                 ).fetchone()
             finally:
@@ -1106,6 +1127,7 @@ class DeployWizard(QDialog):
         db_path = self._conn.execute(
             "PRAGMA database_list"
         ).fetchone()[2]
+        client_name = self._read_client_name() or instance.name
 
         launch_regeneration_dialog(
             parent=self,
@@ -1113,6 +1135,7 @@ class DeployWizard(QDialog):
             deploy_config=deploy_config,
             project_folder=project_folder,
             db_path=db_path,
+            client_name=client_name,
         )
 
     # ------------------------------------------------------------------

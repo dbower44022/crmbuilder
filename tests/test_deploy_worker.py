@@ -147,6 +147,7 @@ def _build_worker(
         instance_id=instance_id,
         db_path=db_path,
         project_folder=project_folder,
+        client_name="Cleveland Business Mentors",
         parent=None,
     )
 

@@ -42,6 +42,11 @@ class SelfHostedWorker(QThread):
         the worker opens its own connection on the worker thread.
     :param project_folder: Absolute path to the client's project folder
         (where ``PRDs/deployment/`` lives).
+    :param client_name: The human-readable client name from the master
+        ``Client`` table (e.g., "Cleveland Business Mentors"). Passed
+        verbatim into the Deployment Record so the document title and
+        metadata block render the client's display name rather than
+        the technical instance code.
     :param parent: Parent QObject.
     """
 
@@ -63,6 +68,7 @@ class SelfHostedWorker(QThread):
         instance_id: int | None = None,
         db_path: str | None = None,
         project_folder: str | None = None,
+        client_name: str | None = None,
         parent=None,
     ) -> None:
         super().__init__(parent)
@@ -71,6 +77,7 @@ class SelfHostedWorker(QThread):
         self._instance_id = instance_id
         self._db_path = db_path
         self._project_folder = project_folder
+        self._client_name = client_name
 
     def _log(self, message: str, level: str = "info") -> None:
         self.log_line.emit(message, level)
@@ -251,7 +258,11 @@ class SelfHostedWorker(QThread):
                 return
 
             values = inspect_server_for_record_values(
-                ssh, instance, deploy_config, self._administrator_inputs,
+                ssh,
+                instance,
+                deploy_config,
+                self._administrator_inputs,
+                client_name=self._client_name or instance.name or "",
             )
 
             output_path = (

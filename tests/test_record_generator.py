@@ -6,12 +6,14 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 from docx import Document
 
 from automation.core.deployment.record_generator import (
     DeploymentRecordValues,
+    _read_espocrm_version,
     generate_deployment_record,
 )
 
@@ -137,6 +139,154 @@ def test_generated_docx_section_structure(tmp_path):
     ]
     missing = [h for h in headings if h not in text]
     assert not missing, f"Missing section headings: {missing}"
+
+
+def test_public_ipv4_label_includes_ssh_host(tmp_path):
+    """The IPv4 row label is "Public IPv4 (SSH Host)" in §2 and §3.1."""
+    values = _make_fixture_values()
+    out = tmp_path / "out.docx"
+    generate_deployment_record(values, out)
+    text = _all_text(Document(str(out)))
+
+    occurrences = text.count("Public IPv4 (SSH Host)")
+    assert occurrences >= 2, (
+        f"Expected at least 2 occurrences of 'Public IPv4 (SSH Host)' "
+        f"(Section 2 and Section 3.1); got {occurrences}."
+    )
+    bare = text.count("Public IPv4") - text.count("Public IPv4 (SSH Host)")
+    assert bare == 0, (
+        "Found bare 'Public IPv4' label without the (SSH Host) "
+        "parenthetical."
+    )
+
+
+def test_inspect_server_uses_provided_client_name():
+    """The client_name parameter overrides Instance.name in the rendered doc."""
+    from automation.core.deployment.record_generator import (
+        AdministratorInputs,
+        inspect_server_for_record_values,
+    )
+
+    instance = MagicMock()
+    instance.name = "CBMTEST"
+    instance.code = "CBMTEST"
+    instance.environment = "test"
+    instance.url = "https://crm-test.example.com/"
+    instance.username = "admin"
+    instance.created_at = "2026-04-01T00:00:00+00:00"
+
+    deploy_config = MagicMock()
+    deploy_config.ssh_host = "1.2.3.4"
+    deploy_config.domain = "crm-test.example.com"
+
+    administrator_inputs = AdministratorInputs(
+        domain_registrar="Porkbun",
+        dns_provider="Porkbun",
+        primary_domain="example.com",
+        instance_subdomain="crm-test",
+        droplet_id="999",
+        backups_enabled=False,
+        proton_pass_admin_entry="pp-admin",
+        proton_pass_db_root_entry="pp-db",
+        proton_pass_hosting_entry="pp-host",
+    )
+
+    ssh = MagicMock()
+
+    # Return a non-empty stub so the parsers produce values that pass
+    # DeploymentRecordValues post-init validation; the exact contents
+    # don't matter for this test, only that client_name flows through.
+    def fake_run(_ssh, cmd, _log):
+        if "authorized_keys" in cmd and "head" in cmd:
+            return "ssh-ed25519 AAAA crm-deploy"
+        if "ssh-keygen" in cmd:
+            return "256 SHA256:abc root@host (ED25519)"
+        if "uname -r" in cmd:
+            return "5.15.0-generic"
+        return "stub"
+
+    with patch(
+        "automation.core.deployment.record_generator._run",
+        side_effect=fake_run,
+    ), patch(
+        "automation.core.deployment.record_generator._inspect_tls",
+        return_value={
+            "issuer": "Let's Encrypt",
+            "subject": "x",
+            "issued_utc": "2026-04-01 00:00:00 UTC",
+            "expires_utc": "2026-07-01 00:00:00 UTC",
+            "sha256_fingerprint": "AA:BB",
+        },
+    ):
+        values = inspect_server_for_record_values(
+            ssh,
+            instance,
+            deploy_config,
+            administrator_inputs,
+            client_name="Cleveland Business Mentors",
+        )
+
+    assert values.client_name == "Cleveland Business Mentors"
+    assert instance.name == "CBMTEST"
+
+
+def test_espocrm_version_strategy_first_returns_version():
+    """First strategy succeeding returns the parsed version."""
+    log_calls: list[tuple[str, str]] = []
+
+    def log(msg: str, lvl: str) -> None:
+        log_calls.append((msg, lvl))
+
+    with patch(
+        "automation.core.deployment.record_generator._run",
+        return_value="9.3.4\n",
+    ) as mock_run:
+        result = _read_espocrm_version(MagicMock(), log)
+
+    assert result == "9.3.4"
+    assert mock_run.call_count == 1
+
+
+def test_espocrm_version_strategy_falls_through_to_second():
+    """Empty first strategy falls through; second-strategy hit returns version."""
+    log_calls: list[tuple[str, str]] = []
+
+    def log(msg: str, lvl: str) -> None:
+        log_calls.append((msg, lvl))
+
+    outputs = iter(["", "9.3.4\n"])
+
+    def fake_run(_ssh, _cmd, _log):
+        return next(outputs)
+
+    with patch(
+        "automation.core.deployment.record_generator._run",
+        side_effect=fake_run,
+    ):
+        result = _read_espocrm_version(MagicMock(), log)
+
+    assert result == "9.3.4"
+
+
+def test_espocrm_version_all_strategies_empty_returns_none():
+    """Every strategy returning empty yields None."""
+    log_calls: list[tuple[str, str]] = []
+
+    def log(msg: str, lvl: str) -> None:
+        log_calls.append((msg, lvl))
+
+    with patch(
+        "automation.core.deployment.record_generator._run",
+        return_value="",
+    ):
+        result = _read_espocrm_version(MagicMock(), log)
+
+    assert result is None
+    # Final summary log line must appear at warning level.
+    assert any(
+        lvl == "warning" and "All EspoCRM version retrieval" in msg
+        for msg, lvl in log_calls
+    )
 
 
 def test_generated_docx_validates_with_office_validator_when_available(

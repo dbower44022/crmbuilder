@@ -301,8 +301,9 @@ class DeployEntry(QWidget):
             )
             return
 
+        client_name = self._read_client_name() or detail.name
         launch_regeneration_dialog(
-            self, detail, config, self._project_folder, db_path,
+            self, detail, config, self._project_folder, db_path, client_name,
         )
 
     def _on_upgrade(self) -> None:
@@ -355,6 +356,25 @@ class DeployEntry(QWidget):
             return row[2] if row else None
         except Exception:
             return None
+
+    def _read_client_name(self) -> str | None:
+        """Look up the active client's display name from the master DB."""
+        if not self._master_db_path or not self._client_id:
+            return None
+        try:
+            conn = sqlite3.connect(self._master_db_path)
+            try:
+                row = conn.execute(
+                    "SELECT name FROM Client WHERE id = ?",
+                    (self._client_id,),
+                ).fetchone()
+            finally:
+                conn.close()
+            if row and row[0]:
+                return row[0]
+        except Exception:
+            pass
+        return None
 
     def _on_recovery(self) -> None:
         """Handle Recovery & Reset click — open the recovery dialog.

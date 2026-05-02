@@ -112,6 +112,7 @@ def _stub_entry(instance: InstanceRow | None) -> SimpleNamespace:
         _project_folder="/tmp/project",
     )
     stub._db_path = lambda: "/tmp/client.db"
+    stub._read_client_name = lambda: "Cleveland Business Mentors"
     return stub
 
 
@@ -168,6 +169,7 @@ def test_on_regenerate_record_opens_backfill_when_config_missing(
 
     launch_mock.assert_called_once_with(
         stub, detail, saved, stub._project_folder, "/tmp/client.db",
+        "Cleveland Business Mentors",
     )
 
 

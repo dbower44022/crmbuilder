@@ -126,6 +126,7 @@ def _stub_wizard(
         _record_generation_error="inspection failed",
     )
     stub._read_project_folder = lambda: project_folder
+    stub._read_client_name = lambda: "Cleveland Business Mentors"
     return stub
 
 
@@ -160,6 +161,7 @@ def test_on_generate_record_manually_launches_regeneration_dialog(
     assert kwargs["deploy_config"].instance_id == instance_id
     assert kwargs["project_folder"] == str(project_folder)
     assert kwargs["db_path"].endswith("client.db")
+    assert kwargs["client_name"] == "Cleveland Business Mentors"
 
 
 # ── Defensive guards: handler warns instead of crashing ─────────────
