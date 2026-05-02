@@ -60,6 +60,7 @@ class DeployEntry(QWidget):
         self._runs: list[DeploymentRunRow] = []
         self._master_db_path: str | None = None
         self._client_id: int | None = None
+        self._project_folder: str | None = None
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -84,6 +85,14 @@ class DeployEntry(QWidget):
         self._recovery_btn.clicked.connect(self._on_recovery)
         self._recovery_btn.setVisible(False)
         header.addWidget(self._recovery_btn)
+
+        self._regenerate_record_btn = QPushButton("Generate Deployment Record")
+        self._regenerate_record_btn.setStyleSheet(_SECONDARY_STYLE)
+        self._regenerate_record_btn.clicked.connect(
+            self._on_regenerate_record
+        )
+        self._regenerate_record_btn.setVisible(False)
+        header.addWidget(self._regenerate_record_btn)
 
         header.addStretch()
         layout.addLayout(header)
@@ -113,15 +122,21 @@ class DeployEntry(QWidget):
         layout.addWidget(self._table, stretch=1)
 
     def set_client_context(
-        self, master_db_path: str, client_id: int,
+        self,
+        master_db_path: str,
+        client_id: int,
+        project_folder: str | None = None,
     ) -> None:
         """Set the client context needed for the wizard.
 
         :param master_db_path: Path to the master database.
         :param client_id: Active client ID.
+        :param project_folder: Absolute path to the client's project
+            folder, used to resolve the Deployment Record output path.
         """
         self._master_db_path = master_db_path
         self._client_id = client_id
+        self._project_folder = project_folder
 
     def refresh(
         self,
@@ -145,6 +160,8 @@ class DeployEntry(QWidget):
         is_sh = self._instance_is_self_hosted()
         self._upgrade_btn.setVisible(is_sh)
         self._recovery_btn.setVisible(is_sh)
+        has_config = is_sh and self._instance_has_deploy_config()
+        self._regenerate_record_btn.setVisible(has_config)
 
         if not has_instances:
             self._empty_label.setText(_EMPTY_NO_INSTANCES)
@@ -213,6 +230,73 @@ class DeployEntry(QWidget):
             return bool(row and row[0] == "self_hosted")
         except Exception:
             return False
+
+    def _instance_has_deploy_config(self) -> bool:
+        """Return True iff the active instance has an InstanceDeployConfig."""
+        if self._conn is None or self._instance is None:
+            return False
+        try:
+            row = self._conn.execute(
+                "SELECT 1 FROM InstanceDeployConfig WHERE instance_id = ?",
+                (self._instance.id,),
+            ).fetchone()
+            return bool(row)
+        except Exception:
+            return False
+
+    def _on_regenerate_record(self) -> None:
+        """Open the Deployment Record regeneration dialog."""
+        from automation.core.deployment.deploy_config_repo import (
+            load_deploy_config,
+        )
+        from automation.ui.deployment.deployment_logic import (
+            load_instance_detail,
+        )
+        from automation.ui.deployment.regenerate_record_dialog import (
+            launch_regeneration_dialog,
+        )
+
+        if self._conn is None or self._instance is None:
+            return
+
+        config = load_deploy_config(self._conn, self._instance.id)
+        if config is None:
+            QMessageBox.information(
+                self, "No Connection Info",
+                "This instance does not yet have a saved server "
+                "connection. Run an Upgrade or Recovery operation "
+                "first to capture the connection details.",
+            )
+            return
+
+        if not self._project_folder:
+            QMessageBox.warning(
+                self, "No Project Folder",
+                "The active client has no project folder configured. "
+                "The Deployment Record requires a project folder so "
+                "the file can be written under PRDs/deployment/.",
+            )
+            return
+
+        detail = load_instance_detail(self._conn, self._instance.id)
+        if detail is None:
+            QMessageBox.warning(
+                self, "Instance Not Found",
+                "Could not load full details for the active instance.",
+            )
+            return
+
+        db_path = self._db_path()
+        if db_path is None:
+            QMessageBox.warning(
+                self, "Database Unavailable",
+                "Could not determine the per-client database path.",
+            )
+            return
+
+        launch_regeneration_dialog(
+            self, detail, config, self._project_folder, db_path,
+        )
 
     def _on_upgrade(self) -> None:
         """Handle Upgrade EspoCRM click — open the upgrade dialog.

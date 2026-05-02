@@ -173,6 +173,7 @@ class DeploymentWindow(QWidget):
             if self._master_db_path and self._client_id:
                 self._deploy_entry.set_client_context(
                     self._master_db_path, self._client_id,
+                    self._project_folder,
                 )
                 self._instances_entry.set_client_context(
                     self._master_db_path, self._client_id,
