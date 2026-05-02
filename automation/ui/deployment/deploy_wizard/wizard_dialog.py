@@ -9,9 +9,12 @@ Every wizard execution writes a DeploymentRun row.
 from __future__ import annotations
 
 import sqlite3
+from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDialog,
     QFileDialog,
@@ -30,6 +33,7 @@ from PySide6.QtWidgets import (
 )
 
 from automation.core.deployment.connectivity import ConnectivityResult
+from automation.core.deployment.record_generator import AdministratorInputs
 from automation.core.deployment.ssh_deploy import SelfHostedConfig
 from automation.core.deployment.wizard_logic import (
     SCENARIO_LABELS,
@@ -41,7 +45,6 @@ from automation.core.deployment.wizard_logic import (
     finalize_deployment_run,
     find_matching_instances,
     insert_deployment_run,
-    persist_deploy_config_from_wizard,
     update_instance_from_wizard,
 )
 from automation.ui.deployment.deploy_wizard.deploy_worker import (
@@ -117,13 +120,15 @@ class DeployWizard(QDialog):
         self._build_self_hosted_domain_page()
         # Page 3: Self-hosted — admin credentials
         self._build_self_hosted_admin_page()
-        # Page 4: Self-hosted — deploy progress
+        # Page 4: Self-hosted — Deployment Record documentation inputs
+        self._build_self_hosted_documentation_page()
+        # Page 5: Self-hosted — deploy progress
         self._build_self_hosted_progress_page()
-        # Page 5: Cloud/BYO — instance details
+        # Page 6: Cloud/BYO — instance details
         self._build_cloud_byo_details_page()
-        # Page 6: Cloud/BYO — connectivity progress
+        # Page 7: Cloud/BYO — connectivity progress
         self._build_cloud_byo_progress_page()
-        # Page 7: Result page (shared)
+        # Page 8: Result page (shared)
         self._build_result_page()
 
         # Navigation
@@ -254,6 +259,82 @@ class DeployWizard(QDialog):
 
         self._stack.addWidget(w)
 
+    def _build_self_hosted_documentation_page(self) -> None:
+        w = QWidget()
+        layout = QVBoxLayout(w)
+
+        header = QLabel(
+            "These values are needed to generate the Deployment Record "
+            "document. They are not used by the application itself; "
+            "they document where each item is stored or who manages it."
+        )
+        header.setWordWrap(True)
+        header.setStyleSheet("color: #424242; padding-bottom: 8px;")
+        layout.addWidget(header)
+
+        form = QFormLayout()
+
+        self._doc_registrar = QLineEdit()
+        self._doc_registrar.setText("Porkbun")
+        form.addRow("Domain Registrar:", self._doc_registrar)
+        form.addRow("", _hint("Where the primary domain was purchased."))
+
+        self._doc_dns_provider = QLineEdit()
+        self._doc_dns_provider.setText("Porkbun")
+        self._doc_registrar.textChanged.connect(self._on_registrar_changed)
+        form.addRow("DNS Provider:", self._doc_dns_provider)
+        form.addRow("", _hint(
+            "Where the A record for this instance lives (often the same "
+            "as the registrar)."
+        ))
+
+        self._doc_droplet_id = QLineEdit()
+        self._doc_droplet_id.setPlaceholderText(
+            "Optional — paste from the DigitalOcean Droplet detail URL"
+        )
+        form.addRow("Droplet ID:", self._doc_droplet_id)
+        form.addRow("", _hint(
+            "Numeric ID from cloud.digitalocean.com/droplets/<id>. "
+            "Leave blank to skip the detail/console links."
+        ))
+
+        self._doc_backups_enabled = QCheckBox(
+            "DigitalOcean weekly backups are enabled for this Droplet"
+        )
+        form.addRow("Backups:", self._doc_backups_enabled)
+
+        self._doc_proton_admin = QLineEdit()
+        form.addRow(
+            "Admin Password Proton Pass Entry:", self._doc_proton_admin
+        )
+        form.addRow("", _hint(
+            "The exact name of the Proton Pass entry that holds the "
+            "EspoCRM admin password."
+        ))
+
+        self._doc_proton_db_root = QLineEdit()
+        form.addRow(
+            "DB Root Password Proton Pass Entry:", self._doc_proton_db_root
+        )
+        form.addRow("", _hint(
+            "The exact name of the Proton Pass entry that holds the "
+            "MariaDB root password."
+        ))
+
+        self._doc_proton_hosting = QLineEdit()
+        form.addRow(
+            "DigitalOcean Account Proton Pass Entry:",
+            self._doc_proton_hosting,
+        )
+        form.addRow("", _hint(
+            "The exact name of the Proton Pass entry that holds the "
+            "DigitalOcean account login."
+        ))
+
+        layout.addLayout(form)
+        layout.addStretch()
+        self._stack.addWidget(w)
+
     def _build_self_hosted_progress_page(self) -> None:
         w = QWidget()
         layout = QVBoxLayout(w)
@@ -326,6 +407,35 @@ class DeployWizard(QDialog):
         self._result_msg.setWordWrap(True)
         self._result_msg.setStyleSheet("font-size: 14px; padding: 16px;")
         layout.addWidget(self._result_msg)
+
+        self._record_panel = QWidget()
+        record_layout = QVBoxLayout(self._record_panel)
+        record_layout.setContentsMargins(20, 8, 20, 8)
+        self._record_heading = QLabel("Deployment Record")
+        self._record_heading.setStyleSheet(
+            "font-weight: bold; font-size: 13px;"
+        )
+        record_layout.addWidget(self._record_heading)
+        self._record_status = QLabel()
+        self._record_status.setWordWrap(True)
+        self._record_status.setStyleSheet(
+            "font-size: 12px; padding: 4px 0;"
+        )
+        record_layout.addWidget(self._record_status)
+        record_btn_row = QHBoxLayout()
+        self._record_reveal_btn = QPushButton("Reveal in file manager")
+        self._record_reveal_btn.setStyleSheet(_SECONDARY_STYLE)
+        self._record_reveal_btn.clicked.connect(self._on_reveal_record)
+        record_btn_row.addWidget(self._record_reveal_btn)
+        self._record_manual_btn = QPushButton("Generate manually")
+        self._record_manual_btn.setStyleSheet(_SECONDARY_STYLE)
+        self._record_manual_btn.clicked.connect(self._on_generate_record_manually)
+        record_btn_row.addWidget(self._record_manual_btn)
+        record_btn_row.addStretch()
+        record_layout.addLayout(record_btn_row)
+        self._record_panel.setVisible(False)
+        layout.addWidget(self._record_panel)
+
         layout.addStretch()
         self._stack.addWidget(w)
 
@@ -349,10 +459,11 @@ class DeployWizard(QDialog):
     _PAGE_SH_SERVER = 1
     _PAGE_SH_DOMAIN = 2
     _PAGE_SH_ADMIN = 3
-    _PAGE_SH_PROGRESS = 4
-    _PAGE_CLOUD_DETAILS = 5
-    _PAGE_CLOUD_PROGRESS = 6
-    _PAGE_RESULT = 7
+    _PAGE_SH_DOCUMENTATION = 4
+    _PAGE_SH_PROGRESS = 5
+    _PAGE_CLOUD_DETAILS = 6
+    _PAGE_CLOUD_PROGRESS = 7
+    _PAGE_RESULT = 8
 
     def _selected_scenario(self) -> str | None:
         for scenario, radio in self._scenario_radios.items():
@@ -380,6 +491,8 @@ class DeployWizard(QDialog):
                 self._PAGE_SH_SERVER: "Step 2 \u2014 Server Target",
                 self._PAGE_SH_DOMAIN: "Step 3 \u2014 Domain & Database",
                 self._PAGE_SH_ADMIN: "Step 4 \u2014 Admin Account",
+                self._PAGE_SH_DOCUMENTATION:
+                    "Step 5 \u2014 Documentation Inputs",
                 self._PAGE_SH_PROGRESS: "Deploying...",
             }
             self._step_label.setText(labels.get(page, ""))
@@ -423,6 +536,12 @@ class DeployWizard(QDialog):
 
         elif page == self._PAGE_SH_ADMIN:
             if not self._validate_sh_admin():
+                return
+            self._populate_documentation_defaults()
+            self._stack.setCurrentIndex(self._PAGE_SH_DOCUMENTATION)
+
+        elif page == self._PAGE_SH_DOCUMENTATION:
+            if not self._validate_sh_documentation():
                 return
             self._start_self_hosted_deploy()
             return
@@ -483,6 +602,40 @@ class DeployWizard(QDialog):
             return False
         if not self._sh_admin_email.text().strip():
             QMessageBox.warning(self, "Validation", "Admin Email is required.")
+            return False
+        return True
+
+    def _validate_sh_documentation(self) -> bool:
+        if not self._doc_registrar.text().strip():
+            QMessageBox.warning(self, "Validation", "Domain Registrar is required.")
+            return False
+        if not self._doc_dns_provider.text().strip():
+            QMessageBox.warning(self, "Validation", "DNS Provider is required.")
+            return False
+        droplet_id = self._doc_droplet_id.text().strip()
+        if droplet_id and not droplet_id.isdigit():
+            QMessageBox.warning(
+                self, "Validation",
+                "Droplet ID must be numeric (or left blank).",
+            )
+            return False
+        if not self._doc_proton_admin.text().strip():
+            QMessageBox.warning(
+                self, "Validation",
+                "Admin Password Proton Pass entry name is required.",
+            )
+            return False
+        if not self._doc_proton_db_root.text().strip():
+            QMessageBox.warning(
+                self, "Validation",
+                "DB Root Password Proton Pass entry name is required.",
+            )
+            return False
+        if not self._doc_proton_hosting.text().strip():
+            QMessageBox.warning(
+                self, "Validation",
+                "DigitalOcean Account Proton Pass entry name is required.",
+            )
             return False
         return True
 
@@ -605,6 +758,69 @@ class DeployWizard(QDialog):
     # Self-hosted deploy
     # ------------------------------------------------------------------
 
+    def _populate_documentation_defaults(self) -> None:
+        """Pre-populate Proton Pass entry defaults from instance/code/env.
+
+        Called as the user transitions from the Admin step into the
+        Documentation Inputs step. Only writes values if the field is
+        empty so a Back/Next round trip doesn't clobber edits.
+        """
+        code = ""
+        env_label = ""
+        try:
+            row = self._conn.execute(
+                "SELECT code, environment FROM Instance WHERE id = ?",
+                (self._instance_id,),
+            ).fetchone()
+            if row:
+                code = (row[0] or "").upper()
+                env_label = (row[1] or "").title()
+        except Exception:
+            pass
+
+        admin_default = (
+            f"{code}-ESPOCRM-{env_label} Instance Admin"
+            if code and env_label else ""
+        )
+        db_root_default = (
+            f"{code}-ESPOCRM-{env_label} DB Root"
+            if code and env_label else ""
+        )
+        hosting_default = (
+            f"{code} DigitalOcean Account" if code else ""
+        )
+
+        if not self._doc_proton_admin.text().strip():
+            self._doc_proton_admin.setText(admin_default)
+        if not self._doc_proton_db_root.text().strip():
+            self._doc_proton_db_root.setText(db_root_default)
+        if not self._doc_proton_hosting.text().strip():
+            self._doc_proton_hosting.setText(hosting_default)
+
+    def _on_registrar_changed(self, text: str) -> None:
+        """Mirror registrar into DNS provider when the two were in sync."""
+        current = self._doc_dns_provider.text().strip()
+        if current == "" or current == "Porkbun":
+            self._doc_dns_provider.setText(text)
+
+    def _build_administrator_inputs(
+        self, config: SelfHostedConfig
+    ) -> AdministratorInputs:
+        """Bridge wizard form fields to the Prompt-A AdministratorInputs."""
+        subdomain, primary = _split_domain(config.domain)
+        droplet_id = self._doc_droplet_id.text().strip() or None
+        return AdministratorInputs(
+            domain_registrar=self._doc_registrar.text().strip(),
+            dns_provider=self._doc_dns_provider.text().strip(),
+            primary_domain=primary,
+            instance_subdomain=subdomain,
+            droplet_id=droplet_id,
+            backups_enabled=self._doc_backups_enabled.isChecked(),
+            proton_pass_admin_entry=self._doc_proton_admin.text().strip(),
+            proton_pass_db_root_entry=self._doc_proton_db_root.text().strip(),
+            proton_pass_hosting_entry=self._doc_proton_hosting.text().strip(),
+        )
+
     def _start_self_hosted_deploy(self) -> None:
         import secrets
 
@@ -626,17 +842,66 @@ class DeployWizard(QDialog):
             admin_password=self._sh_admin_pass.text().strip(),
             admin_email=self._sh_admin_email.text().strip(),
         )
+        self._self_hosted_config = config
+        self._administrator_inputs = self._build_administrator_inputs(config)
+        self._record_generated_path = None
+        self._record_generation_error = None
 
         self._sh_log.clear()
         self._stack.setCurrentIndex(self._PAGE_SH_PROGRESS)
         self._update_nav()
 
-        self._worker = SelfHostedWorker(config, parent=self)
+        db_path = self._conn.execute(
+            "PRAGMA database_list"
+        ).fetchone()[2]
+        project_folder = self._read_project_folder()
+
+        self._worker = SelfHostedWorker(
+            config,
+            administrator_inputs=self._administrator_inputs,
+            instance_id=self._instance_id,
+            db_path=db_path,
+            project_folder=project_folder,
+            parent=self,
+        )
         self._worker.log_line.connect(self._on_sh_log)
+        self._worker.record_generated.connect(self._on_record_generated)
+        self._worker.record_generation_failed.connect(
+            self._on_record_generation_failed
+        )
         self._worker.deployment_finished.connect(
             lambda ok: self._on_deploy_finished(ok, config)
         )
         self._worker.start()
+
+    def _read_project_folder(self) -> str | None:
+        """Look up the active client's project_folder from the master DB."""
+        if not self._master_db_path or not self._client_id:
+            return None
+        try:
+            conn = sqlite3.connect(self._master_db_path)
+            try:
+                row = conn.execute(
+                    "SELECT project_folder FROM Client WHERE id = ?",
+                    (self._client_id,),
+                ).fetchone()
+            finally:
+                conn.close()
+            if row and row[0]:
+                return row[0]
+        except Exception:
+            pass
+        return None
+
+    def _on_record_generated(self, path: str) -> None:
+        """Worker emitted a generated Deployment Record path."""
+        self._record_generated_path = path
+        self._record_generation_error = None
+
+    def _on_record_generation_failed(self, message: str) -> None:
+        """Worker emitted a Record-generation failure (deploy still ok)."""
+        self._record_generated_path = None
+        self._record_generation_error = message
 
     def _on_sh_log(self, message: str, level: str) -> None:
         color = {"error": "#F44336", "warning": "#FFC107"}.get(level, "#D4D4D4")
@@ -644,17 +909,6 @@ class DeployWizard(QDialog):
 
     def _on_deploy_finished(self, success: bool, config: SelfHostedConfig) -> None:
         if success:
-            # Update instance row
-            url = f"https://{config.domain}"
-            update_instance_from_wizard(
-                self._conn, self._instance_id,
-                url=url,
-                username=config.admin_username,
-                password=config.admin_password,
-            )
-            persist_deploy_config_from_wizard(
-                self._conn, self._instance_id, config,
-            )
             finalize_deployment_run(
                 self._conn, self._run_id, outcome="success",
             )
@@ -735,8 +989,69 @@ class DeployWizard(QDialog):
         self._finished = True
         self._result_icon.setText("\u2705" if success else "\u274c")
         self._result_msg.setText(message)
+        self._populate_record_panel(success)
         self._stack.setCurrentIndex(self._PAGE_RESULT)
         self._update_nav()
+
+    def _populate_record_panel(self, deploy_success: bool) -> None:
+        """Show the Deployment Record panel based on the worker's signals.
+
+        Hidden entirely when a Record was not attempted (failed deploy,
+        cloud/BYO scenario, or no project_folder available).
+        """
+        path = getattr(self, "_record_generated_path", None)
+        error = getattr(self, "_record_generation_error", None)
+
+        if not deploy_success or (path is None and error is None):
+            self._record_panel.setVisible(False)
+            return
+
+        if path:
+            self._record_status.setText(
+                f"A Deployment Record was generated at:\n{path}"
+            )
+            self._record_status.setStyleSheet(
+                "font-size: 12px; padding: 4px 0; color: #2E7D32;"
+            )
+            self._record_reveal_btn.setVisible(True)
+            self._record_manual_btn.setVisible(False)
+        else:
+            self._record_status.setText(
+                "Deployment succeeded, but the Deployment Record could "
+                f"not be generated:\n{error}\n\n"
+                "You can generate it manually from the Deployment tab."
+            )
+            self._record_status.setStyleSheet(
+                "font-size: 12px; padding: 4px 0; color: #B71C1C; "
+                "background-color: #FFF8E1; padding: 8px; "
+                "border-left: 4px solid #FFC107;"
+            )
+            self._record_reveal_btn.setVisible(False)
+            self._record_manual_btn.setVisible(True)
+        self._record_panel.setVisible(True)
+
+    def _on_reveal_record(self) -> None:
+        """Open the Deployment Record's parent folder in the OS file manager."""
+        path = getattr(self, "_record_generated_path", None)
+        if not path:
+            return
+        parent = str(Path(path).parent)
+        QDesktopServices.openUrl(QUrl.fromLocalFile(parent))
+
+    def _on_generate_record_manually(self) -> None:
+        """Defer manual regeneration to deployment-record Prompt C.
+
+        Prompt B does not implement the regeneration UI; until Prompt C
+        ships, surface a simple modal with the failure detail and
+        guidance. This button is shown only when generation failed.
+        """
+        message = (
+            "Manual regeneration is not yet wired up. The Deployment "
+            "tab will gain a 'Generate Deployment Record' option once "
+            "deployment-record Prompt C is implemented.\n\n"
+            f"Failure detail: {self._record_generation_error or 'unknown'}"
+        )
+        QMessageBox.information(self, "Generate Deployment Record", message)
 
     # ------------------------------------------------------------------
     # Helpers
@@ -753,7 +1068,6 @@ class DeployWizard(QDialog):
             self._ssh_browse_btn.setVisible(False)
 
     def _on_browse_ssh_key(self) -> None:
-        from pathlib import Path
         path, _ = QFileDialog.getOpenFileName(
             self, "Select SSH Private Key", str(Path.home() / ".ssh"),
         )
@@ -772,3 +1086,27 @@ class DeployWizard(QDialog):
 def _escape(text: str) -> str:
     """HTML-escape text for log display."""
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _hint(text: str) -> QLabel:
+    """Build a one-line hint label for the Documentation Inputs form."""
+    label = QLabel(text)
+    label.setWordWrap(True)
+    label.setStyleSheet("color: #757575; font-size: 11px;")
+    return label
+
+
+def _split_domain(domain: str) -> tuple[str, str]:
+    """Split a fully qualified domain into (subdomain, primary_domain).
+
+    "crm-mr-test.cbm-charity.org" → ("crm-mr-test", "cbm-charity.org").
+    "example.com" → ("", "example.com") — a two-label domain has no
+    subdomain. Caller-tolerant: empty input returns ("", "").
+    """
+    text = (domain or "").strip().rstrip(".")
+    if not text:
+        return ("", "")
+    parts = text.split(".")
+    if len(parts) <= 2:
+        return ("", text)
+    return (parts[0], ".".join(parts[1:]))

@@ -54,6 +54,10 @@ class InstanceDeployConfig:
     last_upgrade_at: str | None = None
     last_backup_paths: list[str] = dataclasses.field(default_factory=list)
     cert_expiry_date: str | None = None
+    domain_registrar: str | None = None
+    dns_provider: str | None = None
+    droplet_id: str | None = None
+    backups_enabled: bool | None = None
     id: int | None = None
     _ssh_credential_ref: str | None = None
     _db_root_password_ref: str | None = None
@@ -79,6 +83,10 @@ def _row_to_config(row: sqlite3.Row | tuple) -> InstanceDeployConfig:
         last_upgrade_at,
         last_backup_paths,
         cert_expiry_date,
+        domain_registrar,
+        dns_provider,
+        droplet_id,
+        backups_enabled,
         _created_at,
         _updated_at,
     ) = row
@@ -119,6 +127,12 @@ def _row_to_config(row: sqlite3.Row | tuple) -> InstanceDeployConfig:
         last_upgrade_at=last_upgrade_at,
         last_backup_paths=paths,
         cert_expiry_date=cert_expiry_date,
+        domain_registrar=domain_registrar,
+        dns_provider=dns_provider,
+        droplet_id=droplet_id,
+        backups_enabled=(
+            None if backups_enabled is None else bool(backups_enabled)
+        ),
         _ssh_credential_ref=ssh_credential_ref,
         _db_root_password_ref=db_root_password_ref,
     )
@@ -139,6 +153,7 @@ def load_deploy_config(
         "letsencrypt_email, db_root_password_ref, admin_email, "
         "current_espocrm_version, latest_espocrm_version, "
         "last_upgrade_at, last_backup_paths, cert_expiry_date, "
+        "domain_registrar, dns_provider, droplet_id, backups_enabled, "
         "created_at, updated_at "
         "FROM InstanceDeployConfig WHERE instance_id = ?",
         (instance_id,),
@@ -193,6 +208,9 @@ def save_deploy_config(
 
     last_backup_paths_json = json.dumps(config.last_backup_paths or [])
 
+    backups_enabled_int = (
+        None if config.backups_enabled is None else int(config.backups_enabled)
+    )
     if existing is None:
         cursor = conn.execute(
             "INSERT INTO InstanceDeployConfig ("
@@ -201,8 +219,11 @@ def save_deploy_config(
             "    domain, letsencrypt_email, db_root_password_ref, "
             "    admin_email, current_espocrm_version, "
             "    latest_espocrm_version, last_upgrade_at, "
-            "    last_backup_paths, cert_expiry_date"
-            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "    last_backup_paths, cert_expiry_date, "
+            "    domain_registrar, dns_provider, droplet_id, "
+            "    backups_enabled"
+            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
+            "?, ?, ?, ?)",
             (
                 config.instance_id,
                 config.scenario,
@@ -220,6 +241,10 @@ def save_deploy_config(
                 config.last_upgrade_at,
                 last_backup_paths_json,
                 config.cert_expiry_date,
+                config.domain_registrar,
+                config.dns_provider,
+                config.droplet_id,
+                backups_enabled_int,
             ),
         )
         config.id = cursor.lastrowid
@@ -233,6 +258,8 @@ def save_deploy_config(
             "    admin_email = ?, current_espocrm_version = ?, "
             "    latest_espocrm_version = ?, last_upgrade_at = ?, "
             "    last_backup_paths = ?, cert_expiry_date = ?, "
+            "    domain_registrar = ?, dns_provider = ?, "
+            "    droplet_id = ?, backups_enabled = ?, "
             "    updated_at = CURRENT_TIMESTAMP "
             "WHERE instance_id = ?",
             (
@@ -251,6 +278,10 @@ def save_deploy_config(
                 config.last_upgrade_at,
                 last_backup_paths_json,
                 config.cert_expiry_date,
+                config.domain_registrar,
+                config.dns_provider,
+                config.droplet_id,
+                backups_enabled_int,
                 config.instance_id,
             ),
         )

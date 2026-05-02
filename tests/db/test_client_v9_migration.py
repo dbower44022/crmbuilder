@@ -83,6 +83,8 @@ def test_columns(db: sqlite3.Connection) -> None:
         "admin_email",
         "current_espocrm_version", "latest_espocrm_version",
         "last_upgrade_at", "last_backup_paths", "cert_expiry_date",
+        # Added by _client_v10 (deployment-record series Prompt B)
+        "domain_registrar", "dns_provider", "droplet_id", "backups_enabled",
         "created_at", "updated_at",
     }
     assert _col_names(db, "InstanceDeployConfig") == expected

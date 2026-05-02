@@ -617,6 +617,10 @@ CREATE TABLE InstanceDeployConfig (
     last_upgrade_at TIMESTAMP,
     last_backup_paths TEXT,
     cert_expiry_date TEXT,
+    domain_registrar TEXT,
+    dns_provider TEXT,
+    droplet_id TEXT,
+    backups_enabled INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (instance_id) REFERENCES Instance(id) ON DELETE CASCADE

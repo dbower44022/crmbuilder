@@ -197,6 +197,8 @@ def persist_deploy_config_from_wizard(
     conn: sqlite3.Connection,
     instance_id: int,
     config,
+    *,
+    administrator_inputs=None,
 ) -> bool:
     """Persist server-connection details from a successful self-hosted deploy.
 
@@ -214,6 +216,11 @@ def persist_deploy_config_from_wizard(
     :param conn: Per-client database connection.
     :param instance_id: ``Instance.id`` of the just-deployed instance.
     :param config: The ``SelfHostedConfig`` used by the wizard.
+    :param administrator_inputs: Optional ``AdministratorInputs``-like
+        object whose ``domain_registrar``, ``dns_provider``,
+        ``droplet_id``, and ``backups_enabled`` fields are persisted so
+        the manual-regeneration flow (deployment-record Prompt C) can
+        re-use them without re-prompting.
     :returns: True if persisted; False if the write was skipped or
         failed.
     """
@@ -239,6 +246,18 @@ def persist_deploy_config_from_wizard(
             letsencrypt_email=config.letsencrypt_email,
             db_root_password=config.db_root_password,
             admin_email=config.admin_email,
+            domain_registrar=getattr(
+                administrator_inputs, "domain_registrar", None
+            ),
+            dns_provider=getattr(
+                administrator_inputs, "dns_provider", None
+            ),
+            droplet_id=getattr(
+                administrator_inputs, "droplet_id", None
+            ),
+            backups_enabled=getattr(
+                administrator_inputs, "backups_enabled", None
+            ),
         )
         save_deploy_config(conn, deploy_config)
         return True

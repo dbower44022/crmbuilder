@@ -1,0 +1,144 @@
+{
+  "document_version": "1.2",
+  "document_last_updated": "05-02-26 05:45",
+  "document_status": "Active — reflects live system as of Last Updated",
+  "client_name": "Cleveland Business Mentors",
+  "instance_name": "CBMTEST",
+  "instance_code": "CBMTEST",
+  "environment": "test",
+  "application_url": "https://crm-test.clevelandbusinessmentors.org/",
+  "admin_username": "admin",
+  "instance_created_at_utc": "2026-04-13T17:48:08Z",
+  "hosting_provider": "DigitalOcean",
+  "droplet_id": "561480073",
+  "droplet_detail_url": "https://cloud.digitalocean.com/droplets/561480073",
+  "droplet_console_url": "https://cloud.digitalocean.com/droplets/561480073/console",
+  "region": "NYC3",
+  "hostname": "CBM-TEST",
+  "public_ipv4": "104.131.45.208",
+  "droplet_size_summary": "2 vCPU / 4 GB RAM / 80 GB SSD",
+  "os_release": "Ubuntu 22.04.5 LTS (jammy)",
+  "kernel": "5.15.0-171-generic",
+  "cpu_count": 2,
+  "memory_summary": "3.8 GiB",
+  "disk_summary": "78 GB (root filesystem on /dev/vda1)",
+  "swap_summary": "2 GB swapfile (/swapfile)",
+  "ufw_summary": "active; allows 22 / 80 / 443 (IPv4 and IPv6)",
+  "backups_enabled": false,
+  "primary_domain": "clevelandbusinessmentors.org",
+  "domain_registrar": "Porkbun",
+  "dns_provider": "Porkbun (default — Porkbun nameservers)",
+  "instance_subdomain": "crm-test",
+  "tls_issuer": "Let's Encrypt (CN=E7, O=Let's Encrypt, C=US)",
+  "tls_subject": "CN=crm-test.clevelandbusinessmentors.org",
+  "tls_issued_utc": "2026-03-28 20:35:38 UTC",
+  "tls_expires_utc": "2026-06-26 20:35:37 UTC",
+  "tls_sha256_fingerprint": "27:DB:E6:01:1B:37:83:FC:1F:4D:BB:B5:B3:BD:BE:FF:7A:0A:52:83:98:74:6E:E6:02:CA:22:F0:9E:85:77:72",
+  "espocrm_version": "9.3.4",
+  "espocrm_install_completed_utc": "2026-03-28 21:35:23 UTC",
+  "espocrm_install_path": "/var/www/espocrm",
+  "mariadb_version": "12.2.2",
+  "nginx_version": "1.29.7",
+  "docker_version": "29.3.1",
+  "docker_compose_version": "v5.1.1",
+  "ssh_authorized_user": "root",
+  "ssh_key_algorithm": "ED25519",
+  "ssh_key_comment": "crm-deploy",
+  "ssh_key_fingerprint": "SHA256:v1HwnquAQ40MRhGJSyMsgUxFnyCar6ddO+0Sg+KDgf0",
+  "proton_pass_admin_entry": "CBM-ESPOCRM-Test Instance Admin",
+  "proton_pass_db_root_entry": "ESPOCRM Root DB Password - Test Instance",
+  "proton_pass_hosting_entry": "DigitalOcean-CRM Hosting - Test Instance",
+  "deployment_history": [
+    {
+      "date_utc": "2026-03-28 17:51:44",
+      "event": "Droplet provisioned and booted",
+      "notes": "DigitalOcean NYC3 region; Ubuntu 22.04 LTS x64 base image; manual provisioning by Doug Bower in the DigitalOcean control panel"
+    },
+    {
+      "date_utc": "2026-03-28 20:35:38",
+      "event": "TLS certificate issued",
+      "notes": "Let's Encrypt issued the initial certificate as part of the EspoCRM installer's --letsencrypt step"
+    },
+    {
+      "date_utc": "2026-03-28 21:33:52",
+      "event": "EspoCRM stack created",
+      "notes": "Installer-driven creation of /var/www/espocrm/ directory structure"
+    },
+    {
+      "date_utc": "2026-03-28 21:35:23",
+      "event": "EspoCRM stack online",
+      "notes": "All five Docker containers running; deploy considered complete"
+    },
+    {
+      "date_utc": "2026-04-13 17:48:08",
+      "event": "Instance row created in CRM Builder DB",
+      "notes": "Manual addition via the CRM Builder application's instance management UI; not associated with a re-deploy"
+    },
+    {
+      "date_utc": "2026-05-02 04:45",
+      "event": "Deployment Record v1.0 produced",
+      "notes": "This document; values reconstructed from on-server inspection because the InstanceDeployConfig schema (migration _client_v9) had not yet been applied at the time of the original deploy"
+    },
+    {
+      "date_utc": "2026-05-02 (same day)",
+      "event": "MariaDB root password captured",
+      "notes": "Extracted from the running espocrm-db container's environment and stored in Proton Pass"
+    }
+  ],
+  "open_items": [
+    {
+      "id": "DR-OI-001",
+      "item": "DigitalOcean automated backups not enabled",
+      "status_or_plan": "Acceptable for a test instance. Review before any production-grade data accumulates. Decision: defer until production deploy at minimum."
+    },
+    {
+      "id": "DR-OI-002",
+      "item": "SSH private key stored in Git repository alongside public counterpart",
+      "status_or_plan": "Flagged for security review. Set aside per current direction. When addressed, the recommended path is: move the private key to Proton Pass as a secure attachment, scrub the key from git history, rotate the keypair on the server, and update authorized_keys."
+    },
+    {
+      "id": "DR-OI-003",
+      "item": "No InstanceDeployConfig row in local CRM Builder database",
+      "status_or_plan": "The original deploy on 2026-03-28 predated migration _client_v9, so the table was unavailable to receive the persistence write. The on-server state is fully captured in this document; no operational impact. If desired, an InstanceDeployConfig row can be backfilled via the application's connection_config_dialog backfill flow."
+    },
+    {
+      "id": "DR-OI-004",
+      "item": "Deployment Runbook (generic) not yet authored",
+      "status_or_plan": "Companion document to this one. Will live at crmbuilder/PRDs/product/crmbuilder-automation-PRD/deployment-runbook.docx. Authoring is the second deliverable in the deployment-record work track."
+    }
+  ],
+  "revision_history": [
+    {
+      "version": "1.2",
+      "date": "05-02-26 05:45",
+      "notes": "Added the DigitalOcean Droplet ID, the Droplet detail page URL, and the in-browser Console URL to Section 3.1 (Droplet Identification). Both URLs derive from the numeric Droplet ID; supplying the URLs directly removes the need for an operator to browse the DO Droplets list to locate this server. No other content changes."
+    },
+    {
+      "version": "1.1",
+      "date": "05-02-26 05:30",
+      "notes": "Added MariaDB and nginx version numbers to Section 6 (EspoCRM Application). Both retrieved from the running containers via SSH for consistency with the EspoCRM version already captured. No other content changes."
+    },
+    {
+      "version": "1.0",
+      "date": "05-02-26 04:45",
+      "notes": "Initial release. Reconstructed from on-server inspection (SSH diagnostic), live SSL certificate inspection, and DigitalOcean dashboard. The original deploy on 2026-03-28 predates the InstanceDeployConfig schema in the local CRM Builder database (migration _client_v9 applied 2026-05-02), so no in-app deployment audit row exists; the live server was the authoritative source for all values captured here."
+    }
+  ],
+  "change_log": [
+    {
+      "version": "1.2",
+      "date": "05-02-26 05:45",
+      "changes": "Added three rows to Section 3.1 (Droplet Identification): Droplet ID (561480073), Droplet detail page URL, and in-browser Console URL. The two URLs are derivable from the Droplet ID but supplying them directly removes the need for an operator to browse the DO Droplets list. Section 10.1 (Reaching the Server) updated to reference the new Console URL by Section 3.1 link rather than describing the Console abstractly. Metadata Last Updated bumped to 05-02-26 05:45."
+    },
+    {
+      "version": "1.1",
+      "date": "05-02-26 05:30",
+      "changes": "Added MariaDB version (12.2.2) and nginx version (1.29.7) to Section 6.3 (Container Stack) and Section 6.5 (Database). Both versions retrieved via SSH from the running containers, for consistency with the EspoCRM version (9.3.4) already captured. Section 6.5 split the previous combined Engine entry into separate Engine, Version, and Image rows. No other content changes; metadata Last Updated bumped to 05-02-26 05:30."
+    },
+    {
+      "version": "1.0",
+      "date": "05-02-26 04:45",
+      "changes": "Initial release. Eleven sections covering: document purpose and scope; deployment summary; DigitalOcean Droplet (identification, hardware, firewall, backups); domain and DNS (Porkbun registrar, A record); TLS certificate (Let's Encrypt; renewal arrangement); EspoCRM application (version 9.3.4; install method; five-container stack; install location; database); SSH access (key-based; crm-deploy key); credentials inventory (three Proton Pass entries by exact name); deployment history (seven events from Droplet boot to this document); operational notes; open items (four entries). All values verified against the live system at 2026-05-02 04:45 UTC."
+    }
+  ]
+}

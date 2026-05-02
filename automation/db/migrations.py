@@ -560,6 +560,42 @@ def _client_v9(conn: sqlite3.Connection) -> None:
     )
 
 
+def _client_v10(conn: sqlite3.Connection) -> None:
+    """Add Deployment Record administrator-input columns to InstanceDeployConfig.
+
+    Four columns capture values supplied via the wizard's Documentation
+    Inputs page (Prompt B of the deployment-record series). Idempotent
+    via PRAGMA table_info checks. Skips silently if the
+    InstanceDeployConfig table does not yet exist (a fresh database
+    created via _client_v1 already includes the new columns).
+
+    See PRDs/_archive/CLAUDE-CODE-PROMPT-deployment-record-B-wizard-integration.md.
+    """
+    tables = {
+        row[0]
+        for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )
+    }
+    if "InstanceDeployConfig" not in tables:
+        return
+    cols = conn.execute(
+        "PRAGMA table_info(InstanceDeployConfig)"
+    ).fetchall()
+    col_names = {row[1] for row in cols}
+    new_columns = [
+        ("domain_registrar", "TEXT"),
+        ("dns_provider", "TEXT"),
+        ("droplet_id", "TEXT"),
+        ("backups_enabled", "INTEGER"),
+    ]
+    for name, decl in new_columns:
+        if name not in col_names:
+            conn.execute(
+                f"ALTER TABLE InstanceDeployConfig ADD COLUMN {name} {decl}"
+            )
+
+
 CLIENT_MIGRATIONS: list[tuple[int, Migration]] = [
     (1, _client_v1),
     (2, _client_v2),
@@ -570,6 +606,7 @@ CLIENT_MIGRATIONS: list[tuple[int, Migration]] = [
     (7, _client_v7),
     (8, _client_v8),
     (9, _client_v9),
+    (10, _client_v10),
 ]
 
 
