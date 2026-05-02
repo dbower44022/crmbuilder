@@ -189,30 +189,82 @@ class DeployWizard(QDialog):
         form = QFormLayout(w)
 
         self._ssh_host = QLineEdit()
-        self._ssh_host.setPlaceholderText("e.g., 165.232.150.42")
-        form.addRow("SSH Host:", self._ssh_host)
+        self._ssh_host.setPlaceholderText("e.g. 104.131.45.208 (Droplet IP)")
+        self._ssh_host.setToolTip(
+            "The IP address of the DigitalOcean Droplet you "
+            "provisioned. Not the application domain (e.g. "
+            "crm-test.example.org). For an existing instance being "
+            "re-deployed, this value is recorded as \"Public IPv4 "
+            "(SSH Host)\" in Section 3.1 of the per-instance "
+            "Deployment Record. See Deployment Runbook §4.2 and "
+            "§7.3."
+        )
+        form.addRow(
+            "SSH Host:",
+            _input_with_helper(
+                self._ssh_host, "The Droplet's public IPv4 address."
+            ),
+        )
 
         self._ssh_port = QLineEdit()
         self._ssh_port.setText("22")
-        form.addRow("SSH Port:", self._ssh_port)
+        self._ssh_port.setPlaceholderText("22")
+        self._ssh_port.setToolTip(
+            "Default 22. Change only if the Droplet has been "
+            "configured to use a non-standard SSH port (uncommon). "
+            "See Deployment Runbook §7.3."
+        )
+        form.addRow(
+            "SSH Port:",
+            _input_with_helper(self._ssh_port, "The SSH port on the Droplet."),
+        )
 
         self._ssh_user = QLineEdit()
         self._ssh_user.setText("root")
-        form.addRow("SSH Username:", self._ssh_user)
+        self._ssh_user.setPlaceholderText("root")
+        self._ssh_user.setToolTip(
+            "Must be root. The EspoCRM installer requires root "
+            "privileges to install Docker and configure the firewall; "
+            "non-root users with sudo are not supported in v1.0. See "
+            "Deployment Runbook §7.3."
+        )
+        form.addRow(
+            "SSH Username:",
+            _input_with_helper(
+                self._ssh_user, "The SSH user that will run the install."
+            ),
+        )
 
         self._ssh_auth_combo = QComboBox()
         self._ssh_auth_combo.addItems(["SSH Key", "Password"])
+        self._ssh_auth_combo.setToolTip(
+            "Select SSH Key for key-based authentication "
+            "(recommended) or Password for password authentication."
+        )
         self._ssh_auth_combo.currentIndexChanged.connect(self._on_ssh_auth_changed)
         form.addRow("Authentication:", self._ssh_auth_combo)
 
-        key_layout = QHBoxLayout()
+        key_widget = QWidget()
+        key_layout = QHBoxLayout(key_widget)
+        key_layout.setContentsMargins(0, 0, 0, 0)
         self._ssh_credential = QLineEdit()
-        self._ssh_credential.setPlaceholderText("~/.ssh/id_ed25519")
+        self._ssh_credential.setPlaceholderText("e.g. ~/.ssh/id_ed25519")
+        self._ssh_credential.setToolTip(
+            "Click Browse to select the private key file. The "
+            "corresponding public key must be installed in "
+            "/root/.ssh/authorized_keys on the Droplet. See "
+            "Deployment Runbook §5."
+        )
         self._ssh_browse_btn = QPushButton("Browse...")
         self._ssh_browse_btn.clicked.connect(self._on_browse_ssh_key)
         key_layout.addWidget(self._ssh_credential)
         key_layout.addWidget(self._ssh_browse_btn)
-        form.addRow("Credential:", key_layout)
+        form.addRow(
+            "Credential:",
+            _input_with_helper(
+                key_widget, "Path to the SSH private key file."
+            ),
+        )
 
         self._stack.addWidget(w)
 
@@ -221,21 +273,72 @@ class DeployWizard(QDialog):
         form = QFormLayout(w)
 
         self._sh_domain = QLineEdit()
-        self._sh_domain.setPlaceholderText("crm.mycompany.com")
-        form.addRow("Domain:", self._sh_domain)
+        self._sh_domain.setPlaceholderText("e.g. crm-test.example.org")
+        self._sh_domain.setToolTip(
+            "The full subdomain.domain.tld where EspoCRM will be "
+            "reachable. Must already have an A record pointing to "
+            "the SSH Host IP; the wizard verifies DNS resolution "
+            "before proceeding. See Deployment Runbook §6."
+        )
+        form.addRow(
+            "Domain:",
+            _input_with_helper(
+                self._sh_domain,
+                "Fully-qualified domain for this instance.",
+            ),
+        )
 
         self._sh_le_email = QLineEdit()
-        self._sh_le_email.setPlaceholderText("admin@mycompany.com")
-        form.addRow("Let's Encrypt Email:", self._sh_le_email)
+        self._sh_le_email.setPlaceholderText("e.g. admin@example.org")
+        self._sh_le_email.setToolTip(
+            "A monitored mailbox at your organization. Let's Encrypt "
+            "sends warnings here if certificate renewal fails. Use a "
+            "real, monitored address."
+        )
+        form.addRow(
+            "Let's Encrypt Email:",
+            _input_with_helper(
+                self._sh_le_email,
+                "Email for certificate expiry notifications.",
+            ),
+        )
 
         self._sh_db_password = QLineEdit()
         self._sh_db_password.setEchoMode(QLineEdit.EchoMode.Password)
-        form.addRow("DB Password:", self._sh_db_password)
+        self._sh_db_password.setToolTip(
+            "The password for the EspoCRM application's database "
+            "user. Generate a strong password and record it in your "
+            "password manager (Proton Pass for CBM). Never reuse a "
+            "password from another system."
+        )
+        form.addRow(
+            "DB Password:",
+            _input_with_helper(
+                self._sh_db_password,
+                "The application database user's password.",
+            ),
+        )
 
         self._sh_db_root_password = QLineEdit()
         self._sh_db_root_password.setEchoMode(QLineEdit.EchoMode.Password)
-        self._sh_db_root_password.setPlaceholderText("Leave blank to auto-generate")
-        form.addRow("DB Root Password:", self._sh_db_root_password)
+        self._sh_db_root_password.setPlaceholderText(
+            "Leave blank to auto-generate"
+        )
+        self._sh_db_root_password.setToolTip(
+            "Leave blank for the wizard to auto-generate a strong "
+            "random password (recommended). If supplied, must be a "
+            "strong password. Either way, this value must be "
+            "captured in your password manager during post-deploy "
+            "because it is otherwise inaccessible after the deploy "
+            "completes. See Deployment Runbook §10.2."
+        )
+        form.addRow(
+            "DB Root Password:",
+            _input_with_helper(
+                self._sh_db_root_password,
+                "MariaDB root password.",
+            ),
+        )
 
         self._stack.addWidget(w)
 
@@ -245,14 +348,47 @@ class DeployWizard(QDialog):
 
         self._sh_admin_user = QLineEdit()
         self._sh_admin_user.setText("admin")
-        form.addRow("Admin Username:", self._sh_admin_user)
+        self._sh_admin_user.setPlaceholderText("admin")
+        self._sh_admin_user.setToolTip(
+            "Convention is \"admin\". Used for first login; can be "
+            "changed in EspoCRM after deploy."
+        )
+        form.addRow(
+            "Admin Username:",
+            _input_with_helper(
+                self._sh_admin_user,
+                "The EspoCRM administrator username.",
+            ),
+        )
 
         self._sh_admin_pass = QLineEdit()
         self._sh_admin_pass.setEchoMode(QLineEdit.EchoMode.Password)
-        form.addRow("Admin Password:", self._sh_admin_pass)
+        self._sh_admin_pass.setToolTip(
+            "Generate a strong password and record it in your "
+            "password manager. Required for first login and all "
+            "subsequent admin operations. See Deployment Runbook §10.1."
+        )
+        form.addRow(
+            "Admin Password:",
+            _input_with_helper(
+                self._sh_admin_pass,
+                "The EspoCRM administrator password.",
+            ),
+        )
 
         self._sh_admin_email = QLineEdit()
-        form.addRow("Admin Email:", self._sh_admin_email)
+        self._sh_admin_email.setPlaceholderText("e.g. admin@example.org")
+        self._sh_admin_email.setToolTip(
+            "Becomes the admin user's email in EspoCRM. Used for "
+            "password reset and notifications."
+        )
+        form.addRow(
+            "Admin Email:",
+            _input_with_helper(
+                self._sh_admin_email,
+                "Email address for the admin user record.",
+            ),
+        )
 
         hint = QLabel(
             "These credentials will be used to create the initial EspoCRM "
@@ -281,60 +417,113 @@ class DeployWizard(QDialog):
 
         self._doc_registrar = QLineEdit()
         self._doc_registrar.setText("Porkbun")
-        form.addRow("Domain Registrar:", self._doc_registrar)
-        form.addRow("", _hint("Where the primary domain was purchased."))
+        self._doc_registrar.setPlaceholderText("e.g. Porkbun")
+        self._doc_registrar.setToolTip(
+            "The DNS registrar / domain provider for the "
+            "application's domain. Recorded in the Deployment "
+            "Record's Section 4.1 for future reference."
+        )
+        form.addRow(
+            "Domain Registrar:",
+            _input_with_helper(
+                self._doc_registrar,
+                "The registrar where the domain is registered.",
+            ),
+        )
 
         self._doc_dns_provider = QLineEdit()
         self._doc_dns_provider.setText("Porkbun")
+        self._doc_dns_provider.setPlaceholderText(
+            "e.g. Porkbun (defaults to registrar if same)"
+        )
+        self._doc_dns_provider.setToolTip(
+            "Often equals the registrar but may differ if DNS has "
+            "been delegated to a third party (e.g. Cloudflare). "
+            "Recorded in the Deployment Record's Section 4.1."
+        )
         self._doc_registrar.textChanged.connect(self._on_registrar_changed)
-        form.addRow("DNS Provider:", self._doc_dns_provider)
-        form.addRow("", _hint(
-            "Where the A record for this instance lives (often the same "
-            "as the registrar)."
-        ))
+        form.addRow(
+            "DNS Provider:",
+            _input_with_helper(
+                self._doc_dns_provider, "Where DNS records are managed."
+            ),
+        )
 
         self._doc_droplet_id = QLineEdit()
-        self._doc_droplet_id.setPlaceholderText(
-            "Optional — paste from the DigitalOcean Droplet detail URL"
+        self._doc_droplet_id.setPlaceholderText("e.g. 561480073")
+        self._doc_droplet_id.setToolTip(
+            "Find in the URL when viewing the Droplet in the "
+            "DigitalOcean dashboard: "
+            "cloud.digitalocean.com/droplets/<DROPLET_ID>. Used to "
+            "populate the Deployment Record's Section 3.1 with "
+            "direct links to the Droplet detail page and "
+            "in-browser Console."
         )
-        form.addRow("Droplet ID:", self._doc_droplet_id)
-        form.addRow("", _hint(
-            "Numeric ID from cloud.digitalocean.com/droplets/<id>. "
-            "Leave blank to skip the detail/console links."
-        ))
+        form.addRow(
+            "Droplet ID:",
+            _input_with_helper(
+                self._doc_droplet_id,
+                "The DigitalOcean Droplet's numeric ID.",
+            ),
+        )
 
         self._doc_backups_enabled = QCheckBox(
             "DigitalOcean weekly backups are enabled for this Droplet"
         )
+        self._doc_backups_enabled.setToolTip(
+            "Whether DigitalOcean automated weekly backups are "
+            "enabled for this Droplet. Recorded in the Deployment "
+            "Record's Section 3.4."
+        )
         form.addRow("Backups:", self._doc_backups_enabled)
 
         self._doc_proton_admin = QLineEdit()
-        form.addRow(
-            "Admin Password Proton Pass Entry:", self._doc_proton_admin
+        self._doc_proton_admin.setPlaceholderText(
+            "e.g. CBM-ESPOCRM-Test Instance Admin"
         )
-        form.addRow("", _hint(
-            "The exact name of the Proton Pass entry that holds the "
-            "EspoCRM admin password."
-        ))
+        self._doc_proton_admin.setToolTip(
+            "The exact name of the password manager entry where the "
+            "admin password is stored. The Deployment Record "
+            "references credentials by entry name only, never by value."
+        )
+        form.addRow(
+            "Admin Password Proton Pass Entry:",
+            _input_with_helper(
+                self._doc_proton_admin,
+                "Password manager entry name for the admin password.",
+            ),
+        )
 
         self._doc_proton_db_root = QLineEdit()
-        form.addRow(
-            "DB Root Password Proton Pass Entry:", self._doc_proton_db_root
+        self._doc_proton_db_root.setPlaceholderText(
+            "e.g. ESPOCRM Root DB Password - Test Instance"
         )
-        form.addRow("", _hint(
-            "The exact name of the Proton Pass entry that holds the "
-            "MariaDB root password."
-        ))
+        self._doc_proton_db_root.setToolTip(
+            "Same convention as the admin password entry."
+        )
+        form.addRow(
+            "DB Root Password Proton Pass Entry:",
+            _input_with_helper(
+                self._doc_proton_db_root,
+                "Password manager entry name for the DB root password.",
+            ),
+        )
 
         self._doc_proton_hosting = QLineEdit()
+        self._doc_proton_hosting.setPlaceholderText(
+            "e.g. DigitalOcean-CRM Hosting - Test Instance"
+        )
+        self._doc_proton_hosting.setToolTip(
+            "The exact name of the password manager entry for the "
+            "DigitalOcean (or other hosting provider) account login."
+        )
         form.addRow(
             "DigitalOcean Account Proton Pass Entry:",
-            self._doc_proton_hosting,
+            _input_with_helper(
+                self._doc_proton_hosting,
+                "Password manager entry name for the hosting account.",
+            ),
         )
-        form.addRow("", _hint(
-            "The exact name of the Proton Pass entry that holds the "
-            "DigitalOcean account login."
-        ))
 
         layout.addLayout(form)
         layout.addStretch()
@@ -1144,12 +1333,24 @@ class DeployWizard(QDialog):
 
     def _on_ssh_auth_changed(self, index: int) -> None:
         if index == 0:
-            self._ssh_credential.setPlaceholderText("~/.ssh/id_ed25519")
+            self._ssh_credential.setPlaceholderText("e.g. ~/.ssh/id_ed25519")
             self._ssh_credential.setEchoMode(QLineEdit.EchoMode.Normal)
+            self._ssh_credential.setToolTip(
+                "Click Browse to select the private key file. The "
+                "corresponding public key must be installed in "
+                "/root/.ssh/authorized_keys on the Droplet. See "
+                "Deployment Runbook §5."
+            )
             self._ssh_browse_btn.setVisible(True)
         else:
-            self._ssh_credential.setPlaceholderText("SSH password")
+            # Password mode: omit placeholder for security; keep tooltip.
+            self._ssh_credential.setPlaceholderText("")
             self._ssh_credential.setEchoMode(QLineEdit.EchoMode.Password)
+            self._ssh_credential.setToolTip(
+                "The password for the SSH user. Avoid password "
+                "authentication where possible; key-based "
+                "authentication is recommended."
+            )
             self._ssh_browse_btn.setVisible(False)
 
     def _on_browse_ssh_key(self) -> None:
@@ -1179,6 +1380,39 @@ def _hint(text: str) -> QLabel:
     label.setWordWrap(True)
     label.setStyleSheet("color: #757575; font-size: 11px;")
     return label
+
+
+def _input_with_helper(widget: QWidget, helper_text: str) -> QWidget:
+    """Wrap an input widget with a small helper label below it.
+
+    Helper labels render in 9pt italic gray text directly under the
+    field they describe, providing just-in-time guidance without
+    competing visually with the field's own label or input text.
+    Widgets without a helper string are returned wrapped without a
+    label so the form layout still aligns.
+
+    :param widget: The input control (typically a ``QLineEdit`` or a
+        composite ``QWidget`` such as the SSH credential row).
+    :param helper_text: One-line guidance text. Empty string skips
+        the helper label entirely.
+    :returns: A container ``QWidget`` suitable for ``QFormLayout.addRow``.
+    """
+    container = QWidget()
+    layout = QVBoxLayout(container)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setSpacing(2)
+    layout.addWidget(widget)
+
+    if helper_text:
+        helper = QLabel(helper_text)
+        font = helper.font()
+        font.setPointSize(9)
+        font.setItalic(True)
+        helper.setFont(font)
+        helper.setStyleSheet("color: #666666;")
+        layout.addWidget(helper)
+
+    return container
 
 
 def _split_domain(domain: str) -> tuple[str, str]:
