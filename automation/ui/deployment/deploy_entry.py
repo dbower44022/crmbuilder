@@ -204,11 +204,18 @@ class DeployEntry(QWidget):
         self._table.resizeColumnsToContents()
 
     def _instance_is_self_hosted(self) -> bool:
-        """Return True iff the active instance is self-hosted.
+        """Return True unless the active instance is positively non-self-hosted.
 
-        Checks DeploymentRun rows first (the wizard's scenario record);
-        falls back to InstanceDeployConfig if no DeploymentRun exists.
-        Returns False when no instance is active.
+        Checks DeploymentRun rows first (the wizard's scenario record),
+        then InstanceDeployConfig. If either source provides a scenario,
+        that scenario governs the answer. If neither source has a row,
+        the instance has no recorded scenario yet — treat it as self-hosted
+        so the backfill dialog can be reached. Cloud-hosted and
+        bring-your-own scenarios are recognized only when explicitly
+        recorded.
+
+        Returns False when no instance is active or when a SQL error
+        prevents reading the relevant tables.
         """
         if self._conn is None or self._instance is None:
             return False
@@ -226,7 +233,12 @@ class DeployEntry(QWidget):
                 "WHERE instance_id = ?",
                 (self._instance.id,),
             ).fetchone()
-            return bool(row and row[0] == "self_hosted")
+            if row:
+                return row[0] == "self_hosted"
+            # No recorded scenario — assume self-hosted so the user can
+            # reach the backfill dialog. Cloud-hosted and BYO instances
+            # carry positive evidence in one of the two tables above.
+            return True
         except Exception:
             return False
 
