@@ -621,6 +621,10 @@ CREATE TABLE InstanceDeployConfig (
     dns_provider TEXT,
     droplet_id TEXT,
     backups_enabled INTEGER,
+    proton_pass_admin_entry TEXT,
+    proton_pass_db_root_entry TEXT,
+    proton_pass_hosting_entry TEXT,
+    last_record_version TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (instance_id) REFERENCES Instance(id) ON DELETE CASCADE

@@ -596,6 +596,80 @@ def _client_v10(conn: sqlite3.Connection) -> None:
             )
 
 
+def _client_v11(conn: sqlite3.Connection) -> None:
+    """Persist Proton Pass entry names on InstanceDeployConfig.
+
+    Three nullable TEXT columns hold the Documentation Inputs that the
+    regeneration dialog (Prompt C) and wizard Documentation Inputs page
+    (Prompt B) collect today but discard after rendering. Persisting
+    them lets the next regeneration of the same instance pre-fill the
+    operator's actual entry names instead of templated guesses.
+
+    Idempotent via PRAGMA table_info checks. Skips silently if the
+    InstanceDeployConfig table does not yet exist (a fresh database
+    created via _client_v1 already includes the new columns).
+
+    See PRDs/product/crmbuilder-automation-PRD/CLAUDE-CODE-PROMPT-deployment-record-I-persistence-papercuts.md.
+    """
+    tables = {
+        row[0]
+        for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )
+    }
+    if "InstanceDeployConfig" not in tables:
+        return
+    cols = {
+        row[1]
+        for row in conn.execute(
+            "PRAGMA table_info(InstanceDeployConfig)"
+        ).fetchall()
+    }
+    for col in (
+        "proton_pass_admin_entry",
+        "proton_pass_db_root_entry",
+        "proton_pass_hosting_entry",
+    ):
+        if col not in cols:
+            conn.execute(
+                f"ALTER TABLE InstanceDeployConfig ADD COLUMN {col} TEXT"
+            )
+
+
+def _client_v12(conn: sqlite3.Connection) -> None:
+    """Add ``last_record_version`` to InstanceDeployConfig.
+
+    Holds the document_version most recently rendered to the canonical
+    Deployment Record .docx for this instance. The regeneration flow
+    reads it to compute the next document_version (minor-bump) and
+    writes it back after a successful overwrite. Nullable; defaults to
+    NULL for existing rows so the first regeneration falls back to
+    "1.0".
+
+    Idempotent via PRAGMA table_info checks. Skips silently if the
+    InstanceDeployConfig table does not yet exist.
+    """
+    tables = {
+        row[0]
+        for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )
+    }
+    if "InstanceDeployConfig" not in tables:
+        return
+    cols = {
+        row[1]
+        for row in conn.execute(
+            "PRAGMA table_info(InstanceDeployConfig)"
+        ).fetchall()
+    }
+    if "last_record_version" not in cols:
+        conn.execute(
+            "ALTER TABLE InstanceDeployConfig "
+            "ADD COLUMN last_record_version TEXT"
+        )
+
+
 CLIENT_MIGRATIONS: list[tuple[int, Migration]] = [
     (1, _client_v1),
     (2, _client_v2),
@@ -607,6 +681,8 @@ CLIENT_MIGRATIONS: list[tuple[int, Migration]] = [
     (8, _client_v8),
     (9, _client_v9),
     (10, _client_v10),
+    (11, _client_v11),
+    (12, _client_v12),
 ]
 
 

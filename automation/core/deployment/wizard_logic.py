@@ -258,6 +258,15 @@ def persist_deploy_config_from_wizard(
             backups_enabled=getattr(
                 administrator_inputs, "backups_enabled", None
             ),
+            proton_pass_admin_entry=getattr(
+                administrator_inputs, "proton_pass_admin_entry", None
+            ),
+            proton_pass_db_root_entry=getattr(
+                administrator_inputs, "proton_pass_db_root_entry", None
+            ),
+            proton_pass_hosting_entry=getattr(
+                administrator_inputs, "proton_pass_hosting_entry", None
+            ),
         )
         save_deploy_config(conn, deploy_config)
         return True

@@ -51,7 +51,10 @@ from PySide6.QtWidgets import (
 )
 
 from automation.core.deployment.deploy_config_repo import InstanceDeployConfig
-from automation.core.deployment.record_generator import AdministratorInputs
+from automation.core.deployment.record_generator import (
+    AdministratorInputs,
+    increment_minor_version,
+)
 from automation.ui.deployment.deployment_logic import InstanceDetail
 
 logger = logging.getLogger(__name__)
@@ -235,18 +238,24 @@ class RegenerateRecordDialog(QDialog):
 
         code = self._instance.code
         env = self._instance.environment
+        # Persisted values from prior regenerations win over the
+        # templated defaults so the operator never re-edits the same
+        # three names twice (deployment-record-I FU-1).
         self._proton_admin_edit = QLineEdit(
-            default_proton_pass_entry(code, env, "Instance Admin")
+            cfg.proton_pass_admin_entry
+            or default_proton_pass_entry(code, env, "Instance Admin")
         )
         form.addRow("Admin Proton Pass Entry:", self._proton_admin_edit)
 
         self._proton_db_root_edit = QLineEdit(
-            default_proton_pass_entry(code, env, "DB Root")
+            cfg.proton_pass_db_root_entry
+            or default_proton_pass_entry(code, env, "DB Root")
         )
         form.addRow("DB Root Proton Pass Entry:", self._proton_db_root_edit)
 
         self._proton_hosting_edit = QLineEdit(
-            default_proton_pass_entry(code, env, "DigitalOcean Account")
+            cfg.proton_pass_hosting_entry
+            or default_proton_pass_entry(code, env, "DigitalOcean Account")
         )
         form.addRow(
             "Hosting Proton Pass Entry:", self._proton_hosting_edit,
@@ -354,6 +363,10 @@ class RegenerateRecordDialog(QDialog):
             self._deploy_config.domain
         )
 
+        next_version = increment_minor_version(
+            self._deploy_config.last_record_version
+        )
+
         administrator_inputs = AdministratorInputs(
             domain_registrar=self._registrar_edit.text().strip(),
             dns_provider=self._dns_provider_edit.text().strip(),
@@ -364,12 +377,14 @@ class RegenerateRecordDialog(QDialog):
             proton_pass_admin_entry=self._proton_admin_edit.text().strip(),
             proton_pass_db_root_entry=self._proton_db_root_edit.text().strip(),
             proton_pass_hosting_entry=self._proton_hosting_edit.text().strip(),
+            document_version=next_version,
         )
 
+        overwrite_canonical = not self._versioned_radio.isChecked()
         output_path = resolve_output_path(
             self._project_folder,
             self._instance.code,
-            versioned=self._versioned_radio.isChecked(),
+            versioned=not overwrite_canonical,
         )
 
         from automation.ui.deployment.regenerate_record_worker import (
@@ -384,6 +399,7 @@ class RegenerateRecordDialog(QDialog):
             output_path=output_path,
             db_path=self._db_path,
             client_name=self._client_name,
+            overwrite_canonical=overwrite_canonical,
             parent=self,
         )
         self._worker.log_line.connect(self.append_log)

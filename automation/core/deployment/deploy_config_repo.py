@@ -58,6 +58,10 @@ class InstanceDeployConfig:
     dns_provider: str | None = None
     droplet_id: str | None = None
     backups_enabled: bool | None = None
+    proton_pass_admin_entry: str | None = None
+    proton_pass_db_root_entry: str | None = None
+    proton_pass_hosting_entry: str | None = None
+    last_record_version: str | None = None
     id: int | None = None
     _ssh_credential_ref: str | None = None
     _db_root_password_ref: str | None = None
@@ -87,6 +91,10 @@ def _row_to_config(row: sqlite3.Row | tuple) -> InstanceDeployConfig:
         dns_provider,
         droplet_id,
         backups_enabled,
+        proton_pass_admin_entry,
+        proton_pass_db_root_entry,
+        proton_pass_hosting_entry,
+        last_record_version,
         _created_at,
         _updated_at,
     ) = row
@@ -133,6 +141,10 @@ def _row_to_config(row: sqlite3.Row | tuple) -> InstanceDeployConfig:
         backups_enabled=(
             None if backups_enabled is None else bool(backups_enabled)
         ),
+        proton_pass_admin_entry=proton_pass_admin_entry,
+        proton_pass_db_root_entry=proton_pass_db_root_entry,
+        proton_pass_hosting_entry=proton_pass_hosting_entry,
+        last_record_version=last_record_version,
         _ssh_credential_ref=ssh_credential_ref,
         _db_root_password_ref=db_root_password_ref,
     )
@@ -154,6 +166,8 @@ def load_deploy_config(
         "current_espocrm_version, latest_espocrm_version, "
         "last_upgrade_at, last_backup_paths, cert_expiry_date, "
         "domain_registrar, dns_provider, droplet_id, backups_enabled, "
+        "proton_pass_admin_entry, proton_pass_db_root_entry, "
+        "proton_pass_hosting_entry, last_record_version, "
         "created_at, updated_at "
         "FROM InstanceDeployConfig WHERE instance_id = ?",
         (instance_id,),
@@ -221,9 +235,11 @@ def save_deploy_config(
             "    latest_espocrm_version, last_upgrade_at, "
             "    last_backup_paths, cert_expiry_date, "
             "    domain_registrar, dns_provider, droplet_id, "
-            "    backups_enabled"
+            "    backups_enabled, proton_pass_admin_entry, "
+            "    proton_pass_db_root_entry, proton_pass_hosting_entry, "
+            "    last_record_version"
             ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
-            "?, ?, ?, ?)",
+            "?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 config.instance_id,
                 config.scenario,
@@ -245,6 +261,10 @@ def save_deploy_config(
                 config.dns_provider,
                 config.droplet_id,
                 backups_enabled_int,
+                config.proton_pass_admin_entry,
+                config.proton_pass_db_root_entry,
+                config.proton_pass_hosting_entry,
+                config.last_record_version,
             ),
         )
         config.id = cursor.lastrowid
@@ -260,6 +280,10 @@ def save_deploy_config(
             "    last_backup_paths = ?, cert_expiry_date = ?, "
             "    domain_registrar = ?, dns_provider = ?, "
             "    droplet_id = ?, backups_enabled = ?, "
+            "    proton_pass_admin_entry = ?, "
+            "    proton_pass_db_root_entry = ?, "
+            "    proton_pass_hosting_entry = ?, "
+            "    last_record_version = ?, "
             "    updated_at = CURRENT_TIMESTAMP "
             "WHERE instance_id = ?",
             (
@@ -282,6 +306,10 @@ def save_deploy_config(
                 config.dns_provider,
                 config.droplet_id,
                 backups_enabled_int,
+                config.proton_pass_admin_entry,
+                config.proton_pass_db_root_entry,
+                config.proton_pass_hosting_entry,
+                config.last_record_version,
                 config.instance_id,
             ),
         )

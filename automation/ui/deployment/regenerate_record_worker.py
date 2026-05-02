@@ -66,6 +66,7 @@ class RegenerateRecordWorker(QThread):
         output_path: Path,
         db_path: str,
         client_name: str,
+        overwrite_canonical: bool = True,
         parent=None,
     ) -> None:
         super().__init__(parent)
@@ -75,6 +76,7 @@ class RegenerateRecordWorker(QThread):
         self._output_path = Path(output_path)
         self._db_path = db_path
         self._client_name = client_name
+        self._overwrite_canonical = overwrite_canonical
 
     def _log(self, message: str, level: str = "info") -> None:
         self.log_line.emit(message, level)
@@ -121,6 +123,14 @@ class RegenerateRecordWorker(QThread):
                 self.failed.emit(str(exc))
                 return
 
+            try:
+                self._persist_last_record_version_on_overwrite()
+            except Exception as exc:
+                self._log(
+                    f"Could not persist last_record_version: {exc}",
+                    "warning",
+                )
+
             self._log("Done.", "info")
             self.completed.emit(str(self._output_path))
         finally:
@@ -152,10 +162,12 @@ class RegenerateRecordWorker(QThread):
     def _persist_administrator_inputs_if_changed(self) -> None:
         """Write back administrator-input columns when they differ.
 
-        Only the four persistable columns (``domain_registrar``,
-        ``dns_provider``, ``droplet_id``, ``backups_enabled``) are
-        compared and written; the Proton Pass entry names are
-        intentionally not persisted.
+        Compares and writes seven persistable columns:
+        ``domain_registrar``, ``dns_provider``, ``droplet_id``,
+        ``backups_enabled``, plus the three ``proton_pass_*_entry``
+        columns added by deployment-record-I FU-1 so the next
+        regeneration's dialog pre-fills with the operator's actual
+        Proton Pass entry names.
         """
         cfg = self._deploy_config
         ai = self._administrator_inputs
@@ -164,12 +176,18 @@ class RegenerateRecordWorker(QThread):
         droplet_id = ai.droplet_id or None
         registrar = ai.domain_registrar or None
         dns_provider = ai.dns_provider or None
+        proton_admin = ai.proton_pass_admin_entry or None
+        proton_db_root = ai.proton_pass_db_root_entry or None
+        proton_hosting = ai.proton_pass_hosting_entry or None
 
         unchanged = (
             cfg.domain_registrar == registrar
             and cfg.dns_provider == dns_provider
             and cfg.droplet_id == droplet_id
             and cfg.backups_enabled == backups_enabled
+            and cfg.proton_pass_admin_entry == proton_admin
+            and cfg.proton_pass_db_root_entry == proton_db_root
+            and cfg.proton_pass_hosting_entry == proton_hosting
         )
         if unchanged:
             return
@@ -178,7 +196,34 @@ class RegenerateRecordWorker(QThread):
         cfg.dns_provider = dns_provider
         cfg.droplet_id = droplet_id
         cfg.backups_enabled = backups_enabled
+        cfg.proton_pass_admin_entry = proton_admin
+        cfg.proton_pass_db_root_entry = proton_db_root
+        cfg.proton_pass_hosting_entry = proton_hosting
 
+        conn = sqlite3.connect(self._db_path)
+        try:
+            conn.execute("PRAGMA foreign_keys = ON")
+            save_deploy_config(conn, cfg)
+        finally:
+            conn.close()
+
+    def _persist_last_record_version_on_overwrite(self) -> None:
+        """Record the rendered ``document_version`` after a successful overwrite.
+
+        Skips entirely when the user picked the timestamped-versioned
+        copy mode — in that case the canonical file is unchanged, so
+        bumping the recorded "last" version would mislead the next
+        regeneration into a double-bump (deployment-record-I FU-2).
+        """
+        if not self._overwrite_canonical:
+            return
+
+        cfg = self._deploy_config
+        version = self._administrator_inputs.document_version
+        if cfg.last_record_version == version:
+            return
+
+        cfg.last_record_version = version
         conn = sqlite3.connect(self._db_path)
         try:
             conn.execute("PRAGMA foreign_keys = ON")

@@ -15,6 +15,7 @@ from automation.core.deployment.record_generator import (
     DeploymentRecordValues,
     _read_espocrm_version,
     generate_deployment_record,
+    increment_minor_version,
 )
 
 FIXTURE_PATH = (
@@ -337,3 +338,38 @@ def test_cli_round_trip(tmp_path):
     )
     assert out.exists()
     assert out.stat().st_size > 10_000
+
+
+# ── Prompt I FU-2: increment_minor_version helper ───────────────────
+
+
+def test_increment_minor_version_initial():
+    """A NULL/None previous version starts the document at 1.0."""
+    assert increment_minor_version(None) == "1.0"
+
+
+def test_increment_minor_version_basic():
+    """Standard minor increment: 1.0 → 1.1, 2.3 → 2.4."""
+    assert increment_minor_version("1.0") == "1.1"
+    assert increment_minor_version("2.3") == "2.4"
+    assert increment_minor_version("1.5") == "1.6"
+
+
+def test_increment_minor_version_handles_double_digit():
+    """1.9 → 1.10 (strict-increment, not semver rollover)."""
+    assert increment_minor_version("1.9") == "1.10"
+    assert increment_minor_version("1.10") == "1.11"
+
+
+def test_increment_minor_version_passes_through_non_numeric():
+    """Non-matching strings are returned unchanged so the caller can warn."""
+    assert increment_minor_version("draft") == "draft"
+    assert increment_minor_version("1.0-rc1") == "1.0-rc1"
+    assert increment_minor_version("v2.0") == "v2.0"
+    # Empty string is non-matching too
+    assert increment_minor_version("") == ""
+
+
+def test_increment_minor_version_strips_whitespace():
+    """Surrounding whitespace doesn't break the parse."""
+    assert increment_minor_version("  1.2  ") == "1.3"

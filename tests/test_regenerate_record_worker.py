@@ -364,3 +364,178 @@ def test_worker_persists_changed_administrator_inputs(
     assert reloaded is not None
     assert reloaded.domain_registrar == "Cloudflare"
     assert reloaded.droplet_id == "999999"
+
+
+# ── Prompt I FU-1: Proton Pass entries persist on success ───────────
+
+
+def test_worker_persists_proton_pass_entries_on_success(
+    db_path, monkeypatch, tmp_path,
+):
+    from automation.core.deployment.deploy_config_repo import (
+        load_deploy_config,
+    )
+    from automation.ui.deployment import regenerate_record_worker as mod
+
+    detail, cfg = _make_setup(db_path)
+    monkeypatch.setattr(mod, "connect_ssh", lambda _config: _FakeSSH())
+    monkeypatch.setattr(
+        mod, "inspect_server_for_record_values",
+        lambda *_a, **_k: _make_values_stub(),
+    )
+    monkeypatch.setattr(
+        mod, "generate_deployment_record",
+        lambda v, p: Path(p).write_bytes(b"x") or p,
+    )
+
+    inputs = _make_admin_inputs()
+    inputs.proton_pass_admin_entry = "Edited Admin"
+    inputs.proton_pass_db_root_entry = "Edited DB Root"
+    inputs.proton_pass_hosting_entry = "Edited Hosting"
+
+    worker = mod.RegenerateRecordWorker(
+        instance=detail,
+        deploy_config=cfg,
+        administrator_inputs=inputs,
+        output_path=tmp_path / "out.docx",
+        db_path=db_path,
+        client_name="Cleveland Business Mentors",
+    )
+    worker.run()
+
+    conn = sqlite3.connect(db_path)
+    try:
+        reloaded = load_deploy_config(conn, detail.id)
+    finally:
+        conn.close()
+    assert reloaded.proton_pass_admin_entry == "Edited Admin"
+    assert reloaded.proton_pass_db_root_entry == "Edited DB Root"
+    assert reloaded.proton_pass_hosting_entry == "Edited Hosting"
+
+
+# ── Prompt I FU-2: last_record_version persists only on overwrite ──
+
+
+def test_worker_persists_last_record_version_on_overwrite(
+    db_path, monkeypatch, tmp_path,
+):
+    from automation.core.deployment.deploy_config_repo import (
+        load_deploy_config,
+    )
+    from automation.ui.deployment import regenerate_record_worker as mod
+
+    detail, cfg = _make_setup(db_path)
+    monkeypatch.setattr(mod, "connect_ssh", lambda _config: _FakeSSH())
+    monkeypatch.setattr(
+        mod, "inspect_server_for_record_values",
+        lambda *_a, **_k: _make_values_stub(),
+    )
+    monkeypatch.setattr(
+        mod, "generate_deployment_record",
+        lambda v, p: Path(p).write_bytes(b"x") or p,
+    )
+
+    inputs = _make_admin_inputs()
+    inputs.document_version = "1.1"
+
+    worker = mod.RegenerateRecordWorker(
+        instance=detail,
+        deploy_config=cfg,
+        administrator_inputs=inputs,
+        output_path=tmp_path / "out.docx",
+        db_path=db_path,
+        client_name="Cleveland Business Mentors",
+        overwrite_canonical=True,
+    )
+    worker.run()
+
+    conn = sqlite3.connect(db_path)
+    try:
+        reloaded = load_deploy_config(conn, detail.id)
+    finally:
+        conn.close()
+    assert reloaded.last_record_version == "1.1"
+
+
+def test_worker_does_not_persist_last_record_version_on_versioned_copy(
+    db_path, monkeypatch, tmp_path,
+):
+    from automation.core.deployment.deploy_config_repo import (
+        load_deploy_config,
+    )
+    from automation.ui.deployment import regenerate_record_worker as mod
+
+    detail, cfg = _make_setup(db_path)
+    monkeypatch.setattr(mod, "connect_ssh", lambda _config: _FakeSSH())
+    monkeypatch.setattr(
+        mod, "inspect_server_for_record_values",
+        lambda *_a, **_k: _make_values_stub(),
+    )
+    monkeypatch.setattr(
+        mod, "generate_deployment_record",
+        lambda v, p: Path(p).write_bytes(b"x") or p,
+    )
+
+    inputs = _make_admin_inputs()
+    inputs.document_version = "1.1"
+
+    worker = mod.RegenerateRecordWorker(
+        instance=detail,
+        deploy_config=cfg,
+        administrator_inputs=inputs,
+        output_path=tmp_path / "out-2026-05-02-120000.docx",
+        db_path=db_path,
+        client_name="Cleveland Business Mentors",
+        overwrite_canonical=False,
+    )
+    worker.run()
+
+    conn = sqlite3.connect(db_path)
+    try:
+        reloaded = load_deploy_config(conn, detail.id)
+    finally:
+        conn.close()
+    assert reloaded.last_record_version is None
+
+
+def test_worker_does_not_persist_last_record_version_on_failure(
+    db_path, monkeypatch, tmp_path,
+):
+    """Generation failure leaves last_record_version untouched."""
+    from automation.core.deployment.deploy_config_repo import (
+        load_deploy_config,
+    )
+    from automation.ui.deployment import regenerate_record_worker as mod
+
+    detail, cfg = _make_setup(db_path)
+    monkeypatch.setattr(mod, "connect_ssh", lambda _config: _FakeSSH())
+    monkeypatch.setattr(
+        mod, "inspect_server_for_record_values",
+        lambda *_a, **_k: _make_values_stub(),
+    )
+
+    def _explode(_v, _p):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(mod, "generate_deployment_record", _explode)
+
+    inputs = _make_admin_inputs()
+    inputs.document_version = "1.1"
+
+    worker = mod.RegenerateRecordWorker(
+        instance=detail,
+        deploy_config=cfg,
+        administrator_inputs=inputs,
+        output_path=tmp_path / "out.docx",
+        db_path=db_path,
+        client_name="Cleveland Business Mentors",
+        overwrite_canonical=True,
+    )
+    worker.run()
+
+    conn = sqlite3.connect(db_path)
+    try:
+        reloaded = load_deploy_config(conn, detail.id)
+    finally:
+        conn.close()
+    assert reloaded.last_record_version is None

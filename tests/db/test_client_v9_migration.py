@@ -85,6 +85,9 @@ def test_columns(db: sqlite3.Connection) -> None:
         "last_upgrade_at", "last_backup_paths", "cert_expiry_date",
         # Added by _client_v10 (deployment-record series Prompt B)
         "domain_registrar", "dns_provider", "droplet_id", "backups_enabled",
+        # Added by _client_v11 / _client_v12 (deployment-record series Prompt I)
+        "proton_pass_admin_entry", "proton_pass_db_root_entry",
+        "proton_pass_hosting_entry", "last_record_version",
         "created_at", "updated_at",
     }
     assert _col_names(db, "InstanceDeployConfig") == expected

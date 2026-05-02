@@ -235,3 +235,76 @@ def test_dialog_prefills_from_deploy_config(db, tmp_path):
         )
     finally:
         dialog.deleteLater()
+
+
+# ── Prompt I FU-1: persisted Proton Pass entries win over defaults ──
+
+
+def test_dialog_prefills_proton_pass_from_persisted_config(db, tmp_path):
+    from automation.ui.deployment.regenerate_record_dialog import (
+        RegenerateRecordDialog,
+    )
+
+    conn, db_path = db
+    instance_id = create_wizard_instance(
+        conn, name="CBM Test", code="CBMTEST", environment="test",
+    )
+    cfg = _make_deploy_config(conn, instance_id)
+    cfg.proton_pass_admin_entry = "Custom Admin Entry"
+    cfg.proton_pass_db_root_entry = "Custom DB Root Entry"
+    cfg.proton_pass_hosting_entry = "Custom Hosting Entry"
+    cfg = save_deploy_config(conn, cfg)
+
+    detail = _make_instance_detail(instance_id)
+    dialog = RegenerateRecordDialog(
+        instance=detail,
+        deploy_config=cfg,
+        project_folder=str(tmp_path),
+        db_path=db_path,
+        client_name="Cleveland Business Mentors",
+    )
+    try:
+        assert dialog._proton_admin_edit.text() == "Custom Admin Entry"
+        assert dialog._proton_db_root_edit.text() == "Custom DB Root Entry"
+        assert dialog._proton_hosting_edit.text() == "Custom Hosting Entry"
+    finally:
+        dialog.deleteLater()
+
+
+def test_dialog_falls_back_to_templated_defaults_when_columns_null(
+    db, tmp_path,
+):
+    from automation.ui.deployment.regenerate_record_dialog import (
+        RegenerateRecordDialog,
+    )
+
+    conn, db_path = db
+    instance_id = create_wizard_instance(
+        conn, name="CBM Test", code="CBMTEST", environment="test",
+    )
+    cfg = _make_deploy_config(conn, instance_id)
+    # Sanity check: persisted columns are NULL on a fresh row
+    assert cfg.proton_pass_admin_entry is None
+    assert cfg.proton_pass_db_root_entry is None
+    assert cfg.proton_pass_hosting_entry is None
+
+    detail = _make_instance_detail(instance_id)
+    dialog = RegenerateRecordDialog(
+        instance=detail,
+        deploy_config=cfg,
+        project_folder=str(tmp_path),
+        db_path=db_path,
+        client_name="Cleveland Business Mentors",
+    )
+    try:
+        assert dialog._proton_admin_edit.text() == (
+            "CBMTEST-ESPOCRM-Test Instance Admin"
+        )
+        assert dialog._proton_db_root_edit.text() == (
+            "CBMTEST-ESPOCRM-Test DB Root"
+        )
+        assert dialog._proton_hosting_edit.text() == (
+            "CBMTEST-ESPOCRM-Test DigitalOcean Account"
+        )
+    finally:
+        dialog.deleteLater()

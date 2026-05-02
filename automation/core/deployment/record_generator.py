@@ -220,6 +220,37 @@ def _is_optional_type(annotation: object) -> bool:
 # ── Public API ───────────────────────────────────────────────────────
 
 
+def increment_minor_version(version: str | None) -> str:
+    """Compute the next ``document_version`` given the previous one.
+
+    Strict-increment on the minor component:
+
+    * ``None`` → ``"1.0"`` (first generation; no prior record persisted).
+    * ``"M.N"`` (numeric major.minor) → ``"M.{N+1}"``
+      (e.g., ``"1.0"`` → ``"1.1"``, ``"1.9"`` → ``"1.10"``).
+    * Anything else → returned verbatim (caller is responsible for
+      logging a warning if the value is non-numeric so the surprise is
+      visible in the run log).
+
+    Strict-increment is intentional: the document version is descriptive
+    metadata — the per-instance Revision History entry — not a software
+    version, so the conventional 1.9 → 2.0 rollover would silently
+    erase the operator's own intent. Major bumps are out of scope and
+    must be made by hand.
+
+    :param version: The most recently rendered document_version, or
+        ``None`` if no record has been written yet for this instance.
+    :returns: The next version string to render.
+    """
+    if version is None:
+        return "1.0"
+    match = re.match(r"^(\d+)\.(\d+)$", version.strip())
+    if not match:
+        return version
+    major, minor = match.groups()
+    return f"{major}.{int(minor) + 1}"
+
+
 def generate_deployment_record(
     values: DeploymentRecordValues,
     output_path: Path,

@@ -318,3 +318,58 @@ def test_last_backup_paths_round_trip_handles_empty(
     save_deploy_config(db, _build_config(inst_id))
     loaded = load_deploy_config(db, inst_id)
     assert loaded.last_backup_paths == []
+
+
+# ── Prompt I round-trip (Proton Pass entries, last_record_version) ──
+
+
+def test_round_trip_proton_pass_entries(db: sqlite3.Connection) -> None:
+    inst_id = _make_instance(db)
+    cfg = _build_config(inst_id)
+    cfg.proton_pass_admin_entry = "CBM-ESPOCRM-Test Instance Admin"
+    cfg.proton_pass_db_root_entry = "ESPOCRM Root DB Password - Test Instance"
+    cfg.proton_pass_hosting_entry = "DigitalOcean-CRM Hosting - Test Instance"
+    save_deploy_config(db, cfg)
+
+    loaded = load_deploy_config(db, inst_id)
+    assert loaded is not None
+    assert loaded.proton_pass_admin_entry == (
+        "CBM-ESPOCRM-Test Instance Admin"
+    )
+    assert loaded.proton_pass_db_root_entry == (
+        "ESPOCRM Root DB Password - Test Instance"
+    )
+    assert loaded.proton_pass_hosting_entry == (
+        "DigitalOcean-CRM Hosting - Test Instance"
+    )
+
+
+def test_round_trip_proton_pass_defaults_to_none(
+    db: sqlite3.Connection,
+) -> None:
+    inst_id = _make_instance(db)
+    save_deploy_config(db, _build_config(inst_id))
+    loaded = load_deploy_config(db, inst_id)
+    assert loaded.proton_pass_admin_entry is None
+    assert loaded.proton_pass_db_root_entry is None
+    assert loaded.proton_pass_hosting_entry is None
+
+
+def test_round_trip_last_record_version(db: sqlite3.Connection) -> None:
+    inst_id = _make_instance(db)
+    cfg = _build_config(inst_id)
+    cfg.last_record_version = "1.3"
+    save_deploy_config(db, cfg)
+
+    loaded = load_deploy_config(db, inst_id)
+    assert loaded is not None
+    assert loaded.last_record_version == "1.3"
+
+
+def test_round_trip_last_record_version_defaults_to_none(
+    db: sqlite3.Connection,
+) -> None:
+    inst_id = _make_instance(db)
+    save_deploy_config(db, _build_config(inst_id))
+    loaded = load_deploy_config(db, inst_id)
+    assert loaded.last_record_version is None
