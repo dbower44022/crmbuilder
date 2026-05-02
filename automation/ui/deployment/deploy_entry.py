@@ -153,15 +153,14 @@ class DeployEntry(QWidget):
         self._conn = conn
         self._instance = instance
 
-        # Show the Upgrade and Recovery buttons only for self-hosted
-        # instances. The presence of an InstanceDeployConfig with
-        # scenario=self_hosted is the gate; new self-hosted deployments
-        # use the backfill dialog if no config exists yet.
+        # Show the Upgrade, Recovery, and Generate Deployment Record
+        # buttons only for self-hosted instances. All three handlers
+        # open the backfill dialog if no InstanceDeployConfig exists
+        # yet, so visibility is gated only on scenario.
         is_sh = self._instance_is_self_hosted()
         self._upgrade_btn.setVisible(is_sh)
         self._recovery_btn.setVisible(is_sh)
-        has_config = is_sh and self._instance_has_deploy_config()
-        self._regenerate_record_btn.setVisible(has_config)
+        self._regenerate_record_btn.setVisible(is_sh)
 
         if not has_instances:
             self._empty_label.setText(_EMPTY_NO_INSTANCES)
@@ -231,21 +230,13 @@ class DeployEntry(QWidget):
         except Exception:
             return False
 
-    def _instance_has_deploy_config(self) -> bool:
-        """Return True iff the active instance has an InstanceDeployConfig."""
-        if self._conn is None or self._instance is None:
-            return False
-        try:
-            row = self._conn.execute(
-                "SELECT 1 FROM InstanceDeployConfig WHERE instance_id = ?",
-                (self._instance.id,),
-            ).fetchone()
-            return bool(row)
-        except Exception:
-            return False
-
     def _on_regenerate_record(self) -> None:
-        """Open the Deployment Record regeneration dialog."""
+        """Open the Deployment Record regeneration dialog.
+
+        If no InstanceDeployConfig exists yet, open the backfill
+        dialog first — same pattern as ``_on_upgrade`` and
+        ``_on_recovery``. Cancel collapses the whole flow.
+        """
         from automation.core.deployment.deploy_config_repo import (
             load_deploy_config,
         )
@@ -261,13 +252,17 @@ class DeployEntry(QWidget):
 
         config = load_deploy_config(self._conn, self._instance.id)
         if config is None:
-            QMessageBox.information(
-                self, "No Connection Info",
-                "This instance does not yet have a saved server "
-                "connection. Run an Upgrade or Recovery operation "
-                "first to capture the connection details.",
+            from automation.ui.deployment.connection_config_dialog import (
+                ConnectionConfigDialog,
             )
-            return
+            dialog = ConnectionConfigDialog(
+                self._conn, self._instance.id, self._instance.name,
+                parent=self,
+            )
+            dialog.exec()
+            config = dialog.saved_config
+            if config is None:
+                return
 
         if not self._project_folder:
             QMessageBox.warning(
