@@ -171,11 +171,11 @@ const metaTable = new Table({
     new TableRow({ children: [labelCell("Scope", 2600),
       cell("Full lifecycle: pre-deploy prerequisites, the deploy itself, post-deploy verification and documentation", { width: 6760 })] }),
     new TableRow({ children: [labelCell("Version", 2600),
-      cell("1.0", { width: 6760 })] }),
+      cell("1.1", { width: 6760 })] }),
     new TableRow({ children: [labelCell("Status", 2600),
-      cell("Active \u2014 first release", { width: 6760 })] }),
+      cell("Active", { width: 6760 })] }),
     new TableRow({ children: [labelCell("Last Updated", 2600),
-      cell("05-02-26 06:00", { width: 6760 })] }),
+      cell("05-02-26 06:50", { width: 6760 })] }),
     new TableRow({ children: [labelCell("Companion Document", 2600),
       cell("Per-instance Deployment Records (e.g. ClevelandBusinessMentoring/PRDs/deployment/CBM-Test-Instance-Deployment-Record.docx)", { width: 6760 })] }),
   ],
@@ -189,6 +189,16 @@ children.push(stripedTable({
   columnWidths: [800, 1500, 7060],
   headers: ["Version", "Date", "Notes"],
   rows: [
+    ["1.1", "05-02-26 06:50",
+      "Strengthened the SSH Host field row in Section 7.3 (Wizard Page 2 "
+      + "\u2014 Server (SSH) Connection) with an explicit cross-reference "
+      + "to Section 3.1 of the per-instance Deployment Record, where the "
+      + "captured IPv4 value now appears under the label \"Public IPv4 "
+      + "(SSH Host)\" (CBM Deployment Record v1.3 made the matching "
+      + "change). Together the two changes connect the wizard's SSH Host "
+      + "input to the Record's captured value so an operator running a "
+      + "re-deploy or migration knows exactly which value to enter. No "
+      + "other content changes."],
     ["1.0", "05-02-26 06:00",
       "Initial release. Authored alongside the CBM Test Instance Deployment "
       + "Record (companion document) so that future EspoCRM deployments via "
@@ -526,7 +536,7 @@ children.push(stripedTable({
   columnWidths: [2200, 3000, 4160],
   headers: ["Field", "Recommended Value", "Notes"],
   rows: [
-    ["SSH Host", "Droplet's public IPv4 (e.g. 104.131.45.208 for CBM Test)",
+    ["SSH Host", "Droplet's public IPv4 (e.g. 104.131.45.208 for CBM Test). For an existing instance being re-deployed or migrated, this value appears as \"Public IPv4 (SSH Host)\" in Section 3.1 of the per-instance Deployment Record.",
       "The subdomain (e.g. crm-test.clevelandbusinessmentors.org) also works once DNS has propagated, but the IP is preferred during deploy because it bypasses any DNS hiccups."],
     ["SSH Port", "22",
       "The default. Do not change unless you have configured a non-standard port on the Droplet, in which case ufw will also need adjusting."],
@@ -913,6 +923,19 @@ children.push(stripedTable({
   columnWidths: [800, 1500, 7060],
   headers: ["Version", "Date", "Changes"],
   rows: [
+    ["1.1", "05-02-26 06:50",
+      "Section 7.3 (Wizard Page 2 \u2014 Server (SSH) Connection) "
+      + "field table updated. The SSH Host row's Recommended Value "
+      + "column now reads: \"Droplet's public IPv4 (e.g. 104.131.45.208 "
+      + "for CBM Test). For an existing instance being re-deployed or "
+      + "migrated, this value appears as 'Public IPv4 (SSH Host)' in "
+      + "Section 3.1 of the per-instance Deployment Record.\" Connects "
+      + "the wizard's SSH Host input to the Deployment Record's "
+      + "captured value, addressing operator confusion observed during "
+      + "a real wizard run. Companion change: CBM Test Instance "
+      + "Deployment Record v1.3 relabeled the captured IPv4 row to "
+      + "\"Public IPv4 (SSH Host)\". Metadata Last Updated bumped to "
+      + "05-02-26 06:50. No other content changes."],
     ["1.0", "05-02-26 06:00",
       "Initial release. Fourteen sections covering: document purpose and "
       + "scope (Section 1); overview of the three deployment phases "
