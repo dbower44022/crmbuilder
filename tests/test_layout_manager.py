@@ -48,7 +48,9 @@ def test_build_list_payload():
         ],
     )
     custom_fields = {"contactType"}
-    payload = manager._build_payload(layout, [], custom_fields)
+    payload = manager._build_payload(
+        layout, [], custom_fields, auto_place_name=False
+    )
 
     assert payload == [
         {"name": "name", "width": 30},
@@ -68,7 +70,9 @@ def test_build_detail_payload_explicit_rows():
         ],
     )
     custom_fields = {"contactType"}
-    payload = manager._build_payload(layout, [], custom_fields)
+    payload = manager._build_payload(
+        layout, [], custom_fields, auto_place_name=False
+    )
 
     assert len(payload) == 1
     panel = payload[0]
@@ -99,7 +103,9 @@ def test_build_detail_payload_tab_expansion():
         ],
     )
     custom_fields = {"isMentor", "mentorStatus"}
-    payload = manager._build_payload(layout, fields, custom_fields)
+    payload = manager._build_payload(
+        layout, fields, custom_fields, auto_place_name=False
+    )
 
     assert len(payload) == 1
     panel = payload[0]
@@ -133,7 +139,9 @@ def test_tab_expansion_multiple_tabs():
         ],
     )
     custom_fields = {"field1", "field2"}
-    payload = manager._build_payload(layout, fields, custom_fields)
+    payload = manager._build_payload(
+        layout, fields, custom_fields, auto_place_name=False
+    )
 
     # Should expand to 2 panels
     assert len(payload) == 2
@@ -364,7 +372,9 @@ def test_dynamic_logic_inherited_by_tabs():
         ],
     )
     custom_fields = {"f1", "f2", "contactType"}
-    payload = manager._build_payload(layout, fields, custom_fields)
+    payload = manager._build_payload(
+        layout, fields, custom_fields, auto_place_name=False
+    )
 
     # Both tabs should have the dynamic logic
     for panel in payload:
@@ -435,7 +445,12 @@ def test_native_entity_layout_uses_c_prefix():
     manager.process_layouts(entity, entity.fields)
 
     saved_payload = client.save_layout.call_args.args[2]
-    assert saved_payload[0]["rows"] == [[{"name": "cContactType"}]]
+    # Auto-placement prepends a `name` row; the c-prefix assertion
+    # focuses on the row authored by the YAML.
+    assert saved_payload[0]["rows"] == [
+        [{"name": "name"}],
+        [{"name": "cContactType"}],
+    ]
 
 
 def test_custom_entity_layout_skips_c_prefix():
@@ -469,8 +484,10 @@ def test_custom_entity_layout_skips_c_prefix():
     manager.process_layouts(entity, entity.fields)
 
     saved_payload = client.save_layout.call_args.args[2]
+    # Auto-placement prepends a `name` row to the first panel.
     assert saved_payload[0]["rows"] == [
-        [{"name": "amount"}, {"name": "contributionType"}]
+        [{"name": "name"}],
+        [{"name": "amount"}, {"name": "contributionType"}],
     ]
     assert saved_payload[1]["rows"] == [[{"name": "notes"}]]
 
@@ -638,3 +655,192 @@ def test_custom_entity_list_layout_overwrites_stale_c_prefixed_state():
         {"name": "amount", "width": 20},
         {"name": "status", "width": 20},
     ]
+
+
+# --- Auto-placement of `name` on detail layouts ---
+
+
+def _process_with_settings_for_name(client, entity_settings):
+    """Helper: build a Contribution-like custom entity with a
+    detail layout that does NOT place `name`, optionally with the
+    given EntitySettings, and run process_layouts."""
+    from espo_impl.core.models import EntitySettings
+
+    manager, _ = make_manager(client)
+    entity = EntityDefinition(
+        name="Contribution",
+        fields=make_fields(
+            ("amount", "currency", "ident"),
+            ("status", "enum", "ident"),
+        ),
+        settings=entity_settings,
+        layouts={
+            "detail": LayoutSpec(
+                layout_type="detail",
+                panels=[
+                    PanelSpec(
+                        label="Identification",
+                        rows=[["amount", "status"]],
+                    ),
+                ],
+            )
+        },
+    )
+    manager.process_layouts(entity, entity.fields)
+    _ = EntitySettings  # silence linter on the import-only line
+    return client
+
+
+def test_auto_place_name_default_true_prepends_name():
+    """When the YAML does not place `name`, the engine prepends a
+    name row to the first panel by default."""
+    client = MagicMock(spec=EspoAdminClient)
+    client.get_layout.return_value = (200, [])
+    client.save_layout.return_value = (200, {})
+
+    _process_with_settings_for_name(client, entity_settings=None)
+
+    saved_payload = client.save_layout.call_args.args[2]
+    assert saved_payload[0]["rows"][0] == [{"name": "name"}]
+    # original row preserved as second row
+    assert saved_payload[0]["rows"][1] == [
+        {"name": "amount"},
+        {"name": "status"},
+    ]
+
+
+def test_auto_place_name_explicit_placement_not_duplicated():
+    """When the YAML already places `name` somewhere, the engine
+    does not add another."""
+    from espo_impl.core.models import EntitySettings
+
+    client = MagicMock(spec=EspoAdminClient)
+    client.get_layout.return_value = (200, [])
+    client.save_layout.return_value = (200, {})
+
+    manager, _ = make_manager(client)
+    entity = EntityDefinition(
+        name="Contribution",
+        fields=make_fields(("amount", "currency", "ident")),
+        settings=None,
+        layouts={
+            "detail": LayoutSpec(
+                layout_type="detail",
+                panels=[
+                    PanelSpec(
+                        label="Identification",
+                        rows=[["name"], ["amount"]],
+                    ),
+                ],
+            )
+        },
+    )
+    manager.process_layouts(entity, entity.fields)
+    _ = EntitySettings
+
+    saved_payload = client.save_layout.call_args.args[2]
+    # Panel still has exactly the two YAML-authored rows.
+    assert saved_payload[0]["rows"] == [
+        [{"name": "name"}],
+        [{"name": "amount"}],
+    ]
+
+
+def test_auto_place_name_opt_out_skips_placement():
+    """settings.autoPlaceName=False suppresses auto-placement."""
+    from espo_impl.core.models import EntitySettings
+
+    client = MagicMock(spec=EspoAdminClient)
+    client.get_layout.return_value = (200, [])
+    client.save_layout.return_value = (200, {})
+
+    _process_with_settings_for_name(
+        client, entity_settings=EntitySettings(autoPlaceName=False)
+    )
+
+    saved_payload = client.save_layout.call_args.args[2]
+    # Only the YAML-authored row remains.
+    assert saved_payload[0]["rows"] == [
+        [{"name": "amount"}, {"name": "status"}]
+    ]
+
+
+def test_auto_place_name_skips_conditional_panel():
+    """When the first panel has dynamicLogicVisible, name is
+    prepended to the first always-visible panel instead."""
+    client = MagicMock(spec=EspoAdminClient)
+    client.get_layout.return_value = (200, [])
+    client.save_layout.return_value = (200, {})
+
+    manager, _ = make_manager(client)
+    entity = EntityDefinition(
+        name="Contribution",
+        fields=make_fields(
+            ("amount", "currency", "ident"),
+            ("nextGrantDeadline", "date", "grant"),
+        ),
+        layouts={
+            "detail": LayoutSpec(
+                layout_type="detail",
+                panels=[
+                    PanelSpec(
+                        label="Grant Details",
+                        rows=[["nextGrantDeadline"]],
+                        dynamicLogicVisible={
+                            "attribute": "contributionType",
+                            "value": "Grant",
+                        },
+                    ),
+                    PanelSpec(
+                        label="Identification",
+                        rows=[["amount"]],
+                    ),
+                ],
+            )
+        },
+    )
+    manager.process_layouts(entity, entity.fields)
+
+    saved_payload = client.save_layout.call_args.args[2]
+    # Panel index 0 (conditional) is untouched.
+    assert saved_payload[0]["rows"] == [[{"name": "nextGrantDeadline"}]]
+    # Panel index 1 (always-visible) has name prepended.
+    assert saved_payload[1]["rows"][0] == [{"name": "name"}]
+    assert saved_payload[1]["rows"][1] == [{"name": "amount"}]
+
+
+def test_auto_place_name_all_panels_conditional_falls_back_to_first():
+    """When every panel is conditional, fall back to the first
+    panel rather than skipping placement entirely."""
+    client = MagicMock(spec=EspoAdminClient)
+    client.get_layout.return_value = (200, [])
+    client.save_layout.return_value = (200, {})
+
+    manager, _ = make_manager(client)
+    entity = EntityDefinition(
+        name="Contribution",
+        fields=make_fields(
+            ("amount", "currency", "ident"),
+        ),
+        layouts={
+            "detail": LayoutSpec(
+                layout_type="detail",
+                panels=[
+                    PanelSpec(
+                        label="Conditional",
+                        rows=[["amount"]],
+                        dynamicLogicVisible={
+                            "attribute": "contributionType",
+                            "value": "Grant",
+                        },
+                    ),
+                ],
+            )
+        },
+    )
+    manager.process_layouts(entity, entity.fields)
+
+    saved_payload = client.save_layout.call_args.args[2]
+    # Better placed conditionally than not at all.
+    assert saved_payload[0]["rows"][0] == [{"name": "name"}]
+    assert saved_payload[0]["rows"][1] == [{"name": "amount"}]

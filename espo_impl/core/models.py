@@ -161,6 +161,7 @@ SUPPORTED_ENTITY_TYPES: set[str] = {"Base", "Person", "Company", "Event"}
 
 VALID_SETTINGS_KEYS: set[str] = {
     "labelSingular", "labelPlural", "stream", "disabled",
+    "autoPlaceName",
 }
 
 VALID_NORMALIZE_VALUES: set[str] = {
@@ -178,12 +179,18 @@ class EntitySettings:
     :param labelPlural: Plural display name for the entity.
     :param stream: Whether the activity-feed Stream panel is enabled.
     :param disabled: Whether the entity is disabled in the CRM UI.
+    :param autoPlaceName: Whether LayoutManager auto-prepends the
+        required system `name` field to detail/edit layouts when the
+        YAML does not explicitly place it. Default True. Set False
+        for entities whose `name` is computed via formula or
+        workflow and should not surface as a manual input.
     """
 
     labelSingular: str | None = None
     labelPlural: str | None = None
     stream: bool | None = None
     disabled: bool | None = None
+    autoPlaceName: bool | None = None
 
 
 @dataclass

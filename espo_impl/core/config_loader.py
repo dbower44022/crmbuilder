@@ -322,6 +322,7 @@ class ConfigLoader:
         errors.extend(self._validate_formula_fields(entity))
 
         # Validate settings
+        errors.extend(self._validate_settings(entity))
 
         # Validate duplicate checks
         errors.extend(self._validate_duplicate_checks(entity))
@@ -726,6 +727,7 @@ class ConfigLoader:
             labelPlural=raw.get("labelPlural"),
             stream=raw.get("stream"),
             disabled=raw.get("disabled"),
+            autoPlaceName=raw.get("autoPlaceName"),
         )
 
     @staticmethod
@@ -1712,6 +1714,13 @@ class ConfigLoader:
         if disabled_val is not None and not isinstance(disabled_val, bool):
             errors.append(
                 f"{entity.name}.settings.disabled: must be a boolean"
+            )
+        auto_place_name_val = entity.settings_raw.get("autoPlaceName")
+        if auto_place_name_val is not None and not isinstance(
+            auto_place_name_val, bool
+        ):
+            errors.append(
+                f"{entity.name}.settings.autoPlaceName: must be a boolean"
             )
 
         # Label requirement for create actions is handled by the existing

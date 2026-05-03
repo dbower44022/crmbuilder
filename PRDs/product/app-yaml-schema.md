@@ -1,8 +1,8 @@
 # CRM Builder — YAML Program File Schema
 
-**Version:** 1.2.2
+**Version:** 1.2.3
 **Status:** Current
-**Last Updated:** 05-03-26
+**Last Updated:** 05-03-26 18:30
 **Applies To:** All YAML program files used by CRM Builder
 
 ---
@@ -16,6 +16,7 @@
 | 1.2 | 05-03-26 | Adds Section 5.9 `filteredTabs:` — declarative left-navigation filtered list views, implemented as Report Filter records (Advanced Pack) plus a generated metadata bundle (`scopes/`, `clientDefs/`, `i18n/en_US/Global.json`) the operator copies onto the EspoCRM server before rebuild and Tab List add. Reuses the Section 11 condition-expression construct for the filter criteria. Validation rules for the new block are added to Section 10. |
 | 1.2.1 | 05-03-26 14:00 | Documents the existing schema rule that link relationships are declared exclusively in the top-level `relationships:` block — `type: link` is not a valid field type and is rejected at validation time with a hard-reject error. Rule was implicit in v1.0–v1.2; now explicit in Sections 6.2, 8, and 10 following its enforcement by `validate_program()` (crmbuilder error-handling Prompt E, 05-02-26). Discovery: FU-Contribution.yaml v1.0.0 dual-declared three relationships as both `type: link` fields and `relationships:` entries, causing HTTP 409 Conflict at deploy time because EspoCRM's fieldManager created stub link fields that subsequently conflicted with `EntityManager/action/createLink`. Documents that field-level metadata (description, category) does not propagate onto link records — configure post-deployment via the EspoCRM admin UI if needed. Documents that three EspoCRM features have no public REST API write path (saved views, duplicate-check rules, workflows): YAML directives are recognized and surfaced in a MANUAL CONFIGURATION REQUIRED block at end of run rather than applied via API. |
 | 1.2.2 | 05-03-26 | No schema changes. Adds the Section 1 subsections "Companion implementation reference" and "Keeping this PRD and the impl doc in sync" that codify this PRD as the single source of truth for the schema's shape and Section 10 as the single source of truth for its validation rules. Mirrored on the impl-doc side (`docs/impl-yaml-schema.md` v1.2.1+): that doc demoted its parallel rule list to a function-name index pointing back at Section 10, and added a step-by-step recipe that puts the PRD update *first* whenever a new block is added. Done in response to the v1.0 → v1.2 drift the impl-doc rewrite corrected, to remove the surface where it could happen again. |
+| 1.2.3 | 05-03-26 18:30 | Adds `settings.autoPlaceName` (default `true`); LayoutManager now auto-prepends the system `name` field to detail/edit layouts unless explicitly placed or opted out. |
 
 ---
 
@@ -299,6 +300,17 @@ entities:
 | `labelPlural` | string | create only | Plural display name shown in the CRM UI |
 | `stream` | boolean | no | Enable the Stream (activity feed) panel. Default for custom entities: `false`. For native entities: omit unless overriding the CRM default |
 | `disabled` | boolean | no | Mark the entity as disabled. Default: `false` |
+| `autoPlaceName` | boolean | no | When `true` (default), `LayoutManager` auto-prepends the required system `name` field to detail/edit layouts that do not explicitly place it. Set to `false` for entities whose `name` is computed by formula or workflow and should not surface as a manual input. |
+
+**`autoPlaceName` rationale.** EspoCRM treats `name` as required on
+every entity. YAMLs that build detail layouts from category-driven
+`tabs:` blocks routinely fail to place `name` (it has no category),
+producing a create form on which users cannot enter the required
+value. The default `true` behavior shields YAML authors from this
+trap. Place `name` explicitly anywhere in `detail.panels` if you
+want it in a specific row or panel — the engine respects explicit
+placement and does not duplicate. Set `autoPlaceName: false` only
+when `name` is supplied by a formula or workflow.
 
 The `settings:` block is reserved for scalar configuration toggles.
 Rule-shaped collections (duplicate checks, saved views, workflows,

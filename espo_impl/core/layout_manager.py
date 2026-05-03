@@ -81,6 +81,13 @@ class LayoutManager:
         else:
             custom_field_names = set()
 
+        # Default True. Entity-level setting can opt out (e.g. when
+        # `name` is supplied by a formula or workflow).
+        auto_place_name = True
+        if entity_def.settings is not None:
+            if entity_def.settings.autoPlaceName is False:
+                auto_place_name = False
+
         for layout_type, layout_spec in entity_def.layouts.items():
             try:
                 result = self._process_one_layout(
@@ -90,6 +97,7 @@ class LayoutManager:
                     layout_spec,
                     field_definitions,
                     custom_field_names,
+                    auto_place_name=auto_place_name,
                 )
             except LayoutManagerError:
                 self.output_fn(
@@ -116,6 +124,7 @@ class LayoutManager:
         layout_spec: LayoutSpec,
         field_definitions: list[FieldDefinition],
         custom_field_names: set[str],
+        auto_place_name: bool,
     ) -> LayoutResult:
         """Process a single layout: check → apply → verify.
 
@@ -125,6 +134,8 @@ class LayoutManager:
         :param layout_spec: Layout specification.
         :param field_definitions: Field definitions for auto-row generation.
         :param custom_field_names: Set of custom field names (need c-prefix).
+        :param auto_place_name: Whether to auto-prepend `name` to
+            detail/edit layouts that do not place it explicitly.
         :returns: LayoutResult.
         :raises LayoutManagerError: If 401 received.
         """
@@ -133,7 +144,8 @@ class LayoutManager:
 
         # Build the desired payload
         payload = self._build_payload(
-            layout_spec, field_definitions, custom_field_names
+            layout_spec, field_definitions, custom_field_names,
+            auto_place_name=auto_place_name,
         )
 
         # Fetch current layout
@@ -204,12 +216,17 @@ class LayoutManager:
         layout_spec: LayoutSpec,
         field_definitions: list[FieldDefinition],
         custom_field_names: set[str],
+        auto_place_name: bool,
     ) -> list[dict[str, Any]] | list[Any]:
         """Convert a LayoutSpec to the EspoCRM API payload.
 
         :param layout_spec: Layout specification.
         :param field_definitions: Field definitions for auto-row generation.
         :param custom_field_names: Set of custom field names (need c-prefix).
+        :param auto_place_name: Whether to auto-prepend `name` to
+            detail/edit layouts that do not place it explicitly.
+            Ignored for list layouts (list columns declare `name`
+            explicitly in YAML).
         :returns: API payload (list of panels for detail/edit, list of columns for list).
         """
         if layout_spec.layout_type == "list":
@@ -217,7 +234,8 @@ class LayoutManager:
                 layout_spec, custom_field_names
             )
         return self._build_detail_payload(
-            layout_spec, field_definitions, custom_field_names
+            layout_spec, field_definitions, custom_field_names,
+            auto_place_name=auto_place_name,
         )
 
     def _build_list_payload(
@@ -247,6 +265,7 @@ class LayoutManager:
         layout_spec: LayoutSpec,
         field_definitions: list[FieldDefinition],
         custom_field_names: set[str],
+        auto_place_name: bool,
     ) -> list[dict[str, Any]]:
         """Build a detail/edit layout payload.
 
@@ -255,6 +274,8 @@ class LayoutManager:
         :param layout_spec: Layout specification with panels.
         :param field_definitions: Field definitions for auto-row generation.
         :param custom_field_names: Set of custom field names.
+        :param auto_place_name: Whether to auto-prepend `name` when
+            it is not explicitly placed anywhere in the panels.
         :returns: List of panel dicts.
         """
         result: list[dict[str, Any]] = []
@@ -271,6 +292,9 @@ class LayoutManager:
                         panel, custom_field_names
                     )
                 )
+
+        if auto_place_name:
+            self._ensure_name_placed(result, custom_field_names)
 
         return result
 
@@ -552,6 +576,59 @@ class LayoutManager:
         if name in custom_field_names:
             return f"c{name[0].upper()}{name[1:]}"
         return name
+
+    def _ensure_name_placed(
+        self,
+        panels: list[dict[str, Any]],
+        custom_field_names: set[str],
+    ) -> None:
+        """Prepend a `name` row to the first always-visible panel
+        if `name` is not already placed somewhere in the layout.
+
+        EspoCRM treats `name` as required on every entity. YAMLs
+        that express their detail layout via category-driven `tabs:`
+        blocks routinely fail to place `name` (it has no category),
+        producing a create form on which the user cannot enter the
+        required value. This helper guarantees `name` lands on the
+        layout.
+
+        Mutates `panels` in place. No-op when:
+            - `panels` is empty (YAML-shape problem, not ours);
+            - any cell anywhere in `panels` already resolves to
+              `name`.
+
+        :param panels: Built detail-layout panel list.
+        :param custom_field_names: Set of custom field names (for
+            symmetry with the rest of the layout code; `name` is
+            always native and resolves to itself).
+        """
+        if not panels:
+            return
+
+        target_name = self._resolve_field_name("name", custom_field_names)
+
+        # Detect existing placement.
+        for panel in panels:
+            for row in panel.get("rows") or []:
+                if not isinstance(row, list):
+                    continue
+                for cell in row:
+                    cell_name = (
+                        cell.get("name")
+                        if isinstance(cell, dict)
+                        else cell
+                    )
+                    if cell_name == target_name:
+                        return
+
+        # Pick insertion target: first panel without
+        # `dynamicLogicVisible`. Fall back to first panel.
+        target = next(
+            (p for p in panels if not p.get("dynamicLogicVisible")),
+            panels[0],
+        )
+        existing_rows = target.get("rows") or []
+        target["rows"] = [[{"name": target_name}], *existing_rows]
 
     @staticmethod
     def _layouts_match(

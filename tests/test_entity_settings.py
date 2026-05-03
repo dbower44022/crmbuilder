@@ -184,6 +184,29 @@ def test_validate_settings_disabled_not_bool(loader, tmp_path):
     assert any("disabled: must be a boolean" in e for e in errors)
 
 
+def test_validate_settings_auto_place_name_not_bool(loader, tmp_path):
+    """autoPlaceName must be boolean."""
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            settings:
+              autoPlaceName: "yes"
+            fields:
+              - name: email
+                type: varchar
+                label: "Email"
+    """)
+    path = tmp_path / "auto_place_name_not_bool.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any(
+        "autoPlaceName: must be a boolean" in e for e in errors
+    )
+
+
 def test_validate_create_requires_labels_via_settings(loader, tmp_path):
     """action: create requires labelSingular/labelPlural.
 
