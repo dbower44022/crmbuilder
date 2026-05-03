@@ -13,14 +13,24 @@ from espo_impl.core.models import (
     DuplicateCheck,
     EntityAction,
     EntityDefinition,
+    EntityLayoutStatus,
     FieldDefinition,
     InstanceProfile,
+    LayoutResult,
     ProgramFile,
+    RelationshipDefinition,
+    RelationshipResult,
+    RelationshipStatus,
     SavedView,
+    SavedViewResult,
+    SavedViewStatus,
     StepStatus,
 )
 from espo_impl.core.saved_view_manager import SavedViewManagerError
-from espo_impl.workers.run_worker import RunWorker
+from espo_impl.workers.run_worker import (
+    RunWorker,
+    _check_results_for_errors,
+)
 
 
 def make_program(entities=None) -> ProgramFile:
@@ -580,3 +590,421 @@ def test_configure_progress_green_on_clean_run():
     outcome, _ts = dlg._file_results["/tmp/clean.yaml"]
     assert outcome == "success"
     assert "/tmp/clean.yaml" not in dlg._file_tooltips
+
+
+# ───────────────────────────────────────────────────────────────────────
+# Per-item failure → step FAILED tests (Prompt C)
+# ───────────────────────────────────────────────────────────────────────
+
+
+def test_check_results_for_errors_helper():
+    """Direct unit tests for _check_results_for_errors."""
+    # None or empty → no failure.
+    assert _check_results_for_errors(None, {SavedViewStatus.ERROR}, "x") is None
+    assert _check_results_for_errors([], {SavedViewStatus.ERROR}, "x") is None
+
+    # All-clean result list → None.
+    clean = [
+        SavedViewResult(
+            entity="E", view_id="v1", status=SavedViewStatus.CREATED
+        ),
+        SavedViewResult(
+            entity="E", view_id="v2", status=SavedViewStatus.SKIPPED
+        ),
+    ]
+    assert (
+        _check_results_for_errors(clean, {SavedViewStatus.ERROR}, "saved view")
+        is None
+    )
+
+    # Mixed: 1 error out of 3.
+    mixed = [
+        SavedViewResult(
+            entity="E", view_id="v1", status=SavedViewStatus.CREATED
+        ),
+        SavedViewResult(
+            entity="E", view_id="v2", status=SavedViewStatus.ERROR
+        ),
+        SavedViewResult(
+            entity="E", view_id="v3", status=SavedViewStatus.SKIPPED
+        ),
+    ]
+    msg = _check_results_for_errors(
+        mixed, {SavedViewStatus.ERROR}, "saved view"
+    )
+    assert msg == "1 of 3 saved view(s) failed"
+
+    # DRIFT not in error_statuses → still clean.
+    drift = [
+        SavedViewResult(
+            entity="E", view_id="v1", status=SavedViewStatus.DRIFT
+        ),
+    ]
+    assert (
+        _check_results_for_errors(drift, {SavedViewStatus.ERROR}, "saved view")
+        is None
+    )
+
+    # Items missing .status are tolerated (treated as not-failure).
+    weird = [object()]
+    assert (
+        _check_results_for_errors(weird, {SavedViewStatus.ERROR}, "x") is None
+    )
+
+
+def test_saved_views_with_internal_errors_marks_step_failed():
+    """A saved-view step that returns an ERROR record marks the step FAILED."""
+    program = make_program([
+        EntityDefinition(
+            name="Engagement",
+            action=EntityAction.NONE,
+            type="Base",
+            fields=[
+                FieldDefinition(name="testField", type="varchar", label="Test"),
+            ],
+            saved_views=[
+                SavedView(id="sv1", name="My View", columns=["testField"]),
+            ],
+        ),
+    ])
+
+    with patch(
+        "espo_impl.workers.run_worker.SavedViewManager"
+    ) as mock_sv_cls:
+        mock_sv_cls.return_value.process_saved_views.return_value = [
+            SavedViewResult(
+                entity="Engagement",
+                view_id="sv1",
+                status=SavedViewStatus.ERROR,
+                error="HTTP 405",
+            ),
+        ]
+
+        _, output_log, report, error = run_worker_sync(
+            program, skip_deletes=True
+        )
+
+    assert error is None
+    assert report is not None
+    by_name = _step_results_by_name(report)
+    assert by_name["saved_views"] == StepStatus.FAILED
+    failed_entry = next(
+        sr for sr in report.step_results if sr.step_name == "saved_views"
+    )
+    assert "1 of 1 saved view(s) failed" in (failed_entry.error or "")
+    messages = [m for m, _ in output_log]
+    assert any("[STEP FAILED] saved_views" in m for m in messages)
+
+
+def test_saved_views_all_clean_marks_step_ok():
+    """A saved-view step with all CREATED results stays OK."""
+    program = make_program([
+        EntityDefinition(
+            name="Engagement",
+            action=EntityAction.NONE,
+            type="Base",
+            fields=[
+                FieldDefinition(name="testField", type="varchar", label="Test"),
+            ],
+            saved_views=[
+                SavedView(id="sv1", name="View", columns=["testField"]),
+            ],
+        ),
+    ])
+
+    with patch(
+        "espo_impl.workers.run_worker.SavedViewManager"
+    ) as mock_sv_cls:
+        mock_sv_cls.return_value.process_saved_views.return_value = [
+            SavedViewResult(
+                entity="Engagement",
+                view_id="sv1",
+                status=SavedViewStatus.CREATED,
+            ),
+        ]
+
+        _, _, report, error = run_worker_sync(
+            program, skip_deletes=True
+        )
+
+    assert error is None
+    assert report is not None
+    by_name = _step_results_by_name(report)
+    assert by_name["saved_views"] == StepStatus.OK
+
+
+def test_saved_views_drift_only_marks_step_ok():
+    """A saved-view step whose only results are DRIFT records stays OK."""
+    program = make_program([
+        EntityDefinition(
+            name="Engagement",
+            action=EntityAction.NONE,
+            type="Base",
+            fields=[
+                FieldDefinition(name="testField", type="varchar", label="Test"),
+            ],
+            saved_views=[
+                SavedView(id="sv1", name="View", columns=["testField"]),
+            ],
+        ),
+    ])
+
+    with patch(
+        "espo_impl.workers.run_worker.SavedViewManager"
+    ) as mock_sv_cls:
+        mock_sv_cls.return_value.process_saved_views.return_value = [
+            SavedViewResult(
+                entity="Engagement",
+                view_id="sv1",
+                status=SavedViewStatus.DRIFT,
+            ),
+        ]
+
+        _, _, report, error = run_worker_sync(
+            program, skip_deletes=True
+        )
+
+    assert error is None
+    assert report is not None
+    by_name = _step_results_by_name(report)
+    assert by_name["saved_views"] == StepStatus.OK
+
+
+def test_fields_with_errors_marks_step_failed():
+    """When the fields RunReport has summary.errors > 0, step is FAILED."""
+    program = make_program([
+        make_entity("Engagement", EntityAction.NONE, fields=[
+            FieldDefinition(name="testField", type="varchar", label="Test"),
+        ]),
+    ])
+
+    def _fake_run(self_arg, *_args, **_kwargs):
+        report = self_arg._build_report(program, "run", [])
+        report.summary.errors = 2
+        return report
+
+    with patch(
+        "espo_impl.core.field_manager.FieldManager.run", autospec=True
+    ) as mock_run:
+        mock_run.side_effect = _fake_run
+
+        _, output_log, report, error = run_worker_sync(
+            program, skip_deletes=True
+        )
+
+    assert error is None
+    assert report is not None
+    by_name = _step_results_by_name(report)
+    assert by_name["fields"] == StepStatus.FAILED
+    failed_entry = next(
+        sr for sr in report.step_results if sr.step_name == "fields"
+    )
+    assert "2 field(s) failed" in (failed_entry.error or "")
+    messages = [m for m, _ in output_log]
+    assert any("[STEP FAILED] fields" in m for m in messages)
+
+
+def test_fields_with_verification_failed_marks_step_failed():
+    """A non-zero summary.verification_failed downgrades fields to FAILED."""
+    program = make_program([
+        make_entity("Engagement", EntityAction.NONE, fields=[
+            FieldDefinition(name="testField", type="varchar", label="Test"),
+        ]),
+    ])
+
+    def _fake_run(self_arg, *_args, **_kwargs):
+        report = self_arg._build_report(program, "run", [])
+        report.summary.verification_failed = 1
+        return report
+
+    with patch(
+        "espo_impl.core.field_manager.FieldManager.run", autospec=True
+    ) as mock_run:
+        mock_run.side_effect = _fake_run
+
+        _, _, report, error = run_worker_sync(
+            program, skip_deletes=True
+        )
+
+    assert error is None
+    assert report is not None
+    by_name = _step_results_by_name(report)
+    assert by_name["fields"] == StepStatus.FAILED
+    failed_entry = next(
+        sr for sr in report.step_results if sr.step_name == "fields"
+    )
+    assert "1 verification failure(s)" in (failed_entry.error or "")
+
+
+def test_layouts_with_errors_marks_step_failed():
+    """When layout_results contains an ERROR, the layouts step is FAILED."""
+    program = make_program([
+        EntityDefinition(
+            name="Engagement",
+            action=EntityAction.NONE,
+            type="Base",
+            fields=[
+                FieldDefinition(name="testField", type="varchar", label="Test"),
+            ],
+            layouts={"detail": ["testField"]},
+        ),
+    ])
+
+    with patch(
+        "espo_impl.workers.run_worker.LayoutManager"
+    ) as mock_lm_cls:
+        mock_lm_cls.return_value.process_layouts.return_value = [
+            LayoutResult(
+                entity="Engagement",
+                layout_type="detail",
+                status=EntityLayoutStatus.ERROR,
+                error="boom",
+            ),
+        ]
+
+        _, output_log, report, error = run_worker_sync(
+            program, skip_deletes=True
+        )
+
+    assert error is None
+    assert report is not None
+    by_name = _step_results_by_name(report)
+    assert by_name["layouts"] == StepStatus.FAILED
+    failed_entry = next(
+        sr for sr in report.step_results if sr.step_name == "layouts"
+    )
+    assert "1 of 1 layout(s) failed" in (failed_entry.error or "")
+    messages = [m for m, _ in output_log]
+    assert any("[STEP FAILED] layouts" in m for m in messages)
+
+
+def test_relationships_with_warning_marks_step_failed():
+    """A WARNING relationship result counts as a step failure."""
+    program = make_program([
+        make_entity("Engagement", EntityAction.NONE),
+    ])
+    program.relationships = [
+        RelationshipDefinition(
+            name="rel1",
+            entity="Engagement",
+            entity_foreign="Account",
+            link_type="manyToOne",
+            link="account",
+            link_foreign="engagements",
+            label="Account",
+            label_foreign="Engagements",
+        ),
+    ]
+
+    with patch(
+        "espo_impl.workers.run_worker.RelationshipManager"
+    ) as mock_rm_cls:
+        mock_rm_cls.return_value.process_relationships.return_value = [
+            RelationshipResult(
+                name="rel1",
+                entity="Engagement",
+                entity_foreign="Account",
+                link="account",
+                status=RelationshipStatus.WARNING,
+                message="probable conflict",
+            ),
+        ]
+
+        _, _, report, error = run_worker_sync(
+            program, skip_deletes=True
+        )
+
+    assert error is None
+    assert report is not None
+    by_name = _step_results_by_name(report)
+    assert by_name["relationships"] == StepStatus.FAILED
+    failed_entry = next(
+        sr for sr in report.step_results if sr.step_name == "relationships"
+    )
+    assert "1 of 1 relationship(s) failed" in (failed_entry.error or "")
+
+
+def test_entity_creations_partial_failure_marks_step_failed():
+    """A False return from _create_entity is counted as a failure."""
+    program = make_program([
+        make_entity("EntityA", EntityAction.CREATE),
+        make_entity("EntityB", EntityAction.CREATE),
+        make_entity("EntityC", EntityAction.CREATE),
+    ])
+
+    call_count = {"value": 0}
+
+    def _fake_create(self_arg, _entity_def):
+        call_count["value"] += 1
+        # Second call fails.
+        return call_count["value"] != 2
+
+    with patch(
+        "espo_impl.core.entity_manager.EntityManager._create_entity",
+        autospec=True,
+        side_effect=_fake_create,
+    ):
+        _, output_log, report, error = run_worker_sync(
+            program, skip_deletes=True
+        )
+
+    assert error is None
+    assert report is not None
+    by_name = _step_results_by_name(report)
+    assert by_name["entity_creations"] == StepStatus.FAILED
+    failed_entry = next(
+        sr for sr in report.step_results
+        if sr.step_name == "entity_creations"
+    )
+    assert "1 entity creation(s) failed" in (failed_entry.error or "")
+    messages = [m for m, _ in output_log]
+    assert any("[STEP FAILED] entity_creations" in m for m in messages)
+
+
+def test_configure_progress_yellow_when_step_downgraded_via_failure_check():
+    """A FAILED step from a failure_check downgrade flows through to amber UI."""
+    from automation.ui.deployment.configure_progress import (
+        ConfigureProgressDialog,
+    )
+    from espo_impl.core.models import RunReport, StepResult
+
+    dlg = ConfigureProgressDialog.__new__(ConfigureProgressDialog)
+    dlg._worker = object()
+    dlg._file_results = {}
+    dlg._file_tooltips = {}
+    dlg._current_log_lines = []
+    dlg._current_started_at = "2026-05-02T00:00:00"
+    dlg._current_program = None
+    dlg._current_file_hash = None
+    dlg._conn = None
+    dlg._instance = None
+    file_info = MagicMock()
+    file_info.path = "/tmp/downgrade.yaml"
+    file_info.name = "downgrade.yaml"
+    dlg._current_file_info = file_info
+    dlg._append_log = lambda *args, **kwargs: None
+    dlg._run_next = lambda: None
+
+    # Same shape as a downgraded FAILED step from failure_check.
+    report = RunReport(
+        timestamp="2026-05-02T00:00:00",
+        instance_name="Test",
+        espocrm_url="https://test.com",
+        program_file="downgrade.yaml",
+        operation="run",
+        step_results=[
+            StepResult(step_name="fields", status=StepStatus.OK),
+            StepResult(
+                step_name="relationships",
+                status=StepStatus.FAILED,
+                error="3 of 3 relationship(s) failed",
+            ),
+        ],
+    )
+
+    dlg._on_worker_ok(report)
+
+    outcome, _ts = dlg._file_results["/tmp/downgrade.yaml"]
+    assert outcome == "partial"
+    tooltip = dlg._file_tooltips["/tmp/downgrade.yaml"]
+    assert "relationships" in tooltip

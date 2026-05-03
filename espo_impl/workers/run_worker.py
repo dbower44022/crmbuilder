@@ -1,7 +1,7 @@
 """Background worker thread for run/verify operations."""
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from typing import Any
 
 from PySide6.QtCore import QThread, Signal
@@ -89,6 +89,30 @@ def _is_authentication_message(message: str) -> bool:
     return "401" in message or "Authentication" in message
 
 
+def _check_results_for_errors(
+    results: Iterable[Any] | None,
+    error_statuses: set[Any],
+    label: str,
+) -> str | None:
+    """Inspect a result list and return a failure summary, or None if clean.
+
+    :param results: Iterable of result records (may be None or empty).
+    :param error_statuses: Set of status enum values that count as failure.
+    :param label: Singular human label, e.g. "saved view", "field".
+    :returns: ``"{n} of {total} {label}(s) failed"`` if any errors, else None.
+    """
+    if not results:
+        return None
+    items = list(results)
+    error_count = sum(
+        1 for r in items
+        if getattr(r, "status", None) in error_statuses
+    )
+    if error_count == 0:
+        return None
+    return f"{error_count} of {len(items)} {label}(s) failed"
+
+
 class RunWorker(QThread):
     """Background worker that runs entity and field operations off the main thread.
 
@@ -158,6 +182,7 @@ class RunWorker(QThread):
         step_name: str,
         has_work: bool,
         body: Callable[[], Any],
+        failure_check: Callable[[Any], str | None] | None = None,
     ) -> tuple[StepResult, Any]:
         """Run one phase of the pipeline, isolating failures.
 
@@ -167,6 +192,12 @@ class RunWorker(QThread):
         :param body: Zero-arg callable that runs the step. Returns
             step-specific results (or None). May raise *ManagerError or
             any Exception.
+        :param failure_check: Optional callable invoked only on the success
+            path with the body's return value. If it returns a non-None
+            string, the step is downgraded from OK to FAILED with that
+            string as the error and a ``[STEP FAILED]`` line is emitted.
+            The body's return value is still returned to the caller so it
+            can be attached to the report.
         :returns: Tuple of (StepResult, body return value or None on failure).
         :raises AuthenticationError: Re-raised so the caller can hard-abort.
         """
@@ -218,6 +249,21 @@ class RunWorker(QThread):
                 None,
             )
 
+        if failure_check is not None:
+            error_summary = failure_check(return_value)
+            if error_summary:
+                self.output_line.emit(
+                    f"[STEP FAILED] {step_name}: {error_summary}", "red"
+                )
+                return (
+                    StepResult(
+                        step_name=step_name,
+                        status=StepStatus.FAILED,
+                        error=error_summary,
+                    ),
+                    return_value,
+                )
+
         return (
             StepResult(step_name=step_name, status=StepStatus.OK),
             return_value,
@@ -267,17 +313,29 @@ class RunWorker(QThread):
                     e for e in self.program.entities
                     if e.action in delete_actions
                 ]
+                delete_fail_count = {"value": 0}
 
                 def _entity_deletions_body() -> None:
                     self.output_line.emit("", "white")
                     self.output_line.emit("=== ENTITY DELETIONS ===", "white")
                     for entity_def in deletes:
-                        entity_mgr._delete_entity(entity_def)
+                        ok = entity_mgr._delete_entity(entity_def)
+                        if not ok:
+                            delete_fail_count["value"] += 1
                     entity_mgr.rebuild_cache()
                     had_entity_ops_state["value"] = True
 
+                def _entity_deletions_failure_check(_: Any) -> str | None:
+                    n = delete_fail_count["value"]
+                    return (
+                        f"{n} entity deletion(s) failed" if n > 0 else None
+                    )
+
                 step_result, _ = self._run_step(
-                    "entity_deletions", bool(deletes), _entity_deletions_body
+                    "entity_deletions",
+                    bool(deletes),
+                    _entity_deletions_body,
+                    failure_check=_entity_deletions_failure_check,
                 )
                 all_step_results.append(step_result)
 
@@ -290,17 +348,29 @@ class RunWorker(QThread):
                 e for e in self.program.entities
                 if e.action in create_actions
             ]
+            create_fail_count = {"value": 0}
 
             def _entity_creations_body() -> None:
                 self.output_line.emit("", "white")
                 self.output_line.emit("=== ENTITY CREATION ===", "white")
                 for entity_def in creates:
-                    entity_mgr._create_entity(entity_def)
+                    ok = entity_mgr._create_entity(entity_def)
+                    if not ok:
+                        create_fail_count["value"] += 1
                 entity_mgr.rebuild_cache()
                 had_entity_ops_state["value"] = True
 
+            def _entity_creations_failure_check(_: Any) -> str | None:
+                n = create_fail_count["value"]
+                return (
+                    f"{n} entity creation(s) failed" if n > 0 else None
+                )
+
             step_result, _ = self._run_step(
-                "entity_creations", bool(creates), _entity_creations_body
+                "entity_creations",
+                bool(creates),
+                _entity_creations_body,
+                failure_check=_entity_creations_failure_check,
             )
             all_step_results.append(step_result)
             had_entity_ops = had_entity_ops_state["value"]
@@ -320,7 +390,12 @@ class RunWorker(QThread):
                 return settings_mgr.process_settings(self.program)
 
             step_result, settings_results = self._run_step(
-                "entity_settings", has_settings, _entity_settings_body
+                "entity_settings",
+                has_settings,
+                _entity_settings_body,
+                failure_check=lambda results: _check_results_for_errors(
+                    results, {SettingsStatus.ERROR}, "entity setting"
+                ),
             )
             all_step_results.append(step_result)
             self._settings_results = settings_results or []
@@ -341,6 +416,9 @@ class RunWorker(QThread):
                 "email_templates",
                 has_email_templates,
                 _email_templates_body,
+                failure_check=lambda results: _check_results_for_errors(
+                    results, {EmailTemplateStatus.ERROR}, "email template"
+                ),
             )
             all_step_results.append(step_result)
             self._email_template_results = et_results or []
@@ -362,7 +440,12 @@ class RunWorker(QThread):
                 return dup_mgr.process_duplicate_checks(self.program)
 
             step_result, dup_results = self._run_step(
-                "duplicate_checks", has_dup_checks, _duplicate_checks_body
+                "duplicate_checks",
+                has_dup_checks,
+                _duplicate_checks_body,
+                failure_check=lambda results: _check_results_for_errors(
+                    results, {DuplicateCheckStatus.ERROR}, "duplicate check"
+                ),
             )
             all_step_results.append(step_result)
             self._duplicate_check_results = dup_results or []
@@ -380,7 +463,12 @@ class RunWorker(QThread):
                 return sv_mgr.process_saved_views(self.program)
 
             step_result, sv_results = self._run_step(
-                "saved_views", has_saved_views, _saved_views_body
+                "saved_views",
+                has_saved_views,
+                _saved_views_body,
+                failure_check=lambda results: _check_results_for_errors(
+                    results, {SavedViewStatus.ERROR}, "saved view"
+                ),
             )
             all_step_results.append(step_result)
             self._saved_view_results = sv_results or []
@@ -399,8 +487,25 @@ class RunWorker(QThread):
                     )
                 return field_mgr.run(self.program)
 
+            def _fields_failure_check(fr: Any) -> str | None:
+                if fr is None:
+                    return None
+                errs = fr.summary.errors
+                vfail = fr.summary.verification_failed
+                if errs == 0 and vfail == 0:
+                    return None
+                parts: list[str] = []
+                if errs:
+                    parts.append(f"{errs} field(s) failed")
+                if vfail:
+                    parts.append(f"{vfail} verification failure(s)")
+                return ", ".join(parts)
+
             step_result, fields_report = self._run_step(
-                "fields", has_fields, _fields_body
+                "fields",
+                has_fields,
+                _fields_body,
+                failure_check=_fields_failure_check,
             )
             all_step_results.append(step_result)
 
@@ -483,8 +588,21 @@ class RunWorker(QThread):
                     "===========================================", "white"
                 )
 
+            def _layouts_failure_check(_: Any) -> str | None:
+                return _check_results_for_errors(
+                    report.layout_results,
+                    {
+                        EntityLayoutStatus.ERROR,
+                        EntityLayoutStatus.VERIFICATION_FAILED,
+                    },
+                    "layout",
+                )
+
             step_result, _ = self._run_step(
-                "layouts", has_layouts, _layouts_body
+                "layouts",
+                has_layouts,
+                _layouts_body,
+                failure_check=_layouts_failure_check,
             )
             all_step_results.append(step_result)
 
@@ -548,8 +666,21 @@ class RunWorker(QThread):
                     "===========================================", "white"
                 )
 
+            def _relationships_failure_check(_: Any) -> str | None:
+                return _check_results_for_errors(
+                    report.relationship_results,
+                    {
+                        RelationshipStatus.ERROR,
+                        RelationshipStatus.WARNING,
+                    },
+                    "relationship",
+                )
+
             step_result, _ = self._run_step(
-                "relationships", has_relationships, _relationships_body
+                "relationships",
+                has_relationships,
+                _relationships_body,
+                failure_check=_relationships_failure_check,
             )
             all_step_results.append(step_result)
 
@@ -580,8 +711,18 @@ class RunWorker(QThread):
                     elif wr.status == WorkflowStatus.ERROR:
                         report.summary.workflows_failed += 1
 
+            def _workflows_failure_check(_: Any) -> str | None:
+                return _check_results_for_errors(
+                    report.workflow_results,
+                    {WorkflowStatus.ERROR},
+                    "workflow",
+                )
+
             step_result, _ = self._run_step(
-                "workflows", has_workflows, _workflows_body
+                "workflows",
+                has_workflows,
+                _workflows_body,
+                failure_check=_workflows_failure_check,
             )
             all_step_results.append(step_result)
 
