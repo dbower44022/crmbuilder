@@ -1,9 +1,9 @@
 # CRM Builder — YAML Schema Implementation Reference
 
-**Version:** 1.2
+**Version:** 1.2.2
 **Status:** Current
 **Last Updated:** 05-03-26
-**Requirements:** PRDs/product/app-yaml-schema.md (v1.2)
+**Requirements:** PRDs/product/app-yaml-schema.md (v1.2.2)
 **Maintained By:** Claude Code
 
 ---
@@ -17,9 +17,47 @@ program-file contents. It covers `core/config_loader.py`,
 (`core/condition_expression.py`, `core/relative_date.py`,
 `core/formula_parser.py`).
 
-The PRD (`PRDs/product/app-yaml-schema.md`) is the source of truth for
-*what* the schema looks like. This doc is the source of truth for
-*how* the loader, validators, and models implement it.
+### Companion product spec
+
+The product specification for the schema — the YAML shape,
+property tables, and semantic validation rules — lives in
+`PRDs/product/app-yaml-schema.md`. That PRD is the contract; this
+doc is the map of the code that satisfies it. They are maintained
+as a pair.
+
+### Keeping this impl doc and the PRD in sync
+
+The PRD (`PRDs/product/app-yaml-schema.md`) is the **single source
+of truth** for the schema's shape and its semantic validation rules.
+This doc deliberately does **not** restate those rules — Section 4.6
+is a function-name index that points back at PRD Section 10 instead.
+This is intentional, to remove the drift surface that exists when
+two docs carry the same rule list.
+
+When you change the code — adding a new entity-level block, renaming
+a validator function, introducing a new AST node, etc. — make a
+matching update to the PRD in the same change set:
+
+- New entity-level block (e.g., a future `reports:`) → write the
+  PRD's Section 5.x (YAML form, property table, semantic rules) and
+  add the rule list to PRD Section 10 *first*. Then come back here
+  and add the dataclass to Section 3, the function-name entries to
+  Section 4, and the test file to Section 7. Section 8 below has
+  the full step-by-step recipe.
+- Changed validation rule → update the rule's wording in PRD
+  Section 10. No edit to this doc's rule text is required (this doc
+  has none); only verify the function-name index in Section 4.6
+  still names the validator that enforces the rule.
+- Renamed validator function or moved code → update the
+  function-name references in this doc's Section 4 and Section 4.6.
+- New shared parser or AST node → add to this doc's Section 5 and
+  describe its grammar / vocabulary in PRD Section 11.
+- New `*Status` / `*Result` types or `RunSummary` counters → add
+  to this doc's Section 3.10.
+
+Every change bumps both this doc's version stamp + revision history
+**and** the PRD's. Do them together — drift always starts with one
+doc moving forward alone.
 
 ---
 
@@ -523,121 +561,39 @@ continue to work.
 The same pattern handles panel-level `dynamicLogicVisible:` →
 `visibleWhen:` in `_parse_panel`.
 
-### 4.6 Validation rules (current)
+### 4.6 Validator function index
 
-The full list is in `PRDs/product/app-yaml-schema.md` Section 10.
-Implementation summary:
+The semantic validation rules are owned by
+`PRDs/product/app-yaml-schema.md` **Section 10**. This doc does
+**not** restate them — that was the source of the v1.0 → v1.2 drift
+the rewrite corrected. What this section provides is the index from
+each block to the validator function(s) that enforce its rules, so a
+developer reading PRD Section 10 knows where to look in the code (and
+a developer renaming a function knows which lines of this index to
+update).
 
-**Top-level** (`validate_program`)
-- `version`, `description` required
-- `entities` dict if present, `relationships` list if present
+| YAML block | PRD rules | Enforcing function(s) in `config_loader.py` |
+|---|---|---|
+| Top-level | Section 10 "Top-level" | `validate_program` |
+| Entity | Section 10 "Entity-level" | `_validate_entity` |
+| Field | Section 10 "Field-level" | `_validate_field`, `_validate_field_conditions` |
+| `settings:` | Section 10 "Settings-level" | `_validate_settings` |
+| `duplicateChecks:` | Section 10 "Duplicate-detection-level" | `_validate_duplicate_checks`, `_validate_alert_to`, `_validate_alert_template_refs` (cross-block) |
+| `savedViews:` | Section 10 "Saved-view-level" | `_validate_saved_views` |
+| `emailTemplates:` | Section 10 "Email-template-level" | `_validate_email_templates` |
+| `workflows:` | Section 10 "Workflow-level" | `_validate_workflows`, `_validate_workflow_trigger`, `_validate_workflow_action`, `_validate_workflow_template_refs` (cross-block) |
+| `filteredTabs:` | Section 10 "Filtered-tab-level" | `_validate_filtered_tabs`, `_validate_filtered_tab_scopes` (cross-entity uniqueness) |
+| `layout:` | Section 10 "Layout-level" | `_validate_layout` |
+| `relationships:` | Section 10 "Relationship-level" | `_validate_relationship` |
+| `formula:` (aggregate / arithmetic / concat) | Section 10 "Field-level" formula bullets | `_validate_formula`, `_validate_aggregate_formula`, `_validate_arithmetic_formula`, `_validate_concat_formula` |
 
-**Entity-level** (`_validate_entity`)
-- `description` required
-- `action: create` / `delete_and_create` require `type` and either
-  `settings.labelSingular`/`labelPlural` or the deprecated top-level
-  form
-- `type` ∈ `SUPPORTED_ENTITY_TYPES`
-- `delete` must not contain `fields:` or `layout:`
-- No duplicate entity names
+If you are renaming a validator or moving its rules to a different
+function, update the corresponding row(s) above. If you are adding a
+new block, add a new row here as part of step 7c of Section 8 below.
 
-**Field-level** (`_validate_field`, `_validate_field_conditions`)
-- `name`, `type`, `label` required
-- `type` ∈ `SUPPORTED_FIELD_TYPES`
-- `enum`/`multiEnum` require non-empty `options`
-- No duplicate field names within an entity
-- `requiredWhen` / `visibleWhen` must parse (Section 11)
-- `required: true` and `requiredWhen:` are mutually exclusive
-- `required: true` and `visibleWhen:` are mutually exclusive
-
-**Settings** (`_validate_settings`)
-- All keys ∈ `VALID_SETTINGS_KEYS`
-- `labelSingular`/`labelPlural` required for create/delete_and_create
-- `stream`, `disabled` must be booleans
-
-**Duplicate checks** (`_validate_duplicate_checks`)
-- Unique `id` per entity
-- `fields` non-empty; every field must exist on the entity
-- `onMatch` ∈ `VALID_ON_MATCH_VALUES`
-- `onMatch: block` requires non-empty `message`
-- `normalize` keys ⊆ `fields`; values ∈ `VALID_NORMALIZE_VALUES`
-- `alertTemplate` must reference an `id` in this entity's
-  `emailTemplates:` block (cross-block, via
-  `_validate_alert_template_refs`)
-- `alertTo` ∈ {field name, literal email, `role:<id>`}
-
-**Saved views** (`_validate_saved_views`)
-- Unique `id` per entity
-- `name` and `filter` required
-- `columns` (when present) must reference real fields
-- `filter` parses; field refs resolve via `validate_condition`
-- `orderBy.field` exists; `direction` ∈ {`asc`, `desc`}
-
-**Email templates** (`_validate_email_templates`)
-- Unique `id` per entity
-- `name`, `entity`, `subject`, `bodyFile`, `mergeFields` required
-- `entity` matches the parent entity key
-- `bodyFile` resolves to an existing file relative to the YAML
-- Every `mergeFields` entry is a real field on `entity`
-- Every `{{placeholder}}` in subject + body is in `mergeFields`
-- Every `mergeFields` entry is used somewhere
-
-**Workflows** (`_validate_workflows`,
-`_validate_workflow_trigger`, `_validate_workflow_action`)
-- Unique `id` per entity
-- `name`, `trigger`, `actions` required (actions non-empty)
-- `trigger.event` ∈ {`onCreate`, `onUpdate`, `onFieldChange`,
-  `onFieldTransition`, `onDelete`}
-- `onFieldChange` / `onFieldTransition` require valid `field:`;
-  transition additionally requires `from:` and/or `to:`
-- `where:` (when present) parses
-- `action.type` ∈ {`setField`, `clearField`, `sendEmail`,
-  `sendInternalNotification`}
-- `setField`/`clearField` require valid `field:`; `setField.value`
-  ∈ {literal, `now`, valid arithmetic per Section 6.1.3}
-- `sendEmail.template` references an `id` in this entity's
-  `emailTemplates:` block (cross-block, via
-  `_validate_workflow_template_refs`)
-- `sendEmail.to` ∈ {field name, literal email}
-- `sendInternalNotification.to` ∈ {literal email, `role:<id>`,
-  `user:<id>`}
-
-**Filtered tabs** (`_validate_filtered_tabs`,
-`_validate_filtered_tab_scopes`)
-- Unique `id` per entity
-- `scope`, `label`, `filter` required
-- `scope` matches `^[A-Z][A-Za-z0-9]{0,59}$` (PascalCase, ≤ 60 chars)
-- `scope` unique across the entire program file
-- `filter` parses; field refs resolve
-- `acl` ∈ {`boolean`, `team`, `strict`}
-- `navOrder` ≥ 0 when present
-
-**Layouts** (`_validate_layout`)
-- Each panel has `rows` xor `tabs`
-- `tabBreak: true` requires `tabLabel`
-- Tab `category` references match at least one field's `category`
-- Field names in explicit `rows` exist on the entity
-- A panel may set `visibleWhen:` xor the deprecated
-  `dynamicLogicVisible:`
-
-**Relationships** (`_validate_relationship`)
-- All required properties present (Section 8.1 of PRD)
-- `linkType` ∈ `VALID_LINK_TYPES`
-- `manyToMany` requires `relationName`
-- `description` required
-- `action` ∈ {None, `"skip"`}
-
-**Formulas** (`_validate_formula` and friends)
-- `formula:` requires `readOnly: true`
-- `type` ∈ {`aggregate`, `arithmetic`, `concat`}
-- Aggregate: `function` ∈ {count, sum, avg, min, max, first, last};
-  `count` must not specify `field`; sum/avg/min/max require `field`;
-  first/last require `pickField` and `orderBy`
-- Arithmetic: `expression` parses via `parse_arithmetic`; every
-  field ref resolves on the same entity
-- Concat: every part is `{literal}`, `{field}`, or `{lookup: {via,
-  field}}`; lookups validate against the relationship and target
-  entity
+The shared `parse_condition` / `validate_condition` calls that all
+condition-expression filters delegate to are documented in
+Section 5.1.
 
 ### 4.7 Error format
 
@@ -873,41 +829,74 @@ for the canonical pattern.
 ## 8. Adding a New v1.x Block
 
 To add a new entity-level block (e.g., a future `reports:` or
-`dashboards:` block), the implementation pattern is:
+`dashboards:` block), do the work in this order. Step 1 (the PRD)
+comes first deliberately — write the contract before writing the code
+that satisfies it, and before writing the impl-doc entries that
+reference it.
 
-1. **Model** (`models.py`): add the dataclass, status enum, result
+1. **PRD — write the spec first** (`PRDs/product/app-yaml-schema.md`):
+   - Add a Section 5.x covering the YAML form, a properties table,
+     and the run-time / cross-block behavior.
+   - Add the validation rules under Section 10 with a heading like
+     "**Foo-level** ..." in the same style as the existing blocks.
+   - Bump the version stamp at the top of the PRD and append a
+     revision-history row.
+
+2. **Model** (`models.py`): add the dataclass, status enum, result
    dataclass, and counters on `RunSummary`. Add a list field and
    `*_raw` field on `EntityDefinition`. Add a `*_results` list on
    `RunReport`.
-2. **Loader** (`config_loader.py`): add `_parse_<block>` that returns
+
+3. **Loader** (`config_loader.py`): add `_parse_<block>` that returns
    typed instances; pass the raw block through unchanged. Wire it
    into the entity-construction path.
-3. **Validator** (`config_loader.py`): add `_validate_<block>` and
+
+4. **Validator** (`config_loader.py`): add `_validate_<block>` and
    call it from `_validate_entity`. Add cross-program validators
-   (e.g., uniqueness, cross-block refs) at the program level.
-4. **Manager** (`core/<block>_manager.py`): mirror an existing manager
+   (e.g., uniqueness, cross-block refs) at the program level. Each
+   validator enforces the rules you wrote in PRD Section 10 in
+   step 1; do not duplicate the rule wording in code comments.
+
+5. **Manager** (`core/<block>_manager.py`): mirror an existing manager
    (saved views or filtered tabs are good templates). Always raise a
    `<Block>ManagerError` on HTTP 401 so the run worker can hard-abort.
-5. **Worker step** (`workers/run_worker.py`): add the manager error
+
+6. **Worker step** (`workers/run_worker.py`): add the manager error
    class to `_MANAGER_ERROR_TYPES`, the canonical step name to
    `_STEP_DISPLAY_NAMES`, the step body, the `_attach_<block>_results`
    helper, and (if applicable) entries in `_emit_manual_config_block`.
-6. **Tests** (`tests/test_<block>.py`): cover parse, validate, and
+
+7. **Tests** (`tests/test_<block>.py`): cover parse, validate, and
    manager paths. Update `tests/test_run_worker.py` to extend the
    `expected_steps` set if you added a step.
-7. **Docs**:
-   - PRD: `PRDs/product/app-yaml-schema.md` — add a Section 5.x with
-     the YAML form, a properties table, and validation rules in
-     Section 10.
-   - User guide: `docs/user/user-guide.md` — add an end-user-facing
-     subsection under "Writing YAML Program Files" covering
-     declaration, behavior, and any operator follow-up steps.
-   - This file — add the model, validator, and test entries to
-     Sections 3, 4, and 7. Bump the version + revision history in
-     the header.
+
+8. **Impl doc + user guide** — keep this file and the user guide
+   in step with the code:
+   a. **This file** — add the dataclass to Section 3, a row to the
+      Section 4.6 validator-function index, the shared parser
+      to Section 5 if any was introduced, and the test file to
+      Section 7. Bump the version stamp at the top and append a
+      revision-history row to Section 9.
+   b. **User guide** (`docs/user/user-guide.md`) — add an
+      end-user-facing subsection under "Writing YAML Program Files"
+      covering declaration, behavior, and any operator follow-up
+      steps. The user guide does *not* restate validation rules;
+      it shows YAML examples and what the user sees on Run.
 
 The `filteredTabs:` block (v1.2) is the most recent worked example;
 see commits + `tests/test_filtered_tabs.py` for the end-to-end shape.
+
+### Sync checklist for any change
+
+For any change to the schema or its validators, before merging:
+
+- [ ] PRD `app-yaml-schema.md` version stamp + revision history bumped
+- [ ] PRD Section 5/10 wording reflects the new behavior
+- [ ] This doc's version stamp + revision history bumped (matching date)
+- [ ] This doc's Section 4.6 function-name index still accurate
+- [ ] User guide has user-facing coverage if the change is observable
+- [ ] CLAUDE.md "YAML Schema v1.x" status block updated if the
+      version label changed
 
 ---
 
@@ -917,3 +906,4 @@ see commits + `tests/test_filtered_tabs.py` for the end-to-end shape.
 |---|---|---|
 | 1.0 | March 2026 | Initial impl reference covering v1.0 schema only. |
 | 1.2 | 05-03-26 | Full rewrite to match current code. Documents all v1.1 models (`EntitySettings`, `DuplicateCheck`, `SavedView`, `EmailTemplate`, `Workflow`, `Formula` and its three sub-types) plus the v1.2 `FilteredTab`. Replaces the non-existent `load_program_file()` with the actual `ConfigLoader.load_program()` / `.validate_program()` API. Adds Section 5 for the shared parsers (condition expressions, relative dates, arithmetic). Updates Section 6 to reflect that `get_espo_entity_name` placement is intentional. Replaces Section 7's stale test list with the current set. Adds Section 8 ("Adding a New v1.x Block"). |
+| 1.2.2 | 05-03-26 | Demoted Section 4.6 from a parallel rule list to a function-name index pointing at PRD Section 10 — the parallel restatement was the source of past drift. Added explicit "Companion product spec" + "Keeping this impl doc and the PRD in sync" subsections in Section 1, mirrored by the same in the PRD. Reordered Section 8 so the PRD update is step 1 (write the contract before writing the code that satisfies it) and added a sync checklist. Bumped to match PRD v1.2.2. |

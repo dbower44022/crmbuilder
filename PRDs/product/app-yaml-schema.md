@@ -1,8 +1,8 @@
 # CRM Builder — YAML Program File Schema
 
-**Version:** 1.2.1
+**Version:** 1.2.2
 **Status:** Current
-**Last Updated:** 05-03-26 14:00
+**Last Updated:** 05-03-26
 **Applies To:** All YAML program files used by CRM Builder
 
 ---
@@ -15,6 +15,7 @@
 | 1.1 | 04-13-26 22:30 | Adds Categories 1–10 of MR-pilot gap analysis. Category 1: `settings:` block (existing `labelSingular`, `labelPlural`, `stream`, `disabled` deprecated). Category 2: `duplicateChecks:` block. Category 3: `savedViews:` block; shared condition-expression construct introduced in new Section 11. Category 4: `requiredWhen:` field-level property for conditional requirement. Category 5: `visibleWhen:` field-level and panel-level property for conditional visibility (panel-level `dynamicLogicVisible:` deprecated). Category 6 deferred to v1.2. Category 7: `emailTemplates:` block with external HTML body files and validated `mergeFields:`. Category 8: field-level `formula:` block (three types — `aggregate`, `arithmetic`, `concat`; seven aggregate functions). Category 9: entity-level `workflows:` block with five trigger events and four actions (`onFirstTransition` and `createRelatedRecord` deferred to v1.2). Category 10: field-level `externallyPopulated:` flag for fields supplied by external systems. See `yaml-schema-gap-analysis-MR-pilot.md`. |
 | 1.2 | 05-03-26 | Adds Section 5.9 `filteredTabs:` — declarative left-navigation filtered list views, implemented as Report Filter records (Advanced Pack) plus a generated metadata bundle (`scopes/`, `clientDefs/`, `i18n/en_US/Global.json`) the operator copies onto the EspoCRM server before rebuild and Tab List add. Reuses the Section 11 condition-expression construct for the filter criteria. Validation rules for the new block are added to Section 10. |
 | 1.2.1 | 05-03-26 14:00 | Documents the existing schema rule that link relationships are declared exclusively in the top-level `relationships:` block — `type: link` is not a valid field type and is rejected at validation time with a hard-reject error. Rule was implicit in v1.0–v1.2; now explicit in Sections 6.2, 8, and 10 following its enforcement by `validate_program()` (crmbuilder error-handling Prompt E, 05-02-26). Discovery: FU-Contribution.yaml v1.0.0 dual-declared three relationships as both `type: link` fields and `relationships:` entries, causing HTTP 409 Conflict at deploy time because EspoCRM's fieldManager created stub link fields that subsequently conflicted with `EntityManager/action/createLink`. Documents that field-level metadata (description, category) does not propagate onto link records — configure post-deployment via the EspoCRM admin UI if needed. Documents that three EspoCRM features have no public REST API write path (saved views, duplicate-check rules, workflows): YAML directives are recognized and surfaced in a MANUAL CONFIGURATION REQUIRED block at end of run rather than applied via API. |
+| 1.2.2 | 05-03-26 | No schema changes. Adds the Section 1 subsections "Companion implementation reference" and "Keeping this PRD and the impl doc in sync" that codify this PRD as the single source of truth for the schema's shape and Section 10 as the single source of truth for its validation rules. Mirrored on the impl-doc side (`docs/impl-yaml-schema.md` v1.2.1+): that doc demoted its parallel rule list to a function-name index pointing back at Section 10, and added a step-by-step recipe that puts the PRD update *first* whenever a new block is added. Done in response to the v1.0 → v1.2 drift the impl-doc rewrite corrected, to remove the surface where it could happen again. |
 
 ---
 
@@ -28,6 +29,43 @@ must conform to this schema.
 YAML program files are the single source of truth for CRM configuration.
 They are CRM-agnostic at the requirements level and are translated into
 platform-specific API calls at deployment time.
+
+### Companion implementation reference
+
+The implementation of this schema — the Python data models, the
+loader, the validator pipeline, the EspoCRM-specific naming
+conventions, and the test inventory — lives in
+`docs/impl-yaml-schema.md`. That doc is the engineering map of the
+code; this doc is the contract the code must satisfy. They are
+maintained as a pair.
+
+### Keeping this PRD and the impl doc in sync
+
+This PRD is the **single source of truth** for the schema's shape and
+its semantic validation rules. The impl doc never restates those
+rules; it points back here.
+
+When you change this PRD — adding a new block, changing a property,
+adding or relaxing a validation rule — make a matching update to the
+impl doc in the same change set:
+
+- New top-level block under `entities:` → add the dataclass to
+  Section 3 of the impl doc, add the `_parse_*` / `_validate_*`
+  function names to its Section 4, list the test file in Section 7.
+  Section 8 of the impl doc has the full recipe.
+- Changed validation rule → no edit to the impl doc's rule text is
+  needed (the rules live only here). Verify the function-name index
+  in the impl doc still matches the validator that enforces the rule.
+- Renamed validator function or moved code → update the impl doc's
+  function-name references in its Section 4.
+- New shared parser or AST node (Section 11 family) → add it to the
+  impl doc's Section 5.
+- New `*Status` / `*Result` types or `RunSummary` counters → add
+  them to the impl doc's Section 3.10.
+
+Every change to this PRD bumps both the version stamp at the top of
+this file and the revision-history table. The impl doc has its own
+matching version and revision-history table; bump both together.
 
 ---
 
