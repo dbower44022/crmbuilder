@@ -240,6 +240,93 @@ Category 6 (Roles, field-level permissions) is deferred to v1.2.
 EntitySettings → EmailTemplates → DuplicateChecks → SavedViews →
 Fields/Layouts/Relationships → Workflows
 
+## YAML Schema Rules — Authoritative Constraints
+
+These are constraints that operators must follow when authoring YAML
+program files. Some are documented in the schema spec
+(`PRDs/product/app-yaml-schema.md` v1.2.1+); all are enforced at
+deployment time by `validate_program()`, which runs as a hard-reject
+pre-flight in the Configure flow as of error-handling Prompt E
+(05-02-26). A YAML file with any validation error is excluded from the
+deployment batch entirely with errors shown in the run log; other files
+in the batch run normally.
+
+### Link relationships go in `relationships:` only
+
+Link relationships between entities are declared exclusively in the
+top-level `relationships:` block. **`type: link` is not a valid field
+type** and is rejected at validation time with a hard-reject error that
+points to this rule. Reason: EspoCRM creates link fields automatically
+from the `relationships:` block via `EntityManager/action/createLink`;
+declaring them additionally as `type: link` fields causes the
+field-creation API to create stub link fields without proper
+foreign-entity wiring, which then causes `createLink` to return HTTP
+409 Conflict. (FU-Contribution.yaml v1.0.0 was the historical
+discovery case — fixed in v1.0.1.)
+
+Field-level metadata an operator might want to attach to a link
+(`description`, `category` for layout grouping) does not propagate onto
+link records via the deploy pipeline. If such metadata is needed,
+configure it post-deployment via the EspoCRM admin UI. Working pattern
+reference: `MR-Dues.yaml` in the CBM repo declares its `mentor` link
+only in the `relationships:` block, with no field-side counterpart.
+
+### Three features have no public REST API write path
+
+`savedViews:`, `duplicateChecks:`, and `workflows:` directives are
+recognized at parse and validation time but are not applied via REST.
+The deploy pipeline returns `NOT_SUPPORTED` status for each item, emits
+a `[NOT SUPPORTED] {entity}.{block}[{id}] — manual config required`
+line per item, and consolidates everything in a `MANUAL CONFIGURATION
+REQUIRED` block at the end of the run. `NOT_SUPPORTED` items do NOT
+count as step failures (they are platform constraints, not deployment
+errors). The operator configures these manually via the EspoCRM admin
+UI before the deployment is considered complete.
+
+This was originally a bug — `EspoAdminClient.put_metadata()` calls a
+non-existent endpoint method (`/api/v1/Metadata` accepts GET only;
+there is no PUT/POST/PATCH). It was rerouted to the short-circuit path
+in error-handling Prompt D (05-02-26) until proper REST-capable
+reimplementations are prioritized:
+
+- **Saved views** require disk-level edits to
+  `custom/Espo/Custom/Resources/metadata/clientDefs/{Entity}.json` plus
+  cache rebuild. SSH-based file writes from the Configure flow are
+  outside the API-only model and would need a new capability.
+- **Duplicate-check rules** need to be reimplemented against the
+  EntityManager endpoint instead of metadata writes.
+- **Workflows** need to be reimplemented against the Workflow entity
+  CRUD API, gated on Advanced Pack detection.
+
+The dead API-path code in `saved_view_manager.py`,
+`duplicate_check_manager.py`, and `workflow_manager.py` is retained
+with `TODO(error-handling-D)` markers for resurrection when these
+reimplementations land.
+
+### Error handling architecture (post Prompts A–E, 05-02-26)
+
+The Configure pipeline is now resilient to unexpected response formats
+and unexpected manager exceptions, with truthful per-step status
+reporting:
+
+- `EspoAdminClient._request()` catches `JSONDecodeError`, `ValueError`,
+  and `RequestException`, returning sentinel body dicts (`_parse_failed`,
+  `_request_failed`) so callers always have diagnostic detail. Use
+  `_format_error_detail(body)` to render any body — sentinel or normal —
+  as a one-line error string.
+- `RunWorker._run_full()` wraps each of the 10 pipeline steps in
+  `_run_step()`, isolating failures: a manager error or unexpected
+  exception in any step is contained, marked `StepStatus.FAILED`, and
+  the run continues to the next step. Authentication failures (401)
+  remain a hard abort.
+- Each step has a `failure_check` callable that downgrades
+  `StepStatus.OK` → `FAILED` when the body returns normally but the
+  result list contains `ERROR` records. `DRIFT` is informational, not
+  failure. `NOT_SUPPORTED` is platform constraint, not failure.
+- The `STEP SUMMARY` block at the end of every run truthfully reports
+  each step as OK / FAILED / SKIPPED. The footer reads "Run completed
+  successfully" or "Run completed with N step failure(s)".
+
 ## Document Production Process
 
 This section governs requirements work done in Claude.ai sessions —
@@ -400,3 +487,17 @@ limitation.
   bring-your-own scenarios — they cannot be SSHed into
 - Do not add new top-level directories — all deployment code lives within
   the existing `espo_impl/` structure
+- Do not declare link relationships as `type: link` fields in an entity's
+  `fields:` block — they go exclusively in the top-level `relationships:`
+  block. `validate_program()` will hard-reject the file. See "YAML Schema
+  Rules" above
+- Do not call `EspoAdminClient.put_metadata()` from new code — the
+  endpoint it targets does not exist (`/api/v1/Metadata` accepts GET
+  only). The method is dead code retained pending removal. The three
+  managers that historically used it (saved views, duplicate checks,
+  workflows) now short-circuit to NOT_SUPPORTED. See "YAML Schema Rules"
+  above
+- Do not skip `validate_program()` from a new code path that loads YAML
+  for deployment — every Configure-time YAML load must run validation
+  before handing the program to a worker. Validation is hard-reject by
+  design

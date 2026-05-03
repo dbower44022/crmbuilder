@@ -1,8 +1,8 @@
 # CRM Builder — YAML Program File Schema
 
-**Version:** 1.2
+**Version:** 1.2.1
 **Status:** Current
-**Last Updated:** 05-03-26
+**Last Updated:** 05-03-26 14:00
 **Applies To:** All YAML program files used by CRM Builder
 
 ---
@@ -14,6 +14,7 @@
 | 1.0 | March 2026 | Initial schema. |
 | 1.1 | 04-13-26 22:30 | Adds Categories 1–10 of MR-pilot gap analysis. Category 1: `settings:` block (existing `labelSingular`, `labelPlural`, `stream`, `disabled` deprecated). Category 2: `duplicateChecks:` block. Category 3: `savedViews:` block; shared condition-expression construct introduced in new Section 11. Category 4: `requiredWhen:` field-level property for conditional requirement. Category 5: `visibleWhen:` field-level and panel-level property for conditional visibility (panel-level `dynamicLogicVisible:` deprecated). Category 6 deferred to v1.2. Category 7: `emailTemplates:` block with external HTML body files and validated `mergeFields:`. Category 8: field-level `formula:` block (three types — `aggregate`, `arithmetic`, `concat`; seven aggregate functions). Category 9: entity-level `workflows:` block with five trigger events and four actions (`onFirstTransition` and `createRelatedRecord` deferred to v1.2). Category 10: field-level `externallyPopulated:` flag for fields supplied by external systems. See `yaml-schema-gap-analysis-MR-pilot.md`. |
 | 1.2 | 05-03-26 | Adds Section 5.9 `filteredTabs:` — declarative left-navigation filtered list views, implemented as Report Filter records (Advanced Pack) plus a generated metadata bundle (`scopes/`, `clientDefs/`, `i18n/en_US/Global.json`) the operator copies onto the EspoCRM server before rebuild and Tab List add. Reuses the Section 11 condition-expression construct for the filter criteria. Validation rules for the new block are added to Section 10. |
+| 1.2.1 | 05-03-26 14:00 | Documents the existing schema rule that link relationships are declared exclusively in the top-level `relationships:` block — `type: link` is not a valid field type and is rejected at validation time with a hard-reject error. Rule was implicit in v1.0–v1.2; now explicit in Sections 6.2, 8, and 10 following its enforcement by `validate_program()` (crmbuilder error-handling Prompt E, 05-02-26). Discovery: FU-Contribution.yaml v1.0.0 dual-declared three relationships as both `type: link` fields and `relationships:` entries, causing HTTP 409 Conflict at deploy time because EspoCRM's fieldManager created stub link fields that subsequently conflicted with `EntityManager/action/createLink`. Documents that field-level metadata (description, category) does not propagate onto link records — configure post-deployment via the EspoCRM admin UI if needed. Documents that three EspoCRM features have no public REST API write path (saved views, duplicate-check rules, workflows): YAML directives are recognized and surfaced in a MANUAL CONFIGURATION REQUIRED block at end of run rather than applied via API. |
 
 ---
 
@@ -1332,6 +1333,24 @@ instance configuration.
 | `enum` | Enum | `options`, `translatedOptions`, `style`, `isSorted`, `displayAsLabel` |
 | `multiEnum` | Multi-select | `options`, `translatedOptions`, `style`, `isSorted` |
 
+**`link` is not a valid field type.** Link relationships between entities
+are declared exclusively in the top-level `relationships:` block (Section
+8), not in the entity `fields:` block. A field with `type: link` is
+rejected at validation time with a hard-reject error. This rule has
+existed since v1.0 and is now enforced by `validate_program()`. Reason:
+EspoCRM creates link fields automatically from the `relationships:` block
+via `EntityManager/action/createLink`; declaring them additionally as
+`type: link` fields causes the field-creation API to create stub link
+fields without proper foreign-entity wiring, which in turn causes
+`createLink` to return HTTP 409 Conflict.
+
+Field-level metadata that an operator might want to attach to a link
+relationship (e.g., `description`, `category` for layout grouping) does
+not propagate onto link records via the deploy pipeline. If such metadata
+is needed, configure it post-deployment via the EspoCRM admin UI. The
+relationship payload itself supports `audited` (and `auditedForeign`); see
+Section 8.1.
+
 ### 6.3 Enum and Multi-Select Properties
 
 These properties apply only to `enum` and `multiEnum` fields:
@@ -1523,6 +1542,16 @@ Relationships are defined in a top-level `relationships` list, separate
 from the `entities` block. See `features/feat-relationships.md` for the
 full relationship specification.
 
+**Where links live in the YAML.** Link relationships between entities are
+declared exclusively in this top-level `relationships:` block. They are
+not also listed as `type: link` fields inside an entity's `fields:`
+block — `link` is not a valid field type (Section 6.2). The deploy
+pipeline relies on this rule: it routes link creation through
+`EntityManager/action/createLink` based on this block alone.
+Dual-declaration causes the field-creation API to create stub link
+fields that subsequently conflict with `createLink` (HTTP 409). The
+rule is enforced at validation time with a hard-reject error.
+
 ```yaml
 relationships:
   - name: duesToMentor
@@ -1707,6 +1736,9 @@ rules apply to all program files:
 **Field-level:**
 - `name`, `type`, and `label` are required on every field
 - `type` must be a supported field type (Section 6.2)
+- `type: link` is explicitly rejected — link relationships go in the
+  top-level `relationships:` block (Section 8). The validation error
+  message points to this rule
 - `enum` and `multiEnum` fields must have a non-empty `options` list
 - No two fields within the same entity may share the same `name`
 - `requiredWhen:`, when present, must be a valid condition expression
@@ -1747,7 +1779,38 @@ rules apply to all program files:
 
 Validation errors are reported individually with enough detail for the
 user to locate and fix each issue. Validation failures prevent the Run
-action from proceeding.
+action from proceeding (hard-reject): a YAML file with any validation
+error is excluded from the deployment batch entirely, with the error
+list shown in the run log and on the file's status row. Other files in
+the same batch run normally.
+
+### 10.1 Features Without REST API Write Paths
+
+Three features are recognized at validation and parse time but cannot be
+applied via EspoCRM's REST API in their current form:
+
+- **Saved views** (`savedViews:`, Section 5.6) — written to `clientDefs`
+  metadata; EspoCRM exposes no public REST endpoint for `clientDefs`
+  writes. Manual configuration via the admin UI or by editing
+  `custom/Espo/Custom/Resources/metadata/clientDefs/{Entity}.json` on
+  disk and rebuilding cache.
+- **Duplicate-check rules** (`duplicateChecks:`, Section 5.5) —
+  configured through the EntityManager endpoint, not via metadata
+  writes. A REST-capable reimplementation against EntityManager is a
+  future workstream.
+- **Workflows** (`workflows:`, Section 5.8) — implemented in EspoCRM as
+  records (CRUD via `/api/v1/Workflow`) and gated on the Advanced Pack
+  extension. A REST-capable reimplementation against the Workflow
+  entity API is a future workstream.
+
+For these three features, the YAML directives are valid input. The
+deploy pipeline acknowledges each item, returns a `NOT_SUPPORTED` status
+in the per-feature result list, and consolidates them in a MANUAL
+CONFIGURATION REQUIRED block emitted at the end of every run that has
+such items. `NOT_SUPPORTED` items do not count as step failures — these
+are platform constraints, not deployment errors. The operator
+configures the items manually before the deployment is considered
+complete.
 
 ---
 
