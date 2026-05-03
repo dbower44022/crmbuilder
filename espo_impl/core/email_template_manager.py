@@ -4,7 +4,7 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
-from espo_impl.core.api_client import EspoAdminClient
+from espo_impl.core.api_client import EspoAdminClient, _format_error_detail
 from espo_impl.core.models import (
     EmailTemplate,
     EmailTemplateResult,
@@ -173,6 +173,9 @@ class EmailTemplateManager:
                 self.output_fn(
                     f"[ERROR]   {prefix} ... HTTP {status_code}", "red"
                 )
+                self.output_fn(
+                    f"          {_format_error_detail(body)}", "red"
+                )
                 return EmailTemplateResult(
                     entity=entity_name,
                     template_id=tmpl.id,
@@ -227,6 +230,9 @@ class EmailTemplateManager:
         if status_code < 0 or status_code >= 400:
             self.output_fn(
                 f"[ERROR]   {prefix} ... HTTP {status_code}", "red"
+            )
+            self.output_fn(
+                f"          {_format_error_detail(body)}", "red"
             )
             return EmailTemplateResult(
                 entity=entity_name,

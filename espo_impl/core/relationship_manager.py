@@ -10,7 +10,7 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
-from espo_impl.core.api_client import EspoAdminClient
+from espo_impl.core.api_client import EspoAdminClient, _format_error_detail
 from espo_impl.core.models import (
     RelationshipDefinition,
     RelationshipResult,
@@ -171,12 +171,8 @@ class RelationshipManager:
             raise RelationshipManagerError()
 
         if status_code < 0 or status_code >= 400:
-            error_detail = ""
-            if isinstance(body, dict):
-                error_detail = body.get("message", str(body))
-            elif isinstance(body, str):
-                error_detail = body[:200]
-            detail_suffix = f": {error_detail}" if error_detail else ""
+            error_detail = _format_error_detail(body)
+            detail_suffix = f": {error_detail}"
             self.output_fn(
                 f"[RELATIONSHIP]  {prefix} ... ERROR (HTTP {status_code}{detail_suffix})",
                 "red",

@@ -3,7 +3,7 @@
 import logging
 from collections.abc import Callable
 
-from espo_impl.core.api_client import EspoAdminClient
+from espo_impl.core.api_client import EspoAdminClient, _format_error_detail
 from espo_impl.core.models import (
     EntityAction,
     EntityDefinition,
@@ -139,10 +139,9 @@ class EntitySettingsManager:
             self.output_fn(
                 f"[ERROR]   {prefix} settings ... {error_detail}", "red"
             )
-            if act_body:
-                msg = act_body.get("message", "")
-                if msg:
-                    self.output_fn(f"          {msg}", "red")
+            self.output_fn(
+                f"          {_format_error_detail(act_body)}", "red"
+            )
             return SettingsResult(
                 entity=entity_def.name,
                 status=SettingsStatus.ERROR,

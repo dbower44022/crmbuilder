@@ -141,3 +141,22 @@ def test_payload_contains_only_tooltip():
     payload = client.update_field.call_args[0][2]
     assert list(payload.keys()) == ["tooltip"]
     assert payload["tooltip"] == "New tooltip"
+
+
+def test_update_field_non_json_failure_surfaces_raw_text():
+    """Parse-failed sentinel from update_field surfaces raw text in result error."""
+    client = MagicMock()
+    client.get_field.return_value = (200, {"tooltip": "old"})
+    client.update_field.return_value = (
+        500,
+        {
+            "_parse_failed": True,
+            "_raw_text": "<html>nginx 502</html>",
+            "_status_code": 500,
+        },
+    )
+    manager, log = make_manager(client)
+    results = manager.process_tooltips(make_entity())
+    assert results[0].status == TooltipStatus.ERROR
+    assert "non-JSON response" in results[0].error
+    assert "nginx 502" in results[0].error

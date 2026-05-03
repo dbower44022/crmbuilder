@@ -3,7 +3,7 @@
 import logging
 from collections.abc import Callable
 
-from espo_impl.core.api_client import EspoAdminClient
+from espo_impl.core.api_client import EspoAdminClient, _format_error_detail
 from espo_impl.core.models import (
     EntityAction,
     EntityDefinition,
@@ -171,9 +171,10 @@ class TooltipManager:
                     status=TooltipStatus.UPDATED,
                 ))
             else:
-                error_msg = f"HTTP {update_status}"
-                if isinstance(update_body, dict) and "message" in update_body:
-                    error_msg = update_body["message"]
+                error_msg = (
+                    f"HTTP {update_status}: "
+                    f"{_format_error_detail(update_body)}"
+                )
                 self.output_fn(
                     f"[TOOLTIP]  {prefix} ... ERROR — {error_msg}",
                     "red",

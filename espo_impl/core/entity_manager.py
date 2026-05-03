@@ -18,7 +18,7 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
-from espo_impl.core.api_client import EspoAdminClient
+from espo_impl.core.api_client import EspoAdminClient, _format_error_detail
 from espo_impl.core.models import EntityAction, EntityDefinition
 from espo_impl.ui.confirm_delete_dialog import get_espo_entity_name
 
@@ -129,9 +129,7 @@ class EntityManager:
         self.output_fn(
             f"[DELETE]  {espo_name} ... ERROR (HTTP {status_code})", "red"
         )
-        if body:
-            msg = body.get("message", "")
-            self.output_fn(f"          {msg or body}", "red")
+        self.output_fn(f"          {_format_error_detail(body)}", "red")
         return False
 
     def _create_entity(self, entity_def: EntityDefinition) -> bool:
@@ -180,7 +178,5 @@ class EntityManager:
         self.output_fn(
             f"[CREATE]  {espo_name} ... ERROR (HTTP {status_code})", "red"
         )
-        if body:
-            msg = body.get("message", "")
-            self.output_fn(f"          {msg or body}", "red")
+        self.output_fn(f"          {_format_error_detail(body)}", "red")
         return False

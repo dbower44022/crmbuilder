@@ -102,8 +102,11 @@ class ConfigureProgressDialog(QDialog):
         self._total_files = len(files)
         self._current_file_info: YamlFileInfo | None = None
         self._current_log_lines: list[str] = []
-        # Per-file results: maps file path → (outcome, timestamp)
+        # Per-file results: maps file path → (outcome, timestamp).
+        # Outcome is "success", "partial", or "error".
         self._file_results: dict[str, tuple[str, str]] = {}
+        # Per-file tooltips: maps file path → tooltip text (e.g. failed steps).
+        self._file_tooltips: dict[str, str] = {}
 
         op_label = "Running" if operation == "run" else "Checking"
         self.setWindowTitle(f"{op_label} Configuration")
@@ -278,21 +281,61 @@ class ConfigureProgressDialog(QDialog):
             self._completed_ops += 1
             self._update_progress()
 
-    def _on_worker_ok(self, _report) -> None:
-        """Handle successful completion of one file."""
+    def _on_worker_ok(self, report) -> None:
+        """Handle successful completion of one file.
+
+        If any step in the run was marked FAILED in ``report.step_results``,
+        downgrade the outcome from ``success`` to ``partial`` and record the
+        list of failed steps as the tooltip. The run still counts as
+        completed (worker emitted ``finished_ok``); only the visual outcome
+        differs.
+        """
         self._worker = None
-        self._append_log("Completed successfully.", "success")
-        self._record_run("success")
+
+        outcome = "success"
+        outcome_level = "success"
+        outcome_text = "Completed successfully."
+        tooltip: str | None = None
+        error_message: str | None = None
+
+        step_results = getattr(report, "step_results", None) or []
+        failed_steps = [
+            sr.step_name for sr in step_results
+            if getattr(sr.status, "value", sr.status) == "failed"
+        ]
+
+        if failed_steps:
+            outcome = "partial"
+            outcome_level = "warning"
+            outcome_text = (
+                f"Completed with errors — failed steps: "
+                f"{', '.join(failed_steps)}"
+            )
+            tooltip = "Failed steps: " + ", ".join(failed_steps)
+            error_message = "; ".join(
+                f"{sr.step_name}: {sr.error}"
+                for sr in step_results
+                if getattr(sr.status, "value", sr.status) == "failed"
+                and sr.error
+            ) or None
+
+        self._append_log(outcome_text, outcome_level)
+        self._record_run(outcome, error_message=error_message, tooltip=tooltip)
         self._run_next()
 
     def _on_worker_error(self, error: str) -> None:
         """Handle failure of one file."""
         self._worker = None
         self._append_log(f"Error: {error}", "error")
-        self._record_run("error", error)
+        self._record_run("error", error_message=error)
         self._run_next()
 
-    def _record_run(self, outcome: str, error_message: str | None = None) -> None:
+    def _record_run(
+        self,
+        outcome: str,
+        error_message: str | None = None,
+        tooltip: str | None = None,
+    ) -> None:
         """Record the run result in memory and in the database."""
         if not self._current_file_info:
             return
@@ -301,6 +344,8 @@ class ConfigureProgressDialog(QDialog):
         now_display = now.strftime("%Y-%m-%d %H:%M")
         now_iso = now.isoformat(timespec="seconds")
         self._file_results[self._current_file_info.path] = (outcome, now_display)
+        if tooltip:
+            self._file_tooltips[self._current_file_info.path] = tooltip
 
         # Persist to ConfigurationRun table
         if self._conn and self._instance:
@@ -396,9 +441,15 @@ class ConfigureProgressDialog(QDialog):
     def file_results(self) -> dict[str, tuple[str, str]]:
         """Per-file results: maps file path to (outcome, timestamp).
 
-        Outcome is "success" or "error". Timestamp is "YYYY-MM-DD HH:MM".
+        Outcome is ``"success"``, ``"partial"``, or ``"error"``. Timestamp
+        is ``"YYYY-MM-DD HH:MM"``.
         """
         return self._file_results
+
+    @property
+    def file_tooltips(self) -> dict[str, str]:
+        """Per-file tooltips for files whose run had step-level failures."""
+        return self._file_tooltips
 
     def reject(self) -> None:
         """Override reject (Escape key) — cancel if running, close if done."""

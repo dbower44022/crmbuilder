@@ -723,6 +723,31 @@ class RunSummary:
     workflows_failed: int = 0
 
 
+class StepStatus(Enum):
+    """Per-step pipeline outcome status used by RunWorker."""
+
+    OK = "ok"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+
+
+@dataclass
+class StepResult:
+    """Outcome of one phase in the RunWorker pipeline.
+
+    :param step_name: Canonical snake_case step name (e.g.
+        ``"saved_views"``, ``"fields"``).
+    :param status: OK, FAILED, or SKIPPED.
+    :param error: Human-readable error detail when status is FAILED.
+    :param details: Optional extra metadata about the step.
+    """
+
+    step_name: str
+    status: StepStatus
+    error: str | None = None
+    details: dict[str, Any] = field(default_factory=dict)
+
+
 @dataclass
 class RunReport:
     """Complete report for a run or verify operation.
@@ -752,5 +777,6 @@ class RunReport:
     saved_view_results: list[SavedViewResult] = field(default_factory=list)
     email_template_results: list[EmailTemplateResult] = field(default_factory=list)
     workflow_results: list[WorkflowResult] = field(default_factory=list)
+    step_results: list[StepResult] = field(default_factory=list)
 
 

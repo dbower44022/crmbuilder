@@ -918,3 +918,33 @@ class TestWorkflowManager:
         assert len(results) == 1
         assert results[0].status == WorkflowStatus.ERROR
         assert results[0].error == "Failed to write metadata"
+
+    def test_non_json_write_failure_surfaces_raw_text(self):
+        """Parse-failed sentinel from put_metadata surfaces raw text."""
+        wf = Workflow(
+            id="wf-1",
+            name="Test",
+            trigger=WorkflowTrigger(event="onCreate"),
+            actions=[
+                WorkflowAction(type="setField", field="status", value="Active"),
+            ],
+        )
+        program = self._make_program([wf])
+
+        client = MagicMock()
+        client.get_client_defs.return_value = (200, {})
+        client.put_metadata.return_value = (
+            500,
+            {
+                "_parse_failed": True,
+                "_raw_text": "<html>upstream timeout</html>",
+                "_status_code": 500,
+            },
+        )
+
+        output = []
+        mgr = WorkflowManager(client, lambda msg, color: output.append(msg))
+        mgr.process_workflows(program)
+
+        assert any("non-JSON response" in msg for msg in output)
+        assert any("upstream timeout" in msg for msg in output)

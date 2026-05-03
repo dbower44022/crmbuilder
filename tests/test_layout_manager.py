@@ -370,3 +370,39 @@ def test_dynamic_logic_inherited_by_tabs():
     for panel in payload:
         assert panel["dynamicLogicVisible"] is not None
         assert panel["dynamicLogicVisible"]["conditionGroup"][0]["attribute"] == "cContactType"
+
+
+def test_save_layout_non_json_failure_surfaces_raw_text():
+    """Parse-failed sentinel from save_layout surfaces raw text."""
+    client = MagicMock(spec=EspoAdminClient)
+    # Differing layout — manager will try to save
+    client.get_layout.return_value = (200, [
+        {"customLabel": "Old", "tabBreak": False, "tabLabel": None, "rows": []}
+    ])
+    client.save_layout.return_value = (
+        500,
+        {
+            "_parse_failed": True,
+            "_raw_text": "<html>500 server error</html>",
+            "_status_code": 500,
+        },
+    )
+
+    manager, output_log = make_manager(client)
+    fields = [FieldDefinition(name="name", type="varchar", label="Name")]
+    entity = EntityDefinition(
+        name="Contact",
+        fields=fields,
+        layouts={
+            "detail": LayoutSpec(
+                layout_type="detail",
+                panels=[PanelSpec(label="New", rows=[["name"]])],
+            )
+        },
+    )
+    results = manager.process_layouts(entity, fields)
+
+    assert results[0].status == EntityLayoutStatus.ERROR
+    messages = [msg for msg, _ in output_log]
+    assert any("non-JSON response" in msg for msg in messages)
+    assert any("500 server error" in msg for msg in messages)

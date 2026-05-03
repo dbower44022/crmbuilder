@@ -3,6 +3,7 @@
 import base64
 import hashlib
 import hmac
+import json
 import logging
 from typing import Any
 from urllib.parse import urlparse
@@ -12,6 +13,38 @@ import requests
 from espo_impl.core.models import InstanceProfile
 
 logger = logging.getLogger(__name__)
+
+
+_RAW_TEXT_TRUNCATION = 2000
+_DETAIL_TRUNCATION = 200
+
+
+def _format_error_detail(body: Any) -> str:
+    """Format a response body (possibly a sentinel) as a human-readable error detail.
+
+    :param body: The body returned by ``EspoAdminClient._request``. May be
+        ``None``, a regular response dict, a sentinel dict carrying
+        ``_parse_failed`` / ``_request_failed``, or a non-dict value (list
+        or scalar) returned by endpoints that respond with JSON arrays.
+    :returns: A one-line error description suitable for end-user output.
+    """
+    if body is None:
+        return "(no response body)"
+    if not isinstance(body, dict):
+        return repr(body)[:_DETAIL_TRUNCATION]
+    if body.get("_request_failed"):
+        return (
+            f"request failed: "
+            f"{body.get('_exception_type', 'Exception')}: "
+            f"{body.get('_error', '')}"
+        )
+    if body.get("_parse_failed"):
+        snippet = (body.get("_raw_text") or "")[:_DETAIL_TRUNCATION]
+        return f"non-JSON response: {snippet}"
+    msg = body.get("messageTranslation") or body.get("message")
+    if msg:
+        return str(msg)
+    return repr(body)[:_DETAIL_TRUNCATION]
 
 
 class EspoAdminClient:
@@ -79,12 +112,22 @@ class EspoAdminClient:
 
     def _request(
         self, method: str, url: str, **kwargs: Any
-    ) -> tuple[int, dict[str, Any] | None]:
+    ) -> tuple[int, Any]:
         """Execute an HTTP request with appropriate auth.
+
+        Catches all reasonable failure modes — connection drops, timeouts,
+        SSL failures, non-JSON response bodies — and returns a sentinel
+        body dict carrying diagnostic detail rather than propagating the
+        exception. Use :func:`_format_error_detail` to render the body
+        for user-facing output.
 
         :param method: HTTP method.
         :param url: Full request URL.
-        :returns: Tuple of (status_code, response_json or None).
+        :returns: Tuple of (status_code, body). ``status_code`` is ``-1``
+            for transport-level failures. ``body`` is ``None`` only when
+            the server returned an empty response. ``body`` may be a
+            list when the endpoint returns a JSON array (e.g., layout
+            endpoints).
         """
         headers = kwargs.pop("headers", {})
         headers.update(self._hmac_header(method, url))
@@ -93,14 +136,51 @@ class EspoAdminClient:
             resp = self.session.request(
                 method, url, headers=headers, timeout=self.timeout, **kwargs
             )
-            body = resp.json() if resp.content else None
-            return resp.status_code, body
         except requests.exceptions.ConnectionError as exc:
-            logger.error("Connection error: %s", exc)
-            return -1, None
+            logger.error("Connection error: %s %s: %s", method, url, exc)
+            return -1, {
+                "_request_failed": True,
+                "_error": str(exc),
+                "_exception_type": type(exc).__name__,
+            }
         except requests.exceptions.Timeout as exc:
-            logger.error("Request timeout: %s", exc)
-            return -1, None
+            logger.error("Request timeout: %s %s: %s", method, url, exc)
+            return -1, {
+                "_request_failed": True,
+                "_error": str(exc),
+                "_exception_type": type(exc).__name__,
+            }
+        except requests.exceptions.RequestException as exc:
+            logger.error(
+                "Request failed: %s %s: %s: %s",
+                method, url, type(exc).__name__, exc,
+            )
+            return -1, {
+                "_request_failed": True,
+                "_error": str(exc),
+                "_exception_type": type(exc).__name__,
+            }
+
+        if not resp.content:
+            return resp.status_code, None
+
+        try:
+            body = resp.json()
+        except (json.JSONDecodeError, ValueError) as exc:
+            raw = resp.content.decode("utf-8", errors="replace")
+            truncated = raw[:_RAW_TEXT_TRUNCATION]
+            logger.warning(
+                "Non-JSON response from %s %s: status=%d, body=%r, "
+                "parse_error=%s",
+                method, url, resp.status_code, truncated, exc,
+            )
+            return resp.status_code, {
+                "_parse_failed": True,
+                "_raw_text": truncated,
+                "_status_code": resp.status_code,
+            }
+
+        return resp.status_code, body
 
     def get_field(
         self, entity: str, field_name: str

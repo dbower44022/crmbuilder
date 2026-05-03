@@ -572,3 +572,29 @@ def test_manager_drift_detection():
 
     statuses = {r.template_id: r.status for r in results}
     assert statuses.get("Orphan") == EmailTemplateStatus.DRIFT
+
+
+def test_manager_non_json_create_failure_surfaces_raw_text():
+    """Parse-failed sentinel from create_record surfaces raw text in output."""
+    from espo_impl.core.email_template_manager import EmailTemplateManager
+
+    program = _make_program([{
+        "id": "tmpl-1",
+        "name": "Template One",
+    }])
+    client = _mock_client()
+    client.create_record.return_value = (
+        500,
+        {
+            "_parse_failed": True,
+            "_raw_text": "<html>nginx 502</html>",
+            "_status_code": 500,
+        },
+    )
+    output = []
+    mgr = EmailTemplateManager(client, lambda msg, color: output.append(msg))
+    results = mgr.process_email_templates(program)
+
+    assert results[0].status == EmailTemplateStatus.ERROR
+    assert any("non-JSON response" in msg for msg in output)
+    assert any("nginx 502" in msg for msg in output)

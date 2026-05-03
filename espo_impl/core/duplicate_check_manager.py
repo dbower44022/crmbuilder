@@ -4,7 +4,7 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
-from espo_impl.core.api_client import EspoAdminClient
+from espo_impl.core.api_client import EspoAdminClient, _format_error_detail
 from espo_impl.core.models import (
     DuplicateCheck,
     DuplicateCheckResult,
@@ -271,6 +271,7 @@ class DuplicateCheckManager:
                 f"HTTP {status_code}",
                 "red",
             )
+            self.output_fn(f"          {_format_error_detail(body)}", "red")
             return False
 
         self.output_fn(

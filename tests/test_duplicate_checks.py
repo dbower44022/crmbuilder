@@ -628,6 +628,30 @@ def test_manager_write_failure_marks_errors():
     assert "metadata" in results[0].error.lower()
 
 
+def test_manager_non_json_write_failure_surfaces_raw_text():
+    """Parse-failed sentinel from put_metadata surfaces raw text in output."""
+    mgr, client, log = _make_dup_manager()
+    client.get_client_defs.return_value = (200, {})
+    client.put_metadata.return_value = (
+        500,
+        {
+            "_parse_failed": True,
+            "_raw_text": "<html>php fpm crashed</html>",
+            "_status_code": 500,
+        },
+    )
+
+    checks = [DuplicateCheck(
+        id="check", fields=["email"], onMatch="warn"
+    )]
+    program = _make_program_with_checks(checks)
+    mgr.process_duplicate_checks(program)
+
+    messages = [msg for msg, _ in log]
+    assert any("non-JSON response" in msg for msg in messages)
+    assert any("php fpm crashed" in msg for msg in messages)
+
+
 def test_manager_idempotent_second_run():
     """Second run with matching state results in skip."""
     mgr, client, log = _make_dup_manager()

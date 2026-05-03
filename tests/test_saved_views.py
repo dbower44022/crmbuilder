@@ -628,6 +628,31 @@ def test_manager_write_failure_marks_error():
     assert results[0].error == "Failed to write metadata"
 
 
+def test_manager_non_json_write_failure_surfaces_raw_text():
+    """A parse-failed sentinel from put_metadata surfaces raw text in output."""
+    program = _make_program([{
+        "id": "active",
+        "name": "Active",
+        "filter": [{"field": "status", "op": "equals", "value": "Active"}],
+    }])
+    client = _mock_client()
+    client.put_metadata.return_value = (
+        500,
+        {
+            "_parse_failed": True,
+            "_raw_text": "<html>nginx 500 server error</html>",
+            "_status_code": 500,
+        },
+    )
+    output = []
+    mgr = SavedViewManager(client, lambda msg, color: output.append(msg))
+    results = mgr.process_saved_views(program)
+
+    assert results[0].status == SavedViewStatus.ERROR
+    assert any("non-JSON response" in msg for msg in output)
+    assert any("nginx 500 server error" in msg for msg in output)
+
+
 def test_manager_idempotency():
     """Running twice with identical state produces skip on second run."""
     from espo_impl.core.condition_expression import parse_condition, render_condition

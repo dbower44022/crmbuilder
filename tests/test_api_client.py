@@ -3,11 +3,12 @@
 import base64
 import hashlib
 import hmac as hmac_mod
+import json
 from unittest.mock import MagicMock
 
 import requests as req
 
-from espo_impl.core.api_client import EspoAdminClient
+from espo_impl.core.api_client import EspoAdminClient, _format_error_detail
 from espo_impl.core.models import InstanceProfile
 
 
@@ -125,7 +126,10 @@ def test_connection_error_returns_negative_status():
 
     status, body = client.get_field("Contact", "test")
     assert status == -1
-    assert body is None
+    assert isinstance(body, dict)
+    assert body["_request_failed"] is True
+    assert body["_exception_type"] == "ConnectionError"
+    assert "fail" in body["_error"]
 
 
 def test_timeout_returns_negative_status():
@@ -136,7 +140,154 @@ def test_timeout_returns_negative_status():
 
     status, body = client.create_field("Contact", {"name": "test"})
     assert status == -1
+    assert isinstance(body, dict)
+    assert body["_request_failed"] is True
+    assert body["_exception_type"] == "Timeout"
+
+
+def test_ssl_error_returns_request_failed_sentinel():
+    """SSLError (subclass of RequestException) is caught by the broad fallback."""
+    client = make_client()
+    client.session.request = MagicMock(
+        side_effect=req.exceptions.SSLError("certificate verify failed")
+    )
+
+    status, body = client.get_field("Contact", "test")
+    assert status == -1
+    assert isinstance(body, dict)
+    assert body["_request_failed"] is True
+    assert body["_exception_type"] == "SSLError"
+    assert "certificate" in body["_error"]
+
+
+def test_non_json_response_returns_parse_failed_sentinel():
+    """A 500 response with an HTML body is caught by JSONDecodeError handling."""
+    client = make_client()
+    resp = MagicMock()
+    resp.status_code = 500
+    resp.content = b"<html><body>Internal Server Error</body></html>"
+    resp.json.side_effect = json.JSONDecodeError("Expecting value", "doc", 0)
+    client.session.request = MagicMock(return_value=resp)
+
+    # Use a low-level _request call directly so we exercise it without
+    # the get_field fallback dance.
+    status, body = client._request(
+        "GET",
+        "https://test.espocloud.com/api/v1/Metadata?key=foo",
+    )
+    assert status == 500
+    assert isinstance(body, dict)
+    assert body["_parse_failed"] is True
+    assert body["_status_code"] == 500
+    assert "Internal Server Error" in body["_raw_text"]
+
+
+def test_request_returns_normal_dict_for_valid_json():
+    """Regression: a normal 200 JSON response still returns the dict body."""
+    client = make_client()
+    client.session.request = MagicMock(
+        return_value=mock_response(json_return={"key": "value"})
+    )
+    status, body = client._request(
+        "GET",
+        "https://test.espocloud.com/api/v1/Metadata?key=foo",
+    )
+    assert status == 200
+    assert body == {"key": "value"}
+
+
+def test_request_returns_none_for_empty_content():
+    """Regression: an empty response body is preserved as None."""
+    client = make_client()
+    resp = MagicMock()
+    resp.status_code = 204
+    resp.content = b""
+    client.session.request = MagicMock(return_value=resp)
+    status, body = client._request(
+        "DELETE",
+        "https://test.espocloud.com/api/v1/Foo/abc",
+    )
+    assert status == 204
     assert body is None
+
+
+def test_request_preserves_list_response():
+    """Regression: list-shaped JSON responses (layout endpoints) pass through."""
+    client = make_client()
+    client.session.request = MagicMock(
+        return_value=mock_response(json_return=[{"name": "panel"}])
+    )
+    status, body = client._request(
+        "GET",
+        "https://test.espocloud.com/api/v1/Layout/action/getOriginal",
+    )
+    assert status == 200
+    assert body == [{"name": "panel"}]
+
+
+def test_request_handles_chunked_encoding_error():
+    """ChunkedEncodingError (RequestException subclass) is captured."""
+    client = make_client()
+    client.session.request = MagicMock(
+        side_effect=req.exceptions.ChunkedEncodingError("truncated")
+    )
+    status, body = client._request("GET", "https://test/api/v1/x")
+    assert status == -1
+    assert body["_request_failed"] is True
+    assert body["_exception_type"] == "ChunkedEncodingError"
+
+
+def test_format_error_detail_none():
+    assert _format_error_detail(None) == "(no response body)"
+
+
+def test_format_error_detail_request_failed():
+    body = {
+        "_request_failed": True,
+        "_error": "boom",
+        "_exception_type": "SSLError",
+    }
+    msg = _format_error_detail(body)
+    assert "request failed" in msg
+    assert "SSLError" in msg
+    assert "boom" in msg
+
+
+def test_format_error_detail_parse_failed():
+    body = {
+        "_parse_failed": True,
+        "_raw_text": "<html>oops</html>",
+        "_status_code": 500,
+    }
+    msg = _format_error_detail(body)
+    assert "non-JSON response" in msg
+    assert "<html>oops</html>" in msg
+
+
+def test_format_error_detail_message_field():
+    assert _format_error_detail({"message": "bad request"}) == "bad request"
+    # messageTranslation takes precedence
+    assert (
+        _format_error_detail({
+            "message": "bad request",
+            "messageTranslation": "translated",
+        })
+        == "translated"
+    )
+
+
+def test_format_error_detail_fallback_repr():
+    body = {"unrecognized": True, "x": 1}
+    msg = _format_error_detail(body)
+    assert "unrecognized" in msg
+    # truncated to 200 chars
+    assert len(msg) <= 200
+
+
+def test_format_error_detail_non_dict_body():
+    """A list/scalar body (e.g., from layout endpoints) is rendered via repr."""
+    msg = _format_error_detail([1, 2, 3])
+    assert "[1, 2, 3]" in msg
 
 
 def test_test_connection_success():

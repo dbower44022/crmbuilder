@@ -432,6 +432,31 @@ def test_manager_settings_update_fails():
     assert results[0].status == SettingsStatus.ERROR
 
 
+def test_manager_settings_non_json_failure_surfaces_raw_text():
+    """Parse-failed sentinel from update_entity surfaces raw text in output."""
+    mgr, client, log = _make_settings_manager()
+    client.get_entity_full_metadata.return_value = (
+        200, {"stream": False}
+    )
+    client.update_entity.return_value = (
+        500,
+        {
+            "_parse_failed": True,
+            "_raw_text": "<html>nginx 500</html>",
+            "_status_code": 500,
+        },
+    )
+
+    settings = EntitySettings(stream=True)
+    program = _make_program_with_settings(settings)
+    results = mgr.process_settings(program)
+
+    assert results[0].status == SettingsStatus.ERROR
+    messages = [msg for msg, _ in log]
+    assert any("non-JSON response" in msg for msg in messages)
+    assert any("nginx 500" in msg for msg in messages)
+
+
 def test_manager_idempotent_second_run():
     """Running twice with matching state results in skip on second run."""
     mgr, client, log = _make_settings_manager()

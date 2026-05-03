@@ -309,17 +309,26 @@ class ConfigureEntry(QWidget):
         dialog.exec()
 
         # Update the table with per-file results from the dialog
-        self._apply_run_results(dialog.file_results)
+        self._apply_run_results(dialog.file_results, dialog.file_tooltips)
 
     def _apply_run_results(
-        self, results: dict[str, tuple[str, str]]
+        self,
+        results: dict[str, tuple[str, str]],
+        tooltips: dict[str, str] | None = None,
     ) -> None:
         """Update the Last Run column, cache, and YamlFileInfo for completed files.
 
         :param results: Maps file path → (outcome, timestamp).
+        :param tooltips: Maps file path → tooltip text (e.g. failed steps).
         """
+        tooltips = tooltips or {}
         for file_path, (outcome, timestamp) in results.items():
-            label = "Success" if outcome == "success" else "Error"
+            if outcome == "success":
+                label = "Success"
+            elif outcome == "partial":
+                label = "Completed with errors"
+            else:
+                label = "Error"
             display = f"{label} — {timestamp}"
             self._run_results_cache[file_path] = display
 
@@ -331,8 +340,13 @@ class ConfigureEntry(QWidget):
                 item = QTableWidgetItem(cached)
                 if cached.startswith("Success"):
                     item.setForeground(QColor("#4CAF50"))
+                elif cached.startswith("Completed with errors"):
+                    item.setForeground(QColor("#FFC107"))
                 else:
                     item.setForeground(QColor("#F44336"))
+                tooltip = tooltips.get(f.path)
+                if tooltip:
+                    item.setToolTip(tooltip)
                 self._table.setItem(row, 3, item)
 
     # ── Button handlers ────────────────────────────────────────────

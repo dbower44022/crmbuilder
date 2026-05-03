@@ -436,3 +436,31 @@ def test_custom_field_name():
     assert FieldManager._custom_field_name("contactType") == "cContactType"
     assert FieldManager._custom_field_name("isMentor") == "cIsMentor"
     assert FieldManager._custom_field_name("mentorStatus") == "cMentorStatus"
+
+
+def test_create_field_non_json_response_surfaces_raw_text():
+    """When create_field returns a parse-failed sentinel, the raw HTML snippet
+    is surfaced in the output instead of a bare HTTP status line."""
+    client = MagicMock()
+    client.profile.name = "Test"
+    client.profile.url = "https://test.com"
+    client.get_field.side_effect = [
+        (404, None),  # CHECK c-prefix
+        (404, None),  # CHECK raw
+    ]
+    client.create_field.return_value = (
+        500,
+        {
+            "_parse_failed": True,
+            "_raw_text": "<html>oh no</html>",
+            "_status_code": 500,
+        },
+    )
+
+    manager, output_log = make_manager(client)
+    report = manager.run(make_program())
+
+    assert report.results[0].status == FieldStatus.ERROR
+    messages = [msg for msg, _ in output_log]
+    assert any("non-JSON response" in msg for msg in messages)
+    assert any("oh no" in msg for msg in messages)

@@ -11,7 +11,7 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
-from espo_impl.core.api_client import EspoAdminClient
+from espo_impl.core.api_client import EspoAdminClient, _format_error_detail
 from espo_impl.core.condition_expression import render_condition
 from espo_impl.core.models import (
     EntityDefinition,
@@ -130,6 +130,9 @@ class LayoutManager:
             self.output_fn(
                 f"[LAYOUT]  {prefix} ... ERROR (HTTP {status_code})", "red"
             )
+            self.output_fn(
+                f"          {_format_error_detail(current)}", "red"
+            )
             return LayoutResult(
                 entity=yaml_name,
                 layout_type=layout_type,
@@ -162,14 +165,9 @@ class LayoutManager:
             self.output_fn(
                 f"[LAYOUT]  {prefix} ... ERROR (HTTP {put_status})", "red"
             )
-            if put_body:
-                msg = (
-                    put_body.get("message", "")
-                    if isinstance(put_body, dict)
-                    else str(put_body)
-                )
-                if msg:
-                    self.output_fn(f"          {msg}", "red")
+            self.output_fn(
+                f"          {_format_error_detail(put_body)}", "red"
+            )
             return LayoutResult(
                 entity=yaml_name,
                 layout_type=layout_type,

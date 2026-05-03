@@ -103,8 +103,11 @@ def check_espocrm_connectivity(
         if about_resp.ok:
             data = about_resp.json()
             version = data.get("version")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning(
+            "Failed to parse /App/about response from %s: %s: %s",
+            base_url, type(exc).__name__, exc,
+        )
 
     # Step 4: Version support check
     version_supported = False

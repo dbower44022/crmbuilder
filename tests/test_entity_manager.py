@@ -138,6 +138,29 @@ def test_delete_and_create():
     client.create_entity.assert_called_once()
 
 
+def test_create_entity_non_json_response_surfaces_raw_text():
+    """A non-JSON 500 page surfaces the raw HTML snippet in the error log."""
+    client = MagicMock()
+    client.check_entity_exists.return_value = (200, False)
+    client.create_entity.return_value = (
+        500,
+        {
+            "_parse_failed": True,
+            "_raw_text": "<html>nginx 502 bad gateway</html>",
+            "_status_code": 500,
+        },
+    )
+
+    manager, output_log = make_manager(client)
+    entity = make_entity("Engagement", EntityAction.CREATE)
+    result = manager.process_entity(entity)
+
+    assert result is False
+    messages = [msg for msg, _ in output_log]
+    assert any("nginx 502 bad gateway" in msg for msg in messages)
+    assert any("non-JSON response" in msg for msg in messages)
+
+
 def test_delete_and_create_delete_fails_aborts():
     client = MagicMock()
     client.check_entity_exists.return_value = (200, True)

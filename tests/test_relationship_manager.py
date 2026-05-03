@@ -305,3 +305,25 @@ def test_error_includes_response_body():
     # The error detail must be in the main error line, not a separate line
     assert any("Link already exists" in m for m in error_msgs)
     assert "409" in error_msgs[0]
+
+
+def test_create_link_non_json_failure_surfaces_raw_text():
+    """Parse-failed sentinel from create_link surfaces raw text in error line."""
+    client = MagicMock(spec=EspoAdminClient)
+    client.get_link.return_value = (200, None)  # check — missing
+    client.create_link.return_value = (
+        500,
+        {
+            "_parse_failed": True,
+            "_raw_text": "<html>nginx 502 bad gateway</html>",
+            "_status_code": 500,
+        },
+    )
+
+    manager, output_log = make_manager(client)
+    results = manager.process_relationships([make_rel()])
+
+    assert results[0].status == RelationshipStatus.ERROR
+    messages = [m for m, _ in output_log]
+    assert any("non-JSON response" in m for m in messages)
+    assert any("nginx 502 bad gateway" in m for m in messages)

@@ -5,7 +5,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
-from espo_impl.core.api_client import EspoAdminClient
+from espo_impl.core.api_client import EspoAdminClient, _format_error_detail
 from espo_impl.core.comparator import FieldComparator
 from espo_impl.core.condition_expression import render_condition
 from espo_impl.core.formula_parser import render_arithmetic
@@ -516,13 +516,9 @@ class FieldManager:
             self.output_fn(
                 f"[{action}]  {prefix} ... ERROR ({error_detail})", "red"
             )
-            # Log the response body for diagnostic detail
-            if response_body:
-                msg = response_body.get("message", "")
-                if msg:
-                    self.output_fn(f"          {msg}", "red")
-                else:
-                    self.output_fn(f"          {response_body}", "red")
+            self.output_fn(
+                f"          {_format_error_detail(response_body)}", "red"
+            )
             return FieldResult(
                 entity=entity,
                 field=field_def.name,
