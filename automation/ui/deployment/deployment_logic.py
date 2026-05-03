@@ -359,6 +359,8 @@ def load_yaml_files(project_folder: str | None) -> list[YamlFileInfo]:
     for pattern in ("*.yaml", "*.yml"):
         for p in programs_dir.rglob(pattern):
             rel = p.relative_to(programs_dir)
+            if "archive" in str(rel).lower():
+                continue
             stat = p.stat()
 
             # Read content_version from the YAML front-matter

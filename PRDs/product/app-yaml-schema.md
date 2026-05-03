@@ -813,7 +813,7 @@ entities:
         filter:
           all:
             - { field: status,         op: equals,    value: "Open" }
-            - { field: lastActivityAt, op: lessThan,  value: "-30d" }
+            - { field: lastActivityAt, op: lessThan,  value: "lastNDays:30" }
     fields:
       - ...
 ```
@@ -839,11 +839,12 @@ in at deploy time. `notEquals` is similarly translated. This is the
 mechanism behind "My …" tabs (see `MyOpenEngagements` above).
 
 **Relative-date tokens.** The relative-date vocabulary from Section 11
-(`today`, `yesterday`, `+Nd`, `-Nd`, etc.) is resolved to absolute
-`YYYY-MM-DD` strings at deploy time before being written to the Report
-Filter. The Report Filter does *not* re-resolve these dates over time;
-re-running the configuration step will refresh them. Where a sliding
-window is required, prefer EspoCRM's built-in date where-types via a
+(`today`, `yesterday`, `thisMonth`, `lastMonth`, `lastNDays:N`,
+`nextNDays:N`) is resolved to absolute `YYYY-MM-DD` strings at deploy
+time before being written to the Report Filter. The Report Filter
+does *not* re-resolve these dates over time; re-running the
+configuration step will refresh them. Where a sliding window is
+required, prefer EspoCRM's built-in date where-types via a
 manually-authored Report Filter rather than this declarative path.
 
 #### Deploy artifact

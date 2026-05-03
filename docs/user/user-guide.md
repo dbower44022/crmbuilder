@@ -837,7 +837,7 @@ entities:
         filter:
           all:
             - { field: status,         op: equals,   value: "Open" }
-            - { field: lastActivityAt, op: lessThan, value: "-30d" }
+            - { field: lastActivityAt, op: lessThan, value: "lastNDays:30" }
     fields:
       - ...
 ```
@@ -857,10 +857,12 @@ entities:
 
 - `value: "$user"` — resolves to the *current viewing user* at request
   time. Use this for "My …" tabs so each user sees their own records.
-- `value: "-30d"`, `"+7d"`, `"today"`, `"yesterday"` — relative-date
-  tokens. These are resolved to fixed dates at deploy time. To get a
-  perpetually-sliding window (e.g. "always 30 days back"), create the
-  Report Filter manually with EspoCRM's built-in date types instead.
+- Relative-date tokens — `today`, `yesterday`, `thisMonth`,
+  `lastMonth`, `lastNDays:N`, `nextNDays:N` (e.g. `value: "lastNDays:30"`
+  for "anything older than 30 days ago"). These are resolved to fixed
+  dates at deploy time. To get a perpetually-sliding window, create
+  the Report Filter manually with EspoCRM's built-in date types
+  instead.
 
 #### What the Tool Does on Run
 
