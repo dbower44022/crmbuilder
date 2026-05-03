@@ -21,7 +21,10 @@ from espo_impl.core.models import (
     LayoutSpec,
     PanelSpec,
 )
-from espo_impl.ui.confirm_delete_dialog import get_espo_entity_name
+from espo_impl.ui.confirm_delete_dialog import (
+    NATIVE_ENTITIES,
+    get_espo_entity_name,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +66,20 @@ class LayoutManager:
         """
         results: list[LayoutResult] = []
         espo_name = get_espo_entity_name(entity_def.name)
-        custom_field_names = {f.name for f in field_definitions}
+
+        # EspoCRM auto-applies the 'c' prefix to custom fields only
+        # when their parent entity is native (Contact, Account, Lead,
+        # etc.). On custom entities — already C-prefixed at the entity
+        # level (CEngagement, CContribution, ...) — custom fields are
+        # stored with their natural names, no per-field prefix.
+        # Build the c-prefix candidate set accordingly: populated for
+        # native parents, empty for custom parents. With an empty set,
+        # `_resolve_field_name` short-circuits on every cell and the
+        # layout references the actual stored field names.
+        if entity_def.name in NATIVE_ENTITIES:
+            custom_field_names = {f.name for f in field_definitions}
+        else:
+            custom_field_names = set()
 
         for layout_type, layout_spec in entity_def.layouts.items():
             try:
@@ -522,11 +538,16 @@ class LayoutManager:
     def _resolve_field_name(
         name: str, custom_field_names: set[str]
     ) -> str:
-        """Apply c-prefix to custom field names, pass native fields through.
+        """Apply c-prefix to custom field names, pass other names through.
 
         :param name: Field name from YAML.
-        :param custom_field_names: Set of field names defined in YAML (custom).
-        :returns: API field name (c-prefixed if custom).
+        :param custom_field_names: Names that should be c-prefixed.
+            Callers must populate this set only when the parent entity
+            is native (Contact, Account, etc.). For custom entities,
+            pass an empty set — EspoCRM stores custom fields on
+            custom entities under their natural names, with no
+            per-field prefix.
+        :returns: API field name.
         """
         if name in custom_field_names:
             return f"c{name[0].upper()}{name[1:]}"

@@ -406,3 +406,149 @@ def test_save_layout_non_json_failure_surfaces_raw_text():
     messages = [msg for msg, _ in output_log]
     assert any("non-JSON response" in msg for msg in messages)
     assert any("500 server error" in msg for msg in messages)
+
+
+# --- Custom-entity c-prefix entry-point tests ---
+
+
+def test_native_entity_layout_uses_c_prefix():
+    """Custom fields on a native entity (Contact) are c-prefixed in
+    layout cells, matching EspoCRM's auto-prefix behavior."""
+    client = MagicMock(spec=EspoAdminClient)
+    # Force a non-match so save_layout is invoked.
+    client.get_layout.return_value = (200, [])
+    client.save_layout.return_value = (200, {})
+
+    manager, _ = make_manager(client)
+    entity = EntityDefinition(
+        name="Contact",
+        fields=make_fields(("contactType", "enum", "info")),
+        layouts={
+            "detail": LayoutSpec(
+                layout_type="detail",
+                panels=[
+                    PanelSpec(label="General", rows=[["contactType"]]),
+                ],
+            )
+        },
+    )
+    manager.process_layouts(entity, entity.fields)
+
+    saved_payload = client.save_layout.call_args.args[2]
+    assert saved_payload[0]["rows"] == [[{"name": "cContactType"}]]
+
+
+def test_custom_entity_layout_skips_c_prefix():
+    """Custom fields on a custom entity (Contribution) are NOT
+    c-prefixed — EspoCRM stores them under their natural names."""
+    client = MagicMock(spec=EspoAdminClient)
+    client.get_layout.return_value = (200, [])
+    client.save_layout.return_value = (200, {})
+
+    manager, _ = make_manager(client)
+    entity = EntityDefinition(
+        name="Contribution",
+        fields=make_fields(
+            ("amount", "currency", "ident"),
+            ("contributionType", "enum", "ident"),
+            ("notes", "wysiwyg", "ack"),
+        ),
+        layouts={
+            "detail": LayoutSpec(
+                layout_type="detail",
+                panels=[
+                    PanelSpec(
+                        label="Identification",
+                        rows=[["amount", "contributionType"]],
+                    ),
+                    PanelSpec(label="Acknowledgment", rows=[["notes"]]),
+                ],
+            )
+        },
+    )
+    manager.process_layouts(entity, entity.fields)
+
+    saved_payload = client.save_layout.call_args.args[2]
+    assert saved_payload[0]["rows"] == [
+        [{"name": "amount"}, {"name": "contributionType"}]
+    ]
+    assert saved_payload[1]["rows"] == [[{"name": "notes"}]]
+
+
+def test_custom_entity_list_layout_skips_c_prefix():
+    """List layout columns on a custom entity use natural names."""
+    client = MagicMock(spec=EspoAdminClient)
+    client.get_layout.return_value = (200, [])
+    client.save_layout.return_value = (200, {})
+
+    manager, _ = make_manager(client)
+    entity = EntityDefinition(
+        name="Contribution",
+        fields=make_fields(
+            ("amount", "currency", "ident"),
+            ("status", "enum", "ident"),
+        ),
+        layouts={
+            "list": LayoutSpec(
+                layout_type="list",
+                columns=[
+                    ColumnSpec(field="name", width=30),
+                    ColumnSpec(field="amount", width=20),
+                    ColumnSpec(field="status", width=20),
+                ],
+            )
+        },
+    )
+    manager.process_layouts(entity, entity.fields)
+
+    saved_payload = client.save_layout.call_args.args[2]
+    assert saved_payload == [
+        {"name": "name", "width": 30},
+        {"name": "amount", "width": 20},
+        {"name": "status", "width": 20},
+    ]
+
+
+def test_custom_entity_dynamic_logic_skips_c_prefix():
+    """visibleWhen / dynamicLogicVisible attribute references on a
+    custom entity layout use natural field names, not c-prefixed."""
+    client = MagicMock(spec=EspoAdminClient)
+    client.get_layout.return_value = (200, [])
+    client.save_layout.return_value = (200, {})
+
+    manager, _ = make_manager(client)
+    entity = EntityDefinition(
+        name="Contribution",
+        fields=make_fields(
+            ("contributionType", "enum", "ident"),
+            ("nextGrantDeadline", "date", "grant"),
+        ),
+        layouts={
+            "detail": LayoutSpec(
+                layout_type="detail",
+                panels=[
+                    PanelSpec(
+                        label="Grant Details",
+                        rows=[["nextGrantDeadline"]],
+                        dynamicLogicVisible={
+                            "attribute": "contributionType",
+                            "value": "Grant",
+                        },
+                    ),
+                ],
+            )
+        },
+    )
+    manager.process_layouts(entity, entity.fields)
+
+    saved_payload = client.save_layout.call_args.args[2]
+    panel = saved_payload[0]
+    assert panel["dynamicLogicVisible"] == {
+        "conditionGroup": [
+            {
+                "type": "equals",
+                "attribute": "contributionType",
+                "value": "Grant",
+            }
+        ]
+    }
