@@ -342,6 +342,40 @@ drive changes to this methodology before the next domain is piloted.
 3. Identify which phase and step the implementation is on
 4. State the current step and confirm before proceeding
 
+## Known Limitations
+
+### Path B has no batch back-fill for legacy or empty client databases
+
+The Path B / Import Processor pipeline at
+`automation/importer/pipeline.py` ingests one document at a time, driven
+from the Documents view in the Requirements tab. Each import requires a
+target work item to already exist in the client database. The legacy
+bootstrap CLI at `automation/cbm_import/cli.py` previously walked an
+entire client repository in batch to populate a fresh client database,
+but every concrete import method in that CLI has been migrated to Path B
+and now emits a warning and skips. Running the legacy CLI today produces
+only an empty work item skeleton (a master_prd row plus a
+business_object_discovery row, both force-completed) with no Domain,
+Entity, Process, or document content.
+
+The consequence is that there is currently no in-app path from a
+legacy-bootstrapped or empty client database to a fully populated one
+under Path B. A client whose documents were drafted before the Path B
+migration cannot have its Requirements tab populated after the fact
+without either rebuilding from scratch through Path B one document at a
+time in dependency order, or building a new batch back-fill path that
+calls the Path B parsers and ImportProcessor for each work item.
+
+The CBM implementation in `dbower44022/ClevelandBusinessMentoring` is
+the canonical example. Its Requirements tab is intentionally empty and
+the planned remediation is a full re-run end-to-end after the
+application has been updated based on lessons learned from the first
+implementation. See that repository's CLAUDE.md for the decision record.
+
+This is deferred work, not a defect requiring immediate fix. New clients
+started from a Master PRD session under Path B do not encounter this
+limitation.
+
 ## What NOT to Do
 
 - Do not add client-specific YAML files to `data/programs/`
