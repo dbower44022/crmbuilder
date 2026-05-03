@@ -25,6 +25,13 @@ not YAML capability gaps. They are addressed by tightening the Phase 7
 Domain Reconciliation guide, recorded as a separate pilot finding,
 and otherwise out of scope for this gap analysis.
 
+## Change Log
+
+| Date | Change |
+|---|---|
+| 04-13-26 22:00 | Initial gap analysis covering Categories 1–10 from MR pilot Manual Configuration findings. |
+| 05-03-26 14:00 | Added Category 6 Part D — Panel and layout visibility by role. Captures gap raised during yaml-v1.1 deployment review: panel-level `visibleWhen:` (Section 7.3) cannot reference user role, and layouts cannot be scoped to roles. Proposes role-aware leaf clauses in Section 11 (Part D.1) and `forRoles:` on layout declarations (Part D.2). Targeted for v1.2 alongside Parts A–C. |
+
 ---
 
 ## 1. Stream and Audit Logging
@@ -714,6 +721,103 @@ permissionPresets:
   type: text
   permissions: mentor-editable-when-active
 ```
+
+#### Part D — Panel and layout visibility by role
+
+**Source.** Pilot question raised during yaml-v1.1 deployment
+review (05-03-26): can a panel of fields be hidden entirely based
+on the viewing user's role, rather than declaring `permissions:`
+on every individual field in the panel?
+
+**Current gap.** Schema v1.1 Section 7.3 panel-level `visibleWhen:`
+uses the Section 11 condition expression, whose leaf clauses
+reference fields on the record being evaluated. There is no
+operator that references the current user's role, so panels
+cannot be hidden by role. The same gap applies at the layout
+level — there is no way to declare "this layout for these roles,
+that layout for those roles" in YAML. Both situations currently
+fall back to post-deployment manual configuration in the target
+CRM.
+
+**Proposed YAML capability — two parts.**
+
+**Part D.1 — Role-aware leaf clauses in Section 11.** Extend the
+shared condition expression to accept a `role:` leaf clause
+alongside the existing `field:` form:
+
+```yaml
+# Shorthand — single role
+visibleWhen:
+  - { role: equals, value: "mentor-administrator" }
+
+# Set of roles
+visibleWhen:
+  - { role: in, value: [mentor-administrator, system-administrator] }
+
+# Compound — role OR record state
+visibleWhen:
+  any:
+    - { role: in, value: [mentor-administrator, system-administrator] }
+    - { field: mentorStatus, op: equals, value: "Active" }
+```
+
+This form is available everywhere `visibleWhen:` is used (panel
+level and field level) and reuses the existing `equals`,
+`notEquals`, `in`, `notIn` operators. Other Section 11 consumers
+(saved view `filter:`, workflow `where:`, aggregate `where:`)
+are out of scope for `role:` since they evaluate against records,
+not viewing context.
+
+**Part D.2 — Layout-level role scoping.** Allow a layout
+declaration to specify which roles see it:
+
+```yaml
+layouts:
+  - name: detail
+    forRoles: [mentor-administrator, system-administrator]
+    panels:
+      - label: "Administrative"
+        rows: [...]
+
+  - name: detail
+    forRoles: [mentor]
+    panels:
+      - label: "My Profile"
+        rows: [...]
+```
+
+When `forRoles:` is omitted, the layout applies to all roles
+(current behavior).
+
+**Relationship to Parts A–C.** Part D depends on Part A (Roles
+declaration must exist before role IDs can be referenced). Part D
+does not replace Part B — field-level `permissions:` remain the
+right tool for read/edit asymmetry on individual fields, while
+Part D is the right tool for hiding whole panels or swapping
+whole layouts.
+
+**Implementation note.** Target-CRM mappings differ. Some CRMs
+express role-based panel visibility through dynamic-logic
+expressions that include user attributes; others do it through
+per-role layout assignment. The deploy manager hides the
+difference, but the loader must validate that any `role:` ID
+referenced exists in the roles declaration before deployment.
+
+**Open questions / decisions to record at design time.**
+
+- **Q4:** Should `role:` be a separate leaf-clause discriminator
+  (`role:` vs `field:`) or a reserved field name (`field: $role`)?
+  Separate discriminator is clearer; reserved name is more
+  uniform with the existing parser. Recommendation: separate
+  discriminator.
+- **Q5:** Does `forRoles:` on a layout need a fallback layout for
+  roles not listed, or is omission an error caught by the
+  loader? Recommendation: loader error — every role must resolve
+  to exactly one layout per layout name.
+- **Q6:** Should Part D ship in v1.2 alongside Parts A–C, or be
+  staged separately? Recommendation: ship together — Part A is
+  the prerequisite for both, and pilot users will hit Part D
+  needs the moment they try to use Part B at scale.
 
 ### Implementation considerations
 
@@ -1505,5 +1609,5 @@ Should categories and the Category 10 flag, with new ISS-* entries
 for each capability. After that, a CLAUDE-CODE-PROMPT-* series
 implements them in the CRM Builder app.
 
-**Last Updated:** 04-13-26 22:00
+**Last Updated:** 05-03-26 14:00
 
