@@ -22,12 +22,17 @@ from espo_impl.core.entity_settings_manager import (
     EntitySettingsManagerError,
 )
 from espo_impl.core.field_manager import AuthenticationError, FieldManager
+from espo_impl.core.filtered_tab_manager import (
+    FilteredTabManager,
+    FilteredTabManagerError,
+)
 from espo_impl.core.layout_manager import LayoutManager, LayoutManagerError
 from espo_impl.core.models import (
     DuplicateCheckStatus,
     EmailTemplateStatus,
     EntityAction,
     EntityLayoutStatus,
+    FilteredTabStatus,
     InstanceProfile,
     ProgramFile,
     RelationshipStatus,
@@ -63,6 +68,7 @@ _MANAGER_ERROR_TYPES: tuple[type[Exception], ...] = (
     LayoutManagerError,
     RelationshipManagerError,
     WorkflowManagerError,
+    FilteredTabManagerError,
 )
 
 
@@ -77,6 +83,7 @@ _STEP_DISPLAY_NAMES: dict[str, str] = {
     "layouts": "Layouts",
     "relationships": "Relationships",
     "workflows": "Workflows",
+    "filtered_tabs": "Filtered tabs",
 }
 
 
@@ -726,6 +733,30 @@ class RunWorker(QThread):
             )
             all_step_results.append(step_result)
 
+            # --- Step 11: Filtered tabs --------------------------------------
+            has_filtered_tabs = any(
+                e.filtered_tabs and e.action != EntityAction.DELETE
+                for e in self.program.entities
+            )
+
+            def _filtered_tabs_body() -> list[Any]:
+                self.output_line.emit("", "white")
+                self.output_line.emit("=== FILTERED TABS ===", "white")
+                ft_mgr = FilteredTabManager(client, self.output_line.emit)
+                return ft_mgr.process_filtered_tabs(self.program)
+
+            step_result, ft_results = self._run_step(
+                "filtered_tabs",
+                has_filtered_tabs,
+                _filtered_tabs_body,
+                failure_check=lambda results: _check_results_for_errors(
+                    results, {FilteredTabStatus.ERROR}, "filtered tab"
+                ),
+            )
+            all_step_results.append(step_result)
+            self._filtered_tab_results = ft_results or []
+            self._attach_filtered_tab_results(report)
+
         except AuthenticationError as exc:
             # Hard-abort path. Attach what we have so far for diagnostics.
             if report is None:
@@ -811,6 +842,23 @@ class RunWorker(QThread):
             elif etr.status == EmailTemplateStatus.ERROR:
                 report.summary.email_templates_failed += 1
 
+    def _attach_filtered_tab_results(self, report: RunReport) -> None:
+        results = getattr(self, "_filtered_tab_results", None)
+        if not results:
+            return
+        report.filtered_tab_results.extend(results)
+        for ft in results:
+            if ft.status == FilteredTabStatus.CREATED:
+                report.summary.filtered_tabs_created += 1
+            elif ft.status == FilteredTabStatus.SKIPPED:
+                report.summary.filtered_tabs_skipped += 1
+            elif ft.status == FilteredTabStatus.DRIFT:
+                report.summary.filtered_tabs_drift += 1
+            elif ft.status == FilteredTabStatus.ERROR:
+                report.summary.filtered_tabs_failed += 1
+            elif ft.status == FilteredTabStatus.NOT_SUPPORTED:
+                report.summary.filtered_tabs_not_supported += 1
+
     # ── Step summary emission ────────────────────────────────────────
 
     def _emit_step_summary(self, step_results: list[StepResult]) -> None:
@@ -882,8 +930,32 @@ class RunWorker(QThread):
             for r in report.workflow_results
             if r.status == WorkflowStatus.NOT_SUPPORTED
         ]
+        filtered_tab_items = [
+            f"  {r.entity}.filteredTabs[{r.tab_id}] (scope: {r.scope})"
+            for r in report.filtered_tab_results
+            if r.status == FilteredTabStatus.NOT_SUPPORTED
+        ]
 
-        if not (saved_view_items or dup_check_items or workflow_items):
+        # Filtered tabs always need a manual rebuild + Tab List add even
+        # on the success path; surface every entry that was processed
+        # (CREATED or SKIPPED), not just NOT_SUPPORTED, so the operator
+        # does not miss the post-deploy step.
+        filtered_tab_post_install = [
+            f"  {r.entity}.filteredTabs[{r.tab_id}] (scope: {r.scope})"
+            for r in report.filtered_tab_results
+            if r.status in (
+                FilteredTabStatus.CREATED,
+                FilteredTabStatus.SKIPPED,
+            )
+        ]
+
+        if not (
+            saved_view_items
+            or dup_check_items
+            or workflow_items
+            or filtered_tab_items
+            or filtered_tab_post_install
+        ):
             return
 
         self.output_line.emit("", "white")
@@ -922,6 +994,22 @@ class RunWorker(QThread):
         self.output_line.emit("Workflows:", "yellow")
         for line in (workflow_items or ["  (none)"]):
             self.output_line.emit(line, "yellow")
+        self.output_line.emit("", "yellow")
+
+        self.output_line.emit("Filtered tabs (Report Filter unavailable):", "yellow")
+        for line in (filtered_tab_items or ["  (none)"]):
+            self.output_line.emit(line, "yellow")
+        self.output_line.emit("", "yellow")
+
+        self.output_line.emit(
+            "Filtered tabs — copy bundle, rebuild, add to Tab List:", "yellow",
+        )
+        for line in (filtered_tab_post_install or ["  (none)"]):
+            self.output_line.emit(line, "yellow")
+        self.output_line.emit(
+            "  See reports/filtered_tabs/<run_ts>/README.txt for steps.",
+            "yellow",
+        )
 
         self.output_line.emit(
             "===========================================", "yellow"

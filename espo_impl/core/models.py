@@ -243,6 +243,44 @@ class SavedView:
 
 
 @dataclass
+class FilteredTab:
+    """A left-navigation filtered list view from the ``filteredTabs:`` block.
+
+    A filtered tab is the YAML representation of EspoCRM's "Report Filter
+    plus custom scope" pattern: a Report Filter (Advanced Pack) defines
+    the criteria, and three metadata files (scopes, clientDefs, i18n)
+    register that filter as a top-level navigation entry. The
+    :class:`FilteredTabManager` creates the Report Filter via API and
+    emits the three metadata files into a deploy bundle for the operator
+    to install.
+
+    :param id: Stable identifier; unique within the entity.
+    :param scope: PascalCase metadata scope name (no spaces). Becomes the
+        filename for ``scopes/<scope>.json`` and ``clientDefs/<scope>.json``.
+    :param label: Human-readable label that appears in the left nav and
+        the Tab List configuration screen.
+    :param filter: Parsed condition expression AST (Section 11). Reused
+        verbatim for the Report Filter criteria.
+    :param nav_order: Optional ordinal position in the Tab List; lower
+        numbers sort earlier. None means "operator decides at install".
+    :param acl: ACL strategy for the scope. Defaults to ``"boolean"``.
+    :param report_filter_id: Populated at run time after the Report
+        Filter is created via API; used to build ``defaultFilter:
+        reportFilter<id>`` in the clientDef bundle file.
+    :param filter_raw: Original raw filter data (for round-tripping).
+    """
+
+    id: str
+    scope: str
+    label: str
+    filter: Any = None  # ConditionNode from condition_expression
+    nav_order: int | None = None
+    acl: str = "boolean"
+    report_filter_id: str | None = None
+    filter_raw: Any = None
+
+
+@dataclass
 class EmailTemplate:
     """An email template from the ``emailTemplates:`` block.
 
@@ -424,11 +462,13 @@ class EntityDefinition:
     saved_views: list[SavedView] = field(default_factory=list)
     email_templates: list[EmailTemplate] = field(default_factory=list)
     workflows: list[Workflow] = field(default_factory=list)
+    filtered_tabs: list[FilteredTab] = field(default_factory=list)
     settings_raw: dict | None = None
     duplicate_checks_raw: list | None = None
     saved_views_raw: list | None = None
     email_templates_raw: list | None = None
     workflows_raw: list | None = None
+    filtered_tabs_raw: list | None = None
 
 
 @dataclass
@@ -629,6 +669,37 @@ class SavedViewResult:
     error: str | None = None
 
 
+class FilteredTabStatus(Enum):
+    """Outcome status for a filtered-tab operation."""
+
+    CREATED = "created"
+    UPDATED = "updated"
+    SKIPPED = "skipped"
+    DRIFT = "drift"
+    ERROR = "error"
+    NOT_SUPPORTED = "not_supported"
+
+
+@dataclass
+class FilteredTabResult:
+    """Result of processing a single filtered tab.
+
+    :param entity: Natural entity name (e.g., "Engagement").
+    :param tab_id: The YAML ``id`` for this tab.
+    :param scope: The PascalCase scope name from YAML.
+    :param status: Outcome status.
+    :param report_filter_id: Populated after a successful API create.
+    :param error: Error message if status is ERROR.
+    """
+
+    entity: str
+    tab_id: str
+    scope: str
+    status: FilteredTabStatus
+    report_filter_id: str | None = None
+    error: str | None = None
+
+
 class WorkflowStatus(Enum):
     """Outcome status for a workflow operation."""
 
@@ -724,6 +795,11 @@ class RunSummary:
     workflows_skipped: int = 0
     workflows_drift: int = 0
     workflows_failed: int = 0
+    filtered_tabs_created: int = 0
+    filtered_tabs_skipped: int = 0
+    filtered_tabs_drift: int = 0
+    filtered_tabs_failed: int = 0
+    filtered_tabs_not_supported: int = 0
 
 
 class StepStatus(Enum):
@@ -780,6 +856,7 @@ class RunReport:
     saved_view_results: list[SavedViewResult] = field(default_factory=list)
     email_template_results: list[EmailTemplateResult] = field(default_factory=list)
     workflow_results: list[WorkflowResult] = field(default_factory=list)
+    filtered_tab_results: list[FilteredTabResult] = field(default_factory=list)
     step_results: list[StepResult] = field(default_factory=list)
 
 

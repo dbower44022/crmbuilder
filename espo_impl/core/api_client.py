@@ -317,6 +317,62 @@ class EspoAdminClient:
         url = f"{self.profile.api_url}/Metadata"
         return self._request("PUT", url, json=payload)
 
+    # --- Report Filter endpoints (Advanced Pack) ---
+    #
+    # Report Filters are a record entity contributed by the Advanced Pack
+    # extension. On instances without Advanced Pack, GET/POST against
+    # /ReportFilter returns HTTP 404; callers should treat that as
+    # "feature unavailable" rather than a transport error.
+
+    def list_report_filters(
+        self, entity_type: str,
+    ) -> tuple[int, dict[str, Any] | None]:
+        """List Report Filters that target a given entity type.
+
+        :param entity_type: EspoCRM entity name (e.g., "Account", "CEngagement").
+        :returns: Tuple of (status_code, response_json or None). The
+            standard EspoCRM list response shape ``{total, list}`` is
+            returned on success; HTTP 404 means Advanced Pack is not
+            installed on this instance.
+        """
+        url = (
+            f"{self.profile.api_url}/ReportFilter"
+            f"?where[0][type]=equals"
+            f"&where[0][attribute]=entityType"
+            f"&where[0][value]={entity_type}"
+        )
+        return self._request("GET", url)
+
+    def create_report_filter(
+        self, payload: dict[str, Any],
+    ) -> tuple[int, dict[str, Any] | None]:
+        """Create a Report Filter record.
+
+        Expected payload shape::
+
+            {
+                "name": "My Engagements",
+                "entityType": "CEngagement",
+                "data": {"where": [<EspoCRM where-item dicts>]},
+            }
+
+        :param payload: Report Filter creation payload.
+        :returns: Tuple of (status_code, response_json or None).
+        """
+        url = f"{self.profile.api_url}/ReportFilter"
+        return self._request("POST", url, json=payload)
+
+    def delete_report_filter(
+        self, filter_id: str,
+    ) -> tuple[int, dict[str, Any] | None]:
+        """Delete a Report Filter record.
+
+        :param filter_id: Report Filter record id.
+        :returns: Tuple of (status_code, response_json or None).
+        """
+        url = f"{self.profile.api_url}/ReportFilter/{filter_id}"
+        return self._request("DELETE", url)
+
     # --- Metadata discovery endpoints (audit) ---
 
     def get_all_scopes(self) -> tuple[int, dict[str, dict] | None]:

@@ -25,6 +25,7 @@ from espo_impl.core.models import (
     EntityDefinition,
     EntitySettings,
     FieldDefinition,
+    FilteredTab,
     Formula,
     LayoutSpec,
     OrderByClause,
@@ -149,6 +150,7 @@ class ConfigLoader:
                 saved_views_raw = entity_data.get("savedViews")
                 email_templates_raw = entity_data.get("emailTemplates")
                 workflows_raw = entity_data.get("workflows")
+                filtered_tabs_raw = entity_data.get("filteredTabs")
 
                 # Parse settings block into typed model
                 settings = self._parse_settings(settings_raw)
@@ -192,6 +194,9 @@ class ConfigLoader:
                 # Parse workflows into typed models
                 workflows = self._parse_workflows(workflows_raw)
 
+                # Parse filtered tabs into typed models
+                filtered_tabs = self._parse_filtered_tabs(filtered_tabs_raw)
+
                 entities.append(EntityDefinition(
                     name=entity_name,
                     fields=fields,
@@ -208,11 +213,13 @@ class ConfigLoader:
                     saved_views=saved_views,
                     email_templates=email_templates,
                     workflows=workflows,
+                    filtered_tabs=filtered_tabs,
                     settings_raw=settings_raw,
                     duplicate_checks_raw=duplicate_checks_raw,
                     saved_views_raw=saved_views_raw,
                     email_templates_raw=email_templates_raw,
                     workflows_raw=workflows_raw,
+                    filtered_tabs_raw=filtered_tabs_raw,
                 ))
 
         # Parse relationships
@@ -257,6 +264,9 @@ class ConfigLoader:
 
         # Cross-block workflow template resolution
         errors.extend(self._validate_workflow_template_refs(program))
+
+        # Cross-entity uniqueness for filteredTab scope names
+        errors.extend(self._validate_filtered_tab_scopes(program))
 
         for rel in program.relationships:
             errors.extend(self._validate_relationship(rel))
@@ -324,6 +334,9 @@ class ConfigLoader:
 
         # Validate workflows
         errors.extend(self._validate_workflows(entity))
+
+        # Validate filtered tabs
+        errors.extend(self._validate_filtered_tabs(entity))
 
         # Validate layouts
         for layout_type, layout_spec in entity.layouts.items():
@@ -1001,6 +1014,161 @@ class ConfigLoader:
                         f"(must be 'asc' or 'desc')"
                     )
 
+        return errors
+
+    def _parse_filtered_tabs(
+        self, raw: list | None,
+    ) -> list[FilteredTab]:
+        """Parse a raw ``filteredTabs:`` list into typed models.
+
+        :param raw: Raw list from YAML (or None).
+        :returns: List of FilteredTab instances.
+        """
+        if not raw or not isinstance(raw, list):
+            return []
+        tabs: list[FilteredTab] = []
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+
+            filter_raw = item.get("filter")
+            parsed_filter = None
+            if filter_raw is not None:
+                try:
+                    parsed_filter = parse_condition(filter_raw)
+                except ValueError:
+                    pass  # Validation will catch this
+
+            nav_order_raw = item.get("navOrder")
+            nav_order = (
+                int(nav_order_raw)
+                if isinstance(nav_order_raw, (int, float))
+                else None
+            )
+
+            tabs.append(FilteredTab(
+                id=str(item.get("id", "")),
+                scope=str(item.get("scope", "")),
+                label=str(item.get("label", "")),
+                filter=parsed_filter,
+                nav_order=nav_order,
+                acl=str(item.get("acl", "boolean")),
+                filter_raw=filter_raw,
+            ))
+        return tabs
+
+    def _validate_filtered_tabs(
+        self, entity: EntityDefinition
+    ) -> list[str]:
+        """Validate the entity's ``filteredTabs:`` block.
+
+        Per-entity rules:
+
+        - ``id`` is required and unique within the entity.
+        - ``scope`` is required, PascalCase, ≤ 60 chars, no spaces or
+          punctuation other than ASCII letters and digits.
+        - ``label`` is required.
+        - ``filter`` is required and must parse via ``parse_condition``;
+          field references must resolve against this entity.
+        - ``acl``, when present, must be a known strategy.
+        - ``navOrder``, when present, must be a non-negative integer.
+
+        Cross-entity scope uniqueness is enforced separately in
+        :meth:`_validate_filtered_tab_scopes`.
+
+        :param entity: Entity definition to validate.
+        :returns: List of error messages.
+        """
+        errors: list[str] = []
+        if not entity.filtered_tabs:
+            return errors
+
+        field_names = {f.name for f in entity.fields}
+        seen_ids: set[str] = set()
+        seen_scopes: set[str] = set()
+        scope_pattern = re.compile(r"^[A-Z][A-Za-z0-9]{0,59}$")
+        valid_acls = {"boolean", "team", "strict"}
+
+        for tab in entity.filtered_tabs:
+            prefix = f"{entity.name}.filteredTabs[{tab.id or '(no id)'}]"
+
+            if not tab.id:
+                errors.append(f"{prefix}: missing required property 'id'")
+            elif tab.id in seen_ids:
+                errors.append(
+                    f"{prefix}: duplicate id '{tab.id}' within entity"
+                )
+            seen_ids.add(tab.id)
+
+            if not tab.scope:
+                errors.append(f"{prefix}: missing required property 'scope'")
+            else:
+                if not scope_pattern.match(tab.scope):
+                    errors.append(
+                        f"{prefix}.scope: '{tab.scope}' must be PascalCase, "
+                        f"start with an uppercase letter, and contain only "
+                        f"ASCII letters and digits (max 60 chars)"
+                    )
+                if tab.scope in seen_scopes:
+                    errors.append(
+                        f"{prefix}.scope: duplicate scope '{tab.scope}' "
+                        f"within entity"
+                    )
+                seen_scopes.add(tab.scope)
+
+            if not tab.label:
+                errors.append(f"{prefix}: missing required property 'label'")
+
+            if tab.filter_raw is None:
+                errors.append(f"{prefix}: missing required property 'filter'")
+            elif tab.filter is None:
+                try:
+                    parse_condition(tab.filter_raw)
+                except ValueError as exc:
+                    errors.append(f"{prefix}.filter: {exc}")
+            else:
+                for err in validate_condition(tab.filter, field_names):
+                    errors.append(f"{prefix}.filter: {err}")
+
+            if tab.acl not in valid_acls:
+                errors.append(
+                    f"{prefix}.acl: invalid value '{tab.acl}' "
+                    f"(must be one of {sorted(valid_acls)})"
+                )
+
+            if tab.nav_order is not None and tab.nav_order < 0:
+                errors.append(
+                    f"{prefix}.navOrder: must be a non-negative integer"
+                )
+
+        return errors
+
+    def _validate_filtered_tab_scopes(
+        self, program: ProgramFile,
+    ) -> list[str]:
+        """Enforce cross-entity uniqueness of filteredTab scope names.
+
+        EspoCRM scope names occupy a single global namespace
+        (``custom/Espo/Custom/Resources/metadata/scopes/<scope>.json``);
+        two entities cannot both declare a tab with the same scope.
+
+        :param program: Parsed program file.
+        :returns: List of error messages.
+        """
+        errors: list[str] = []
+        first_seen: dict[str, str] = {}
+        for entity in program.entities:
+            for tab in entity.filtered_tabs:
+                if not tab.scope:
+                    continue
+                if tab.scope in first_seen:
+                    errors.append(
+                        f"{entity.name}.filteredTabs[{tab.id}].scope: "
+                        f"duplicate scope '{tab.scope}' "
+                        f"(also declared on '{first_seen[tab.scope]}')"
+                    )
+                else:
+                    first_seen[tab.scope] = entity.name
         return errors
 
     def _parse_email_templates(

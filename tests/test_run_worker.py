@@ -292,7 +292,7 @@ def test_run_full_all_steps_succeed_step_results_populated():
     expected_steps = {
         "entity_deletions", "entity_creations", "entity_settings",
         "email_templates", "duplicate_checks", "saved_views", "fields",
-        "layouts", "relationships", "workflows",
+        "layouts", "relationships", "workflows", "filtered_tabs",
     }
     assert set(by_name.keys()) == expected_steps
     # No FAILED states.
