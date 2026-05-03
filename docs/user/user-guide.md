@@ -792,6 +792,136 @@ relationships:
 | `manyToOne` | Many primary → one foreign |
 | `manyToMany` | Many both ways (requires `relationName`) |
 
+### Filtered Tabs (Left-Nav Filtered Views)
+
+A **filtered tab** is a top-level entry in EspoCRM's left navigation
+that opens a pre-filtered list view of an entity. It is the right
+choice when a particular slice of records — "My Open Engagements",
+"Active Mentors", "Stalled Tasks" — deserves its own permanent place
+in the nav rather than living as one option in a dropdown.
+
+Filtered tabs differ from **saved views** (which appear as filter
+choices inside an entity's existing list view): a saved view changes
+what the user sees on the entity's main list page, while a filtered
+tab is a separate destination in the left nav.
+
+**Requires the EspoCRM Advanced Pack extension.** Filtered tabs are
+built on EspoCRM's Report Filter feature, which ships with Advanced
+Pack. Without Advanced Pack the tab cannot be created automatically;
+the tool will still generate the supporting files and tell you where
+to find them so you can complete the install manually.
+
+#### Declaring a Filtered Tab
+
+`filteredTabs:` is a sibling of `fields:` on the entity:
+
+```yaml
+entities:
+  Engagement:
+    description: >
+      Active mentoring relationships. PRD reference.
+    filteredTabs:
+
+      - id: my-open
+        scope: MyOpenEngagements          # PascalCase, globally unique
+        label: "My Open Engagements"      # appears in the left nav
+        navOrder: 4                        # optional; lower = earlier
+        filter:
+          all:
+            - { field: status,         op: equals, value: "Open" }
+            - { field: assignedUserId, op: equals, value: "$user" }
+
+      - id: stalled
+        scope: StalledEngagements
+        label: "Stalled Engagements"
+        filter:
+          all:
+            - { field: status,         op: equals,   value: "Open" }
+            - { field: lastActivityAt, op: lessThan, value: "-30d" }
+    fields:
+      - ...
+```
+
+**Properties:**
+
+| Property | Required | Description |
+|---|---|---|
+| `id` | yes | Stable identifier; unique within the entity |
+| `scope` | yes | PascalCase name (e.g., `MyOpenEngagements`). Used as the metadata filename. **Must be unique across the entire program file** — EspoCRM scope names share one global namespace |
+| `label` | yes | What the user sees in the left nav and Tab List |
+| `filter` | yes | Filter criteria, same syntax as saved views (Section 5.6 of the schema spec) |
+| `navOrder` | no | Position hint for the Tab List |
+| `acl` | no | One of `boolean`, `team`, `strict`. Default: `boolean` |
+
+**Two helpful filter idioms:**
+
+- `value: "$user"` — resolves to the *current viewing user* at request
+  time. Use this for "My …" tabs so each user sees their own records.
+- `value: "-30d"`, `"+7d"`, `"today"`, `"yesterday"` — relative-date
+  tokens. These are resolved to fixed dates at deploy time. To get a
+  perpetually-sliding window (e.g. "always 30 days back"), create the
+  Report Filter manually with EspoCRM's built-in date types instead.
+
+#### What the Tool Does on Run
+
+For every filtered tab in your YAML, the tool:
+
+1. Looks for an existing Report Filter on the target instance with the
+   same name. If found, the existing one is reused.
+2. If not found, creates the Report Filter via the EspoCRM REST API
+   and captures its id.
+3. Writes a deploy bundle to:
+   ```
+   {project_folder}/reports/filtered_tabs/{run_ts}/
+   ```
+   containing the three EspoCRM metadata files needed to register the
+   scope as a navigable tab, plus a `README.txt` with install steps
+   and a `manifest.json` index.
+
+The bundle's directory structure mirrors EspoCRM's
+`custom/Espo/Custom/Resources/` so you can copy it on top of the
+server.
+
+#### Finishing the Install (Operator Steps)
+
+EspoCRM does not let the metadata files be written over its REST API,
+so two manual steps remain after Run completes:
+
+1. **Copy the bundle onto the server.** From a workstation that can
+   reach the EspoCRM server:
+   ```
+   scp -r reports/filtered_tabs/<run_ts>/* \
+     root@<host>:/var/www/espocrm/data/custom/Espo/Custom/Resources/
+   ```
+   (Adjust the destination for your install layout. The bundle's
+   `README.txt` repeats this command.)
+
+2. **Rebuild and add to the Tab List.** In the EspoCRM admin UI:
+   - **Administration → Rebuild** (wait for it to finish)
+   - **Administration → User Interface → Tab List**
+   - Click **Add**, find each of your new labels, and drag into the
+     desired position
+   - Save and hard-refresh the browser
+
+If a label does not appear in the Tab List after rebuilding, run
+**Administration → Clear Cache** and hard-refresh.
+
+#### When Advanced Pack Is Not Installed
+
+If the target instance does not have Advanced Pack, the Run output
+shows a `[NOT SUPPORTED]` line for each tab and the bundle is still
+written — but the `clientDefs/<Scope>.json` file contains a
+placeholder:
+
+```json
+"defaultFilter": "REPLACE_WITH_reportFilter<id>"
+```
+
+To finish the install, create the Report Filter manually
+(**Administration → Report Filters → Create Report Filter**), copy
+its id from the URL bar, replace the placeholder string in the
+clientDef file, and proceed with the steps above.
+
 ---
 
 ## Naming Conventions
@@ -851,6 +981,31 @@ Your program file contains `action: delete_and_create` or
 `action: delete`. Type `DELETE` to confirm and click **Proceed**
 only on test instances or when doing a clean rebuild with no live
 data. Click **Cancel** to safely abort.
+
+### Filtered tab does not appear in the left nav after running
+Filtered tabs need two manual steps after Run completes that the tool
+cannot perform over the EspoCRM REST API:
+
+1. Copy the bundle from `reports/filtered_tabs/<run_ts>/` onto the
+   server's `custom/Espo/Custom/Resources/` directory
+2. **Administration → Rebuild**, then add the label in
+   **Administration → User Interface → Tab List**
+
+The Run output shows a `MANUAL CONFIGURATION REQUIRED` block listing
+each filtered tab and the bundle path. If the rebuild has been done
+but the label still does not appear in the Tab List, run
+**Administration → Clear Cache** and hard-refresh the browser.
+
+### Filtered tab marked NOT SUPPORTED in the Run output
+The target EspoCRM instance does not have the **Advanced Pack**
+extension installed. Advanced Pack is required for the Report Filter
+that drives the tab. The tool still writes the deploy bundle, but the
+`clientDefs/<Scope>.json` file contains the placeholder
+`REPLACE_WITH_reportFilter<id>`. Either install Advanced Pack and
+re-run, or create the Report Filter by hand
+(**Administration → Report Filters → Create Report Filter**), copy
+its id from the URL, replace the placeholder, and finish the install
+manually.
 
 ---
 

@@ -648,6 +648,13 @@ class ConfigLoader:
             errors.append(f"{prefix}: missing required property 'name'")
         if not field_def.type:
             errors.append(f"{prefix}: missing required property 'type'")
+        elif field_def.type == "link":
+            errors.append(
+                f"{prefix}: 'link' is not a valid field type — link "
+                f"relationships must be declared in the top-level "
+                f"'relationships:' block, not in the entity 'fields:' block. "
+                f"See the YAML schema spec for examples."
+            )
         elif field_def.type not in SUPPORTED_FIELD_TYPES:
             errors.append(
                 f"{prefix}: unsupported field type '{field_def.type}'"

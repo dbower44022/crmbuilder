@@ -201,20 +201,73 @@ class ConfigureProgressDialog(QDialog):
         )
 
         loader = ConfigLoader()
+        validation_failures: list[tuple[YamlFileInfo, list[str]]] = []
+
         for f in self._files:
             try:
                 program = loader.load_program(Path(f.path))
-                self._pending.append((f, program))
-                self._total_ops += _count_operations(program)
             except Exception as exc:
                 self._append_log(f"Failed to load {f.name}: {exc}", "error")
+                self._record_validation_failure(f, [f"Parse error: {exc}"])
+                continue
+
+            errors = loader.validate_program(program)
+            if errors:
+                validation_failures.append((f, errors))
+                continue
+
+            self._pending.append((f, program))
+            self._total_ops += _count_operations(program)
+
+        # Emit validation failure blocks before any per-file processing.
+        for f, errors in validation_failures:
+            self._append_log("")
+            self._append_log(
+                f"=== {f.name}: VALIDATION FAILED "
+                f"({len(errors)} error(s)) ===",
+                "error",
+            )
+            for err in errors:
+                self._append_log(f"  - {err}", "error")
+            self._append_log("")
+            self._record_validation_failure(f, errors)
 
         if not self._pending:
-            self._append_log("No valid YAML files to process.", "warning")
+            if validation_failures:
+                self._append_log(
+                    "No valid YAML files to process — "
+                    "all files failed validation.",
+                    "warning",
+                )
+            else:
+                self._append_log("No valid YAML files to process.", "warning")
             self._finish()
             return
 
         self._run_next()
+
+    def _record_validation_failure(
+        self, file_info: YamlFileInfo, errors: list[str]
+    ) -> None:
+        """Record a validation-failed file in ``_file_results``.
+
+        :param file_info: The YAML file that failed validation.
+        :param errors: List of validation error messages from
+            :meth:`ConfigLoader.validate_program`.
+
+        Stores an outcome of ``"Validation failed (N error(s))"`` and a
+        tooltip listing the first 5 errors (with ``"... (M more)"`` if
+        there are more than 5).
+        """
+        now_display = datetime.now().strftime("%Y-%m-%d %H:%M")
+        outcome = f"Validation failed ({len(errors)} error(s))"
+        self._file_results[file_info.path] = (outcome, now_display)
+
+        shown = errors[:5]
+        tooltip_lines = list(shown)
+        if len(errors) > 5:
+            tooltip_lines.append(f"... ({len(errors) - 5} more)")
+        self._file_tooltips[file_info.path] = "\n".join(tooltip_lines)
 
     # ── File processing ────────────────────────────────────────────
 

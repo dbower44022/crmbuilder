@@ -141,6 +141,57 @@ def test_validate_unsupported_type(loader, tmp_path):
     assert any("unsupported" in e for e in errors)
 
 
+def test_validate_field_link_type_emits_specific_message(loader, tmp_path):
+    """A field with ``type: link`` is rejected with a message that
+    points the operator to the top-level relationships block."""
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          FUContribution:
+            fields:
+              - name: contributor
+                type: link
+                label: "Contributor"
+    """)
+    path = tmp_path / "link_field.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    matches = [
+        e for e in errors
+        if "'link' is not a valid field type" in e
+        and "declared in the top-level 'relationships:' block" in e
+    ]
+    assert matches, f"Expected link-specific message, got: {errors!r}"
+
+
+def test_validate_field_other_unsupported_type_emits_generic_message(
+    loader, tmp_path,
+):
+    """Non-link unsupported field types continue to emit the generic
+    ``unsupported field type 'X'`` message."""
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: bar
+                type: frobnicate
+                label: "Bar"
+    """)
+    path = tmp_path / "bad_other_type.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("unsupported field type 'frobnicate'" in e for e in errors)
+    assert not any(
+        "declared in the top-level 'relationships:' block" in e
+        for e in errors
+    )
+
+
 def test_validate_enum_without_options(loader, tmp_path):
     content = dedent("""\
         version: "1.0"

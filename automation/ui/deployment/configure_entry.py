@@ -327,6 +327,8 @@ class ConfigureEntry(QWidget):
                 label = "Success"
             elif outcome == "partial":
                 label = "Completed with errors"
+            elif outcome.startswith("Validation failed"):
+                label = outcome
             else:
                 label = "Error"
             display = f"{label} — {timestamp}"

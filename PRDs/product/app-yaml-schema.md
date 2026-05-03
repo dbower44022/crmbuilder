@@ -1,8 +1,8 @@
 # CRM Builder — YAML Program File Schema
 
-**Version:** 1.1
+**Version:** 1.2
 **Status:** Current
-**Last Updated:** 04-13-26 22:30
+**Last Updated:** 05-03-26
 **Applies To:** All YAML program files used by CRM Builder
 
 ---
@@ -13,6 +13,7 @@
 |---|---|---|
 | 1.0 | March 2026 | Initial schema. |
 | 1.1 | 04-13-26 22:30 | Adds Categories 1–10 of MR-pilot gap analysis. Category 1: `settings:` block (existing `labelSingular`, `labelPlural`, `stream`, `disabled` deprecated). Category 2: `duplicateChecks:` block. Category 3: `savedViews:` block; shared condition-expression construct introduced in new Section 11. Category 4: `requiredWhen:` field-level property for conditional requirement. Category 5: `visibleWhen:` field-level and panel-level property for conditional visibility (panel-level `dynamicLogicVisible:` deprecated). Category 6 deferred to v1.2. Category 7: `emailTemplates:` block with external HTML body files and validated `mergeFields:`. Category 8: field-level `formula:` block (three types — `aggregate`, `arithmetic`, `concat`; seven aggregate functions). Category 9: entity-level `workflows:` block with five trigger events and four actions (`onFirstTransition` and `createRelatedRecord` deferred to v1.2). Category 10: field-level `externallyPopulated:` flag for fields supplied by external systems. See `yaml-schema-gap-analysis-MR-pilot.md`. |
+| 1.2 | 05-03-26 | Adds Section 5.9 `filteredTabs:` — declarative left-navigation filtered list views, implemented as Report Filter records (Advanced Pack) plus a generated metadata bundle (`scopes/`, `clientDefs/`, `i18n/en_US/Global.json`) the operator copies onto the EspoCRM server before rebuild and Tab List add. Reuses the Section 11 condition-expression construct for the filter criteria. Validation rules for the new block are added to Section 10. |
 
 ---
 
@@ -749,6 +750,157 @@ failure is logged.
   are **not** expressed as separate workflows. They are handled by
   the `alertTemplate:` / `alertTo:` clauses on a duplicate-check rule
   (Section 5.5).
+
+### 5.9 Filtered Tabs
+
+The optional `filteredTabs:` block declares left-navigation entries
+that open a pre-filtered list view of an entity. A filtered tab differs
+from a saved view (Section 5.6): a saved view is a selectable filter
+*inside* an entity's existing list view, while a filtered tab is a
+separate top-level navigation entry that lands the user directly on the
+filtered records.
+
+`filteredTabs:` is a sibling of `settings:`, `duplicateChecks:`,
+`savedViews:`, `emailTemplates:`, `workflows:`, and `fields:` on the
+entity.
+
+#### How EspoCRM implements this pattern
+
+EspoCRM has no GUI option to add a filtered list view to the left
+navigation. The supported pattern combines two parts:
+
+1. A **Report Filter** record (the EspoCRM "Advanced Pack" extension)
+   that holds the filter criteria. Report Filters are first-class
+   records reachable over REST at `/api/v1/ReportFilter`.
+2. Three **metadata files** on the server filesystem under
+   `custom/Espo/Custom/Resources/` that register a custom scope as a
+   navigable tab and bind it to the Report Filter:
+   - `scopes/<Scope>.json` — declares the scope as `tab: true`
+   - `clientDefs/<Scope>.json` — points the scope at an entity and
+     sets `defaultFilter: reportFilter<id>`
+   - `i18n/en_US/Global.json` — adds the scope's display label to
+     `scopeNames`
+
+Because EspoCRM's `/api/v1/Metadata` endpoint is GET-only, the three
+metadata files cannot be written over REST. CRM Builder generates them
+into a deploy bundle (see "Deploy artifact" below) and the operator
+copies the bundle onto the server before running Admin → Rebuild and
+Admin → User Interface → Tab List → Add.
+
+#### YAML form
+
+```yaml
+entities:
+
+  Engagement:
+    description: >
+      An Engagement represents an active mentoring relationship.
+    filteredTabs:
+
+      - id: my-open
+        scope: MyOpenEngagements
+        label: "My Open Engagements"
+        navOrder: 4
+        acl: boolean
+        filter:
+          all:
+            - { field: status,         op: equals, value: "Open" }
+            - { field: assignedUserId, op: equals, value: "$user" }
+
+      - id: stalled
+        scope: StalledEngagements
+        label: "Stalled Engagements"
+        filter:
+          all:
+            - { field: status,         op: equals,    value: "Open" }
+            - { field: lastActivityAt, op: lessThan,  value: "-30d" }
+    fields:
+      - ...
+```
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `id` | string | yes | Stable identifier for drift detection. Unique within the entity |
+| `scope` | string | yes | PascalCase scope name (max 60 chars, ASCII letters and digits only). Becomes the filename for `scopes/<scope>.json` and `clientDefs/<scope>.json`. **Must be unique across the entire program file**, since EspoCRM scope names occupy a single global namespace |
+| `label` | string | yes | Human-readable label that appears in the left nav and the Tab List configuration screen. Becomes the value in `i18n.scopeNames` |
+| `filter` | filter | yes | Condition expression (see Section 11). Applied verbatim to the Report Filter's `data.where` |
+| `navOrder` | integer | no | Optional ordinal position for the Tab List. Lower numbers sort earlier. When omitted, the operator decides position at install |
+| `acl` | string | no | ACL strategy for the scope. One of `boolean`, `team`, `strict`. Default: `boolean` |
+
+**Filter forms.** Identical to saved views and workflows: shorthand
+list (implicit AND across leaf clauses) or structured `all:` / `any:`
+blocks. See Section 11.
+
+**The `$user` sentinel.** A leaf clause of the form
+`{ field: <X>, op: equals, value: "$user" }` is translated to EspoCRM's
+built-in `currentUser` where-type, so the resulting filter resolves to
+the viewing user at request time rather than to a fixed user id baked
+in at deploy time. `notEquals` is similarly translated. This is the
+mechanism behind "My …" tabs (see `MyOpenEngagements` above).
+
+**Relative-date tokens.** The relative-date vocabulary from Section 11
+(`today`, `yesterday`, `+Nd`, `-Nd`, etc.) is resolved to absolute
+`YYYY-MM-DD` strings at deploy time before being written to the Report
+Filter. The Report Filter does *not* re-resolve these dates over time;
+re-running the configuration step will refresh them. Where a sliding
+window is required, prefer EspoCRM's built-in date where-types via a
+manually-authored Report Filter rather than this declarative path.
+
+#### Deploy artifact
+
+Each Run that processes any `filteredTabs:` writes a bundle to:
+
+```
+{project_folder}/reports/filtered_tabs/{run_ts}/
+├── README.txt              # operator install steps
+├── manifest.json           # machine-readable index of every tab
+├── scopes/<Scope>.json
+├── clientDefs/<Scope>.json
+└── i18n/en_US/Global.json  # consolidated scopeNames map for the run
+```
+
+The bundle's directory layout mirrors `custom/Espo/Custom/Resources/`
+so the operator can `scp -r` its contents onto the server and trigger
+`Admin → Rebuild` plus `Admin → User Interface → Tab List → Add`. The
+bundle is always emitted, even when the Report Filter step failed or
+was skipped (Advanced Pack absent), so the operator has a complete
+artifact to inspect or hand-edit.
+
+#### Run-time behavior
+
+For each tab, the configuration step performs:
+
+1. **CHECK** — `GET /api/v1/ReportFilter?where[entityType]=<entity>`.
+   - HTTP 404 ⇒ Advanced Pack is not installed; the tab is recorded
+     with status `not_supported`. The bundle is still written, with
+     `defaultFilter` set to the placeholder
+     `REPLACE_WITH_reportFilter<id>` for the operator to fill in once
+     the filter is created manually.
+   - HTTP 200 with a list entry whose `name` matches the YAML
+     `label` ⇒ the tab is recorded as `skipped` and the existing id
+     is reused in the bundle.
+2. **CREATE** — `POST /api/v1/ReportFilter` with the entity name, the
+   YAML `label` as the filter name, and `data.where` rendered from the
+   condition AST. The returned id is captured and used to populate
+   `defaultFilter: reportFilter<id>` in the clientDef bundle file.
+3. **BUNDLE** — append the scope/clientDef files for this tab and
+   merge the label into the per-run `Global.json`.
+
+After all tabs are processed, the run worker emits a
+`MANUAL CONFIGURATION REQUIRED` block listing every tab's bundle path
+and the rebuild + Tab List steps the operator must perform. This
+appears even on the success path because the metadata files cannot be
+applied via REST.
+
+#### Cross-references
+
+- `filter:` uses the Section 11 condition expression and the same
+  relative-date vocabulary as saved views.
+- A saved view (Section 5.6) and a filtered tab can both surface the
+  same logical filter — saved views are appropriate when the user
+  should pick from a dropdown inside an existing list view; filtered
+  tabs are appropriate when the filter deserves its own top-level
+  navigation entry.
 
 ---
 
@@ -1538,6 +1690,19 @@ rules apply to all program files:
   email address
 - `sendInternalNotification.to:` must be a literal email address or
   a string of the form `role:<role-id>` or `user:<user-id>`
+
+**Filtered-tab-level:**
+- Each `filteredTabs:` entry must have a unique `id` within its entity
+- `scope`, `label`, and `filter` are required
+- `scope:` must match the regex `^[A-Z][A-Za-z0-9]{0,59}$` (PascalCase,
+  starts uppercase, ASCII letters and digits only, max 60 characters)
+- `scope:` must be unique across the entire program file (EspoCRM scope
+  names occupy a single global namespace)
+- `filter:` must be a valid condition expression (Section 11); every
+  field reference must resolve against the parent entity
+- `acl:`, when present, must be one of `boolean`, `team`, `strict`
+  (default `boolean`)
+- `navOrder:`, when present, must be a non-negative integer
 
 **Field-level:**
 - `name`, `type`, and `label` are required on every field
