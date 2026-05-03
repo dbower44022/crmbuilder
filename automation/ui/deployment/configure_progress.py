@@ -289,6 +289,11 @@ class ConfigureProgressDialog(QDialog):
         list of failed steps as the tooltip. The run still counts as
         completed (worker emitted ``finished_ok``); only the visual outcome
         differs.
+
+        If any saved-view, duplicate-check, or workflow result has a
+        ``NOT_SUPPORTED`` status, append a manual-config advisory to the
+        tooltip regardless of the overall outcome — these items succeed
+        as far as the run is concerned but require operator action.
         """
         self._worker = None
 
@@ -319,9 +324,43 @@ class ConfigureProgressDialog(QDialog):
                 and sr.error
             ) or None
 
+        not_supported_count = self._count_not_supported(report)
+        if not_supported_count > 0:
+            advisory = (
+                f"Manual configuration required for {not_supported_count} "
+                f"item(s) — see run log"
+            )
+            tooltip = f"{tooltip}\n{advisory}" if tooltip else advisory
+
         self._append_log(outcome_text, outcome_level)
         self._record_run(outcome, error_message=error_message, tooltip=tooltip)
         self._run_next()
+
+    @staticmethod
+    def _count_not_supported(report) -> int:
+        """Count NOT_SUPPORTED results across the three affected blocks.
+
+        :param report: The RunReport from a completed worker.
+        :returns: Total count of saved-view, duplicate-check, and
+            workflow results whose status is NOT_SUPPORTED.
+        """
+        from espo_impl.core.models import (
+            DuplicateCheckStatus,
+            SavedViewStatus,
+            WorkflowStatus,
+        )
+
+        count = 0
+        for r in getattr(report, "saved_view_results", None) or []:
+            if r.status == SavedViewStatus.NOT_SUPPORTED:
+                count += 1
+        for r in getattr(report, "duplicate_check_results", None) or []:
+            if r.status == DuplicateCheckStatus.NOT_SUPPORTED:
+                count += 1
+        for r in getattr(report, "workflow_results", None) or []:
+            if r.status == WorkflowStatus.NOT_SUPPORTED:
+                count += 1
+        return count
 
     def _on_worker_error(self, error: str) -> None:
         """Handle failure of one file."""

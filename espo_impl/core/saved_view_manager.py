@@ -26,11 +26,17 @@ class SavedViewManagerError(Exception):
 
 
 class SavedViewManager:
-    """Orchestrates saved-view CHECK->ACT operations.
+    """Orchestrates saved-view recognition and reporting.
 
-    Reads current list-view configuration from the CRM's clientDefs
-    metadata and applies any differences declared in the YAML
-    ``savedViews:`` block.
+    Saved views (clientDefs.{Entity}.savedViews) cannot be written via
+    EspoCRM's REST API — ``/api/v1/Metadata`` exposes GET only. This
+    manager recognizes YAML-declared saved views, emits a NOT SUPPORTED
+    line for each, and returns ``NOT_SUPPORTED`` results so the run
+    worker can surface them in its MANUAL CONFIGURATION REQUIRED block.
+
+    The legacy CHECK/WRITE private helpers below are retained as dead
+    code so a future REST-capable or file-based reimplementation can
+    resurrect them with a smaller diff.
 
     :param client: EspoCRM admin API client.
     :param output_fn: Callback for emitting output messages (message, color).
@@ -47,11 +53,23 @@ class SavedViewManager:
     def process_saved_views(
         self, program: ProgramFile
     ) -> list[SavedViewResult]:
-        """Apply saved views for all entities in the program.
+        """Acknowledge saved views from the YAML; do not attempt API writes.
+
+        EspoCRM has no public REST API for clientDefs metadata writes
+        (``/api/v1/Metadata`` accepts GET only — there is no PUT, POST,
+        or PATCH route). Saved views must be configured manually via
+        the EspoCRM admin UI or by editing
+        ``custom/Espo/Custom/Resources/metadata/clientDefs/{Entity}.json``
+        on disk and rebuilding the cache.
+
+        This method iterates every saved view declared in the YAML,
+        emits a NOT SUPPORTED line per item, and returns results all
+        marked ``SavedViewStatus.NOT_SUPPORTED``. The MANUAL
+        CONFIGURATION REQUIRED block at the end of the run aggregates
+        these for operator action.
 
         :param program: Parsed and validated program file.
-        :returns: List of per-view results.
-        :raises SavedViewManagerError: On authentication failure.
+        :returns: List of per-view results, each with status NOT_SUPPORTED.
         """
         results: list[SavedViewResult] = []
 
@@ -61,14 +79,26 @@ class SavedViewManager:
             if not entity_def.saved_views:
                 continue
 
-            entity_results = self._process_entity_views(entity_def)
-            results.extend(entity_results)
+            for view in entity_def.saved_views:
+                self.output_fn(
+                    f"[NOT SUPPORTED] {entity_def.name}.savedViews"
+                    f"[{view.id}] — manual config required",
+                    "yellow",
+                )
+                results.append(
+                    SavedViewResult(
+                        entity=entity_def.name,
+                        view_id=view.id,
+                        status=SavedViewStatus.NOT_SUPPORTED,
+                    )
+                )
 
         return results
 
     def _process_entity_views(
         self, entity_def: EntityDefinition
     ) -> list[SavedViewResult]:
+        # TODO(error-handling-D): restore when REST-capable reimplementation lands
         """CHECK->ACT for all saved views on one entity.
 
         :param entity_def: Entity definition with saved views.
@@ -161,6 +191,7 @@ class SavedViewManager:
         view: SavedView,
         existing_views: list[dict],
     ) -> SavedViewResult:
+        # TODO(error-handling-D): restore when REST-capable reimplementation lands
         """Compare a single saved view against existing CRM state.
 
         :param entity_name: Natural entity name.
@@ -218,6 +249,7 @@ class SavedViewManager:
         existing_views: list[dict],
         desired_ids: set[str],
     ) -> bool:
+        # TODO(error-handling-D): restore when REST-capable reimplementation lands
         """Write the full set of saved views to CRM metadata.
 
         Preserves existing views that are not in the YAML (drift views
@@ -272,6 +304,7 @@ class SavedViewManager:
 
     @staticmethod
     def _extract_existing_views(client_defs: dict) -> list[dict]:
+        # TODO(error-handling-D): restore when REST-capable reimplementation lands
         """Extract saved views from clientDefs metadata.
 
         :param client_defs: clientDefs dict from the API.
@@ -284,6 +317,7 @@ class SavedViewManager:
 
     @staticmethod
     def _view_to_dict(view: SavedView) -> dict:
+        # TODO(error-handling-D): restore when REST-capable reimplementation lands
         """Convert a SavedView model to a metadata dict.
 
         :param view: SavedView instance.
@@ -309,6 +343,7 @@ class SavedViewManager:
 
     @staticmethod
     def _views_match(desired: dict, existing: dict) -> bool:
+        # TODO(error-handling-D): restore when REST-capable reimplementation lands
         """Compare a desired view dict against an existing one.
 
         :param desired: View dict from YAML.

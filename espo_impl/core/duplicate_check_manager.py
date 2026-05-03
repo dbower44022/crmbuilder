@@ -25,11 +25,19 @@ class DuplicateCheckManagerError(Exception):
 
 
 class DuplicateCheckManager:
-    """Orchestrates duplicate-check rule CHECK->ACT operations.
+    """Orchestrates duplicate-check rule recognition and reporting.
 
-    Reads current duplicate-check configuration from the CRM's
-    clientDefs metadata and applies any differences declared in the
-    YAML ``duplicateChecks:`` block.
+    Duplicate-check rules cannot be written via the metadata write path
+    used here — ``/api/v1/Metadata`` exposes GET only, and the proper
+    EspoCRM mechanism (the EntityManager endpoint) requires a different
+    code path. This manager recognizes YAML-declared rules, emits a
+    NOT SUPPORTED line for each, and returns ``NOT_SUPPORTED`` results
+    so the run worker can surface them in its MANUAL CONFIGURATION
+    REQUIRED block.
+
+    The legacy CHECK/WRITE private helpers below are retained as dead
+    code so a future reimplementation against EntityManager (or another
+    working backend) can resurrect them with a smaller diff.
 
     :param client: EspoCRM admin API client.
     :param output_fn: Callback for emitting output messages (message, color).
@@ -46,11 +54,21 @@ class DuplicateCheckManager:
     def process_duplicate_checks(
         self, program: ProgramFile
     ) -> list[DuplicateCheckResult]:
-        """Apply duplicate-check rules for all entities in the program.
+        """Acknowledge duplicate checks from the YAML; do not attempt API writes.
+
+        EspoCRM has no public REST API for clientDefs metadata writes
+        and the existing EntityManager-based path is not implemented
+        here. Duplicate-check rules must be configured manually via the
+        EspoCRM admin UI.
+
+        This method iterates every duplicate-check rule declared in the
+        YAML, emits a NOT SUPPORTED line per item, and returns results
+        all marked ``DuplicateCheckStatus.NOT_SUPPORTED``. The MANUAL
+        CONFIGURATION REQUIRED block at the end of the run aggregates
+        these for operator action.
 
         :param program: Parsed and validated program file.
-        :returns: List of per-rule results.
-        :raises DuplicateCheckManagerError: On authentication failure.
+        :returns: List of per-rule results, each with status NOT_SUPPORTED.
         """
         results: list[DuplicateCheckResult] = []
 
@@ -60,14 +78,26 @@ class DuplicateCheckManager:
             if not entity_def.duplicate_checks:
                 continue
 
-            entity_results = self._process_entity_checks(entity_def)
-            results.extend(entity_results)
+            for rule in entity_def.duplicate_checks:
+                self.output_fn(
+                    f"[NOT SUPPORTED] {entity_def.name}.duplicateChecks"
+                    f"[{rule.id}] — manual config required",
+                    "yellow",
+                )
+                results.append(
+                    DuplicateCheckResult(
+                        entity=entity_def.name,
+                        rule_id=rule.id,
+                        status=DuplicateCheckStatus.NOT_SUPPORTED,
+                    )
+                )
 
         return results
 
     def _process_entity_checks(
         self, entity_def: EntityDefinition
     ) -> list[DuplicateCheckResult]:
+        # TODO(error-handling-D): restore when REST-capable reimplementation lands
         """CHECK->ACT for all duplicate-check rules on one entity.
 
         :param entity_def: Entity definition with duplicate checks.
@@ -161,6 +191,7 @@ class DuplicateCheckManager:
         rule: DuplicateCheck,
         existing_rules: list[dict],
     ) -> DuplicateCheckResult:
+        # TODO(error-handling-D): restore when REST-capable reimplementation lands
         """Compare a single rule against existing CRM state.
 
         :param entity_name: Natural entity name.
@@ -218,6 +249,7 @@ class DuplicateCheckManager:
         existing_rules: list[dict],
         desired_ids: set[str],
     ) -> bool:
+        # TODO(error-handling-D): restore when REST-capable reimplementation lands
         """Write the full set of duplicate-check rules to CRM metadata.
 
         Preserves existing rules that are not in the YAML (drift rules
@@ -282,6 +314,7 @@ class DuplicateCheckManager:
 
     @staticmethod
     def _extract_existing_rules(client_defs: dict) -> list[dict]:
+        # TODO(error-handling-D): restore when REST-capable reimplementation lands
         """Extract duplicate-check rules from clientDefs metadata.
 
         :param client_defs: clientDefs dict from the API.
@@ -297,6 +330,7 @@ class DuplicateCheckManager:
 
     @staticmethod
     def _rule_to_dict(rule: DuplicateCheck) -> dict:
+        # TODO(error-handling-D): restore when REST-capable reimplementation lands
         """Convert a DuplicateCheck model to a metadata dict.
 
         :param rule: DuplicateCheck instance.
@@ -319,6 +353,7 @@ class DuplicateCheckManager:
 
     @staticmethod
     def _rules_match(desired: dict, existing: dict) -> bool:
+        # TODO(error-handling-D): restore when REST-capable reimplementation lands
         """Compare a desired rule dict against an existing one.
 
         :param desired: Rule dict from YAML.
@@ -336,6 +371,7 @@ class DuplicateCheckManager:
 
     @staticmethod
     def _build_where_clauses(rules: list[dict]) -> list[dict]:
+        # TODO(error-handling-D): restore when REST-capable reimplementation lands
         """Build EspoCRM duplicateWhereClause entries from rules.
 
         Each rule produces a where-clause entry that EspoCRM uses for

@@ -1,4 +1,4 @@
-"""Tests for saved-view parsing, validation, and CHECK->ACT manager."""
+"""Tests for saved-view parsing, validation, and short-circuit manager."""
 
 from textwrap import dedent
 from unittest.mock import MagicMock
@@ -7,10 +7,7 @@ import pytest
 
 from espo_impl.core.config_loader import ConfigLoader
 from espo_impl.core.models import SavedViewStatus
-from espo_impl.core.saved_view_manager import (
-    SavedViewManager,
-    SavedViewManagerError,
-)
+from espo_impl.core.saved_view_manager import SavedViewManager
 
 
 @pytest.fixture
@@ -418,7 +415,7 @@ def test_validate_valid_saved_views(loader, tmp_path):
     assert sv_errors == []
 
 
-# ─── Manager CHECK->ACT Tests ───────────────────────────────────
+# ─── Manager NOT_SUPPORTED Short-Circuit Tests (Prompt D) ──────
 
 
 def _make_program(saved_views_data):
@@ -472,216 +469,99 @@ def _make_program(saved_views_data):
     )
 
 
-def _mock_client(client_defs_response=None):
-    """Create a mock API client."""
-    client = MagicMock()
-    if client_defs_response is None:
-        client.get_client_defs.return_value = (200, {})
-    else:
-        client.get_client_defs.return_value = (200, client_defs_response)
-    client.put_metadata.return_value = (200, {})
-    return client
-
-
-def test_manager_create_new_views():
-    """Views absent on CRM are created."""
-    program = _make_program([{
-        "id": "active",
-        "name": "Active",
-        "filter": [{"field": "status", "op": "equals", "value": "Active"}],
-    }])
-    client = _mock_client()
-    output = []
-    mgr = SavedViewManager(client, lambda msg, color: output.append(msg))
-    results = mgr.process_saved_views(program)
-
-    assert len(results) == 1
-    assert results[0].status == SavedViewStatus.CREATED
-    assert results[0].view_id == "active"
-    assert client.put_metadata.called
-
-
-def test_manager_skip_matching_views():
-    """Views matching CRM state are skipped."""
-    from espo_impl.core.condition_expression import parse_condition, render_condition
-
-    filter_raw = [{"field": "status", "op": "equals", "value": "Active"}]
-    rendered = render_condition(parse_condition(filter_raw))
-
-    existing = {
-        "savedViews": [{
-            "id": "active",
-            "name": "Active",
-            "filter": rendered,
-        }],
-    }
-    program = _make_program([{
-        "id": "active",
-        "name": "Active",
-        "filter": filter_raw,
-    }])
-    client = _mock_client(existing)
-    output = []
-    mgr = SavedViewManager(client, lambda msg, color: output.append(msg))
-    results = mgr.process_saved_views(program)
-
-    assert len(results) == 1
-    assert results[0].status == SavedViewStatus.SKIPPED
-    assert not client.put_metadata.called
-
-
-def test_manager_update_differing_views():
-    """Views differing from CRM state are updated."""
-    existing = {
-        "savedViews": [{
-            "id": "active",
-            "name": "Old Name",
-            "filter": {"all": [{"field": "status", "op": "equals", "value": "Active"}]},
-        }],
-    }
-    program = _make_program([{
-        "id": "active",
-        "name": "New Name",
-        "filter": [{"field": "status", "op": "equals", "value": "Active"}],
-    }])
-    client = _mock_client(existing)
-    output = []
-    mgr = SavedViewManager(client, lambda msg, color: output.append(msg))
-    results = mgr.process_saved_views(program)
-
-    assert len(results) == 1
-    assert results[0].status == SavedViewStatus.UPDATED
-    assert client.put_metadata.called
-
-
-def test_manager_drift_detection():
-    """Views on CRM not in YAML are flagged as drift."""
-    existing = {
-        "savedViews": [
-            {"id": "active", "name": "Active",
-             "filter": {"all": [{"field": "status", "op": "equals", "value": "Active"}]}},
-            {"id": "orphan", "name": "Orphan View",
-             "filter": {"all": [{"field": "status", "op": "equals", "value": "X"}]}},
-        ],
-    }
-    program = _make_program([{
-        "id": "active",
-        "name": "Active",
-        "filter": [{"field": "status", "op": "equals", "value": "Active"}],
-    }])
-    client = _mock_client(existing)
-    output = []
-    mgr = SavedViewManager(client, lambda msg, color: output.append(msg))
-    results = mgr.process_saved_views(program)
-
-    statuses = {r.view_id: r.status for r in results}
-    assert statuses.get("orphan") == SavedViewStatus.DRIFT
-    assert any("DRIFT" in msg for msg in output)
-
-
-def test_manager_auth_failure():
-    """401 from API raises SavedViewManagerError."""
-    program = _make_program([{
-        "id": "active",
-        "name": "Active",
-        "filter": [{"field": "status", "op": "equals", "value": "Active"}],
-    }])
-    client = MagicMock()
-    client.get_client_defs.return_value = (401, None)
-    mgr = SavedViewManager(client, lambda msg, color: None)
-
-    with pytest.raises(SavedViewManagerError, match="401"):
-        mgr.process_saved_views(program)
-
-
-def test_manager_connection_error():
-    """Connection error results in ERROR status for all views."""
-    program = _make_program([{
-        "id": "active",
-        "name": "Active",
-        "filter": [{"field": "status", "op": "equals", "value": "Active"}],
-    }])
-    client = MagicMock()
-    client.get_client_defs.return_value = (-1, None)
-    output = []
-    mgr = SavedViewManager(client, lambda msg, color: output.append(msg))
-    results = mgr.process_saved_views(program)
-
-    assert len(results) == 1
-    assert results[0].status == SavedViewStatus.ERROR
-
-
-def test_manager_write_failure_marks_error():
-    """Failed metadata write marks created/updated views as errors."""
-    program = _make_program([{
-        "id": "active",
-        "name": "Active",
-        "filter": [{"field": "status", "op": "equals", "value": "Active"}],
-    }])
-    client = _mock_client()
-    client.put_metadata.return_value = (500, None)
-    output = []
-    mgr = SavedViewManager(client, lambda msg, color: output.append(msg))
-    results = mgr.process_saved_views(program)
-
-    assert results[0].status == SavedViewStatus.ERROR
-    assert results[0].error == "Failed to write metadata"
-
-
-def test_manager_non_json_write_failure_surfaces_raw_text():
-    """A parse-failed sentinel from put_metadata surfaces raw text in output."""
-    program = _make_program([{
-        "id": "active",
-        "name": "Active",
-        "filter": [{"field": "status", "op": "equals", "value": "Active"}],
-    }])
-    client = _mock_client()
-    client.put_metadata.return_value = (
-        500,
+def test_manager_short_circuits_without_api_calls():
+    """process_saved_views must not call any API method."""
+    program = _make_program([
         {
-            "_parse_failed": True,
-            "_raw_text": "<html>nginx 500 server error</html>",
-            "_status_code": 500,
+            "id": "active",
+            "name": "Active",
+            "filter": [{"field": "status", "op": "equals", "value": "Active"}],
         },
+        {
+            "id": "inactive",
+            "name": "Inactive",
+            "filter": [{"field": "status", "op": "equals", "value": "Inactive"}],
+        },
+    ])
+    client = MagicMock()
+    output = []
+    mgr = SavedViewManager(client, lambda msg, color: output.append((msg, color)))
+    results = mgr.process_saved_views(program)
+
+    assert len(results) == 2
+    assert all(r.status == SavedViewStatus.NOT_SUPPORTED for r in results)
+    client.put_metadata.assert_not_called()
+    client.get_client_defs.assert_not_called()
+
+
+def test_manager_emits_not_supported_lines():
+    """Each saved view emits a yellow [NOT SUPPORTED] line in expected format."""
+    program = _make_program([{
+        "id": "active",
+        "name": "Active",
+        "filter": [{"field": "status", "op": "equals", "value": "Active"}],
+    }])
+    client = MagicMock()
+    output: list[tuple[str, str]] = []
+    mgr = SavedViewManager(client, lambda msg, color: output.append((msg, color)))
+    mgr.process_saved_views(program)
+
+    assert any(
+        "[NOT SUPPORTED]" in msg
+        and "Contact.savedViews[active]" in msg
+        and "manual config required" in msg
+        and "—" in msg
+        for msg, _ in output
     )
+    assert all(color == "yellow" for _, color in output)
+
+
+def test_manager_skips_delete_entities():
+    """Saved views on entities marked DELETE are not surfaced."""
+    from espo_impl.core.models import (
+        EntityAction,
+        EntityDefinition,
+        FieldDefinition,
+        ProgramFile,
+        SavedView,
+    )
+
+    entity = EntityDefinition(
+        name="OldEntity",
+        fields=[FieldDefinition(name="x", type="varchar", label="X")],
+        action=EntityAction.DELETE,
+        saved_views=[SavedView(id="v1", name="V1")],
+    )
+    program = ProgramFile(
+        version="1.1", description="Test", entities=[entity],
+    )
+    client = MagicMock()
     output = []
     mgr = SavedViewManager(client, lambda msg, color: output.append(msg))
     results = mgr.process_saved_views(program)
 
-    assert results[0].status == SavedViewStatus.ERROR
-    assert any("non-JSON response" in msg for msg in output)
-    assert any("nginx 500 server error" in msg for msg in output)
+    assert results == []
+    client.put_metadata.assert_not_called()
 
 
-def test_manager_idempotency():
-    """Running twice with identical state produces skip on second run."""
-    from espo_impl.core.condition_expression import parse_condition, render_condition
+def test_manager_no_views_returns_empty():
+    """An entity with no saved views produces no results."""
+    from espo_impl.core.models import (
+        EntityDefinition,
+        FieldDefinition,
+        ProgramFile,
+    )
 
-    filter_raw = [{"field": "status", "op": "equals", "value": "Active"}]
-    rendered = render_condition(parse_condition(filter_raw))
-
-    # Simulate CRM state matching desired
-    existing = {
-        "savedViews": [{
-            "id": "active",
-            "name": "Active",
-            "filter": rendered,
-        }],
-    }
-    program = _make_program([{
-        "id": "active",
-        "name": "Active",
-        "filter": filter_raw,
-    }])
-
-    # First run
-    client = _mock_client(existing)
+    entity = EntityDefinition(
+        name="Contact",
+        fields=[FieldDefinition(name="email", type="varchar", label="Email")],
+    )
+    program = ProgramFile(
+        version="1.1", description="Test", entities=[entity],
+    )
+    client = MagicMock()
     mgr = SavedViewManager(client, lambda msg, color: None)
-    results1 = mgr.process_saved_views(program)
-    assert results1[0].status == SavedViewStatus.SKIPPED
+    results = mgr.process_saved_views(program)
 
-    # Second run (same state)
-    client2 = _mock_client(existing)
-    mgr2 = SavedViewManager(client2, lambda msg, color: None)
-    results2 = mgr2.process_saved_views(program)
-    assert results2[0].status == SavedViewStatus.SKIPPED
+    assert results == []
+    client.put_metadata.assert_not_called()

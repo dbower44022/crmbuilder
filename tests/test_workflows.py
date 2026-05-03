@@ -1,4 +1,4 @@
-"""Tests for workflow parsing, validation, and manager CHECK->ACT."""
+"""Tests for workflow parsing, validation, and short-circuit manager."""
 
 from textwrap import dedent
 from unittest.mock import MagicMock
@@ -7,6 +7,7 @@ import pytest
 
 from espo_impl.core.config_loader import ConfigLoader
 from espo_impl.core.models import (
+    EntityAction,
     EntityDefinition,
     FieldDefinition,
     ProgramFile,
@@ -15,10 +16,7 @@ from espo_impl.core.models import (
     WorkflowStatus,
     WorkflowTrigger,
 )
-from espo_impl.core.workflow_manager import (
-    WorkflowManager,
-    WorkflowManagerError,
-)
+from espo_impl.core.workflow_manager import WorkflowManager
 
 
 @pytest.fixture
@@ -689,11 +687,11 @@ class TestWorkflowValidProgram:
 
 
 # ===================================================================
-# Manager CHECK->ACT tests
+# Manager NOT_SUPPORTED Short-Circuit Tests (Prompt D)
 # ===================================================================
 
 class TestWorkflowManager:
-    """Test WorkflowManager CHECK->ACT operations."""
+    """Test the short-circuit WorkflowManager behavior."""
 
     def _make_program(self, workflows):
         """Build a ProgramFile with Contact entity and workflows."""
@@ -711,240 +709,97 @@ class TestWorkflowManager:
             entities=[entity],
         )
 
-    def test_create_new_workflow(self):
-        """New workflow should be created when not on CRM."""
-        wf = Workflow(
-            id="wf-1",
-            name="Test Workflow",
-            trigger=WorkflowTrigger(event="onCreate"),
-            actions=[
-                WorkflowAction(type="setField", field="status", value="Active"),
-            ],
-        )
-        program = self._make_program([wf])
-
+    def test_short_circuits_without_api_calls(self):
+        """process_workflows must not call any API method."""
+        workflows = [
+            Workflow(
+                id="wf-1",
+                name="Workflow One",
+                trigger=WorkflowTrigger(event="onCreate"),
+                actions=[
+                    WorkflowAction(type="setField", field="status", value="Active"),
+                ],
+            ),
+            Workflow(
+                id="wf-2",
+                name="Workflow Two",
+                trigger=WorkflowTrigger(event="onUpdate"),
+                actions=[
+                    WorkflowAction(type="clearField", field="status"),
+                ],
+            ),
+        ]
+        program = self._make_program(workflows)
         client = MagicMock()
-        client.get_client_defs.return_value = (200, {})
-        client.put_metadata.return_value = (200, {})
-
-        output = []
-        mgr = WorkflowManager(client, lambda msg, color: output.append(msg))
-        results = mgr.process_workflows(program)
-
-        assert len(results) == 1
-        assert results[0].status == WorkflowStatus.CREATED
-        client.put_metadata.assert_called_once()
-
-    def test_skip_matching_workflow(self):
-        """Matching workflow should be skipped."""
-        wf = Workflow(
-            id="wf-1",
-            name="Test Workflow",
-            trigger=WorkflowTrigger(event="onCreate"),
-            actions=[
-                WorkflowAction(type="setField", field="status", value="Active"),
-            ],
+        output: list[tuple[str, str]] = []
+        mgr = WorkflowManager(
+            client, lambda msg, color: output.append((msg, color))
         )
-        program = self._make_program([wf])
-
-        existing = {
-            "workflows": [
-                {
-                    "id": "wf-1",
-                    "name": "Test Workflow",
-                    "trigger": {"event": "onCreate"},
-                    "actions": [
-                        {"type": "setField", "field": "status", "value": "Active"},
-                    ],
-                }
-            ]
-        }
-
-        client = MagicMock()
-        client.get_client_defs.return_value = (200, existing)
-
-        output = []
-        mgr = WorkflowManager(client, lambda msg, color: output.append(msg))
-        results = mgr.process_workflows(program)
-
-        assert len(results) == 1
-        assert results[0].status == WorkflowStatus.SKIPPED
-        client.put_metadata.assert_not_called()
-
-    def test_update_differing_workflow(self):
-        """Differing workflow should be updated."""
-        wf = Workflow(
-            id="wf-1",
-            name="Updated Workflow",
-            trigger=WorkflowTrigger(event="onCreate"),
-            actions=[
-                WorkflowAction(type="setField", field="status", value="Active"),
-            ],
-        )
-        program = self._make_program([wf])
-
-        existing = {
-            "workflows": [
-                {
-                    "id": "wf-1",
-                    "name": "Old Workflow",
-                    "trigger": {"event": "onCreate"},
-                    "actions": [
-                        {"type": "setField", "field": "status", "value": "Pending"},
-                    ],
-                }
-            ]
-        }
-
-        client = MagicMock()
-        client.get_client_defs.return_value = (200, existing)
-        client.put_metadata.return_value = (200, {})
-
-        output = []
-        mgr = WorkflowManager(client, lambda msg, color: output.append(msg))
-        results = mgr.process_workflows(program)
-
-        assert len(results) == 1
-        assert results[0].status == WorkflowStatus.UPDATED
-        client.put_metadata.assert_called_once()
-
-    def test_drift_detection(self):
-        """CRM-side workflow not in YAML should be reported as drift."""
-        wf = Workflow(
-            id="wf-1",
-            name="Test",
-            trigger=WorkflowTrigger(event="onCreate"),
-            actions=[
-                WorkflowAction(type="setField", field="status", value="Active"),
-            ],
-        )
-        program = self._make_program([wf])
-
-        existing = {
-            "workflows": [
-                {
-                    "id": "wf-1",
-                    "name": "Test",
-                    "trigger": {"event": "onCreate"},
-                    "actions": [
-                        {"type": "setField", "field": "status", "value": "Active"},
-                    ],
-                },
-                {
-                    "id": "wf-orphan",
-                    "name": "Orphan",
-                    "trigger": {"event": "onDelete"},
-                    "actions": [],
-                },
-            ]
-        }
-
-        client = MagicMock()
-        client.get_client_defs.return_value = (200, existing)
-
-        output = []
-        mgr = WorkflowManager(client, lambda msg, color: output.append(msg))
         results = mgr.process_workflows(program)
 
         assert len(results) == 2
-        drift_results = [r for r in results if r.status == WorkflowStatus.DRIFT]
-        assert len(drift_results) == 1
-        assert drift_results[0].workflow_id == "wf-orphan"
+        assert all(r.status == WorkflowStatus.NOT_SUPPORTED for r in results)
+        client.put_metadata.assert_not_called()
+        client.get_client_defs.assert_not_called()
 
-    def test_auth_failure_raises(self):
-        """HTTP 401 should raise WorkflowManagerError."""
+    def test_emits_not_supported_lines(self):
+        """Each workflow emits a yellow [NOT SUPPORTED] line."""
         wf = Workflow(
             id="wf-1",
-            name="Test",
+            name="Test Workflow",
             trigger=WorkflowTrigger(event="onCreate"),
             actions=[
                 WorkflowAction(type="setField", field="status", value="Active"),
             ],
         )
         program = self._make_program([wf])
-
         client = MagicMock()
-        client.get_client_defs.return_value = (401, None)
-
-        output = []
-        mgr = WorkflowManager(client, lambda msg, color: output.append(msg))
-
-        with pytest.raises(WorkflowManagerError):
-            mgr.process_workflows(program)
-
-    def test_connection_error(self):
-        """Negative status code should produce ERROR results."""
-        wf = Workflow(
-            id="wf-1",
-            name="Test",
-            trigger=WorkflowTrigger(event="onCreate"),
-            actions=[
-                WorkflowAction(type="setField", field="status", value="Active"),
-            ],
+        output: list[tuple[str, str]] = []
+        mgr = WorkflowManager(
+            client, lambda msg, color: output.append((msg, color))
         )
-        program = self._make_program([wf])
-
-        client = MagicMock()
-        client.get_client_defs.return_value = (-1, None)
-
-        output = []
-        mgr = WorkflowManager(client, lambda msg, color: output.append(msg))
-        results = mgr.process_workflows(program)
-
-        assert len(results) == 1
-        assert results[0].status == WorkflowStatus.ERROR
-        assert results[0].error == "Connection error"
-
-    def test_write_failure_marks_error(self):
-        """Failed metadata write should mark created/updated as error."""
-        wf = Workflow(
-            id="wf-1",
-            name="Test",
-            trigger=WorkflowTrigger(event="onCreate"),
-            actions=[
-                WorkflowAction(type="setField", field="status", value="Active"),
-            ],
-        )
-        program = self._make_program([wf])
-
-        client = MagicMock()
-        client.get_client_defs.return_value = (200, {})
-        client.put_metadata.return_value = (500, None)
-
-        output = []
-        mgr = WorkflowManager(client, lambda msg, color: output.append(msg))
-        results = mgr.process_workflows(program)
-
-        assert len(results) == 1
-        assert results[0].status == WorkflowStatus.ERROR
-        assert results[0].error == "Failed to write metadata"
-
-    def test_non_json_write_failure_surfaces_raw_text(self):
-        """Parse-failed sentinel from put_metadata surfaces raw text."""
-        wf = Workflow(
-            id="wf-1",
-            name="Test",
-            trigger=WorkflowTrigger(event="onCreate"),
-            actions=[
-                WorkflowAction(type="setField", field="status", value="Active"),
-            ],
-        )
-        program = self._make_program([wf])
-
-        client = MagicMock()
-        client.get_client_defs.return_value = (200, {})
-        client.put_metadata.return_value = (
-            500,
-            {
-                "_parse_failed": True,
-                "_raw_text": "<html>upstream timeout</html>",
-                "_status_code": 500,
-            },
-        )
-
-        output = []
-        mgr = WorkflowManager(client, lambda msg, color: output.append(msg))
         mgr.process_workflows(program)
 
-        assert any("non-JSON response" in msg for msg in output)
-        assert any("upstream timeout" in msg for msg in output)
+        assert any(
+            "[NOT SUPPORTED]" in msg
+            and "Contact.workflows[wf-1]" in msg
+            and "manual config required" in msg
+            and "—" in msg
+            for msg, _ in output
+        )
+        assert all(color == "yellow" for _, color in output)
+
+    def test_skips_delete_entities(self):
+        """Workflows on entities marked DELETE produce no results."""
+        entity = EntityDefinition(
+            name="OldEntity",
+            fields=[],
+            action=EntityAction.DELETE,
+            workflows=[Workflow(
+                id="wf-x",
+                name="X",
+                trigger=WorkflowTrigger(event="onCreate"),
+                actions=[
+                    WorkflowAction(type="setField", field="status", value="Active"),
+                ],
+            )],
+        )
+        program = ProgramFile(
+            version="1.1", description="Test", entities=[entity],
+        )
+        client = MagicMock()
+        mgr = WorkflowManager(client, lambda msg, color: None)
+        results = mgr.process_workflows(program)
+
+        assert results == []
+        client.put_metadata.assert_not_called()
+
+    def test_no_workflows_returns_empty(self):
+        """An entity with no workflows produces no results."""
+        program = self._make_program([])
+        client = MagicMock()
+        mgr = WorkflowManager(client, lambda msg, color: None)
+        results = mgr.process_workflows(program)
+
+        assert results == []
+        client.put_metadata.assert_not_called()

@@ -11,6 +11,7 @@ from espo_impl.core.comparator import FieldComparator
 from espo_impl.core.field_manager import AuthenticationError, FieldManager
 from espo_impl.core.models import (
     DuplicateCheck,
+    DuplicateCheckStatus,
     EntityAction,
     EntityDefinition,
     EntityLayoutStatus,
@@ -25,6 +26,11 @@ from espo_impl.core.models import (
     SavedViewResult,
     SavedViewStatus,
     StepStatus,
+    Workflow,
+    WorkflowAction,
+    WorkflowResult,
+    WorkflowStatus,
+    WorkflowTrigger,
 )
 from espo_impl.core.saved_view_manager import SavedViewManagerError
 from espo_impl.workers.run_worker import (
@@ -1008,3 +1014,316 @@ def test_configure_progress_yellow_when_step_downgraded_via_failure_check():
     assert outcome == "partial"
     tooltip = dlg._file_tooltips["/tmp/downgrade.yaml"]
     assert "relationships" in tooltip
+
+
+# ───────────────────────────────────────────────────────────────────────
+# NOT_SUPPORTED short-circuit + manual-config block tests (Prompt D)
+# ───────────────────────────────────────────────────────────────────────
+
+
+def test_not_supported_saved_views_keep_step_ok():
+    """A saved-view step with all NOT_SUPPORTED results stays OK."""
+    program = make_program([
+        EntityDefinition(
+            name="Engagement",
+            action=EntityAction.NONE,
+            type="Base",
+            fields=[
+                FieldDefinition(name="testField", type="varchar", label="Test"),
+            ],
+            saved_views=[
+                SavedView(id="sv1", name="View One", columns=["testField"]),
+                SavedView(id="sv2", name="View Two", columns=["testField"]),
+            ],
+        ),
+    ])
+
+    _, _, report, error = run_worker_sync(
+        program, skip_deletes=True
+    )
+
+    assert error is None
+    assert report is not None
+    by_name = _step_results_by_name(report)
+    assert by_name["saved_views"] == StepStatus.OK
+    statuses = {r.view_id: r.status for r in report.saved_view_results}
+    assert statuses["sv1"] == SavedViewStatus.NOT_SUPPORTED
+    assert statuses["sv2"] == SavedViewStatus.NOT_SUPPORTED
+
+
+def test_not_supported_workflows_keep_step_ok():
+    """A workflow step with all NOT_SUPPORTED results stays OK."""
+    program = make_program([
+        EntityDefinition(
+            name="Engagement",
+            action=EntityAction.NONE,
+            type="Base",
+            fields=[
+                FieldDefinition(name="testField", type="varchar", label="Test"),
+            ],
+            workflows=[
+                Workflow(
+                    id="wf1",
+                    name="WF One",
+                    trigger=WorkflowTrigger(event="onCreate"),
+                    actions=[
+                        WorkflowAction(
+                            type="setField", field="testField", value="x"
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    ])
+
+    _, _, report, error = run_worker_sync(
+        program, skip_deletes=True
+    )
+
+    assert error is None
+    assert report is not None
+    by_name = _step_results_by_name(report)
+    assert by_name["workflows"] == StepStatus.OK
+    assert (
+        report.workflow_results[0].status == WorkflowStatus.NOT_SUPPORTED
+    )
+
+
+def test_not_supported_duplicate_checks_keep_step_ok():
+    """A duplicate-check step with all NOT_SUPPORTED results stays OK."""
+    program = make_program([
+        EntityDefinition(
+            name="Engagement",
+            action=EntityAction.NONE,
+            type="Base",
+            fields=[
+                FieldDefinition(name="testField", type="varchar", label="Test"),
+            ],
+            duplicate_checks=[
+                DuplicateCheck(
+                    id="dc1", fields=["testField"], onMatch="warn",
+                ),
+            ],
+        ),
+    ])
+
+    _, _, report, error = run_worker_sync(
+        program, skip_deletes=True
+    )
+
+    assert error is None
+    assert report is not None
+    by_name = _step_results_by_name(report)
+    assert by_name["duplicate_checks"] == StepStatus.OK
+    assert (
+        report.duplicate_check_results[0].status
+        == DuplicateCheckStatus.NOT_SUPPORTED
+    )
+
+
+def test_manual_config_block_emitted_when_not_supported_present():
+    """The MANUAL CONFIGURATION REQUIRED block is emitted when NOT_SUPPORTED items exist."""
+    program = make_program([
+        EntityDefinition(
+            name="Engagement",
+            action=EntityAction.NONE,
+            type="Base",
+            fields=[
+                FieldDefinition(name="testField", type="varchar", label="Test"),
+            ],
+            saved_views=[
+                SavedView(id="sv1", name="View", columns=["testField"]),
+            ],
+            workflows=[
+                Workflow(
+                    id="wf1",
+                    name="WF",
+                    trigger=WorkflowTrigger(event="onCreate"),
+                    actions=[
+                        WorkflowAction(
+                            type="setField", field="testField", value="x"
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    ])
+
+    _, output_log, report, error = run_worker_sync(
+        program, skip_deletes=True
+    )
+
+    assert error is None
+    assert report is not None
+    messages = [m for m, _ in output_log]
+    assert any("MANUAL CONFIGURATION REQUIRED" in m for m in messages)
+    # Saved view item appears under Saved views heading.
+    assert any(
+        "Engagement.savedViews[sv1]" in m for m in messages
+    )
+    # Workflow item appears under Workflows heading.
+    assert any(
+        "Engagement.workflows[wf1]" in m for m in messages
+    )
+    # Duplicate checks heading shows (none).
+    assert any("Saved views:" in m for m in messages)
+    assert any("Duplicate checks:" in m for m in messages)
+    assert any("Workflows:" in m for m in messages)
+
+
+def test_manual_config_block_suppressed_when_no_not_supported():
+    """No MANUAL CONFIGURATION block when no NOT_SUPPORTED items exist."""
+    program = make_program([
+        make_entity("Engagement", EntityAction.NONE, fields=[
+            FieldDefinition(name="testField", type="varchar", label="Test"),
+        ]),
+    ])
+
+    _, output_log, report, error = run_worker_sync(
+        program, skip_deletes=True
+    )
+
+    assert error is None
+    assert report is not None
+    messages = [m for m, _ in output_log]
+    assert not any("MANUAL CONFIGURATION REQUIRED" in m for m in messages)
+
+
+def test_manual_config_block_shows_none_for_empty_groups():
+    """Groups with no NOT_SUPPORTED items render '(none)'."""
+    program = make_program([
+        EntityDefinition(
+            name="Engagement",
+            action=EntityAction.NONE,
+            type="Base",
+            fields=[
+                FieldDefinition(name="testField", type="varchar", label="Test"),
+            ],
+            saved_views=[
+                SavedView(id="sv1", name="View", columns=["testField"]),
+            ],
+        ),
+    ])
+
+    _, output_log, report, error = run_worker_sync(
+        program, skip_deletes=True
+    )
+
+    assert error is None
+    messages = [m for m, _ in output_log]
+    # Block emits — and the empty Duplicate checks / Workflows groups
+    # render the literal "(none)" placeholder.
+    assert any("MANUAL CONFIGURATION REQUIRED" in m for m in messages)
+    assert any(m.strip() == "(none)" for m in messages)
+
+
+def test_configure_progress_tooltip_for_not_supported_only():
+    """A clean run with NOT_SUPPORTED items keeps green outcome but adds tooltip."""
+    from automation.ui.deployment.configure_progress import (
+        ConfigureProgressDialog,
+    )
+    from espo_impl.core.models import RunReport, StepResult
+
+    dlg = ConfigureProgressDialog.__new__(ConfigureProgressDialog)
+    dlg._worker = object()
+    dlg._file_results = {}
+    dlg._file_tooltips = {}
+    dlg._current_log_lines = []
+    dlg._current_started_at = "2026-05-02T00:00:00"
+    dlg._current_program = None
+    dlg._current_file_hash = None
+    dlg._conn = None
+    dlg._instance = None
+    file_info = MagicMock()
+    file_info.path = "/tmp/manualcfg.yaml"
+    file_info.name = "manualcfg.yaml"
+    dlg._current_file_info = file_info
+    dlg._append_log = lambda *args, **kwargs: None
+    dlg._run_next = lambda: None
+
+    report = RunReport(
+        timestamp="2026-05-02T00:00:00",
+        instance_name="Test",
+        espocrm_url="https://test.com",
+        program_file="manualcfg.yaml",
+        operation="run",
+        step_results=[
+            StepResult(step_name="saved_views", status=StepStatus.OK),
+            StepResult(step_name="fields", status=StepStatus.OK),
+        ],
+        saved_view_results=[
+            SavedViewResult(
+                entity="Engagement",
+                view_id="sv1",
+                status=SavedViewStatus.NOT_SUPPORTED,
+            ),
+            SavedViewResult(
+                entity="Engagement",
+                view_id="sv2",
+                status=SavedViewStatus.NOT_SUPPORTED,
+            ),
+        ],
+    )
+
+    dlg._on_worker_ok(report)
+
+    outcome, _ts = dlg._file_results["/tmp/manualcfg.yaml"]
+    assert outcome == "success"
+    tooltip = dlg._file_tooltips["/tmp/manualcfg.yaml"]
+    assert "Manual configuration required for 2 item(s)" in tooltip
+
+
+def test_configure_progress_tooltip_combines_failure_and_not_supported():
+    """A run with both failures and NOT_SUPPORTED items combines both in tooltip."""
+    from automation.ui.deployment.configure_progress import (
+        ConfigureProgressDialog,
+    )
+    from espo_impl.core.models import RunReport, StepResult
+
+    dlg = ConfigureProgressDialog.__new__(ConfigureProgressDialog)
+    dlg._worker = object()
+    dlg._file_results = {}
+    dlg._file_tooltips = {}
+    dlg._current_log_lines = []
+    dlg._current_started_at = "2026-05-02T00:00:00"
+    dlg._current_program = None
+    dlg._current_file_hash = None
+    dlg._conn = None
+    dlg._instance = None
+    file_info = MagicMock()
+    file_info.path = "/tmp/mixed.yaml"
+    file_info.name = "mixed.yaml"
+    dlg._current_file_info = file_info
+    dlg._append_log = lambda *args, **kwargs: None
+    dlg._run_next = lambda: None
+
+    report = RunReport(
+        timestamp="2026-05-02T00:00:00",
+        instance_name="Test",
+        espocrm_url="https://test.com",
+        program_file="mixed.yaml",
+        operation="run",
+        step_results=[
+            StepResult(
+                step_name="relationships",
+                status=StepStatus.FAILED,
+                error="3 of 3 relationship(s) failed",
+            ),
+            StepResult(step_name="fields", status=StepStatus.OK),
+        ],
+        workflow_results=[
+            WorkflowResult(
+                entity="Engagement",
+                workflow_id="wf1",
+                status=WorkflowStatus.NOT_SUPPORTED,
+            ),
+        ],
+    )
+
+    dlg._on_worker_ok(report)
+
+    outcome, _ts = dlg._file_results["/tmp/mixed.yaml"]
+    assert outcome == "partial"
+    tooltip = dlg._file_tooltips["/tmp/mixed.yaml"]
+    assert "relationships" in tooltip
+    assert "Manual configuration required for 1 item(s)" in tooltip

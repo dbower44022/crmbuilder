@@ -26,11 +26,18 @@ class WorkflowManagerError(Exception):
 
 
 class WorkflowManager:
-    """Orchestrates workflow CHECK->ACT operations.
+    """Orchestrates workflow recognition and reporting.
 
-    Reads current workflow configuration from the CRM's clientDefs
-    metadata and applies any differences declared in the YAML
-    ``workflows:`` block.
+    Workflows in EspoCRM are entity records exposed via
+    ``/api/v1/Workflow`` (and require the Advanced Pack extension), not
+    metadata writes. This manager recognizes YAML-declared workflows,
+    emits a NOT SUPPORTED line for each, and returns ``NOT_SUPPORTED``
+    results so the run worker can surface them in its MANUAL
+    CONFIGURATION REQUIRED block.
+
+    The legacy CHECK/WRITE private helpers below are retained as dead
+    code so a future Workflow-record-CRUD reimplementation can
+    resurrect them with a smaller diff.
 
     :param client: EspoCRM admin API client.
     :param output_fn: Callback for emitting output messages (message, color).
@@ -47,11 +54,21 @@ class WorkflowManager:
     def process_workflows(
         self, program: ProgramFile
     ) -> list[WorkflowResult]:
-        """Apply workflows for all entities in the program.
+        """Acknowledge workflows from the YAML; do not attempt API writes.
+
+        EspoCRM has no public REST API for clientDefs metadata writes,
+        and workflows are not metadata in the first place — they are
+        entity records that require the Advanced Pack extension.
+        Workflows must be configured manually via the EspoCRM admin UI.
+
+        This method iterates every workflow declared in the YAML, emits
+        a NOT SUPPORTED line per item, and returns results all marked
+        ``WorkflowStatus.NOT_SUPPORTED``. The MANUAL CONFIGURATION
+        REQUIRED block at the end of the run aggregates these for
+        operator action.
 
         :param program: Parsed and validated program file.
-        :returns: List of per-workflow results.
-        :raises WorkflowManagerError: On authentication failure.
+        :returns: List of per-workflow results, each with status NOT_SUPPORTED.
         """
         results: list[WorkflowResult] = []
 
@@ -61,14 +78,26 @@ class WorkflowManager:
             if not entity_def.workflows:
                 continue
 
-            entity_results = self._process_entity_workflows(entity_def)
-            results.extend(entity_results)
+            for wf in entity_def.workflows:
+                self.output_fn(
+                    f"[NOT SUPPORTED] {entity_def.name}.workflows"
+                    f"[{wf.id}] — manual config required",
+                    "yellow",
+                )
+                results.append(
+                    WorkflowResult(
+                        entity=entity_def.name,
+                        workflow_id=wf.id,
+                        status=WorkflowStatus.NOT_SUPPORTED,
+                    )
+                )
 
         return results
 
     def _process_entity_workflows(
         self, entity_def: EntityDefinition
     ) -> list[WorkflowResult]:
+        # TODO(error-handling-D): restore when REST-capable reimplementation lands
         """CHECK->ACT for all workflows on one entity.
 
         :param entity_def: Entity definition with workflows.
@@ -161,6 +190,7 @@ class WorkflowManager:
         wf: Workflow,
         existing_workflows: list[dict],
     ) -> WorkflowResult:
+        # TODO(error-handling-D): restore when REST-capable reimplementation lands
         """Compare a single workflow against existing CRM state.
 
         :param entity_name: Natural entity name.
@@ -218,6 +248,7 @@ class WorkflowManager:
         existing_workflows: list[dict],
         desired_ids: set[str],
     ) -> bool:
+        # TODO(error-handling-D): restore when REST-capable reimplementation lands
         """Write the full set of workflows to CRM metadata.
 
         Preserves existing workflows that are not in the YAML (drift
@@ -274,6 +305,7 @@ class WorkflowManager:
 
     @staticmethod
     def _extract_existing_workflows(client_defs: dict) -> list[dict]:
+        # TODO(error-handling-D): restore when REST-capable reimplementation lands
         """Extract workflows from clientDefs metadata.
 
         :param client_defs: clientDefs dict from the API.
@@ -286,6 +318,7 @@ class WorkflowManager:
 
     @staticmethod
     def _workflow_to_dict(wf: Workflow) -> dict:
+        # TODO(error-handling-D): restore when REST-capable reimplementation lands
         """Convert a Workflow model to a metadata dict.
 
         :param wf: Workflow instance.
@@ -326,6 +359,7 @@ class WorkflowManager:
 
     @staticmethod
     def _workflows_match(desired: dict, existing: dict) -> bool:
+        # TODO(error-handling-D): restore when REST-capable reimplementation lands
         """Compare a desired workflow dict against an existing one.
 
         :param desired: Workflow dict from YAML.

@@ -1,4 +1,4 @@
-"""Tests for duplicate-check parsing, validation, and CHECK->ACT manager."""
+"""Tests for duplicate-check parsing, validation, and short-circuit manager."""
 
 from textwrap import dedent
 from unittest.mock import MagicMock
@@ -6,10 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from espo_impl.core.config_loader import ConfigLoader
-from espo_impl.core.duplicate_check_manager import (
-    DuplicateCheckManager,
-    DuplicateCheckManagerError,
-)
+from espo_impl.core.duplicate_check_manager import DuplicateCheckManager
 from espo_impl.core.models import (
     DuplicateCheck,
     DuplicateCheckStatus,
@@ -444,7 +441,7 @@ def test_validate_empty_fields_list(loader, tmp_path):
     assert any("at least one field" in e for e in errors)
 
 
-# ─── Manager CHECK->ACT Tests ───────────────────────────────────
+# ─── Manager NOT_SUPPORTED Short-Circuit Tests (Prompt D) ──────
 
 
 def _make_dup_manager():
@@ -476,215 +473,54 @@ def _make_program_with_checks(checks):
     )
 
 
-def test_manager_rule_absent_creates():
-    """Rule absent on CRM is created."""
+def test_manager_short_circuits_without_api_calls():
+    """process_duplicate_checks must not call any API method."""
     mgr, client, log = _make_dup_manager()
-    client.get_client_defs.return_value = (200, {})
-    client.put_metadata.return_value = (200, {})
-
-    checks = [DuplicateCheck(
-        id="email-check", fields=["email"], onMatch="block",
-        message="Dup email.",
-    )]
-    program = _make_program_with_checks(checks)
-    results = mgr.process_duplicate_checks(program)
-
-    assert len(results) == 1
-    assert results[0].status == DuplicateCheckStatus.CREATED
-    client.put_metadata.assert_called_once()
-
-
-def test_manager_rule_matches_skips():
-    """Rule present and matching on CRM is skipped."""
-    mgr, client, log = _make_dup_manager()
-    existing = {
-        "duplicateCheck": {
-            "rules": [{
-                "id": "email-check",
-                "fields": ["email"],
-                "onMatch": "block",
-                "message": "Dup email.",
-            }],
-        },
-    }
-    client.get_client_defs.return_value = (200, existing)
-
-    checks = [DuplicateCheck(
-        id="email-check", fields=["email"], onMatch="block",
-        message="Dup email.",
-    )]
-    program = _make_program_with_checks(checks)
-    results = mgr.process_duplicate_checks(program)
-
-    assert len(results) == 1
-    assert results[0].status == DuplicateCheckStatus.SKIPPED
-    client.put_metadata.assert_not_called()
-
-
-def test_manager_rule_differs_updates():
-    """Rule present but differing on CRM is updated."""
-    mgr, client, log = _make_dup_manager()
-    existing = {
-        "duplicateCheck": {
-            "rules": [{
-                "id": "email-check",
-                "fields": ["email"],
-                "onMatch": "warn",
-            }],
-        },
-    }
-    client.get_client_defs.return_value = (200, existing)
-    client.put_metadata.return_value = (200, {})
-
-    checks = [DuplicateCheck(
-        id="email-check", fields=["email"], onMatch="block",
-        message="Dup email.",
-    )]
-    program = _make_program_with_checks(checks)
-    results = mgr.process_duplicate_checks(program)
-
-    assert len(results) == 1
-    assert results[0].status == DuplicateCheckStatus.UPDATED
-    client.put_metadata.assert_called_once()
-
-
-def test_manager_drift_detection():
-    """Rule on CRM not in YAML is reported as drift."""
-    mgr, client, log = _make_dup_manager()
-    existing = {
-        "duplicateCheck": {
-            "rules": [
-                {
-                    "id": "email-check",
-                    "fields": ["email"],
-                    "onMatch": "block",
-                    "message": "Dup email.",
-                },
-                {
-                    "id": "orphan-rule",
-                    "fields": ["name"],
-                    "onMatch": "warn",
-                },
-            ],
-        },
-    }
-    client.get_client_defs.return_value = (200, existing)
-
-    checks = [DuplicateCheck(
-        id="email-check", fields=["email"], onMatch="block",
-        message="Dup email.",
-    )]
-    program = _make_program_with_checks(checks)
-    results = mgr.process_duplicate_checks(program)
-
-    statuses = {r.rule_id: r.status for r in results}
-    assert statuses["email-check"] == DuplicateCheckStatus.SKIPPED
-    assert statuses["orphan-rule"] == DuplicateCheckStatus.DRIFT
-
-
-def test_manager_auth_error():
-    """401 from API raises DuplicateCheckManagerError."""
-    mgr, client, log = _make_dup_manager()
-    client.get_client_defs.return_value = (401, None)
-
-    checks = [DuplicateCheck(
-        id="check", fields=["email"], onMatch="warn"
-    )]
-    program = _make_program_with_checks(checks)
-
-    with pytest.raises(DuplicateCheckManagerError):
-        mgr.process_duplicate_checks(program)
-
-
-def test_manager_connection_error():
-    """Negative status code results in ERROR for all rules."""
-    mgr, client, log = _make_dup_manager()
-    client.get_client_defs.return_value = (-1, None)
 
     checks = [
-        DuplicateCheck(id="a", fields=["email"], onMatch="warn"),
-        DuplicateCheck(id="b", fields=["name"], onMatch="warn"),
+        DuplicateCheck(
+            id="email-check", fields=["email"], onMatch="block",
+            message="Dup email.",
+        ),
+        DuplicateCheck(
+            id="name-check", fields=["name"], onMatch="warn",
+        ),
     ]
     program = _make_program_with_checks(checks)
     results = mgr.process_duplicate_checks(program)
 
     assert len(results) == 2
-    assert all(r.status == DuplicateCheckStatus.ERROR for r in results)
-
-
-def test_manager_write_failure_marks_errors():
-    """Failed metadata write marks created/updated rules as errors."""
-    mgr, client, log = _make_dup_manager()
-    client.get_client_defs.return_value = (200, {})
-    client.put_metadata.return_value = (500, {"message": "fail"})
-
-    checks = [DuplicateCheck(
-        id="check", fields=["email"], onMatch="warn"
-    )]
-    program = _make_program_with_checks(checks)
-    results = mgr.process_duplicate_checks(program)
-
-    assert results[0].status == DuplicateCheckStatus.ERROR
-    assert "metadata" in results[0].error.lower()
-
-
-def test_manager_non_json_write_failure_surfaces_raw_text():
-    """Parse-failed sentinel from put_metadata surfaces raw text in output."""
-    mgr, client, log = _make_dup_manager()
-    client.get_client_defs.return_value = (200, {})
-    client.put_metadata.return_value = (
-        500,
-        {
-            "_parse_failed": True,
-            "_raw_text": "<html>php fpm crashed</html>",
-            "_status_code": 500,
-        },
+    assert all(
+        r.status == DuplicateCheckStatus.NOT_SUPPORTED for r in results
     )
+    client.put_metadata.assert_not_called()
+    client.get_client_defs.assert_not_called()
+
+
+def test_manager_emits_not_supported_lines():
+    """Each duplicate check emits a yellow [NOT SUPPORTED] line."""
+    mgr, client, log = _make_dup_manager()
 
     checks = [DuplicateCheck(
-        id="check", fields=["email"], onMatch="warn"
+        id="email-check", fields=["email"], onMatch="block",
+        message="Dup email.",
     )]
     program = _make_program_with_checks(checks)
     mgr.process_duplicate_checks(program)
 
     messages = [msg for msg, _ in log]
-    assert any("non-JSON response" in msg for msg in messages)
-    assert any("php fpm crashed" in msg for msg in messages)
-
-
-def test_manager_idempotent_second_run():
-    """Second run with matching state results in skip."""
-    mgr, client, log = _make_dup_manager()
-
-    rule_dict = {
-        "id": "email-check",
-        "fields": ["email"],
-        "onMatch": "block",
-        "message": "Dup.",
-    }
-
-    # First run: rule absent
-    client.get_client_defs.return_value = (200, {})
-    client.put_metadata.return_value = (200, {})
-
-    checks = [DuplicateCheck(
-        id="email-check", fields=["email"], onMatch="block",
-        message="Dup.",
-    )]
-    program = _make_program_with_checks(checks)
-    results1 = mgr.process_duplicate_checks(program)
-    assert results1[0].status == DuplicateCheckStatus.CREATED
-
-    # Second run: rule now present and matches
-    client.get_client_defs.return_value = (
-        200, {"duplicateCheck": {"rules": [rule_dict]}}
+    assert any(
+        "[NOT SUPPORTED]" in msg
+        and "Contact.duplicateChecks[email-check]" in msg
+        and "manual config required" in msg
+        and "—" in msg
+        for msg in messages
     )
-    results2 = mgr.process_duplicate_checks(program)
-    assert results2[0].status == DuplicateCheckStatus.SKIPPED
+    assert all(color == "yellow" for _, color in log)
 
 
 def test_manager_skips_delete_entities():
-    """Entities with action=DELETE are skipped."""
+    """Entities with action=DELETE produce no results."""
     mgr, client, log = _make_dup_manager()
 
     entity = EntityDefinition(
@@ -700,3 +536,20 @@ def test_manager_skips_delete_entities():
     )
     results = mgr.process_duplicate_checks(program)
     assert results == []
+    client.put_metadata.assert_not_called()
+
+
+def test_manager_no_checks_returns_empty():
+    """An entity with no duplicate checks produces no results."""
+    mgr, client, log = _make_dup_manager()
+
+    entity = EntityDefinition(
+        name="Contact",
+        fields=[FieldDefinition(name="email", type="email", label="Email")],
+    )
+    program = ProgramFile(
+        version="1.0", description="Test", entities=[entity]
+    )
+    results = mgr.process_duplicate_checks(program)
+    assert results == []
+    client.put_metadata.assert_not_called()

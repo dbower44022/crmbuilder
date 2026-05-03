@@ -575,6 +575,7 @@ class DuplicateCheckStatus(Enum):
     SKIPPED = "skipped"
     DRIFT = "drift"
     ERROR = "error"
+    NOT_SUPPORTED = "not_supported"
 
 
 @dataclass
@@ -615,6 +616,7 @@ class SavedViewStatus(Enum):
     SKIPPED = "skipped"
     DRIFT = "drift"
     ERROR = "error"
+    NOT_SUPPORTED = "not_supported"
 
 
 @dataclass
@@ -635,6 +637,7 @@ class WorkflowStatus(Enum):
     SKIPPED = "skipped"
     DRIFT = "drift"
     ERROR = "error"
+    NOT_SUPPORTED = "not_supported"
 
 
 @dataclass

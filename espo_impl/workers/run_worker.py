@@ -744,6 +744,9 @@ class RunWorker(QThread):
             report = field_mgr._build_report(self.program, "run", [])
         report.step_results = all_step_results
 
+        # --- Emit manual-configuration advisory -----------------------------
+        self._emit_manual_config_block(report)
+
         self.finished_ok.emit(report)
 
     # ── Result attachment helpers ─────────────────────────────────────
@@ -851,6 +854,78 @@ class RunWorker(QThread):
             )
         else:
             self.output_line.emit("Run completed successfully", "green")
+
+    # ── Manual-configuration advisory ────────────────────────────────
+
+    def _emit_manual_config_block(self, report: RunReport) -> None:
+        """Emit a consolidated advisory listing items requiring manual config.
+
+        Walks the saved-view, duplicate-check, and workflow result lists
+        on the report and surfaces every entry whose status is
+        ``NOT_SUPPORTED`` in a single advisory block. Suppressed
+        entirely if no such entries exist.
+
+        :param report: The run report after all steps have executed.
+        """
+        saved_view_items = [
+            f"  {r.entity}.savedViews[{r.view_id}]"
+            for r in report.saved_view_results
+            if r.status == SavedViewStatus.NOT_SUPPORTED
+        ]
+        dup_check_items = [
+            f"  {r.entity}.duplicateChecks[{r.rule_id}]"
+            for r in report.duplicate_check_results
+            if r.status == DuplicateCheckStatus.NOT_SUPPORTED
+        ]
+        workflow_items = [
+            f"  {r.entity}.workflows[{r.workflow_id}]"
+            for r in report.workflow_results
+            if r.status == WorkflowStatus.NOT_SUPPORTED
+        ]
+
+        if not (saved_view_items or dup_check_items or workflow_items):
+            return
+
+        self.output_line.emit("", "white")
+        self.output_line.emit(
+            "===========================================", "yellow"
+        )
+        self.output_line.emit(
+            "MANUAL CONFIGURATION REQUIRED", "yellow"
+        )
+        self.output_line.emit(
+            "===========================================", "yellow"
+        )
+        self.output_line.emit(
+            "The following items declared in the YAML cannot be applied",
+            "yellow",
+        )
+        self.output_line.emit(
+            "via EspoCRM's REST API. Configure them manually via the",
+            "yellow",
+        )
+        self.output_line.emit(
+            "admin UI or by editing metadata files on disk:", "yellow"
+        )
+        self.output_line.emit("", "yellow")
+
+        self.output_line.emit("Saved views:", "yellow")
+        for line in (saved_view_items or ["  (none)"]):
+            self.output_line.emit(line, "yellow")
+        self.output_line.emit("", "yellow")
+
+        self.output_line.emit("Duplicate checks:", "yellow")
+        for line in (dup_check_items or ["  (none)"]):
+            self.output_line.emit(line, "yellow")
+        self.output_line.emit("", "yellow")
+
+        self.output_line.emit("Workflows:", "yellow")
+        for line in (workflow_items or ["  (none)"]):
+            self.output_line.emit(line, "yellow")
+
+        self.output_line.emit(
+            "===========================================", "yellow"
+        )
 
 
 __all__ = ["RunWorker"]
