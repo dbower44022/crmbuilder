@@ -552,3 +552,89 @@ def test_custom_entity_dynamic_logic_skips_c_prefix():
             }
         ]
     }
+
+
+# --- List-layout comparator tests ---
+
+
+def test_layouts_match_list_detects_different_names():
+    """Two list payloads with different column names must not match.
+
+    Pre-fix, the comparator only inspected customLabel/rows/
+    tabBreak/tabLabel — none of which exist on flat list-column
+    dicts — so any list payloads of equal length compared as
+    matching. This test guards against that regression.
+    """
+    desired = [{"name": "amount", "width": 20}]
+    current = [{"name": "cAmount", "width": 20}]
+    assert LayoutManager._layouts_match(desired, current) is False
+
+
+def test_layouts_match_list_detects_different_widths():
+    """Two list payloads with same names but different widths must
+    not match."""
+    desired = [{"name": "amount", "width": 20}]
+    current = [{"name": "amount", "width": 30}]
+    assert LayoutManager._layouts_match(desired, current) is False
+
+
+def test_layouts_match_list_identical_payloads_match():
+    """Two structurally identical list payloads must match."""
+    desired = [
+        {"name": "name", "width": 30},
+        {"name": "amount", "width": 20},
+        {"name": "status"},
+    ]
+    current = [
+        {"name": "name", "width": 30},
+        {"name": "amount", "width": 20},
+        {"name": "status"},
+    ]
+    assert LayoutManager._layouts_match(desired, current) is True
+
+
+def test_custom_entity_list_layout_overwrites_stale_c_prefixed_state():
+    """When a custom entity's list layout on the server still has
+    pre-fix c-prefixed column names, Configure must detect the
+    mismatch against the natural-name desired payload and overwrite.
+    """
+    client = MagicMock(spec=EspoAdminClient)
+    # Simulate the broken pre-fix state on the server.
+    client.get_layout.return_value = (
+        200,
+        [
+            {"name": "name", "width": 30},
+            {"name": "cAmount", "width": 20},
+            {"name": "cStatus", "width": 20},
+        ],
+    )
+    client.save_layout.return_value = (200, {})
+
+    manager, _ = make_manager(client)
+    entity = EntityDefinition(
+        name="Contribution",
+        fields=make_fields(
+            ("amount", "currency", "ident"),
+            ("status", "enum", "ident"),
+        ),
+        layouts={
+            "list": LayoutSpec(
+                layout_type="list",
+                columns=[
+                    ColumnSpec(field="name", width=30),
+                    ColumnSpec(field="amount", width=20),
+                    ColumnSpec(field="status", width=20),
+                ],
+            )
+        },
+    )
+    manager.process_layouts(entity, entity.fields)
+
+    # Comparator must have detected the mismatch — writer must run.
+    assert client.save_layout.call_count == 1
+    saved_payload = client.save_layout.call_args.args[2]
+    assert saved_payload == [
+        {"name": "name", "width": 30},
+        {"name": "amount", "width": 20},
+        {"name": "status", "width": 20},
+    ]

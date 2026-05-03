@@ -570,6 +570,17 @@ class LayoutManager:
 
         for d_item, c_item in zip(desired, current, strict=True):
             if isinstance(d_item, dict) and isinstance(c_item, dict):
+                # List-layout columns are flat dicts shaped like
+                # {"name": "amount", "width": 20} with no rows or
+                # customLabel — they must be compared on `name` and
+                # `width` directly. Detail-layout panel dicts do not
+                # carry these keys at the top level, so for those
+                # items both sides return None and these checks are
+                # no-ops.
+                if d_item.get("name") != c_item.get("name"):
+                    return False
+                if d_item.get("width") != c_item.get("width"):
+                    return False
                 # Compare panel: check customLabel and rows
                 if d_item.get("customLabel") != c_item.get("customLabel"):
                     return False
