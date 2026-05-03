@@ -31,6 +31,7 @@ and otherwise out of scope for this gap analysis.
 |---|---|
 | 04-13-26 22:00 | Initial gap analysis covering Categories 1–10 from MR pilot Manual Configuration findings. |
 | 05-03-26 14:00 | Added Category 6 Part D — Panel and layout visibility by role. Captures gap raised during yaml-v1.1 deployment review: panel-level `visibleWhen:` (Section 7.3) cannot reference user role, and layouts cannot be scoped to roles. Proposes role-aware leaf clauses in Section 11 (Part D.1) and `forRoles:` on layout declarations (Part D.2). Targeted for v1.2 alongside Parts A–C. |
+| 05-03-26 14:15 | Retitled Category 6 from "Field-Level Access Control" to "Role-Based Access Control" to reflect that Part A (Roles declaration) and Part D (panel/layout role visibility) extend beyond field level. Summary table description updated accordingly. No external references affected — other documents reference Category 6 by number, not title. |
 
 ---
 
@@ -613,7 +614,7 @@ establish the condition-expression mechanics.
 
 ---
 
-## 6. Field-Level Access Control
+## 6. Role-Based Access Control
 
 **Source items.** MR-MC-AC-001 (ten Contact fields admin-only),
 MR-MC-AC-002 (ten Contact fields mentor-editable when
@@ -1522,7 +1523,7 @@ are landing anyway.
 | 3 | Saved Views and List Filters | New `savedViews:` block; shorthand AND + structured `all`/`any`; optional `orderBy:` | Should |
 | 4 | Conditional-Required Logic | New `requiredWhen:` field clause; mutually exclusive with `required: true` | Should |
 | 5 | Field-Level Dynamic Logic | New `visibleWhen:` field clause; renames panel-level `dynamicLogicVisible:` (deprecation alias one minor version) | Should |
-| 6 | Field-Level Access Control | Roles + field permissions + presets — **deferred to v1.2** | Could → Should v1.2 |
+| 6 | Role-Based Access Control | Roles + field permissions + presets + panel/layout role visibility — **deferred to v1.2** | Could → Should v1.2 |
 | 7 | Email Templates | New `emailTemplates:` block; external HTML body files; required validated `mergeFields:` | Should |
 | 8 | Calculated Field Formulas | Three structured formula types (`aggregate`, `arithmetic`, `concat`); seven aggregate functions including `avg`, `max`, `last`; minimal arithmetic parser | Should |
 | 9 | Workflows | New `workflows:` block; five trigger events (no `onFirstTransition` in v1); four actions | Should |
@@ -1609,5 +1610,5 @@ Should categories and the Category 10 flag, with new ISS-* entries
 for each capability. After that, a CLAUDE-CODE-PROMPT-* series
 implements them in the CRM Builder app.
 
-**Last Updated:** 05-03-26 14:00
+**Last Updated:** 05-03-26 14:15
 
