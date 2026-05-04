@@ -1,5 +1,6 @@
 """Data models for CRM Builder."""
 
+from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -573,6 +574,65 @@ class ProgramFile:
         return any(
             e.action in (EntityAction.DELETE, EntityAction.DELETE_AND_CREATE)
             for e in self.entities
+        )
+
+
+@dataclass(frozen=True)
+class ProgramContext:
+    """Cross-file context used during validation.
+
+    A deployment batch is a set of YAML program files all targeting
+    the same EspoCRM instance. Domain-owned YAMLs commonly extend
+    a shared native entity (Contact, Account, etc.) with
+    domain-specific fields, and reference each others' fields via
+    requiredWhen, visibleWhen, panel conditions, savedView filters,
+    filteredTab conditions, and workflow conditions.
+
+    ``ProgramContext`` exposes the union of field names per entity
+    across the entire batch, so single-file validation can resolve
+    references that are satisfied by sibling files.
+
+    :param fields_by_entity: Mapping of entity natural name (e.g.
+        ``Contact``, ``Account``, ``Engagement``) to the set of all
+        field names declared for that entity across the batch.
+        Custom-entity names appear in their natural form (without
+        the ``C`` prefix EspoCRM applies on the wire).
+    """
+
+    fields_by_entity: dict[str, frozenset[str]]
+
+    def field_names_for(self, entity_name: str) -> frozenset[str]:
+        """Return the union of declared field names for ``entity_name``.
+
+        :param entity_name: Entity natural name.
+        :returns: Frozenset of field names, or an empty frozenset if
+            no program in this context declares any fields for the
+            named entity.
+        """
+        return self.fields_by_entity.get(entity_name, frozenset())
+
+    @classmethod
+    def from_programs(cls, programs: list["ProgramFile"]) -> "ProgramContext":
+        """Build a context from a list of parsed programs.
+
+        Iterates every entity in every program and unions field
+        names by entity natural name. Self-referential — a single
+        program counted in this context will have all of its own
+        fields available too, so callers can pass a single program
+        and use the same code path.
+
+        :param programs: List of parsed programs to union.
+        :returns: New ``ProgramContext``.
+        """
+        fields_by_entity: dict[str, set[str]] = defaultdict(set)
+        for program in programs:
+            for entity in program.entities:
+                for field_def in entity.fields:
+                    fields_by_entity[entity.name].add(field_def.name)
+        return cls(
+            fields_by_entity={
+                k: frozenset(v) for k, v in fields_by_entity.items()
+            }
         )
 
 

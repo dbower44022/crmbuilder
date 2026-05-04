@@ -1,5 +1,6 @@
 """Tests for YAML config loading and validation."""
 
+from pathlib import Path
 from textwrap import dedent
 
 import pytest
@@ -1455,3 +1456,200 @@ def test_wysiwyg_field_type_supported(loader, tmp_path):
     program = loader.load_program(path)
     errors = loader.validate_program(program)
     assert errors == []
+
+
+# --- ProgramContext / cross-file validation tests ---
+
+
+def _write(tmp_path, name: str, body: str) -> Path:
+    path: Path = tmp_path / name
+    path.write_text(dedent(body))
+    return path
+
+
+def test_program_context_unions_fields_across_programs(loader, tmp_path):
+    """ProgramContext.from_programs unions field names by entity."""
+    from espo_impl.core.models import ProgramContext
+
+    cr = _write(tmp_path, "CR-Account.yaml", """\
+        version: "1.1"
+        description: "CR domain — Account"
+        entities:
+          Account:
+            fields:
+              - name: accountType
+                type: enum
+                label: "Account Type"
+                options:
+                  - Client
+                  - Prospect
+    """)
+    mn = _write(tmp_path, "MN-Account.yaml", """\
+        version: "1.1"
+        description: "MN domain — Account"
+        entities:
+          Account:
+            fields:
+              - name: organizationType
+                type: enum
+                label: "Organization Type"
+                options:
+                  - Nonprofit
+                  - Forprofit
+    """)
+    p_cr = loader.load_program(cr)
+    p_mn = loader.load_program(mn)
+    context = ProgramContext.from_programs([p_cr, p_mn])
+    names = context.field_names_for("Account")
+    assert "accountType" in names
+    assert "organizationType" in names
+    # Unrelated entity is not present
+    assert context.field_names_for("Contact") == frozenset()
+
+
+def test_validate_program_with_context_resolves_cross_file_field_refs(
+    loader, tmp_path,
+):
+    """A program can reference a field declared by a sibling YAML."""
+    from espo_impl.core.models import ProgramContext
+
+    cr = _write(tmp_path, "CR-Account.yaml", """\
+        version: "1.1"
+        description: "CR domain — Account"
+        entities:
+          Account:
+            fields:
+              - name: accountType
+                type: enum
+                label: "Account Type"
+                options:
+                  - Client
+                  - Prospect
+    """)
+    mn = _write(tmp_path, "MN-Account.yaml", """\
+        version: "1.1"
+        description: "MN domain — Account"
+        entities:
+          Account:
+            fields:
+              - name: organizationType
+                type: enum
+                label: "Organization Type"
+                options:
+                  - Nonprofit
+                  - Forprofit
+                visibleWhen:
+                  - { field: accountType, op: equals, value: Client }
+    """)
+    p_cr = loader.load_program(cr)
+    p_mn = loader.load_program(mn)
+    context = ProgramContext.from_programs([p_cr, p_mn])
+    errors = loader.validate_program_with_context(p_mn, context)
+    assert not any("accountType" in e for e in errors), (
+        f"Unexpected accountType error in: {errors}"
+    )
+
+
+def test_validate_program_without_context_uses_single_file_fallback(
+    loader, tmp_path,
+):
+    """validate_program(program) builds a single-program context."""
+    path = _write(tmp_path, "self_consistent.yaml", """\
+        version: "1.1"
+        description: "Self-consistent"
+        entities:
+          Contact:
+            fields:
+              - name: contactType
+                type: enum
+                label: "Contact Type"
+                options:
+                  - Mentor
+                  - Client
+              - name: mentorStatus
+                type: enum
+                label: "Mentor Status"
+                options:
+                  - Active
+                  - Inactive
+                visibleWhen:
+                  - { field: contactType, op: equals, value: Mentor }
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert errors == [], f"Expected no errors but got: {errors}"
+
+
+def test_validate_program_without_context_still_catches_real_typos(
+    loader, tmp_path,
+):
+    """Single-file fallback does not mask references to unknown fields."""
+    path = _write(tmp_path, "typo.yaml", """\
+        version: "1.1"
+        description: "Has a typo"
+        entities:
+          Contact:
+            fields:
+              - name: contactType
+                type: enum
+                label: "Contact Type"
+                options:
+                  - Mentor
+                  - Client
+              - name: mentorStatus
+                type: enum
+                label: "Mentor Status"
+                options:
+                  - Active
+                  - Inactive
+                visibleWhen:
+                  - { field: contctType, op: equals, value: Mentor }
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("contctType" in e for e in errors), (
+        f"Expected typo error but got: {errors}"
+    )
+
+
+def test_validate_program_with_context_still_catches_real_typos(
+    loader, tmp_path,
+):
+    """Cross-file context does not cover typos."""
+    from espo_impl.core.models import ProgramContext
+
+    cr = _write(tmp_path, "CR-Account.yaml", """\
+        version: "1.1"
+        description: "CR — Account"
+        entities:
+          Account:
+            fields:
+              - name: accountType
+                type: enum
+                label: "Account Type"
+                options:
+                  - Client
+                  - Prospect
+    """)
+    mn = _write(tmp_path, "MN-Account.yaml", """\
+        version: "1.1"
+        description: "MN — Account"
+        entities:
+          Account:
+            fields:
+              - name: organizationType
+                type: enum
+                label: "Organization Type"
+                options:
+                  - Nonprofit
+                  - Forprofit
+                visibleWhen:
+                  - { field: acountType, op: equals, value: Client }
+    """)
+    p_cr = loader.load_program(cr)
+    p_mn = loader.load_program(mn)
+    context = ProgramContext.from_programs([p_cr, p_mn])
+    errors = loader.validate_program_with_context(p_mn, context)
+    assert any("acountType" in e for e in errors), (
+        f"Expected typo error but got: {errors}"
+    )

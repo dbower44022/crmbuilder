@@ -190,7 +190,11 @@ class ConfigureProgressDialog(QDialog):
             return
 
         from espo_impl.core.config_loader import ConfigLoader
-        from espo_impl.core.models import InstanceProfile
+        from espo_impl.core.models import (
+            InstanceProfile,
+            ProgramContext,
+            ProgramFile,
+        )
 
         self._profile = InstanceProfile(
             name=detail.name,
@@ -203,6 +207,9 @@ class ConfigureProgressDialog(QDialog):
         loader = ConfigLoader()
         validation_failures: list[tuple[YamlFileInfo, list[str]]] = []
 
+        # Pass 1: parse every file. Parse errors are terminal for that
+        # file; we record them and exclude the file from validation.
+        parsed: list[tuple[YamlFileInfo, ProgramFile]] = []
         for f in self._files:
             try:
                 program = loader.load_program(Path(f.path))
@@ -210,8 +217,21 @@ class ConfigureProgressDialog(QDialog):
                 self._append_log(f"Failed to load {f.name}: {exc}", "error")
                 self._record_validation_failure(f, [f"Parse error: {exc}"])
                 continue
+            parsed.append((f, program))
 
-            errors = loader.validate_program(program)
+        # Build the cross-file validation context from every successfully
+        # parsed program. Domain YAMLs commonly extend a shared native
+        # entity (Contact, Account) with custom fields, and reference
+        # each others' fields via requiredWhen / visibleWhen / panel
+        # conditions / savedView filters / filteredTab conditions /
+        # workflow conditions. Without a cross-file context, the
+        # validator rejects every YAML that references a field declared
+        # by a sibling.
+        context = ProgramContext.from_programs([p for _, p in parsed])
+
+        # Pass 2: validate each program against the shared context.
+        for f, program in parsed:
+            errors = loader.validate_program_with_context(program, context)
             if errors:
                 validation_failures.append((f, errors))
                 continue

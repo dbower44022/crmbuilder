@@ -30,6 +30,7 @@ from espo_impl.core.models import (
     LayoutSpec,
     OrderByClause,
     PanelSpec,
+    ProgramContext,
     ProgramFile,
     RelationshipDefinition,
     SavedView,
@@ -243,35 +244,80 @@ class ConfigLoader:
     def validate_program(self, program: ProgramFile) -> list[str]:
         """Validate a parsed program file.
 
+        When called without prior :meth:`validate_program_with_context`,
+        the validator builds a single-file context internally. This
+        preserves backward-compatible single-file validation for any
+        caller that hasn't migrated. Multi-file callers should use
+        :meth:`validate_program_with_context` to benefit from
+        cross-file field resolution.
+
         :param program: Parsed program file to validate.
         :returns: List of error messages. Empty list means valid.
         """
-        errors: list[str] = []
+        owns_context = False
+        if getattr(self, "_active_context", None) is None:
+            self._active_context = ProgramContext.from_programs([program])
+            owns_context = True
+        try:
+            errors: list[str] = []
 
-        if not program.version:
-            errors.append("Missing required top-level key: 'version'")
-        if not program.description:
-            errors.append("Missing required top-level key: 'description'")
-        if not program.entities and not program.relationships:
-            errors.append("Missing or empty 'entities' and 'relationships' sections")
+            if not program.version:
+                errors.append("Missing required top-level key: 'version'")
+            if not program.description:
+                errors.append(
+                    "Missing required top-level key: 'description'"
+                )
+            if not program.entities and not program.relationships:
+                errors.append(
+                    "Missing or empty 'entities' and 'relationships' sections"
+                )
+                return errors
+
+            for entity in program.entities:
+                errors.extend(self._validate_entity(entity))
+
+            # Cross-block alertTemplate resolution
+            errors.extend(self._validate_alert_template_refs(program))
+
+            # Cross-block workflow template resolution
+            errors.extend(self._validate_workflow_template_refs(program))
+
+            # Cross-entity uniqueness for filteredTab scope names
+            errors.extend(self._validate_filtered_tab_scopes(program))
+
+            for rel in program.relationships:
+                errors.extend(self._validate_relationship(rel))
+
             return errors
+        finally:
+            if owns_context:
+                self._active_context = None
 
-        for entity in program.entities:
-            errors.extend(self._validate_entity(entity))
+    def validate_program_with_context(
+        self,
+        program: ProgramFile,
+        context: ProgramContext,
+    ) -> list[str]:
+        """Validate ``program`` against a shared cross-file context.
 
-        # Cross-block alertTemplate resolution
-        errors.extend(self._validate_alert_template_refs(program))
+        Field references in conditions (``requiredWhen``,
+        ``visibleWhen``, panel conditions, savedView filters,
+        filteredTab conditions, workflow conditions) resolve against
+        the union of field names from every program represented in
+        ``context``. See :class:`ProgramContext` for why a deployment
+        batch must validate field references against the union rather
+        than the single file.
 
-        # Cross-block workflow template resolution
-        errors.extend(self._validate_workflow_template_refs(program))
-
-        # Cross-entity uniqueness for filteredTab scope names
-        errors.extend(self._validate_filtered_tab_scopes(program))
-
-        for rel in program.relationships:
-            errors.extend(self._validate_relationship(rel))
-
-        return errors
+        :param program: Parsed program file to validate.
+        :param context: Cross-file context built from all programs in
+            the deployment batch.
+        :returns: List of error messages. Empty list means valid.
+        """
+        self._active_context = context
+        try:
+            return self.validate_program(program)
+        finally:
+            self._active_context = None
 
     def _validate_entity(self, entity: EntityDefinition) -> list[str]:
         """Validate an entity definition.
@@ -556,7 +602,7 @@ class ConfigLoader:
             errors.append(f"{prefix}: detail/edit layout must have 'panels'")
             return errors
 
-        field_names = {f.name for f in entity.fields}
+        field_names = {f.name for f in entity.fields} | self._active_context.field_names_for(entity.name)
         field_categories = {
             f.category for f in entity.fields if f.category
         }
@@ -831,7 +877,7 @@ class ConfigLoader:
         :returns: List of error messages.
         """
         errors: list[str] = []
-        field_names = {f.name for f in entity.fields}
+        field_names = {f.name for f in entity.fields} | self._active_context.field_names_for(entity.name)
 
         for field_def in entity.fields:
             prefix = f"{entity.name}.{field_def.name or '(unnamed)'}"
@@ -879,7 +925,7 @@ class ConfigLoader:
         :returns: List of error messages.
         """
         errors: list[str] = []
-        field_names = {f.name for f in entity.fields}
+        field_names = {f.name for f in entity.fields} | self._active_context.field_names_for(entity.name)
 
         for field_def in entity.fields:
             if field_def.formula_raw is not None or field_def.formula is not None:
@@ -962,7 +1008,7 @@ class ConfigLoader:
         if not entity.saved_views:
             return errors
 
-        field_names = {f.name for f in entity.fields}
+        field_names = {f.name for f in entity.fields} | self._active_context.field_names_for(entity.name)
         seen_ids: set[str] = set()
 
         for view in entity.saved_views:
@@ -1092,7 +1138,7 @@ class ConfigLoader:
         if not entity.filtered_tabs:
             return errors
 
-        field_names = {f.name for f in entity.fields}
+        field_names = {f.name for f in entity.fields} | self._active_context.field_names_for(entity.name)
         seen_ids: set[str] = set()
         seen_scopes: set[str] = set()
         scope_pattern = re.compile(r"^[A-Z][A-Za-z0-9]{0,59}$")
@@ -1237,7 +1283,7 @@ class ConfigLoader:
         if not entity.email_templates:
             return errors
 
-        field_names = {f.name for f in entity.fields}
+        field_names = {f.name for f in entity.fields} | self._active_context.field_names_for(entity.name)
         seen_ids: set[str] = set()
 
         for tmpl in entity.email_templates:
@@ -1469,7 +1515,7 @@ class ConfigLoader:
         if not entity.workflows:
             return errors
 
-        field_names = {f.name for f in entity.fields}
+        field_names = {f.name for f in entity.fields} | self._active_context.field_names_for(entity.name)
         seen_ids: set[str] = set()
 
         for wf in entity.workflows:
@@ -1741,7 +1787,7 @@ class ConfigLoader:
         if not entity.duplicate_checks:
             return errors
 
-        field_names = {f.name for f in entity.fields}
+        field_names = {f.name for f in entity.fields} | self._active_context.field_names_for(entity.name)
         seen_ids: set[str] = set()
 
         for rule in entity.duplicate_checks:
