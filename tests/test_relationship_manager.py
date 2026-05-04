@@ -50,7 +50,7 @@ def test_build_payload_one_to_many():
     )
     payload = manager._build_payload(rel)
     assert payload["entity"] == "CEngagement"
-    assert payload["entityForeign"] == "CSessions"
+    assert payload["entityForeign"] == "CSession"
     assert payload["linkType"] == "oneToMany"
     assert payload["relationName"] is None
 

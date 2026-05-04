@@ -16,15 +16,6 @@ from PySide6.QtWidgets import (
 
 from espo_impl.core.models import EntityDefinition
 
-# Entity name mapping: YAML natural name → EspoCRM internal name (C-prefixed)
-ENTITY_NAME_MAP: dict[str, str] = {
-    "Engagement": "CEngagement",
-    "Session": "CSessions",
-    "Workshop": "CWorkshops",
-    "WorkshopAttendance": "CWorkshopAttendee",
-    "NpsSurveyResponse": "CNpsSurveyResponse",
-}
-
 # Native entities that do not get the C prefix
 NATIVE_ENTITIES: set[str] = {
     "Contact", "Account", "Lead", "Opportunity", "Case",
@@ -36,13 +27,22 @@ NATIVE_ENTITIES: set[str] = {
 def get_espo_entity_name(yaml_name: str) -> str:
     """Map a YAML entity name to the EspoCRM internal name.
 
+    EspoCRM stores custom entities with a ``C`` prefix applied to
+    the YAML-declared name. There is no pluralization, no
+    renaming, and no special-casing: ``Session`` is stored as
+    ``CSession``, ``Workshop`` as ``CWorkshop``,
+    ``WorkshopAttendance`` as ``CWorkshopAttendance``. Every
+    custom entity follows the same rule.
+
+    Native entities (Contact, Account, Lead, etc.) keep their
+    natural names with no prefix.
+
     :param yaml_name: Entity name from the YAML program file.
-    :returns: EspoCRM internal name (C-prefixed for custom, unchanged for native).
+    :returns: EspoCRM internal name (C-prefixed for custom,
+        unchanged for native).
     """
     if yaml_name in NATIVE_ENTITIES:
         return yaml_name
-    if yaml_name in ENTITY_NAME_MAP:
-        return ENTITY_NAME_MAP[yaml_name]
     return f"C{yaml_name}"
 
 

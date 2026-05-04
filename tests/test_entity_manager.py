@@ -243,9 +243,9 @@ def test_entity_name_mapping():
     entity = make_entity("Session", EntityAction.DELETE)
     manager.process_entity(entity)
 
-    # Session maps to CSessions per the mapping table
-    client.check_entity_exists.assert_called_once_with("CSessions")
-    client.remove_entity.assert_called_once_with("CSessions")
+    # Session resolves to CSession via the universal C-prefix rule
+    client.check_entity_exists.assert_called_once_with("CSession")
+    client.remove_entity.assert_called_once_with("CSession")
 
 
 def test_wait_for_metadata_ready_returns_true_immediately_when_cached():
@@ -276,7 +276,7 @@ def test_wait_for_metadata_ready_polls_until_ready():
     client.get_entity_full_metadata.side_effect = [
         (200, None),
         (200, None),
-        (200, {"name": "CSessions", "fields": {}}),
+        (200, {"name": "CSession", "fields": {}}),
     ]
 
     manager, output_log = make_manager(client)
@@ -332,13 +332,13 @@ def test_wait_for_metadata_ready_handles_mixed_entities():
         call_log.append(espo_name)
         if espo_name == "CEngagement":
             return (200, {"name": "CEngagement", "fields": {}})
-        # CSessions: empty on first 2 calls, ready on 3rd
+        # CSession: empty on first 2 calls, ready on 3rd
         sessions_calls = sum(
-            1 for n in call_log if n == "CSessions"
+            1 for n in call_log if n == "CSession"
         )
         if sessions_calls <= 2:
             return (200, None)
-        return (200, {"name": "CSessions", "fields": {}})
+        return (200, {"name": "CSession", "fields": {}})
 
     client.get_entity_full_metadata.side_effect = fake_get_meta
 
@@ -350,7 +350,7 @@ def test_wait_for_metadata_ready_handles_mixed_entities():
 
     assert result is True
     engagement_calls = sum(1 for n in call_log if n == "CEngagement")
-    sessions_calls = sum(1 for n in call_log if n == "CSessions")
+    sessions_calls = sum(1 for n in call_log if n == "CSession")
     assert engagement_calls == 1
     assert sessions_calls >= 3
 
@@ -364,3 +364,23 @@ def test_wait_for_metadata_ready_no_entities_returns_true():
 
     assert result is True
     client.get_entity_full_metadata.assert_not_called()
+
+
+def test_get_espo_entity_name_universal_c_prefix_rule():
+    """Custom entity names always resolve to f'C{name}', with no
+    pluralization or renaming. Native entities are unchanged."""
+    from espo_impl.ui.confirm_delete_dialog import get_espo_entity_name
+
+    # Custom entities — universal C prefix rule
+    assert get_espo_entity_name("Engagement") == "CEngagement"
+    assert get_espo_entity_name("Session") == "CSession"
+    assert get_espo_entity_name("Workshop") == "CWorkshop"
+    assert get_espo_entity_name("WorkshopAttendance") == "CWorkshopAttendance"
+    assert get_espo_entity_name("NpsSurveyResponse") == "CNpsSurveyResponse"
+    assert get_espo_entity_name("Contribution") == "CContribution"
+
+    # Native entities — unchanged
+    assert get_espo_entity_name("Contact") == "Contact"
+    assert get_espo_entity_name("Account") == "Account"
+    assert get_espo_entity_name("Lead") == "Lead"
+    assert get_espo_entity_name("Meeting") == "Meeting"

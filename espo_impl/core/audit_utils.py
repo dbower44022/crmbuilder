@@ -7,13 +7,7 @@ names and to classify entities and fields as custom, native, or system.
 from enum import Enum
 from typing import Any
 
-from espo_impl.ui.confirm_delete_dialog import (
-    ENTITY_NAME_MAP,
-    NATIVE_ENTITIES,
-)
-
-# Inverse of ENTITY_NAME_MAP: EspoCRM internal name → YAML natural name
-INVERSE_ENTITY_NAME_MAP: dict[str, str] = {v: k for k, v in ENTITY_NAME_MAP.items()}
+from espo_impl.ui.confirm_delete_dialog import NATIVE_ENTITIES
 
 
 class EntityClass(Enum):
@@ -222,19 +216,25 @@ def strip_field_c_prefix(api_name: str) -> str:
 def strip_entity_c_prefix(api_name: str) -> str:
     """Reverse the C-prefix on a custom entity name.
 
-    ``CEngagement`` → ``Engagement``
+    ``CEngagement`` → ``Engagement``,
+    ``CSession`` → ``Session``,
+    ``CWorkshopAttendance`` → ``WorkshopAttendance``.
 
-    Uses the inverse entity name map for known special cases,
-    falls back to stripping the ``C`` prefix.
+    Native entity names are returned unchanged. Names that don't
+    follow the ``C{Uppercase}...`` pattern are returned unchanged
+    (including names where the second character isn't uppercase,
+    which would never be a valid custom entity name).
 
     :param api_name: Entity name from the EspoCRM API.
     :returns: YAML natural entity name.
     """
     if api_name in NATIVE_ENTITIES:
         return api_name
-    if api_name in INVERSE_ENTITY_NAME_MAP:
-        return INVERSE_ENTITY_NAME_MAP[api_name]
-    if api_name.startswith("C") and len(api_name) > 1 and api_name[1].isupper():
+    if (
+        api_name.startswith("C")
+        and len(api_name) > 1
+        and api_name[1].isupper()
+    ):
         return api_name[1:]
     return api_name
 
