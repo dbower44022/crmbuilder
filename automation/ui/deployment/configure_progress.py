@@ -324,6 +324,10 @@ class ConfigureProgressDialog(QDialog):
             f"({self._current_file_idx}/{self._total_files}) ===",
             "info",
         )
+        self._append_log(
+            f"    Source: {file_info.path}",
+            "gray",
+        )
 
         from espo_impl.workers.run_worker import RunWorker
 
