@@ -274,7 +274,7 @@ def _step_results_by_name(report) -> dict[str, "StepStatus"]:
 
 
 def test_run_full_all_steps_succeed_step_results_populated():
-    """Successful run records OK or SKIPPED for every step."""
+    """Successful run records OK / SKIPPED / NO_WORK for every step."""
     program = make_program([
         make_entity("Engagement", EntityAction.NONE, fields=[
             FieldDefinition(name="testField", type="varchar", label="Test"),
@@ -297,11 +297,13 @@ def test_run_full_all_steps_succeed_step_results_populated():
     assert set(by_name.keys()) == expected_steps
     # No FAILED states.
     assert all(
-        status in (StepStatus.OK, StepStatus.SKIPPED)
+        status in (StepStatus.OK, StepStatus.SKIPPED, StepStatus.NO_WORK)
         for status in by_name.values()
     )
-    # The "fields" step had work to do, so it should be OK (not SKIPPED).
+    # The "fields" step had work to do, so it should be OK (not NO_WORK).
     assert by_name["fields"] == StepStatus.OK
+    # entity_deletions is the user-opt-out path (skip_deletes=True), so SKIPPED.
+    assert by_name["entity_deletions"] == StepStatus.SKIPPED
 
 
 def test_run_full_saved_views_manager_error_contained():
@@ -587,7 +589,7 @@ def test_configure_progress_green_on_clean_run():
         operation="run",
         step_results=[
             StepResult(step_name="fields", status=StepStatus.OK),
-            StepResult(step_name="saved_views", status=StepStatus.SKIPPED),
+            StepResult(step_name="saved_views", status=StepStatus.NO_WORK),
         ],
     )
 
@@ -1327,3 +1329,117 @@ def test_configure_progress_tooltip_combines_failure_and_not_supported():
     tooltip = dlg._file_tooltips["/tmp/mixed.yaml"]
     assert "relationships" in tooltip
     assert "Manual configuration required for 1 item(s)" in tooltip
+
+
+# ───────────────────────────────────────────────────────────────────────
+# NO_WORK vs SKIPPED tests (run_worker fix)
+# ───────────────────────────────────────────────────────────────────────
+
+
+def _make_run_worker_for_step_tests() -> tuple[RunWorker, list[tuple[str, str]]]:
+    """Build a minimally-wired RunWorker suitable for _run_step /
+    _emit_step_summary unit tests, capturing emit() calls."""
+    output_log: list[tuple[str, str]] = []
+    worker = RunWorker.__new__(RunWorker)
+    worker.output_line = MagicMock()
+    worker.output_line.emit = lambda m, c: output_log.append((m, c))
+    return worker, output_log
+
+
+def test_run_step_returns_no_work_when_has_work_false():
+    """When has_work=False, _run_step returns StepStatus.NO_WORK,
+    not SKIPPED."""
+    worker, _ = _make_run_worker_for_step_tests()
+
+    body_called = {"value": False}
+
+    def body() -> None:
+        body_called["value"] = True
+
+    result, return_value = worker._run_step(
+        "test_step", has_work=False, body=body
+    )
+
+    assert result.status == StepStatus.NO_WORK
+    assert result.step_name == "test_step"
+    assert return_value is None
+    assert body_called["value"] is False, "body must not run on no-work path"
+
+
+def test_run_step_returns_ok_when_body_succeeds():
+    """When has_work=True and body returns cleanly, status is OK."""
+    worker, _ = _make_run_worker_for_step_tests()
+
+    sentinel = object()
+
+    def body() -> object:
+        return sentinel
+
+    result, return_value = worker._run_step(
+        "test_step", has_work=True, body=body
+    )
+
+    assert result.status == StepStatus.OK
+    assert return_value is sentinel
+
+
+def test_emit_step_summary_renders_no_work_label():
+    """STEP SUMMARY renders NO WORK SPECIFIED, not SKIPPED, for
+    NO_WORK results."""
+    from espo_impl.core.models import StepResult
+
+    worker, output_log = _make_run_worker_for_step_tests()
+    step_results = [
+        StepResult(step_name="fields", status=StepStatus.NO_WORK),
+        StepResult(step_name="layouts", status=StepStatus.NO_WORK),
+    ]
+
+    worker._emit_step_summary(step_results)
+
+    messages = [m for m, _ in output_log]
+    assert any("NO WORK SPECIFIED" in m for m in messages)
+    assert not any(
+        ": SKIPPED" in m for m in messages
+    ), "no SKIPPED label should appear when only NO_WORK results are present"
+    assert any("Run completed successfully" in m for m in messages)
+
+
+def test_emit_step_summary_still_renders_skipped_for_skipped():
+    """STEP SUMMARY renders SKIPPED unchanged for the user-opt-out path."""
+    from espo_impl.core.models import StepResult
+
+    worker, output_log = _make_run_worker_for_step_tests()
+    step_results = [
+        StepResult(step_name="entity_deletions", status=StepStatus.SKIPPED),
+    ]
+
+    worker._emit_step_summary(step_results)
+
+    messages = [m for m, _ in output_log]
+    assert any(": SKIPPED" in m for m in messages)
+    assert not any("NO WORK SPECIFIED" in m for m in messages)
+
+
+def test_emit_step_summary_run_complete_message_treats_no_work_as_success():
+    """A run with all-NO_WORK steps still prints 'Run completed
+    successfully' — NO_WORK is not a failure."""
+    from espo_impl.core.models import StepResult
+
+    worker, output_log = _make_run_worker_for_step_tests()
+    step_results = [
+        StepResult(step_name=name, status=StepStatus.NO_WORK)
+        for name in (
+            "entity_deletions", "entity_creations", "entity_settings",
+            "email_templates", "duplicate_checks", "saved_views", "fields",
+            "layouts", "relationships", "workflows", "filtered_tabs",
+        )
+    ]
+
+    worker._emit_step_summary(step_results)
+
+    messages = [m for m, _ in output_log]
+    assert any("Run completed successfully" in m for m in messages)
+    assert not any(
+        "Run completed with" in m and "step failure" in m
+        for m in messages
+    )

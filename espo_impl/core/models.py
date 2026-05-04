@@ -810,11 +810,21 @@ class RunSummary:
 
 
 class StepStatus(Enum):
-    """Per-step pipeline outcome status used by RunWorker."""
+    """Per-step pipeline outcome status used by RunWorker.
+
+    NO_WORK is distinct from SKIPPED: NO_WORK means the YAML
+    declared nothing for this step (a legitimate, by-design
+    outcome), whereas SKIPPED means the user explicitly opted
+    out of the step (e.g. via the field-update-mode flag that
+    bypasses entity deletions). Both render in gray in the
+    STEP SUMMARY block but with different labels so an operator
+    reading the log can tell the two cases apart at a glance.
+    """
 
     OK = "ok"
     FAILED = "failed"
     SKIPPED = "skipped"
+    NO_WORK = "no_work"
 
 
 @dataclass

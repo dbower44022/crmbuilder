@@ -210,7 +210,7 @@ class RunWorker(QThread):
         """
         if not has_work:
             return (
-                StepResult(step_name=step_name, status=StepStatus.SKIPPED),
+                StepResult(step_name=step_name, status=StepStatus.NO_WORK),
                 None,
             )
 
@@ -881,6 +881,10 @@ class RunWorker(QThread):
             if sr.status == StepStatus.OK:
                 self.output_line.emit(
                     f"  {display_name:<26}: OK", "green"
+                )
+            elif sr.status == StepStatus.NO_WORK:
+                self.output_line.emit(
+                    f"  {display_name:<26}: NO WORK SPECIFIED", "gray"
                 )
             elif sr.status == StepStatus.SKIPPED:
                 self.output_line.emit(
