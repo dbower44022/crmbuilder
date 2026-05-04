@@ -211,6 +211,152 @@ def test_validate_enum_without_options(loader, tmp_path):
     assert any("options" in e for e in errors)
 
 
+def test_validate_program_accepts_empty_options_when_options_deferred_true(
+    loader, tmp_path,
+):
+    """An enum field with options:[] and optionsDeferred:true validates cleanly."""
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Account:
+            fields:
+              - name: industrySubsector
+                type: enum
+                label: "Industry Subsector"
+                optionsDeferred: true
+                options: []
+    """)
+    path = tmp_path / "deferred_ok.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert not any("options" in e for e in errors), (
+        f"Expected no options-related errors, got: {errors!r}"
+    )
+
+
+def test_validate_program_still_rejects_empty_options_when_flag_absent(
+    loader, tmp_path,
+):
+    """An enum field with options:[] and no optionsDeferred is still rejected."""
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: status
+                type: enum
+                label: "Status"
+                options: []
+    """)
+    path = tmp_path / "deferred_absent.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any(
+        "non-empty 'options'" in e for e in errors
+    ), f"Expected the standard non-empty options error, got: {errors!r}"
+
+
+def test_validate_program_still_rejects_empty_options_when_flag_false(
+    loader, tmp_path,
+):
+    """Explicit optionsDeferred:false does not bypass the empty-options check."""
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: status
+                type: enum
+                label: "Status"
+                optionsDeferred: false
+                options: []
+    """)
+    path = tmp_path / "deferred_false.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any(
+        "non-empty 'options'" in e for e in errors
+    ), f"Expected the standard non-empty options error, got: {errors!r}"
+
+
+def test_validate_program_options_deferred_must_be_boolean(loader, tmp_path):
+    """Non-boolean optionsDeferred values are rejected with a type-check error."""
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: status
+                type: enum
+                label: "Status"
+                optionsDeferred: "yes"
+                options: []
+    """)
+    path = tmp_path / "deferred_non_bool.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any(
+        "'optionsDeferred' must be a boolean" in e for e in errors
+    ), f"Expected boolean type error, got: {errors!r}"
+
+
+def test_validate_program_options_deferred_only_on_enum_types(loader, tmp_path):
+    """optionsDeferred:true on a non-enum type is flagged as inappropriate."""
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: notes
+                type: varchar
+                label: "Notes"
+                optionsDeferred: true
+    """)
+    path = tmp_path / "deferred_non_enum.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any(
+        "'optionsDeferred' is only valid on enum/multiEnum fields" in e
+        for e in errors
+    ), f"Expected enum-only error, got: {errors!r}"
+
+
+def test_validate_program_non_empty_options_with_options_deferred_validates(
+    loader, tmp_path,
+):
+    """Non-empty options with optionsDeferred:true validates fine — the flag has
+    no effect when options are explicitly listed."""
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            fields:
+              - name: status
+                type: enum
+                label: "Status"
+                optionsDeferred: true
+                options:
+                  - A
+                  - B
+    """)
+    path = tmp_path / "deferred_with_opts.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert errors == [], f"Expected clean validation, got: {errors!r}"
+
+
 def test_validate_duplicate_field_names(loader, tmp_path):
     content = dedent("""\
         version: "1.0"

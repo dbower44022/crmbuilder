@@ -474,6 +474,7 @@ class ConfigLoader:
             copyToClipboard=data.get("copyToClipboard"),
             options=data.get("options"),
             optionDescriptions=data.get("optionDescriptions"),
+            optionsDeferred=data.get("optionsDeferred"),
             translatedOptions=data.get("translatedOptions"),
             style=data.get("style"),
             isSorted=data.get("isSorted"),
@@ -752,10 +753,26 @@ class ConfigLoader:
             errors.append(f"{prefix}: missing required property 'label'")
 
         if field_def.type in ENUM_TYPES:
-            if not field_def.options:
+            if not field_def.options and not field_def.optionsDeferred:
                 errors.append(
-                    f"{prefix}: enum/multiEnum fields must have a non-empty 'options' list"
+                    f"{prefix}: enum/multiEnum fields must have a "
+                    f"non-empty 'options' list (or set 'optionsDeferred: true' "
+                    f"to defer the list to post-deploy operator configuration)"
                 )
+
+        if field_def.optionsDeferred is True and field_def.type not in ENUM_TYPES:
+            errors.append(
+                f"{prefix}: 'optionsDeferred' is only valid on "
+                f"enum/multiEnum fields"
+            )
+
+        if (
+            field_def.optionsDeferred is not None
+            and not isinstance(field_def.optionsDeferred, bool)
+        ):
+            errors.append(
+                f"{prefix}: 'optionsDeferred' must be a boolean"
+            )
 
         if field_def.optionDescriptions is not None:
             if field_def.type not in ENUM_TYPES:

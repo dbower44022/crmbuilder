@@ -75,6 +75,12 @@ class FieldDefinition:
     :param name: Internal field name (lowerCamelCase).
     :param type: EspoCRM field type.
     :param label: Display label.
+    :param optionsDeferred: When True on an enum/multiEnum field
+        with empty `options`, the validator accepts the empty list.
+        Used for fields where the value list cannot be expressed
+        at Phase 9 generation time and is documented for
+        post-deploy operator configuration in MANUAL-CONFIG.md.
+        Default None (treated as False).
     """
 
     name: str
@@ -87,6 +93,7 @@ class FieldDefinition:
     copyToClipboard: bool | None = None
     options: list[str] | None = None
     optionDescriptions: dict[str, str] | None = None
+    optionsDeferred: bool | None = None
     translatedOptions: dict[str, str] | None = None
     style: dict[str, str | None] | None = None
     isSorted: bool | None = None

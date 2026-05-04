@@ -1,8 +1,8 @@
 # CRM Builder — YAML Program File Schema
 
-**Version:** 1.2.3
+**Version:** 1.2.4
 **Status:** Current
-**Last Updated:** 05-03-26 18:30
+**Last Updated:** 05-04-26 00:00
 **Applies To:** All YAML program files used by CRM Builder
 
 ---
@@ -17,6 +17,7 @@
 | 1.2.1 | 05-03-26 14:00 | Documents the existing schema rule that link relationships are declared exclusively in the top-level `relationships:` block — `type: link` is not a valid field type and is rejected at validation time with a hard-reject error. Rule was implicit in v1.0–v1.2; now explicit in Sections 6.2, 8, and 10 following its enforcement by `validate_program()` (crmbuilder error-handling Prompt E, 05-02-26). Discovery: FU-Contribution.yaml v1.0.0 dual-declared three relationships as both `type: link` fields and `relationships:` entries, causing HTTP 409 Conflict at deploy time because EspoCRM's fieldManager created stub link fields that subsequently conflicted with `EntityManager/action/createLink`. Documents that field-level metadata (description, category) does not propagate onto link records — configure post-deployment via the EspoCRM admin UI if needed. Documents that three EspoCRM features have no public REST API write path (saved views, duplicate-check rules, workflows): YAML directives are recognized and surfaced in a MANUAL CONFIGURATION REQUIRED block at end of run rather than applied via API. |
 | 1.2.2 | 05-03-26 | No schema changes. Adds the Section 1 subsections "Companion implementation reference" and "Keeping this PRD and the impl doc in sync" that codify this PRD as the single source of truth for the schema's shape and Section 10 as the single source of truth for its validation rules. Mirrored on the impl-doc side (`docs/impl-yaml-schema.md` v1.2.1+): that doc demoted its parallel rule list to a function-name index pointing back at Section 10, and added a step-by-step recipe that puts the PRD update *first* whenever a new block is added. Done in response to the v1.0 → v1.2 drift the impl-doc rewrite corrected, to remove the surface where it could happen again. |
 | 1.2.3 | 05-03-26 18:30 | Adds `settings.autoPlaceName` (default `true`); LayoutManager now auto-prepends the system `name` field to detail/edit layouts unless explicitly placed or opted out. |
+| 1.2.4 | 05-04-26 00:00 | Adds field-level `optionsDeferred: bool` flag on enum/multiEnum fields (Section 6.3). When `true`, the validator accepts an empty `options:` list — used for fields whose value list cannot be expressed at YAML-authoring time and is configured post-deploy via the EspoCRM admin UI per a `MANUAL-CONFIG.md` companion entry. Default `false` preserves the existing strict validator behavior. New Section 6.4.1 documents the deferred-options pattern with worked example and companion-artifact rule. Validator-only change; deploy engine behavior unchanged. |
 
 ---
 
@@ -1408,7 +1409,8 @@ These properties apply only to `enum` and `multiEnum` fields:
 
 | Property | Type | Required | Description |
 |---|---|---|---|
-| `options` | list | yes | Ordered list of allowed values |
+| `options` | list | yes (unless `optionsDeferred: true`) | Ordered list of allowed values |
+| `optionsDeferred` | boolean | no | When `true`, allows `options` to be empty. Used when the value list cannot be expressed at YAML-authoring time and is configured post-deploy via the EspoCRM admin UI. Default: `false` |
 | `translatedOptions` | map | no | Display label for each option value |
 | `style` | map | no | Color style per option (see Section 6.4) |
 | `isSorted` | boolean | no | Sort options alphabetically. Default: `false` |
@@ -1425,6 +1427,59 @@ These properties apply only to `enum` and `multiEnum` fields:
 | `"danger"` | Red |
 | `"warning"` | Orange |
 | `"info"` | Light blue |
+
+### 6.4.1 Deferred-Options Pattern
+
+EspoCRM enum and multi-enum fields ordinarily require an explicit
+`options:` list. The default validator behavior rejects empty
+`options:` to catch authoring mistakes (a dropdown with no values
+is almost always an oversight).
+
+In some cases, the value list cannot be expressed at YAML-
+authoring time:
+
+- **Schema-gap deferrals** — EspoCRM features like dependent
+  enums (where one dropdown's options depend on another field's
+  value) have no REST API write path. The `options:` list must be
+  configured through the admin UI post-deploy. The YAML records
+  the field's existence and type but defers the values.
+- **Open-decision deferrals** — the value taxonomy is an open
+  decision at YAML-authoring time. The field exists in the schema
+  and is needed at deploy, but the actual value list is being
+  decided in parallel and will be populated post-deploy.
+
+For these cases, set `optionsDeferred: true` on the field. The
+validator accepts the empty list. The deploy engine creates the
+field with no options. The operator populates the option list via
+the EspoCRM admin UI based on a corresponding `MANUAL-CONFIG.md`
+entry.
+
+#### Worked example
+
+```yaml
+- name: industrySubsector
+  type: enum
+  label: "Industry Subsector"
+  description: >
+    ~100 values, dependent-filtered on industrySector.
+    Configure post-deploy per MANUAL-CONFIG.md.
+  optionsDeferred: true
+  options: []
+```
+
+#### Companion artifact
+
+Every field with `optionsDeferred: true` should have a matching
+entry in the program's `MANUAL-CONFIG.md` documenting:
+
+- the path the operator follows in the admin UI;
+- the source of truth for the value list (taxonomy, master list,
+  PRD reference);
+- if applicable, dependent-enum configuration steps.
+
+`optionsDeferred: true` without a `MANUAL-CONFIG.md` entry is a
+generation-process bug; the methodology requires both halves of
+the deferral to be authored together.
 
 ### 6.5 Numeric Field Properties
 
