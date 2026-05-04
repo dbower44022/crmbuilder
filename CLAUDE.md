@@ -324,8 +324,73 @@ reporting:
   result list contains `ERROR` records. `DRIFT` is informational, not
   failure. `NOT_SUPPORTED` is platform constraint, not failure.
 - The `STEP SUMMARY` block at the end of every run truthfully reports
-  each step as OK / FAILED / SKIPPED. The footer reads "Run completed
-  successfully" or "Run completed with N step failure(s)".
+  each step as OK / FAILED / SKIPPED / NO_WORK. `NO_WORK` (rendered
+  `NO WORK SPECIFIED` in the log) means the YAML asked for nothing
+  for that step (a valid by-design outcome); `SKIPPED` is reserved
+  for explicit user opt-out (e.g. field-update-mode bypassing
+  entity deletions). The footer reads "Run completed successfully"
+  or "Run completed with N step failure(s)" — `NO_WORK` is not a
+  failure.
+
+### Deployment validation pass (05-04-26)
+
+A nine-fix engine stabilization session driven by deploying the
+five-file MN+CR-Account batch
+(`programs/{CR/CR-Account, MN/MN-Account, MN/MN-Contact,
+MN/MN-Engagement, MN/MN-Session}.yaml`) against a freshly-reset
+EspoCRM instance for the first time. Every fix surfaced from real
+deployment behavior; each one was authored as a single Claude Code
+prompt under
+`PRDs/product/crmbuilder-automation-PRD/CLAUDE-CODE-PROMPT-*.md`,
+applied, verified, and committed in sequence. End state: all five
+files deploy clean, including a brand-new custom entity exercising
+entity creation, cache rebuild, metadata polling, deferred-options
+field, layout writing, and relationship creation + verification.
+
+| Commit | Fix |
+|---|---|
+| `3b3e9dc` | Layout writer skips `c-` prefix on custom-entity fields. EspoCRM only c-prefixes custom fields when the parent entity is native (Contact, Account); custom entities (CEngagement) store fields under natural names. |
+| `1115527` | Layout comparator compares `name` and `width` per item in list-column payloads. Was structurally blind to flat-dict items, so any list payloads of equal length matched. |
+| `3daab49` | Auto-place required `name` field on detail/edit layouts via `settings.autoPlaceName` (default `true`). Without it, EspoCRM rejects record saves with `Field: name, Validation: required`. Schema bumped to v1.2.3. |
+| `52abb94` | `STEP SUMMARY` distinguishes `NO_WORK` (YAML declared nothing) from `SKIPPED` (user opted out). Adds `StepStatus.NO_WORK` and renders it as `NO WORK SPECIFIED` (gray). |
+| `d98db71` | Validator resolves field references across sibling YAMLs in a deployment batch. New `ProgramContext` value object carries the union of field names per entity across the batch; new `validate_program_with_context` consumes it. Single-file `validate_program` preserved via self-context fallback. Configure UI builds one shared context per batch. |
+| `8345cd8` | Validator resolves EspoCRM native fields. New `espo_impl/core/native_entity_types.py` maps native entity names (Contact → Person, Account → Company, Meeting → Event) to base types; `_native_field_names()` consumes the existing `audit_utils` catalog (`SYSTEM_FIELDS`, `NATIVE_PERSON_FIELDS`, `NATIVE_COMPANY_FIELDS`, `NATIVE_EVENT_FIELDS`, `NATIVE_BASE_FIELDS`). |
+| `fb50b95` | Validator supports `optionsDeferred: true` on `enum`/`multiEnum` fields. When true with empty `options:`, validator passes; deploy engine accepts. Schema doc Section 6.3 + 6.4.1 document the deferred-options pattern with the `MANUAL-CONFIG.md` companion-artifact rule. |
+| `e5f18fe` | `EntityManager.wait_for_metadata_ready()` polls `GET /Metadata?key=entityDefs.{entity}` after `rebuild_cache()` until each named entity's metadata is materialized or a 30s timeout elapses. Closes the async-rebuild race window between entity creation and downstream operations. Backoff: 0.5/0.5/1/1/2s+. Yellow-warns on timeout, doesn't fail. |
+| `e4ca6a6` | Removed `ENTITY_NAME_MAP` override entirely. Three of its five entries (`Session → CSessions`, `Workshop → CWorkshops`, `WorkshopAttendance → CWorkshopAttendee`) were wrong — current EspoCRM applies a simple `f"C{name}"` rule for all custom entities with no pluralization or renaming. Same fix applied symmetrically to `INVERSE_ENTITY_NAME_MAP` in `audit_utils.py`. The remaining map entries were redundant with the fallback. |
+
+Three CBM-side YAML fixes accompanied the engine work:
+
+| Commit (CBM repo) | Fix |
+|---|---|
+| `11d5a5d` | `FU-Account.yaml` v1.0.2 — strip duplicate `type:link` field declaration; the link is already correctly declared in `relationships:`. Schema rule per `app-yaml-schema.md` Section 6.2. |
+| `7b3414a` | `programs/MR/templates/` — three test-minimal HTML body files for the email templates declared in `MR-Contact.yaml` (`mentor-application-confirmation`, `mentor-application-decline`, `mentor-duplicate-email-alert`). Bodies are placeholder `TEST TEMPLATE` content with merge-field placeholders intact; CBM-voice authoring deferred to post-deployment-validation. |
+| `ffee4ca` | `MN-Account.industrySubsector` and `MN-Session.topicsCovered` — added `optionsDeferred: true` to both deferred-options enum fields per the new schema flag. Inline comments expanded to make the deferral and operator post-deploy responsibility visible at the YAML level. |
+
+**Engine-bug backlog** (cosmetic, surfaced during the session,
+non-blocking, not yet fixed):
+
+- Recovery worker Phase 4 has no warm-up delay between
+  `docker compose up` and HTTPS probes. A correct reset can show
+  Phase 4 "failures" because nginx has been alive less than a
+  second when the probes fire.
+- Cert-expiry read pipes nothing into `openssl x509` (`Could not
+  read certificate from <stdin>`). Cert is fine; the worker is
+  reading it incorrectly.
+- Configure log doesn't show the absolute path of the YAML file
+  being processed. Cost real diagnostic time during this session
+  when a stale-clone hypothesis took several minutes to falsify.
+
+**What remains unvalidated** (deferred to a future session):
+
+- MR-Contact.yaml, MR-Dues.yaml — both refreshed in Phase 9, not
+  yet deployed
+- 8 of 9 CR-domain YAMLs — only CR-Account is validated; CR-Contact
+  plus the 7 CR custom entities (PartnershipAgreement, Event,
+  EventRegistration, MarketingCampaign, CampaignGroup,
+  CampaignEngagement, Segment) are not yet deployed
+- All 4 FU-domain YAMLs — Phase 9 done 05-01-26 but not yet
+  deployed against fresh state
 
 ## Document Production Process
 
