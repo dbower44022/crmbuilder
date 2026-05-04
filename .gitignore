@@ -43,3 +43,5 @@ PRDs/Implementation Docs/
 PRDs/generated/
 
 *.db
+
+*.lock
