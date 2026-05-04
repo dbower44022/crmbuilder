@@ -360,11 +360,23 @@ class RunWorker(QThread):
             def _entity_creations_body() -> None:
                 self.output_line.emit("", "white")
                 self.output_line.emit("=== ENTITY CREATION ===", "white")
+                successful_creates: list[str] = []
                 for entity_def in creates:
                     ok = entity_mgr._create_entity(entity_def)
                     if not ok:
                         create_fail_count["value"] += 1
+                    else:
+                        # _create_entity returns True both for "created now"
+                        # and for "already exists." We only need to wait for
+                        # entities created in this run, but we don't have an
+                        # easy boolean for that — wait for all that succeeded
+                        # and let wait_for_metadata_ready short-circuit when
+                        # an entity is already cached. The poll is a single
+                        # GET /Metadata, which is cheap.
+                        successful_creates.append(entity_def.name)
                 entity_mgr.rebuild_cache()
+                if successful_creates:
+                    entity_mgr.wait_for_metadata_ready(successful_creates)
                 had_entity_ops_state["value"] = True
 
             def _entity_creations_failure_check(_: Any) -> str | None:

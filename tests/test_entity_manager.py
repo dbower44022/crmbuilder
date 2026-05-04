@@ -1,6 +1,6 @@
 """Tests for the entity manager orchestration logic."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -246,3 +246,121 @@ def test_entity_name_mapping():
     # Session maps to CSessions per the mapping table
     client.check_entity_exists.assert_called_once_with("CSessions")
     client.remove_entity.assert_called_once_with("CSessions")
+
+
+def test_wait_for_metadata_ready_returns_true_immediately_when_cached():
+    """When metadata is already cached, wait returns True on first
+    poll without sleeping noticeably."""
+    client = MagicMock()
+    client.get_entity_full_metadata.return_value = (
+        200,
+        {"name": "CEngagement", "fields": {}},
+    )
+
+    manager, output_log = make_manager(client)
+    with patch("espo_impl.core.entity_manager.time.sleep"):
+        result = manager.wait_for_metadata_ready(
+            ["Engagement"], timeout_seconds=10.0
+        )
+
+    assert result is True
+    assert client.get_entity_full_metadata.call_count == 1
+    messages = [msg for msg, _ in output_log]
+    assert any("Metadata cache ready" in msg for msg in messages)
+
+
+def test_wait_for_metadata_ready_polls_until_ready():
+    """When metadata is initially unavailable, wait polls until it
+    materializes, then returns True."""
+    client = MagicMock()
+    client.get_entity_full_metadata.side_effect = [
+        (200, None),
+        (200, None),
+        (200, {"name": "CSessions", "fields": {}}),
+    ]
+
+    manager, output_log = make_manager(client)
+    with patch("espo_impl.core.entity_manager.time.sleep"):
+        result = manager.wait_for_metadata_ready(
+            ["Session"], timeout_seconds=30.0
+        )
+
+    assert result is True
+    assert client.get_entity_full_metadata.call_count == 3
+    messages = [msg for msg, _ in output_log]
+    assert any("ready" in msg for msg in messages)
+
+
+def test_wait_for_metadata_ready_returns_false_on_timeout():
+    """When metadata never materializes within the timeout, wait
+    returns False and emits a TIMED OUT line for each entity."""
+    client = MagicMock()
+    client.get_entity_full_metadata.return_value = (200, None)
+
+    # time.monotonic() advances rapidly to expire the deadline
+    # after a couple of polls. The first call is when the deadline
+    # is computed; subsequent calls are the loop guard.
+    monotonic_values = iter([0.0, 1.0, 100.0, 200.0])
+
+    manager, output_log = make_manager(client)
+    with (
+        patch("espo_impl.core.entity_manager.time.sleep"),
+        patch(
+            "espo_impl.core.entity_manager.time.monotonic",
+            side_effect=lambda: next(monotonic_values),
+        ),
+    ):
+        result = manager.wait_for_metadata_ready(
+            ["Session"], timeout_seconds=5.0
+        )
+
+    assert result is False
+    messages = [msg for msg, _ in output_log]
+    assert any("TIMED OUT" in msg for msg in messages)
+    assert any("proceeding anyway" in msg for msg in messages)
+
+
+def test_wait_for_metadata_ready_handles_mixed_entities():
+    """When some entities are ready and others aren't, wait keeps
+    polling only the unready ones."""
+    client = MagicMock()
+    # Iteration 1: Engagement ready, Session not. Iteration 2:
+    # Session still not. Iteration 3: Session ready.
+    call_log: list[str] = []
+
+    def fake_get_meta(espo_name: str):
+        call_log.append(espo_name)
+        if espo_name == "CEngagement":
+            return (200, {"name": "CEngagement", "fields": {}})
+        # CSessions: empty on first 2 calls, ready on 3rd
+        sessions_calls = sum(
+            1 for n in call_log if n == "CSessions"
+        )
+        if sessions_calls <= 2:
+            return (200, None)
+        return (200, {"name": "CSessions", "fields": {}})
+
+    client.get_entity_full_metadata.side_effect = fake_get_meta
+
+    manager, output_log = make_manager(client)
+    with patch("espo_impl.core.entity_manager.time.sleep"):
+        result = manager.wait_for_metadata_ready(
+            ["Engagement", "Session"], timeout_seconds=30.0
+        )
+
+    assert result is True
+    engagement_calls = sum(1 for n in call_log if n == "CEngagement")
+    sessions_calls = sum(1 for n in call_log if n == "CSessions")
+    assert engagement_calls == 1
+    assert sessions_calls >= 3
+
+
+def test_wait_for_metadata_ready_no_entities_returns_true():
+    """Calling with an empty list short-circuits to True with no polls."""
+    client = MagicMock()
+
+    manager, output_log = make_manager(client)
+    result = manager.wait_for_metadata_ready([])
+
+    assert result is True
+    client.get_entity_full_metadata.assert_not_called()

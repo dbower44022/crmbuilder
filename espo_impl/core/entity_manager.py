@@ -15,6 +15,7 @@ Confirmed API endpoints (discovered via browser dev tools 2026-03-21):
 """
 
 import logging
+import time
 from collections.abc import Callable
 from typing import Any
 
@@ -88,6 +89,99 @@ class EntityManager:
         if body:
             self.output_fn(f"          {body}", "red")
         return False
+
+    def wait_for_metadata_ready(
+        self,
+        entity_def_names: list[str],
+        timeout_seconds: float = 30.0,
+    ) -> bool:
+        """Poll EspoCRM's metadata API until every named entity's
+        entityDefs are materialized in the cache, or the timeout
+        elapses.
+
+        Called after rebuild_cache() to close the async race window
+        between rebuild completion and downstream operations. The
+        underlying issue is that POST /Admin/rebuild returns 200 to
+        acknowledge the request, but the rebuild itself runs
+        asynchronously on the EspoCRM PHP process. Subsequent
+        operations against newly-created entities can fail with
+        HTTP 500 / 403 errors if the metadata for that entity isn't
+        yet in the cache.
+
+        :param entity_def_names: List of YAML-natural entity names
+            (e.g. ["Engagement", "Session"]). Each is resolved to its
+            EspoCRM internal name via get_espo_entity_name() before
+            polling.
+        :param timeout_seconds: Hard upper bound on how long to wait
+            across all entities. Default 30 seconds.
+        :returns: True if every entity's metadata was materialized
+            before timeout; False if at least one timed out. On False
+            return, callers should still proceed but should expect
+            downstream operations to potentially fail and log
+            accordingly.
+        """
+        if not entity_def_names:
+            return True
+
+        self.output_fn(
+            "[WAIT]    Waiting for metadata cache to materialize "
+            "new entities ...",
+            "white",
+        )
+
+        backoff_pattern = [0.5, 0.5, 1.0, 1.0] + [2.0] * 30
+
+        pending = list(entity_def_names)
+        deadline = time.monotonic() + timeout_seconds
+        attempt = 0
+        timed_out_any = False
+
+        while pending and time.monotonic() < deadline:
+            delay = backoff_pattern[
+                min(attempt, len(backoff_pattern) - 1)
+            ]
+            time.sleep(delay)
+            attempt += 1
+
+            still_pending: list[str] = []
+            for yaml_name in pending:
+                espo_name = get_espo_entity_name(yaml_name)
+                status_code, meta = self.client.get_entity_full_metadata(
+                    espo_name
+                )
+                if (
+                    status_code == 200
+                    and isinstance(meta, dict)
+                    and meta
+                ):
+                    self.output_fn(
+                        f"[WAIT]    {yaml_name} ({espo_name}) ... ready",
+                        "gray",
+                    )
+                else:
+                    still_pending.append(yaml_name)
+            pending = still_pending
+
+        if pending:
+            timed_out_any = True
+            for yaml_name in pending:
+                espo_name = get_espo_entity_name(yaml_name)
+                self.output_fn(
+                    f"[WAIT]    {yaml_name} ({espo_name}) ... "
+                    f"TIMED OUT after {timeout_seconds:.0f}s",
+                    "yellow",
+                )
+
+        if timed_out_any:
+            self.output_fn(
+                f"[WAIT]    Metadata wait timed out after "
+                f"{timeout_seconds:.0f}s — proceeding anyway",
+                "yellow",
+            )
+            return False
+
+        self.output_fn("[WAIT]    Metadata cache ready", "green")
+        return True
 
     def _delete_entity(self, entity_def: EntityDefinition) -> bool:
         """Delete a custom entity from the instance.
