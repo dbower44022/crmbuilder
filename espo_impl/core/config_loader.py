@@ -319,6 +319,44 @@ class ConfigLoader:
         finally:
             self._active_context = None
 
+    def _native_field_names(self, entity: EntityDefinition) -> frozenset[str]:
+        """Return EspoCRM-native field names that exist on this entity
+        by virtue of its base type.
+
+        For custom entities, uses the YAML-declared ``type`` field.
+        For native entities (Contact, Account, Lead, Meeting, etc.),
+        consults ``native_entity_types.NATIVE_ENTITY_BASE_TYPE`` to
+        infer the base type, then looks up the native-field set in
+        ``audit_utils._TYPE_NATIVE_FIELDS``.
+
+        System fields (id, createdAt, modifiedAt, etc.) are included
+        unconditionally — every entity has them.
+
+        :param entity: Entity definition under validation.
+        :returns: Frozenset of native field names. Never raises.
+        """
+        from espo_impl.core.audit_utils import (
+            SYSTEM_FIELDS,
+            get_native_fields_for_type,
+        )
+        from espo_impl.core.native_entity_types import get_base_type
+
+        # System fields are universal.
+        result: set[str] = set(SYSTEM_FIELDS)
+
+        # Determine base type. Custom entity: YAML-declared type.
+        # Native entity: lookup in NATIVE_ENTITY_BASE_TYPE.
+        base_type: str | None
+        if entity.type:
+            base_type = entity.type
+        else:
+            base_type = get_base_type(entity.name)
+
+        if base_type is not None:
+            result.update(get_native_fields_for_type(base_type))
+
+        return frozenset(result)
+
     def _validate_entity(self, entity: EntityDefinition) -> list[str]:
         """Validate an entity definition.
 
@@ -602,7 +640,11 @@ class ConfigLoader:
             errors.append(f"{prefix}: detail/edit layout must have 'panels'")
             return errors
 
-        field_names = {f.name for f in entity.fields} | self._active_context.field_names_for(entity.name)
+        field_names = (
+            {f.name for f in entity.fields}
+            | self._active_context.field_names_for(entity.name)
+            | self._native_field_names(entity)
+        )
         field_categories = {
             f.category for f in entity.fields if f.category
         }
@@ -877,7 +919,11 @@ class ConfigLoader:
         :returns: List of error messages.
         """
         errors: list[str] = []
-        field_names = {f.name for f in entity.fields} | self._active_context.field_names_for(entity.name)
+        field_names = (
+            {f.name for f in entity.fields}
+            | self._active_context.field_names_for(entity.name)
+            | self._native_field_names(entity)
+        )
 
         for field_def in entity.fields:
             prefix = f"{entity.name}.{field_def.name or '(unnamed)'}"
@@ -925,7 +971,11 @@ class ConfigLoader:
         :returns: List of error messages.
         """
         errors: list[str] = []
-        field_names = {f.name for f in entity.fields} | self._active_context.field_names_for(entity.name)
+        field_names = (
+            {f.name for f in entity.fields}
+            | self._active_context.field_names_for(entity.name)
+            | self._native_field_names(entity)
+        )
 
         for field_def in entity.fields:
             if field_def.formula_raw is not None or field_def.formula is not None:
@@ -1008,7 +1058,11 @@ class ConfigLoader:
         if not entity.saved_views:
             return errors
 
-        field_names = {f.name for f in entity.fields} | self._active_context.field_names_for(entity.name)
+        field_names = (
+            {f.name for f in entity.fields}
+            | self._active_context.field_names_for(entity.name)
+            | self._native_field_names(entity)
+        )
         seen_ids: set[str] = set()
 
         for view in entity.saved_views:
@@ -1138,7 +1192,11 @@ class ConfigLoader:
         if not entity.filtered_tabs:
             return errors
 
-        field_names = {f.name for f in entity.fields} | self._active_context.field_names_for(entity.name)
+        field_names = (
+            {f.name for f in entity.fields}
+            | self._active_context.field_names_for(entity.name)
+            | self._native_field_names(entity)
+        )
         seen_ids: set[str] = set()
         seen_scopes: set[str] = set()
         scope_pattern = re.compile(r"^[A-Z][A-Za-z0-9]{0,59}$")
@@ -1283,7 +1341,11 @@ class ConfigLoader:
         if not entity.email_templates:
             return errors
 
-        field_names = {f.name for f in entity.fields} | self._active_context.field_names_for(entity.name)
+        field_names = (
+            {f.name for f in entity.fields}
+            | self._active_context.field_names_for(entity.name)
+            | self._native_field_names(entity)
+        )
         seen_ids: set[str] = set()
 
         for tmpl in entity.email_templates:
@@ -1515,7 +1577,11 @@ class ConfigLoader:
         if not entity.workflows:
             return errors
 
-        field_names = {f.name for f in entity.fields} | self._active_context.field_names_for(entity.name)
+        field_names = (
+            {f.name for f in entity.fields}
+            | self._active_context.field_names_for(entity.name)
+            | self._native_field_names(entity)
+        )
         seen_ids: set[str] = set()
 
         for wf in entity.workflows:
@@ -1787,7 +1853,11 @@ class ConfigLoader:
         if not entity.duplicate_checks:
             return errors
 
-        field_names = {f.name for f in entity.fields} | self._active_context.field_names_for(entity.name)
+        field_names = (
+            {f.name for f in entity.fields}
+            | self._active_context.field_names_for(entity.name)
+            | self._native_field_names(entity)
+        )
         seen_ids: set[str] = set()
 
         for rule in entity.duplicate_checks:

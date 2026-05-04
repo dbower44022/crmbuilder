@@ -1653,3 +1653,179 @@ def test_validate_program_with_context_still_catches_real_typos(
     assert any("acountType" in e for e in errors), (
         f"Expected typo error but got: {errors}"
     )
+
+
+# --- Native-field resolution tests (validator awareness of EspoCRM
+# system fields and base-type natives) ---
+
+
+def test_validate_program_resolves_native_system_fields(loader, tmp_path):
+    """A savedView referencing createdAt and modifiedAt validates
+    cleanly — those are universal system fields on every entity.
+    """
+    path = _write(tmp_path, "engagement_system_fields.yaml", """\
+        version: "1.1"
+        description: "Engagement with system-field references"
+        entities:
+          Engagement:
+            type: Base
+            action: create
+            labelSingular: "Engagement"
+            labelPlural: "Engagements"
+            fields:
+              - name: status
+                type: enum
+                label: "Status"
+                options:
+                  - Active
+                  - Closed
+            savedViews:
+              - id: engagement-recent
+                name: "Recent Engagements"
+                filter:
+                  - { field: status, op: equals, value: Active }
+                columns: [name, createdAt, modifiedAt]
+                orderBy:
+                  field: modifiedAt
+                  direction: desc
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert not any("createdAt" in e for e in errors), (
+        f"Unexpected createdAt error in: {errors}"
+    )
+    assert not any("modifiedAt" in e for e in errors), (
+        f"Unexpected modifiedAt error in: {errors}"
+    )
+
+
+def test_validate_program_resolves_native_base_fields(loader, tmp_path):
+    """A savedView on a Base-type custom entity referencing the
+    native 'name' and 'description' fields validates cleanly.
+    """
+    path = _write(tmp_path, "engagement_base_natives.yaml", """\
+        version: "1.1"
+        description: "Engagement with Base native references"
+        entities:
+          Engagement:
+            type: Base
+            action: create
+            labelSingular: "Engagement"
+            labelPlural: "Engagements"
+            fields:
+              - name: status
+                type: enum
+                label: "Status"
+                options:
+                  - Active
+                  - Closed
+            savedViews:
+              - id: engagement-active
+                name: "Active Engagements"
+                filter:
+                  - { field: status, op: equals, value: Active }
+                columns: [name, description]
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert not any(
+        "field 'name' not found" in e or "field 'description' not found" in e
+        for e in errors
+    ), f"Unexpected name/description error in: {errors}"
+
+
+def test_validate_program_resolves_native_company_fields_for_account(
+    loader, tmp_path,
+):
+    """A duplicateCheck on the native Account entity referencing the
+    native 'website' field validates cleanly.
+    """
+    path = _write(tmp_path, "account_website.yaml", """\
+        version: "1.1"
+        description: "Account duplicate check on website"
+        entities:
+          Account:
+            duplicateChecks:
+              - id: account-website
+                fields: [website]
+                onMatch: warn
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert not any("website" in e for e in errors), (
+        f"Unexpected website error in: {errors}"
+    )
+
+
+def test_validate_program_resolves_native_person_fields_for_contact(
+    loader, tmp_path,
+):
+    """A savedView on the native Contact entity referencing the native
+    'firstName' and 'emailAddress' fields validates cleanly.
+    """
+    path = _write(tmp_path, "contact_person_natives.yaml", """\
+        version: "1.1"
+        description: "Contact saved view on person natives"
+        entities:
+          Contact:
+            fields:
+              - name: contactType
+                type: enum
+                label: "Contact Type"
+                options:
+                  - Mentor
+                  - Client
+            savedViews:
+              - id: contact-mentors
+                name: "Mentors"
+                filter:
+                  - { field: contactType, op: equals, value: Mentor }
+                columns: [firstName, lastName, emailAddress]
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert not any("firstName" in e for e in errors), (
+        f"Unexpected firstName error in: {errors}"
+    )
+    assert not any("lastName" in e for e in errors), (
+        f"Unexpected lastName error in: {errors}"
+    )
+    assert not any("emailAddress" in e for e in errors), (
+        f"Unexpected emailAddress error in: {errors}"
+    )
+
+
+def test_validate_program_still_catches_typo_on_native_field(
+    loader, tmp_path,
+):
+    """Misspelled native references are still flagged — adding the
+    native-field catalog does not weaken typo detection.
+    """
+    path = _write(tmp_path, "engagement_typo.yaml", """\
+        version: "1.1"
+        description: "Engagement with native-field typo"
+        entities:
+          Engagement:
+            type: Base
+            action: create
+            labelSingular: "Engagement"
+            labelPlural: "Engagements"
+            fields:
+              - name: status
+                type: enum
+                label: "Status"
+                options:
+                  - Active
+                  - Closed
+            savedViews:
+              - id: engagement-recent
+                name: "Recent Engagements"
+                filter:
+                  - { field: status, op: equals, value: Active }
+                columns: [name, creatdAt]
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("creatdAt" in e for e in errors), (
+        f"Expected typo error but got: {errors}"
+    )
