@@ -358,6 +358,9 @@ field, layout writing, and relationship creation + verification.
 | `fb50b95` | Validator supports `optionsDeferred: true` on `enum`/`multiEnum` fields. When true with empty `options:`, validator passes; deploy engine accepts. Schema doc Section 6.3 + 6.4.1 document the deferred-options pattern with the `MANUAL-CONFIG.md` companion-artifact rule. |
 | `e5f18fe` | `EntityManager.wait_for_metadata_ready()` polls `GET /Metadata?key=entityDefs.{entity}` after `rebuild_cache()` until each named entity's metadata is materialized or a 30s timeout elapses. Closes the async-rebuild race window between entity creation and downstream operations. Backoff: 0.5/0.5/1/1/2s+. Yellow-warns on timeout, doesn't fail. |
 | `e4ca6a6` | Removed `ENTITY_NAME_MAP` override entirely. Three of its five entries (`Session → CSessions`, `Workshop → CWorkshops`, `WorkshopAttendance → CWorkshopAttendee`) were wrong — current EspoCRM applies a simple `f"C{name}"` rule for all custom entities with no pluralization or renaming. Same fix applied symmetrically to `INVERSE_ENTITY_NAME_MAP` in `audit_utils.py`. The remaining map entries were redundant with the fallback. |
+| `1464559` | Configure log shows absolute path of YAML being processed. Adds a `Source: {absolute_path}` line in gray immediately after the existing per-file run header. `file_info.path` was already populated; the new line just surfaces it. Closes the diagnostic gap that cost ~10 minutes of investigation when a stale-clone hypothesis surfaced earlier in the session. |
+| `1d9bd0e` | `phase_verify` polls network-dependent verification checks instead of probing once. Extends the inner `run_check` helper with `poll: bool = False` and a 60s per-check deadline using a 1/1/2/2/3/3/5s+ backoff. The four network-dependent probes (HTTP redirect, HTTPS, SSL cert, login page) now poll; the three stable probes (containers, cron, database) keep single-probe behavior. Same fix benefits both `phase_verify` call sites: `recovery_worker.py:220` (Recovery & Reset) and `deploy_wizard/deploy_worker.py:160` (fresh deploy). First-probe passes preserve the legacy log shape exactly. |
+| `aeba0e6` | `phase_post_install` reads cert expiry from disk (`/etc/letsencrypt/live/{domain}/fullchain.pem`) instead of going through nginx port 443. Replaces the brittle `openssl s_client | openssl x509` pipe with a direct `openssl x509 -in {path}`. Doesn't depend on nginx being up. Warning message on failure now includes the cert path and exit code. |
 
 Three CBM-side YAML fixes accompanied the engine work:
 
@@ -366,31 +369,84 @@ Three CBM-side YAML fixes accompanied the engine work:
 | `11d5a5d` | `FU-Account.yaml` v1.0.2 — strip duplicate `type:link` field declaration; the link is already correctly declared in `relationships:`. Schema rule per `app-yaml-schema.md` Section 6.2. |
 | `7b3414a` | `programs/MR/templates/` — three test-minimal HTML body files for the email templates declared in `MR-Contact.yaml` (`mentor-application-confirmation`, `mentor-application-decline`, `mentor-duplicate-email-alert`). Bodies are placeholder `TEST TEMPLATE` content with merge-field placeholders intact; CBM-voice authoring deferred to post-deployment-validation. |
 | `ffee4ca` | `MN-Account.industrySubsector` and `MN-Session.topicsCovered` — added `optionsDeferred: true` to both deferred-options enum fields per the new schema flag. Inline comments expanded to make the deferral and operator post-deploy responsibility visible at the YAML level. |
+| `a538b01` | `FU-Account.geographicServiceArea` and `FU-FundraisingCampaign.geographicServiceArea` — added `optionsDeferred: true` to both deferred-options multiEnum fields. Same pattern as `ffee4ca`; both reference the same Northeast Ohio zip code master list deferred per `FU-Y9-EXC-001` with operator post-deploy responsibility documented in `MANUAL-CONFIG.md FU-MC-OL-001`. |
 
-**Engine-bug backlog** (cosmetic, surfaced during the session,
+**Engine-bug backlog** (cosmetic and post-validation findings,
 non-blocking, not yet fixed):
 
-- Recovery worker Phase 4 has no warm-up delay between
-  `docker compose up` and HTTPS probes. A correct reset can show
-  Phase 4 "failures" because nginx has been alive less than a
-  second when the probes fire.
-- Cert-expiry read pipes nothing into `openssl x509` (`Could not
-  read certificate from <stdin>`). Cert is fine; the worker is
-  reading it incorrectly.
-- Configure log doesn't show the absolute path of the YAML file
-  being processed. Cost real diagnostic time during this session
-  when a stale-clone hypothesis took several minutes to falsify.
+- Recovery worker Phase 4 had no warm-up delay between
+  `docker compose up` and HTTPS probes. ✅ **Fixed in commit
+  `1d9bd0e`** — `phase_verify` now polls network-dependent
+  checks on a backoff schedule with a 60s per-check timeout.
+- Cert-expiry read piped nothing into `openssl x509` (`Could not
+  read certificate from <stdin>`). ✅ **Fixed in commit
+  `aeba0e6`** — reads the cert file directly from disk.
+- Configure log didn't show the absolute path of the YAML file
+  being processed. ✅ **Fixed in commit `1464559`** — added
+  `Source: {absolute_path}` line after each per-file run header.
+- **Validator doesn't consult server state for cross-batch field
+  references.** Surfaced during the FU deployment: FU-Account
+  references `accountType` (declared by CR-Account, already
+  deployed). Validator rejected because CR-Account.yaml wasn't
+  in the current batch — `ProgramContext` from `d98db71` only
+  unions fields across YAMLs in the batch, not against fields
+  already on the server. Workaround used: include dependency
+  YAMLs (CR-Account, MR-Contact) in the batch and let them run
+  idempotent. Real fix: when an instance is connected, validator
+  queries `GET /Metadata?key=entityDefs.{entity}.fields` and
+  unions the server-side fields into `field_names`. Falls back
+  to current batch-only behavior if no instance is connected.
+  **Not yet fixed.**
+- **Deploys process files in alphabetical order, not topological
+  order based on relationship dependencies.** A YAML declaring a
+  relationship to a sibling YAML's not-yet-deployed custom
+  entity hits HTTP 500 because the target entity doesn't exist.
+  Surfaced when FU-Contribution's `campaign` link to
+  FundraisingCampaign failed in alphabetical-order processing.
+  Workaround used: two-step manual deploy (FundraisingCampaign
+  alone first, then the rest). Real fix: build a dependency
+  graph from each YAML's relationships block, topological-sort
+  the file list before invoking per-file deploys. Cycle
+  detection produces a clear error rather than a deploy attempt.
+  **Not yet fixed.**
+- **YAML `description` type-conflict polish.** FU-FundraisingCampaign
+  re-declares `description` (a native field on Base entities) with
+  a different type. Engine correctly skips with `TYPE CONFLICT
+  (skipped)` rather than clobbering the native field. The
+  defensive engine behavior is right; the YAML should drop the
+  redeclaration or align with the native type. Trivial. **Not
+  yet fixed.**
 
-**What remains unvalidated** (deferred to a future session):
+**Validated against fresh deploy (11 of 19 YAML files):**
 
-- MR-Contact.yaml, MR-Dues.yaml — both refreshed in Phase 9, not
-  yet deployed
-- 8 of 9 CR-domain YAMLs — only CR-Account is validated; CR-Contact
-  plus the 7 CR custom entities (PartnershipAgreement, Event,
-  EventRegistration, MarketingCampaign, CampaignGroup,
-  CampaignEngagement, Segment) are not yet deployed
-- All 4 FU-domain YAMLs — Phase 9 done 05-01-26 but not yet
-  deployed against fresh state
+- **MN domain (4/4 ✅ complete)** — MN-Account (5 fields with
+  type-conditional visibility), MN-Contact (placeholder, NO_WORK),
+  MN-Engagement (19 fields, 6 relationships, 6 saved views),
+  MN-Session (7 fields, 3 relationships, Event base type)
+- **MR domain (2/2 ✅ complete)** — MR-Contact (43 fields, 3
+  emailTemplates created, 5 saved views and 4 workflows surfaced
+  as MANUAL_CONFIG, 1 duplicateCheck surfaced, 5 formula-fields),
+  MR-Dues (8 fields, 1 relationship, Base custom entity)
+- **FU domain (4/4 ✅ complete)** — FU-Account (6 fields, 1
+  relationship, geographicServiceArea with `optionsDeferred:true`),
+  FU-Contact (4 fields), FU-Contribution (15 fields, 3
+  relationships including the cross-custom-entity link to
+  FundraisingCampaign), FU-FundraisingCampaign (9 fields)
+- **CR domain (1/9)** — CR-Account validated; 8 remain
+  (CR-Contact plus 7 CR custom entities: PartnershipAgreement,
+  Event, EventRegistration, MarketingCampaign, CampaignGroup,
+  CampaignEngagement, Segment)
+
+**Live entities on the test instance after the validation pass:**
+
+- 5 custom entities created: CEngagement, CSession, CDues,
+  CContribution, CFundraisingCampaign
+- 2 native entities extended: Contact (47 custom fields total
+  across MR, FU, CR contributions), Account (22 custom fields
+  total across CR, MN, FU contributions)
+- ~125 custom fields total, ~12 relationships, 3 emailTemplates
+- ~15 saved views, ~4 workflows, ~2 duplicate-checks correctly
+  surfaced as MANUAL_CONFIG entries
 
 ## Document Production Process
 
