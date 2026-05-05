@@ -301,17 +301,89 @@ def phase_verify(
     results: list[dict] = []
 
     def run_check(
-        name: str, command: str, check_fn: Callable[[int, str], bool],
+        name: str,
+        command: str,
+        check_fn: Callable[[int, str], bool],
+        poll: bool = False,
+        timeout_seconds: float = 60.0,
     ) -> bool:
+        """Run a single verification check.
+
+        :param name: Human-readable check name.
+        :param command: SSH command to run on the droplet.
+        :param check_fn: Callable that returns True iff the check
+            passed given (exit_code, output).
+        :param poll: When True, poll the check on a backoff
+            schedule until it passes or the timeout elapses.
+            When False (default), probe once. Network-dependent
+            checks pass True; stable checks (containers, cron,
+            database state) pass False.
+        :param timeout_seconds: Per-check polling deadline. Only
+            used when poll=True.
+        :returns: True iff the check passed (eventually).
+        """
         log(f"Verifying: {name}", "info")
-        exit_code, output = run_remote(ssh, command)
-        passed = check_fn(exit_code, output)
-        log(f"  {'PASS' if passed else 'FAIL'}: {name}", "info" if passed else "error")
+
+        if not poll:
+            exit_code, output = run_remote(ssh, command)
+            passed = check_fn(exit_code, output)
+            log(
+                f"  {'PASS' if passed else 'FAIL'}: {name}",
+                "info" if passed else "error",
+            )
+            results.append({
+                "check": name, "passed": passed,
+                "detail": output[:200] if not passed else "",
+            })
+            return passed
+
+        # Polling path for network-dependent checks.
+        backoff_pattern = [1.0, 1.0, 2.0, 2.0, 3.0, 3.0] + [5.0] * 20
+        start = time.monotonic()
+        deadline = start + timeout_seconds
+        attempt = 0
+        first_attempt = True
+        output = ""
+
+        while time.monotonic() < deadline:
+            exit_code, output = run_remote(ssh, command)
+            passed = check_fn(exit_code, output)
+            if passed:
+                if first_attempt:
+                    # No warm-up needed — preserve clean-run log shape.
+                    log(f"  PASS: {name}", "info")
+                else:
+                    elapsed = int(time.monotonic() - start)
+                    log(f"  PASS: {name} (after {elapsed}s)", "info")
+                results.append({
+                    "check": name, "passed": True, "detail": "",
+                })
+                return True
+
+            if first_attempt:
+                log(
+                    f"  Waiting for {name} to come up ...",
+                    "info",
+                )
+                first_attempt = False
+
+            delay = backoff_pattern[
+                min(attempt, len(backoff_pattern) - 1)
+            ]
+            time.sleep(delay)
+            attempt += 1
+
+        # Timeout exhausted.
+        elapsed = int(timeout_seconds)
+        log(
+            f"  FAIL: {name} (timed out after {elapsed}s)",
+            "error",
+        )
         results.append({
-            "check": name, "passed": passed,
-            "detail": output[:200] if not passed else "",
+            "check": name, "passed": False,
+            "detail": output[:200] if output else "(no output)",
         })
-        return passed
+        return False
 
     run_check(
         "Docker containers running",
@@ -322,22 +394,26 @@ def phase_verify(
         "HTTP redirect to HTTPS",
         f"curl -sI http://{domain} | head -1",
         lambda ec, out: "301" in out or "302" in out,
+        poll=True,
     )
     run_check(
         "HTTPS response",
         f"curl -sI https://{domain} | head -1",
         lambda ec, out: "200" in out,
+        poll=True,
     )
     run_check(
         "SSL certificate valid",
         f"openssl s_client -connect {domain}:443 "
         f"</dev/null 2>/dev/null | openssl x509 -noout -dates",
         lambda ec, out: ec == 0 and "notAfter" in out,
+        poll=True,
     )
     run_check(
         "EspoCRM login page present",
         f"curl -sL https://{domain} | head -100",
         lambda ec, out: "espocrm" in out.lower() or "EspoCRM" in out,
+        poll=True,
     )
     run_check(
         "Cron job configured",
