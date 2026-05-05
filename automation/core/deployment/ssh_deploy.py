@@ -269,22 +269,38 @@ def phase_post_install(
     run_remote(ssh, "crontab -l 2>/dev/null | grep espocrm", log)
 
     log("Reading SSL certificate expiry...", "info")
-    cert_cmd = (
-        f"openssl s_client -connect {config.domain}:443 "
-        f"</dev/null 2>/dev/null | openssl x509 -noout -enddate"
+    # Read the cert file directly rather than going through nginx
+    # port 443. The file path is deterministic for any Let's Encrypt
+    # provisioned instance, and reading from disk doesn't depend on
+    # nginx being up — the live-port approach was subject to the
+    # same nginx warm-up race that affected Phase 4 verification
+    # (fixed in commit 1d9bd0e).
+    cert_path = (
+        f"/etc/letsencrypt/live/{config.domain}/fullchain.pem"
     )
+    cert_cmd = f"openssl x509 -in {cert_path} -noout -enddate"
     exit_code, cert_output = run_remote(ssh, cert_cmd, log)
     cert_expiry: str | None = None
     if exit_code == 0 and "notAfter=" in cert_output:
         expiry_str = cert_output.split("notAfter=")[-1].strip()
         try:
-            expiry_dt = datetime.strptime(expiry_str, "%b %d %H:%M:%S %Y %Z")
+            expiry_dt = datetime.strptime(
+                expiry_str, "%b %d %H:%M:%S %Y %Z"
+            )
             cert_expiry = expiry_dt.strftime("%Y-%m-%d")
             log(f"SSL certificate expires: {cert_expiry}", "info")
         except ValueError:
-            log(f"WARNING: Could not parse cert expiry: {expiry_str}", "warning")
+            log(
+                f"WARNING: Could not parse cert expiry: "
+                f"{expiry_str}",
+                "warning",
+            )
     else:
-        log("WARNING: Could not read SSL certificate expiry", "warning")
+        log(
+            f"WARNING: Could not read SSL certificate expiry "
+            f"from {cert_path} (exit code {exit_code})",
+            "warning",
+        )
 
     return True, "", cert_expiry
 

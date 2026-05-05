@@ -11,9 +11,11 @@ ssh_deploy module's time.sleep/time.monotonic are patched so tests
 run instantly.
 """
 
+import re
 from unittest.mock import MagicMock, patch
 
 from automation.core.deployment import ssh_deploy
+from automation.core.deployment.ssh_deploy import SelfHostedConfig
 
 
 def _capture_log() -> tuple[MagicMock, list[tuple[str, str]]]:
@@ -265,3 +267,116 @@ def test_phase_verify_stable_checks_probe_once_when_failing():
     # Sleep is never called — network checks pass first try, stable
     # checks don't poll.
     sleep_mock.assert_not_called()
+
+
+# ── phase_post_install: cert expiry read from disk ────────────────────
+
+
+def _make_self_hosted_config(**overrides) -> SelfHostedConfig:
+    defaults = {
+        "ssh_host": "1.2.3.4",
+        "ssh_port": 22,
+        "ssh_username": "root",
+        "ssh_credential": "ssh-secret",
+        "ssh_auth_type": "password",
+        "domain": "crm.example.com",
+        "letsencrypt_email": "ops@example.com",
+        "db_password": "db-app-password",
+        "db_root_password": "db-root-secret",
+        "admin_username": "admin",
+        "admin_password": "admin-secret",
+        "admin_email": "admin@example.com",
+    }
+    defaults.update(overrides)
+    return SelfHostedConfig(**defaults)
+
+
+def test_phase_post_install_reads_cert_from_disk():
+    """phase_post_install reads the cert via openssl x509 -in
+    /etc/letsencrypt/live/{domain}/fullchain.pem, not via the live
+    SSL handshake on port 443."""
+    ssh = MagicMock()
+    log, _ = _capture_log()
+    config = _make_self_hosted_config()
+    captured: list[str] = []
+
+    def fake_run_remote(_ssh, command, *args, **kwargs):
+        captured.append(command)
+        if "docker compose" in command and "ps" in command:
+            return 0, "espocrm-nginx Up"
+        if "crontab" in command:
+            return 0, "* * * * * espocrm-cron"
+        if "openssl x509 -in" in command:
+            return 0, "notAfter=Aug  2 12:00:00 2026 GMT"
+        raise AssertionError(f"unexpected command: {command}")
+
+    with patch.object(ssh_deploy, "run_remote", side_effect=fake_run_remote):
+        success, error, cert_expiry = ssh_deploy.phase_post_install(
+            ssh, config, log
+        )
+
+    assert success is True
+    assert error == ""
+    assert cert_expiry == "2026-08-02"
+
+    cert_path = (
+        "/etc/letsencrypt/live/crm.example.com/fullchain.pem"
+    )
+    expected_re = re.compile(
+        r"openssl x509 -in "
+        + re.escape(cert_path)
+        + r" -noout -enddate"
+    )
+    assert any(expected_re.search(c) for c in captured), captured
+    assert not any("openssl s_client" in c for c in captured), captured
+
+
+def test_phase_post_install_logs_path_on_cert_read_failure():
+    """When the cert file can't be read, the warning message includes
+    the file path and the exit code."""
+    ssh = MagicMock()
+    log, lines = _capture_log()
+    config = _make_self_hosted_config()
+
+    def fake_run_remote(_ssh, command, *args, **kwargs):
+        if "docker compose" in command and "ps" in command:
+            return 0, "espocrm-nginx Up"
+        if "crontab" in command:
+            return 0, "* * * * * espocrm-cron"
+        if "openssl x509 -in" in command:
+            return 2, "No such file or directory"
+        raise AssertionError(f"unexpected command: {command}")
+
+    with patch.object(ssh_deploy, "run_remote", side_effect=fake_run_remote):
+        ssh_deploy.phase_post_install(ssh, config, log)
+
+    cert_path = (
+        "/etc/letsencrypt/live/crm.example.com/fullchain.pem"
+    )
+    msgs = _msgs(lines)
+    assert any(
+        cert_path in m and "exit code 2" in m and "WARNING" in m
+        for m in msgs
+    ), msgs
+
+
+def test_phase_post_install_returns_none_expiry_on_read_failure():
+    """A failed cert read still completes the phase successfully (it's
+    a warning, not a fatal error) but returns None as the cert_expiry."""
+    ssh = MagicMock()
+    log, _ = _capture_log()
+    config = _make_self_hosted_config()
+
+    def fake_run_remote(_ssh, command, *args, **kwargs):
+        if "docker compose" in command and "ps" in command:
+            return 0, "espocrm-nginx Up"
+        if "crontab" in command:
+            return 0, "* * * * * espocrm-cron"
+        if "openssl x509 -in" in command:
+            return 2, ""
+        raise AssertionError(f"unexpected command: {command}")
+
+    with patch.object(ssh_deploy, "run_remote", side_effect=fake_run_remote):
+        result = ssh_deploy.phase_post_install(ssh, config, log)
+
+    assert result == (True, "", None)
