@@ -1,7 +1,7 @@
 # CRM Builder — Domain Reconciliation Guide
 
-**Version:** 1.5
-**Last Updated:** 04-20-26
+**Version:** 1.6
+**Last Updated:** 05-05-26 17:02
 **Purpose:** AI guide for Phase 3 — Domain Reconciliation
 **Governing Process:** PRDs/process/CRM-Builder-Document-Production-Process.docx
 **See also:** `guide-carry-forward-updates.md` — for post-reconciliation updates driven by upstream scope changes, Phase 9 exceptions, or stakeholder-review decisions.
@@ -45,7 +45,7 @@ The Domain PRD has seven sections:
 | 1 | Domain Overview | Expanded business context for the domain. |
 | 2 | Personas | Domain-specific roles for each participating persona. |
 | 3 | Business Processes | For flat domains, one subsection per process. For domains with sub-domains, one subsection per sub-domain containing its processes. Each process includes all eight required sections from the process documents (see Step 2 for the section list and what is excluded). |
-| 4 | Data Reference | Consolidated view of all data in the domain, organized by entity, with full field-level detail. |
+| 4 | Data Reference | Opens with a consolidated **Entity Relationships** sub-section enumerating every domain-relevant relationship in a single table; followed by per-entity field tables organized by entity. The relationships sub-section provides the structural context within which the field tables operate. |
 | 5 | Decisions Made | Record of all decisions made during the process definition conversations. |
 | 6 | Open Issues | Unresolved questions requiring answers before implementation. |
 | 7 | Interview Transcript | Condensed Q&A record of the reconciliation conversation itself, organized by topic area with inline Decision callouts. Covers only the reconciliation session — process-level Q&A remains in the source process documents. |
@@ -446,6 +446,90 @@ the conflicting version.
 This is the unique contribution of the Domain PRD — a
 consolidated view of all data in the domain organized by entity.
 
+**Section 4 begins with a consolidated Entity Relationships sub-section.**
+
+Before the per-entity field tables, Section 4 opens with a single
+consolidated table that enumerates every domain-relevant relationship.
+This is structurally parallel to the per-entity Relationships
+sub-sections in the Entity PRDs and provides the structural context
+within which the field tables operate.
+
+**Required columns:**
+
+| Relationship | Related Entity | Link Type | YAML Location | Domain(s) |
+
+- **Relationship.** Human-readable name; for relationships with a
+  semantic role (e.g., "Engagement → Contact (Assigned Mentor)"),
+  use the parenthetical to disambiguate.
+- **Related Entity.** The other endpoint of the relationship.
+- **Link Type.** `oneToMany`, `manyToOne`, `manyToMany`, or
+  `manyToOne (self-ref)`; reflect the YAML relationship type.
+- **YAML Location.** The YAML file and link name where the
+  relationship is declared, e.g., `engagementClientOrganization in
+  MN-Engagement.yaml`. For native relationships provided by the
+  underlying platform, write `None — native to the platform`. For
+  native parent links via the Event entity type, write `None —
+  native parent link via Event entity type`.
+- **Domain(s).** Comma-separated list of domains that own or
+  consume the relationship. For cross-domain-contributed
+  relationships (e.g., Referring Partner contributed by CR but
+  declared on a Mentoring entity), use the form `CR (touched by
+  MN)` to capture both ownership and consumption.
+
+**Required content scope:**
+
+The table must include:
+1. Every relationship declared in the YAML files of entities
+   produced by this domain (read from MN-*.yaml, MR-*.yaml,
+   CR-*.yaml, or FU-*.yaml as appropriate).
+2. Every native platform relationship used by the domain (e.g.,
+   Account ↔ Contact in any domain that uses both entities).
+3. Every native parent link relationship implicit in Event-type
+   custom entities (e.g., Engagement → Session via Session's
+   parent link in the Mentoring domain).
+4. Cross-domain-contributed relationships that touch domain
+   entities (declared in another domain's YAML but referenced by
+   this domain's processes).
+
+The table must filter out:
+- Relationships owned by other domains that touch entities not
+  used by this domain.
+- Inverse-side rows (each relationship is listed once from its
+  declaring side, never twice).
+
+**Required explanatory notes:**
+
+After the table, include short explanatory notes covering:
+1. Native platform relationships and any post-deployment
+   customizations (e.g., the `primaryContact` boolean on the
+   Account-Contact middle table, captured in MANUAL-CONFIG).
+2. Native parent links and how they are implemented (e.g.,
+   `Engagement → Session` is implemented via Session's native
+   `parent` link as type Event, not via a custom YAML relationship
+   declaration).
+3. Cross-domain-contributed relationships and which domain owns
+   the declaration vs. which domain consumes it (e.g., Referring
+   Partner is declared on the Mentoring-domain Engagement entity
+   but is part of the CR-PARTNER attribution model).
+
+**Source for the table:**
+
+Compile the table by cross-referencing Section 4 (Relationships) of
+each Entity PRD relevant to the domain. Filter to domain-relevant
+relationships per the scope rules above. Where the YAML files exist
+(post-Phase 9), cite the YAML location verbatim. Where YAML files
+do not yet exist (pre-Phase 9 reconciliation), write the YAML
+location as `to be declared in {expected file}.yaml` so the
+forward-reference is explicit.
+
+**Precedent:**
+
+This convention was introduced in CBM-Domain-PRD-Mentoring v1.1
+(05-05-26, `dbower44022/ClevelandBusinessMentoring` commit
+`60f009b`), which produced a 12-row consolidated Entity
+Relationships table for the MN domain plus three explanatory notes.
+Future Domain PRDs follow this pattern.
+
 **For each entity that appears in any process document:**
 
 1. List every field defined across all processes (deduplicated)
@@ -578,8 +662,7 @@ Walk through each section:
 > [Or for flat domains: [N] processes, in this order:
 > [list process names]]
 >
-> **Data Reference:** [N] entities with [N] total fields.
-> [Note any entities that appear in many processes.]
+> **Data Reference:** [N] entities with [N] total fields, opened by an Entity Relationships sub-section enumerating [N] domain-relevant relationships. [Note any entities that appear in many processes.]
 >
 > **Decisions Made:** [N] decisions recorded.
 >
@@ -658,6 +741,7 @@ generation in Phase 5.
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.6 | 05-05-26 | Added a required **Entity Relationships sub-section** at the start of Section 4 of the Domain PRD. The sub-section opens Section 4 with a consolidated table enumerating every domain-relevant relationship (columns: Relationship, Related Entity, Link Type, YAML Location, Domain(s)) plus required explanatory notes covering native platform relationships, native parent links, and cross-domain-contributed relationships. This is structurally parallel to the per-entity Relationships sub-sections in the Entity PRDs and provides the structural context within which the field tables operate. Updated the "What the Domain PRD Must Contain" Section 4 row description and the Step 3 Review walkthrough Data Reference summary line to reflect the new sub-section. The convention was introduced in `CBM-Domain-PRD-Mentoring` v1.1 (05-05-26, `dbower44022/ClevelandBusinessMentoring` commit `60f009b`) during the four-session verification-pass remediation workpacket; this guide update propagates the convention forward so that every future Domain PRD authored under this methodology includes the new structural element. |
 | 1.5 | 04-20-26 | Updated the Section 3 Business Processes exclusion rationale for "Updates to Prior Documents" to reflect `interview-process-definition.md` v2.6: that section no longer exists in process documents; prior-document updates are captured as carry-forward request drafts and executed per `guide-carry-forward-updates.md`. Pre-v2.6 process documents with populated Section 10 are treated as historical. |
 | 1.4 | 04-20-26 | Added cross-reference to the new `guide-carry-forward-updates.md` (governs post-reconciliation updates under a two-gate pattern). Strengthened the "One topic at a time" rule to require inlined before/after content in every conflict presentation — no bare identifiers or section pointers. Added explicit carve-out that carry-forward work is scoped out of reconciliation sessions, not performed inline. Added a new Critical Rule: required enum-type fields must be completable (values enumerated or explicitly deferred out of scope) before a reconciliation session may close — shipping with TBD enums blocks Phase 9 YAML generation. Added §1.6 Required-Field Completeness Check as a new Step 1 pass (renumbered Present Conflict Summary to §1.7). Updated §1.7 summary template to include a required-field completeness line. Addresses approval-churn and Phase 9 stall findings from the CBM MR pilot (PILOT-FINDINGS Finding 5 and Finding 6). |
 | 1.3 | 04-16-26 | Added sub-domain support throughout. Input verification now branches into flat-domain and sub-domain-structured checklists, requiring Domain Overview and Sub-Domain Overview documents. Added §1.5 Cross-Sub-Domain Conflicts as a new conflict detection category (renumbered Present Conflict Summary to §1.6). Updated Section 1 Domain Overview assembly to draw from Domain Overview and Sub-Domain Overview documents. Updated Section 3 Business Processes to organize processes under sub-domain headings when applicable. Updated the Section 3 description in the Domain PRD contents table. Updated the Step 3 review walkthrough and Step 4 next-step prompt to reflect sub-domain-aware inputs. Fixed header version (was stuck at 1.1, changelog already had 1.2). |
