@@ -1,0 +1,125 @@
+{
+  "body": {
+    "aclPortal": "crm:acl-portal/account",
+    "additionalLayouts": {
+      "detailConvert": {
+        "type": "detail"
+      }
+    },
+    "boolFilterList": [
+      "onlyMy"
+    ],
+    "bottomPanels": {
+      "detail": [
+        {
+          "disabled": true,
+          "name": "activities",
+          "reference": "activities"
+        },
+        {
+          "disabled": true,
+          "name": "history",
+          "reference": "history"
+        }
+      ]
+    },
+    "color": "#edc755",
+    "controller": "controllers/record",
+    "filterList": [
+      {
+        "name": "recentlyCreated"
+      }
+    ],
+    "iconClass": "fas fa-building",
+    "relationshipPanels": {
+      "assignedLiaison": {
+        "layout": null,
+        "selectPrimaryFilterName": null
+      },
+      "campaignLogRecords": {
+        "create": false,
+        "rowActionsView": "views/record/row-actions/empty",
+        "select": false
+      },
+      "cases": {
+        "layout": "listForAccount"
+      },
+      "childAccounts": {
+        "layout": null,
+        "selectPrimaryFilterName": null
+      },
+      "contacts": {
+        "createAttributeMap": {
+          "billingAddressCity": "addressCity",
+          "billingAddressCountry": "addressCountry",
+          "billingAddressPostalCode": "addressPostalCode",
+          "billingAddressState": "addressState",
+          "billingAddressStreet": "addressStreet",
+          "id": "accountId",
+          "name": "accountName"
+        },
+        "filterList": [
+          "all",
+          "accountActive"
+        ],
+        "layout": "listForAccount",
+        "orderBy": "name"
+      },
+      "engagements": {
+        "layout": null,
+        "selectPrimaryFilterName": null
+      },
+      "opportunities": {
+        "layout": "listForAccount"
+      },
+      "parentAccount": {
+        "layout": null,
+        "selectPrimaryFilterName": null
+      },
+      "referredEngagements": {
+        "layout": null,
+        "selectPrimaryFilterName": null
+      },
+      "targetLists": {
+        "layout": "listForTarget",
+        "rowActionsView": "crm:views/record/row-actions/relationship-target",
+        "view": "crm:views/record/panels/target-lists"
+      }
+    },
+    "sidePanels": {
+      "detail": [
+        {
+          "name": "activities",
+          "reference": "activities"
+        },
+        {
+          "name": "history",
+          "reference": "history"
+        },
+        {
+          "name": "tasks",
+          "reference": "tasks"
+        }
+      ],
+      "detailSmall": [
+        {
+          "name": "activities",
+          "reference": "activities"
+        },
+        {
+          "name": "history",
+          "reference": "history"
+        },
+        {
+          "name": "tasks",
+          "reference": "tasks"
+        }
+      ]
+    },
+    "views": {
+      "detail": "crm:views/account/detail"
+    }
+  },
+  "key": "clientDefs.Account",
+  "status": 200
+}

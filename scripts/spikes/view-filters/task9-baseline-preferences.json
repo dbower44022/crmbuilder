@@ -1,0 +1,110 @@
+{
+  "addCustomTabs": false,
+  "assignmentNotificationsIgnoreEntityTypeList": [],
+  "autoFollowEntityTypeList": [],
+  "calendarScrollHour": null,
+  "calendarSlotDuration": null,
+  "dashboardLayout": [
+    {
+      "layout": [
+        {
+          "height": 4,
+          "id": "default-stream",
+          "name": "Stream",
+          "width": 2,
+          "x": 0,
+          "y": 0
+        },
+        {
+          "height": 4,
+          "id": "default-activities",
+          "name": "Activities",
+          "width": 2,
+          "x": 2,
+          "y": 2
+        }
+      ],
+      "name": "My Espo"
+    }
+  ],
+  "dashletsOptions": {},
+  "decimalMark": ".",
+  "defaultReminders": [],
+  "defaultRemindersTask": [],
+  "doNotFillAssignedUserIfNotRequired": true,
+  "emailReplyForceHtml": true,
+  "emailReplyToAllByDefault": true,
+  "emailUseExternalClient": false,
+  "exportDelimiter": ",",
+  "followAsCollaborator": true,
+  "followCreatedEntities": false,
+  "followCreatedEntityTypeList": [],
+  "followEntityOnStreamPost": true,
+  "id": "69f8a18e429456e87",
+  "isPortalUser": false,
+  "name": "Admin",
+  "presetFilters": {
+    "Account": [
+      {
+        "data": {
+          "type": {
+            "data": {
+              "type": "anyOf",
+              "valueList": [
+                "Customer"
+              ]
+            },
+            "type": "in",
+            "value": [
+              "Customer"
+            ]
+          }
+        },
+        "id": "f857472",
+        "label": "test filter",
+        "name": "f857472",
+        "primary": null
+      },
+      {
+        "data": {
+          "phoneNumber": {
+            "attribute": "phoneNumberNumeric",
+            "data": {
+              "type": "startsWith",
+              "value": "123"
+            },
+            "type": "startsWith",
+            "value": "123"
+          },
+          "type": {
+            "data": {
+              "type": "anyOf",
+              "valueList": [
+                "Customer"
+              ]
+            },
+            "type": "in",
+            "value": [
+              "Customer"
+            ]
+          }
+        },
+        "id": "f416649",
+        "label": "test 2",
+        "name": "f416649",
+        "primary": null
+      }
+    ]
+  },
+  "reactionNotifications": true,
+  "reactionNotificationsNotFollowed": false,
+  "receiveAssignmentEmailNotifications": true,
+  "receiveMentionEmailNotifications": true,
+  "receiveStreamEmailNotifications": true,
+  "scopeColorsDisabled": false,
+  "tabColorsDisabled": false,
+  "textSearchStoringDisabled": false,
+  "thousandSeparator": ",",
+  "useCustomTabList": false,
+  "weekStart": -1
+}
