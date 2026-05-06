@@ -26,6 +26,26 @@ links), use the long name. A previous two-directory split (both long
 and short names as separate clones) was reconciled on 04-10-26; only
 the short-named clone now exists locally.
 
+## CRMBuilder v2 — Methodology Rearchitecture
+
+CRMBuilder v2 is the next major iteration of CRMBuilder, currently in planning phase. It rebuilds the methodology's foundation by making a structured database the source of truth for all CRM implementation artifacts (personas, entities, fields, processes, requirements, decisions, manual-config items, test specifications, cross-references). Word documents, deployment YAML, and test cases become renders generated from the database, not authored separately. CBM is the test case validating progress at each step.
+
+**v2 home:** `PRDs/product/crmbuilder-v2/`
+
+**Tracking:** Commits touching v2 work prefix the subject with `v2:`. Status, decisions, sessions, and charter live in the v2 home directory. v1 work (the existing application code, methodology guides, app-level product specs, engine pluggability planning, and the CBM client repo) continues unchanged under existing locations.
+
+**Session orientation protocol** (per DEC-011 in `crmbuilder-v2/decisions.md`):
+
+When a session engages v2 work — by the conversation referencing v2, or the user explicitly engaging it — Claude follows this tiered orientation:
+
+- **Tier 1 (universal, every session):** Read this CLAUDE.md (already done by reading this section).
+- **Tier 2 (v2 engagement, before MCP server exists):** Read `PRDs/product/crmbuilder-v2/status.md` (current state), `charter.md` (scope and foundations), most recent entries in `sessions.md` (recent context), then `decisions.md` records as referenced.
+- **Tier 3 (on-demand):** Targeted queries during conversation as topics arise.
+
+Once the MCP server exists (Step 1 deliverable, not yet built), Tier 2 file reads become MCP tool calls (`get_status`, `get_charter`, `get_recent_sessions`, `get_decisions`).
+
+v1 work continues normally — the deployment engine, methodology guides, and existing app code are not part of v2 and are maintained under their existing locations.
+
 ## Commands
 
 ```bash
