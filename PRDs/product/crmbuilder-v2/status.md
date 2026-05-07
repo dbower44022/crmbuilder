@@ -1,6 +1,6 @@
 # CRMBuilder v2 — Status
 
-**Last Updated:** 05-06-26 19:28
+**Last Updated:** 05-07-26 00:37
 **Status:** Active
 
 **Revision Control:** This document is a living status snapshot updated as project state changes. The "Last Updated" field above reflects the most recent revision; prior states are recoverable through git history.
@@ -11,7 +11,7 @@
 
 **Phase:** Planning (pre-build)
 
-**Sub-step:** Initial planning conversation complete and bootstrap committed. Planning dimensions 1, 2.1, 2.3, 2.4, 3, and 4 resolved (some explicitly, some by virtue of the database architecture). Dimensions 5–8 remain. Step 0 (schema design) has not yet started.
+**Sub-step:** Planning dimensions 1 through 5 resolved. Dimensions 6, 7, and 8 remain. Step 0 (schema design) has not yet started.
 
 ---
 
@@ -19,11 +19,12 @@
 
 ### What's in v2
 
-- `charter.md` v0.1 — scope, name, architectural foundations, current state, open planning items
-- `decisions.md` v0.1 — DEC-001 through DEC-011, architectural decisions from initial planning
-- `sessions.md` v0.1 — SES-001, the initial planning conversation record
-- `status.md` v0.1 — this document
-- `prompts/CLAUDE-CODE-PROMPT-v2-A-bootstrap.md` — the prompt that produced this initial state
+- `charter.md` v0.2 — scope, name, architectural foundations, current state, open planning items (Open Planning Items trimmed at v0.2 to reflect dimension #5 resolution)
+- `decisions.md` — DEC-001 through DEC-016, architectural and operational decisions
+- `sessions.md` — SES-001 (initial planning) and SES-002 (planning dimension #5)
+- `status.md` — this document
+- `prompts/CLAUDE-CODE-PROMPT-v2-A-bootstrap.md` — bootstrap prompt
+- `prompts/CLAUDE-CODE-PROMPT-v2-B-pacing.md` — planning dimension #5 prompt
 
 ### What's in v1 (unchanged)
 
@@ -43,20 +44,20 @@ None at this stage. v2 has not yet begun migrating any v1 artifacts.
 
 ## Active Work
 
-None currently active. The bootstrap commit lands the planning work as durable artifacts; the next active work begins in the next conversation when planning dimension #5 (pacing) is taken up.
+None currently active. The next active work is planning dimension #6 (division of labor) in a new conversation.
 
 ---
 
 ## Pending — Immediate
 
-None. The bootstrap is complete after this prompt executes.
+None. Planning dimension #5 is complete after this prompt executes.
 
 ## Pending — Planning
 
-- Planning dimension #5 — pacing, cadence, milestones
 - Planning dimension #6 — division of labor
 - Planning dimension #7 — risk register
 - Planning dimension #8 — exit criteria
+- Project-structure split decision (Claude Project, repository) — deferred to end of planning per DEC-012
 
 ## Pending — Build (gated by planning completion)
 

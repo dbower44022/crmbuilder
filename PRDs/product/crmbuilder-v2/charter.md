@@ -1,7 +1,7 @@
 # CRMBuilder v2 Charter
 
-**Version:** 0.1 (draft)
-**Last Updated:** 05-06-26 19:28
+**Version:** 0.2 (draft)
+**Last Updated:** 05-07-26 00:37
 **Status:** In planning — pre-build
 
 ## Change Log
@@ -9,6 +9,7 @@
 | Version | Date | Description |
 |---------|------|-------------|
 | 0.1 | 05-06-26 | Initial draft from planning conversation. Captures scope, name, architectural foundations, session orientation protocol, and remaining planning dimensions. |
+| 0.2 | 05-07-26 | Resolved planning dimension #5 (pacing, cadence, milestones); operational resolution recorded in decisions and sessions logs. Trimmed Current State and Open Planning Items sections to reflect resolution. No scope change. |
 
 ## Scope
 
@@ -71,20 +72,19 @@ Planning dimensions completed:
 
 Planning dimensions remaining:
 
-- #5 (pacing, cadence, milestones)
 - #6 (division of labor)
 - #7 (risk register)
 - #8 (exit criteria)
 
-**Active work:** Drafting this charter and the companion decisions document as the first durable artifacts of the project. Architectural decisions are being numbered retroactively as DEC-001 through DEC-N.
+Project-structure split decision (Claude Project, repository) — deferred to end of planning per DEC-012.
 
-**Not yet started:** Step 0 (schema design), implementation of any v2 code, creation of the v2 home directory in the repo, CLAUDE.md update, MCP server build.
+**Active work:** None currently active. Next conversation takes up planning dimension #6.
+
+**Not yet started:** Step 0 (schema design), implementation of any v2 code, MCP server build.
 
 ## Open Planning Items
 
 The following planning dimensions remain to be resolved before Step 0 (schema design) begins:
-
-**#5 — Pacing, cadence, and milestones.** What does a working session on this project look like? Cadence weekly, ad-hoc, or time-blocked against ongoing CBM work? What does "done" mean for each phase and sub-step? What are the gates that determine whether to proceed forward, iterate within the current step, or stop and reassess?
 
 **#6 — Division of labor.** Where are the boundaries between Claude.ai work (design, drafting, schema iteration), Claude Code work (implementation, file edits, repo changes), and Doug-only work (methodology decisions, stakeholder coordination, final approval, validation review)? What's the handoff protocol between modes?
 

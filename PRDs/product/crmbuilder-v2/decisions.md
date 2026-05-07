@@ -1,6 +1,6 @@
 # CRMBuilder v2 — Decisions Log
 
-**Last Updated:** 05-06-26 19:28
+**Last Updated:** 05-07-26 00:37
 **Status:** Active
 
 ## Change Log
@@ -8,6 +8,7 @@
 | Version | Date | Description |
 |---------|------|-------------|
 | 0.1 | 05-06-26 | Initial decisions log capturing architectural decisions DEC-001 through DEC-011 from the planning conversation. |
+| 0.2 | 05-07-26 | Added DEC-012 through DEC-016 from planning dimension #5 conversation (project-structure split deferred; session-to-conversation mapping; every conversation produces a session record; cadence is ad-hoc; definition of done and gating model). |
 
 ## Index
 
@@ -22,6 +23,11 @@
 - DEC-009: CBM as test case, not parallel commitment
 - DEC-010: CBM migration order — MN, then MR, then CR, then FU
 - DEC-011: Session orientation protocol — tiered
+- DEC-012: Project-structure split (Claude Project, repository) deferred to end of planning
+- DEC-013: Session-to-conversation mapping — one conversation, one session record, append-only
+- DEC-014: Every v2 conversation produces a session record
+- DEC-015: Cadence is ad-hoc, no fixed schedule
+- DEC-016: Definition of done and gating model — Doug review at phase boundaries
 
 ---
 
@@ -232,3 +238,96 @@
 - Lazy / on-demand only (read CLAUDE.md, query DB only when explicitly needed). Rejected — risks proceeding without enough context, produces stale assumptions.
 
 **Consequences:** CLAUDE.md update required to document the protocol. Sessions table schema must support "what was in flight at end of session" so the next session resumes cleanly. Bootstrap window before MCP exists requires fallback to reading the v2 directory listing and most recent session transcript.
+
+---
+
+### DEC-012: Project-structure split (Claude Project, repository) deferred to end of planning
+
+**Date:** 05-07-26
+**Status:** Active
+
+**Context:** During the dimension #5 conversation, the question arose whether the next iteration of CRMBuilder should move to a separate Claude Project (giving v2 design conversations independent memory scope) or a separate GitHub repository (clean separation of legacy from next-generation code). The concern motivating the question is that accumulated v1 memory and conversation history could shape v2 design in ways that don't serve the new system, and that the boundary between archived v1 and current v2 may become hard to maintain over time.
+
+**Decision:** Defer both decisions (Claude Project split, repository split) to the end of planning — after dimensions #6, #7, and #8 are resolved. Stay in the current Claude Project and the existing crmbuilder repository for the remaining planning conversations.
+
+**Rationale:** Memory contamination risk is highest during design conversations, where v1 patterns can subtly leak into v2 schema decisions, not during planning conversations, which are cross-cutting and benefit from full v1 context. The remaining planning dimensions are also too early to make the rewrite-vs-modify call that drives the repository decision. Deferral preserves optionality without immediate cost.
+
+**Alternatives considered:**
+- Split now (new Claude Project, new repository or same). Rejected — premature; would force the rewrite-vs-modify framing decision before the planning phase is complete.
+- Don't split at all. Rejected as a final answer, but accepted as the working state for the remainder of planning.
+
+**Consequences:** At end of planning (when dimensions #6 through #8 are resolved), the Claude Project split decision and the repository decision both come due for resolution. The rewrite-vs-modify question — whether v2 modifies the existing application in place or rewrites it from scratch — becomes the prior question that shapes the repository answer. The current Claude Project and the existing crmbuilder repository continue to host all v2 work in the interim.
+
+---
+
+### DEC-013: Session-to-conversation mapping — one conversation, one session record, append-only
+
+**Date:** 05-07-26
+**Status:** Active
+
+**Context:** The session log needs a clear rule for how Claude.ai conversations map to session records. Some topics fit in one conversation; others — schema design, CBM domain migration — almost certainly span multiple. Without a clear rule, the session log becomes ambiguous: is one log entry per topic (mutated across conversations) or one per conversation (multiple per topic)?
+
+**Decision:** One Claude.ai conversation equals one session, which produces exactly one session record. A topic that spans multiple conversations produces a sequence of related session records, each capturing what its conversation accomplished. Session records are append-only — once written, they are not edited.
+
+**Rationale:** Append-only records are stable, auditable, and chronological. Multi-conversation topics are reconstructed by reading the sequence of session records that touch the topic. The references table, when implemented as part of the storage layer, will eventually make this reconstruction a single query; until then, it is a manual scroll through the chronological sessions log. Doug's existing working preference — one major task per session, new conversations for each major task — aligns naturally with this rule.
+
+**Alternatives considered:**
+- One open session record per topic, mutated across conversations. Rejected — breaks the append-only property; conflates "session" (a discrete working block) with "topic" (a strand of work that may span many sessions).
+
+**Consequences:** The session log naturally becomes a chronological project record. The "in-flight at session end" field of each session record is the load-bearing handoff mechanism for multi-conversation topics. The references table (when implemented) will provide a single query to retrieve all session records relevant to a given topic.
+
+---
+
+### DEC-014: Every v2 conversation produces a session record
+
+**Date:** 05-07-26
+**Status:** Active
+
+**Context:** When a Claude.ai conversation engages v2 work, does it always produce a session record, or only when there is substantive output? The trade-off is between complete audit trail (always) and overhead minimization (only when needed).
+
+**Decision:** Every conversation that engages v2 work produces a session record, even short or exploratory ones. The record can be brief when there is nothing substantive to capture ("explored topic X, no decisions reached, no commits beyond this entry"), but the record exists.
+
+**Rationale:** The session log is itself one of the things that defines what the next iteration of CRMBuilder is — the project's own dogfooding of the database-as-source-of-truth principle. By that logic, an exploratory conversation that produces no record is, in v2 terms, a conversation that did not happen. Complete audit trail also helps reconstruct prior reasoning when topics recur.
+
+**Alternatives considered:**
+- Threshold-based (record only if a decision is made or an artifact lands). Rejected — discretion creates inconsistency; gaps in the log become ambiguous (no work, or unrecorded work?).
+- Record only when there is a commit anyway. Rejected — same discretion problem in different framing.
+
+**Consequences:** Some commits exist solely to land a session record when a conversation produced no other artifact. That is accepted overhead.
+
+---
+
+### DEC-015: Cadence is ad-hoc, no fixed schedule
+
+**Date:** 05-07-26
+**Status:** Active
+
+**Context:** Planning dimension #5 includes a cadence sub-question — weekly, ad-hoc, or time-blocked against ongoing CBM work. The right answer depends on workload structure and the presence or absence of forcing functions.
+
+**Decision:** Cadence is ad-hoc. Sessions happen when the work is ready. No fixed schedule, no time-box per session.
+
+**Rationale:** This is a single-developer project with no external deadlines and no parallel commitments competing for time. CBM is downstream of v2 (per DEC-009), not parallel to it, so there is nothing to time-block against. A fixed cadence would create artificial pressure without serving any operational need. Ad-hoc matches Doug's existing working style.
+
+**Alternatives considered:**
+- Weekly. Rejected — no operational need for the rhythm; would create artificial pressure or dead sessions.
+- Time-blocked against CBM. Rejected — CBM is the downstream test case, not a parallel commitment.
+
+**Consequences:** Long gaps between sessions are expected and acceptable. The session record's "in-flight at session end" field becomes load-bearing for clean resumption. There is no built-in checkpoint mechanism — status reviews are themselves ad-hoc.
+
+---
+
+### DEC-016: Definition of done and gating model — Doug review at phase boundaries
+
+**Date:** 05-07-26
+**Status:** Active
+
+**Context:** Each phase of the project (schema design, storage layer build, domain migrations, test infrastructure) needs a definition of "done" that determines when work moves to the next phase, and gates that determine whether to proceed forward, iterate within the current step, or stop and reassess. The question is whether to define done formally per phase or to trust judgment.
+
+**Decision:** For any phase: done means the phase's nominal output exists in the repository, and Doug has reviewed it and judged it sufficient to move on. No formal per-phase checklist. Gates between phases are Doug's judgment, informed by whether the output works. If yes, proceed. If not, iterate within the current phase. If the phase cannot be made to work, stop and reassess.
+
+**Rationale:** For a single-developer project where the architectural foundations are already settled, formal definition-of-done machinery adds overhead without proportional value. Judgment-based review is honest and matches the project's operational reality. The CBM-as-test-case principle (per DEC-009) provides empirical pressure on each phase's output independent of any formal checklist — schema designs are tested by attempting to absorb CBM content; storage layers are tested by serving real reads and writes; renderers are tested by producing review-quality artifacts.
+
+**Alternatives considered:**
+- Formal per-phase definition-of-done checklists. Rejected — over-scoping for single-developer ad-hoc work; produces ceremony without insight.
+
+**Consequences:** Phase boundaries are softer than they would be under a formal model. Iteration within a phase is normal and expected. The status document tracks the active phase but does not enforce gates beyond Doug's judgment.
