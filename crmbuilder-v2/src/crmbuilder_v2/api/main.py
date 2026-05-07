@@ -10,6 +10,7 @@ from crmbuilder_v2.api.errors import access_layer_handler, request_validation_ha
 from crmbuilder_v2.api.routers import (
     charter,
     decisions,
+    health,
     orientation,
     planning_items,
     references,
@@ -35,6 +36,7 @@ def create_app() -> FastAPI:
     app.add_exception_handler(AccessLayerError, access_layer_handler)
     app.add_exception_handler(RequestValidationError, request_validation_handler)
 
+    app.include_router(health.router)
     app.include_router(charter.router)
     app.include_router(status.router)
     app.include_router(decisions.router)
