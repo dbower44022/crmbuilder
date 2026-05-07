@@ -254,5 +254,21 @@
     "supersedes_id": null,
     "title": "Definition of done and gating model — Doug review at phase boundaries",
     "updated_at": "2026-05-07T05:54:14.927616"
+  },
+  {
+    "alternatives_considered": "- Raw `sqlite3` with hand-rolled repository layer. Rejected: short-term simpler but accumulates ad-hoc code as the schema grows.\n- Custom MCP implementation rather than the official SDK. Rejected: no benefit; the SDK handles the protocol correctly and updates with spec changes.\n- Per-table incremental JSON export. Rejected: complexity not justified at v0.1 data volume; full rewrite is simpler and self-heals after partial-failure recovery.",
+    "consequences": "All future v2 work uses this stack unless a specific decision supersedes it. Schema changes go through Alembic migrations, not ad-hoc SQL. New entities are added by extending `models.py` plus a repository module under `access/repositories/` plus a router under `api/routers/` plus tools in `mcp_server/tools.py` — the same four-step pattern. Adopting an ORM means SQLAlchemy session lifecycle is now part of the operational model: `session_scope` is the canonical entry point for repository use, and read-only paths skip the JSON export hook by passing `export=False`.",
+    "context": "The storage-system PRD specified the four-layer architecture (SQLite + access layer + REST API + MCP server) but left ORM/query layer, MCP framework, schema migration tool, test framework, and repository layout open as 'Claude Code's call'. Those choices needed to be made deliberately and recorded so that follow-on work (methodology entity schema, renderers, application integration) inherits a consistent stack rather than re-litigating every choice.",
+    "created_at": "2026-05-07T05:56:59.485267",
+    "decision": "Adopt SQLAlchemy 2.0 (typed Declarative API) as the ORM, Alembic for schema migrations, FastAPI as the web framework, the official `mcp` Python SDK (FastMCP) for the MCP server, pytest + pytest-asyncio for tests, and a single `crmbuilder-v2/` directory at the repo root with a `src/crmbuilder_v2/` package layout. The JSON export hook rewrites all entity tables on every successful database write, with atomicity via sibling tempfile + `os.replace`. The references table is stored as `refs` in the database to avoid the SQL reserved word.",
+    "decision_date": "05-07-26",
+    "id": 17,
+    "identifier": "DEC-017",
+    "rationale": "SQLAlchemy is the lowest-friction option once schema growth begins in earnest (methodology entities triple the table count); raw SQL with a thin wrapper handles v0.1 fine but accumulates ad-hoc code fast. Alembic pairs with SQLAlchemy and is the standard. FastAPI is specified in the PRD. The official MCP SDK is the canonical implementation. pytest is already a project dependency. Keeping v2 code under a single sibling directory honours DEC-003 without fragmenting the package layout. JSON exports always rewrite all tables because v0.1 data volume is small and the simpler code path is worth more than incremental write optimisation.",
+    "status": "Active",
+    "superseded_by_id": null,
+    "supersedes_id": null,
+    "title": "Implementation choices for v0.1 storage stack",
+    "updated_at": "2026-05-07T05:56:59.485271"
   }
 ]

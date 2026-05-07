@@ -902,5 +902,168 @@
     "id": 39,
     "operation": "insert",
     "timestamp": "2026-05-07T05:54:14.952062"
+  },
+  {
+    "actor": "manual",
+    "after_payload": {
+      "alternatives_considered": "- Raw `sqlite3` with hand-rolled repository layer. Rejected: short-term simpler but accumulates ad-hoc code as the schema grows.\n- Custom MCP implementation rather than the official SDK. Rejected: no benefit; the SDK handles the protocol correctly and updates with spec changes.\n- Per-table incremental JSON export. Rejected: complexity not justified at v0.1 data volume; full rewrite is simpler and self-heals after partial-failure recovery.",
+      "consequences": "All future v2 work uses this stack unless a specific decision supersedes it. Schema changes go through Alembic migrations, not ad-hoc SQL. New entities are added by extending `models.py` plus a repository module under `access/repositories/` plus a router under `api/routers/` plus tools in `mcp_server/tools.py` — the same four-step pattern. Adopting an ORM means SQLAlchemy session lifecycle is now part of the operational model: `session_scope` is the canonical entry point for repository use, and read-only paths skip the JSON export hook by passing `export=False`.",
+      "context": "The storage-system PRD specified the four-layer architecture (SQLite + access layer + REST API + MCP server) but left ORM/query layer, MCP framework, schema migration tool, test framework, and repository layout open as 'Claude Code's call'. Those choices needed to be made deliberately and recorded so that follow-on work (methodology entity schema, renderers, application integration) inherits a consistent stack rather than re-litigating every choice.",
+      "created_at": "2026-05-07T05:56:59.485267+00:00",
+      "decision": "Adopt SQLAlchemy 2.0 (typed Declarative API) as the ORM, Alembic for schema migrations, FastAPI as the web framework, the official `mcp` Python SDK (FastMCP) for the MCP server, pytest + pytest-asyncio for tests, and a single `crmbuilder-v2/` directory at the repo root with a `src/crmbuilder_v2/` package layout. The JSON export hook rewrites all entity tables on every successful database write, with atomicity via sibling tempfile + `os.replace`. The references table is stored as `refs` in the database to avoid the SQL reserved word.",
+      "decision_date": "05-07-26",
+      "id": 17,
+      "identifier": "DEC-017",
+      "rationale": "SQLAlchemy is the lowest-friction option once schema growth begins in earnest (methodology entities triple the table count); raw SQL with a thin wrapper handles v0.1 fine but accumulates ad-hoc code fast. Alembic pairs with SQLAlchemy and is the standard. FastAPI is specified in the PRD. The official MCP SDK is the canonical implementation. pytest is already a project dependency. Keeping v2 code under a single sibling directory honours DEC-003 without fragmenting the package layout. JSON exports always rewrite all tables because v0.1 data volume is small and the simpler code path is worth more than incremental write optimisation.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Implementation choices for v0.1 storage stack",
+      "updated_at": "2026-05-07T05:56:59.485271+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-017",
+    "entity_type": "decision",
+    "id": 40,
+    "operation": "insert",
+    "timestamp": "2026-05-07T05:56:59.486822"
+  },
+  {
+    "actor": "manual",
+    "after_payload": {
+      "artifacts_produced": "- crmbuilder-v2/ package: access layer + REST API + MCP server + bootstrap migration\n- crmbuilder-v2/migrations/0001_initial_schema.py — Alembic baseline\n- tests/crmbuilder_v2/ — 96-test suite (access, api, mcp_server, bootstrap)\n- PRDs/product/crmbuilder-v2/storage-system-implementation-plan.md\n- PRDs/product/crmbuilder-v2/db-export/ — 9 JSON snapshot files\n- DEC-017 (implementation-stack choices)\n- This session record (SES-003)\n- Updates to status (now version 4)\n- Updates to CLAUDE.md (v2 orientation section now MCP-first with JSON-export fallback)\n- Removed: charter.md, decisions.md, sessions.md, status.md (content now in DB)",
+      "conversation_reference": "Claude Code session — CLAUDE-CODE-PROMPT-v2-B-storage-system",
+      "created_at": "2026-05-07T05:56:59.549420+00:00",
+      "id": 3,
+      "identifier": "SES-003",
+      "in_flight_at_end": "- Planning dimensions #6 (division of labor), #7 (risk register), #8 (exit criteria) remain unresolved; their resolution lands as database records now, not markdown updates.\n- Project-structure split decision (Claude Project, repository) deferred to end of planning per DEC-012.\n- Step 0 follow-on — methodology entity schema (personas, entities, fields, processes, requirements, manual-config items, test specifications) — is the next major build workstream after planning is closed.\n- Renderers (Word, YAML, test-case generation per DEC-008) are a separate workstream.\n- CBM migration starts after methodology entities exist and renderers are functional, per DEC-010 priority order (MN, then MR, then CR, then FU).",
+      "session_date": "05-07-26",
+      "status": "Complete",
+      "summary": "Single-pass build of all eight acceptance criteria from the v0.1 PRD. Implementation plan was committed first (storage-system-implementation-plan.md), then status was updated to in-progress, then the build proceeded in the order: scaffold → schema (SQLAlchemy + Alembic baseline) → access layer + JSON export hook → access-layer test suite (53 tests) → REST API → API integration test suite (28 tests) → MCP server with FastMCP → MCP smoke test (5 tests) → bootstrap migration with parsers (10 tests) → run migration on real bootstrap files → retire markdown sources → close out via database (this session record).\n\nAcceptance criteria 1–8 from the PRD's Section 8 all pass: schema deployed, access layer operational, REST API operational, MCP server operational, JSON exports generated atomically with DB writes, bootstrap content migrated, test suite passing (96 tests total), session orientation reads return content equivalent to the pre-migration markdown.\n\nv2 work now operates on the database. Future updates to charter, status, decisions, and sessions go through the access layer (or the REST API or MCP) rather than markdown edits, with JSON snapshots committed alongside any DB-changing commit.",
+      "title": "v0.1 Storage System Build",
+      "topics_covered": "storage system v0.1 build per storage-system-PRD-v0.1.md: schema (project-management entities + universal references + change_log), access layer (repositories + validators + JSON export hook), REST API (FastAPI + Pydantic v2 + envelope), MCP server (FastMCP + stdio + httpx.AsyncClient), bootstrap migration (markdown parsers + idempotent driver), retirement of the four bootstrap markdown files in favour of the database + db-export/ JSON snapshots."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-003",
+    "entity_type": "session",
+    "id": 41,
+    "operation": "insert",
+    "timestamp": "2026-05-07T05:56:59.549986"
+  },
+  {
+    "actor": "manual",
+    "after_payload": {
+      "created_at": "2026-05-07T05:56:59.551472+00:00",
+      "id": 17,
+      "relationship": "decided_in",
+      "source_id": "SES-003",
+      "source_type": "session",
+      "target_id": "DEC-017",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-003 -[decided_in]-> decision:DEC-017",
+    "entity_type": "reference",
+    "id": 42,
+    "operation": "insert",
+    "timestamp": "2026-05-07T05:56:59.551884"
+  },
+  {
+    "actor": "manual",
+    "after_payload": {
+      "created_at": "2026-05-07T05:56:59.599603+00:00",
+      "id": 4,
+      "is_current": true,
+      "payload": {
+        "active_work": "None.",
+        "blockers": "None.",
+        "live_inventory": {
+          "in_database": [
+            "16 decisions (DEC-001 through DEC-017)",
+            "3 sessions (SES-001, SES-002, SES-003)",
+            "4 charter versions (latest is_current)",
+            "4 status versions (this is the new current)",
+            "17 references (16 decided_in from SES-001/SES-002, +1 from SES-003 to DEC-017)"
+          ],
+          "still_markdown": [
+            "PRDs/product/crmbuilder-v2/storage-system-PRD-v0.1.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/storage-system-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/prompts/*.md (Claude Code prompt files)"
+          ],
+          "v1_unchanged": [
+            "espo_impl/ — CRMBuilder PySide6 application code",
+            "automation/ — server management layer",
+            "PRDs/process/ — methodology guides",
+            "PRDs/product/CRMBuilder-PRD.md, app-*.md, crmbuilder-automation-PRD/ — v1 product specs",
+            "ClevelandBusinessMentoring/ — CBM client repo"
+          ]
+        },
+        "metadata": {
+          "Last Updated": "05-07-26",
+          "Status": "Active"
+        },
+        "pending": {
+          "build_after_v0_1": [
+            "Step 0 follow-on — methodology entity schema (personas, entities, fields, processes, requirements, manual-config items, test specifications)",
+            "Renderers — Word, YAML, test cases generated from the database (DEC-008)",
+            "Application integration — CRMBuilder PySide6 reads/writes against the v2 database",
+            "MN domain migration as proving ground (per DEC-010)",
+            "Test infrastructure first deliverable (CRUD layer)",
+            "Subsequent: MR, CR, FU migration; integration / process / UI test layers; methodology guide evolution"
+          ],
+          "planning_paused_until_v0_1": [
+            "Planning dimension #6 — division of labor",
+            "Planning dimension #7 — risk register",
+            "Planning dimension #8 — exit criteria",
+            "Project-structure split decision (Claude Project, repository) — deferred to end of planning per DEC-012"
+          ]
+        },
+        "phase": "Build (storage system v0.1, complete)",
+        "reading_order_for_new_sessions": "Tier 1: read crmbuilder/CLAUDE.md.\nTier 2 (MCP-connected): call get_current_status, get_current_charter, list_recent_sessions(limit=3), then get_decision or list_decisions_for_session as needed.\nTier 2 (file-fallback): read JSON snapshots under PRDs/product/crmbuilder-v2/db-export/ — status.json, charter.json, sessions.json, decisions.json, references.json.\nTier 3 (on-demand): targeted MCP/API queries during conversation.",
+        "sub_step": "All eight acceptance criteria from storage-system-PRD-v0.1.md Section 8 pass. v2 work now reads and writes the SQLite database via the access layer, REST API, or MCP server. JSON snapshots are committed to PRDs/product/crmbuilder-v2/db-export/ on every successful database write.",
+        "title": "CRMBuilder v2 — Status",
+        "version_label": "0.4"
+      },
+      "version": 4
+    },
+    "before_payload": {
+      "created_at": "2026-05-07T00:00:00",
+      "id": 3,
+      "is_current": true,
+      "payload": {
+        "markdown": "# CRMBuilder v2 — Status\n\n**Last Updated:** 05-07-26 15:30\n**Status:** Active\n\n**Revision Control:** This document is a living status snapshot updated as project state changes. The \"Last Updated\" field above reflects the most recent revision; prior states are recoverable through git history.\n\n---\n\n## Change Log\n\n| Version | Date | Description |\n|---------|------|-------------|\n| 0.1 | 05-06-26 | Initial status established alongside charter and decisions log via the v2-A bootstrap. |\n| 0.2 | 05-07-26 | Updated for planning dimension #5 resolution (SES-002). |\n| 0.3 | 05-07-26 | Storage system v0.1 build started. Planning dimensions #6/#7/#8 paused; build resumes them after v0.1 retires the markdown source-of-truth. |\n\n---\n\n## Current Phase\n\n**Phase:** Build (storage system v0.1, in progress)\n\n**Sub-step:** Implementing the four-layer storage stack per `storage-system-PRD-v0.1.md` and `storage-system-implementation-plan.md`. Acceptance criteria #1–#8 in the PRD define done.\n\n**Note on planning dimensions #6 / #7 / #8:** Resolution of these three remaining planning dimensions is paused until v0.1 retires the markdown source-of-truth. Once the database is operational, those dimensions are re-engaged, and their resolution lands as database records (decision rows, planning-item rows) rather than markdown updates.\n\n---\n\n## v1 / v2 / Transition Inventory\n\n### What's in v2\n\n- `charter.md` v0.2 — scope, name, architectural foundations, current state, open planning items (Open Planning Items trimmed at v0.2 to reflect dimension #5 resolution). Slated for migration into the v0.1 database; markdown removed in the migration commit.\n- `decisions.md` — DEC-001 through DEC-016, architectural and operational decisions. Slated for migration; markdown removed in the migration commit.\n- `sessions.md` — SES-001 and SES-002. Slated for migration; markdown removed in the migration commit.\n- `status.md` — this document. Slated for migration; markdown removed in the migration commit.\n- `storage-system-PRD-v0.1.md` — storage system v0.1 requirements (stays in markdown; this is a PRD, not bootstrapped governance content).\n- `storage-system-implementation-plan.md` — Claude Code's implementation plan companion to the PRD (stays in markdown).\n- `prompts/CLAUDE-CODE-PROMPT-v2-A-bootstrap.md` — bootstrap prompt\n- `prompts/CLAUDE-CODE-PROMPT-v2-B-pacing.md` — planning dimension #5 prompt\n- `prompts/CLAUDE-CODE-PROMPT-v2-B-storage-system.md` — storage system v0.1 build prompt (executing now)\n\n### What's in v1 (unchanged)\n\nThe following remain in v1 form and are explicitly NOT part of v2 work:\n\n- The crmbuilder PySide6 desktop application code (`espo_impl/`, `automation/`)\n- The existing methodology guides (`PRDs/process/interviews/`, `PRDs/process/CRM-Builder-Document-Production-Process.docx`)\n- The existing app-level product specs (`PRDs/product/CRMBuilder-PRD.md`, `PRDs/product/app-*.md`)\n- The engine pluggability planning (`PRDs/product/crmbuilder-automation-PRD/engine-pluggability-planning.md`)\n- The CBM client repo and all its content (`ClevelandBusinessMentoring/PRDs/`, `ClevelandBusinessMentoring/programs/`)\n\n### What's in transition\n\nNone at this stage. v2 has not yet begun migrating any v1 artifacts.\n\n---\n\n## Active Work\n\nStorage system v0.1 build (this conversation), per `storage-system-PRD-v0.1.md` and `storage-system-implementation-plan.md`.\n\n---\n\n## Pending — Immediate\n\n- Acceptance criteria #1–#8 from `storage-system-PRD-v0.1.md` Section 8 (in-progress).\n\n## Pending — Planning (paused until v0.1 lands)\n\n- Planning dimension #6 — division of labor\n- Planning dimension #7 — risk register\n- Planning dimension #8 — exit criteria\n- Project-structure split decision (Claude Project, repository) — deferred to end of planning per DEC-012\n\n## Pending — Build (after v0.1)\n\n- Step 0 follow-on — methodology entity schema (personas, entities, fields, processes, requirements, manual-config items, test specifications)\n- Renderers — Word, YAML, test cases generated from the database (DEC-008)\n- Application integration — CRMBuilder PySide6 reads/writes against the v2 database\n- MN domain migration as proving ground (per DEC-010)\n- Test infrastructure first deliverable (CRUD layer)\n- Subsequent: MR, CR, FU migration; integration / process / UI test layers; methodology guide evolution; application UI changes\n\n---\n\n## Blockers\n\nNone at this stage. The architecture is defined sufficiently for the next planning conversation to proceed; no external dependencies block forward motion.\n\n---\n\n## Reading Order for New Sessions\n\nPer DEC-011 (session orientation protocol):\n\n**Tier 1:** `crmbuilder/CLAUDE.md`\n\n**Tier 2 (when v2 work is engaged, before the MCP server exists):**\n\n1. `status.md` — current state (this file)\n2. `charter.md` — project scope and architectural foundations\n3. `sessions.md` — most recent session(s), starting from the latest\n4. `decisions.md` — referenced on demand when sessions reference DEC-NNN\n\n**Tier 2 (once the MCP server exists):** Replace the file reads above with MCP queries (`get_status`, `get_charter`, `get_recent_sessions`, `get_decisions`).\n",
+        "metadata": {
+          "Last Updated": "05-07-26 15:30",
+          "Note on planning dimensions #6 / #7 / #8": "Resolution of these three remaining planning dimensions is paused until v0.1 retires the markdown source-of-truth. Once the database is operational, those dimensions are re-engaged, and their resolution lands as database records (decision rows, planning-item rows) rather than markdown updates.",
+          "Phase": "Build (storage system v0.1, in progress)",
+          "Revision Control": "This document is a living status snapshot updated as project state changes. The \"Last Updated\" field above reflects the most recent revision; prior states are recoverable through git history.",
+          "Status": "Active",
+          "Sub-step": "Implementing the four-layer storage stack per `storage-system-PRD-v0.1.md` and `storage-system-implementation-plan.md`. Acceptance criteria #1–#8 in the PRD define done.",
+          "Tier 1": "`crmbuilder/CLAUDE.md`",
+          "Tier 2 (once the MCP server exists)": "Replace the file reads above with MCP queries (`get_status`, `get_charter`, `get_recent_sessions`, `get_decisions`).",
+          "Tier 2 (when v2 work is engaged, before the MCP server exists)": "1. `status.md` — current state (this file)"
+        },
+        "sections": {
+          "Active Work": "Storage system v0.1 build (this conversation), per `storage-system-PRD-v0.1.md` and `storage-system-implementation-plan.md`.\n\n---",
+          "Blockers": "None at this stage. The architecture is defined sufficiently for the next planning conversation to proceed; no external dependencies block forward motion.\n\n---",
+          "Current Phase": "**Phase:** Build (storage system v0.1, in progress)\n\n**Sub-step:** Implementing the four-layer storage stack per `storage-system-PRD-v0.1.md` and `storage-system-implementation-plan.md`. Acceptance criteria #1–#8 in the PRD define done.\n\n**Note on planning dimensions #6 / #7 / #8:** Resolution of these three remaining planning dimensions is paused until v0.1 retires the markdown source-of-truth. Once the database is operational, those dimensions are re-engaged, and their resolution lands as database records (decision rows, planning-item rows) rather than markdown updates.\n\n---",
+          "Pending — Build (after v0.1)": "- Step 0 follow-on — methodology entity schema (personas, entities, fields, processes, requirements, manual-config items, test specifications)\n- Renderers — Word, YAML, test cases generated from the database (DEC-008)\n- Application integration — CRMBuilder PySide6 reads/writes against the v2 database\n- MN domain migration as proving ground (per DEC-010)\n- Test infrastructure first deliverable (CRUD layer)\n- Subsequent: MR, CR, FU migration; integration / process / UI test layers; methodology guide evolution; application UI changes\n\n---",
+          "Pending — Immediate": "- Acceptance criteria #1–#8 from `storage-system-PRD-v0.1.md` Section 8 (in-progress).",
+          "Pending — Planning (paused until v0.1 lands)": "- Planning dimension #6 — division of labor\n- Planning dimension #7 — risk register\n- Planning dimension #8 — exit criteria\n- Project-structure split decision (Claude Project, repository) — deferred to end of planning per DEC-012",
+          "Reading Order for New Sessions": "Per DEC-011 (session orientation protocol):\n\n**Tier 1:** `crmbuilder/CLAUDE.md`\n\n**Tier 2 (when v2 work is engaged, before the MCP server exists):**\n\n1. `status.md` — current state (this file)\n2. `charter.md` — project scope and architectural foundations\n3. `sessions.md` — most recent session(s), starting from the latest\n4. `decisions.md` — referenced on demand when sessions reference DEC-NNN\n\n**Tier 2 (once the MCP server exists):** Replace the file reads above with MCP queries (`get_status`, `get_charter`, `get_recent_sessions`, `get_decisions`).",
+          "v1 / v2 / Transition Inventory": "### What's in v2\n\n- `charter.md` v0.2 — scope, name, architectural foundations, current state, open planning items (Open Planning Items trimmed at v0.2 to reflect dimension #5 resolution). Slated for migration into the v0.1 database; markdown removed in the migration commit.\n- `decisions.md` — DEC-001 through DEC-016, architectural and operational decisions. Slated for migration; markdown removed in the migration commit.\n- `sessions.md` — SES-001 and SES-002. Slated for migration; markdown removed in the migration commit.\n- `status.md` — this document. Slated for migration; markdown removed in the migration commit.\n- `storage-system-PRD-v0.1.md` — storage system v0.1 requirements (stays in markdown; this is a PRD, not bootstrapped governance content).\n- `storage-system-implementation-plan.md` — Claude Code's implementation plan companion to the PRD (stays in markdown).\n- `prompts/CLAUDE-CODE-PROMPT-v2-A-bootstrap.md` — bootstrap prompt\n- `prompts/CLAUDE-CODE-PROMPT-v2-B-pacing.md` — planning dimension #5 prompt\n- `prompts/CLAUDE-CODE-PROMPT-v2-B-storage-system.md` — storage system v0.1 build prompt (executing now)\n\n### What's in v1 (unchanged)\n\nThe following remain in v1 form and are explicitly NOT part of v2 work:\n\n- The crmbuilder PySide6 desktop application code (`espo_impl/`, `automation/`)\n- The existing methodology guides (`PRDs/process/interviews/`, `PRDs/process/CRM-Builder-Document-Production-Process.docx`)\n- The existing app-level product specs (`PRDs/product/CRMBuilder-PRD.md`, `PRDs/product/app-*.md`)\n- The engine pluggability planning (`PRDs/product/crmbuilder-automation-PRD/engine-pluggability-planning.md`)\n- The CBM client repo and all its content (`ClevelandBusinessMentoring/PRDs/`, `ClevelandBusinessMentoring/programs/`)\n\n### What's in transition\n\nNone at this stage. v2 has not yet begun migrating any v1 artifacts.\n\n---"
+        },
+        "title": "CRMBuilder v2 — Status",
+        "version_label": "0.3"
+      },
+      "version": 3
+    },
+    "entity_identifier": "status",
+    "entity_type": "status",
+    "id": 43,
+    "operation": "update",
+    "timestamp": "2026-05-07T05:56:59.599964"
   }
 ]
