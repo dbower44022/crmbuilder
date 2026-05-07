@@ -1,17 +1,29 @@
 # CRMBuilder v2 — Status
 
-**Last Updated:** 05-07-26 00:37
+**Last Updated:** 05-07-26 15:30
 **Status:** Active
 
 **Revision Control:** This document is a living status snapshot updated as project state changes. The "Last Updated" field above reflects the most recent revision; prior states are recoverable through git history.
 
 ---
 
+## Change Log
+
+| Version | Date | Description |
+|---------|------|-------------|
+| 0.1 | 05-06-26 | Initial status established alongside charter and decisions log via the v2-A bootstrap. |
+| 0.2 | 05-07-26 | Updated for planning dimension #5 resolution (SES-002). |
+| 0.3 | 05-07-26 | Storage system v0.1 build started. Planning dimensions #6/#7/#8 paused; build resumes them after v0.1 retires the markdown source-of-truth. |
+
+---
+
 ## Current Phase
 
-**Phase:** Planning (pre-build)
+**Phase:** Build (storage system v0.1, in progress)
 
-**Sub-step:** Planning dimensions 1 through 5 resolved. Dimensions 6, 7, and 8 remain. Step 0 (schema design) has not yet started.
+**Sub-step:** Implementing the four-layer storage stack per `storage-system-PRD-v0.1.md` and `storage-system-implementation-plan.md`. Acceptance criteria #1–#8 in the PRD define done.
+
+**Note on planning dimensions #6 / #7 / #8:** Resolution of these three remaining planning dimensions is paused until v0.1 retires the markdown source-of-truth. Once the database is operational, those dimensions are re-engaged, and their resolution lands as database records (decision rows, planning-item rows) rather than markdown updates.
 
 ---
 
@@ -19,12 +31,15 @@
 
 ### What's in v2
 
-- `charter.md` v0.2 — scope, name, architectural foundations, current state, open planning items (Open Planning Items trimmed at v0.2 to reflect dimension #5 resolution)
-- `decisions.md` — DEC-001 through DEC-016, architectural and operational decisions
-- `sessions.md` — SES-001 (initial planning) and SES-002 (planning dimension #5)
-- `status.md` — this document
+- `charter.md` v0.2 — scope, name, architectural foundations, current state, open planning items (Open Planning Items trimmed at v0.2 to reflect dimension #5 resolution). Slated for migration into the v0.1 database; markdown removed in the migration commit.
+- `decisions.md` — DEC-001 through DEC-016, architectural and operational decisions. Slated for migration; markdown removed in the migration commit.
+- `sessions.md` — SES-001 and SES-002. Slated for migration; markdown removed in the migration commit.
+- `status.md` — this document. Slated for migration; markdown removed in the migration commit.
+- `storage-system-PRD-v0.1.md` — storage system v0.1 requirements (stays in markdown; this is a PRD, not bootstrapped governance content).
+- `storage-system-implementation-plan.md` — Claude Code's implementation plan companion to the PRD (stays in markdown).
 - `prompts/CLAUDE-CODE-PROMPT-v2-A-bootstrap.md` — bootstrap prompt
 - `prompts/CLAUDE-CODE-PROMPT-v2-B-pacing.md` — planning dimension #5 prompt
+- `prompts/CLAUDE-CODE-PROMPT-v2-B-storage-system.md` — storage system v0.1 build prompt (executing now)
 
 ### What's in v1 (unchanged)
 
@@ -44,27 +59,28 @@ None at this stage. v2 has not yet begun migrating any v1 artifacts.
 
 ## Active Work
 
-None currently active. The next active work is planning dimension #6 (division of labor) in a new conversation.
+Storage system v0.1 build (this conversation), per `storage-system-PRD-v0.1.md` and `storage-system-implementation-plan.md`.
 
 ---
 
 ## Pending — Immediate
 
-None. Planning dimension #5 is complete after this prompt executes.
+- Acceptance criteria #1–#8 from `storage-system-PRD-v0.1.md` Section 8 (in-progress).
 
-## Pending — Planning
+## Pending — Planning (paused until v0.1 lands)
 
 - Planning dimension #6 — division of labor
 - Planning dimension #7 — risk register
 - Planning dimension #8 — exit criteria
 - Project-structure split decision (Claude Project, repository) — deferred to end of planning per DEC-012
 
-## Pending — Build (gated by planning completion)
+## Pending — Build (after v0.1)
 
-- Step 0 — schema design (project management schema first, methodology schema second; references vocabulary; validation rules)
-- Step 1 — storage layer build (SQLite, Python access layer, REST API, MCP server, JSON export hook)
-- Step 2 — MN domain migration as proving ground
-- Step 3 — test infrastructure first deliverable (CRUD layer)
+- Step 0 follow-on — methodology entity schema (personas, entities, fields, processes, requirements, manual-config items, test specifications)
+- Renderers — Word, YAML, test cases generated from the database (DEC-008)
+- Application integration — CRMBuilder PySide6 reads/writes against the v2 database
+- MN domain migration as proving ground (per DEC-010)
+- Test infrastructure first deliverable (CRUD layer)
 - Subsequent: MR, CR, FU migration; integration / process / UI test layers; methodology guide evolution; application UI changes
 
 ---
