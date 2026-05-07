@@ -58,6 +58,9 @@ python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = ["--strict-markers", "--strict-config"]
 asyncio_mode = "auto"
+markers = [
+    "v2: tests for crmbuilder-v2 (storage system)",
+]
 
 [tool.ruff]
 line-length = 88
