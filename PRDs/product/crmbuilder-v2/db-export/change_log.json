@@ -1065,5 +1065,473 @@
     "id": 43,
     "operation": "update",
     "timestamp": "2026-05-07T05:56:59.599964"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "- New tab in the existing v1 application's main window. Rejected — entangles release cycles and contradicts the v2 separation principle from DEC-003. Reusing window chrome is a small benefit; the cost in coupling is larger.\n- Both standalone and embedded, with shared widgets and two integration points. Rejected — premature; pays the cost of two integrations before either is proven valuable. A standalone app whose widgets happen to be reusable later is a strictly better starting position.",
+      "consequences": "A new console script `crmbuilder-v2-ui` is registered alongside `crmbuilder-v2-api` and `crmbuilder-v2-mcp`. UI code lives at `crmbuilder-v2/src/crmbuilder_v2/ui/`, in the v2 package, separate from the v1 codebase. The v1 codebase is unaffected by UI work. If a v1 tab is wanted later, it can be added as a thin wrapper that hosts a subset of the v2 UI's widgets — the standalone app does not preclude that path.",
+      "context": "The v2 storage system needs a way for a local user to view and edit governance content outside Claude sessions. Today the only options are curl against the REST API or direct inspection of the JSON snapshots — neither is comfortable for browsing or editing. A user-interface workstream is the natural answer. The existing CRMBuilder v1 PySide6 application already has a tabbed structure (Configure, Verify, Audit, Deployment) and could plausibly host the v2 UI as an additional tab.",
+      "created_at": "2026-05-07T21:23:28.769103+00:00",
+      "decision": "The v2 UI is a separate PySide6 desktop application installed as its own console script (`crmbuilder-v2-ui`), with its own main window, separate from the existing v1 application. The v1 application is not modified.",
+      "decision_date": "05-07-26",
+      "id": 18,
+      "identifier": "DEC-018",
+      "rationale": "V1 and v2 have distinct purposes, distinct release cycles, and per DEC-003 are tracked as separate workstreams. Embedding the v2 UI as a tab in the v1 application entangles those release cycles — every v1 release would have to consider the v2 surface, and every v2 surface change would have to coordinate with v1 testing. The v2 separation principle established in DEC-003 is most cleanly preserved by keeping the v2 UI in its own application.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "UI is a standalone application, not embedded in the v1 PySide6 app",
+      "updated_at": "2026-05-07T21:23:28.769106+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-018",
+    "entity_type": "decision",
+    "id": 44,
+    "operation": "insert",
+    "timestamp": "2026-05-07T21:23:28.770042"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "- Direct access-layer imports. Rejected — skips validation of the REST surface; couples the UI to access-layer Python signatures rather than the durable HTTP contract; complicates any future remote or multi-host operation; loses the natural symmetry with the MCP server, which is itself a thin client of the REST API.\n- Hybrid (a `StorageClient` protocol with both HTTP and access-layer implementations behind it, selectable by config). Rejected — over-engineered for v0.1; the abstraction adds maintenance burden to validate a tradeoff that is not needed at this stage. If a direct-access path becomes worth having later, it can be added as a second implementation behind the existing client interface without rework.",
+      "consequences": "The UI requires the REST API process to be running. DEC-023 specifies how the UI ensures this. The UI cannot bypass API-level validation, which is the intent — every write goes through the same Pydantic and access-layer checks that any other consumer goes through. If the API ever gains authentication, the UI gains it too, with no code changes beyond credential handling. A future remote/multi-host configuration is possible without rearchitecting the UI's data layer; only the file-watch refresh strategy (DEC-022) would need replacement.",
+      "context": "Per DEC-005 the storage stack has two viable Python entry points: the access layer (importable directly from any Python process in the repository) and the REST API (a network endpoint at `http://127.0.0.1:8765`). The v2 UI runs in the same process tree on the same machine as the storage system, so it could plausibly consume either interface.",
+      "created_at": "2026-05-07T21:23:28.826032+00:00",
+      "decision": "The UI consumes the storage system exclusively through its REST API, treating the API as a black box reached at the configured base URL. The UI does not import or call the access-layer modules directly.",
+      "decision_date": "05-07-26",
+      "id": 19,
+      "identifier": "DEC-019",
+      "rationale": "The REST API is the durable productization-path interface per DEC-005 — when productization happens, it becomes the hosted endpoint with authentication added. Building the UI as a REST client makes the UI dogfood that interface and surfaces bugs in the contract early, where they are cheap to fix. The error envelope, status codes, validation behavior, and OpenAPI surface are specified and tested at the REST boundary. If the UI consumed the access layer directly, the REST surface would not be exercised by a real consumer and could drift from real consumer needs. The added cost — a second process must be running — is small and is addressed by DEC-023 (subprocess management).",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "UI consumes the REST API over HTTP, not the access layer directly",
+      "updated_at": "2026-05-07T21:23:28.826035+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-019",
+    "entity_type": "decision",
+    "id": 45,
+    "operation": "insert",
+    "timestamp": "2026-05-07T21:23:28.826455"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "- Read-only across all entities, with no write surface anywhere. Rejected — leaves the most common write operation (recording a decision) without a UI path, which is a real gap in the value v0.1 delivers. The point of building a UI is partly so writes do not have to go through curl or MCP for routine operations.\n- Full CRUD across all seven entities. Rejected — multiplies design and build effort by a factor of roughly seven without proportional value. Charter/status versioning, references graph, and append-only sessions are each separate design conversations that should not be done in parallel with the basic infrastructure work. Trying to do all of them at once produces a worse outcome on each.",
+      "consequences": "After v0.1, the UI cannot yet be the sole interface for v2 governance. Sessions, risks, planning items, topics, references, and charter/status updates continue to be written through MCP or via curl. v0.2 is the intended workstream that closes those gaps, prioritized by the friction observed during v0.1 use. The architecture put in place for decisions CRUD (HTTP client, dialog pattern, error surfacing, refresh wiring) generalizes naturally to the other entities, so v0.2 is largely additive rather than requiring rework.",
+      "context": "The storage system has seven first-class entity types (charter, status, decisions, sessions, risks, planning items, topics) plus the references graph that connects them. Each entity needs at minimum a viewing surface, and several plausibly need an editing surface. Some have non-trivial edit semantics: charter and status are versioned (replace creates a new version), sessions are append-only per DEC-013, and references-as-edges is its own subsystem. v0.1 needs to ship in a reasonable timeframe without committing to designing every edit surface up front.",
+      "created_at": "2026-05-07T21:23:28.875486+00:00",
+      "decision": "v0.1 of the UI ships read-only views for all seven entities and the references graph, plus full create/read/update/delete operations for decisions only. All other entities receive read-only treatment in v0.1; their edit surfaces are deferred to v0.2.",
+      "decision_date": "05-07-26",
+      "id": 20,
+      "identifier": "DEC-020",
+      "rationale": "Decisions are the highest-frequency write target — recording a decision after a planning conversation is a routine operation that benefits substantially from a UI surface. Sessions are append-only with effectively one writer (the closing Claude conversation per DEC-013); they do not need a UI write path in v0.1. Charter and status are versioned replace operations whose UX (replace versus edit, version history browsing, payload editor for arbitrary JSON) deserves its own design conversation rather than a quick first cut. Risks, planning items, and topics are lower-frequency and can wait. References-as-edges is its own subsystem — a graph view with create/delete edge interaction is a separate design problem and is its own slice of work. Concentrating v0.1 write surface on a single entity allows the architectural pieces (subprocess management, threading, error envelope handling, file watching, dialog patterns) to be proven on a single end-to-end path before being generalized.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "v0.1 scope: read-only across all entities, full CRUD for decisions only",
+      "updated_at": "2026-05-07T21:23:28.875490+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-020",
+    "entity_type": "decision",
+    "id": 46,
+    "operation": "insert",
+    "timestamp": "2026-05-07T21:23:28.875925"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "- Top tabs (one per entity). Rejected — eight tabs is at the cramped end of the QTabWidget pattern; the methodology entities planned for v2 follow-on would push it past viable. Tabs also imply parallel workflows, which is not really what is happening here — the user is looking at one body of governance data and navigating between facets of it.\n- Dashboard home with summary cards drilling into per-entity lists. Rejected for v0.1 — adds design and code work without proportional value at this stage. A dashboard can layer onto a working sidebar app later as a \"Home\" entry.\n- Single scrolling page with anchor jumps. Rejected — does not scale beyond a few entities with small data, and breaks down entirely when one entity has more than a handful of records.",
+      "consequences": "The main window structure is a sidebar (left, fixed-width) plus a `QStackedWidget` (right, swapping per selection). Each entity's panel implements a common master/detail interface, sharing a base class (`ListDetailPanel`) for the layout and toolbar shape. Adding a new entity in future work means adding a sidebar entry and a new panel module — the main window and the base class do not change. Charter and status panels use a versioned variant of the base class.",
+      "context": "The v2 UI must let the user move between seven entity types and the references graph. Common navigation paradigms include top tabs, sidebar navigation, dashboard with drill-in, and single-page-with-anchors. The choice shapes the entire app structure, the visual language, and how cleanly the app scales as v2 grows beyond governance entities into methodology entities (personas, processes, requirements, etc.) in follow-on work.",
+      "created_at": "2026-05-07T21:23:28.922373+00:00",
+      "decision": "The UI uses a left-hand sidebar with one entry per entity type (Charter, Status, Decisions, Sessions, Risks, Planning Items, Topics, References). Selecting a sidebar entry swaps the right pane to that entity's view. Each entity's view uses a master/detail layout — list of records on the left, detail of the selected record on the right. Charter and status, being singletons with version history, use a slight variant in which the list pane shows version numbers and the detail pane shows the selected version's payload.",
+      "decision_date": "05-07-26",
+      "id": 21,
+      "identifier": "DEC-021",
+      "rationale": "Sidebar navigation scales as v2 grows. Eight entries today; methodology entities planned for follow-on work (personas, processes, requirements, manual-config items, test specs) become additional sidebar entries with no overflow problem. The existing CRM Builder v1 Deployment tab uses a sidebar+content pattern, so the visual language is already established in the codebase — this reduces the design surface for v2. Master/detail within an entity view matches the natural shape of every governance entity: a list of identifiers and titles to scan, and a record to read in full when selected. The structure is uniform across entities, which keeps the per-entity panel implementation lightweight.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Sidebar navigation with master/detail panes",
+      "updated_at": "2026-05-07T21:23:28.922376+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-021",
+    "entity_type": "decision",
+    "id": 47,
+    "operation": "insert",
+    "timestamp": "2026-05-07T21:23:28.922757"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "- Periodic polling on a `QTimer`. Rejected — generates a steady drip of GETs on every panel even when nothing has changed; choosing the polling interval is a tradeoff between freshness and noise that a signal-based mechanism avoids entirely.\n- Manual refresh only. Rejected — forces the user to remember to refresh; \"I just recorded the decision but I don't see it\" friction is guaranteed to happen and is exactly the friction a UI should remove.\n- WebSocket push from the API to the UI. Rejected for v0.1 — adds a bidirectional channel and corresponding server-side state for what is currently a localhost-only single-client problem. The complexity is not justified at this scale.",
+      "consequences": "The UI process must have read access to the snapshot directory. Both UI and API processes must agree on the snapshot directory path; this is achieved by both reading from `crmbuilder_v2.config.get_settings()`, which sources from the same environment variables. The file-watch mechanism only works on a shared filesystem — if a future configuration runs the UI and API on separate hosts, the refresh strategy will need replacement. A \"stale\" indicator on sidebar entries communicates writes to non-displayed entity types so the user knows something has changed even when not currently looking at it.",
+      "context": "The v2 UI is concurrent with the rest of the v2 stack. Claude can write to the storage system via MCP while the UI is open. The user can edit a decision in the UI while Claude is mid-conversation. The UI needs a strategy for keeping its rendered data current without requiring the user to remember to refresh manually and without generating a steady drip of API calls when nothing has changed.",
+      "created_at": "2026-05-07T21:23:28.971404+00:00",
+      "decision": "A `QFileSystemWatcher` watches the `PRDs/product/crmbuilder-v2/db-export/` directory. When a snapshot file in that directory changes, the affected entity panel refetches silently from the API. Every panel also exposes a manual Refresh button as a fallback for cases where the file watcher misses an event (network filesystems, OS-specific event coalescing).",
+      "decision_date": "05-07-26",
+      "id": 22,
+      "identifier": "DEC-022",
+      "rationale": "The JSON snapshots are atomically rewritten on every successful database write — this is an existing architectural property of the storage system, established for git-tracking purposes. The mtime of a snapshot file changes if and only if a write happened to the corresponding entity table. This makes the snapshot directory a perfect change signal that exists for free, without any addition to the storage system. Using a file watcher is a Qt-native pattern (`QFileSystemWatcher`), integrates with the rest of the UI's signal/slot architecture, and produces no work when the database is idle. The manual Refresh button covers the cases where the file watcher's underlying OS mechanism is unreliable.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "File-watch on db-export/ for live refresh, manual Refresh button as fallback",
+      "updated_at": "2026-05-07T21:23:28.971407+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-022",
+    "entity_type": "decision",
+    "id": 48,
+    "operation": "insert",
+    "timestamp": "2026-05-07T21:23:28.971776"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "- Always launch (own the subprocess unconditionally). Rejected — fails when the API is already running, which is the common case for users running MCP. Would force the user to choose between MCP and the UI, which is the wrong choice to put in front of them.\n- Always require external launch (UI does not spawn anything). Rejected — pushes setup burden onto the user for what the UI can handle automatically. Worst end-user experience.",
+      "consequences": "The UI spawns the API with `QProcess`, surfaces stderr in failure dialogs, and shows a \"Starting storage server…\" splash while waiting for readiness. A new `GET /health` endpoint is added to the API to provide a probe target — this is a small additive change to the existing API surface and is delivered alongside the first slice of UI work. If the owned subprocess crashes mid-session, the UI surfaces a non-modal banner with a Reconnect button and disables data-dependent UI; no background retry loop runs, so the user controls when to retry.",
+      "context": "The v2 UI requires the REST API process (`crmbuilder-v2-api`) to be running. The MCP server also requires the API to be running — Claude clients connecting via MCP are blocked otherwise. A common day-to-day flow has both Claude (via MCP) and the user (via the UI) wanting to talk to the API simultaneously, often with the user having already launched the API in a terminal so MCP can use it. The UI's startup behavior needs to handle both the case where the API is already running and the case where it is not.",
+      "created_at": "2026-05-07T21:23:29.018579+00:00",
+      "decision": "On startup, the UI probes the configured API URL (`GET /health` with a one-second timeout). If the API responds, the UI uses it and tracks ownership as \"external\". If no response, the UI spawns `crmbuilder-v2-api` as a managed `QProcess` subprocess, tracks ownership as \"owned\", and waits for readiness by polling `/health` every 250ms for up to 10 seconds. On UI shutdown, the UI terminates only subprocesses it spawned itself; externally-launched API processes are left alone.",
+      "decision_date": "05-07-26",
+      "id": 23,
+      "identifier": "DEC-023",
+      "rationale": "The \"MCP needs the API too\" overlap is the common case, not an edge case. A \"always launch our own\" policy would fail when the API is already running, because the spawn would collide on the configured port. A \"always require external launch\" policy would burden the user with a setup step that the UI can do for them. Detect-then-launch handles both cases gracefully and adds only a single boolean of state to the UI (the ownership flag). The 10-second wait with 250ms polling gives 40 chances to detect readiness, which is sufficient for any realistic API startup time on the local machine.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Detect-then-launch API subprocess management",
+      "updated_at": "2026-05-07T21:23:29.018582+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-023",
+    "entity_type": "decision",
+    "id": 49,
+    "operation": "insert",
+    "timestamp": "2026-05-07T21:23:29.018944"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "- Match the v1 PySide6 application's existing styling (palette, fonts, QSS). Rejected — ties v0.1 to v1's visual decisions; a designed visual pass is best done with the working v2 UI to react to, and v2's design language can plausibly diverge from v1's.\n- Distinct designed visual identity for v2 from day one. Rejected — design effort competes with functional effort in v0.1; design work without a working app to react to tends to produce decisions that need rework as soon as the app exists. Deferring is the cheaper path even after the eventual styling pass is paid for.",
+      "consequences": "The application uses native Qt widget rendering. A small `styling.py` module applies a QSS string at app startup that sets the default font to Arial and gives selected list items and focused buttons the navy accent. A real styling pass is a v0.2 design conversation conducted with the working v0.1 app in front of both parties. If user feedback during v0.1 surfaces specific styling friction (low contrast, illegible at small sizes, awkward focus indicators), targeted fixes can be applied during the v0.1 polish slice without committing to a full designed pass.",
+      "context": "The v2 UI could ship with a designed visual language (custom palette, typography, spacing, widget styling), with native Qt defaults, or somewhere between. The choice carries different cost: a real designed pass is a substantial workstream with its own design conversations, while native Qt is essentially free. v0.1 needs to ship a functional application without committing to a visual identity that is likely to change once a working app exists to react to.",
+      "created_at": "2026-05-07T21:23:29.068609+00:00",
+      "decision": "v0.1 ships with native Qt look on whatever platform it runs on, plus a minimal QSS stub applying `#1F3864` as accent color and Arial as the default font. A real designed visual pass is deferred to v0.2 or later.",
+      "decision_date": "05-07-26",
+      "id": 24,
+      "identifier": "DEC-024",
+      "rationale": "Styling is genuinely a separate problem from \"does the navigation, data flow, refresh, and CRUD work.\" Doing both at once means changes in either dimension feel like they break the other. Native Qt rendering on Linux/macOS/Windows is functional and unembarrassing for a developer/product-owner tool — it is not great visual design, but it is not bad either. Deferring the styling decision until a working app exists produces better design decisions than designing in the abstract. The minimal QSS stub costs essentially nothing and gives the v2 UI a small visual link to v2 document standards (the navy color `#1F3864` and the Arial font both come from those standards), so the v2 UI feels visually adjacent to the v2 documents it represents without committing to a full visual identity.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Native Qt look for v0.1; styling pass deferred",
+      "updated_at": "2026-05-07T21:23:29.068612+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-024",
+    "entity_type": "decision",
+    "id": 50,
+    "operation": "insert",
+    "timestamp": "2026-05-07T21:23:29.069114"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "- PRDs/product/crmbuilder-v2/ui-PRD-v0.1.md\n- PRDs/product/crmbuilder-v2/ui-implementation-plan.md\n- PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-A-scaffold.md (first of an eight-prompt v2-ui series)\n- DEC-018 through DEC-024 (seven decision records, written via the v2-ui-A scaffold prompt)\n- This session record (SES-004)\n- Seven decided_in references from SES-004 to DEC-018 through DEC-024\n- Status update reflecting that UI v0.1 is now in build, slice A in progress",
+      "conversation_reference": "Claude.ai planning conversation that produced ui-PRD-v0.1.md and ui-implementation-plan.md",
+      "created_at": "2026-05-07T21:23:29.117689+00:00",
+      "id": 4,
+      "identifier": "SES-004",
+      "in_flight_at_end": "",
+      "session_date": "05-07-26",
+      "status": "Complete",
+      "summary": "The planning conversation worked through the seven architectural questions listed above and produced three artifacts. The v0.1 PRD (ui-PRD-v0.1.md) captures the requirements: a standalone PySide6 desktop application that consumes the storage system REST API, providing read-only views across all seven governance entities and the references graph, with full CRUD for decisions. The implementation plan (ui-implementation-plan.md) decomposes the build into eight independently testable slices (v2-ui-A through v2-ui-H), each delivered as its own Claude Code prompt. The v2-ui-A prompt is the first of these, scaffolding the package, registering the console script, adding a GET /health endpoint, and writing this session record and DEC-018 through DEC-024 into the v2 database to capture the planning conversation.",
+      "title": "UI v0.1 planning",
+      "topics_covered": "Seven architectural questions for the v2 desktop UI: (1) standalone PySide6 application versus a new tab embedded in the v1 PySide6 application; (2) transport choice — REST API over HTTP versus direct in-process imports of the access layer; (3) v0.1 scope boundary — read-only across all governance entities versus a broader CRUD surface, with full create/read/update/delete reserved for decisions only; (4) screen layout — sidebar navigation with master/detail panes versus top-tab and dashboard alternatives; (5) refresh strategy — file-watching the db-export/ snapshot directory as the change signal, with a manual Refresh button as fallback, in preference to polling or push; (6) server lifecycle — detect-then-launch QProcess management of the API subprocess so the UI cooperates with externally-launched API instances; (7) styling — native Qt look with a minimal QSS accent stub for v0.1, with a real designed pass deferred to v0.2."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-004",
+    "entity_type": "session",
+    "id": 51,
+    "operation": "insert",
+    "timestamp": "2026-05-07T21:23:29.118127"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-07T21:23:29.170536+00:00",
+      "id": 18,
+      "relationship": "decided_in",
+      "source_id": "SES-004",
+      "source_type": "session",
+      "target_id": "DEC-018",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-004 -[decided_in]-> decision:DEC-018",
+    "entity_type": "reference",
+    "id": 52,
+    "operation": "insert",
+    "timestamp": "2026-05-07T21:23:29.171014"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-07T21:23:29.219173+00:00",
+      "id": 19,
+      "relationship": "decided_in",
+      "source_id": "SES-004",
+      "source_type": "session",
+      "target_id": "DEC-019",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-004 -[decided_in]-> decision:DEC-019",
+    "entity_type": "reference",
+    "id": 53,
+    "operation": "insert",
+    "timestamp": "2026-05-07T21:23:29.219583"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-07T21:23:29.269120+00:00",
+      "id": 20,
+      "relationship": "decided_in",
+      "source_id": "SES-004",
+      "source_type": "session",
+      "target_id": "DEC-020",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-004 -[decided_in]-> decision:DEC-020",
+    "entity_type": "reference",
+    "id": 54,
+    "operation": "insert",
+    "timestamp": "2026-05-07T21:23:29.269522"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-07T21:23:29.319545+00:00",
+      "id": 21,
+      "relationship": "decided_in",
+      "source_id": "SES-004",
+      "source_type": "session",
+      "target_id": "DEC-021",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-004 -[decided_in]-> decision:DEC-021",
+    "entity_type": "reference",
+    "id": 55,
+    "operation": "insert",
+    "timestamp": "2026-05-07T21:23:29.319940"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-07T21:23:29.364649+00:00",
+      "id": 22,
+      "relationship": "decided_in",
+      "source_id": "SES-004",
+      "source_type": "session",
+      "target_id": "DEC-022",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-004 -[decided_in]-> decision:DEC-022",
+    "entity_type": "reference",
+    "id": 56,
+    "operation": "insert",
+    "timestamp": "2026-05-07T21:23:29.365166"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-07T21:23:29.421095+00:00",
+      "id": 23,
+      "relationship": "decided_in",
+      "source_id": "SES-004",
+      "source_type": "session",
+      "target_id": "DEC-023",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-004 -[decided_in]-> decision:DEC-023",
+    "entity_type": "reference",
+    "id": 57,
+    "operation": "insert",
+    "timestamp": "2026-05-07T21:23:29.421569"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-07T21:23:29.469726+00:00",
+      "id": 24,
+      "relationship": "decided_in",
+      "source_id": "SES-004",
+      "source_type": "session",
+      "target_id": "DEC-024",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-004 -[decided_in]-> decision:DEC-024",
+    "entity_type": "reference",
+    "id": 58,
+    "operation": "insert",
+    "timestamp": "2026-05-07T21:23:29.470112"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-07T21:23:29.536416+00:00",
+      "id": 5,
+      "is_current": true,
+      "payload": {
+        "active_work": "v2-ui-A scaffold: package skeleton under crmbuilder-v2/src/crmbuilder_v2/ui/, console script crmbuilder-v2-ui, sidebar shell with placeholders, GET /health endpoint on the storage API.",
+        "blockers": "None.",
+        "live_inventory": {
+          "in_database": [
+            "24 decisions (DEC-001 through DEC-024)",
+            "4 sessions (SES-001 through SES-004)",
+            "4 charter versions (latest is_current)",
+            "5 status versions (this is the new current)",
+            "24 references (17 decided_in from SES-001/SES-002/SES-003, +7 from SES-004 to DEC-018 through DEC-024)"
+          ],
+          "still_markdown": [
+            "PRDs/product/crmbuilder-v2/storage-system-PRD-v0.1.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/storage-system-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/prompts/*.md (Claude Code prompt files)",
+            "PRDs/product/crmbuilder-v2/ui-PRD-v0.1.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/ui-implementation-plan.md"
+          ],
+          "v1_unchanged": [
+            "espo_impl/ — CRMBuilder PySide6 application code",
+            "automation/ — server management layer",
+            "PRDs/process/ — methodology guides",
+            "PRDs/product/CRMBuilder-PRD.md, app-*.md, crmbuilder-automation-PRD/ — v1 product specs",
+            "ClevelandBusinessMentoring/ — CBM client repo"
+          ]
+        },
+        "metadata": {
+          "Last Updated": "05-07-26",
+          "Status": "Active"
+        },
+        "pending": {
+          "build_after_v0_1": [
+            "Step 0 follow-on — methodology entity schema (personas, entities, fields, processes, requirements, manual-config items, test specifications)",
+            "Renderers — Word, YAML, test cases generated from the database (DEC-008)",
+            "Application integration — CRMBuilder PySide6 reads/writes against the v2 database",
+            "MN domain migration as proving ground (per DEC-010)",
+            "Test infrastructure first deliverable (CRUD layer)",
+            "Subsequent: MR, CR, FU migration; integration / process / UI test layers; methodology guide evolution"
+          ],
+          "planning_paused_until_v0_1": [
+            "Planning dimension #6 — division of labor",
+            "Planning dimension #7 — risk register",
+            "Planning dimension #8 — exit criteria",
+            "Project-structure split decision (Claude Project, repository) — deferred to end of planning per DEC-012"
+          ],
+          "ui_v0_1_remaining_slices": [
+            "v2-ui-B — server lifecycle (detect-then-launch, splash, crash banner)",
+            "v2-ui-C — HTTP client and list/detail base",
+            "v2-ui-D — read-only views round 1 (decisions, sessions, risks)",
+            "v2-ui-E — read-only views round 2 (charter, status, topics, planning items, references)",
+            "v2-ui-F — file-watch refresh service",
+            "v2-ui-G — decisions CRUD (create, edit, delete dialogs)",
+            "v2-ui-H — polish, About dialog, styling stub"
+          ]
+        },
+        "phase": "Build (UI v0.1 — slice A in progress)",
+        "reading_order_for_new_sessions": "Tier 1: read crmbuilder/CLAUDE.md.\nTier 2 (MCP-connected): call get_current_status, get_current_charter, list_recent_sessions(limit=3), then get_decision or list_decisions_for_session as needed.\nTier 2 (file-fallback): read JSON snapshots under PRDs/product/crmbuilder-v2/db-export/ — status.json, charter.json, sessions.json, decisions.json, references.json.\nTier 3 (on-demand): targeted MCP/API queries during conversation.",
+        "sub_step": "Storage system v0.1 complete (per SES-003). UI v0.1 build is now in progress. Slice A (scaffold + /health endpoint + planning records) is the active prompt; slices B through H follow per the implementation plan at ui-implementation-plan.md.",
+        "title": "CRMBuilder v2 — Status",
+        "version_label": "0.5"
+      },
+      "version": 5
+    },
+    "before_payload": {
+      "created_at": "2026-05-07T05:56:59.599603",
+      "id": 4,
+      "is_current": true,
+      "payload": {
+        "active_work": "None.",
+        "blockers": "None.",
+        "live_inventory": {
+          "in_database": [
+            "16 decisions (DEC-001 through DEC-017)",
+            "3 sessions (SES-001, SES-002, SES-003)",
+            "4 charter versions (latest is_current)",
+            "4 status versions (this is the new current)",
+            "17 references (16 decided_in from SES-001/SES-002, +1 from SES-003 to DEC-017)"
+          ],
+          "still_markdown": [
+            "PRDs/product/crmbuilder-v2/storage-system-PRD-v0.1.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/storage-system-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/prompts/*.md (Claude Code prompt files)"
+          ],
+          "v1_unchanged": [
+            "espo_impl/ — CRMBuilder PySide6 application code",
+            "automation/ — server management layer",
+            "PRDs/process/ — methodology guides",
+            "PRDs/product/CRMBuilder-PRD.md, app-*.md, crmbuilder-automation-PRD/ — v1 product specs",
+            "ClevelandBusinessMentoring/ — CBM client repo"
+          ]
+        },
+        "metadata": {
+          "Last Updated": "05-07-26",
+          "Status": "Active"
+        },
+        "pending": {
+          "build_after_v0_1": [
+            "Step 0 follow-on — methodology entity schema (personas, entities, fields, processes, requirements, manual-config items, test specifications)",
+            "Renderers — Word, YAML, test cases generated from the database (DEC-008)",
+            "Application integration — CRMBuilder PySide6 reads/writes against the v2 database",
+            "MN domain migration as proving ground (per DEC-010)",
+            "Test infrastructure first deliverable (CRUD layer)",
+            "Subsequent: MR, CR, FU migration; integration / process / UI test layers; methodology guide evolution"
+          ],
+          "planning_paused_until_v0_1": [
+            "Planning dimension #6 — division of labor",
+            "Planning dimension #7 — risk register",
+            "Planning dimension #8 — exit criteria",
+            "Project-structure split decision (Claude Project, repository) — deferred to end of planning per DEC-012"
+          ]
+        },
+        "phase": "Build (storage system v0.1, complete)",
+        "reading_order_for_new_sessions": "Tier 1: read crmbuilder/CLAUDE.md.\nTier 2 (MCP-connected): call get_current_status, get_current_charter, list_recent_sessions(limit=3), then get_decision or list_decisions_for_session as needed.\nTier 2 (file-fallback): read JSON snapshots under PRDs/product/crmbuilder-v2/db-export/ — status.json, charter.json, sessions.json, decisions.json, references.json.\nTier 3 (on-demand): targeted MCP/API queries during conversation.",
+        "sub_step": "All eight acceptance criteria from storage-system-PRD-v0.1.md Section 8 pass. v2 work now reads and writes the SQLite database via the access layer, REST API, or MCP server. JSON snapshots are committed to PRDs/product/crmbuilder-v2/db-export/ on every successful database write.",
+        "title": "CRMBuilder v2 — Status",
+        "version_label": "0.4"
+      },
+      "version": 4
+    },
+    "entity_identifier": "status",
+    "entity_type": "status",
+    "id": 59,
+    "operation": "update",
+    "timestamp": "2026-05-07T21:23:29.536844"
   }
 ]
