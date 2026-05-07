@@ -62,20 +62,80 @@ def reset_engine_cache() -> None:
 
 
 @contextmanager
-def session_scope(settings: Settings | None = None) -> Iterator[Session]:
-    """Yield a SQLAlchemy session inside a transaction.
+def session_scope(
+    settings: Settings | None = None, *, export: bool = True
+) -> Iterator[Session]:
+    """Yield a SQLAlchemy session inside an atomic DB+JSON transaction.
 
-    Commits on success; rolls back on exception. Pair with the JSON export
-    hook (see ``access.exporter``) so DB writes and file writes are atomic.
+    Order of operations:
+
+    1. Caller modifies the session.
+    2. ``session.flush()`` persists changes to the SQLite transaction.
+    3. The exporter snapshots the post-flush state and writes ``.tmp`` files.
+    4. ``session.commit()`` makes the database changes durable.
+    5. The exporter promotes ``.tmp`` files into final position.
+
+    A failure in 2–3 rolls back; staging tempfiles are cleaned up.
+    A failure in 4 also rolls back and cleans staging.
+    A failure in 5 (extremely unlikely on same-filesystem rename) leaves
+    the export stale; the next write self-heals because the export is
+    a full rewrite of all tables.
+
+    ``export=False`` skips the JSON export hook. Used by the bootstrap
+    migration when running a multi-step import inside a single transaction.
     """
-    factory = get_session_factory(settings)
+    from crmbuilder_v2.access.exporter import (
+        build_snapshot,
+        promote_staging,
+        write_staging,
+    )
+
+    s = settings or get_settings()
+    factory = get_session_factory(s)
     session = factory()
+    staging: list = []
     try:
         yield session
+        session.flush()
+        if export:
+            snapshot = build_snapshot(session)
+            staging = write_staging(snapshot, s.export_dir)
         session.commit()
+        if export and staging:
+            promote_staging(staging)
+            staging = []
     except Exception:
         session.rollback()
+        if staging:
+            for tmp in staging:
+                try:
+                    tmp.unlink()
+                except FileNotFoundError:
+                    pass
         raise
+    finally:
+        session.close()
+
+
+def force_export(settings: Settings | None = None) -> None:
+    """Rewrite the JSON export from current database state, no DB writes.
+
+    Useful after ``bootstrap_database`` on a fresh DB to materialise the
+    empty-export tree, and as a recovery if exports got out of sync.
+    """
+    from crmbuilder_v2.access.exporter import (
+        build_snapshot,
+        promote_staging,
+        write_staging,
+    )
+
+    s = settings or get_settings()
+    factory = get_session_factory(s)
+    session = factory()
+    try:
+        snapshot = build_snapshot(session)
+        staging = write_staging(snapshot, s.export_dir)
+        promote_staging(staging)
     finally:
         session.close()
 
