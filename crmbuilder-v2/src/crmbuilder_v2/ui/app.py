@@ -5,9 +5,11 @@ QSS accent stub applied at startup. Per DEC-018 this is a standalone
 PySide6 application installed as the ``crmbuilder-v2-ui`` console
 script.
 
-In slice A the splash is shown briefly as a smoke check that it
-renders; full lifecycle integration (probe + spawn + dismiss-on-ready)
-lands in slice B.
+Slice B wires the storage-server lifecycle (per DEC-023): on launch
+the splash is shown, the lifecycle probes ``GET /health`` and
+spawns ``crmbuilder-v2-api`` as a managed subprocess if no API
+responds. The splash is dismissed when the lifecycle emits ``ready``;
+spawn failures show a modal error dialog and exit with code 1.
 """
 
 from __future__ import annotations
@@ -19,10 +21,11 @@ import os
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QTimer
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 
+from crmbuilder_v2.config import get_settings
 from crmbuilder_v2.ui.main_window import MainWindow
+from crmbuilder_v2.ui.server_lifecycle import ServerLifecycle
 from crmbuilder_v2.ui.splash import Splash
 from crmbuilder_v2.ui.styling import apply_stylesheet
 
@@ -31,7 +34,7 @@ _LOG_DIR = Path("~/.crmbuilder-v2").expanduser()
 _LOG_FILE = _LOG_DIR / "ui.log"
 _LOG_MAX_BYTES = 10 * 1024 * 1024  # 10MB
 _LOG_BACKUPS = 3
-_SPLASH_SMOKE_TEST_MS = 500
+_SPAWN_FAILED_EXIT_CODE = 1
 
 
 def build_application(argv: list[str] | None = None) -> QApplication:
@@ -84,6 +87,22 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     return parser.parse_args(argv[1:])
 
 
+def _show_spawn_failure_dialog(
+    parent: MainWindow | None, stderr_text: str
+) -> None:
+    box = QMessageBox(parent)
+    box.setIcon(QMessageBox.Icon.Critical)
+    box.setWindowTitle("Storage server failed to start")
+    box.setText(
+        "crmbuilder-v2-ui could not start the storage API and "
+        "no API was already running."
+    )
+    if stderr_text:
+        box.setDetailedText(stderr_text)
+    box.setStandardButtons(QMessageBox.StandardButton.Ok)
+    box.exec()
+
+
 def main(argv: list[str] | None = None) -> int:
     if argv is None:
         argv = sys.argv
@@ -103,15 +122,28 @@ def main(argv: list[str] | None = None) -> int:
     splash.show()
     app.processEvents()
 
-    window = MainWindow()
+    settings = get_settings()
+    lifecycle = ServerLifecycle(base_url=settings.api_base_url)
+    window = MainWindow(lifecycle=lifecycle)
 
-    # Slice A: dismiss the splash after a short delay as a smoke check.
-    # Slice B will replace this with lifecycle-driven dismissal.
-    def _show_window():
-        window.show()
-        splash.finish(window)
+    def on_ready() -> None:
+        if not window.isVisible():
+            window.show()
+            splash.finish(window)
 
-    QTimer.singleShot(_SPLASH_SMOKE_TEST_MS, _show_window)
+    def on_spawn_failed(stderr_text: str) -> None:
+        log.error("Spawn failed; showing failure dialog and exiting")
+        if splash.isVisible():
+            splash.hide()
+        parent = window if window.isVisible() else None
+        _show_spawn_failure_dialog(parent, stderr_text)
+        app.exit(_SPAWN_FAILED_EXIT_CODE)
+
+    lifecycle.ready.connect(on_ready)
+    lifecycle.spawn_failed.connect(on_spawn_failed)
+    lifecycle.crashed.connect(window.handle_crash)
+
+    lifecycle.start()
 
     exit_code = app.exec()
     log.info("Exiting %s with code %d", _APP_NAME, exit_code)

@@ -1,38 +1,47 @@
-"""Main window — sidebar + stacked content area.
+"""Main window — sidebar + stacked content area, with crash banner.
 
 Per DEC-021 the main window structure is a sidebar (left, fixed-width)
-plus a ``QStackedWidget`` (right, swapping per selection). In slice A
-each stack page is a placeholder; later slices replace them with real
-entity panels.
+plus a ``QStackedWidget`` (right, swapping per selection). Slice B adds
+the lifecycle ownership (so ``closeEvent`` cleanly terminates an owned
+API subprocess) and a crash banner mounted above the sidebar+stack
+content row.
 """
 
 from __future__ import annotations
 
+import logging
+
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction
+from PySide6.QtGui import QAction, QCloseEvent
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMainWindow,
     QStackedWidget,
+    QVBoxLayout,
     QWidget,
 )
 
+from crmbuilder_v2.ui.crash_banner import CrashBanner
+from crmbuilder_v2.ui.server_lifecycle import ServerLifecycle
 from crmbuilder_v2.ui.sidebar import SIDEBAR_ENTRIES, Sidebar
 
+_log = logging.getLogger("crmbuilder_v2.ui.main_window")
 _DEFAULT_ENTRY = "Decisions"
 
 
 class MainWindow(QMainWindow):
-    """Top-level window containing the sidebar and the content stack."""
+    """Top-level window containing the crash banner, sidebar, and content stack."""
 
-    def __init__(self):
+    def __init__(self, lifecycle: ServerLifecycle):
         super().__init__()
         self.setWindowTitle("CRMBuilder v2")
         self.resize(1200, 800)
 
+        self._lifecycle = lifecycle
         self._sidebar = Sidebar()
         self._stack = QStackedWidget()
+        self._crash_banner = CrashBanner()
         self._pages_by_entry: dict[str, int] = {}
 
         for entry in SIDEBAR_ENTRIES:
@@ -44,25 +53,67 @@ class MainWindow(QMainWindow):
             index = self._stack.addWidget(placeholder)
             self._pages_by_entry[entry] = index
 
+        content_widget = QWidget()
+        content_layout = QHBoxLayout(content_widget)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(0)
+        content_layout.addWidget(self._sidebar)
+        content_layout.addWidget(self._stack, stretch=1)
+        self._content_widget = content_widget
+
         container = QWidget()
-        layout = QHBoxLayout(container)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-        layout.addWidget(self._sidebar)
-        layout.addWidget(self._stack, stretch=1)
+        outer_layout = QVBoxLayout(container)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+        outer_layout.setSpacing(0)
+        outer_layout.addWidget(self._crash_banner)
+        outer_layout.addWidget(content_widget, stretch=1)
         self.setCentralWidget(container)
 
         self._sidebar.selection_changed.connect(self._on_sidebar_selected)
+        self._crash_banner.reconnect_requested.connect(self._on_reconnect_requested)
+        self._lifecycle.ready.connect(self._on_lifecycle_ready)
 
         self._build_menu_bar()
 
         default_row = list(SIDEBAR_ENTRIES).index(_DEFAULT_ENTRY)
         self._sidebar.setCurrentRow(default_row)
 
+    def handle_crash(self, stderr_text: str) -> None:
+        """Slot for ``ServerLifecycle.crashed``: show banner, disable content."""
+        if stderr_text:
+            _log.warning(
+                "Storage server stopped; captured output:\n%s", stderr_text
+            )
+        else:
+            _log.warning("Storage server stopped (no captured output)")
+        self._crash_banner.show_with_message("Storage server stopped.")
+        self._set_content_enabled(False)
+
+    def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802 (Qt naming)
+        try:
+            self._lifecycle.terminate()
+        except Exception:
+            _log.exception("Lifecycle terminate failed during closeEvent")
+        super().closeEvent(event)
+
     def _on_sidebar_selected(self, entry: str) -> None:
         index = self._pages_by_entry.get(entry)
         if index is not None:
             self._stack.setCurrentIndex(index)
+
+    def _on_reconnect_requested(self) -> None:
+        _log.info("Reconnect requested; restarting lifecycle")
+        self._lifecycle.start()
+
+    def _on_lifecycle_ready(self) -> None:
+        # Fires on initial readiness AND on successful reconnect.
+        if self._crash_banner.isVisible():
+            self._crash_banner.hide()
+        self._set_content_enabled(True)
+
+    def _set_content_enabled(self, enabled: bool) -> None:
+        self._sidebar.setEnabled(enabled)
+        self._stack.setEnabled(enabled)
 
     def _build_menu_bar(self) -> None:
         menu_bar = self.menuBar()

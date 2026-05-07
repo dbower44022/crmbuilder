@@ -1,8 +1,8 @@
 """Smoke tests for the UI scaffold.
 
-Exercises the bare-minimum slice-A surface: the main window can be
-constructed, the sidebar has the eight expected entries, the content
-stack has eight pages, and the splash renders without raising.
+Exercises the bare-minimum slice-A surface plus slice-B's main-window
+constructor change (lifecycle now required, crash banner installed
+hidden by default).
 """
 
 from __future__ import annotations
@@ -27,8 +27,8 @@ def test_sidebar_entries_constant():
     assert SIDEBAR_ENTRIES == EXPECTED_ENTRIES
 
 
-def test_main_window_constructs(qapp, qtbot):
-    window = MainWindow()
+def test_main_window_constructs(qapp, qtbot, lifecycle_stub):
+    window = MainWindow(lifecycle=lifecycle_stub)
     qtbot.addWidget(window)
 
     sidebar = window._sidebar
@@ -38,6 +38,15 @@ def test_main_window_constructs(qapp, qtbot):
 
     assert window._stack.count() == len(EXPECTED_ENTRIES)
     assert sidebar.currentItem().text() == "Decisions"
+
+
+def test_main_window_crash_banner_hidden_by_default(qapp, qtbot, lifecycle_stub):
+    window = MainWindow(lifecycle=lifecycle_stub)
+    qtbot.addWidget(window)
+
+    assert window._crash_banner.isVisible() is False
+    assert window._sidebar.isEnabled() is True
+    assert window._stack.isEnabled() is True
 
 
 def test_splash_constructs(qapp):
