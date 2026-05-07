@@ -6,9 +6,12 @@ These are wired into ``[project.scripts]`` in ``pyproject.toml``:
 * ``crmbuilder-v2-mcp`` — start the MCP server over stdio
 * ``crmbuilder-v2-bootstrap-db`` — apply Alembic migrations to the configured DB
 * ``crmbuilder-v2-bootstrap`` — import the four bootstrap markdown files
+* ``crmbuilder-v2-ui`` — launch the v2 desktop UI (PySide6)
 """
 
 from __future__ import annotations
+
+import sys
 
 
 def run_api() -> None:
@@ -39,3 +42,9 @@ def bootstrap_content() -> None:
 
     summary = migrate_default()
     print(summary)
+
+
+def run_ui() -> int:
+    from crmbuilder_v2.ui.app import main as ui_main
+
+    return ui_main(sys.argv)

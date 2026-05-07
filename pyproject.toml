@@ -32,6 +32,7 @@ crmbuilder-v2-api = "crmbuilder_v2.cli:run_api"
 crmbuilder-v2-mcp = "crmbuilder_v2.cli:run_mcp"
 crmbuilder-v2-bootstrap-db = "crmbuilder_v2.cli:bootstrap_db"
 crmbuilder-v2-bootstrap = "crmbuilder_v2.cli:bootstrap_content"
+crmbuilder-v2-ui = "crmbuilder_v2.cli:run_ui"
 
 [build-system]
 requires = ["hatchling"]
@@ -48,6 +49,7 @@ dev = [
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
     "pytest-asyncio>=0.23",
+    "pytest-qt>=4.4,<5",
     "ruff>=0.15.7",
     "jsonschema>=4.0",
 ]
