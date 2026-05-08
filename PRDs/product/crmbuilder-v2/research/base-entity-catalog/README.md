@@ -1,7 +1,7 @@
 # Base Entity Catalog
 
-**Last Updated:** 05-08-26 04:30
-**Status:** Tier 1 sample (in progress)
+**Last Updated:** 05-08-26 05:50
+**Status:** Tiers 1-2 complete; Tiers 3-5 in progress
 **Owner:** CRMBuilder v2
 
 ---
@@ -10,7 +10,8 @@
 
 | Version | Date | Description |
 |---------|------|-------------|
-| 0.1 | 05-08-26 | Initial Tier 1 sample: account, contact, activity, note, user, tag base entities plus account-nonprofit specialization. Schema established; sourcing methodology documented; remaining tiers pending review of Tier 1 shape and depth. |
+| 0.2 | 05-08-26 | Tier 2 (sales pipeline) added: lead, opportunity, pipeline-stage, quote. Schema unchanged from 0.1; same authorship style applied. Tiers 3-5 still pending. |
+| 0.1 | 05-08-26 | Initial Tier 1 sample: account, contact, activity, note, user, tag base entities plus account-nonprofit specialization. Schema established; sourcing methodology documented. |
 
 ---
 
@@ -48,12 +49,16 @@ The catalog is authored in YAML so it ingests cleanly into V2's future entity sc
 ```
 base-entity-catalog/
 ├── README.md                              # this file
-├── account.yaml                           # base entity
-├── contact.yaml                           # base entity
-├── activity.yaml                          # base entity
-├── note.yaml                              # base entity
-├── user.yaml                              # base entity
-├── tag.yaml                               # base entity
+├── account.yaml                           # T1 base entity
+├── contact.yaml                           # T1 base entity
+├── activity.yaml                          # T1 base entity
+├── note.yaml                              # T1 base entity
+├── user.yaml                              # T1 base entity
+├── tag.yaml                               # T1 base entity
+├── lead.yaml                              # T2 base entity
+├── opportunity.yaml                       # T2 base entity
+├── pipeline-stage.yaml                    # T2 base entity
+├── quote.yaml                             # T2 base entity
 └── specializations/
     └── account-nonprofit.yaml             # specialization of Account
 ```

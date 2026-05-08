@@ -1,0 +1,411 @@
+# =============================================================================
+# Catalog metadata
+# =============================================================================
+catalog_id: pipeline-stage
+catalog_version: "0.1"
+last_updated: "05-08-26 05:40"
+tier: 2
+entry_kind: universal
+
+# =============================================================================
+# Entity-level definition
+# =============================================================================
+name: Pipeline Stage
+display_name: Pipeline Stage
+purpose: >
+  A discrete step in a pipeline (sales pipeline, support-ticket pipeline,
+  lead-qualification pipeline, donation-cultivation pipeline, etc.) that
+  records can move through. Each stage typically has a name, an order,
+  and a probability or status classification.
+
+business_context: >
+  Pipeline Stage records control the columns of every kanban board, the
+  buckets of every funnel report, and the conversion-rate metrics in every
+  pipeline review. Pipeline Stages are typically modeled in one of three
+  ways: (1) configuration entities — separate records the admin manages
+  via a UI, with admin operations like add/rename/delete/reorder
+  (HubSpot, Attio); (2) picklist values on the parent entity — defined
+  inline as enum values on Opportunity.stage with no separate Stage table
+  (Salesforce uses OpportunityStage as a setup record but the picklist
+  values on Opportunity.StageName are what matter operationally; EspoCRM
+  uses a true enum); (3) custom field values — pipeline behavior achieved
+  by repurposing a status discriminator (CiviCRM contribution_status,
+  Bloomerang transaction status). HubSpot has the most explicit
+  Pipeline-as-a-thing model, with the Pipelines API allowing programmatic
+  creation and management of pipelines and their stages. Salesforce treats
+  pipeline stages as picklist values that can be configured with
+  per-stage probability and "type" (Open / Closed Won / Closed Lost). When
+  interviewing clients, surface "Pipeline Stage" by asking what stages
+  records progress through and whether different teams or business units
+  need distinct pipelines: a single shared pipeline (everyone uses the
+  same stages) versus multi-pipeline configurations (separate pipelines
+  for new business / renewals / channel sales / each business unit).
+  Multi-pipeline support is unevenly available across systems and
+  significantly affects deployment complexity.
+
+data_model_role: classifier
+typically_required: false
+common_synonyms:
+  - Stage
+  - Status
+  - Phase
+  - Step
+  - Funnel Step
+
+# =============================================================================
+# Cross-system equivalents
+# =============================================================================
+systems:
+  - system: salesforce
+    name: "OpportunityStage (setup) / StageName (picklist)"
+    api_name: OpportunityStage
+    is_standard: true
+    notes: >
+      Salesforce models stages as a setup-level entity (OpportunityStage)
+      with attributes like MasterLabel, ApiName, IsActive, IsClosed,
+      IsWon, ForecastCategory, DefaultProbability, SortOrder. The values
+      surface as a picklist on Opportunity.StageName. Multiple Sales
+      Processes can be defined to support different stage sets per
+      Record Type.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_opportunitystage.htm
+
+  - system: hubspot
+    name: "Pipeline + Deal Stage"
+    api_name: "pipelines, pipelines/{objectType}/stages"
+    is_standard: true
+    notes: >
+      HubSpot has the most explicit Pipeline-as-an-entity model. Pipelines
+      and Deal Stages are managed via the Pipelines API. Each pipeline
+      has stages with internal names (machine-readable IDs) and labels
+      (display names), plus per-stage probability and "ticket state"
+      classifications. Multiple pipelines per object are supported (Sales
+      Hub Starter+ for deals; Service Hub for tickets).
+    docs_url: https://developers.hubspot.com/docs/reference/api/crm/pipelines
+
+  - system: attio
+    name: "Status attribute on Deals"
+    api_name: "status (attribute on deals object)"
+    is_standard: true
+    notes: >
+      Attio represents stages as values on a Status attribute on the Deals
+      object. Stages are configured via the workspace settings UI; the
+      attribute drives kanban-board column configuration. Each stage has
+      a label and a color but no separate probability concept — Attio
+      doesn't compute weighted-pipeline values out of the box.
+    docs_url: https://attio.com/help/reference/managing-your-data/views/create-and-manage-kanban-views
+
+  - system: espocrm
+    name: "stage (enum on Opportunity)"
+    api_name: not_applicable_separate_entity
+    is_standard: true
+    notes: >
+      EspoCRM models stages as enum values directly on Opportunity.stage.
+      No separate Stage entity — admin configuration happens via the
+      Entity Manager's enum options editor. Per-stage probability is
+      configured via opportunity.probability auto-population logic but
+      isn't a separate stored mapping table.
+    docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Opportunity.json
+
+  - system: civicrm
+    name: "contribution_status (option group)"
+    api_name: not_applicable_separate_entity
+    is_standard: false
+    notes: >
+      CiviCRM doesn't have a sales-pipeline concept. The closest analog is
+      contribution_status_id on Contribution records (Completed, Pending,
+      Cancelled, Failed, Refunded, In Progress). This serves a status
+      role rather than a pipeline-stage role since contributions don't
+      typically progress through cultivation stages.
+    docs_url: https://docs.civicrm.org/user/en/latest/contributions/
+
+  - system: salesforce_npsp
+    name: "OpportunityStage (with NPSP-specific stages per Donation Record Type)"
+    api_name: OpportunityStage
+    is_standard: true
+    notes: >
+      Same Salesforce OpportunityStage. NPSP commonly configures
+      donation-specific stages: Prospecting, Cultivation, Solicitation,
+      Negotiation, Pledged, Posted (Closed Won), Closed Lost. Sales
+      Processes are commonly used to give different stage sets to
+      Donation, Major Gift, Grant, and Recurring Donation Record Types.
+    docs_url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-success-pack-basics/organize-your-data-with-npsp
+
+  - system: bloomerang
+    name: "Status (on Transactions)"
+    api_name: not_applicable_separate_entity
+    is_standard: false
+    notes: >
+      Bloomerang doesn't have a sales-pipeline concept. Transaction status
+      is a discriminator (Completed, Pledged, Failed) but not a pipeline
+      stage in the cultivation-progression sense.
+    docs_url: https://bloomerang.com/api/rest-api-v1/
+
+# =============================================================================
+# Attributes
+# =============================================================================
+attributes:
+  - name: name
+    display_name: Stage Name
+    type: string
+    required: true
+    max_length: 255
+    description: >
+      Display label of the stage (e.g., "Qualification," "Closed Won").
+    usage: >
+      Drives kanban column headers, funnel chart labels, and pipeline-
+      review conversation ("the deal is in Negotiation"). Should be
+      short and verb-phrase or noun-phrase that captures the stage
+      meaning.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: apiName
+    display_name: Internal Name / API Name
+    type: string
+    required: true
+    max_length: 255
+    description: >
+      Machine-readable identifier for the stage (used by integrations and
+      automation rules).
+    usage: >
+      Distinct from the display name to allow display-name editing
+      without breaking integrations. HubSpot stage IDs are GUIDs;
+      Salesforce uses MasterLabel + ApiName pair; EspoCRM uses the enum
+      value directly.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: probability
+    display_name: Probability
+    type: decimal
+    required: false
+    description: >
+      Default likelihood of closing for opportunities at this stage,
+      expressed as a percentage.
+    usage: >
+      Auto-applied to opportunities when they enter the stage (unless
+      manually overridden). Drives weighted-pipeline calculations.
+      Salesforce and HubSpot both support per-stage probability;
+      EspoCRM derives it from the stage; Attio and CiviCRM don't have
+      probability tracking.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: custom
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: order
+    display_name: Sort Order
+    type: integer
+    required: false
+    description: >
+      Numeric sort position of the stage within its pipeline.
+    usage: >
+      Drives the left-to-right order of kanban board columns and the
+      progression order in funnel reports. Editable by admins via drag-
+      to-reorder UI in most systems.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: pipeline
+    display_name: Pipeline
+    type: reference
+    required: false
+    reference_target: pipeline-stage
+    description: >
+      Reference to the parent pipeline this stage belongs to (when multiple
+      pipelines exist).
+    usage: >
+      In multi-pipeline configurations, stages belong to one pipeline.
+      HubSpot's Pipeline entity is explicit; Salesforce uses Sales
+      Processes (RecordType-pipeline mappings) rather than a separate
+      Pipeline entity.
+    presence:
+      salesforce: custom
+      hubspot: standard
+      attio: standard
+      espocrm: absent
+      civicrm: absent
+      salesforce_npsp: custom
+      bloomerang: absent
+
+  - name: forecastCategory
+    display_name: Forecast Category
+    type: enum
+    required: false
+    enum_values:
+      - Pipeline
+      - Best Case
+      - Commit
+      - Closed
+      - Omitted
+    description: >
+      Classification of stage for forecasting purposes (which forecast
+      bucket opportunities at this stage belong to).
+    usage: >
+      Salesforce-specific concept that maps stages to forecast categories
+      for sales forecasting. Allows reps to commit deals at certain
+      stages without having them all roll up the same way. Less common
+      in other systems.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: absent
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: isClosed
+    display_name: Is Closed
+    type: boolean
+    required: true
+    description: >
+      Flag indicating whether opportunities in this stage are considered
+      closed (won or lost).
+    usage: >
+      Distinguishes open-pipeline stages from terminal stages. Drives
+      "open opportunities" filtering and pipeline aging reports (don't
+      count closed opps as "stale"). Salesforce uses IsClosed; HubSpot
+      uses dealstage probability=100 (won) or 0 (lost); Attio uses a
+      stage type.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: isWon
+    display_name: Is Won
+    type: boolean
+    required: false
+    description: >
+      Flag indicating whether opportunities in this stage are considered
+      won.
+    usage: >
+      Distinguishes Closed Won from Closed Lost. Critical for
+      win-rate calculations. Salesforce uses IsWon explicitly; HubSpot
+      uses probability=100 to indicate won. Attio uses stage classification.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: custom
+
+  - name: color
+    display_name: Color
+    type: string
+    required: false
+    description: >
+      Display color of the stage (typically a hex code).
+    usage: >
+      Drives kanban-board column tinting and funnel-chart segment colors.
+      Pure cosmetic. HubSpot, Attio, and EspoCRM support stage colors;
+      Salesforce does not.
+    presence:
+      salesforce: absent
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: absent
+      bloomerang: absent
+
+  - name: isActive
+    display_name: Active
+    type: boolean
+    required: true
+    description: >
+      Flag indicating whether the stage is available for use.
+    usage: >
+      Lets admins retire stages without deleting them (preserving
+      historical opportunities that were in that stage). Inactive stages
+      hide from new-opportunity creation but remain in reports for
+      historical records.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+# =============================================================================
+# Relationships to other entities
+# =============================================================================
+relationships:
+  - target: opportunity
+    cardinality: one-to-many
+    role: parent
+    description: >
+      A stage classifies many opportunities; each opportunity has one
+      current stage.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - target: pipeline-stage
+    cardinality: many-to-one
+    role: child
+    description: >
+      Stages belong to a parent Pipeline (in multi-pipeline configurations).
+    presence:
+      salesforce: custom
+      hubspot: standard
+      attio: standard
+      espocrm: absent
+      civicrm: absent
+      salesforce_npsp: custom
+      bloomerang: absent
+
+# =============================================================================
+# Sources
+# =============================================================================
+sources:
+  - title: "Salesforce Object Reference: OpportunityStage"
+    url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_opportunitystage.htm
+  - title: "HubSpot CRM API: Pipelines"
+    url: https://developers.hubspot.com/docs/reference/api/crm/pipelines
+  - title: "HubSpot: Set up and manage object pipelines"
+    url: https://knowledge.hubspot.com/object-settings/set-up-and-customize-pipelines
+  - title: "Attio: Create and manage kanban views (stage-based)"
+    url: https://attio.com/help/reference/managing-your-data/views/create-and-manage-kanban-views
+  - title: "EspoCRM: Opportunity stage enum"
+    url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Opportunity.json
+  - title: "CiviCRM: Contribution status (closest analog)"
+    url: https://docs.civicrm.org/user/en/latest/contributions/
+  - title: "Bloomerang: Transaction status (closest analog)"
+    url: https://bloomerang.com/api/rest-api-v1/
