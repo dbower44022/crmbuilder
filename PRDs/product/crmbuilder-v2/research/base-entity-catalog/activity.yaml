@@ -1,0 +1,482 @@
+# =============================================================================
+# Catalog metadata
+# =============================================================================
+catalog_id: activity
+catalog_version: "0.1"
+last_updated: "05-08-26 04:40"
+tier: 1
+entry_kind: universal
+
+# =============================================================================
+# Entity-level definition
+# =============================================================================
+name: Activity
+display_name: Activity
+purpose: >
+  A unit of interaction or work logged against another record (typically an
+  Account, Contact, Opportunity, or Case). Includes phone calls, meetings,
+  tasks, emails sent or received, and other touchpoints. The base type from
+  which most communication and task entities derive in CRMs.
+
+business_context: >
+  Activity records are how CRMs track work-done and interactions-had. They
+  serve three distinct purposes that often get confused: (1) communication
+  log — record of outbound/inbound contact (call notes, email summaries,
+  meeting outcomes); (2) task tracking — assigned to-do items with due
+  dates and owners; (3) calendar — scheduled future events with start/end
+  times and attendees. Different CRMs split these three differently:
+  Salesforce uses Task (open/closed work) and Event (scheduled meeting)
+  with shared "Activity" reporting. HubSpot lumps everything under
+  "Engagements" with subtypes (CALL, EMAIL, MEETING, TASK, NOTE,
+  COMMUNICATION). Attio treats Tasks as the core activity primitive and
+  has separate Meetings, Calls, and Emails. EspoCRM models Task, Meeting,
+  Call as distinct entities. CiviCRM unifies under Activity with an
+  activity_type_id discriminator. Bloomerang uses Interactions (a unified
+  history-log entity). Nonprofit deployments often add specialized activity
+  types: site visit, mentoring session, volunteer shift, donation
+  acknowledgment letter sent. When interviewing clients, surface
+  "Activity" by asking how they want to track their interactions: do they
+  need to assign and track tasks (with due dates and assignees), schedule
+  future meetings on a shared calendar, log past phone calls and emails as
+  history, or all three? Each requires different CRM features and may map
+  to different entities depending on backend.
+
+data_model_role: event
+typically_required: true
+common_synonyms:
+  - Task
+  - Event
+  - Meeting
+  - Call
+  - Engagement
+  - Interaction
+  - Touchpoint
+
+# =============================================================================
+# Cross-system equivalents
+# =============================================================================
+systems:
+  - system: salesforce
+    name: Activity (Task + Event)
+    api_name: "Task, Event"
+    is_standard: true
+    notes: >
+      MAJOR DIVERGENCE. Salesforce splits Activity into Task (open or
+      closed work item with due date) and Event (scheduled appointment with
+      start/end times). They share a virtual "Activity" reporting layer but
+      are physically separate objects with different fields. Email and Call
+      are typically modeled as Tasks with TaskSubtype set.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_task.htm
+
+  - system: hubspot
+    name: Engagement
+    api_name: "engagements (subtypes: CALL, EMAIL, MEETING, TASK, NOTE, COMMUNICATION)"
+    is_standard: true
+    notes: >
+      Engagements is the unified API; subtypes distinguish Call, Email,
+      Meeting, Task, Note, Communication (SMS / WhatsApp / LinkedIn). Note
+      is included as an engagement type, which makes Notes activity-like in
+      HubSpot's data model.
+    docs_url: https://developers.hubspot.com/docs/api-reference/crm-engagements
+
+  - system: attio
+    name: Tasks (with separate Meetings, Calls, Emails)
+    api_name: "tasks, meetings, calls"
+    is_standard: true
+    notes: >
+      Attio has a first-class Tasks entity for work items, plus Meetings
+      (auto-created from calendar sync), Calls (call recordings), and
+      Emails (synced from Gmail/Outlook). Communication intelligence
+      attributes on Person and Company surface aggregate stats (last
+      interaction, first interaction, next due task) without requiring
+      direct activity queries.
+    docs_url: https://attio.com/help/reference/managing-your-data/records/add-record-activities
+
+  - system: espocrm
+    name: "Task, Meeting, Call"
+    api_name: "Task, Meeting, Call"
+    is_standard: true
+    notes: >
+      EspoCRM models Task (work item with due date), Meeting (calendar event
+      with attendees), and Call (phone call event) as three separate
+      first-class entities. All three use a polymorphic `parent` field
+      (linkParent type) that can point at Account, Contact, Lead,
+      Opportunity, or Case.
+    docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Task.json
+
+  - system: civicrm
+    name: Activity
+    api_name: Activity
+    is_standard: true
+    notes: >
+      Single unified Activity entity with activity_type_id discriminator
+      (Meeting, Phone Call, Email, SMS, Print/Mail, Pledge Acknowledgment,
+      Membership Renewal Reminder, Survey, Petition Signature, etc.).
+      Activity types are extensible — admins can add custom types. Activities
+      are linked to Contacts via ActivityContact records (target, assignee,
+      source) supporting many-to-many.
+    docs_url: https://docs.civicrm.org/user/en/latest/the-user-interface/activities/
+
+  - system: salesforce_npsp
+    name: "Task, Event (with NPSP-specific activity types)"
+    api_name: "Task, Event"
+    is_standard: true
+    notes: >
+      Same as Salesforce. NPSP commonly adds custom Task subtypes for
+      donor stewardship: Thank You Letter Sent, Acknowledgment Pending,
+      Major Gift Cultivation, Stewardship Call. Tasks linked to Opportunities
+      (donations) drive donor-acknowledgment workflows.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_task.htm
+
+  - system: bloomerang
+    name: Interaction
+    api_name: Interaction
+    is_standard: true
+    notes: >
+      Single unified Interaction entity for tracking all communication and
+      engagement history with constituents. Interaction types include
+      Email, Phone Call, In-Person, Letter, Text Message, Social Media,
+      Volunteer Hours. Notes are a separate entity in Bloomerang, not an
+      Interaction subtype. Tasks are not a first-class entity in
+      Bloomerang — task management is typically handled outside the CRM.
+    docs_url: https://bloomerang.com/api/rest-api-v1/
+
+# =============================================================================
+# Attributes
+# =============================================================================
+attributes:
+  - name: subject
+    display_name: Subject
+    type: string
+    required: true
+    max_length: 255
+    description: >
+      Short summary of the activity, shown in lists and timelines.
+    usage: >
+      The headline. Drives list-view legibility and search. Should briefly
+      describe what happened or what needs to happen ("Discussed Q2 renewal,"
+      "Send proposal," "Birthday card").
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: activityType
+    display_name: Activity Type
+    type: enum
+    required: true
+    enum_values:
+      - Phone Call
+      - Meeting
+      - Email
+      - Task
+      - Other
+    description: >
+      Discriminator that distinguishes the kind of interaction.
+    usage: >
+      In some systems this is implicit because activity types are separate
+      entities (Salesforce Task vs Event; EspoCRM Task vs Meeting vs Call).
+      In CiviCRM and Bloomerang, this is an explicit enum/lookup. Drives
+      the iconography, available fields, and reporting categorization. Often
+      heavily customized in nonprofit deployments to capture mission-specific
+      activity types (Site Visit, Mentoring Session, Workshop Attendance).
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: status
+    display_name: Status
+    type: enum
+    required: true
+    enum_values:
+      - Not Started
+      - In Progress
+      - Completed
+      - Deferred
+      - Canceled
+    description: >
+      Lifecycle state of the activity.
+    usage: >
+      Distinguishes work-to-do (Not Started, In Progress) from work-done
+      (Completed) from work-abandoned (Canceled, Deferred). Drives "open
+      tasks" filtering, dashboards, and overdue alerts. Salesforce uses
+      Status on Tasks; Events have no equivalent because events are
+      scheduled rather than statused. Bloomerang's Interactions are
+      typically log entries (already-happened) so status is less central.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: custom
+
+  - name: activityDate
+    display_name: Activity Date
+    type: date
+    required: false
+    description: >
+      Date the activity occurred (for past activities) or is scheduled (for
+      future).
+    usage: >
+      Anchors timeline ordering. For Tasks this is the due date. For Calls
+      and Meetings this is the date the interaction happened or is
+      scheduled. For Emails this is the date sent or received.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: dueDate
+    display_name: Due Date
+    type: date
+    required: false
+    description: >
+      Date by which the task should be completed (task-specific).
+    usage: >
+      Drives overdue alerts, sorting on task lists, and date-based
+      automation. Distinct from activityDate when an activity is scheduled
+      for one date but due (results required) by another. Typically only
+      populated on Task-type activities.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: dateStart
+    display_name: Start Date/Time
+    type: datetime
+    required: false
+    description: >
+      Start date and time of the activity (for time-bound events).
+    usage: >
+      Calendar-event coordinate. Required for Meeting and Call types in
+      most systems. Combined with dateEnd determines duration. Drives
+      calendar UI, conflict-detection, and meeting-reminder automation.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: dateEnd
+    display_name: End Date/Time
+    type: datetime
+    required: false
+    description: >
+      End date and time of the activity.
+    usage: >
+      Combined with dateStart determines duration. Required for events that
+      span time (meetings, calls). Drives capacity-planning reports
+      ("hours spent in meetings this week"). Some systems compute duration
+      automatically from start + duration rather than storing dateEnd.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: description
+    display_name: Description
+    type: text
+    required: false
+    description: >
+      Free-form narrative of what happened or what needs to happen.
+    usage: >
+      Where the actual content of the interaction lives — call notes,
+      meeting outcomes, email body summaries, task instructions. Often the
+      most-read field on an Activity record because it captures the
+      substance the rest of the structured fields don't. In Bloomerang
+      Interactions this is the primary content field.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: parent
+    display_name: Related To
+    type: reference
+    required: false
+    reference_target: account
+    description: >
+      Polymorphic reference to the primary record this activity is logged
+      against (Account, Contact, Opportunity, Case, etc.).
+    usage: >
+      Anchors the activity to its primary subject record so it appears on
+      that record's activity timeline. Polymorphic — can point at any of
+      several entity types. Salesforce uses WhatId (Account/Opportunity/
+      Case/etc) and WhoId (Contact/Lead) as separate fields. EspoCRM uses
+      a single linkParent field with entityList = [Account, Contact, Lead,
+      Opportunity, Case]. HubSpot uses Associations. CiviCRM uses
+      ActivityContact junction records.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+    notes: >
+      Polymorphism support varies. Salesforce, EspoCRM, CiviCRM model
+      polymorphic activity-to-anything cleanly. HubSpot Engagements
+      associate via Associations API. Bloomerang Interactions associate
+      with Constituents only (no Account vs Contact distinction).
+
+  - name: assignedUser
+    display_name: Assigned User
+    type: reference
+    required: false
+    reference_target: user
+    description: >
+      The user the activity is assigned to (the person responsible).
+    usage: >
+      For Tasks: who needs to do this work. For Meetings: who organized.
+      For Calls: who placed/received. Drives "my tasks" filtering, workload
+      reports, and reassignment workflows. Almost universal — every
+      activity needs an accountable user.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: priority
+    display_name: Priority
+    type: enum
+    required: false
+    enum_values:
+      - High
+      - Normal
+      - Low
+    description: >
+      Priority level of the activity.
+    usage: >
+      Drives sort order in task lists and dashboards. Most useful for
+      Task-type activities where some are urgent and others routine.
+      Typically not populated on Meetings, Calls, or completed Emails.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: custom
+      espocrm: standard
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: createdAt
+    display_name: Created Date
+    type: datetime
+    required: true
+    description: >
+      System-generated timestamp of when the activity was created.
+    usage: >
+      Audit field. Distinct from activityDate (when the activity is/was
+      scheduled). Drives "tasks created this week" reports and integration
+      sync filters.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+# =============================================================================
+# Relationships to other entities
+# =============================================================================
+relationships:
+  - target: account
+    cardinality: many-to-one
+    role: child
+    description: >
+      An activity is typically logged against an account.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: custom
+
+  - target: contact
+    cardinality: many-to-one
+    role: child
+    description: >
+      An activity is typically logged against a contact (or several).
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - target: user
+    cardinality: many-to-one
+    role: child
+    description: >
+      An activity is assigned to a user.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+# =============================================================================
+# Sources
+# =============================================================================
+sources:
+  - title: "Salesforce Object Reference: Task"
+    url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_task.htm
+  - title: "Salesforce Object Reference: Event"
+    url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_event.htm
+  - title: "HubSpot Engagements API"
+    url: https://developers.hubspot.com/docs/api-reference/crm-engagements
+  - title: "Attio: Add record activities"
+    url: https://attio.com/help/reference/managing-your-data/records/add-record-activities
+  - title: "EspoCRM: Task entity definition"
+    url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Task.json
+  - title: "EspoCRM: Meeting entity definition"
+    url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Meeting.json
+  - title: "CiviCRM: Activities user guide"
+    url: https://docs.civicrm.org/user/en/latest/the-user-interface/activities/
+  - title: "Bloomerang REST API documentation: Interaction endpoint"
+    url: https://bloomerang.com/api/rest-api-v1/

@@ -1,0 +1,359 @@
+# =============================================================================
+# Catalog metadata
+# =============================================================================
+catalog_id: note
+catalog_version: "0.1"
+last_updated: "05-08-26 04:45"
+tier: 1
+entry_kind: universal
+
+# =============================================================================
+# Entity-level definition
+# =============================================================================
+name: Note
+display_name: Note
+purpose: >
+  An informal text record attached to another record (Account, Contact,
+  Opportunity, Case, etc.) for capturing context, observations, decisions,
+  and reference information that doesn't fit a structured field.
+
+business_context: >
+  Note records are the CRM's catch-all for human-readable context that
+  doesn't belong on a structured field. Where Activities track interactions
+  (calls, meetings, tasks) with a clear time-and-action shape, Notes are
+  more freeform and timeless — a paragraph of context about a customer's
+  preferences, a meeting summary that doesn't warrant logging as a Meeting
+  activity, an internal observation about a donor's giving history, an
+  account strategy note, a reminder that doesn't need a due date. Different
+  systems blur the line between Note and Activity differently: HubSpot
+  treats Notes as a type of Engagement (i.e., an Activity subtype). Bloomerang
+  separates Notes from Interactions cleanly. Salesforce has both ContentNote
+  (the modern unified content note) and an older Note object now mostly
+  superseded. EspoCRM has both standalone Note records and Stream messages
+  (which act note-like). When interviewing clients, surface "Note" by asking
+  whether they want to capture freeform context that doesn't have a clear
+  next-action or scheduled-date dimension, and whether such context should
+  be visible to the whole team or restricted to specific roles. Privacy on
+  Notes matters: in many systems Notes can be marked "Private" so only the
+  author can see them.
+
+data_model_role: log
+typically_required: true
+common_synonyms:
+  - Comment
+  - Memo
+  - Annotation
+  - Internal Note
+  - Stream Post
+
+# =============================================================================
+# Cross-system equivalents
+# =============================================================================
+systems:
+  - system: salesforce
+    name: ContentNote (modern) / Note (legacy)
+    api_name: ContentNote
+    is_standard: true
+    notes: >
+      Salesforce has migrated from the legacy Note object to ContentNote,
+      which uses the Content (Files) framework for richer storage and
+      attachment capability. Both still coexist. Notes attach to records
+      via ContentDocumentLink junction records.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contentnote.htm
+
+  - system: hubspot
+    name: Note (Engagement)
+    api_name: notes
+    is_standard: true
+    notes: >
+      HubSpot models Notes as an Engagement type rather than a separate
+      entity. Notes have a body field (rich text) and standard ownership/
+      timestamp metadata. Associated to records via the Associations API.
+    docs_url: https://developers.hubspot.com/docs/reference/api/crm/engagements/notes
+
+  - system: attio
+    name: Note
+    api_name: notes
+    is_standard: true
+    notes: >
+      Attio has a first-class Notes feature attached to records. Supports
+      rich text, mentions of users (@mentions), and threading. Notes are
+      surfaced in the activity feed for the parent record.
+    docs_url: https://docs.attio.com/docs/notes
+
+  - system: espocrm
+    name: Note
+    api_name: Note
+    is_standard: true
+    notes: >
+      EspoCRM has a Note entity used primarily as Stream posts (each
+      followable record has a Stream where Notes are posted). The Stream
+      acts as the activity feed; Notes are the entries. Supports text
+      content, attachments, and parent record linkage.
+    docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Resources/metadata/entityDefs/Note.json
+
+  - system: civicrm
+    name: Note
+    api_name: Note
+    is_standard: true
+    notes: >
+      CiviCRM has a separate Note entity that attaches to Contacts and other
+      records via entity_table + entity_id polymorphic reference. Notes are
+      private by default (visible only to staff). Supports a privacy enum
+      with values like Public, Private, Confidential.
+    docs_url: https://docs.civicrm.org/user/en/latest/contributions/notes/
+
+  - system: salesforce_npsp
+    name: ContentNote
+    api_name: ContentNote
+    is_standard: true
+    notes: >
+      Same as Salesforce. NPSP doesn't add specific Note customizations
+      but Notes are commonly used for donor cultivation strategy and
+      meeting summaries that don't warrant a Task or Event.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contentnote.htm
+
+  - system: bloomerang
+    name: Note
+    api_name: Note
+    is_standard: true
+    notes: >
+      Bloomerang has a first-class Note entity, distinct from Interaction.
+      Notes capture freeform observations about a Constituent without
+      requiring an interaction type or date. Often used for cultivation
+      strategy, biographical context, and internal observations.
+    docs_url: https://bloomerang.com/api/rest-api-v1/
+
+# =============================================================================
+# Attributes
+# =============================================================================
+attributes:
+  - name: title
+    display_name: Title
+    type: string
+    required: false
+    max_length: 255
+    description: >
+      Short title or headline for the note.
+    usage: >
+      Optional in some systems (HubSpot Notes have only a body; Attio
+      shows the first line of the note as the title automatically).
+      Required in others (Salesforce ContentNote requires a Title field).
+      Drives list-view display when notes are listed in bulk.
+    presence:
+      salesforce: standard
+      hubspot: custom
+      attio: custom
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: body
+    display_name: Note Content
+    type: richtext
+    required: true
+    description: >
+      The actual content of the note. Rich text in most systems.
+    usage: >
+      The substance of the note. Most modern systems support rich-text
+      formatting (bold, italic, lists, links, @mentions). Length limits
+      vary widely: HubSpot supports 65k chars, Salesforce ContentNote
+      stores in the Content framework with effectively no practical limit.
+      Bloomerang Notes are plain text with a Description field.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: parent
+    display_name: Related To
+    type: reference
+    required: true
+    reference_target: account
+    description: >
+      Polymorphic reference to the record this note is attached to.
+    usage: >
+      A note must be attached to something (Account, Contact, Opportunity,
+      Case, etc.). Polymorphic linkage. CiviCRM uses entity_table + entity_id
+      pair; Salesforce uses ContentDocumentLink junction records; EspoCRM
+      uses parent (linkParent) field; Bloomerang attaches Notes to
+      Constituents via AccountId.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: privacy
+    display_name: Privacy
+    type: enum
+    required: false
+    enum_values:
+      - Public
+      - Private
+      - Confidential
+    description: >
+      Visibility level of the note.
+    usage: >
+      "Public" means visible to all users with access to the parent record;
+      "Private" typically means visible only to the author; "Confidential"
+      may restrict to a privileged role. CiviCRM ships with this enum
+      built-in. Salesforce and Attio control privacy through sharing rules
+      on the underlying object rather than a per-note privacy flag.
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: custom
+      bloomerang: custom
+
+  - name: assignedUser
+    display_name: Owner / Author
+    type: reference
+    required: true
+    reference_target: user
+    description: >
+      The user who created the note.
+    usage: >
+      Audit field tracking who wrote the note. Drives "my notes" filtering,
+      attribution in displays ("Note by Sarah - 2 days ago"), and edit
+      permissions (some systems only allow the author to edit/delete).
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: createdAt
+    display_name: Created Date
+    type: datetime
+    required: true
+    description: >
+      System-generated timestamp of when the note was created.
+    usage: >
+      Drives chronological ordering in record activity feeds (newest notes
+      first, typically). Read-only and system-managed.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: lastModifiedAt
+    display_name: Last Modified Date
+    type: datetime
+    required: true
+    description: >
+      System-generated timestamp of when the note was last edited.
+    usage: >
+      Drives "edited" indicators in UI when a note has been modified after
+      creation. Some systems also track edit history with diff details.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: attachments
+    display_name: Attachments
+    type: multireference
+    required: false
+    reference_target: attachment
+    description: >
+      Files attached to the note (PDFs, images, documents).
+    usage: >
+      Lets users attach supporting material directly to a note. In Salesforce
+      ContentNote, attachments are first-class via the Files framework.
+      EspoCRM Notes have an attachments link-multiple field. HubSpot Notes
+      support file attachments via the Engagements API. Less universally
+      supported than the body field.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: custom
+
+# =============================================================================
+# Relationships to other entities
+# =============================================================================
+relationships:
+  - target: account
+    cardinality: many-to-one
+    role: child
+    description: >
+      A note is typically attached to an account.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: custom
+
+  - target: contact
+    cardinality: many-to-one
+    role: child
+    description: >
+      A note is typically attached to a contact.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - target: user
+    cardinality: many-to-one
+    role: child
+    description: >
+      A note is authored by a user.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+# =============================================================================
+# Sources
+# =============================================================================
+sources:
+  - title: "Salesforce Object Reference: ContentNote"
+    url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contentnote.htm
+  - title: "HubSpot Engagements: Notes"
+    url: https://developers.hubspot.com/docs/reference/api/crm/engagements/notes
+  - title: "Attio: Notes documentation"
+    url: https://docs.attio.com/docs/notes
+  - title: "EspoCRM: Note entity definition"
+    url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Resources/metadata/entityDefs/Note.json
+  - title: "CiviCRM: Notes user guide"
+    url: https://docs.civicrm.org/user/en/latest/contributions/notes/
+  - title: "Bloomerang REST API documentation: Note endpoint"
+    url: https://bloomerang.com/api/rest-api-v1/

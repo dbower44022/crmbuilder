@@ -1,0 +1,325 @@
+# =============================================================================
+# Catalog metadata
+# =============================================================================
+catalog_id: tag
+catalog_version: "0.1"
+last_updated: "05-08-26 04:55"
+tier: 1
+entry_kind: universal
+
+# =============================================================================
+# Entity-level definition
+# =============================================================================
+name: Tag
+display_name: Tag
+purpose: >
+  A cross-cutting classification label that can be attached to records of
+  multiple entity types. Distinct from a structured field (which lives on a
+  specific entity and has a fixed enum) — Tags are typically polymorphic,
+  hierarchical, and admin-extensible without schema changes.
+
+business_context: >
+  Tag records are how CRMs handle classification that doesn't fit neatly
+  into a structured field. Tags differ from enum-typed properties in that
+  they're typically (1) polymorphic — one tag like "VIP" can be applied to
+  Accounts, Contacts, Opportunities, and Donations alike; (2) hierarchical
+  — tags can have parent-child relationships ("Healthcare > Pediatrics");
+  (3) admin-extensible — non-developers can add new tags without changing
+  schema; (4) many-to-many — a record can have many tags simultaneously.
+  This is the most architecturally divergent of the universal Tier 1
+  entities. CiviCRM, EspoCRM, Attio, and Bloomerang treat tags as
+  first-class entities with their own management UI. Salesforce uses
+  Topics (which are tag-like but technically different) plus Multi-select
+  picklists (which are field-like). HubSpot has no first-class tag entity
+  at all — what users call "tags" are typically multi-select properties or
+  Lists. Different terms are used: Tags (Attio, EspoCRM, CiviCRM, Bloomerang
+  uses Tag-like Groups), Topics (Salesforce), Categories (some systems),
+  Labels (some systems). When interviewing clients, surface "Tag" by
+  asking what categories they need to apply to records that are flexible,
+  ad hoc, and may apply to several different kinds of records: VIP donor,
+  prospect-stage, holiday-mailer-list, board-member, urgent-follow-up,
+  language-preference. If they need this kind of cross-cutting
+  classification, the target backend's tag-modeling capability matters
+  significantly — it dictates whether tags can be re-used across entities
+  or must be implemented as parallel custom fields per entity.
+
+data_model_role: classifier
+typically_required: false
+common_synonyms:
+  - Topic
+  - Category
+  - Label
+  - Group
+  - Segment
+
+# =============================================================================
+# Cross-system equivalents
+# =============================================================================
+systems:
+  - system: salesforce
+    name: Topic / Multi-select picklist
+    api_name: "Topic, TopicAssignment"
+    is_standard: true
+    notes: >
+      MAJOR DIVERGENCE. Salesforce has Topics (admin-extensible labels
+      that can be applied to records) and TopicAssignment (the junction
+      record). Topics are technically polymorphic (any object enabled for
+      Topics can have them) but the framework is less prominent than
+      Multi-select Picklist fields, which most admins use when "tags" come
+      up. Customers often ask for and don't get true tags.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_topic.htm
+
+  - system: hubspot
+    name: "Multi-select property (no first-class tag)"
+    api_name: not_in_api_as_separate_entity
+    is_standard: false
+    notes: >
+      MAJOR DIVERGENCE. HubSpot has no first-class Tag entity. What users
+      call "tags" are implemented as Multi-select properties (one per
+      object that needs them) or as static Lists (which are saved
+      filters). Cross-object tagging requires duplicate properties on
+      each object — a "VIP" tag on Contact and a separate "VIP" multi-
+      select option on Company.
+    docs_url: https://knowledge.hubspot.com/properties/multi-select-properties
+
+  - system: attio
+    name: Tag (multi-select attribute)
+    api_name: "tags (as a multi-select attribute on each object)"
+    is_standard: true
+    notes: >
+      Attio supports Tag-style attributes via multi-select attributes on
+      objects. Tags are admin-defined per object (so a Companies object
+      and a People object would have separate sets of Tag values) but
+      management is straightforward.
+    docs_url: https://attio.com/help/reference/managing-your-data/attributes/create-manage-attributes
+
+  - system: espocrm
+    name: Tag
+    api_name: Tag
+    is_standard: true
+    notes: >
+      EspoCRM has a first-class Tag entity (introduced for the global
+      tagging feature). Tags are polymorphic — applied to any entity that
+      has tagging enabled. Hierarchy is supported via parent tags.
+      Standard entity available across all installations.
+    docs_url: https://docs.espocrm.com/user-guide/tags/
+
+  - system: civicrm
+    name: Tag
+    api_name: Tag
+    is_standard: true
+    notes: >
+      First-class Tag entity. CiviCRM Tags are polymorphic across Contact,
+      Activity, Case, Contribution, and other entities. Supports a
+      parent_id for hierarchy. Tags are organized into Tag Sets
+      (categories of tags) for management. Distinct from Groups, which
+      are saved searches / mailing lists rather than classification
+      labels.
+    docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/tags/
+
+  - system: salesforce_npsp
+    name: Topic / Multi-select picklist (same as Salesforce)
+    api_name: "Topic, TopicAssignment"
+    is_standard: true
+    notes: >
+      Same as Salesforce. NPSP doesn't add tag-specific functionality.
+      Nonprofit deployments often build custom segmentation via
+      Multi-select picklists on Contact (Donor Type, Affinity Areas,
+      Communication Preferences) since tags-as-Topics are rarely used.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_topic.htm
+
+  - system: bloomerang
+    name: Tag (on Constituents)
+    api_name: Tag
+    is_standard: true
+    notes: >
+      Bloomerang has Tag as a first-class entity for Constituent
+      classification. Tags can be hierarchical (categories of tags). Used
+      heavily for donor segmentation, communication preferences, and
+      affinity tracking.
+    docs_url: https://bloomerang.com/api/rest-api-v1/
+
+# =============================================================================
+# Attributes
+# =============================================================================
+attributes:
+  - name: name
+    display_name: Tag Name
+    type: string
+    required: true
+    max_length: 255
+    description: >
+      Display name of the tag.
+    usage: >
+      The label users see when applying the tag. Drives autocomplete,
+      search, and display in record sidebars. Should be short and
+      meaningful — typically 1-3 words.
+    presence:
+      salesforce: standard
+      hubspot: custom
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: description
+    display_name: Description
+    type: text
+    required: false
+    description: >
+      Free-form description of what the tag means and when to use it.
+    usage: >
+      Helps admins document tag meaning so multiple users apply tags
+      consistently. Typically not shown when applying tags but visible in
+      tag-management UI. Often empty in practice.
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: custom
+      bloomerang: standard
+
+  - name: parent
+    display_name: Parent Tag
+    type: reference
+    required: false
+    reference_target: tag
+    description: >
+      Self-referential lookup to a parent tag, enabling hierarchical
+      classification.
+    usage: >
+      Lets admins build tag hierarchies like "Healthcare > Pediatrics > NICU"
+      or "Donor Type > Major Gift > Recurring." Hierarchy supports
+      drill-down filtering (find all records tagged with anything under
+      Healthcare) and aggregation. Not all systems support this.
+    presence:
+      salesforce: absent
+      hubspot: absent
+      attio: custom
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: absent
+      bloomerang: standard
+
+  - name: color
+    display_name: Color
+    type: string
+    required: false
+    description: >
+      Display color for the tag (hex code or named color).
+    usage: >
+      Visual differentiation in record displays. EspoCRM and Attio support
+      tag colors natively. CiviCRM has color via the Tag's "color" field.
+      Pure cosmetic — drives recognizability, not functionality.
+    presence:
+      salesforce: absent
+      hubspot: absent
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: absent
+      bloomerang: custom
+
+  - name: isActive
+    display_name: Active
+    type: boolean
+    required: false
+    description: >
+      Flag indicating whether the tag is available for assignment.
+    usage: >
+      Lets admins retire a tag without deleting it (preserving historical
+      records that have the tag). Inactive tags hide from the apply-tag
+      UI but remain on records that already have them.
+    presence:
+      salesforce: absent
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: absent
+      bloomerang: standard
+
+  - name: createdAt
+    display_name: Created Date
+    type: datetime
+    required: true
+    description: >
+      System-generated timestamp of when the tag was created.
+    usage: >
+      Standard audit field. Used in tag-administration reports.
+    presence:
+      salesforce: standard
+      hubspot: custom
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+# =============================================================================
+# Relationships to other entities
+# =============================================================================
+relationships:
+  - target: account
+    cardinality: many-to-many
+    role: peer
+    description: >
+      A tag can be applied to many accounts; an account can have many tags.
+      Junction record name varies by system (TopicAssignment in Salesforce,
+      EntityTag in CiviCRM).
+    presence:
+      salesforce: standard
+      hubspot: custom
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: custom
+
+  - target: contact
+    cardinality: many-to-many
+    role: peer
+    description: >
+      A tag can be applied to many contacts; a contact can have many tags.
+    presence:
+      salesforce: standard
+      hubspot: custom
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - target: tag
+    cardinality: many-to-one
+    role: child
+    description: >
+      A tag can have a parent tag (hierarchical classification).
+    presence:
+      salesforce: absent
+      hubspot: absent
+      attio: custom
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: absent
+      bloomerang: standard
+
+# =============================================================================
+# Sources
+# =============================================================================
+sources:
+  - title: "Salesforce Object Reference: Topic"
+    url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_topic.htm
+  - title: "HubSpot: Multi-select properties (closest equivalent to tags)"
+    url: https://knowledge.hubspot.com/properties/multi-select-properties
+  - title: "Attio: Create and manage attributes (multi-select for tag-style)"
+    url: https://attio.com/help/reference/managing-your-data/attributes/create-manage-attributes
+  - title: "EspoCRM: Tags user guide"
+    url: https://docs.espocrm.com/user-guide/tags/
+  - title: "CiviCRM: Tags user guide"
+    url: https://docs.civicrm.org/user/en/latest/organising-your-data/tags/
+  - title: "Bloomerang REST API documentation: Tag endpoint"
+    url: https://bloomerang.com/api/rest-api-v1/

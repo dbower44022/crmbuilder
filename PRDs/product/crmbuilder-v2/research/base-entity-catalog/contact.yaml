@@ -1,0 +1,575 @@
+# =============================================================================
+# Catalog metadata
+# =============================================================================
+catalog_id: contact
+catalog_version: "0.1"
+last_updated: "05-08-26 04:35"
+tier: 1
+entry_kind: universal
+
+# =============================================================================
+# Entity-level definition
+# =============================================================================
+name: Contact
+display_name: Contact
+purpose: >
+  An individual person the CRM tracks: customer contact, prospect, donor,
+  volunteer, mentor, board member, staff member, or any other natural person
+  whose information needs to be stored. Together with Account, one of two
+  universal anchor entities in CRM data models.
+
+business_context: >
+  Contact records are where CRMs hold information about people. In B2B sales
+  motions, Contacts are typically associated with an Account (the company
+  they work for) and act as the points of communication for opportunities,
+  cases, and marketing campaigns. In nonprofit deployments, Contacts are
+  often the primary record (donors, volunteers, beneficiaries, members) and
+  may exist independently of any Account, or may be grouped into Households
+  rather than Companies. The decision of whether a person belongs primarily
+  to a Contact or to a Lead (in systems that distinguish them) drives
+  pipeline and conversion metrics. The decision of whether a Contact must
+  belong to an Account, may belong to many Accounts, or stands alone shapes
+  the entire data model. When interviewing clients, surface "Contact" by
+  asking which categories of people they need to track: customers, donors,
+  volunteers, mentees, applicants, alumni, board members, staff, vendors'
+  staff, and so on. Each category may map to a Contact specialization
+  (donor, volunteer, etc.) or to a Tag/Type discriminator. Personal-data
+  protection rules (GDPR, CCPA, HIPAA) typically apply at the Contact level,
+  so consent, communication preferences, and do-not-contact flags are
+  fundamental.
+
+data_model_role: anchor
+typically_required: true
+common_synonyms:
+  - Person
+  - Individual
+  - Constituent (individual)
+  - Donor
+  - Member
+  - Lead (when distinguished)
+
+# =============================================================================
+# Cross-system equivalents
+# =============================================================================
+systems:
+  - system: salesforce
+    name: Contact
+    api_name: Contact
+    is_standard: true
+    notes: >
+      Standard object. Salesforce distinguishes Lead (unconverted prospect)
+      from Contact (qualified or current relationship). Lead converts into
+      a new Account + Contact + Opportunity triple. Person Account is an
+      optional alternate model that combines Account + Contact for B2C use.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contact.htm
+
+  - system: hubspot
+    name: Contact
+    api_name: contacts
+    is_standard: true
+    notes: >
+      Standard object. HubSpot uses Contact as a unified concept — there is
+      no separate Lead entity; lead-vs-customer status is a `lifecyclestage`
+      property on Contact. Contacts can associate with multiple companies
+      and deals.
+    docs_url: https://developers.hubspot.com/docs/reference/api/crm/objects/contacts
+
+  - system: attio
+    name: Person
+    api_name: people
+    is_standard: true
+    notes: >
+      Built-in standard object, enabled by default. Attio uses "People"
+      rather than "Contacts." Auto-creates from email syncing and meeting
+      records. Many attributes are enriched (job title, social media,
+      first/last interaction, communication intelligence).
+    docs_url: https://attio.com/help/reference/managing-your-data/objects/manage-standard-objects
+
+  - system: espocrm
+    name: Contact
+    api_name: Contact
+    is_standard: true
+    notes: >
+      Standard CRM-module entity. Distinct from Lead (which converts to
+      Contact + Account + Opportunity). Includes built-in addresses, multiple
+      phone types, and stream/follow capability.
+    docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Contact.json
+
+  - system: civicrm
+    name: Individual (Contact subtype)
+    api_name: "Contact (contact_type=Individual)"
+    is_standard: true
+    notes: >
+      Same Contact entity as Account; contact_type=Individual selects this
+      subtype. Individual-only fields (first_name, last_name, gender,
+      birth_date, prefix, suffix, nickname, job_title) only apply when
+      contact_type=Individual. Required fields differ by subtype: Individual
+      requires at least one of first_name/last_name/email/display_name.
+    docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/contacts/
+
+  - system: salesforce_npsp
+    name: Contact
+    api_name: Contact
+    is_standard: true
+    notes: >
+      Standard Salesforce Contact, with NPSP additions: every Contact is
+      automatically associated with an Account (Household, 1x1, or
+      Organization Record Type). NPSP adds rollup fields for lifetime giving
+      totals, last donation date, recurring giving status. Uses Affiliation
+      records to track a Contact's connections to Organization Accounts
+      (employer, board membership, etc.) separately from their primary
+      Household Account.
+    docs_url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-success-pack-basics/organize-your-data-with-npsp
+
+  - system: bloomerang
+    name: Constituent (Individual Type)
+    api_name: Constituent
+    is_standard: true
+    notes: >
+      Same Constituent entity as Account. Type=Individual selects this
+      subtype. Individual-only attributes include FirstName, LastName,
+      Prefix, Suffix, Birthdate, Gender. Households are not first-class —
+      modeled via Relationships between individual constituents.
+    docs_url: https://bloomerang.com/api/rest-api-v1/
+
+# =============================================================================
+# Attributes
+# =============================================================================
+attributes:
+  - name: firstName
+    display_name: First Name
+    type: string
+    required: false
+    max_length: 100
+    description: >
+      Given name of the individual.
+    usage: >
+      Used in personalized greetings, mail merges, search, and informal
+      address. Combined with last name to form full name in most CRMs.
+      Required-or-not varies: CiviCRM requires at least one of first/last/
+      email/display_name on Individual contacts. Salesforce, HubSpot, EspoCRM
+      typically allow either first or last name to be empty.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: lastName
+    display_name: Last Name
+    type: string
+    required: true
+    max_length: 100
+    description: >
+      Family name (surname) of the individual.
+    usage: >
+      Anchors formal address ("Mr. Smith"), alphabetical sorting, and
+      duplicate-detection rules. In Salesforce, last name is technically the
+      only required name field on Contact (first name optional). Some
+      systems' duplicate-detection rules use the combination of last name
+      plus email or last name plus phone.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: emailAddress
+    display_name: Email Address
+    type: email
+    required: false
+    description: >
+      Primary email address of the individual.
+    usage: >
+      Universal communication anchor and most common duplicate-detection key.
+      Drives email automation, marketing campaign delivery, password reset
+      flows, and identity verification. CiviCRM and Bloomerang model email
+      as a separate first-class entity (one Contact / Constituent can have
+      many email records with different types: Home, Work, Other). Salesforce,
+      HubSpot, Attio, EspoCRM model email as one or more flat attributes on
+      Contact.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: phoneNumber
+    display_name: Phone Number
+    type: phone
+    required: false
+    description: >
+      Primary phone number of the individual.
+    usage: >
+      Direct line to the individual. Many CRMs support multiple phone
+      attributes (Mobile, Home, Office, Fax, Other) with type discriminators.
+      EspoCRM ships phoneNumber with a typeList of Mobile/Home/Office/Fax/
+      Other. CiviCRM and Bloomerang model phones as separate entities (one
+      Contact, many Phone records). HubSpot has separate properties for
+      `phone` (general) and `mobilephone`.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: mobilePhone
+    display_name: Mobile Phone
+    type: phone
+    required: false
+    description: >
+      Mobile (cell) phone number of the individual.
+    usage: >
+      Distinct from main phone for SMS messaging, two-factor authentication,
+      and direct-mobile outreach. Increasingly important as primary contact
+      number for individuals; some deployments collapse phone and mobilePhone
+      into one. In EspoCRM, Mobile is one of the type values on the unified
+      phoneNumber attribute rather than a separate field.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: custom
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: title
+    display_name: Title
+    type: string
+    required: false
+    max_length: 255
+    description: >
+      Job title or role of the individual at their associated organization.
+    usage: >
+      Surfaces seniority and decision-making authority for sales targeting.
+      Used in personalized email signatures, mail-merge greetings, and ICP
+      scoring. Typically populated from LinkedIn or self-reported during
+      form fills. Distinct from a Role or Persona attribute that classifies
+      what kind of stakeholder the contact is to your business.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: custom
+
+  - name: department
+    display_name: Department
+    type: string
+    required: false
+    max_length: 255
+    description: >
+      Department or business unit the contact works in.
+    usage: >
+      Subdivides large enterprise Accounts for complex sales motions where
+      multiple departments are buying separately. Less commonly used in
+      mid-market or nonprofit contexts. In NPSP and CiviCRM, more often
+      replaced by Affiliation records that track which department or group
+      the contact belongs to.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: custom
+      espocrm: custom
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: custom
+
+  - name: account
+    display_name: Account
+    type: reference
+    required: false
+    reference_target: account
+    description: >
+      The Account / Company / Household / Organization the contact belongs to.
+    usage: >
+      Anchors the Contact to its parent Account, enabling rolled-up reporting,
+      contextual views ("all contacts at Acme"), and cascading permissions.
+      Cardinality varies: Salesforce's standard model is many-to-one (one
+      Account per Contact), with AccountContactRelation as the optional
+      many-to-many extension. HubSpot supports many-to-many via primary-
+      and-secondary company associations. NPSP requires every Contact to
+      have an Account assignment (will auto-create a Household Account if
+      none specified). Attio uses a relationship attribute "Company" on the
+      Person object.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: custom
+    notes: >
+      In CiviCRM and Bloomerang, the Account-Contact relationship is modeled
+      via Relationship records (employer, member of household, etc.) rather
+      than a direct foreign key on Contact.
+
+  - name: mailingAddress
+    display_name: Mailing Address
+    type: address
+    required: false
+    description: >
+      Composite mailing address for the individual.
+    usage: >
+      Used for direct-mail campaigns, physical correspondence, and shipping.
+      CiviCRM and Bloomerang model address as a separate entity allowing
+      multiple addresses per contact (Home, Work, Other, Seasonal).
+      Salesforce uses MailingAddress as a composite (MailingStreet,
+      MailingCity, etc.). HubSpot uses flat individual properties.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: custom
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: birthDate
+    display_name: Birth Date
+    type: date
+    required: false
+    description: >
+      Date of birth of the individual.
+    usage: >
+      Powers birthday-acknowledgment workflows, age-based eligibility checks
+      (program enrollment, alcohol-purchasing, senior pricing), and
+      demographic segmentation. Sensitive PII; often gated behind permission
+      sets. In nonprofit deployments commonly used for board-member tenure
+      tracking and volunteer-eligibility verification.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: custom
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: gender
+    display_name: Gender
+    type: enum
+    required: false
+    enum_values:
+      - Male
+      - Female
+      - Non-binary
+      - Other
+      - Prefer not to say
+    description: >
+      Self-reported gender of the individual.
+    usage: >
+      Used in personalized salutations (Mr/Ms/Mx), demographic reporting,
+      and segmentation for membership organizations. Sensitive PII; many
+      deployments now treat as optional with a "Prefer not to say" or free-
+      text option. CiviCRM and EspoCRM ship with built-in gender enum
+      options; Salesforce and HubSpot do not have a standard Gender field
+      and require it as a custom property.
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: custom
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: doNotContact
+    display_name: Do Not Contact
+    type: boolean
+    required: false
+    description: >
+      Flag indicating the contact has opted out of all communication.
+    usage: >
+      Critical compliance flag for GDPR, CAN-SPAM, TCPA, and CASL. When set,
+      should suppress this contact from all outbound campaigns, automation
+      flows, and bulk imports. Some systems break this into channel-specific
+      flags (DoNotEmail, DoNotCall, DoNotSMS) rather than a single
+      catch-all. Bloomerang uses CommunicationRestrictions as a multi-value
+      field. Required to be respected in essentially every modern CRM
+      deployment for legal-compliance reasons.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: custom
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: emailOptOut
+    display_name: Email Opt-Out
+    type: boolean
+    required: false
+    description: >
+      Flag indicating the contact has unsubscribed from email communication.
+    usage: >
+      Channel-specific opt-out flag. Set automatically when a contact clicks
+      an unsubscribe link in a marketing email. Distinct from DoNotContact
+      because a contact may still accept transactional or relationship
+      communication (donation receipts, account alerts) while opting out of
+      marketing.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: assignedUser
+    display_name: Owner
+    type: reference
+    required: false
+    reference_target: user
+    description: >
+      The user who owns or is responsible for the contact.
+    usage: >
+      Same role as Account.assignedUser. Drives sharing rules, "my contacts"
+      filtering, and assignment automation. In nonprofit contexts often
+      represents the assigned development officer or relationship manager.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: createdAt
+    display_name: Created Date
+    type: datetime
+    required: true
+    description: >
+      System-generated timestamp of when the record was created.
+    usage: >
+      Audit and analytics field. Drives "new contacts this month" reports
+      and acquisition-cohort analysis. Always read-only and system-managed.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: lastModifiedAt
+    display_name: Last Modified Date
+    type: datetime
+    required: true
+    description: >
+      System-generated timestamp of when the record was last updated.
+    usage: >
+      Audit field. Used in change-tracking workflows and integration sync
+      filters (only pull contacts modified since last sync).
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+# =============================================================================
+# Relationships to other entities
+# =============================================================================
+relationships:
+  - target: account
+    cardinality: many-to-one
+    role: child
+    description: >
+      A contact typically belongs to one Account / Company / Household.
+      Some systems support many-to-many via secondary associations.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: custom
+
+  - target: activity
+    cardinality: one-to-many
+    role: parent
+    description: >
+      A contact has many activities (calls, meetings, tasks, emails) logged.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - target: note
+    cardinality: one-to-many
+    role: parent
+    description: >
+      A contact has many notes attached to it.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - target: contact
+    cardinality: many-to-many
+    role: peer
+    description: >
+      Contact-to-contact relationships (spouse, parent, colleague, mentor/
+      mentee, member of household). Modeled via Relationship records or
+      Affiliation records depending on system.
+    presence:
+      salesforce: standard
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+# =============================================================================
+# Sources
+# =============================================================================
+sources:
+  - title: "Salesforce Object Reference: Contact"
+    url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contact.htm
+  - title: "HubSpot CRM API: Contacts"
+    url: https://developers.hubspot.com/docs/reference/api/crm/objects/contacts
+  - title: "Attio: Manage standard objects (People system attributes)"
+    url: https://attio.com/help/reference/managing-your-data/objects/manage-standard-objects
+  - title: "EspoCRM: Contact entity definition"
+    url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Contact.json
+  - title: "CiviCRM: Contacts user guide"
+    url: https://docs.civicrm.org/user/en/latest/organising-your-data/contacts/
+  - title: "CiviCRM Contact API source"
+    url: https://github.com/civicrm/civicrm-core/blob/master/api/v3/Contact.php
+  - title: "Salesforce NPSP: Organize Your Data Effectively Using NPSP Features"
+    url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-success-pack-basics/organize-your-data-with-npsp
+  - title: "Bloomerang REST API documentation: Constituent endpoint"
+    url: https://bloomerang.com/api/rest-api-v1/
