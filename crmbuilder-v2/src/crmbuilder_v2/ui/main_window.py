@@ -8,12 +8,15 @@ placeholder with a live ``DecisionsPanel``, and wires panel-level
 ``connection_lost`` to the same crash banner the lifecycle uses. Slice
 D added Sessions and Risks. Slice E completes the round-2 read-only
 panels: Charter, Status, Topics, Planning Items, References — every
-sidebar entry now routes to a real panel.
+sidebar entry now routes to a real panel. Slice F constructs and owns
+a ``RefreshService`` so external storage writes (e.g., MCP, REST) are
+mirrored into the UI without the user clicking Refresh, per DEC-022.
 """
 
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QCloseEvent
@@ -26,6 +29,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from crmbuilder_v2.config import get_settings
 from crmbuilder_v2.ui.base.list_detail_panel import ListDetailPanel
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.crash_banner import CrashBanner
@@ -37,6 +41,7 @@ from crmbuilder_v2.ui.panels.risks import RisksPanel
 from crmbuilder_v2.ui.panels.sessions import SessionsPanel
 from crmbuilder_v2.ui.panels.status import StatusPanel
 from crmbuilder_v2.ui.panels.topics import TopicsPanel
+from crmbuilder_v2.ui.refresh import RefreshService
 from crmbuilder_v2.ui.server_lifecycle import ServerLifecycle
 from crmbuilder_v2.ui.sidebar import SIDEBAR_ENTRIES, Sidebar
 
@@ -44,9 +49,12 @@ _log = logging.getLogger("crmbuilder_v2.ui.main_window")
 _DEFAULT_ENTRY = "Decisions"
 
 # Maps reference ``entity_type`` values (as stored in the database) to
-# sidebar entry labels so the navigation router can resolve cross-panel
-# link clicks. References are not first-class navigable entities and so
-# do not appear here.
+# sidebar entry labels so the navigation router (cross-panel link
+# clicks) and the file-watch refresh router (slice F) can resolve a
+# data event to a panel. ``reference`` maps to the References panel
+# even though no current detail-pane link targets it — the file watcher
+# still needs the mapping so writes to ``references.json`` refresh the
+# panel.
 ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
     "charter": "Charter",
     "status": "Status",
@@ -55,13 +63,19 @@ ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
     "risk": "Risks",
     "planning_item": "Planning Items",
     "topic": "Topics",
+    "reference": "References",
 }
 
 
 class MainWindow(QMainWindow):
     """Top-level window containing the crash banner, sidebar, and content stack."""
 
-    def __init__(self, lifecycle: ServerLifecycle, client: StorageClient):
+    def __init__(
+        self,
+        lifecycle: ServerLifecycle,
+        client: StorageClient,
+        snapshot_dir: Path | None = None,
+    ):
         super().__init__()
         self.setWindowTitle("CRMBuilder v2")
         self.resize(1200, 800)
@@ -72,6 +86,7 @@ class MainWindow(QMainWindow):
         self._stack = QStackedWidget()
         self._crash_banner = CrashBanner()
         self._pages_by_entry: dict[str, int] = {}
+        self._stale_entries: set[str] = set()
 
         for entry in SIDEBAR_ENTRIES:
             if entry == "Charter":
@@ -130,6 +145,12 @@ class MainWindow(QMainWindow):
         default_row = list(SIDEBAR_ENTRIES).index(_DEFAULT_ENTRY)
         self._sidebar.setCurrentRow(default_row)
 
+        watched_dir = snapshot_dir if snapshot_dir is not None else get_settings().export_dir
+        self._refresh_service = RefreshService(watched_dir, self)
+        self._refresh_service.data_changed.connect(self._on_data_changed)
+        self._refresh_service.watch_failed.connect(self._on_watch_failed)
+        self._refresh_service.start()
+
     def handle_crash(self, stderr_text: str) -> None:
         """Slot for ``ServerLifecycle.crashed``: show banner, disable content."""
         if stderr_text:
@@ -142,6 +163,10 @@ class MainWindow(QMainWindow):
         self._set_content_enabled(False)
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802 (Qt naming)
+        try:
+            self._refresh_service.stop()
+        except Exception:
+            _log.exception("RefreshService stop failed during closeEvent")
         try:
             self._lifecycle.terminate()
         except Exception:
@@ -156,6 +181,13 @@ class MainWindow(QMainWindow):
         index = self._pages_by_entry.get(entry)
         if index is not None:
             self._stack.setCurrentIndex(index)
+        if entry in self._stale_entries:
+            self._stale_entries.discard(entry)
+            self._sidebar.set_stale(entry, False)
+            if index is not None:
+                page = self._stack.widget(index)
+                if isinstance(page, ListDetailPanel):
+                    page.refresh()
 
     def _on_reconnect_requested(self) -> None:
         _log.info("Reconnect requested; restarting lifecycle")
@@ -172,6 +204,24 @@ class MainWindow(QMainWindow):
         _log.warning("Panel reported connection lost: %s", message)
         self._crash_banner.show_with_message("Storage server unreachable.")
         self._set_content_enabled(False)
+
+    def _on_data_changed(self, entity_type: str) -> None:
+        """Route a file-watch event to either a silent refresh or a stale dot."""
+        label = ENTITY_TYPE_TO_SIDEBAR_LABEL.get(entity_type)
+        if label is None or label not in self._pages_by_entry:
+            return
+        index = self._pages_by_entry[label]
+        if label == self._sidebar.current_text():
+            page = self._stack.widget(index)
+            if isinstance(page, ListDetailPanel):
+                page.refresh()
+        else:
+            self._stale_entries.add(label)
+            self._sidebar.set_stale(label, True)
+
+    def _on_watch_failed(self, message: str) -> None:
+        """Watcher couldn't be installed; manual Refresh remains the fallback."""
+        _log.warning("File-watch refresh disabled: %s", message)
 
     def _on_navigate_requested(self, entity_type: str, identifier: str) -> None:
         """Route a panel-emitted link click to the appropriate sidebar entry."""

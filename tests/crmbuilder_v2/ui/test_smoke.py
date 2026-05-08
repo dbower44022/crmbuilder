@@ -17,7 +17,7 @@ from crmbuilder_v2.ui.panels.risks import RisksPanel
 from crmbuilder_v2.ui.panels.sessions import SessionsPanel
 from crmbuilder_v2.ui.panels.status import StatusPanel
 from crmbuilder_v2.ui.panels.topics import TopicsPanel
-from crmbuilder_v2.ui.sidebar import SIDEBAR_ENTRIES
+from crmbuilder_v2.ui.sidebar import SIDEBAR_ENTRIES, Sidebar
 from crmbuilder_v2.ui.splash import Splash
 
 EXPECTED_ENTRIES = (
@@ -139,6 +139,26 @@ def test_main_window_references_page_is_panel(
 
     page = window._stack.widget(window._pages_by_entry["References"])
     assert isinstance(page, ReferencesPanel)
+
+
+def test_sidebar_set_stale_toggles_icon(qapp, qtbot):
+    sidebar = Sidebar()
+    qtbot.addWidget(sidebar)
+
+    assert sidebar.is_stale("Decisions") is False
+    sidebar.set_stale("Decisions", True)
+    assert sidebar.is_stale("Decisions") is True
+    sidebar.set_stale("Decisions", False)
+    assert sidebar.is_stale("Decisions") is False
+
+
+def test_sidebar_set_stale_unknown_label_is_noop(qapp, qtbot):
+    sidebar = Sidebar()
+    qtbot.addWidget(sidebar)
+
+    # Should not raise.
+    sidebar.set_stale("Nonexistent Entry", True)
+    assert sidebar.is_stale("Nonexistent Entry") is False
 
 
 def test_splash_constructs(qapp):
