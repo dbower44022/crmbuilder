@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
 """Apply DEC-025 and clean up conversation_reference on SES-001/002/004/005.
 
-Run with the storage API live at http://127.0.0.1:8765 (start it via
-`uv run crmbuilder-v2-api` in another terminal first).
+HISTORICAL — DO NOT RE-RUN. This script was executed once on 05-09-26
+and is preserved as the original record of the DEC-025 attempt. It is
+no longer functional:
 
-After this script completes successfully, inspect the db-export/ diff
-and commit the snapshot updates with the message in the trailing
-comment block of this file.
+* The DEC-025 POST succeeds the first time but fails as a 409 conflict
+  on any subsequent run (DEC-025 already exists).
+* The four session PATCHes always fail with HTTP 405 because the
+  sessions router does not expose PATCH — sessions are append-only per
+  DEC-013 and DEC-014. This script's design assumed otherwise.
+
+The correct follow-up is `apply_dec_025_correction.py`, which PATCHes
+DEC-025's consequences field with text acknowledging the architectural
+constraint and confirming the policy is forward-only.
 """
 import json
 import sys
