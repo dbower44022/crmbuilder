@@ -1,17 +1,26 @@
 """Master/detail panel base.
 
-Wired in slice C. Per PRD §4.5 every entity panel uses a master/detail
-layout — list of records on the left, detail of the selected record on
-the right. This module provides the abstract base class with the
-toolbar, list pane, detail pane, refresh wiring, status label, and
-in-flight worker tracking. Subclasses implement ``entity_title()``,
-``fetch_records()``, ``list_columns()``, and ``render_detail(record)``.
+Wired in slice C; extended in slice D with a ``fetch_detail_extras``
+hook (for off-thread fetching of records needed by the detail pane,
+e.g. inbound references), a ``navigate_requested`` signal (for
+cross-panel link clicks), and ``select_record_by_identifier`` (for
+the navigation router to jump to a row).
+
+Per PRD §4.5 every entity panel uses a master/detail layout — list of
+records on the left, detail of the selected record on the right. This
+module provides the abstract base class with the toolbar, list pane,
+detail pane, refresh wiring, status label, in-flight worker tracking,
+and the new detail-extras flow. Subclasses implement
+``entity_title()``, ``fetch_records()``, ``list_columns()``, and
+``render_detail(record, extras)``. Subclasses optionally override
+``fetch_detail_extras(record)`` to supply additional data.
 
 Connection-loss policy (PRD §4.11): a ``StorageConnectionError`` from
-``fetch_records()`` is promoted to the ``connection_lost`` signal so
-the main window can surface the existing crash banner. Domain errors
-(``ValidationError``, ``NotFoundError``, etc.) stay inline in the
-status label.
+either ``fetch_records()`` or ``fetch_detail_extras()`` is promoted to
+the ``connection_lost`` signal so the main window can surface the
+existing crash banner. Domain errors (``ValidationError``,
+``NotFoundError``, etc.) stay inline — in the status label for refresh,
+or as a small banner at the top of the detail pane for extras.
 """
 
 from __future__ import annotations
@@ -117,28 +126,43 @@ class ListDetailPanel(QWidget):
     Subclasses MUST implement: ``entity_title``, ``fetch_records``,
     ``list_columns``, ``render_detail``. ``fetch_records`` is invoked
     on a worker thread, so it should call only ``StorageClient`` and
-    other thread-safe operations — no Qt widget access.
+    other thread-safe operations — no Qt widget access. The same
+    applies to the optional ``fetch_detail_extras`` hook.
 
     Signals:
 
-    * ``connection_lost(str)`` — emitted when a refresh raises
-      ``StorageConnectionError``. The main window connects this to
-      the existing crash banner.
+    * ``connection_lost(str)`` — emitted when a refresh OR a
+      detail-extras fetch raises ``StorageConnectionError``. The main
+      window connects this to the existing crash banner.
+    * ``navigate_requested(str, str)`` — emitted by subclasses (via
+      ``_emit_link_navigation``) when a user clicks a cross-entity
+      link in the detail pane. Args are (entity_type, identifier).
     """
 
     connection_lost = Signal(str)
+    navigate_requested = Signal(str, str)
 
     def __init__(self, client: StorageClient, parent: QWidget | None = None):
         super().__init__(parent)
         self._client = client
         self._records: list[dict[str, Any]] = []
         self._refresh_counter = 0
+        self._detail_counter = 0
         self._in_flight_workers: list[Any] = []
-        # Maps id(worker) → token. Tokens identify which refresh
-        # produced the result so stale (out-of-order) results are
-        # ignored. Stored side-band rather than on the QObject to
-        # avoid cross-thread setProperty calls.
-        self._worker_tokens: dict[int, int] = {}
+        # Maps id(worker) → token. Tokens identify which refresh or
+        # detail-selection produced the result so stale (out-of-order)
+        # results are ignored.
+        self._refresh_tokens: dict[int, int] = {}
+        self._detail_tokens: dict[int, int] = {}
+        # Side-band store of the record each detail token was looking
+        # at, so success/error callbacks can re-read it without trusting
+        # cross-thread state. Cleared in ``_on_worker_finished``.
+        self._detail_records: dict[int, dict[str, Any]] = {}
+        # When set, the next successful refresh attempts to select the
+        # row whose record has this identifier. Used by
+        # ``select_record_by_identifier`` for cross-panel navigation
+        # before the panel has been refreshed.
+        self._pending_select_identifier: str | None = None
 
         self._build_ui()
 
@@ -155,7 +179,19 @@ class ListDetailPanel(QWidget):
     def list_columns(self) -> list[ColumnSpec]:
         raise NotImplementedError
 
-    def render_detail(self, record: dict[str, Any]) -> QWidget:
+    def fetch_detail_extras(self, record: dict[str, Any]) -> dict[str, Any]:
+        """Return extra data needed for the detail pane.
+
+        Called on a worker thread (off the UI thread). Default returns
+        ``{}``. Subclasses override to fetch additional records.
+        Subclasses that don't override receive ``extras={}`` in
+        ``render_detail``.
+        """
+        return {}
+
+    def render_detail(
+        self, record: dict[str, Any], extras: dict[str, Any]
+    ) -> QWidget:
         raise NotImplementedError
 
     # ------------------------------------------------------------------
@@ -177,7 +213,7 @@ class ListDetailPanel(QWidget):
             on_error=self._on_fetch_error,
             parent=self,
         )
-        self._worker_tokens[id(worker)] = token
+        self._refresh_tokens[id(worker)] = token
         self._in_flight_workers.append(worker)
         worker.finished.connect(self._on_worker_finished)
 
@@ -193,6 +229,48 @@ class ListDetailPanel(QWidget):
         self._detail_stack.setEnabled(enabled)
         if enabled:
             self.refresh()
+
+    def select_record_by_identifier(self, identifier: str) -> bool:
+        """Select the row whose record has this identifier.
+
+        If the record is already loaded, selects it immediately and
+        returns True. Otherwise schedules a select-on-next-refresh and
+        triggers a refresh, returning False.
+        """
+        for row, record in enumerate(self._records):
+            if record.get("identifier") == identifier:
+                self._select_row(row)
+                return True
+        self._pending_select_identifier = identifier
+        self.refresh()
+        return False
+
+    def closeEvent(self, event):  # noqa: N802 (Qt naming)
+        """Wait for in-flight workers so subprocess threads don't outlive the widget."""
+        for worker in list(self._in_flight_workers):
+            try:
+                worker.wait(2000)
+            except Exception:
+                _log.exception("Worker.wait failed during panel teardown")
+        super().closeEvent(event)
+
+    # ------------------------------------------------------------------
+    # Subclass helpers
+    # ------------------------------------------------------------------
+
+    def _emit_link_navigation(self, href: str) -> None:
+        """Parse an ``"entity_type:identifier"`` href and emit ``navigate_requested``.
+
+        Subclasses connect their ``QLabel.linkActivated`` signals to
+        this method so detail-pane links route through the main
+        window's navigation router.
+        """
+        if ":" not in href:
+            return
+        entity_type, _, identifier = href.partition(":")
+        if not entity_type or not identifier:
+            return
+        self.navigate_requested.emit(entity_type, identifier)
 
     # ------------------------------------------------------------------
     # Internal
@@ -238,6 +316,10 @@ class ListDetailPanel(QWidget):
         self._empty_detail.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._detail_stack.addWidget(self._empty_detail)
 
+        self._loading_detail = QLabel("Loading detail…")
+        self._loading_detail.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._detail_stack.addWidget(self._loading_detail)
+
         splitter.addWidget(self._table)
         splitter.addWidget(self._detail_stack)
         splitter.setSizes([_INITIAL_LIST_WIDTH, _INITIAL_DETAIL_WIDTH])
@@ -279,7 +361,7 @@ class ListDetailPanel(QWidget):
         return toolbar
 
     def _on_fetch_success(self, result: list[dict[str, Any]]) -> None:
-        if not self._sender_token_is_current():
+        if not self._sender_is_current_refresh():
             return
         self._records = list(result) if isinstance(result, list) else []
         self._model.set_records(self._records)
@@ -295,9 +377,18 @@ class ListDetailPanel(QWidget):
         # Reset the detail pane to the empty placeholder until the user
         # selects a row.
         self._show_empty_detail()
+        # If a navigation request asked us to select a specific row,
+        # apply it now.
+        pending = self._pending_select_identifier
+        if pending is not None:
+            self._pending_select_identifier = None
+            for row, record in enumerate(self._records):
+                if record.get("identifier") == pending:
+                    self._select_row(row)
+                    break
 
     def _on_fetch_error(self, exc: Exception) -> None:
-        if not self._sender_token_is_current():
+        if not self._sender_is_current_refresh():
             return
         if isinstance(exc, StorageConnectionError):
             _log.warning("Connection lost during refresh: %s", exc)
@@ -325,11 +416,83 @@ class ListDetailPanel(QWidget):
         if record is None:
             self._show_empty_detail()
             return
-        widget = self.render_detail(record)
-        # Replace the current detail widget. Remove any non-empty
-        # widgets we previously added so they don't leak across selections.
-        while self._detail_stack.count() > 1:
-            old = self._detail_stack.widget(1)
+        self._begin_detail_load(record)
+
+    def _begin_detail_load(self, record: dict[str, Any]) -> None:
+        """Show the loading placeholder and kick off a detail-extras worker."""
+        self._detail_counter += 1
+        token = self._detail_counter
+        self._detail_stack.setCurrentWidget(self._loading_detail)
+        # Capture the record by closure so the worker callable doesn't
+        # reach back into Qt state from a worker thread.
+        captured = record
+
+        def _do_fetch():
+            return self.fetch_detail_extras(captured)
+
+        worker = run_in_thread(
+            _do_fetch,
+            on_success=self._on_detail_success,
+            on_error=self._on_detail_error,
+            parent=self,
+        )
+        self._detail_tokens[id(worker)] = token
+        self._detail_records[id(worker)] = record
+        self._in_flight_workers.append(worker)
+        worker.finished.connect(self._on_worker_finished)
+
+    def _on_detail_success(self, extras: Any) -> None:
+        sender = self.sender()
+        if not self._sender_is_current_detail():
+            return
+        record = self._detail_records.get(id(sender)) if sender else None
+        if record is None:
+            return
+        if not isinstance(extras, dict):
+            extras = {}
+        widget = self.render_detail(record, extras)
+        self._install_detail_widget(widget)
+
+    def _on_detail_error(self, exc: Exception) -> None:
+        sender = self.sender()
+        if not self._sender_is_current_detail():
+            return
+        record = self._detail_records.get(id(sender)) if sender else None
+        if record is None:
+            return
+        if isinstance(exc, StorageConnectionError):
+            _log.warning("Connection lost during detail-extras fetch: %s", exc)
+            self.connection_lost.emit(str(exc))
+            return
+        # Domain or unexpected error: still render the detail with empty
+        # extras so the user sees the basic record fields, and prepend
+        # an inline error indicator above it.
+        if isinstance(exc, StorageClientError):
+            _log.warning("Domain error during detail-extras fetch: %s", exc)
+            message = exc.message
+        else:
+            _log.exception(
+                "Unexpected error during detail-extras fetch", exc_info=exc
+            )
+            message = str(exc)
+        rendered = self.render_detail(record, {})
+        wrapper = QWidget()
+        wrapper_layout = QVBoxLayout(wrapper)
+        wrapper_layout.setContentsMargins(0, 0, 0, 0)
+        wrapper_layout.setSpacing(4)
+        warning = QLabel(f"Detail extras unavailable: {message}")
+        warning.setObjectName("detail_extras_error")
+        warning.setStyleSheet("color: #b76e00; padding: 4px;")
+        warning.setWordWrap(True)
+        wrapper_layout.addWidget(warning)
+        wrapper_layout.addWidget(rendered, stretch=1)
+        self._install_detail_widget(wrapper)
+
+    def _install_detail_widget(self, widget: QWidget) -> None:
+        # Remove any non-placeholder widgets we previously installed.
+        # The first two stack pages are _empty_detail and _loading_detail.
+        while self._detail_stack.count() > 2:
+            old = self._detail_stack.widget(2)
             self._detail_stack.removeWidget(old)
             old.deleteLater()
         self._detail_stack.addWidget(widget)
@@ -338,20 +501,38 @@ class ListDetailPanel(QWidget):
     def _show_empty_detail(self) -> None:
         self._detail_stack.setCurrentWidget(self._empty_detail)
 
-    def _sender_token_is_current(self) -> bool:
+    def _select_row(self, row: int) -> None:
+        index = self._model.index(row, 0)
+        self._table.setCurrentIndex(index)
+        self._table.scrollTo(index)
+
+    def _sender_is_current_refresh(self) -> bool:
         sender = self.sender()
         if sender is None:
             # Test paths can invoke the slot directly without a sender;
             # treat as current.
             return True
-        token = self._worker_tokens.get(id(sender))
+        token = self._refresh_tokens.get(id(sender))
+        if token is None:
+            return False
         return token == self._refresh_counter
+
+    def _sender_is_current_detail(self) -> bool:
+        sender = self.sender()
+        if sender is None:
+            return True
+        token = self._detail_tokens.get(id(sender))
+        if token is None:
+            return False
+        return token == self._detail_counter
 
     def _on_worker_finished(self) -> None:
         sender = self.sender()
         if sender is None:
             return
-        self._worker_tokens.pop(id(sender), None)
+        self._refresh_tokens.pop(id(sender), None)
+        self._detail_tokens.pop(id(sender), None)
+        self._detail_records.pop(id(sender), None)
         try:
             self._in_flight_workers.remove(sender)
         except ValueError:

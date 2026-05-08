@@ -29,11 +29,27 @@ from crmbuilder_v2.ui.base.list_detail_panel import ListDetailPanel
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.crash_banner import CrashBanner
 from crmbuilder_v2.ui.panels.decisions import DecisionsPanel
+from crmbuilder_v2.ui.panels.risks import RisksPanel
+from crmbuilder_v2.ui.panels.sessions import SessionsPanel
 from crmbuilder_v2.ui.server_lifecycle import ServerLifecycle
 from crmbuilder_v2.ui.sidebar import SIDEBAR_ENTRIES, Sidebar
 
 _log = logging.getLogger("crmbuilder_v2.ui.main_window")
 _DEFAULT_ENTRY = "Decisions"
+
+# Maps reference ``entity_type`` values (as stored in the database) to
+# sidebar entry labels so the navigation router can resolve cross-panel
+# link clicks. References are not first-class navigable entities and so
+# do not appear here.
+ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
+    "charter": "Charter",
+    "status": "Status",
+    "decision": "Decisions",
+    "session": "Sessions",
+    "risk": "Risks",
+    "planning_item": "Planning Items",
+    "topic": "Topics",
+}
 
 
 class MainWindow(QMainWindow):
@@ -54,7 +70,10 @@ class MainWindow(QMainWindow):
         for entry in SIDEBAR_ENTRIES:
             if entry == "Decisions":
                 page: QWidget = DecisionsPanel(self._client)
-                page.connection_lost.connect(self._on_panel_connection_lost)
+            elif entry == "Sessions":
+                page = SessionsPanel(self._client)
+            elif entry == "Risks":
+                page = RisksPanel(self._client)
             else:
                 placeholder = QLabel(
                     f"Panel for {entry} — implemented in slice D or E."
@@ -64,6 +83,9 @@ class MainWindow(QMainWindow):
                     f"placeholder_{entry.lower().replace(' ', '_')}"
                 )
                 page = placeholder
+            if isinstance(page, ListDetailPanel):
+                page.connection_lost.connect(self._on_panel_connection_lost)
+                page.navigate_requested.connect(self._on_navigate_requested)
             index = self._stack.addWidget(page)
             self._pages_by_entry[entry] = index
 
@@ -134,6 +156,30 @@ class MainWindow(QMainWindow):
         _log.warning("Panel reported connection lost: %s", message)
         self._crash_banner.show_with_message("Storage server unreachable.")
         self._set_content_enabled(False)
+
+    def _on_navigate_requested(self, entity_type: str, identifier: str) -> None:
+        """Route a panel-emitted link click to the appropriate sidebar entry."""
+        label = ENTITY_TYPE_TO_SIDEBAR_LABEL.get(entity_type)
+        if label is None or label not in self._pages_by_entry:
+            _log.warning(
+                "Navigation requested for unknown entity_type=%s identifier=%s",
+                entity_type,
+                identifier,
+            )
+            return
+        index = self._pages_by_entry[label]
+        target = self._stack.widget(index)
+        # Switch the sidebar selection so it visually matches the swap;
+        # this also routes through ``_on_sidebar_selected`` which sets
+        # the stack page.
+        try:
+            row = list(SIDEBAR_ENTRIES).index(label)
+        except ValueError:
+            _log.warning("Sidebar entry %s missing from SIDEBAR_ENTRIES", label)
+            return
+        self._sidebar.setCurrentRow(row)
+        if isinstance(target, ListDetailPanel):
+            target.select_record_by_identifier(identifier)
 
     def _refresh_current_panel(self) -> None:
         widget = self._stack.currentWidget()

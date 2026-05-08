@@ -53,16 +53,31 @@ def build_client(
 
 @pytest.fixture
 def client_stub(qapp) -> StorageClient:
-    """A StorageClient that returns an empty decisions list.
+    """A StorageClient that returns empty lists for decisions/sessions/risks.
 
     For tests that need to construct a panel/window but don't care
     about the data.
     """
 
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/decisions" and request.method == "GET":
+        if request.method == "GET" and request.url.path in (
+            "/decisions",
+            "/sessions",
+            "/risks",
+        ):
             return httpx.Response(
                 200, json={"data": [], "meta": {}, "errors": None}
+            )
+        if request.method == "GET" and request.url.path.startswith(
+            "/references/touching/"
+        ):
+            return httpx.Response(
+                200,
+                json={
+                    "data": {"as_source": [], "as_target": []},
+                    "meta": {},
+                    "errors": None,
+                },
             )
         return httpx.Response(
             404, json={"data": None, "meta": {}, "errors": [

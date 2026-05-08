@@ -244,3 +244,134 @@ def test_context_manager_closes_owned_client():
     with StorageClient(base_url="http://test.invalid") as client:
         assert client._client.is_closed is False  # noqa: SLF001
     assert client._client.is_closed is True  # noqa: SLF001
+
+
+def test_list_sessions_returns_data():
+    record = {"identifier": "SES-004", "title": "Storage v0.1"}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.method == "GET"
+        assert req.url.path == "/sessions"
+        return httpx.Response(
+            200, json={"data": [record], "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    assert client.list_sessions() == [record]
+
+
+def test_get_session_returns_dict():
+    record = {"identifier": "SES-004", "title": "Storage v0.1"}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.url.path == "/sessions/SES-004"
+        return httpx.Response(
+            200, json={"data": record, "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    assert client.get_session("SES-004") == record
+
+
+def test_get_session_missing_raises_not_found():
+    def handler(_req: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            404,
+            json={
+                "data": None,
+                "meta": {},
+                "errors": [{"code": "not_found", "message": "missing"}],
+            },
+        )
+
+    client = _client(handler)
+    with pytest.raises(NotFoundError):
+        client.get_session("SES-999")
+
+
+def test_list_risks_returns_data():
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.method == "GET"
+        assert req.url.path == "/risks"
+        return httpx.Response(
+            200, json={"data": [], "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    assert client.list_risks() == []
+
+
+def test_get_risk_returns_dict():
+    record = {"identifier": "RSK-001", "title": "Test risk"}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.url.path == "/risks/RSK-001"
+        return httpx.Response(
+            200, json={"data": record, "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    assert client.get_risk("RSK-001") == record
+
+
+def test_get_risk_missing_raises_not_found():
+    def handler(_req: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            404,
+            json={
+                "data": None,
+                "meta": {},
+                "errors": [{"code": "not_found", "message": "missing"}],
+            },
+        )
+
+    client = _client(handler)
+    with pytest.raises(NotFoundError):
+        client.get_risk("RSK-999")
+
+
+def test_list_references_touching_returns_split_dict():
+    payload = {
+        "as_source": [
+            {
+                "source_type": "decision",
+                "source_id": "DEC-018",
+                "target_type": "decision",
+                "target_id": "DEC-001",
+                "relationship": "supersedes",
+            }
+        ],
+        "as_target": [
+            {
+                "source_type": "session",
+                "source_id": "SES-004",
+                "target_type": "decision",
+                "target_id": "DEC-018",
+                "relationship": "decided_in",
+            }
+        ],
+    }
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.method == "GET"
+        assert req.url.path == "/references/touching/decision/DEC-018"
+        return httpx.Response(
+            200, json={"data": payload, "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    result = client.list_references_touching("decision", "DEC-018")
+    assert result == payload
+
+
+def test_list_references_touching_defensive_on_missing_keys():
+    """Server returns an unexpected shape; client returns empty lists."""
+
+    def handler(_req: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200, json={"data": {}, "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    result = client.list_references_touching("decision", "DEC-018")
+    assert result == {"as_source": [], "as_target": []}

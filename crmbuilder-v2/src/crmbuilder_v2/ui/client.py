@@ -104,6 +104,79 @@ class StorageClient:
             )
         return result
 
+    def list_sessions(self) -> list[dict[str, Any]]:
+        """Return all sessions as a list of dicts.
+
+        Shape matches ``crmbuilder_v2/api/routers/sessions.py``.
+        """
+        result = self._request("GET", "/sessions")
+        if not isinstance(result, list):
+            return []
+        return result
+
+    def get_session(self, identifier: str) -> dict[str, Any]:
+        """Return a single session by identifier (e.g. ``"SES-004"``).
+
+        Raises ``NotFoundError`` if the session does not exist.
+        """
+        result = self._request("GET", f"/sessions/{identifier}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for get_session",
+            )
+        return result
+
+    def list_risks(self) -> list[dict[str, Any]]:
+        """Return all risks as a list of dicts.
+
+        Shape matches ``crmbuilder_v2/api/routers/risks.py``.
+        """
+        result = self._request("GET", "/risks")
+        if not isinstance(result, list):
+            return []
+        return result
+
+    def get_risk(self, identifier: str) -> dict[str, Any]:
+        """Return a single risk by identifier (e.g. ``"RSK-001"``).
+
+        Raises ``NotFoundError`` if the risk does not exist.
+        """
+        result = self._request("GET", f"/risks/{identifier}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for get_risk",
+            )
+        return result
+
+    def list_references_touching(
+        self, entity_type: str, entity_id: str
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Return references where ``entity_id`` appears as source or target.
+
+        ``entity_type`` is one of: charter, status, decision, session,
+        risk, planning_item, topic. ``entity_id`` is the entity's
+        identifier (e.g., ``"DEC-018"``).
+
+        The API returns a dict shaped ``{"as_source": [...], "as_target":
+        [...]}``. Each reference has keys: source_type, source_id,
+        target_type, target_id, relationship.
+        """
+        result = self._request(
+            "GET",
+            f"/references/touching/{entity_type}/{entity_id}",
+        )
+        if not isinstance(result, dict):
+            return {"as_source": [], "as_target": []}
+        # Defensive: ensure both keys exist with list values.
+        return {
+            "as_source": list(result.get("as_source") or []),
+            "as_target": list(result.get("as_target") or []),
+        }
+
     def _request(
         self,
         method: str,

@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from crmbuilder_v2.ui.main_window import MainWindow
 from crmbuilder_v2.ui.panels.decisions import DecisionsPanel
+from crmbuilder_v2.ui.panels.risks import RisksPanel
+from crmbuilder_v2.ui.panels.sessions import SessionsPanel
 from crmbuilder_v2.ui.sidebar import SIDEBAR_ENTRIES
 from crmbuilder_v2.ui.splash import Splash
 
@@ -62,6 +64,26 @@ def test_main_window_decisions_page_is_panel(
     decisions_index = window._pages_by_entry["Decisions"]
     page = window._stack.widget(decisions_index)
     assert isinstance(page, DecisionsPanel)
+
+
+def test_main_window_sessions_page_is_panel(
+    qapp, qtbot, lifecycle_stub, client_stub
+):
+    window = MainWindow(lifecycle=lifecycle_stub, client=client_stub)
+    qtbot.addWidget(window)
+
+    page = window._stack.widget(window._pages_by_entry["Sessions"])
+    assert isinstance(page, SessionsPanel)
+
+
+def test_main_window_risks_page_is_panel(
+    qapp, qtbot, lifecycle_stub, client_stub
+):
+    window = MainWindow(lifecycle=lifecycle_stub, client=client_stub)
+    qtbot.addWidget(window)
+
+    page = window._stack.widget(window._pages_by_entry["Risks"])
+    assert isinstance(page, RisksPanel)
 
 
 def test_splash_constructs(qapp):
