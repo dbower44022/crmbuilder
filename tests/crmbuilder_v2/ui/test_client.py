@@ -533,3 +533,166 @@ def test_list_references_touching_defensive_on_missing_keys():
     client = _client(handler)
     result = client.list_references_touching("decision", "DEC-018")
     assert result == {"as_source": [], "as_target": []}
+
+
+# ---------------------------------------------------------------------------
+# Slice G: decision write methods
+# ---------------------------------------------------------------------------
+
+
+def test_create_decision_returns_created_dict():
+    record = {
+        "identifier": "DEC-100",
+        "title": "Slice G works",
+        "decision_date": "05-08-26",
+        "status": "Active",
+    }
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.method == "POST"
+        assert req.url.path == "/decisions"
+        return httpx.Response(
+            201, json={"data": record, "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    result = client.create_decision(
+        {
+            "identifier": "DEC-100",
+            "title": "Slice G works",
+            "decision_date": "05-08-26",
+            "status": "Active",
+        }
+    )
+    assert result == record
+
+
+def test_create_decision_duplicate_raises_conflict():
+    body = {
+        "data": None,
+        "meta": {},
+        "errors": [
+            {"code": "conflict", "message": "decision 'DEC-001' already exists"}
+        ],
+    }
+
+    def handler(_req: httpx.Request) -> httpx.Response:
+        return httpx.Response(409, json=body)
+
+    client = _client(handler)
+    with pytest.raises(ConflictError):
+        client.create_decision(
+            {
+                "identifier": "DEC-001",
+                "title": "dup",
+                "decision_date": "05-08-26",
+                "status": "Active",
+            }
+        )
+
+
+def test_create_decision_invalid_status_raises_validation():
+    body = {
+        "data": None,
+        "meta": {},
+        "errors": [
+            {
+                "code": "validation_error",
+                "field": "status",
+                "message": "must be one of Active, Superseded, Withdrawn",
+            }
+        ],
+    }
+
+    def handler(_req: httpx.Request) -> httpx.Response:
+        return httpx.Response(400, json=body)
+
+    client = _client(handler)
+    with pytest.raises(ValidationError) as excinfo:
+        client.create_decision(
+            {
+                "identifier": "DEC-100",
+                "title": "x",
+                "decision_date": "05-08-26",
+                "status": "Bogus",
+            }
+        )
+    assert excinfo.value.field_errors() == {
+        "status": "must be one of Active, Superseded, Withdrawn"
+    }
+
+
+def test_update_decision_returns_updated_dict():
+    record = {
+        "identifier": "DEC-001",
+        "title": "new title",
+        "decision_date": "05-08-26",
+        "status": "Active",
+    }
+
+    captured: dict = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.method == "PATCH"
+        assert req.url.path == "/decisions/DEC-001"
+        captured["body"] = req.read()
+        return httpx.Response(
+            200, json={"data": record, "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    result = client.update_decision("DEC-001", {"title": "new title"})
+    assert result == record
+    assert b'"title"' in captured["body"]
+    assert b'"new title"' in captured["body"]
+
+
+def test_update_decision_missing_raises_not_found():
+    def handler(_req: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            404,
+            json={
+                "data": None,
+                "meta": {},
+                "errors": [{"code": "not_found", "message": "missing"}],
+            },
+        )
+
+    client = _client(handler)
+    with pytest.raises(NotFoundError):
+        client.update_decision("DEC-999", {"title": "x"})
+
+
+def test_delete_decision_returns_response_data():
+    deleted = {"identifier": "DEC-001", "title": "gone"}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.method == "DELETE"
+        assert req.url.path == "/decisions/DEC-001"
+        return httpx.Response(
+            200, json={"data": deleted, "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    assert client.delete_decision("DEC-001") == deleted
+
+
+def test_delete_decision_referenced_raises_conflict():
+    body = {
+        "data": None,
+        "meta": {},
+        "errors": [
+            {
+                "code": "conflict",
+                "message": "decision 'DEC-018' is referenced by SES-004",
+            }
+        ],
+    }
+
+    def handler(_req: httpx.Request) -> httpx.Response:
+        return httpx.Response(409, json=body)
+
+    client = _client(handler)
+    with pytest.raises(ConflictError) as excinfo:
+        client.delete_decision("DEC-018")
+    assert "referenced" in str(excinfo.value)

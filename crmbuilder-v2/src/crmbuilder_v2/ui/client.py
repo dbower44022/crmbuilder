@@ -8,7 +8,8 @@ Per DEC-019 the UI consumes the API exclusively through this client.
 Slice C exposed read methods for the smoke-grade Decisions panel.
 Slice D added sessions, risks, and references-touching for the round-1
 read-only views. Slice E adds versioned reads for charter and status,
-plus topics, planning items, and the full references list.
+plus topics, planning items, and the full references list. Slice G
+adds decision write methods (create, update, delete).
 """
 
 from __future__ import annotations
@@ -104,6 +105,52 @@ class StorageClient:
                 message="Expected dict body for get_decision",
             )
         return result
+
+    def create_decision(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /decisions. Returns the created record dict.
+
+        Raises ``ValidationError`` on 400, ``ConflictError`` on 409
+        (duplicate identifier), other ``StorageClientError`` subclasses
+        per the standard error matrix.
+        """
+        result = self._request("POST", "/decisions", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for create_decision",
+            )
+        return result
+
+    def update_decision(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PATCH /decisions/{identifier}. Body should contain only the
+        fields that changed. Returns the updated record dict.
+
+        Raises ``ValidationError`` on 400, ``NotFoundError`` on 404
+        (decision was deleted by another writer between read and
+        update), ``ConflictError`` on 409 (e.g., supersedes target
+        doesn't exist).
+        """
+        result = self._request(
+            "PATCH", f"/decisions/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for update_decision",
+            )
+        return result
+
+    def delete_decision(self, identifier: str) -> Any:
+        """DELETE /decisions/{identifier}. Returns the API's response data.
+
+        Raises ``NotFoundError`` on 404, ``ConflictError`` on 409
+        (decision is referenced by other records).
+        """
+        return self._request("DELETE", f"/decisions/{identifier}")
 
     def list_sessions(self) -> list[dict[str, Any]]:
         """Return all sessions as a list of dicts.
