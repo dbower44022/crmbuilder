@@ -49,7 +49,8 @@ def test_update_records_before_and_after(v2_env):
     assert rows[0].after_payload["status"] == "Superseded"
 
 
-def test_delete_records_before(v2_env):
+def test_soft_delete_emits_status_update(v2_env):
+    """Soft-delete records the status transition Active → Deleted as an update."""
     with session_scope() as s:
         decisions.create(
             s,
@@ -61,11 +62,15 @@ def test_delete_records_before(v2_env):
         decisions.delete(s, "DEC-001")
     with session_scope() as s:
         rows = s.scalars(
-            select(ChangeLog).where(ChangeLog.operation == "delete")
+            select(ChangeLog)
+            .where(ChangeLog.entity_identifier == "DEC-001")
+            .order_by(ChangeLog.id)
         ).all()
-    assert len(rows) == 1
-    assert rows[0].after_payload is None
-    assert rows[0].before_payload["identifier"] == "DEC-001"
+    operations = [r.operation for r in rows]
+    assert operations == ["insert", "update"]
+    soft_delete = rows[1]
+    assert soft_delete.before_payload["status"] == "Active"
+    assert soft_delete.after_payload["status"] == "Deleted"
 
 
 def test_actor_propagation(v2_env):

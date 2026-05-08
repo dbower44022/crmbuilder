@@ -104,13 +104,19 @@ class DecisionDeleteDialog(QDialog):
             return
 
         if isinstance(exc, ConflictError):
-            detail = exc.message or "other records reference this decision"
-            self._body_label.setText(
-                f"{self._identifier} cannot be deleted because it is "
-                f"referenced by other records: {detail}."
-            )
-            self._delete_btn.hide()
-            self._cancel_btn.setText("Close")
+            # Defensive fallback. Soft-delete (per migration 0002 +
+            # decisions.delete) preserves referential integrity by
+            # construction, so the API never returns 409 for the delete
+            # path under normal operation. If it does, route to the
+            # generic ErrorDialog.
+            _log.warning("Unexpected 409 during decision delete: %s", exc)
+            ErrorDialog(
+                title="Could not delete decision",
+                message=exc.message or str(exc),
+                detail=repr(exc),
+                parent=self,
+            ).exec()
+            self._delete_btn.setEnabled(True)
             return
 
         if isinstance(exc, StorageClientError):

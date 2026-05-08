@@ -39,7 +39,14 @@ _UPDATABLE_FIELDS = frozenset(
 
 
 def _resolve_decision_id(session: Session, identifier: str | None) -> int | None:
-    if identifier is None:
+    """Resolve an identifier to an integer FK.
+
+    None and empty string both return None. Callers in update() use None to
+    mean "don't touch" (the if-not-None guard prevents the assignment) and
+    empty string to mean "clear the FK" (the guard fires; this helper
+    returns None; the caller assigns None to the foreign-key column).
+    """
+    if identifier is None or identifier == "":
         return None
     row = session.scalar(select(Decision).where(Decision.identifier == identifier))
     if row is None:
@@ -56,8 +63,11 @@ def get(session: Session, identifier: str) -> dict:
     return _enrich(session, row)
 
 
-def list_all(session: Session) -> list[dict]:
-    rows = session.scalars(select(Decision).order_by(Decision.identifier)).all()
+def list_all(session: Session, *, include_deleted: bool = False) -> list[dict]:
+    stmt = select(Decision).order_by(Decision.identifier)
+    if not include_deleted:
+        stmt = stmt.where(Decision.status != "Deleted")
+    rows = session.scalars(stmt).all()
     return [_enrich(session, r) for r in rows]
 
 
@@ -164,21 +174,31 @@ def update(
 
 
 def delete(session: Session, identifier: str) -> dict:
+    """Soft-delete: set status to 'Deleted', leave the row in place.
+
+    Referential integrity is preserved by construction — references pointing
+    at this decision continue to resolve via get(). The row is filtered out
+    of list_all() by default, so the UI sees the row disappear from the
+    decisions list, matching the pre-soft-delete user experience.
+    """
     row = session.scalar(select(Decision).where(Decision.identifier == identifier))
     if row is None:
         raise NotFoundError(_ENTITY_TYPE, identifier)
+    if row.status == "Deleted":
+        return _enrich(session, row)
     before = _enrich(session, row)
-    session.delete(row)
+    row.status = "Deleted"
     session.flush()
+    after = _enrich(session, row)
     emit(
         session,
         entity_type=_ENTITY_TYPE,
         entity_identifier=identifier,
-        operation="delete",
+        operation="update",
         before=before,
-        after=None,
+        after=after,
     )
-    return before
+    return after
 
 
 def upsert(session: Session, *, identifier: str, **fields) -> dict:

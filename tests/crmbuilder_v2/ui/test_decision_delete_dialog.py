@@ -31,28 +31,43 @@ def test_successful_delete_accepts(qtbot):
     client.delete_decision.assert_called_once_with("DEC-007")
 
 
-def test_conflict_replaces_body_and_hides_delete_button(qtbot):
+def test_conflict_routes_to_error_dialog(qtbot, monkeypatch):
+    """Soft-delete never conflicts; if a 409 ever surfaces, the dialog falls
+    back to the generic ErrorDialog instead of replacing the body."""
     client = MagicMock()
     client.delete_decision.side_effect = ConflictError(
-        errors=[
-            {"code": "conflict", "message": "referenced by SES-004, REF-12"}
-        ],
-        message="referenced by SES-004, REF-12",
+        errors=[{"code": "conflict", "message": "unexpected 409"}],
+        message="unexpected 409",
     )
+
+    captured: dict = {}
+
+    class _StubErrorDialog:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+        def exec(self):
+            return 0
+
+    monkeypatch.setattr(
+        "crmbuilder_v2.ui.dialogs.decision_delete.ErrorDialog",
+        _StubErrorDialog,
+    )
+
     dialog = DecisionDeleteDialog(client, "DEC-018", "Some title")
     qtbot.addWidget(dialog)
-    dialog.show()
-    qtbot.waitExposed(dialog)
-
     dialog._on_delete_clicked()
-    qtbot.waitUntil(
-        lambda: dialog._cancel_btn.text() == "Close",
-        timeout=2000,
-    )
+    qtbot.waitUntil(lambda: "title" in captured, timeout=2000)
 
-    assert dialog._delete_btn.isVisible() is False
-    assert "referenced" in dialog._body_label.text()
-    assert dialog._cancel_btn.text() == "Close"
+    assert captured["title"] == "Could not delete decision"
+    # Body label is unchanged — body-replacement path is gone.
+    assert "cannot be undone" in dialog._body_label.text()
+    # Delete button isn't hidden (the body-replacement path used .hide()),
+    # and is re-enabled for retry.
+    assert dialog._delete_btn.isHidden() is False
+    assert dialog._delete_btn.isEnabled() is True
+    # Cancel button label is unchanged (body-replacement path renamed it to "Close").
+    assert dialog._cancel_btn.text() == "Cancel"
 
 
 def test_not_found_treated_as_success(qtbot):

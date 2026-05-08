@@ -81,9 +81,32 @@ def test_list(client):
     assert len(rows) == 2
 
 
-def test_delete(client):
+def test_delete_is_soft(client):
+    """DELETE soft-deletes the row; GET still returns it with status='Deleted'."""
     _create(client, identifier="DEC-099")
     r = client.delete("/decisions/DEC-099")
     assert r.status_code == 200
+    assert r.json()["data"]["status"] == "Deleted"
     r = client.get("/decisions/DEC-099")
-    assert r.status_code == 404
+    assert r.status_code == 200
+    assert r.json()["data"]["status"] == "Deleted"
+
+
+def test_list_excludes_deleted(client):
+    _create(client, identifier="DEC-001")
+    _create(client, identifier="DEC-002")
+    client.delete("/decisions/DEC-002")
+    r = client.get("/decisions")
+    assert r.status_code == 200
+    identifiers = {row["identifier"] for row in r.json()["data"]}
+    assert identifiers == {"DEC-001"}
+
+
+def test_patch_supersedes_empty_string_clears_link(client):
+    _create(client, identifier="DEC-001")
+    _create(client, identifier="DEC-002", supersedes="DEC-001")
+    r = client.patch("/decisions/DEC-002", json={"supersedes": ""})
+    assert r.status_code == 200, r.json()
+    assert r.json()["data"]["supersedes_identifier"] is None
+    r = client.get("/decisions/DEC-002")
+    assert r.json()["data"]["supersedes_identifier"] is None

@@ -8,7 +8,9 @@ the point, per DEC-006.
 
 from __future__ import annotations
 
-DECISION_STATUSES: frozenset[str] = frozenset({"Active", "Superseded", "Withdrawn"})
+DECISION_STATUSES: frozenset[str] = frozenset(
+    {"Active", "Superseded", "Withdrawn", "Deleted"}
+)
 
 SESSION_STATUSES: frozenset[str] = frozenset({"Complete", "In Progress"})
 
