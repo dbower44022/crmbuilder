@@ -15,6 +15,7 @@ decisions records (see [Reference](#reference)).
 - [Operation](#operation)
 - [REST API surface](#rest-api-surface)
 - [MCP tools](#mcp-tools)
+- [User interface](#user-interface)
 - [Maintenance](#maintenance)
 - [Development](#development)
 - [Reference](#reference)
@@ -464,6 +465,47 @@ natural-language prompt. Full source: `crmbuilder-v2/src/crmbuilder_v2/mcp_serve
 
 Each tool wraps a single REST call. To add a tool, add a wrapper in
 `tools.py` and a corresponding REST endpoint if one doesn't already exist.
+
+---
+
+## User interface
+
+A standalone PySide6 desktop application for browsing and editing
+storage system content.
+
+```bash
+uv run crmbuilder-v2-ui
+```
+
+The UI auto-launches the storage API (`crmbuilder-v2-api`) if it isn't
+already running, and shuts it down on close. If the API is already
+running externally (e.g., for the MCP server), the UI uses the
+existing instance instead of spawning a duplicate.
+
+Features:
+
+- Sidebar navigation across all eight v2 entity types: Charter,
+  Status, Decisions, Sessions, Risks, Planning Items, Topics,
+  References.
+- Master/detail layout per entity. Detail panes render full record
+  content with cross-entity reference links (e.g., a decision's
+  "Decided in" link navigates to the corresponding session).
+- Live refresh via filesystem watcher on the snapshot directory:
+  writes from MCP or other consumers update visible panels within
+  ~500 ms; non-visible panels show a stale-data indicator. Content
+  hashing suppresses no-op rewrites from the storage exporter so
+  only entities with real changes signal staleness.
+- Full create / edit / delete operations for decisions, with
+  client-side format validation for the identifier (`DEC-NNN`) and
+  decision date (`MM-DD-YY`). Delete is soft-delete by status; the
+  row stays in the database with `status='Deleted'` so cross-entity
+  references to it continue to resolve. Other entities are read-only
+  in v0.1.
+- Help → About surfaces app version, API URL, database path, and
+  snapshot directory.
+
+Logs land at `~/.crmbuilder-v2/ui.log`. Full requirements:
+`PRDs/product/crmbuilder-v2/ui-PRD-v0.1.md`.
 
 ---
 

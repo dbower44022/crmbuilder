@@ -147,7 +147,9 @@ def test_validation_error_handled_inline(qtbot):
     )
     dialog = DecisionEditDialog(client, _record())
     qtbot.addWidget(dialog)
-    dialog._widgets.decision_date.setText("nope")
+    # Use a valid-format date so client-side validation passes and the
+    # mock's server-side ValidationError is the one surfaced.
+    dialog._widgets.decision_date.setText("05-09-26")
 
     dialog._on_save_clicked()
     qtbot.waitUntil(
@@ -156,3 +158,46 @@ def test_validation_error_handled_inline(qtbot):
     )
     assert dialog._widgets.error_labels["decision_date"].text() == "bad format"
     assert dialog.result() == 0
+
+
+def test_invalid_decision_date_format_blocks_submission(qtbot):
+    client = MagicMock()
+    dialog = DecisionEditDialog(client, _record())
+    qtbot.addWidget(dialog)
+    dialog._widgets.decision_date.setText("2026-05-08")  # ISO; wrong format
+
+    dialog._on_save_clicked()
+    # No API call.
+    assert client.update_decision.call_count == 0
+    err = dialog._widgets.error_labels["decision_date"].text()
+    assert "MM-DD-YY" in err
+    assert dialog.result() == 0
+
+
+def test_invalid_supersedes_format_blocks_submission(qtbot):
+    client = MagicMock()
+    dialog = DecisionEditDialog(client, _record())
+    qtbot.addWidget(dialog)
+    dialog._widgets.supersedes.setText("not-an-id")
+
+    dialog._on_save_clicked()
+    assert client.update_decision.call_count == 0
+    err = dialog._widgets.error_labels["supersedes"].text()
+    assert "DEC-NNN" in err
+    assert dialog.result() == 0
+
+
+def test_empty_supersedes_passes_format_check(qtbot):
+    """Empty string is the documented way to clear the FK."""
+    client = MagicMock()
+    client.update_decision.return_value = {"identifier": "DEC-007"}
+    record = _record()
+    record["supersedes_identifier"] = "DEC-005"
+    dialog = DecisionEditDialog(client, record)
+    qtbot.addWidget(dialog)
+    dialog._widgets.supersedes.setText("")
+
+    with qtbot.waitSignal(dialog.accepted, timeout=2000):
+        dialog._on_save_clicked()
+    body = client.update_decision.call_args[0][1]
+    assert body == {"supersedes": ""}

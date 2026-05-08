@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QModelIndex, Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QFormLayout,
@@ -24,6 +24,11 @@ from PySide6.QtWidgets import (
 )
 
 from crmbuilder_v2.ui.base.list_detail_panel import ColumnSpec, ListDetailPanel
+
+# Column index for the master-list "Parent Topic" column. Kept as a
+# constant because the click handler needs it; if list_columns()
+# changes order, update this too.
+_PARENT_TOPIC_COLUMN = 2
 
 _INDENT = "    "
 _ORPHAN_SUFFIX = " (orphan)"
@@ -74,6 +79,11 @@ def _separator() -> QFrame:
 
 class TopicsPanel(ListDetailPanel):
     """Topics — free-floating concepts with optional parent links."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Single-click on a non-empty Parent Topic cell navigates.
+        self._table.clicked.connect(self._on_cell_clicked)
 
     def entity_title(self) -> str:
         return "Topics"
@@ -190,6 +200,25 @@ class TopicsPanel(ListDetailPanel):
         return self._link_label(
             f'<a href="topic:{identifier}">{identifier}</a>'
         )
+
+    def _on_cell_clicked(self, index: QModelIndex) -> None:
+        """Navigate when the user clicks a non-empty Parent Topic cell.
+
+        Mirrors the ``ReferencesPanel`` cell-click pattern. Only the
+        Parent Topic column is navigable; other column clicks fall
+        through to the default selection behavior.
+        """
+        if not index.isValid():
+            return
+        if index.column() != _PARENT_TOPIC_COLUMN:
+            return
+        record = self._model.record_at(index.row())
+        if record is None:
+            return
+        parent_identifier = record.get("parent_topic_identifier") or ""
+        if not parent_identifier:
+            return
+        self.navigate_requested.emit("topic", parent_identifier)
 
     def _link_label(self, html: str) -> QLabel:
         label = QLabel()

@@ -13,6 +13,7 @@ out — only the eight known entity-snapshot filenames produce signals.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from pathlib import Path
 from typing import ClassVar
@@ -66,6 +67,7 @@ class RefreshService(QObject):
         self._snapshot_dir = Path(snapshot_dir)
         self._watcher: QFileSystemWatcher | None = None
         self._mtimes: dict[str, float] = {}
+        self._content_hashes: dict[str, str] = {}
         self._pending_emits: set[str] = set()
         self._debounce_timer = QTimer(self)
         self._debounce_timer.setSingleShot(True)
@@ -100,6 +102,7 @@ class RefreshService(QObject):
         watcher.directoryChanged.connect(self._on_directory_changed)
         self._watcher = watcher
         self._mtimes = self._snapshot_mtimes()
+        self._content_hashes = self._snapshot_hashes()
         _log.debug("RefreshService watching %s", path_str)
 
     def stop(self) -> None:
@@ -110,6 +113,7 @@ class RefreshService(QObject):
         """
         self._debounce_timer.stop()
         self._pending_emits.clear()
+        self._content_hashes.clear()
         if self._watcher is not None:
             try:
                 self._watcher.directoryChanged.disconnect(
@@ -131,10 +135,23 @@ class RefreshService(QObject):
         new_mtimes = self._snapshot_mtimes()
         for filename, mtime in new_mtimes.items():
             previous = self._mtimes.get(filename)
-            if previous is None or mtime != previous:
-                entity_type = _FILENAME_TO_ENTITY_TYPE.get(filename)
-                if entity_type is not None:
-                    self._pending_emits.add(entity_type)
+            if previous is not None and mtime == previous:
+                # Mtime unchanged — skip; storage system always rewrites.
+                continue
+            entity_type = _FILENAME_TO_ENTITY_TYPE.get(filename)
+            if entity_type is None:
+                continue
+            # Mtime advanced; check whether content actually changed.
+            # The storage system rewrites all eight snapshots on every
+            # commit, so seven of every eight events are no-op rewrites
+            # with byte-identical content. Hash-gate to suppress them.
+            new_hash = self._hash_file(self._snapshot_dir / filename)
+            old_hash = self._content_hashes.get(filename)
+            if new_hash and new_hash == old_hash:
+                continue
+            if new_hash:
+                self._content_hashes[filename] = new_hash
+            self._pending_emits.add(entity_type)
         self._mtimes = new_mtimes
         if self._pending_emits:
             self._debounce_timer.start()
@@ -166,3 +183,27 @@ class RefreshService(QObject):
             except OSError:
                 continue
         return result
+
+    def _snapshot_hashes(self) -> dict[str, str]:
+        """Return the content hash for each known entity-snapshot file."""
+        result: dict[str, str] = {}
+        for filename in _FILENAME_TO_ENTITY_TYPE:
+            path = self._snapshot_dir / filename
+            if not path.exists():
+                continue
+            digest = self._hash_file(path)
+            if digest:
+                result[filename] = digest
+        return result
+
+    @staticmethod
+    def _hash_file(path: Path) -> str:
+        """SHA-256 hex digest of the file's bytes; '' on error.
+
+        No security context — this is a cheap content-equality check
+        used to suppress no-op rewrites from the snapshot exporter.
+        """
+        try:
+            return hashlib.sha256(path.read_bytes()).hexdigest()
+        except OSError:
+            return ""

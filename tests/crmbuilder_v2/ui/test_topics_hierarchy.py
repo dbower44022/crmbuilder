@@ -86,3 +86,91 @@ def test_deep_hierarchy_indents_proportional_to_depth(qapp, qtbot):
     assert out[0]["_display_name"] == "Level zero"
     assert out[1]["_display_name"] == "    Level one"
     assert out[2]["_display_name"] == "        Level two"
+
+
+def test_click_on_parent_topic_cell_with_value_navigates(qapp, qtbot):
+    """Single-click on a non-empty Parent Topic cell emits navigate_requested."""
+    from PySide6.QtCore import QModelIndex
+
+    class _Stub:
+        def list_topics(self):
+            return [
+                {"identifier": "TOP-1", "name": "Root", "parent_topic_identifier": None, "description": ""},
+                {"identifier": "TOP-2", "name": "Child", "parent_topic_identifier": "TOP-1", "description": ""},
+            ]
+
+    panel = TopicsPanel(client=_Stub())
+    qtbot.addWidget(panel)
+    panel.refresh()
+    qtbot.waitUntil(lambda: panel._model.rowCount(QModelIndex()) >= 2, timeout=2000)
+
+    captured = []
+    panel.navigate_requested.connect(lambda et, ident: captured.append((et, ident)))
+
+    # Find the row whose identifier == 'TOP-2', click its Parent Topic column (index 2).
+    target_row = None
+    for r in range(panel._model.rowCount(QModelIndex())):
+        rec = panel._model.record_at(r)
+        if rec and rec.get("identifier") == "TOP-2":
+            target_row = r
+            break
+    assert target_row is not None
+
+    idx = panel._model.index(target_row, 2)
+    panel._table.clicked.emit(idx)
+    assert captured == [("topic", "TOP-1")]
+
+
+def test_click_on_parent_topic_cell_with_empty_value_does_not_navigate(qapp, qtbot):
+    from PySide6.QtCore import QModelIndex
+
+    class _Stub:
+        def list_topics(self):
+            return [
+                {"identifier": "TOP-1", "name": "Root", "parent_topic_identifier": None, "description": ""},
+            ]
+
+    panel = TopicsPanel(client=_Stub())
+    qtbot.addWidget(panel)
+    panel.refresh()
+    qtbot.waitUntil(lambda: panel._model.rowCount(QModelIndex()) >= 1, timeout=2000)
+
+    captured = []
+    panel.navigate_requested.connect(lambda et, ident: captured.append((et, ident)))
+
+    idx = panel._model.index(0, 2)
+    panel._table.clicked.emit(idx)
+    assert captured == []
+
+
+def test_click_on_other_columns_does_not_navigate(qapp, qtbot):
+    from PySide6.QtCore import QModelIndex
+
+    class _Stub:
+        def list_topics(self):
+            return [
+                {"identifier": "TOP-1", "name": "Root", "parent_topic_identifier": None, "description": ""},
+                {"identifier": "TOP-2", "name": "Child", "parent_topic_identifier": "TOP-1", "description": ""},
+            ]
+
+    panel = TopicsPanel(client=_Stub())
+    qtbot.addWidget(panel)
+    panel.refresh()
+    qtbot.waitUntil(lambda: panel._model.rowCount(QModelIndex()) >= 2, timeout=2000)
+
+    captured = []
+    panel.navigate_requested.connect(lambda et, ident: captured.append((et, ident)))
+
+    target_row = None
+    for r in range(panel._model.rowCount(QModelIndex())):
+        rec = panel._model.record_at(r)
+        if rec and rec.get("identifier") == "TOP-2":
+            target_row = r
+            break
+    assert target_row is not None
+
+    # Click Identifier column (0).
+    panel._table.clicked.emit(panel._model.index(target_row, 0))
+    # Click Name column (1).
+    panel._table.clicked.emit(panel._model.index(target_row, 1))
+    assert captured == []

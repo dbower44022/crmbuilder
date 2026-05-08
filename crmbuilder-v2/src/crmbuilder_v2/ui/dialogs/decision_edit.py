@@ -20,7 +20,11 @@ from PySide6.QtWidgets import (
 
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.dialogs._decision_form import (
+    DECISION_DATE_HINT,
+    DECISION_DATE_RE,
     LONG_TEXT_FIELDS,
+    SUPERSEDES_HINT,
+    SUPERSEDES_RE,
     build_decision_form,
 )
 from crmbuilder_v2.ui.dialogs.error import ErrorDialog
@@ -123,6 +127,8 @@ class DecisionEditDialog(QDialog):
         self._widgets.clear_all_errors()
         if not self._validate_required():
             return
+        if not self._validate_formats():
+            return
 
         diff = self._compute_diff()
         if not diff:
@@ -143,6 +149,24 @@ class DecisionEditDialog(QDialog):
             value = self._widgets.value_for(field).strip()
             if not value:
                 self._widgets.show_error(field, "This field is required.")
+                ok = False
+        return ok
+
+    def _validate_formats(self) -> bool:
+        """Format checks that fire after required-field checks pass.
+
+        The identifier is not validated here — it is read-only on the
+        edit dialog.
+        """
+        ok = True
+        date_value = self._widgets.value_for("decision_date").strip()
+        if date_value and not DECISION_DATE_RE.match(date_value):
+            self._widgets.show_error("decision_date", DECISION_DATE_HINT)
+            ok = False
+        for field in ("supersedes", "superseded_by"):
+            value = self._widgets.value_for(field).strip()
+            if value and not SUPERSEDES_RE.match(value):
+                self._widgets.show_error(field, SUPERSEDES_HINT)
                 ok = False
         return ok
 

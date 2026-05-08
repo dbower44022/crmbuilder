@@ -187,3 +187,67 @@ def test_server_error_opens_generic_dialog(qtbot, monkeypatch):
     # Dialog stays open (not accepted, not rejected).
     assert dialog.result() == 0
     assert dialog._save_btn.isEnabled() is True
+
+
+def test_invalid_identifier_format_blocks_submission(qtbot):
+    client = _stub_client()
+    dialog = DecisionCreateDialog(client)
+    qtbot.addWidget(dialog)
+
+    # Set required fields with bad identifier format.
+    dialog._widgets.identifier.setText("abc")
+    dialog._widgets.title.setText("Some title")
+    dialog._widgets.decision_date.setText("05-08-26")
+
+    dialog._on_save_clicked()
+    # No API call.
+    assert client.create_decision.call_count == 0
+    err = dialog._widgets.error_labels["identifier"].text()
+    assert "DEC-NNN" in err
+    assert dialog.result() == 0
+
+
+def test_invalid_decision_date_format_blocks_submission(qtbot):
+    client = _stub_client()
+    dialog = DecisionCreateDialog(client)
+    qtbot.addWidget(dialog)
+
+    dialog._widgets.identifier.setText("DEC-100")
+    dialog._widgets.title.setText("t")
+    dialog._widgets.decision_date.setText("2026-05-08")  # ISO; wrong format
+
+    dialog._on_save_clicked()
+    assert client.create_decision.call_count == 0
+    err = dialog._widgets.error_labels["decision_date"].text()
+    assert "MM-DD-YY" in err
+
+
+def test_invalid_supersedes_format_blocks_submission(qtbot):
+    client = _stub_client()
+    dialog = DecisionCreateDialog(client)
+    qtbot.addWidget(dialog)
+
+    dialog._widgets.identifier.setText("DEC-100")
+    dialog._widgets.title.setText("t")
+    dialog._widgets.decision_date.setText("05-08-26")
+    dialog._widgets.supersedes.setText("abc")
+
+    dialog._on_save_clicked()
+    assert client.create_decision.call_count == 0
+    err = dialog._widgets.error_labels["supersedes"].text()
+    assert "DEC-NNN" in err
+
+
+def test_valid_formats_pass_through_to_api(qtbot):
+    client = _stub_client()
+    client.create_decision.return_value = {"identifier": "DEC-099"}
+    dialog = DecisionCreateDialog(client)
+    qtbot.addWidget(dialog)
+
+    dialog._widgets.identifier.setText("DEC-099")
+    dialog._widgets.title.setText("t")
+    dialog._widgets.decision_date.setText("05-09-26")
+
+    with qtbot.waitSignal(dialog.accepted, timeout=2000):
+        dialog._on_save_clicked()
+    assert client.create_decision.call_count == 1

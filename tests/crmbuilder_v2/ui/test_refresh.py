@@ -120,6 +120,100 @@ def test_watch_failure_on_nonexistent_directory_emits_watch_failed(
     service.stop()
 
 
+def test_no_op_rewrite_is_suppressed(qapp, qtbot, tmp_path):
+    """Re-writing the same content (mtime advances, bytes unchanged) does
+    not produce a second emission.
+
+    The storage system rewrites all eight snapshots on every commit. Seven
+    of those are byte-identical no-op rewrites; the watcher must hash-gate
+    them out to avoid false-positive stale-dot signals."""
+    target = tmp_path / "decisions.json"
+    target.write_text('{"data": []}', encoding="utf-8")
+
+    service = RefreshService(tmp_path)
+    service.start()
+
+    emissions: list[str] = []
+    service.data_changed.connect(lambda et: emissions.append(et))
+
+    # First write: real change (different from baseline).
+    _write(target, '{"data": [1]}')
+    qtbot.wait(int(RefreshService.DEBOUNCE_MS * 2 + 200))
+    assert emissions == ["decision"], (
+        f"first real change should fire once, got {emissions!r}"
+    )
+    emissions.clear()
+
+    # Second write: same bytes; new mtime. Should be suppressed.
+    _write(target, '{"data": [1]}')
+    qtbot.wait(int(RefreshService.DEBOUNCE_MS * 2 + 200))
+    assert emissions == [], (
+        f"no-op rewrite (byte-identical) should be suppressed, got {emissions!r}"
+    )
+    service.stop()
+
+
+def test_real_change_after_no_op_still_fires(qapp, qtbot, tmp_path):
+    target = tmp_path / "decisions.json"
+    target.write_text('{"data": []}', encoding="utf-8")
+
+    service = RefreshService(tmp_path)
+    service.start()
+
+    emissions: list[str] = []
+    service.data_changed.connect(lambda et: emissions.append(et))
+
+    # Two no-op rewrites (after baseline) — both suppressed.
+    _write(target, '{"data": []}')
+    qtbot.wait(int(RefreshService.DEBOUNCE_MS * 2 + 200))
+    assert emissions == []
+
+    # Real change — fires.
+    _write(target, '{"data": ["x"]}')
+    qtbot.wait(int(RefreshService.DEBOUNCE_MS * 2 + 200))
+    assert emissions == ["decision"]
+    service.stop()
+
+
+def test_burst_with_one_real_change_emits_only_for_that_entity(
+    qapp, qtbot, tmp_path
+):
+    """Simulates the storage exporter burst: all eight snapshots rewritten,
+    but only one has new content. Exactly one emission expected."""
+    # Seed all eight files with stable baseline content.
+    filenames = [
+        "charter.json",
+        "status.json",
+        "decisions.json",
+        "sessions.json",
+        "risks.json",
+        "planning_items.json",
+        "topics.json",
+        "references.json",
+    ]
+    for name in filenames:
+        (tmp_path / name).write_text('{"data": []}', encoding="utf-8")
+
+    service = RefreshService(tmp_path)
+    service.start()
+
+    emissions: list[str] = []
+    service.data_changed.connect(lambda et: emissions.append(et))
+
+    # Burst: all eight files rewritten. Only decisions.json gets new content.
+    for name in filenames:
+        if name == "decisions.json":
+            _write(tmp_path / name, '{"data": ["new"]}')
+        else:
+            _write(tmp_path / name, '{"data": []}')
+
+    qtbot.wait(int(RefreshService.DEBOUNCE_MS * 2 + 400))
+    assert emissions == ["decision"], (
+        f"only the entity with real changes should fire, got {emissions!r}"
+    )
+    service.stop()
+
+
 def test_stop_prevents_further_emissions(qapp, qtbot, tmp_path):
     service = RefreshService(tmp_path)
     service.start()

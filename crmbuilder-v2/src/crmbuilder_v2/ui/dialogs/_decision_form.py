@@ -11,6 +11,7 @@ read values, set inline errors, and clear errors on edit.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from PySide6.QtWidgets import (
@@ -26,8 +27,21 @@ from PySide6.QtWidgets import (
 from crmbuilder_v2.access.vocab import DECISION_STATUSES
 
 _LONG_TEXT_MIN_HEIGHT = 80
-_INLINE_ERROR_STYLE = "color: #c1272d;"
+_INLINE_ERROR_STYLE = "color: #B22222;"
 _DEFAULT_STATUS = "Active"
+
+# Client-side format validators. These run before the API call to catch
+# common typos. They are permissive (do not validate calendar correctness
+# of the date) — server-side validation remains the authoritative gate.
+IDENTIFIER_RE = re.compile(r"^DEC-\d{3,}$")
+DECISION_DATE_RE = re.compile(r"^\d{2}-\d{2}-\d{2}$")
+SUPERSEDES_RE = IDENTIFIER_RE  # supersedes / superseded_by share the format
+
+IDENTIFIER_HINT = "Identifier must be in the format DEC-NNN (e.g., DEC-018)."
+DECISION_DATE_HINT = "Decision Date must be in the format MM-DD-YY (e.g., 05-09-26)."
+SUPERSEDES_HINT = (
+    "Must be in the format DEC-NNN (e.g., DEC-005), or empty to clear."
+)
 
 # Order of fields per PRD §4.7. Pairs of (api_key, label_text).
 LONG_TEXT_FIELDS: tuple[tuple[str, str], ...] = (

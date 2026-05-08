@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
 )
 
 from crmbuilder_v2.config import get_settings
+from crmbuilder_v2.ui.about_dialog import AboutDialog
 from crmbuilder_v2.ui.base.list_detail_panel import ListDetailPanel
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.crash_banner import CrashBanner
@@ -267,5 +268,9 @@ class MainWindow(QMainWindow):
 
         help_menu = menu_bar.addMenu("&Help")
         about_action = QAction("&About", self)
-        about_action.setEnabled(False)
+        about_action.triggered.connect(self._on_about_triggered)
         help_menu.addAction(about_action)
+        self._about_action = about_action
+
+    def _on_about_triggered(self) -> None:
+        AboutDialog(parent=self).exec()
