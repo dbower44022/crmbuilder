@@ -275,17 +275,17 @@
     "alternatives_considered": "- New tab in the existing v1 application's main window. Rejected — entangles release cycles and contradicts the v2 separation principle from DEC-003. Reusing window chrome is a small benefit; the cost in coupling is larger.\n- Both standalone and embedded, with shared widgets and two integration points. Rejected — premature; pays the cost of two integrations before either is proven valuable. A standalone app whose widgets happen to be reusable later is a strictly better starting position.",
     "consequences": "A new console script `crmbuilder-v2-ui` is registered alongside `crmbuilder-v2-api` and `crmbuilder-v2-mcp`. UI code lives at `crmbuilder-v2/src/crmbuilder_v2/ui/`, in the v2 package, separate from the v1 codebase. The v1 codebase is unaffected by UI work. If a v1 tab is wanted later, it can be added as a thin wrapper that hosts a subset of the v2 UI's widgets — the standalone app does not preclude that path.",
     "context": "The v2 storage system needs a way for a local user to view and edit governance content outside Claude sessions. Today the only options are curl against the REST API or direct inspection of the JSON snapshots — neither is comfortable for browsing or editing. A user-interface workstream is the natural answer. The existing CRMBuilder v1 PySide6 application already has a tabbed structure (Configure, Verify, Audit, Deployment) and could plausibly host the v2 UI as an additional tab.",
-    "created_at": "2026-05-07T21:23:28.769103",
+    "created_at": "2026-05-08T04:44:34.594162",
     "decision": "The v2 UI is a separate PySide6 desktop application installed as its own console script (`crmbuilder-v2-ui`), with its own main window, separate from the existing v1 application. The v1 application is not modified.",
     "decision_date": "05-07-26",
-    "id": 18,
+    "id": 25,
     "identifier": "DEC-018",
     "rationale": "V1 and v2 have distinct purposes, distinct release cycles, and per DEC-003 are tracked as separate workstreams. Embedding the v2 UI as a tab in the v1 application entangles those release cycles — every v1 release would have to consider the v2 surface, and every v2 surface change would have to coordinate with v1 testing. The v2 separation principle established in DEC-003 is most cleanly preserved by keeping the v2 UI in its own application.",
     "status": "Active",
     "superseded_by_id": null,
     "supersedes_id": null,
     "title": "UI is a standalone application, not embedded in the v1 PySide6 app",
-    "updated_at": "2026-05-07T21:23:28.769106"
+    "updated_at": "2026-05-08T04:44:34.594165"
   },
   {
     "alternatives_considered": "- Direct access-layer imports. Rejected — skips validation of the REST surface; couples the UI to access-layer Python signatures rather than the durable HTTP contract; complicates any future remote or multi-host operation; loses the natural symmetry with the MCP server, which is itself a thin client of the REST API.\n- Hybrid (a `StorageClient` protocol with both HTTP and access-layer implementations behind it, selectable by config). Rejected — over-engineered for v0.1; the abstraction adds maintenance burden to validate a tradeoff that is not needed at this stage. If a direct-access path becomes worth having later, it can be added as a second implementation behind the existing client interface without rework.",
