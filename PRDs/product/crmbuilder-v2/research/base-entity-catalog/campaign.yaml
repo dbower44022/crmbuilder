@@ -1,0 +1,462 @@
+# =============================================================================
+# Catalog metadata
+# =============================================================================
+catalog_id: campaign
+catalog_version: "0.1"
+last_updated: "05-08-26 06:12"
+tier: 3
+entry_kind: universal
+
+# =============================================================================
+# Entity-level definition
+# =============================================================================
+name: Campaign
+display_name: Campaign
+purpose: >
+  A coordinated outbound marketing or fundraising effort tracked as a
+  unit. Has a name, type, dates, target audience, budget, and metrics.
+  Anchors marketing-attribution reporting (which campaigns drove which
+  opportunities or donations).
+
+business_context: >
+  Campaign records hold the structure of any organized outbound effort:
+  a tradeshow, an email blast, a direct-mail solicitation, a webinar
+  series, a multi-channel product launch, a year-end appeal. Each
+  campaign has a target audience (the people it goes out to), a
+  channel mix (the means of reach), a budget (the cost), and an
+  outcome (the conversions, opportunities, or donations attributed to
+  it). The most-watched metric on a campaign is ROI — revenue / donations
+  divided by cost. Campaign hierarchies (parent campaign + child
+  campaigns) are common: a "Year-End Appeal 2025" parent campaign with
+  child campaigns for "Email Blast 1," "Email Blast 2," "Direct Mail
+  Drop," "Phone-a-thon," each tracking sub-channel performance against
+  the same overall fundraising goal. In nonprofit deployments,
+  campaigns drive appeals tracking, grant-cycle tracking, and event
+  fundraising. In B2B sales, campaigns drive lead-generation attribution
+  and pipeline-source analysis. When interviewing clients, surface
+  "Campaign" by asking how they organize their outbound efforts and
+  whether they need to attribute revenue or donations back to specific
+  campaigns: yes if they run campaigns regularly and care about source
+  attribution; less critical if all outreach is one-off relationship-
+  driven activity. Campaign-Member junction records (separate entry)
+  capture which contacts are in each campaign with what status.
+
+data_model_role: anchor
+typically_required: false
+common_synonyms:
+  - Appeal
+  - Campaign Initiative
+  - Marketing Campaign
+  - Fundraising Campaign
+
+# =============================================================================
+# Cross-system equivalents
+# =============================================================================
+systems:
+  - system: salesforce
+    name: Campaign
+    api_name: Campaign
+    is_standard: true
+    notes: >
+      Standard object with rich attribute set: Name, Type, Status,
+      StartDate, EndDate, BudgetedCost, ActualCost, ExpectedRevenue,
+      ExpectedResponse (rate), NumberOfLeads, NumberOfConverted Leads,
+      NumberOfContacts, NumberOfResponses, NumberOfOpportunities,
+      NumberSentInCampaign. Many of these are auto-calculated rollups.
+      Campaign hierarchy via ParentId.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_campaign.htm
+
+  - system: hubspot
+    name: Marketing Campaign
+    api_name: marketing_campaigns
+    is_standard: true
+    notes: >
+      HubSpot Marketing Campaigns are managed via the Marketing Hub.
+      Campaigns contain assets (emails, ads, social posts, landing pages)
+      and track aggregate metrics (sessions, contacts, deals influenced,
+      revenue). Distinct from CRM-level Campaigns; available in
+      Marketing Hub Professional+.
+    docs_url: https://developers.hubspot.com/docs/api-reference/marketing-marketing-events-v3
+
+  - system: attio
+    name: "(no native Campaign; use lists or custom object)"
+    api_name: not_applicable
+    is_standard: false
+    notes: >
+      Attio has no first-class Campaign entity. Outreach efforts
+      typically tracked via Sequences (Attio's built-in outreach feature)
+      or via custom objects with relationships to People.
+    docs_url: https://attio.com/platform/sequences
+
+  - system: espocrm
+    name: Campaign
+    api_name: Campaign
+    is_standard: true
+    notes: >
+      Standard Marketing-module entity. Includes name, status (Planning /
+      Active / Inactive / Completed), type (Email / Web / Mail /
+      Television / Print / Other), startDate, endDate, budget,
+      expectedResponse, expectedRevenue, target lists, sent emails count.
+    docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Campaign.json
+
+  - system: civicrm
+    name: Campaign
+    api_name: Campaign
+    is_standard: true
+    notes: >
+      First-class entity in CiviCampaign component. Includes title, name,
+      campaign_type, status, start_date, end_date, goal_revenue, parent.
+      Used to coordinate Surveys, Petitions, Activities, Memberships,
+      Contributions under one campaign umbrella.
+    docs_url: https://docs.civicrm.org/user/en/latest/campaign/what-is-civicampaign/
+
+  - system: salesforce_npsp
+    name: Campaign
+    api_name: Campaign
+    is_standard: true
+    notes: >
+      Same as Salesforce, used heavily in nonprofit deployments for
+      appeals tracking. NPSP commonly leverages Campaign hierarchies
+      (annual fund campaign as parent; specific appeals as children) and
+      attaches Donations to Campaigns to drive ROI / cost-per-dollar
+      reports.
+    docs_url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-campaign-management
+
+  - system: bloomerang
+    name: Campaign
+    api_name: Campaign
+    is_standard: true
+    notes: >
+      First-class entity. Includes name, start/end dates, goal amount,
+      raised amount (auto-calculated). Bloomerang uses Campaign +
+      Fund + Appeal triple-classification on Transactions: Campaign is
+      the highest-level grouping (e.g., "2025 Programs"), Fund is the
+      bucket (e.g., "Education Fund"), Appeal is the specific solicitation
+      (e.g., "Spring Email Appeal").
+    docs_url: https://bloomerang.com/api/rest-api-v1/
+
+# =============================================================================
+# Attributes
+# =============================================================================
+attributes:
+  - name: name
+    display_name: Campaign Name
+    type: string
+    required: true
+    max_length: 255
+    description: >
+      Display name of the campaign.
+    usage: >
+      Anchors all reporting and references. Naming conventions matter
+      — consistent patterns ("FY26 Q2 Email Blast - Major Donors")
+      enable analytics aggregation.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: type
+    display_name: Campaign Type
+    type: enum
+    required: false
+    enum_values:
+      - Email
+      - Direct Mail
+      - Tradeshow
+      - Webinar
+      - Telemarketing
+      - Online Ad
+      - Social Media
+      - Event
+      - Other
+    description: >
+      Channel classification of the campaign.
+    usage: >
+      Drives channel-mix reporting (which channels produce the best
+      ROI) and template selection.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: custom
+
+  - name: status
+    display_name: Status
+    type: enum
+    required: true
+    enum_values:
+      - Planning
+      - Active
+      - Completed
+      - Aborted
+    description: >
+      Lifecycle state of the campaign.
+    usage: >
+      Drives "active campaigns" filtering for ongoing-performance
+      dashboards. Salesforce uses Planned, In Progress, Completed,
+      Aborted; EspoCRM uses Planning, Active, Inactive, Completed.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: startDate
+    display_name: Start Date
+    type: date
+    required: false
+    description: >
+      Campaign launch date.
+    usage: >
+      Drives campaign-period-based reporting (revenue attributed during
+      campaign window). Anchors response-rate calculations.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: endDate
+    display_name: End Date
+    type: date
+    required: false
+    description: >
+      Campaign close date.
+    usage: >
+      Defines the campaign attribution window. Conversions after end
+      date may or may not attribute back depending on attribution rules.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: budgetedCost
+    display_name: Budgeted Cost
+    type: currency
+    required: false
+    description: >
+      Planned cost of running the campaign.
+    usage: >
+      Used in pre-campaign ROI projection (expectedRevenue / budgetedCost).
+      Drives budget-tracking dashboards.
+    presence:
+      salesforce: standard
+      hubspot: custom
+      attio: absent
+      espocrm: standard
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: custom
+
+  - name: actualCost
+    display_name: Actual Cost
+    type: currency
+    required: false
+    description: >
+      Actual cost incurred running the campaign.
+    usage: >
+      Captured during/after execution. Drives true ROI reporting (actual
+      revenue / actual cost). Often differs from budgeted cost.
+    presence:
+      salesforce: standard
+      hubspot: custom
+      attio: absent
+      espocrm: custom
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: custom
+
+  - name: goalAmount
+    display_name: Goal Amount
+    type: currency
+    required: false
+    description: >
+      Target revenue or fundraising amount for the campaign.
+    usage: >
+      Drives goal-progress visualizations ("$X raised of $Y goal" bars).
+      Heavily used in nonprofit deployments. Bloomerang and CiviCRM both
+      ship this field standard for fundraising-campaign tracking.
+    presence:
+      salesforce: custom
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: raisedAmount
+    display_name: Raised Amount
+    type: currency
+    required: false
+    description: >
+      Total revenue or donations received attributed to the campaign.
+    usage: >
+      Auto-calculated rollup from related Opportunities or Contributions/
+      Transactions. Drives goal-progress reports and ROI analysis.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: parentCampaign
+    display_name: Parent Campaign
+    type: reference
+    required: false
+    reference_target: campaign
+    description: >
+      Self-referential lookup to support campaign hierarchies.
+    usage: >
+      Enables grouping (e.g., "Annual Fund 2026" parent with
+      "Spring Email," "Fall Direct Mail," "Year-End Match" as children).
+      Drives roll-up reporting at the parent level.
+    presence:
+      salesforce: standard
+      hubspot: custom
+      attio: absent
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: custom
+
+  - name: description
+    display_name: Description
+    type: text
+    required: false
+    description: >
+      Free-form description of the campaign goals, audience, and approach.
+    usage: >
+      Internal documentation field. Captures campaign briefs and post-
+      mortems for institutional knowledge.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: assignedUser
+    display_name: Owner
+    type: reference
+    required: false
+    reference_target: user
+    description: >
+      The user responsible for the campaign.
+    usage: >
+      Marketing-ops attribution. Drives "my campaigns" filtering and
+      performance reviews.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: createdAt
+    display_name: Created Date
+    type: datetime
+    required: true
+    description: >
+      System-generated timestamp.
+    usage: >
+      Audit field.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+# =============================================================================
+# Relationships to other entities
+# =============================================================================
+relationships:
+  - target: contact
+    cardinality: many-to-many
+    role: peer
+    description: >
+      A campaign targets many contacts; a contact can be in many campaigns.
+      Modeled via Campaign Member (separate entity).
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - target: opportunity
+    cardinality: one-to-many
+    role: parent
+    description: >
+      A campaign drives many opportunities (in B2B) or donations (in
+      nonprofit) attributed to it.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - target: campaign
+    cardinality: many-to-one
+    role: child
+    description: >
+      Campaign hierarchy via parent-campaign self-reference.
+    presence:
+      salesforce: standard
+      hubspot: custom
+      attio: absent
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: custom
+
+# =============================================================================
+# Sources
+# =============================================================================
+sources:
+  - title: "Salesforce Object Reference: Campaign"
+    url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_campaign.htm
+  - title: "HubSpot Marketing Events / Campaigns API"
+    url: https://developers.hubspot.com/docs/api-reference/marketing-marketing-events-v3
+  - title: "Attio Sequences (closest analog to campaign)"
+    url: https://attio.com/platform/sequences
+  - title: "EspoCRM: Campaign entity definition"
+    url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Campaign.json
+  - title: "CiviCRM: CiviCampaign component"
+    url: https://docs.civicrm.org/user/en/latest/campaign/what-is-civicampaign/
+  - title: "Salesforce NPSP: Nonprofit Campaign Management"
+    url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-campaign-management
+  - title: "Bloomerang REST API: Campaign endpoint"
+    url: https://bloomerang.com/api/rest-api-v1/

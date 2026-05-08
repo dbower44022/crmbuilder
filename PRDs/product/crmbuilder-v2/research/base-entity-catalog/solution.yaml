@@ -1,0 +1,392 @@
+# =============================================================================
+# Catalog metadata
+# =============================================================================
+catalog_id: solution
+catalog_version: "0.1"
+last_updated: "05-08-26 06:05"
+tier: 3
+entry_kind: universal
+
+# =============================================================================
+# Entity-level definition
+# =============================================================================
+name: Solution
+display_name: Solution
+purpose: >
+  A reusable knowledge article describing how to resolve a particular kind
+  of customer issue. Originally a Salesforce-specific entity (now largely
+  superseded by Knowledge); broadly maps to "Knowledge Article" or
+  "Knowledge Base Entry" in modern terminology.
+
+business_context: >
+  Solution / Knowledge Article records hold the institutional memory of
+  customer-service organizations: the documented answers to "how do I do
+  X" and "what do I do when Y happens." The original Salesforce Solution
+  object was simple — title, content, status, categories — and got
+  superseded by a more capable Knowledge Article framework starting around
+  2014. Most modern Salesforce deployments use Knowledge rather than
+  Solutions, but the Solution object still exists for legacy compatibility.
+  Knowledge bases serve two audiences: internal agents (who reference
+  articles to answer cases faster) and end customers (who self-serve via
+  customer portals to deflect cases entirely). The case-deflection ROI is
+  significant — published knowledge bases routinely deflect 20-40% of
+  inbound case volume in mature deployments. When interviewing clients,
+  surface "Solution / Knowledge" by asking whether they need to capture
+  reusable answers to repeated customer questions, whether those answers
+  should be searchable by agents, and whether they should be public-facing
+  for customer self-service. Less universally available than Cases —
+  Knowledge is a separately-licensed feature in many systems. Across the
+  seven surveyed systems: Salesforce ships Solution (legacy) and Knowledge
+  (modern); HubSpot has Knowledge Base (separate from CRM data model);
+  EspoCRM has Knowledge Base; CiviCRM has no native concept; Attio has no
+  native concept; NPSP follows Salesforce; Bloomerang has no concept.
+
+data_model_role: document
+typically_required: false
+common_synonyms:
+  - Knowledge Article
+  - FAQ Entry
+  - Help Article
+  - KB Article
+  - Knowledge Base Entry
+
+# =============================================================================
+# Cross-system equivalents
+# =============================================================================
+systems:
+  - system: salesforce
+    name: "Solution (legacy) / KnowledgeArticle (modern)"
+    api_name: "Solution, KnowledgeArticleVersion"
+    is_standard: true
+    notes: >
+      Solution is the original (legacy) knowledge object — simple
+      Title/Status/Description model. Knowledge is the modern replacement,
+      built on a richer data model (KnowledgeArticleVersion + Article Type
+      structures) with versioning, multi-language support, data
+      categories, and Communication Channel mappings. New deployments
+      should use Knowledge; Solution exists for backward compatibility.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_solution.htm
+
+  - system: hubspot
+    name: Knowledge Base Article
+    api_name: "knowledge base (separate product, not in main CRM API)"
+    is_standard: true
+    notes: >
+      HubSpot Knowledge Base is a separately-managed feature in Service
+      Hub. Articles have title, body (rich text), category, search
+      keywords, and visibility controls. Not exposed as a first-class
+      CRM object via the main CRM API.
+    docs_url: https://knowledge.hubspot.com/knowledge-base/create-and-manage-knowledge-base-articles
+
+  - system: attio
+    name: "(no native Knowledge concept)"
+    api_name: not_applicable
+    is_standard: false
+    notes: >
+      Attio has no native knowledge-base entity. Customers needing
+      knowledge management typically integrate with external tools
+      (Notion, Confluence, Slab) rather than building inside Attio.
+    docs_url: https://attio.com/help
+
+  - system: espocrm
+    name: Knowledge Base Article
+    api_name: KnowledgeBaseArticle
+    is_standard: true
+    notes: >
+      Standard entity. Includes name, body (rich text), status (Draft /
+      In Review / Published / Archived), language, attachments,
+      categories. Articles can be linked to Cases.
+    docs_url: https://docs.espocrm.com/user-guide/knowledge-base/
+
+  - system: civicrm
+    name: "(no native Knowledge concept)"
+    api_name: not_applicable
+    is_standard: false
+    notes: >
+      CiviCRM has no native knowledge-base entity. Knowledge is typically
+      managed in the host CMS (Drupal, Joomla, WordPress) where CiviCRM
+      runs.
+    docs_url: https://docs.civicrm.org/
+
+  - system: salesforce_npsp
+    name: "Solution (legacy) / KnowledgeArticle (modern)"
+    api_name: "Solution, KnowledgeArticleVersion"
+    is_standard: true
+    notes: >
+      Same as Salesforce. Rare in nonprofit deployments since most
+      nonprofits don't have customer-service-style knowledge needs at the
+      volume that justifies Knowledge.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_solution.htm
+
+  - system: bloomerang
+    name: "(no Knowledge concept)"
+    api_name: not_applicable
+    is_standard: false
+    notes: >
+      Bloomerang has no native knowledge-base entity.
+    docs_url: https://bloomerang.com/api/rest-api-v1/
+
+# =============================================================================
+# Attributes
+# =============================================================================
+attributes:
+  - name: title
+    display_name: Title
+    type: string
+    required: true
+    max_length: 255
+    description: >
+      Headline of the article (the question or topic being addressed).
+    usage: >
+      Drives search relevance and self-service portal navigation. Should
+      be question-formatted ("How do I reset my password?") for best
+      search performance.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: body
+    display_name: Body / Content
+    type: richtext
+    required: true
+    description: >
+      Article content (the answer or explanation).
+    usage: >
+      The substantive content. Modern systems support rich text, images,
+      embedded video, and code blocks. Legacy Salesforce Solutions used
+      plain text only.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: status
+    display_name: Status
+    type: enum
+    required: true
+    enum_values:
+      - Draft
+      - In Review
+      - Published
+      - Archived
+    description: >
+      Publication status of the article.
+    usage: >
+      Drives visibility — only Published articles appear in customer-
+      facing portals and agent search results. Draft and In Review states
+      gate authoring quality.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: language
+    display_name: Language
+    type: enum
+    required: false
+    description: >
+      Language code for the article content (e.g., en_US, fr_FR).
+    usage: >
+      Drives multi-language knowledge bases — same article translated
+      across multiple language versions. Modern Salesforce Knowledge is
+      built around language variants of the same article.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: category
+    display_name: Category
+    type: reference
+    required: false
+    reference_target: tag
+    description: >
+      Category or topic the article belongs to.
+    usage: >
+      Drives navigation in self-service portals (browse-by-category) and
+      filtering in agent search. Salesforce uses Data Categories
+      (hierarchical); HubSpot uses Topic; EspoCRM uses Categories
+      (linkMultiple).
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: keywords
+    display_name: Keywords
+    type: text
+    required: false
+    description: >
+      Search keywords (often comma-separated) to improve article findability.
+    usage: >
+      Drives search relevance for terms that don't appear directly in
+      title or body. For example, an article about "password reset" might
+      include keywords "lost password, can't log in, login problem,
+      forgot password."
+    presence:
+      salesforce: standard
+      hubspot: custom
+      attio: absent
+      espocrm: custom
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: viewCount
+    display_name: View Count
+    type: integer
+    required: false
+    description: >
+      Number of times the article has been viewed.
+    usage: >
+      Drives "popular articles" ranking and identification of high-value
+      content. Auto-incremented on view in self-service portals. Salesforce
+      Knowledge tracks this; legacy Solutions don't.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: custom
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: helpfulCount
+    display_name: Helpful Count
+    type: integer
+    required: false
+    description: >
+      Number of users who marked the article as helpful.
+    usage: >
+      Customer satisfaction signal on individual articles. Drives
+      content-quality reporting (which articles need rewriting, which
+      ones are reliably effective).
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: absent
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: assignedUser
+    display_name: Author / Owner
+    type: reference
+    required: false
+    reference_target: user
+    description: >
+      The user who authored or owns the article.
+    usage: >
+      Author attribution and content-ownership tracking. Drives review
+      workflows when articles need updating.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: createdAt
+    display_name: Created Date
+    type: datetime
+    required: true
+    description: >
+      System-generated timestamp of article creation.
+    usage: >
+      Drives content-aging reports (articles older than X months without
+      updates are flagged for review).
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+# =============================================================================
+# Relationships to other entities
+# =============================================================================
+relationships:
+  - target: case
+    cardinality: many-to-many
+    role: peer
+    description: >
+      Articles can be attached to cases (showing which articles helped
+      resolve which issues). Modeled via CaseSolution junction in
+      Salesforce, CaseArticle in modern Knowledge.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: custom
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - target: tag
+    cardinality: many-to-many
+    role: peer
+    description: >
+      Articles are categorized by tags / topics for navigation and search.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - target: user
+    cardinality: many-to-one
+    role: child
+    description: >
+      An article has an author (user).
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+# =============================================================================
+# Sources
+# =============================================================================
+sources:
+  - title: "Salesforce Object Reference: Solution (legacy)"
+    url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_solution.htm
+  - title: "Salesforce Knowledge introduction (modern replacement)"
+    url: https://www.salesforceben.com/introduction-salesforce-knowledge/
+  - title: "HubSpot: Knowledge Base articles"
+    url: https://knowledge.hubspot.com/knowledge-base/create-and-manage-knowledge-base-articles
+  - title: "EspoCRM: Knowledge Base"
+    url: https://docs.espocrm.com/user-guide/knowledge-base/
+  - title: "Salesforce: Improve Case Management with Knowledge"
+    url: https://trailhead.salesforce.com/content/learn/projects/set-up-salesforce-knowledge/manage-cases-using-articles

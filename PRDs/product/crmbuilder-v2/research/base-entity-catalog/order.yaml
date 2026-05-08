@@ -1,0 +1,457 @@
+# =============================================================================
+# Catalog metadata
+# =============================================================================
+catalog_id: order
+catalog_version: "0.1"
+last_updated: "05-08-26 06:30"
+tier: 3
+entry_kind: universal
+
+# =============================================================================
+# Entity-level definition
+# =============================================================================
+name: Order
+display_name: Order
+purpose: >
+  A confirmed agreement to purchase goods or services. Sits between Quote
+  (proposal) and Invoice (billing document) in the commerce flow. Has
+  line items, customer, fulfillment status, and ship-to/bill-to addresses.
+
+business_context: >
+  Order records mark the transition from "potential sale" to "committed
+  sale." Once a customer accepts a quote (or places a direct order), an
+  Order record captures the confirmed details: what they're buying, in
+  what quantities, at what price, shipping where, billing where, with
+  what terms. Orders drive fulfillment workflows (ship the goods, deliver
+  the service, provision the subscription) and billing workflows
+  (generate the invoice, schedule recurring billing). Salesforce introduced
+  the Order object in Spring '14 to fill this gap between Opportunity
+  and Invoice. Many older deployments don't use Orders — they go directly
+  from won Opportunity to invoicing in their ERP. EspoCRM has Sales Order
+  (with Sales Order Item line items). HubSpot has Quotes + Line Items
+  rather than a separate Order entity. Attio has no native Order. CiviCRM
+  has no Order — Contributions cover the donation case directly. Nonprofit
+  deployments rarely use Orders. When interviewing clients, surface
+  "Order" by asking whether they need to track confirmed-sale fulfillment
+  separately from quoting and from invoicing. Many B2B deployments skip
+  the Order layer; pure-services orgs almost always do; product-shipping
+  orgs almost always need it.
+
+data_model_role: anchor
+typically_required: false
+common_synonyms:
+  - Sales Order
+  - Purchase Order (when the org is the seller)
+  - Confirmed Order
+
+# =============================================================================
+# Cross-system equivalents
+# =============================================================================
+systems:
+  - system: salesforce
+    name: Order
+    api_name: Order
+    is_standard: true
+    notes: >
+      Standard object introduced in Spring '14. Includes Account,
+      Contract (optional), EffectiveDate, EndDate, Status, OrderNumber,
+      OrderReferenceNumber, billing/shipping addresses, Pricebook2 (the
+      price list used). OrderItem records are line items. Orders can
+      derive from Quotes via the QuoteId field.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_order.htm
+
+  - system: hubspot
+    name: "(no native Order; Quote + Line Items typically used)"
+    api_name: not_applicable
+    is_standard: false
+    notes: >
+      HubSpot doesn't have a separate Order entity. Accepted Quotes
+      function as orders; line items track what was sold. ERP integrations
+      typically pull line items from Won Deals to populate orders in the
+      ERP system.
+    docs_url: https://developers.hubspot.com/docs/reference/api/crm/objects/quotes
+
+  - system: attio
+    name: "(no native Order; use custom object)"
+    api_name: not_applicable
+    is_standard: false
+    notes: >
+      Attio has no native Order entity.
+    docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+
+  - system: espocrm
+    name: Sales Order
+    api_name: SalesOrder
+    is_standard: true
+    notes: >
+      Standard entity in Sales Pack module. Includes name (auto-numbered),
+      number, status (Draft / Pending / Confirmed / Delivered /
+      Completed / Canceled), date, account, billing/shipping addresses,
+      assigned user, sales order items.
+    docs_url: https://docs.espocrm.com/
+
+  - system: civicrm
+    name: "(no Order concept)"
+    api_name: not_applicable
+    is_standard: false
+    notes: >
+      CiviCRM has no Order entity. Contribution serves the donation use
+      case; Event Registration covers paid event signups. Sales-style
+      ordering would require custom entities.
+    docs_url: https://docs.civicrm.org/
+
+  - system: salesforce_npsp
+    name: Order
+    api_name: Order
+    is_standard: true
+    notes: >
+      Same as Salesforce. Rare in nonprofit deployments — appears
+      occasionally for nonprofit publishing operations or paid-training
+      programs.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_order.htm
+
+  - system: bloomerang
+    name: "(no Order concept)"
+    api_name: not_applicable
+    is_standard: false
+    notes: >
+      Bloomerang has no Order entity.
+    docs_url: https://bloomerang.com/api/rest-api-v1/
+
+# =============================================================================
+# Attributes
+# =============================================================================
+attributes:
+  - name: orderNumber
+    display_name: Order Number
+    type: autonumber
+    required: true
+    description: >
+      System-generated sequence identifier for the order.
+    usage: >
+      Customer-facing identifier ("Order #SO-2026-1234"). Drives shipping
+      labels, invoice generation, and ERP cross-referencing.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: account
+    display_name: Account
+    type: reference
+    required: true
+    reference_target: account
+    description: >
+      The customer placing the order.
+    usage: >
+      Drives bill-to defaults, credit checks, and sales-rep ownership.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: contact
+    display_name: Contact
+    type: reference
+    required: false
+    reference_target: contact
+    description: >
+      Primary contact at the customer for this order.
+    usage: >
+      Drives order-confirmation email recipient, support escalation
+      routing for order issues.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: opportunity
+    display_name: Opportunity
+    type: reference
+    required: false
+    reference_target: opportunity
+    description: >
+      The sales opportunity that produced this order (if applicable).
+    usage: >
+      Anchors order to its sales pursuit. Used in commission calculations
+      and rep attribution.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: quote
+    display_name: Quote
+    type: reference
+    required: false
+    reference_target: quote
+    description: >
+      The quote that was accepted to produce this order.
+    usage: >
+      Lineage anchor — proves which version of pricing the customer
+      accepted.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: status
+    display_name: Status
+    type: enum
+    required: true
+    enum_values:
+      - Draft
+      - Pending
+      - Confirmed
+      - Activated
+      - In Production
+      - Shipped
+      - Delivered
+      - Completed
+      - Canceled
+    description: >
+      Lifecycle state of the order.
+    usage: >
+      Drives fulfillment workflows. Status transitions trigger
+      shipping-label generation, billing events, and customer
+      notifications.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: orderDate
+    display_name: Order Date
+    type: date
+    required: true
+    description: >
+      Date the order was placed.
+    usage: >
+      Anchors fulfillment SLAs, revenue recognition, and reporting.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: effectiveDate
+    display_name: Effective Date
+    type: date
+    required: false
+    description: >
+      Date the order's terms become effective.
+    usage: >
+      Distinct from order date when there's a delay between confirmation
+      and effectivity (subscription start dates, contract effective
+      dates).
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: custom
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: subtotal
+    display_name: Subtotal
+    type: currency
+    required: false
+    description: >
+      Sum of line item totals before discounts and tax.
+    usage: >
+      Auto-calculated from order items.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: grandTotal
+    display_name: Grand Total
+    type: currency
+    required: false
+    description: >
+      Total order value.
+    usage: >
+      Headline value of the order. Drives revenue-recognition,
+      commission calculation, and dashboard metrics.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: billingAddress
+    display_name: Billing Address
+    type: address
+    required: false
+    description: >
+      Address invoices for this order will be sent to.
+    usage: >
+      Captured per-order to allow per-order billing variation.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: shippingAddress
+    display_name: Shipping Address
+    type: address
+    required: false
+    description: >
+      Address products will ship to.
+    usage: >
+      Drives label-generation and shipping-rate calculation. Often
+      different from billing address for multi-location customers.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: assignedUser
+    display_name: Owner
+    type: reference
+    required: true
+    reference_target: user
+    description: >
+      The user who owns the order.
+    usage: >
+      Drives commission attribution and "my orders" filtering.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: createdAt
+    display_name: Created Date
+    type: datetime
+    required: true
+    description: >
+      System-generated timestamp.
+    usage: >
+      Audit field.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+# =============================================================================
+# Relationships to other entities
+# =============================================================================
+relationships:
+  - target: account
+    cardinality: many-to-one
+    role: child
+    description: >
+      An order belongs to one account.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - target: quote
+    cardinality: many-to-one
+    role: child
+    description: >
+      An order may derive from one quote.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - target: opportunity
+    cardinality: many-to-one
+    role: child
+    description: >
+      An order may derive from one opportunity.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - target: invoice
+    cardinality: one-to-many
+    role: parent
+    description: >
+      An order can have one or more invoices generated from it.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+# =============================================================================
+# Sources
+# =============================================================================
+sources:
+  - title: "Salesforce Object Reference: Order"
+    url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_order.htm
+  - title: "EspoCRM: Sales module documentation"
+    url: https://docs.espocrm.com/
+  - title: "HubSpot Quotes (Order-equivalent)"
+    url: https://developers.hubspot.com/docs/reference/api/crm/objects/quotes

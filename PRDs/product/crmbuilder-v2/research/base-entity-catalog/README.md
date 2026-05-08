@@ -1,7 +1,7 @@
 # Base Entity Catalog
 
-**Last Updated:** 05-08-26 05:50
-**Status:** Tiers 1-2 complete; Tiers 3-5 in progress
+**Last Updated:** 05-08-26 14:00
+**Status:** Tiers 1-3 complete; Tiers 4-5 pending
 **Owner:** CRMBuilder v2
 
 ---
@@ -10,7 +10,8 @@
 
 | Version | Date | Description |
 |---------|------|-------------|
-| 0.2 | 05-08-26 | Tier 2 (sales pipeline) added: lead, opportunity, pipeline-stage, quote. Schema unchanged from 0.1; same authorship style applied. Tiers 3-5 still pending. |
+| 0.3 | 05-08-26 | Tier 3 (vertical modules) added: case, solution, asset, campaign, campaign-member, email, form-submission, product, price-list, order, invoice, payment. 12 entities covering customer-service, marketing, and commerce concerns. Schema unchanged from 0.2. Tiers 4-5 pending. |
+| 0.2 | 05-08-26 | Tier 2 (sales pipeline) added: lead, opportunity, pipeline-stage, quote. Schema unchanged from 0.1; same authorship style applied. |
 | 0.1 | 05-08-26 | Initial Tier 1 sample: account, contact, activity, note, user, tag base entities plus account-nonprofit specialization. Schema established; sourcing methodology documented. |
 
 ---
@@ -59,6 +60,18 @@ base-entity-catalog/
 ├── opportunity.yaml                       # T2 base entity
 ├── pipeline-stage.yaml                    # T2 base entity
 ├── quote.yaml                             # T2 base entity
+├── case.yaml                              # T3 base entity
+├── solution.yaml                          # T3 base entity (Knowledge Article)
+├── asset.yaml                             # T3 base entity
+├── campaign.yaml                          # T3 base entity
+├── campaign-member.yaml                   # T3 base entity (junction)
+├── email.yaml                             # T3 base entity
+├── form-submission.yaml                   # T3 base entity
+├── product.yaml                           # T3 base entity
+├── price-list.yaml                        # T3 base entity
+├── order.yaml                             # T3 base entity
+├── invoice.yaml                           # T3 base entity
+├── payment.yaml                           # T3 base entity
 └── specializations/
     └── account-nonprofit.yaml             # specialization of Account
 ```

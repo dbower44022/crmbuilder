@@ -1,0 +1,468 @@
+# =============================================================================
+# Catalog metadata
+# =============================================================================
+catalog_id: case
+catalog_version: "0.1"
+last_updated: "05-08-26 06:00"
+tier: 3
+entry_kind: universal
+
+# =============================================================================
+# Entity-level definition
+# =============================================================================
+name: Case
+display_name: Case
+purpose: >
+  A customer-service issue, question, complaint, or request that the
+  organization is tracking from intake to resolution. The anchor entity for
+  customer-service workflows in CRMs that include service capabilities.
+
+business_context: >
+  Case records are the customer-service equivalent of Opportunity — each
+  case represents one issue that's actively being worked toward resolution,
+  with a status, an owner, a priority, an SLA, and a resolution narrative.
+  Cases typically intake through multiple channels (email-to-case, web-to-
+  case forms, phone, chat, social media) and route to the appropriate
+  agent or team based on routing rules. The Case-vs-Opportunity split is
+  conceptually clean: Opportunity tracks "deal in pursuit" (potential
+  revenue), Case tracks "issue in resolution" (potential cost or risk to
+  retention). HubSpot uses "Ticket" rather than "Case" but the model is
+  identical. CiviCRM has Case as a general-purpose work-tracking entity
+  (used for any multi-step workflow with a stakeholder, not just
+  customer service — also used for grant-cycle tracking, advocacy
+  campaigns, beneficiary case management). EspoCRM has Case as a standard
+  CRM-module entity. Bloomerang and Attio have no native Case concept.
+  When interviewing clients, surface "Case" by asking what kind of work
+  needs to be tracked from intake through resolution: support tickets,
+  benefit-eligibility reviews, grant applications, advocacy campaigns,
+  multi-stakeholder coordination on individual problems. Different from
+  Activity (single-touchpoint logging) and Opportunity (revenue-generating
+  pursuit) — Case captures problem-solving work spanning multiple
+  touchpoints over time. SLA tracking, escalation rules, and
+  customer-portal visibility are the most-customized aspects in
+  customer-service deployments.
+
+data_model_role: anchor
+typically_required: false
+common_synonyms:
+  - Ticket
+  - Issue
+  - Service Request
+  - Support Ticket
+  - Incident
+
+# =============================================================================
+# Cross-system equivalents
+# =============================================================================
+systems:
+  - system: salesforce
+    name: Case
+    api_name: Case
+    is_standard: true
+    notes: >
+      Foundational standard object for Service Cloud. Includes built-in
+      fields for Subject, Description, Status, Priority, Origin (intake
+      channel), Type, Reason, AccountId, ContactId, OwnerId, IsEscalated,
+      ClosedDate. Ships with email-to-case, web-to-case, omnichannel
+      routing, and entitlement (SLA) frameworks.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_case.htm
+
+  - system: hubspot
+    name: Ticket
+    api_name: tickets
+    is_standard: true
+    notes: >
+      HubSpot uses "Ticket" rather than "Case" but the data model is
+      identical. Ships with pipelines (multiple ticket pipelines
+      supported with separate stages), email-to-ticket, web forms, and
+      Service Hub features (knowledge base, customer portal, SLA tracking).
+    docs_url: https://developers.hubspot.com/docs/api-reference/crm-tickets-v3/guide
+
+  - system: attio
+    name: "Custom object (no standard Case)"
+    api_name: not_applicable
+    is_standard: false
+    notes: >
+      Attio has no native Case / Ticket entity. Customers needing customer-
+      service tracking create a custom object. Attio's flexibility supports
+      this but it's not the platform's strong use case.
+    docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+
+  - system: espocrm
+    name: Case
+    api_name: Case
+    is_standard: true
+    notes: >
+      Standard CRM-module entity. Includes name, status (enum: New,
+      Assigned, Pending, Closed, Rejected, Duplicate), priority, type,
+      account, contact, contacts (link-multiple for participants),
+      assignedUser, description.
+    docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Case.json
+
+  - system: civicrm
+    name: Case (general-purpose)
+    api_name: Case
+    is_standard: true
+    notes: >
+      CiviCRM Case is broader than customer-service — used for any
+      multi-step workflow involving a contact: legal aid casework, grant
+      cycles, advocacy campaigns, beneficiary services, support tickets.
+      Case Types are configurable templates that define expected
+      activities, roles, and timelines. The Case Roles concept (each role
+      filled by a Contact) makes cases inherently multi-stakeholder.
+    docs_url: https://docs.civicrm.org/user/en/latest/case-management/
+
+  - system: salesforce_npsp
+    name: Case
+    api_name: Case
+    is_standard: true
+    notes: >
+      Same as Salesforce. NPSP doesn't add Case customizations specifically
+      but nonprofits often use Cases for: beneficiary services, advocacy
+      casework, grant-application tracking when no separate Grant module
+      is in use. Less common than Cases-for-customer-support B2B usage.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_case.htm
+
+  - system: bloomerang
+    name: "(no Case concept)"
+    api_name: not_applicable
+    is_standard: false
+    notes: >
+      Bloomerang has no native Case / Ticket entity. Donor-services
+      issues are typically tracked as Interactions or Notes rather than
+      structured cases.
+    docs_url: https://bloomerang.com/api/rest-api-v1/
+
+# =============================================================================
+# Attributes
+# =============================================================================
+attributes:
+  - name: subject
+    display_name: Subject
+    type: string
+    required: true
+    max_length: 255
+    description: >
+      Short summary of the case.
+    usage: >
+      Drives list-view legibility and search. Often auto-populated from
+      email subject when the case originates via email-to-case.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: caseNumber
+    display_name: Case Number / Ticket Number
+    type: autonumber
+    required: true
+    description: >
+      System-generated sequence identifier for the case.
+    usage: >
+      Customer-facing identifier used in support-portal URLs, email-thread
+      tracking, and SLA reporting. Required and read-only.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: status
+    display_name: Status
+    type: enum
+    required: true
+    enum_values:
+      - New
+      - Open
+      - In Progress
+      - On Hold (Customer)
+      - On Hold (Internal)
+      - Resolved
+      - Closed
+    description: >
+      Lifecycle state of the case.
+    usage: >
+      Drives "open cases" filtering, SLA-clock pause/resume logic (some
+      statuses pause the SLA clock), and reopening workflows. Heavily
+      customized per organization's support process.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: priority
+    display_name: Priority
+    type: enum
+    required: false
+    enum_values:
+      - Low
+      - Medium
+      - High
+      - Critical
+    description: >
+      Severity classification of the case.
+    usage: >
+      Drives SLA selection, queue prioritization, and escalation rules.
+      Often set automatically based on customer tier or case type, with
+      manual override. Critical-priority cases often page on-call staff.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: origin
+    display_name: Origin
+    type: enum
+    required: false
+    enum_values:
+      - Email
+      - Web
+      - Phone
+      - Chat
+      - Social Media
+      - Internal
+    description: >
+      Channel through which the case was opened.
+    usage: >
+      Drives source-attribution reporting (which channels generate the
+      most cases, which channels have the highest resolution rates) and
+      automatic-routing rules.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: custom
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: type
+    display_name: Type
+    type: enum
+    required: false
+    description: >
+      Classification of the case (typically what kind of issue it is).
+    usage: >
+      Configurable per organization. Common values: Question, Problem,
+      Feature Request, Bug Report, Account Issue, Billing Inquiry. Drives
+      routing rules and reporting.
+    presence:
+      salesforce: standard
+      hubspot: custom
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: account
+    display_name: Account
+    type: reference
+    required: false
+    reference_target: account
+    description: >
+      The customer account associated with the case.
+    usage: >
+      Anchors case to customer record for context during resolution
+      (account history, entitlements, billing status). Auto-derived from
+      contact in Salesforce when contact is set.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: contact
+    display_name: Contact
+    type: reference
+    required: false
+    reference_target: contact
+    description: >
+      The contact who reported or is affected by the case.
+    usage: >
+      Anchors customer-facing communication. Drives email-thread
+      addressing, satisfaction-survey routing, and contact-history views.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: description
+    display_name: Description
+    type: text
+    required: false
+    description: >
+      Detailed description of the case (the customer's problem statement).
+    usage: >
+      Often auto-populated from incoming email body or web form
+      submission. The substantive content of the case before resolution
+      activity is logged.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: resolution
+    display_name: Resolution
+    type: text
+    required: false
+    description: >
+      Description of how the case was resolved.
+    usage: >
+      Captured at close. Drives knowledge-base seeding (resolutions can
+      be promoted to Knowledge Articles for reuse) and post-resolution
+      audit. Required for close in some configurations.
+    presence:
+      salesforce: standard
+      hubspot: custom
+      attio: absent
+      espocrm: custom
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: closedDate
+    display_name: Closed Date
+    type: datetime
+    required: false
+    description: >
+      Date and time the case was closed.
+    usage: >
+      Drives time-to-resolution reporting (closed - created = duration).
+      Auto-set when status transitions to Closed in most systems.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: assignedUser
+    display_name: Owner
+    type: reference
+    required: true
+    reference_target: user
+    description: >
+      The user (agent) responsible for resolving the case.
+    usage: >
+      Drives "my cases" filtering, agent workload reports, and routing
+      rules. Often set by automatic-assignment rules based on case type,
+      priority, and queue.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: createdAt
+    display_name: Created Date
+    type: datetime
+    required: true
+    description: >
+      System-generated timestamp of case creation.
+    usage: >
+      Anchors SLA-clock calculations. Drives time-to-resolution metrics
+      and case-volume reporting by time period.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+# =============================================================================
+# Relationships to other entities
+# =============================================================================
+relationships:
+  - target: account
+    cardinality: many-to-one
+    role: child
+    description: >
+      A case is typically associated with one customer account.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - target: contact
+    cardinality: many-to-one
+    role: child
+    description: >
+      A case is associated with the contact who reported or is affected
+      by the issue.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - target: activity
+    cardinality: one-to-many
+    role: parent
+    description: >
+      A case has many activities (calls, emails, internal tasks) logged.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+# =============================================================================
+# Sources
+# =============================================================================
+sources:
+  - title: "Salesforce Object Reference: Case"
+    url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_case.htm
+  - title: "HubSpot CRM API: Tickets"
+    url: https://developers.hubspot.com/docs/api-reference/crm-tickets-v3/guide
+  - title: "EspoCRM: Case entity definition"
+    url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Case.json
+  - title: "CiviCRM: Case management user guide"
+    url: https://docs.civicrm.org/user/en/latest/case-management/
+  - title: "Attio: Custom objects (no native Case)"
+    url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+  - title: "Bloomerang REST API documentation (no native Case)"
+    url: https://bloomerang.com/api/rest-api-v1/

@@ -1,0 +1,342 @@
+# =============================================================================
+# Catalog metadata
+# =============================================================================
+catalog_id: campaign-member
+catalog_version: "0.1"
+last_updated: "05-08-26 06:15"
+tier: 3
+entry_kind: universal
+
+# =============================================================================
+# Entity-level definition
+# =============================================================================
+name: Campaign Member
+display_name: Campaign Member
+purpose: >
+  A junction record connecting a Contact (or Lead) to a Campaign,
+  capturing per-recipient status: was sent the email, opened it, clicked
+  through, registered for the event, attended, donated, declined.
+
+business_context: >
+  Campaign Member records hold the per-recipient details of campaign
+  participation. They answer: "Of the 10,000 people we sent this email
+  to, how many opened it, clicked through, replied, registered for the
+  webinar?" Each Campaign Member record represents one Contact-in-one-
+  Campaign with one status. The status enum is the most-customized
+  aspect — different campaign types need different statuses (Email
+  campaigns track Sent / Opened / Clicked / Bounced; Event campaigns
+  track Invited / Registered / Attended / No-Show; Direct Mail tracks
+  Sent / Returned). Modeling differs across systems: Salesforce uses an
+  explicit CampaignMember junction object with both ContactId and LeadId
+  fields (since either can be the target). HubSpot uses Associations
+  rather than a junction object — Contact-to-Campaign association
+  carries status. EspoCRM uses Target Lists (linkMultiple) on Campaign
+  rather than per-member junction records. CiviCRM uses
+  ActivityContact + Activity-of-type-Campaign-Activity for similar
+  effect. Bloomerang ties constituents to Campaigns via Transactions
+  rather than membership. When interviewing clients, surface "Campaign
+  Member" by asking whether they need to track per-recipient response
+  status (not just aggregate response counts). If yes, target backend's
+  Campaign Member modeling matters; if they only need aggregate metrics,
+  this entity is optional.
+
+data_model_role: junction
+typically_required: false
+common_synonyms:
+  - Campaign Recipient
+  - Campaign Participant
+  - Audience Member
+  - Subscriber
+
+# =============================================================================
+# Cross-system equivalents
+# =============================================================================
+systems:
+  - system: salesforce
+    name: CampaignMember
+    api_name: CampaignMember
+    is_standard: true
+    notes: >
+      Standard junction object. Each CampaignMember has CampaignId,
+      LeadId or ContactId (one or the other), Status (per-campaign-
+      configurable), HasResponded (computed), FirstRespondedDate.
+      Campaign Status values are configured per-Campaign via the
+      "Advanced Setup" CampaignMemberStatus records.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_campaignmember.htm
+
+  - system: hubspot
+    name: "Contact-Campaign Association (no junction object)"
+    api_name: not_applicable
+    is_standard: false
+    notes: >
+      HubSpot doesn't use a separate junction object. Contact-Campaign
+      relationships are tracked via Associations + per-Contact event
+      properties (last campaign, last email opened, last click, etc.).
+      Less granular than Salesforce's per-member status tracking.
+    docs_url: https://developers.hubspot.com/docs/api-reference/crm-marketing-events-v3
+
+  - system: attio
+    name: "(no native concept)"
+    api_name: not_applicable
+    is_standard: false
+    notes: >
+      Attio has no Campaign Member concept. Sequence enrollment and
+      response tracking happens at the Sequence level rather than as a
+      junction.
+    docs_url: https://attio.com/platform/sequences
+
+  - system: espocrm
+    name: TargetList (linkMultiple on Campaign)
+    api_name: TargetList
+    is_standard: true
+    notes: >
+      EspoCRM uses Target Lists rather than per-member junctions. A
+      Target List is a collection of Contacts/Accounts/Leads/Users that
+      can be attached to a Campaign. Per-member status is tracked on
+      campaign-specific records (CampaignLogRecord) for sent/bounced
+      tracking but lacks the rich status taxonomy of Salesforce
+      CampaignMember.
+    docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/TargetList.json
+
+  - system: civicrm
+    name: "Activity (of type Campaign Activity)"
+    api_name: not_applicable
+    is_standard: false
+    notes: >
+      CiviCRM uses Activities to record per-contact campaign actions
+      (email sent, opened, responded). Activity records have
+      activity_type_id pointing at CiviMail-style email activities
+      and link to Campaign via campaign_id. Less of a true junction
+      table.
+    docs_url: https://docs.civicrm.org/user/en/latest/email/
+
+  - system: salesforce_npsp
+    name: CampaignMember
+    api_name: CampaignMember
+    is_standard: true
+    notes: >
+      Same as Salesforce. Heavily used in nonprofit deployments for
+      appeal-response tracking — Sent / Donated / Declined / Renewed.
+      Custom CampaignMemberStatus values typical per appeal type.
+    docs_url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-campaign-management
+
+  - system: bloomerang
+    name: "(no Campaign Member concept; Transactions link to Campaign directly)"
+    api_name: not_applicable
+    is_standard: false
+    notes: >
+      Bloomerang has no Campaign Member junction. Constituent-Campaign
+      relationships are inferred through Transactions (a Transaction
+      links to a Constituent and references a Campaign). Outreach without
+      donation isn't tracked at the campaign-membership level.
+    docs_url: https://bloomerang.com/api/rest-api-v1/
+
+# =============================================================================
+# Attributes
+# =============================================================================
+attributes:
+  - name: campaign
+    display_name: Campaign
+    type: reference
+    required: true
+    reference_target: campaign
+    description: >
+      The campaign this membership record is part of.
+    usage: >
+      One of two foreign keys on the junction. Required.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: contact
+    display_name: Contact
+    type: reference
+    required: false
+    reference_target: contact
+    description: >
+      The contact who is the campaign member.
+    usage: >
+      Either contact or lead is set (not both, in Salesforce).
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: lead
+    display_name: Lead
+    type: reference
+    required: false
+    reference_target: lead
+    description: >
+      The lead who is the campaign member (when target is a Lead, not a
+      Contact).
+    usage: >
+      Salesforce uses LeadId on CampaignMember when the target hasn't
+      been converted yet. Only one of LeadId or ContactId is populated
+      per record.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: status
+    display_name: Member Status
+    type: enum
+    required: true
+    enum_values:
+      - Sent
+      - Opened
+      - Clicked
+      - Responded
+      - Registered
+      - Attended
+      - No-Show
+      - Donated
+      - Declined
+    description: >
+      Per-member status of participation in the campaign.
+    usage: >
+      Status values are configurable per-campaign — different status
+      sets apply to different campaign types (email versus event versus
+      direct mail). Salesforce's CampaignMemberStatus configuration
+      table holds per-Campaign status options. Drives response-rate
+      reporting.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: custom
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: hasResponded
+    display_name: Has Responded
+    type: boolean
+    required: false
+    description: >
+      Computed flag indicating whether this member has reached a "responded"
+      status.
+    usage: >
+      Auto-derived from Status — Salesforce CampaignMemberStatus records
+      have a HasResponded boolean that tags which statuses count as
+      responses. Drives response-rate calculations.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: custom
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: firstRespondedDate
+    display_name: First Responded Date
+    type: date
+    required: false
+    description: >
+      Date the member first reached a "responded" status.
+    usage: >
+      Drives time-to-response analysis (avg days from Sent to Responded
+      per campaign type).
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: custom
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: createdAt
+    display_name: Created Date
+    type: datetime
+    required: true
+    description: >
+      When the member was added to the campaign.
+    usage: >
+      Anchors response-time calculations. Drives "added this week"
+      reports during active campaigns.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: absent
+
+# =============================================================================
+# Relationships to other entities
+# =============================================================================
+relationships:
+  - target: campaign
+    cardinality: many-to-one
+    role: child
+    description: >
+      A campaign member belongs to one campaign.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - target: contact
+    cardinality: many-to-one
+    role: child
+    description: >
+      A campaign member typically references one contact.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - target: lead
+    cardinality: many-to-one
+    role: child
+    description: >
+      A campaign member can alternatively reference a lead (in Salesforce/
+      EspoCRM) before conversion.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+# =============================================================================
+# Sources
+# =============================================================================
+sources:
+  - title: "Salesforce Object Reference: CampaignMember"
+    url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_campaignmember.htm
+  - title: "HubSpot Marketing Events API (Contact-Campaign associations)"
+    url: https://developers.hubspot.com/docs/api-reference/crm-marketing-events-v3
+  - title: "EspoCRM: TargetList entity (campaign-member equivalent)"
+    url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/TargetList.json
+  - title: "CiviCRM: Email and Mass Mailings (campaign-member equivalent via activities)"
+    url: https://docs.civicrm.org/user/en/latest/email/
+  - title: "Attio Sequences (no junction-record equivalent)"
+    url: https://attio.com/platform/sequences

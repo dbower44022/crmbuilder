@@ -1,0 +1,415 @@
+# =============================================================================
+# Catalog metadata
+# =============================================================================
+catalog_id: email
+catalog_version: "0.1"
+last_updated: "05-08-26 06:18"
+tier: 3
+entry_kind: universal
+
+# =============================================================================
+# Entity-level definition
+# =============================================================================
+name: Email
+display_name: Email
+purpose: >
+  An email message sent or received and logged against a CRM record. Has
+  sender, recipients, subject, body, sent date, status. Distinct from
+  marketing-campaign emails (which are usually represented as engagement
+  events on a Campaign Member rather than as individual Email records).
+
+business_context: >
+  Email records hold the substance of email communication tracked in the
+  CRM. Two main use cases: (1) sales/service email logging — a rep sends
+  or receives a one-to-one email with a customer; the email gets logged
+  on the relevant Account / Contact / Opportunity / Case so the next
+  person looking at the record can see what was said. (2) marketing
+  email tracking — a bulk email goes out as part of a campaign; per-
+  recipient send/open/click events get tracked but typically not stored
+  as individual Email records (instead via Campaign Member status).
+  Email entities are surprisingly divergent across systems. Salesforce
+  has EmailMessage with rich tracking, plus the legacy Task-with-
+  TaskSubtype=Email pattern. HubSpot models email as an Engagement
+  subtype. Attio has Emails as a first-class entity, auto-synced from
+  Gmail/Outlook. EspoCRM has Email as a separate entity with full inbox
+  / sent folder structure (Email Account configuration drives sync).
+  CiviCRM uses Activity-of-type-Email. Bloomerang has Interaction-of-
+  type-Email (less rich tracking). When interviewing clients, surface
+  "Email" by asking whether email correspondence with customers/donors
+  should appear on the relevant CRM record's timeline (yes for almost
+  every deployment) and whether they need bulk/marketing email
+  capabilities (varies). Email-tracking depth (just-logged vs full
+  open/click tracking) is a major capability differentiator across
+  systems.
+
+data_model_role: event
+typically_required: false
+common_synonyms:
+  - Email Message
+  - Sent Email
+  - Inbound Email
+  - Engagement (Email subtype)
+
+# =============================================================================
+# Cross-system equivalents
+# =============================================================================
+systems:
+  - system: salesforce
+    name: EmailMessage (modern) / Task with TaskSubtype=Email (legacy)
+    api_name: EmailMessage
+    is_standard: true
+    notes: >
+      Modern email storage uses EmailMessage object — captures FromAddress,
+      ToAddress, CcAddress, BccAddress, Subject, HtmlBody, TextBody,
+      MessageDate, Status, RelatedToId (polymorphic). Legacy pattern uses
+      Task with TaskSubtype = Email for reps logging emails manually.
+      Email-to-Case creates EmailMessage records linked to the Case.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_emailmessage.htm
+
+  - system: hubspot
+    name: Email (Engagement subtype)
+    api_name: emails
+    is_standard: true
+    notes: >
+      Modeled as an Engagement of subtype EMAIL. Email engagements track
+      sender, recipients, subject, body, status (sent / received /
+      bounced), and association to other CRM records. HubSpot's
+      Conversations Inbox layers a richer inbox UI on top.
+    docs_url: https://developers.hubspot.com/docs/reference/api/crm/engagements/email
+
+  - system: attio
+    name: Email
+    api_name: emails
+    is_standard: true
+    notes: >
+      First-class entity. When email/calendar sync is enabled, Attio
+      auto-creates Email records for all messages with associated People
+      / Companies. Includes full message content, sender/recipient,
+      subject, sent date, threading.
+    docs_url: https://attio.com/help/reference/email-calendar/email-and-calendar-syncing
+
+  - system: espocrm
+    name: Email
+    api_name: Email
+    is_standard: true
+    notes: >
+      First-class entity with full IMAP/SMTP integration. Email Account
+      configuration drives inbox sync. Email records include from, to,
+      cc, bcc, subject, body, status (Draft / Sending / Sent / Archived),
+      attachments, thread, parent (polymorphic).
+    docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Resources/metadata/entityDefs/Email.json
+
+  - system: civicrm
+    name: Activity (of type Email)
+    api_name: not_applicable_separate_entity
+    is_standard: true
+    notes: >
+      CiviCRM uses Activity records with activity_type_id pointing at
+      Email or Inbound Email types. Bulk email via CiviMail creates
+      MailingJob and MailingEventQueue records for tracking; individual
+      messages don't have their own Email entity per se.
+    docs_url: https://docs.civicrm.org/user/en/latest/email/
+
+  - system: salesforce_npsp
+    name: EmailMessage / Task with TaskSubtype=Email
+    api_name: EmailMessage
+    is_standard: true
+    notes: >
+      Same as Salesforce. Used heavily for donor stewardship emails
+      (acknowledgment letters, cultivation outreach).
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_emailmessage.htm
+
+  - system: bloomerang
+    name: Interaction (of type Email)
+    api_name: Interaction
+    is_standard: true
+    notes: >
+      Bloomerang Interactions can have type Email. Less rich than
+      dedicated Email entities — typically just a record that an email
+      was sent, with a description, rather than full message content
+      and tracking events.
+    docs_url: https://bloomerang.com/api/rest-api-v1/
+
+# =============================================================================
+# Attributes
+# =============================================================================
+attributes:
+  - name: subject
+    display_name: Subject
+    type: string
+    required: true
+    max_length: 255
+    description: >
+      Email subject line.
+    usage: >
+      Drives list-view legibility, search, and threading. Auto-extracted
+      from incoming emails; manually entered for outbound.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: fromAddress
+    display_name: From
+    type: email
+    required: true
+    description: >
+      Email address the message was sent from.
+    usage: >
+      Anchors sender attribution. For inbound, identifies the sender;
+      for outbound, identifies the rep / system address.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: custom
+
+  - name: toAddress
+    display_name: To
+    type: email
+    required: true
+    description: >
+      Primary recipient email address(es).
+    usage: >
+      For email-to-CRM matching: when an inbound email arrives, the from
+      address is matched to a Contact to associate the email correctly.
+      Often supports multiple addresses (comma-separated or array).
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: custom
+
+  - name: ccAddress
+    display_name: CC
+    type: email
+    required: false
+    description: >
+      Carbon-copy recipient addresses.
+    usage: >
+      Captured for completeness; not typically driving any automation
+      beyond display.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: htmlBody
+    display_name: HTML Body
+    type: richtext
+    required: false
+    description: >
+      HTML version of the message body.
+    usage: >
+      The visual content of the email. Most modern systems store both
+      HTML and plain text and display whichever is appropriate.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: custom
+
+  - name: textBody
+    display_name: Text Body
+    type: text
+    required: false
+    description: >
+      Plain-text version of the message body.
+    usage: >
+      Fallback content for plain-text email clients and search-indexing
+      purposes.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: messageDate
+    display_name: Message Date
+    type: datetime
+    required: true
+    description: >
+      Date and time the message was sent or received.
+    usage: >
+      Anchors timeline ordering. Distinct from createdAt (when the record
+      was created in the CRM, which may be later than the actual email
+      send).
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: status
+    display_name: Status
+    type: enum
+    required: false
+    enum_values:
+      - Draft
+      - Sent
+      - Received
+      - Archived
+      - Bounced
+      - Failed
+    description: >
+      Lifecycle state of the email.
+    usage: >
+      Distinguishes outbound from inbound, drafts from sent, successfully
+      delivered from bounced. Drives "drafts" filtering and bounce-rate
+      reporting.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: custom
+
+  - name: parent
+    display_name: Related To
+    type: reference
+    required: false
+    reference_target: account
+    description: >
+      Polymorphic reference to the primary record this email is logged
+      against.
+    usage: >
+      Drives the email's appearance on the related record's timeline.
+      Polymorphic — same email can be associated with Account, Contact,
+      Opportunity, Case, or other entities.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: assignedUser
+    display_name: Owner / Sender
+    type: reference
+    required: false
+    reference_target: user
+    description: >
+      The user who sent or received the email (for outbound, the sender;
+      for inbound, the assignee).
+    usage: >
+      For outbound emails: which rep sent it. For inbound emails: which
+      rep is responsible for following up.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: createdAt
+    display_name: Created Date
+    type: datetime
+    required: true
+    description: >
+      When the email record was created in the CRM (may be later than the
+      actual message date for backfill / sync scenarios).
+    usage: >
+      Audit field. Distinct from messageDate.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+# =============================================================================
+# Relationships to other entities
+# =============================================================================
+relationships:
+  - target: contact
+    cardinality: many-to-many
+    role: peer
+    description: >
+      An email is associated with one or more contacts (sender and/or
+      recipients).
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - target: account
+    cardinality: many-to-one
+    role: child
+    description: >
+      An email is often associated with an account (the customer's
+      organization).
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: custom
+
+  - target: case
+    cardinality: many-to-one
+    role: child
+    description: >
+      An email may be logged against a specific case (typical for email-
+      to-case workflows).
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+# =============================================================================
+# Sources
+# =============================================================================
+sources:
+  - title: "Salesforce Object Reference: EmailMessage"
+    url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_emailmessage.htm
+  - title: "HubSpot Engagements: Email"
+    url: https://developers.hubspot.com/docs/reference/api/crm/engagements/email
+  - title: "Attio: Email and calendar syncing"
+    url: https://attio.com/help/reference/email-calendar/email-and-calendar-syncing
+  - title: "EspoCRM: Email entity definition"
+    url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Resources/metadata/entityDefs/Email.json
+  - title: "CiviCRM: Email and Mass Mailings"
+    url: https://docs.civicrm.org/user/en/latest/email/
+  - title: "Bloomerang REST API: Interaction (Email type)"
+    url: https://bloomerang.com/api/rest-api-v1/

@@ -1,0 +1,325 @@
+# =============================================================================
+# Catalog metadata
+# =============================================================================
+catalog_id: price-list
+catalog_version: "0.1"
+last_updated: "05-08-26 06:27"
+tier: 3
+entry_kind: universal
+
+# =============================================================================
+# Entity-level definition
+# =============================================================================
+name: Price List
+display_name: Price List
+purpose: >
+  A named set of pricing rules for products — different price lists let
+  the organization charge different prices for the same products to
+  different customer segments, regions, or channels. Standard pricing,
+  partner pricing, government pricing, distributor pricing typically
+  each get their own price list.
+
+business_context: >
+  Price List records solve the multi-pricing problem. A single product
+  rarely has a single price — partners get one price, government accounts
+  get another, end users get a third, distributors a fourth. Price Lists
+  let the organization define each pricing tier as its own object, then
+  associate Products with Price Lists via per-list price entries. A quote
+  or order references a specific Price List, which determines which
+  prices apply to its line items. Salesforce models this as Pricebook2
+  (the price list) + PricebookEntry (the per-product price within a
+  price list). HubSpot is simpler — single price per Product. EspoCRM
+  has a separate Price Book entity. CiviCRM has Price Sets used for
+  event-registration pricing rather than B2B pricing tiers. Nonprofit
+  deployments rarely use Price Lists; they appear in nonprofits with
+  paid-service motions (training, ticketing). When interviewing clients,
+  surface "Price List" by asking whether the same product needs to have
+  different prices for different customer types or in different
+  scenarios. If yes, target backend's price-list capability matters
+  significantly; if all customers pay the same price, this entity is
+  unnecessary.
+
+data_model_role: classifier
+typically_required: false
+common_synonyms:
+  - Price Book
+  - Pricebook
+  - Pricing Tier
+  - Rate Card
+
+# =============================================================================
+# Cross-system equivalents
+# =============================================================================
+systems:
+  - system: salesforce
+    name: Pricebook2 / PricebookEntry
+    api_name: Pricebook2
+    is_standard: true
+    notes: >
+      Salesforce splits price-list modeling into two objects: Pricebook2
+      (the price list itself — name, description, IsActive, IsStandard)
+      and PricebookEntry (the per-product price within a price list —
+      Pricebook2Id, Product2Id, UnitPrice, IsActive, UseStandardPrice).
+      Salesforce ships with one Standard Price Book; additional price
+      books are admin-created.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_pricebook2.htm
+
+  - system: hubspot
+    name: "(no native Price List; single price per Product)"
+    api_name: not_applicable
+    is_standard: false
+    notes: >
+      HubSpot models a single price per Product. Multi-tier pricing
+      requires multiple Product records per price tier, or custom
+      properties, or Salesforce-CPQ-style external integrations.
+    docs_url: https://developers.hubspot.com/docs/reference/api/crm/objects/products
+
+  - system: attio
+    name: "(no native Price List; use custom object)"
+    api_name: not_applicable
+    is_standard: false
+    notes: >
+      Attio has no native Price List entity. Custom object required.
+    docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+
+  - system: espocrm
+    name: Price Book / Price Book Item
+    api_name: PriceBook
+    is_standard: true
+    notes: >
+      Standard entity in Sales Pack module. Price Book has name,
+      description, isActive. Price Book Items associate Products with
+      Price Books and per-list unit prices.
+    docs_url: https://docs.espocrm.com/
+
+  - system: civicrm
+    name: "Price Set (for event registration / contribution pricing)"
+    api_name: PriceSet
+    is_standard: true
+    notes: >
+      CiviCRM Price Sets are used for event registration pricing
+      (different price levels for member / non-member / early-bird /
+      etc.) and contribution-form pricing (suggested-amount tiers).
+      Different purpose from B2B price lists but conceptually similar.
+    docs_url: https://docs.civicrm.org/user/en/latest/events/event-fees-and-payment/
+
+  - system: salesforce_npsp
+    name: Pricebook2 / PricebookEntry
+    api_name: Pricebook2
+    is_standard: true
+    notes: >
+      Same as Salesforce. Rare in nonprofit deployments.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_pricebook2.htm
+
+  - system: bloomerang
+    name: "(no Price List concept)"
+    api_name: not_applicable
+    is_standard: false
+    notes: >
+      Bloomerang has no Price List entity.
+    docs_url: https://bloomerang.com/api/rest-api-v1/
+
+# =============================================================================
+# Attributes
+# =============================================================================
+attributes:
+  - name: name
+    display_name: Price List Name
+    type: string
+    required: true
+    max_length: 255
+    description: >
+      Display name of the price list (e.g., "Standard," "Partner",
+      "Government").
+    usage: >
+      Drives selection in quote/order creation flows.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: description
+    display_name: Description
+    type: text
+    required: false
+    description: >
+      Free-form description of when to use this price list.
+    usage: >
+      Internal documentation. Helps reps choose the right price list
+      when creating quotes.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: isActive
+    display_name: Active
+    type: boolean
+    required: true
+    description: >
+      Whether the price list is available for use.
+    usage: >
+      Inactive price lists hide from selection but remain on historical
+      records.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: isStandard
+    display_name: Is Standard
+    type: boolean
+    required: false
+    description: >
+      Whether this is the default Standard Price Book (Salesforce concept).
+    usage: >
+      Salesforce ships with one Standard Pricebook flagged with
+      IsStandard=true. Other price books are non-standard. Drives
+      default-pricing fallback logic.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: currency
+    display_name: Currency
+    type: enum
+    required: false
+    enum_values:
+      - USD
+      - EUR
+      - GBP
+      - CAD
+      - AUD
+      - JPY
+    description: >
+      Default currency for prices in this price list.
+    usage: >
+      Drives currency-conversion logic on multi-currency deployments.
+      Per-product price entries can override.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: validFrom
+    display_name: Valid From
+    type: date
+    required: false
+    description: >
+      Date this price list becomes effective.
+    usage: >
+      Used in pricing-history scenarios where price lists have explicit
+      activation windows. Less commonly populated.
+    presence:
+      salesforce: custom
+      hubspot: absent
+      attio: absent
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: custom
+      bloomerang: absent
+
+  - name: validUntil
+    display_name: Valid Until
+    type: date
+    required: false
+    description: >
+      Date this price list expires.
+    usage: >
+      Used in scheduled-pricing scenarios.
+    presence:
+      salesforce: custom
+      hubspot: absent
+      attio: absent
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: custom
+      bloomerang: absent
+
+  - name: createdAt
+    display_name: Created Date
+    type: datetime
+    required: true
+    description: >
+      System-generated timestamp.
+    usage: >
+      Audit field.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+# =============================================================================
+# Relationships to other entities
+# =============================================================================
+relationships:
+  - target: product
+    cardinality: many-to-many
+    role: peer
+    description: >
+      A price list has many products with per-list prices; a product can
+      appear in many price lists at different prices. Modeled via
+      PricebookEntry junction in Salesforce, Price Book Item in EspoCRM.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - target: quote
+    cardinality: one-to-many
+    role: parent
+    description: >
+      A quote references one price list, which determines which prices
+      apply to its line items.
+    presence:
+      salesforce: standard
+      hubspot: absent
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+# =============================================================================
+# Sources
+# =============================================================================
+sources:
+  - title: "Salesforce Object Reference: Pricebook2"
+    url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_pricebook2.htm
+  - title: "Salesforce Object Reference: PricebookEntry"
+    url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_pricebookentry.htm
+  - title: "HubSpot Products (single-price model)"
+    url: https://developers.hubspot.com/docs/reference/api/crm/objects/products
+  - title: "EspoCRM: Sales module documentation"
+    url: https://docs.espocrm.com/
+  - title: "CiviCRM: Event fees and price sets"
+    url: https://docs.civicrm.org/user/en/latest/events/event-fees-and-payment/

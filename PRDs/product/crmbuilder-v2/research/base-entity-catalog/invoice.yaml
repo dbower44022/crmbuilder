@@ -1,0 +1,427 @@
+# =============================================================================
+# Catalog metadata
+# =============================================================================
+catalog_id: invoice
+catalog_version: "0.1"
+last_updated: "05-08-26 06:33"
+tier: 3
+entry_kind: universal
+
+# =============================================================================
+# Entity-level definition
+# =============================================================================
+name: Invoice
+display_name: Invoice
+purpose: >
+  A billing document sent to a customer requesting payment for goods or
+  services. Has line items, amount due, due date, payment terms, and
+  status (issued, sent, paid, overdue, void).
+
+business_context: >
+  Invoice records hold the formal billing demand. Each invoice represents
+  one billing event — request payment of an amount, by a date, for
+  specific line items. Invoices flow from Orders (or directly from won
+  Opportunities in simpler models) and produce Payment records when
+  customers pay. The accounting integration is the most-considered
+  aspect — most CRM Invoice objects are mirrors of records that live
+  authoritatively in an ERP / accounting system (QuickBooks, NetSuite,
+  Sage, Xero), with sync logic keeping them aligned. Salesforce added a
+  native Invoice object as part of Salesforce Billing / Revenue Cloud.
+  EspoCRM has Invoice in Sales Pack. HubSpot added Invoices in 2024.
+  Attio has no native Invoice. CiviCRM has invoicing tied to Contributions
+  rather than as a separate entity. Bloomerang has no Invoice. Nonprofit
+  deployments rarely use Invoices for donations (since donations are
+  voluntary, not invoiced) but may use them for pledged-but-not-paid
+  reminder workflows. When interviewing clients, surface "Invoice" by
+  asking whether they bill customers from the CRM and whether the CRM
+  needs to know payment status (versus delegating that entirely to an
+  ERP / accounting system).
+
+data_model_role: document
+typically_required: false
+common_synonyms:
+  - Bill
+  - Receivable
+  - Statement
+
+# =============================================================================
+# Cross-system equivalents
+# =============================================================================
+systems:
+  - system: salesforce
+    name: Invoice (Salesforce Billing)
+    api_name: Invoice
+    is_standard: true
+    notes: >
+      Native Invoice object available in Salesforce Billing / Revenue
+      Cloud (separately licensed). Standard Salesforce CRM doesn't
+      include Invoice — common workaround is custom object or
+      ERP integration.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.industries_reference.meta/industries_reference/sforce_api_objects_invoice.htm
+
+  - system: hubspot
+    name: Invoice
+    api_name: invoices
+    is_standard: true
+    notes: >
+      Standard CRM object since 2024. Includes line items, due date,
+      payment terms, status, and integration with HubSpot Payments
+      for online collection.
+    docs_url: https://developers.hubspot.com/docs/api-reference/crm-invoices-v3/guide
+
+  - system: attio
+    name: "(no native Invoice; use custom object)"
+    api_name: not_applicable
+    is_standard: false
+    notes: >
+      Attio has no native Invoice entity.
+    docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+
+  - system: espocrm
+    name: Invoice
+    api_name: Invoice
+    is_standard: true
+    notes: >
+      Standard entity in Sales Pack module. Includes name (auto-numbered),
+      number, status (Draft / Sent / Paid / Partially Paid / Overdue /
+      Canceled), invoice date, due date, account, billing/shipping
+      addresses, line items.
+    docs_url: https://docs.espocrm.com/
+
+  - system: civicrm
+    name: "(invoicing via Contributions)"
+    api_name: not_applicable
+    is_standard: false
+    notes: >
+      CiviCRM has invoicing settings that generate PDF invoices from
+      Contribution records, but Invoice is not a separate entity.
+      The Contribution itself serves as the invoice record.
+    docs_url: https://docs.civicrm.org/user/en/latest/contributions/
+
+  - system: salesforce_npsp
+    name: "Invoice (Salesforce Billing) / not standardly included"
+    api_name: Invoice
+    is_standard: false
+    notes: >
+      Same as Salesforce — Invoice requires Salesforce Billing /
+      Revenue Cloud. Most NPSP deployments don't need invoicing.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.industries_reference.meta/industries_reference/sforce_api_objects_invoice.htm
+
+  - system: bloomerang
+    name: "(no Invoice concept)"
+    api_name: not_applicable
+    is_standard: false
+    notes: >
+      Bloomerang has no Invoice entity.
+    docs_url: https://bloomerang.com/api/rest-api-v1/
+
+# =============================================================================
+# Attributes
+# =============================================================================
+attributes:
+  - name: invoiceNumber
+    display_name: Invoice Number
+    type: autonumber
+    required: true
+    description: >
+      System-generated sequence identifier for the invoice.
+    usage: >
+      Customer-facing identifier ("INV-2026-1234"). Drives accounting
+      cross-references and customer-payment-tracking.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: account
+    display_name: Account
+    type: reference
+    required: true
+    reference_target: account
+    description: >
+      The customer being invoiced.
+    usage: >
+      Drives bill-to defaults, accounts-receivable aging reports.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: order
+    display_name: Order
+    type: reference
+    required: false
+    reference_target: order
+    description: >
+      The order this invoice bills against.
+    usage: >
+      Anchors invoice to its source order. Used in fulfillment-billing
+      reconciliation.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: status
+    display_name: Status
+    type: enum
+    required: true
+    enum_values:
+      - Draft
+      - Open
+      - Sent
+      - Partially Paid
+      - Paid
+      - Overdue
+      - Void
+      - Canceled
+    description: >
+      Lifecycle state of the invoice.
+    usage: >
+      Drives accounts-receivable workflows: Sent invoices generate
+      payment-collection follow-up; Overdue invoices trigger collection
+      escalation; Void/Canceled remove from AR aging.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: invoiceDate
+    display_name: Invoice Date
+    type: date
+    required: true
+    description: >
+      Date the invoice was issued.
+    usage: >
+      Anchors due-date calculation (invoice date + payment terms = due
+      date) and revenue-recognition timing.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: dueDate
+    display_name: Due Date
+    type: date
+    required: true
+    description: >
+      Date payment is due.
+    usage: >
+      Drives overdue alerts and AR aging reports. Often computed as
+      invoice date + payment terms (Net 30, Net 60, etc.).
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: subtotal
+    display_name: Subtotal
+    type: currency
+    required: false
+    description: >
+      Sum of line items before tax.
+    usage: >
+      Auto-calculated.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: tax
+    display_name: Tax
+    type: currency
+    required: false
+    description: >
+      Tax amount on the invoice.
+    usage: >
+      Auto-calculated based on tax rate and jurisdiction. Often pulled
+      from external tax calculation service.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: grandTotal
+    display_name: Grand Total
+    type: currency
+    required: false
+    description: >
+      Total amount due on the invoice.
+    usage: >
+      Headline figure on the customer-facing document. Drives AR aging
+      and payment-application logic.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: amountPaid
+    display_name: Amount Paid
+    type: currency
+    required: false
+    description: >
+      Total amount received against this invoice (across all payments).
+    usage: >
+      Auto-calculated rollup from related Payment records. Drives
+      partial-payment tracking and balance-due calculation.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: balanceDue
+    display_name: Balance Due
+    type: currency
+    required: false
+    description: >
+      Remaining amount owed (grandTotal - amountPaid).
+    usage: >
+      Auto-calculated. Drives AR reports.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: paymentTerms
+    display_name: Payment Terms
+    type: enum
+    required: false
+    enum_values:
+      - Due on Receipt
+      - Net 15
+      - Net 30
+      - Net 45
+      - Net 60
+      - Net 90
+    description: >
+      Payment-terms classification.
+    usage: >
+      Drives due-date calculation. Often defaulted from Account.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - name: createdAt
+    display_name: Created Date
+    type: datetime
+    required: true
+    description: >
+      System-generated timestamp.
+    usage: >
+      Audit field.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+# =============================================================================
+# Relationships to other entities
+# =============================================================================
+relationships:
+  - target: account
+    cardinality: many-to-one
+    role: child
+    description: >
+      An invoice belongs to one account.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - target: order
+    cardinality: many-to-one
+    role: child
+    description: >
+      An invoice may bill against one order.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+  - target: payment
+    cardinality: one-to-many
+    role: parent
+    description: >
+      An invoice can have many payments applied to it (partial payments).
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: absent
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: absent
+
+# =============================================================================
+# Sources
+# =============================================================================
+sources:
+  - title: "Salesforce Industries: Invoice (Salesforce Billing)"
+    url: https://developer.salesforce.com/docs/atlas.en-us.industries_reference.meta/industries_reference/sforce_api_objects_invoice.htm
+  - title: "HubSpot CRM API: Invoices"
+    url: https://developers.hubspot.com/docs/api-reference/crm-invoices-v3/guide
+  - title: "EspoCRM: Sales module documentation"
+    url: https://docs.espocrm.com/
+  - title: "CiviCRM: Contributions (invoicing via PDF generation)"
+    url: https://docs.civicrm.org/user/en/latest/contributions/
