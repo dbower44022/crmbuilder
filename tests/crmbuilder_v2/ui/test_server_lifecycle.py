@@ -166,6 +166,100 @@ def test_unexpected_finished_emits_crashed(qapp, qtbot, monkeypatch):
     assert "died at line 17" in blocker.args[0]
 
 
+def test_pre_ready_process_error_emits_spawn_failed(
+    qapp, qtbot, monkeypatch
+):
+    """``errorOccurred`` before readiness is a startup failure → spawn_failed."""
+    # Probe fails so we enter the spawn path; polling never sees a 200
+    # because we drive the error before _post_ready is set.
+    monkeypatch.setattr(
+        server_lifecycle.httpx, "get",
+        _make_get([httpx.ConnectError("nope")]),
+    )
+    fake_process = _patch_qprocess(monkeypatch)
+    fake_process.errorString.return_value = "FailedToStart"
+
+    lifecycle = ServerLifecycle(_BASE_URL)
+    lifecycle.start()
+
+    assert lifecycle._post_ready is False  # noqa: SLF001 — invariant under test
+
+    crashed_seen = Mock()
+    lifecycle.crashed.connect(crashed_seen)
+
+    with qtbot.waitSignal(lifecycle.spawn_failed, timeout=1000) as blocker:
+        lifecycle._on_process_error(0)
+
+    assert "FailedToStart" in blocker.args[0]
+    crashed_seen.assert_not_called()
+
+
+def test_post_ready_process_error_emits_crashed(qapp, qtbot, monkeypatch):
+    """``errorOccurred`` after readiness is a runtime crash → crashed."""
+    monkeypatch.setattr(
+        server_lifecycle.httpx, "get",
+        _make_get([
+            httpx.ConnectError("nope"),
+            Mock(status_code=200),
+        ]),
+    )
+    fake_process = _patch_qprocess(monkeypatch)
+    fake_process.errorString.return_value = "Crashed"
+
+    lifecycle = ServerLifecycle(_BASE_URL)
+    with qtbot.waitSignal(lifecycle.ready, timeout=2000):
+        lifecycle.start()
+
+    assert lifecycle._post_ready is True  # noqa: SLF001 — invariant under test
+
+    spawn_failed_seen = Mock()
+    lifecycle.spawn_failed.connect(spawn_failed_seen)
+
+    with qtbot.waitSignal(lifecycle.crashed, timeout=1000) as blocker:
+        lifecycle._on_process_error(0)
+
+    assert "Crashed" in blocker.args[0]
+    spawn_failed_seen.assert_not_called()
+
+
+def test_reconnect_after_crash_resets_post_ready(qapp, qtbot, monkeypatch):
+    """A second ``start()`` clears ``_post_ready`` so the new spawn is treated as starting."""
+    # Sequence:
+    #   1. ConnectError — initial probe fails, spawn begins
+    #   2. status=200 — first poll succeeds, lifecycle reaches ready
+    #   3. Reconnect: start() runs the probe again
+    #   4. ConnectError — second probe fails, second spawn begins
+    monkeypatch.setattr(
+        server_lifecycle.httpx, "get",
+        _make_get([
+            httpx.ConnectError("first"),
+            Mock(status_code=200),
+            httpx.ConnectError("reconnect probe"),
+        ]),
+    )
+    fake_process = _patch_qprocess(monkeypatch)
+    fake_process.errorString.return_value = "ResetSpawnError"
+
+    lifecycle = ServerLifecycle(_BASE_URL)
+    with qtbot.waitSignal(lifecycle.ready, timeout=2000):
+        lifecycle.start()
+
+    assert lifecycle._post_ready is True  # noqa: SLF001
+
+    # Reconnect: a new start() must clear _post_ready before re-probing.
+    lifecycle.start()
+    assert lifecycle._post_ready is False  # noqa: SLF001 — invariant under test
+
+    crashed_seen = Mock()
+    lifecycle.crashed.connect(crashed_seen)
+
+    with qtbot.waitSignal(lifecycle.spawn_failed, timeout=1000) as blocker:
+        lifecycle._on_process_error(0)
+
+    assert "ResetSpawnError" in blocker.args[0]
+    crashed_seen.assert_not_called()
+
+
 def test_finished_after_intentional_terminate_does_not_emit_crashed(
     qapp, qtbot, monkeypatch
 ):

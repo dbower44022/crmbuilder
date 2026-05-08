@@ -38,10 +38,12 @@ class ServerLifecycle(QObject):
     * ``ready()`` — emitted on probe success or when a spawned
       subprocess responds to ``/health``.
     * ``crashed(str)`` — emitted when an owned subprocess exits
-      unexpectedly. Argument carries any captured stdout/stderr text.
+      unexpectedly OR when ``QProcess.errorOccurred`` fires after the
+      lifecycle has reached ready state. Argument carries any captured
+      stdout/stderr text or the QProcess error string.
     * ``spawn_failed(str)`` — emitted when an initial spawn does not
       become ready within the deadline, or when ``QProcess.errorOccurred``
-      fires. Argument carries diagnostic text.
+      fires before ready. Argument carries diagnostic text.
     * ``terminated()`` — emitted after a deliberate ``terminate()``
       completes.
     """
@@ -59,6 +61,12 @@ class ServerLifecycle(QObject):
         self._poll_timer: QTimer | None = None
         self._poll_started_at: float | None = None
         self._intentional_terminate = False
+        # Tracks whether the lifecycle has reached ready state. Used to
+        # distinguish runtime crashes (post-ready ``errorOccurred`` →
+        # ``crashed``) from startup failures (pre-ready ``errorOccurred``
+        # → ``spawn_failed``). Reset on ``start()`` so a Reconnect after
+        # a crash treats the new spawn as starting again.
+        self._post_ready = False
 
     @property
     def ownership(self) -> str:
@@ -73,6 +81,7 @@ class ServerLifecycle(QObject):
                 "API already running at %s; using external instance",
                 self._base_url,
             )
+            self._post_ready = True
             self.ready.emit()
             return
         _log.info(
@@ -115,6 +124,7 @@ class ServerLifecycle(QObject):
             self._process = None
         self._intentional_terminate = False
         self._poll_started_at = None
+        self._post_ready = False
 
     def _probe(self) -> bool:
         try:
@@ -164,6 +174,7 @@ class ServerLifecycle(QObject):
                 )
                 self._stop_polling()
                 _log.info("Spawned API ready after %.2fs", elapsed)
+                self._post_ready = True
                 self.ready.emit()
                 return
         except Exception as exc:
@@ -210,7 +221,12 @@ class ServerLifecycle(QObject):
             message = str(error)
         _log.error("QProcess error: %s", message)
         self._stop_polling()
-        self.spawn_failed.emit(message)
+        if self._post_ready and not self._intentional_terminate:
+            # Runtime crash: surface to the in-window banner via ``crashed``.
+            self.crashed.emit(message)
+        else:
+            # Pre-ready: the spawn never reached readiness.
+            self.spawn_failed.emit(message)
 
     def _on_process_finished(self, exit_code: int = 0, exit_status=None) -> None:
         if self._intentional_terminate:
