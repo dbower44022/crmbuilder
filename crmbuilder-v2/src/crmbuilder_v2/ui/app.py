@@ -24,6 +24,7 @@ from pathlib import Path
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 from crmbuilder_v2.config import get_settings
+from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.main_window import MainWindow
 from crmbuilder_v2.ui.server_lifecycle import ServerLifecycle
 from crmbuilder_v2.ui.splash import Splash
@@ -124,7 +125,8 @@ def main(argv: list[str] | None = None) -> int:
 
     settings = get_settings()
     lifecycle = ServerLifecycle(base_url=settings.api_base_url)
-    window = MainWindow(lifecycle=lifecycle)
+    client = StorageClient(base_url=settings.api_base_url)
+    window = MainWindow(lifecycle=lifecycle, client=client)
 
     def on_ready() -> None:
         if not window.isVisible():

@@ -1,10 +1,13 @@
 """Main window — sidebar + stacked content area, with crash banner.
 
 Per DEC-021 the main window structure is a sidebar (left, fixed-width)
-plus a ``QStackedWidget`` (right, swapping per selection). Slice B adds
-the lifecycle ownership (so ``closeEvent`` cleanly terminates an owned
-API subprocess) and a crash banner mounted above the sidebar+stack
-content row.
+plus a ``QStackedWidget`` (right, swapping per selection). Slice B added
+the lifecycle ownership and crash banner. Slice C threads the
+``StorageClient`` through the constructor, replaces the Decisions
+placeholder with a live ``DecisionsPanel``, and wires panel-level
+``connection_lost`` to the same crash banner the lifecycle uses. The
+visible panel auto-refreshes on lifecycle ready (initial load and
+post-reconnect).
 """
 
 from __future__ import annotations
@@ -22,7 +25,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from crmbuilder_v2.ui.base.list_detail_panel import ListDetailPanel
+from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.crash_banner import CrashBanner
+from crmbuilder_v2.ui.panels.decisions import DecisionsPanel
 from crmbuilder_v2.ui.server_lifecycle import ServerLifecycle
 from crmbuilder_v2.ui.sidebar import SIDEBAR_ENTRIES, Sidebar
 
@@ -33,24 +39,32 @@ _DEFAULT_ENTRY = "Decisions"
 class MainWindow(QMainWindow):
     """Top-level window containing the crash banner, sidebar, and content stack."""
 
-    def __init__(self, lifecycle: ServerLifecycle):
+    def __init__(self, lifecycle: ServerLifecycle, client: StorageClient):
         super().__init__()
         self.setWindowTitle("CRMBuilder v2")
         self.resize(1200, 800)
 
         self._lifecycle = lifecycle
+        self._client = client
         self._sidebar = Sidebar()
         self._stack = QStackedWidget()
         self._crash_banner = CrashBanner()
         self._pages_by_entry: dict[str, int] = {}
 
         for entry in SIDEBAR_ENTRIES:
-            placeholder = QLabel(
-                f"Panel for {entry} — implemented in slice D or E."
-            )
-            placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            placeholder.setObjectName(f"placeholder_{entry.lower().replace(' ', '_')}")
-            index = self._stack.addWidget(placeholder)
+            if entry == "Decisions":
+                page: QWidget = DecisionsPanel(self._client)
+                page.connection_lost.connect(self._on_panel_connection_lost)
+            else:
+                placeholder = QLabel(
+                    f"Panel for {entry} — implemented in slice D or E."
+                )
+                placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                placeholder.setObjectName(
+                    f"placeholder_{entry.lower().replace(' ', '_')}"
+                )
+                page = placeholder
+            index = self._stack.addWidget(page)
             self._pages_by_entry[entry] = index
 
         content_widget = QWidget()
@@ -94,6 +108,10 @@ class MainWindow(QMainWindow):
             self._lifecycle.terminate()
         except Exception:
             _log.exception("Lifecycle terminate failed during closeEvent")
+        try:
+            self._client.close()
+        except Exception:
+            _log.exception("StorageClient close failed during closeEvent")
         super().closeEvent(event)
 
     def _on_sidebar_selected(self, entry: str) -> None:
@@ -110,6 +128,17 @@ class MainWindow(QMainWindow):
         if self._crash_banner.isVisible():
             self._crash_banner.hide()
         self._set_content_enabled(True)
+        self._refresh_current_panel()
+
+    def _on_panel_connection_lost(self, message: str) -> None:
+        _log.warning("Panel reported connection lost: %s", message)
+        self._crash_banner.show_with_message("Storage server unreachable.")
+        self._set_content_enabled(False)
+
+    def _refresh_current_panel(self) -> None:
+        widget = self._stack.currentWidget()
+        if isinstance(widget, ListDetailPanel):
+            widget.refresh()
 
     def _set_content_enabled(self, enabled: bool) -> None:
         self._sidebar.setEnabled(enabled)
