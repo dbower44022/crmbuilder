@@ -330,6 +330,164 @@ def test_get_risk_missing_raises_not_found():
         client.get_risk("RSK-999")
 
 
+def test_list_charter_versions_returns_list():
+    versions = [
+        {"version": 2, "is_current": True, "payload": {"scope": "two"}},
+        {"version": 1, "is_current": False, "payload": {"scope": "one"}},
+    ]
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.method == "GET"
+        assert req.url.path == "/charter/versions"
+        return httpx.Response(
+            200, json={"data": versions, "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    assert client.list_charter_versions() == versions
+
+
+def test_get_charter_version_returns_dict():
+    record = {"version": 2, "is_current": True, "payload": {"scope": "two"}}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.url.path == "/charter/versions/2"
+        return httpx.Response(
+            200, json={"data": record, "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    assert client.get_charter_version(2) == record
+
+
+def test_get_charter_version_missing_raises_not_found():
+    def handler(_req: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            404,
+            json={
+                "data": None,
+                "meta": {},
+                "errors": [{"code": "not_found", "message": "version 99"}],
+            },
+        )
+
+    client = _client(handler)
+    with pytest.raises(NotFoundError):
+        client.get_charter_version(99)
+
+
+def test_list_status_versions_returns_list():
+    versions = [
+        {"version": 5, "is_current": True, "payload": {"phase": "ui"}},
+        {"version": 4, "is_current": False, "payload": {"phase": "storage"}},
+    ]
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.url.path == "/status/versions"
+        return httpx.Response(
+            200, json={"data": versions, "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    assert client.list_status_versions() == versions
+
+
+def test_get_status_version_returns_dict():
+    record = {"version": 5, "is_current": True, "payload": {"phase": "ui"}}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.url.path == "/status/versions/5"
+        return httpx.Response(
+            200, json={"data": record, "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    assert client.get_status_version(5) == record
+
+
+def test_get_status_version_missing_raises_not_found():
+    def handler(_req: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            404,
+            json={
+                "data": None,
+                "meta": {},
+                "errors": [{"code": "not_found", "message": "version 99"}],
+            },
+        )
+
+    client = _client(handler)
+    with pytest.raises(NotFoundError):
+        client.get_status_version(99)
+
+
+def test_list_topics_returns_list():
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.url.path == "/topics"
+        return httpx.Response(
+            200, json={"data": [], "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    assert client.list_topics() == []
+
+
+def test_get_topic_missing_raises_not_found():
+    def handler(_req: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            404,
+            json={
+                "data": None,
+                "meta": {},
+                "errors": [{"code": "not_found", "message": "missing"}],
+            },
+        )
+
+    client = _client(handler)
+    with pytest.raises(NotFoundError):
+        client.get_topic("TOP-X")
+
+
+def test_list_planning_items_returns_list():
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.url.path == "/planning-items"
+        return httpx.Response(
+            200, json={"data": [], "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    assert client.list_planning_items() == []
+
+
+def test_list_references_returns_list():
+    refs = [
+        {
+            "source_type": "session",
+            "source_id": "SES-004",
+            "target_type": "decision",
+            "target_id": "DEC-018",
+            "relationship": "decided_in",
+        },
+        {
+            "source_type": "decision",
+            "source_id": "DEC-018",
+            "target_type": "decision",
+            "target_id": "DEC-001",
+            "relationship": "supersedes",
+        },
+    ]
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.method == "GET"
+        assert req.url.path == "/references"
+        return httpx.Response(
+            200, json={"data": refs, "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    assert client.list_references() == refs
+
+
 def test_list_references_touching_returns_split_dict():
     payload = {
         "as_source": [

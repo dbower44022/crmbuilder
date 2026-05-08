@@ -5,9 +5,10 @@ plus a ``QStackedWidget`` (right, swapping per selection). Slice B added
 the lifecycle ownership and crash banner. Slice C threads the
 ``StorageClient`` through the constructor, replaces the Decisions
 placeholder with a live ``DecisionsPanel``, and wires panel-level
-``connection_lost`` to the same crash banner the lifecycle uses. The
-visible panel auto-refreshes on lifecycle ready (initial load and
-post-reconnect).
+``connection_lost`` to the same crash banner the lifecycle uses. Slice
+D added Sessions and Risks. Slice E completes the round-2 read-only
+panels: Charter, Status, Topics, Planning Items, References — every
+sidebar entry now routes to a real panel.
 """
 
 from __future__ import annotations
@@ -28,9 +29,14 @@ from PySide6.QtWidgets import (
 from crmbuilder_v2.ui.base.list_detail_panel import ListDetailPanel
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.crash_banner import CrashBanner
+from crmbuilder_v2.ui.panels.charter import CharterPanel
 from crmbuilder_v2.ui.panels.decisions import DecisionsPanel
+from crmbuilder_v2.ui.panels.planning_items import PlanningItemsPanel
+from crmbuilder_v2.ui.panels.references import ReferencesPanel
 from crmbuilder_v2.ui.panels.risks import RisksPanel
 from crmbuilder_v2.ui.panels.sessions import SessionsPanel
+from crmbuilder_v2.ui.panels.status import StatusPanel
+from crmbuilder_v2.ui.panels.topics import TopicsPanel
 from crmbuilder_v2.ui.server_lifecycle import ServerLifecycle
 from crmbuilder_v2.ui.sidebar import SIDEBAR_ENTRIES, Sidebar
 
@@ -68,15 +74,25 @@ class MainWindow(QMainWindow):
         self._pages_by_entry: dict[str, int] = {}
 
         for entry in SIDEBAR_ENTRIES:
-            if entry == "Decisions":
-                page: QWidget = DecisionsPanel(self._client)
+            if entry == "Charter":
+                page: QWidget = CharterPanel(self._client)
+            elif entry == "Status":
+                page = StatusPanel(self._client)
+            elif entry == "Decisions":
+                page = DecisionsPanel(self._client)
             elif entry == "Sessions":
                 page = SessionsPanel(self._client)
             elif entry == "Risks":
                 page = RisksPanel(self._client)
+            elif entry == "Planning Items":
+                page = PlanningItemsPanel(self._client)
+            elif entry == "Topics":
+                page = TopicsPanel(self._client)
+            elif entry == "References":
+                page = ReferencesPanel(self._client)
             else:
                 placeholder = QLabel(
-                    f"Panel for {entry} — implemented in slice D or E."
+                    f"Panel for {entry} — not yet implemented."
                 )
                 placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 placeholder.setObjectName(

@@ -9,9 +9,14 @@ DecisionsPanel.
 from __future__ import annotations
 
 from crmbuilder_v2.ui.main_window import MainWindow
+from crmbuilder_v2.ui.panels.charter import CharterPanel
 from crmbuilder_v2.ui.panels.decisions import DecisionsPanel
+from crmbuilder_v2.ui.panels.planning_items import PlanningItemsPanel
+from crmbuilder_v2.ui.panels.references import ReferencesPanel
 from crmbuilder_v2.ui.panels.risks import RisksPanel
 from crmbuilder_v2.ui.panels.sessions import SessionsPanel
+from crmbuilder_v2.ui.panels.status import StatusPanel
+from crmbuilder_v2.ui.panels.topics import TopicsPanel
 from crmbuilder_v2.ui.sidebar import SIDEBAR_ENTRIES
 from crmbuilder_v2.ui.splash import Splash
 
@@ -84,6 +89,56 @@ def test_main_window_risks_page_is_panel(
 
     page = window._stack.widget(window._pages_by_entry["Risks"])
     assert isinstance(page, RisksPanel)
+
+
+def test_main_window_charter_page_is_panel(
+    qapp, qtbot, lifecycle_stub, client_stub
+):
+    window = MainWindow(lifecycle=lifecycle_stub, client=client_stub)
+    qtbot.addWidget(window)
+
+    page = window._stack.widget(window._pages_by_entry["Charter"])
+    assert isinstance(page, CharterPanel)
+
+
+def test_main_window_status_page_is_panel(
+    qapp, qtbot, lifecycle_stub, client_stub
+):
+    window = MainWindow(lifecycle=lifecycle_stub, client=client_stub)
+    qtbot.addWidget(window)
+
+    page = window._stack.widget(window._pages_by_entry["Status"])
+    assert isinstance(page, StatusPanel)
+
+
+def test_main_window_topics_page_is_panel(
+    qapp, qtbot, lifecycle_stub, client_stub
+):
+    window = MainWindow(lifecycle=lifecycle_stub, client=client_stub)
+    qtbot.addWidget(window)
+
+    page = window._stack.widget(window._pages_by_entry["Topics"])
+    assert isinstance(page, TopicsPanel)
+
+
+def test_main_window_planning_items_page_is_panel(
+    qapp, qtbot, lifecycle_stub, client_stub
+):
+    window = MainWindow(lifecycle=lifecycle_stub, client=client_stub)
+    qtbot.addWidget(window)
+
+    page = window._stack.widget(window._pages_by_entry["Planning Items"])
+    assert isinstance(page, PlanningItemsPanel)
+
+
+def test_main_window_references_page_is_panel(
+    qapp, qtbot, lifecycle_stub, client_stub
+):
+    window = MainWindow(lifecycle=lifecycle_stub, client=client_stub)
+    qtbot.addWidget(window)
+
+    page = window._stack.widget(window._pages_by_entry["References"])
+    assert isinstance(page, ReferencesPanel)
 
 
 def test_splash_constructs(qapp):

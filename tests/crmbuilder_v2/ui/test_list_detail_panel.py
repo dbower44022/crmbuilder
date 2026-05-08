@@ -10,7 +10,7 @@ from crmbuilder_v2.ui.exceptions import (
     NotFoundError,
     StorageConnectionError,
 )
-from PySide6.QtWidgets import QLabel, QWidget
+from PySide6.QtWidgets import QLabel, QSplitter, QWidget
 
 
 class _FakePanel(ListDetailPanel):
@@ -273,6 +273,32 @@ def test_select_record_by_identifier_finds_loaded_row(qapp, qtbot):
     assert selected.row() == 1
     # Drain the detail-extras worker triggered by the selection.
     qtbot.waitUntil(lambda: len(panel.rendered_calls) >= 1, timeout=2000)
+
+
+class _ListOnlyFakePanel(_FakePanel):
+    """Subclass that opts out of the detail pane via ``_has_detail_pane``."""
+
+    _has_detail_pane = False
+
+
+def test_list_only_panel_renders_without_detail_pane(qapp, qtbot):
+    records = [{"identifier": "REF-001", "title": "ref"}]
+    panel = _ListOnlyFakePanel(fetch_impl=lambda: records)
+    qtbot.addWidget(panel)
+
+    # No splitter exists in a list-only layout.
+    splitters = panel.findChildren(QSplitter)
+    assert splitters == []
+    # The detail-stack helper attribute is None.
+    assert panel._detail_stack is None
+    assert panel._empty_detail is None
+    assert panel._loading_detail is None
+
+    # Selecting a row does not invoke the detail-extras flow.
+    _populate(panel, records, qtbot)
+    panel._select_row(0)
+    qtbot.wait(50)
+    assert panel.rendered_calls == []
 
 
 def test_select_record_by_identifier_pre_refresh_triggers_fetch_and_selects(

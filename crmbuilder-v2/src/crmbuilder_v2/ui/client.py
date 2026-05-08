@@ -5,9 +5,10 @@ Wired in slice C. Wraps the storage system REST endpoints, parses the
 not-found errors as typed exceptions. Pure Python, no Qt dependencies.
 Per DEC-019 the UI consumes the API exclusively through this client.
 
-Slice C exposes only the read methods needed for the smoke-grade
-Decisions panel. Slices D, E, and G grow the surface as their panels
-need it.
+Slice C exposed read methods for the smoke-grade Decisions panel.
+Slice D added sessions, risks, and references-touching for the round-1
+read-only views. Slice E adds versioned reads for charter and status,
+plus topics, planning items, and the full references list.
 """
 
 from __future__ import annotations
@@ -150,6 +151,107 @@ class StorageClient:
                 errors=[],
                 message="Expected dict body for get_risk",
             )
+        return result
+
+    # ------------------------------------------------------------------
+    # Charter (versioned read)
+    # ------------------------------------------------------------------
+
+    def list_charter_versions(self) -> list[dict[str, Any]]:
+        """Return all charter versions newest-first."""
+        result = self._request("GET", "/charter/versions")
+        if not isinstance(result, list):
+            return []
+        return result
+
+    def get_charter_version(self, version: int) -> dict[str, Any]:
+        """Return a single charter version. Raises ``NotFoundError`` if missing."""
+        result = self._request("GET", f"/charter/versions/{version}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for get_charter_version",
+            )
+        return result
+
+    # ------------------------------------------------------------------
+    # Status (versioned read)
+    # ------------------------------------------------------------------
+
+    def list_status_versions(self) -> list[dict[str, Any]]:
+        """Return all status versions newest-first."""
+        result = self._request("GET", "/status/versions")
+        if not isinstance(result, list):
+            return []
+        return result
+
+    def get_status_version(self, version: int) -> dict[str, Any]:
+        """Return a single status version. Raises ``NotFoundError`` if missing."""
+        result = self._request("GET", f"/status/versions/{version}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for get_status_version",
+            )
+        return result
+
+    # ------------------------------------------------------------------
+    # Topics
+    # ------------------------------------------------------------------
+
+    def list_topics(self) -> list[dict[str, Any]]:
+        result = self._request("GET", "/topics")
+        if not isinstance(result, list):
+            return []
+        return result
+
+    def get_topic(self, identifier: str) -> dict[str, Any]:
+        """Return a single topic. Raises ``NotFoundError`` if missing."""
+        result = self._request("GET", f"/topics/{identifier}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for get_topic",
+            )
+        return result
+
+    # ------------------------------------------------------------------
+    # Planning items
+    # ------------------------------------------------------------------
+
+    def list_planning_items(self) -> list[dict[str, Any]]:
+        result = self._request("GET", "/planning-items")
+        if not isinstance(result, list):
+            return []
+        return result
+
+    def get_planning_item(self, identifier: str) -> dict[str, Any]:
+        """Return a single planning item. Raises ``NotFoundError`` if missing."""
+        result = self._request("GET", f"/planning-items/{identifier}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for get_planning_item",
+            )
+        return result
+
+    # ------------------------------------------------------------------
+    # References (full list)
+    # ------------------------------------------------------------------
+
+    def list_references(self) -> list[dict[str, Any]]:
+        """Return all references as a flat list of dicts.
+
+        Each record carries ``source_type``, ``source_id``, ``target_type``,
+        ``target_id``, ``relationship``.
+        """
+        result = self._request("GET", "/references")
+        if not isinstance(result, list):
+            return []
         return result
 
     def list_references_touching(

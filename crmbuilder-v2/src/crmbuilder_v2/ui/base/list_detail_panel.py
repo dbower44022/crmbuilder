@@ -4,7 +4,10 @@ Wired in slice C; extended in slice D with a ``fetch_detail_extras``
 hook (for off-thread fetching of records needed by the detail pane,
 e.g. inbound references), a ``navigate_requested`` signal (for
 cross-panel link clicks), and ``select_record_by_identifier`` (for
-the navigation router to jump to a row).
+the navigation router to jump to a row). Slice E adds the
+``_has_detail_pane`` class flag (for list-only panels like References),
+the ``_filter_strip_widget`` hook (for filter dropdowns above the
+table), and the ``_post_process_records`` hook (for synthetic columns).
 
 Per PRD §4.5 every entity panel uses a master/detail layout — list of
 records on the left, detail of the selected record on the right. This
@@ -27,7 +30,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, ClassVar
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, Signal
 from PySide6.QtGui import QFont
@@ -142,6 +145,13 @@ class ListDetailPanel(QWidget):
     connection_lost = Signal(str)
     navigate_requested = Signal(str, str)
 
+    # Subclasses can set ``False`` to render list-only with no detail
+    # pane (no splitter, no detail-extras flow). The toolbar and master
+    # list still appear; subclasses may also insert a filter strip
+    # between the toolbar and the table by overriding
+    # ``_filter_strip_widget``. Used by the slice-E ReferencesPanel.
+    _has_detail_pane: ClassVar[bool] = True
+
     def __init__(self, client: StorageClient, parent: QWidget | None = None):
         super().__init__(parent)
         self._client = client
@@ -194,6 +204,29 @@ class ListDetailPanel(QWidget):
     ) -> QWidget:
         raise NotImplementedError
 
+    def _filter_strip_widget(self) -> QWidget | None:
+        """Return an optional widget shown between the toolbar and the table.
+
+        Default ``None`` (no filter strip). Subclasses with a list-only
+        layout (``_has_detail_pane = False``) can override this to add
+        filter dropdowns above the table. The hook is also available for
+        master/detail layouts but the typical usage is list-only panels.
+        """
+        return None
+
+    def _post_process_records(
+        self, records: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Hook for subclasses to augment fetched records before display.
+
+        Called on the UI thread between ``fetch_records`` (worker) and
+        the table-model update. Default returns the input unchanged.
+        Used by ``VersionedPanel`` to set a synthetic ``_current_marker``
+        field, and by ``ReferencesPanel`` to set synthetic
+        ``_source_display`` / ``_target_display`` fields.
+        """
+        return records
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -226,7 +259,8 @@ class ListDetailPanel(QWidget):
         """
         self._toolbar_widget.setEnabled(enabled)
         self._table.setEnabled(enabled)
-        self._detail_stack.setEnabled(enabled)
+        if self._detail_stack is not None:
+            self._detail_stack.setEnabled(enabled)
         if enabled:
             self.refresh()
 
@@ -284,7 +318,11 @@ class ListDetailPanel(QWidget):
         self._toolbar_widget = self._build_toolbar()
         outer.addWidget(self._toolbar_widget)
 
-        splitter = QSplitter(Qt.Orientation.Horizontal)
+        # Optional filter strip between the toolbar and the table; used
+        # by list-only panels (e.g. ReferencesPanel).
+        filter_strip = self._filter_strip_widget()
+        if filter_strip is not None:
+            outer.addWidget(filter_strip)
 
         self._table = QTableView()
         self._table.setSelectionBehavior(
@@ -311,22 +349,30 @@ class ListDetailPanel(QWidget):
             self._on_current_changed
         )
 
-        self._detail_stack = QStackedWidget()
-        self._empty_detail = QLabel("Select a record to see its detail.")
-        self._empty_detail.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._detail_stack.addWidget(self._empty_detail)
+        if self._has_detail_pane:
+            self._detail_stack = QStackedWidget()
+            self._empty_detail = QLabel("Select a record to see its detail.")
+            self._empty_detail.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self._detail_stack.addWidget(self._empty_detail)
 
-        self._loading_detail = QLabel("Loading detail…")
-        self._loading_detail.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._detail_stack.addWidget(self._loading_detail)
+            self._loading_detail = QLabel("Loading detail…")
+            self._loading_detail.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self._detail_stack.addWidget(self._loading_detail)
 
-        splitter.addWidget(self._table)
-        splitter.addWidget(self._detail_stack)
-        splitter.setSizes([_INITIAL_LIST_WIDTH, _INITIAL_DETAIL_WIDTH])
-        splitter.setStretchFactor(0, 1)
-        splitter.setStretchFactor(1, 2)
+            splitter = QSplitter(Qt.Orientation.Horizontal)
+            splitter.addWidget(self._table)
+            splitter.addWidget(self._detail_stack)
+            splitter.setSizes([_INITIAL_LIST_WIDTH, _INITIAL_DETAIL_WIDTH])
+            splitter.setStretchFactor(0, 1)
+            splitter.setStretchFactor(1, 2)
 
-        outer.addWidget(splitter, stretch=1)
+            outer.addWidget(splitter, stretch=1)
+        else:
+            # List-only layout. No splitter, no detail pane.
+            self._detail_stack = None
+            self._empty_detail = None
+            self._loading_detail = None
+            outer.addWidget(self._table, stretch=1)
 
     def _build_toolbar(self) -> QWidget:
         toolbar = QWidget()
@@ -363,7 +409,8 @@ class ListDetailPanel(QWidget):
     def _on_fetch_success(self, result: list[dict[str, Any]]) -> None:
         if not self._sender_is_current_refresh():
             return
-        self._records = list(result) if isinstance(result, list) else []
+        raw = list(result) if isinstance(result, list) else []
+        self._records = self._post_process_records(raw)
         self._model.set_records(self._records)
         # Header sizing: stretch the last column; the rest use the spec width
         # or resize to contents.
@@ -409,6 +456,8 @@ class ListDetailPanel(QWidget):
     def _on_current_changed(
         self, current: QModelIndex, _previous: QModelIndex
     ) -> None:
+        if not self._has_detail_pane:
+            return
         if not current.isValid():
             self._show_empty_detail()
             return
@@ -499,6 +548,8 @@ class ListDetailPanel(QWidget):
         self._detail_stack.setCurrentWidget(widget)
 
     def _show_empty_detail(self) -> None:
+        if self._detail_stack is None or self._empty_detail is None:
+            return
         self._detail_stack.setCurrentWidget(self._empty_detail)
 
     def _select_row(self, row: int) -> None:
