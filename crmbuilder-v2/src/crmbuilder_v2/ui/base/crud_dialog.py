@@ -163,6 +163,118 @@ def _wrap_with_error(input_widget: QWidget, error_label: QLabel) -> QWidget:
     return container
 
 
+class FormWidgets:
+    """Adapter that exposes the form widgets as both dict and attribute.
+
+    Internal callers use ``self._widgets[key]`` (dict lookup); the v0.1
+    decision-dialog tests use ``self._widgets.identifier`` and
+    ``self._widgets.value_for("identifier")``. The adapter satisfies
+    both shapes, plus a small set of value/error helpers preserved from
+    the v0.1 ``DecisionFormWidgets`` dataclass.
+    """
+
+    def __init__(
+        self,
+        widgets: dict[str, QWidget],
+        error_labels: dict[str, QLabel],
+        *,
+        tree_picker_selections: dict[str, str | None] | None = None,
+    ) -> None:
+        self._widgets = widgets
+        self._error_labels = error_labels
+        self._tree_picker_selections = tree_picker_selections or {}
+
+    # Dict-style.
+    def __getitem__(self, key: str) -> QWidget:
+        return self._widgets[key]
+
+    def __setitem__(self, key: str, widget: QWidget) -> None:
+        self._widgets[key] = widget
+
+    def __contains__(self, key: object) -> bool:
+        return key in self._widgets
+
+    def keys(self):
+        return self._widgets.keys()
+
+    # Attribute-style. ``__getattr__`` is only consulted when normal
+    # attribute lookup fails, so the explicit attributes above (and any
+    # method names) are not shadowed.
+    def __getattr__(self, name: str) -> QWidget:
+        if name.startswith("_"):
+            raise AttributeError(name)
+        widgets = self.__dict__.get("_widgets") or {}
+        if name in widgets:
+            return widgets[name]
+        raise AttributeError(name)
+
+    @property
+    def error_labels(self) -> dict[str, QLabel]:
+        return self._error_labels
+
+    def widget_for(self, field: str) -> QWidget | None:
+        return self._widgets.get(field)
+
+    def value_for(self, field: str) -> str:
+        widget = self._widgets.get(field)
+        if widget is None:
+            return self._tree_picker_selections.get(field) or ""
+        if isinstance(widget, QLineEdit):
+            return widget.text()
+        if isinstance(widget, QPlainTextEdit):
+            return widget.toPlainText()
+        if isinstance(widget, QComboBox):
+            return widget.currentText()
+        if isinstance(widget, DateField):
+            return widget.date_text()
+        if isinstance(widget, QPushButton):
+            # tree_picker selection is tracked separately.
+            return self._tree_picker_selections.get(field) or ""
+        return ""
+
+    def set_value(self, field: str, value: str) -> None:
+        widget = self._widgets.get(field)
+        if widget is None:
+            return
+        if isinstance(widget, QLineEdit):
+            widget.setText(value)
+            return
+        if isinstance(widget, QPlainTextEdit):
+            widget.setPlainText(value)
+            return
+        if isinstance(widget, QComboBox):
+            idx = widget.findText(value)
+            if idx >= 0:
+                widget.setCurrentIndex(idx)
+            else:
+                widget.setEditText(value)
+            return
+        if isinstance(widget, DateField):
+            widget.set_date(value)
+            return
+        if isinstance(widget, QPushButton):
+            self._tree_picker_selections[field] = value or None
+            widget.setText(value if value else "(no selection)")
+
+    def show_error(self, field: str, message: str) -> None:
+        label = self._error_labels.get(field)
+        if label is None:
+            return
+        label.setText(message)
+        label.setVisible(True)
+
+    def clear_error(self, field: str) -> None:
+        label = self._error_labels.get(field)
+        if label is None:
+            return
+        label.setText("")
+        label.setVisible(False)
+
+    def clear_all_errors(self) -> None:
+        for field in self._error_labels:
+            self.clear_error(field)
+
+
 # ---------------------------------------------------------------------------
 # EntityCrudDialog
 # ---------------------------------------------------------------------------
@@ -226,7 +338,12 @@ class EntityCrudDialog(QDialog):
         self._initial: dict[str, str] = {}
         self._tree_picker_selections: dict[str, str | None] = {}
         self._error_labels: dict[str, QLabel] = {}
-        self._widgets: dict[str, QWidget] = {}
+        self._field_widgets: dict[str, QWidget] = {}
+        self._widgets = FormWidgets(
+            self._field_widgets,
+            self._error_labels,
+            tree_picker_selections=self._tree_picker_selections,
+        )
         self._worker = None
 
         self.setWindowTitle(title)

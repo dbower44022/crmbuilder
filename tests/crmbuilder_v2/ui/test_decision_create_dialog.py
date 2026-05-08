@@ -14,6 +14,7 @@ from crmbuilder_v2.ui.exceptions import (
     StorageConnectionError,
     ValidationError,
 )
+from crmbuilder_v2.ui.widgets.date_field import DateField
 from PySide6.QtWidgets import QComboBox, QLineEdit, QPlainTextEdit
 
 
@@ -24,7 +25,7 @@ def _stub_client():
 def _fill_required(dialog: DecisionCreateDialog) -> None:
     dialog._widgets.identifier.setText("DEC-100")
     dialog._widgets.title.setText("Some title")
-    dialog._widgets.decision_date.setText("05-08-26")
+    dialog._widgets.decision_date.set_date("05-08-26")
     # status is preselected to Active.
 
 
@@ -34,7 +35,7 @@ def test_construct_has_all_eleven_fields(qtbot):
 
     assert isinstance(dialog._widgets.identifier, QLineEdit)
     assert isinstance(dialog._widgets.title, QLineEdit)
-    assert isinstance(dialog._widgets.decision_date, QLineEdit)
+    assert isinstance(dialog._widgets.decision_date, DateField)
     assert isinstance(dialog._widgets.status, QComboBox)
     assert isinstance(dialog._widgets.context, QPlainTextEdit)
     assert isinstance(dialog._widgets.decision, QPlainTextEdit)
@@ -67,8 +68,10 @@ def test_required_fields_block_submission(qtbot):
 
     # No API call.
     client.create_decision.assert_not_called()
-    # Inline errors on the four required fields.
-    for field in ("identifier", "title", "decision_date"):
+    # Inline errors on identifier and title (the empty required fields).
+    # decision_date defaults to today via the DateField widget so it is
+    # not empty; status defaults to "Active" via the schema.
+    for field in ("identifier", "title"):
         label = dialog._widgets.error_labels[field]
         assert label.text() == "This field is required."
 
@@ -175,7 +178,7 @@ def test_server_error_opens_generic_dialog(qtbot, monkeypatch):
             return 1
 
     monkeypatch.setattr(
-        "crmbuilder_v2.ui.dialogs.decision_create.ErrorDialog", _Recorder
+        "crmbuilder_v2.ui.base.crud_dialog.ErrorDialog", _Recorder
     )
 
     dialog = DecisionCreateDialog(client)
@@ -197,7 +200,7 @@ def test_invalid_identifier_format_blocks_submission(qtbot):
     # Set required fields with bad identifier format.
     dialog._widgets.identifier.setText("abc")
     dialog._widgets.title.setText("Some title")
-    dialog._widgets.decision_date.setText("05-08-26")
+    dialog._widgets.decision_date.set_date("05-08-26")
 
     dialog._on_save_clicked()
     # No API call.
@@ -207,19 +210,9 @@ def test_invalid_identifier_format_blocks_submission(qtbot):
     assert dialog.result() == 0
 
 
-def test_invalid_decision_date_format_blocks_submission(qtbot):
-    client = _stub_client()
-    dialog = DecisionCreateDialog(client)
-    qtbot.addWidget(dialog)
-
-    dialog._widgets.identifier.setText("DEC-100")
-    dialog._widgets.title.setText("t")
-    dialog._widgets.decision_date.setText("2026-05-08")  # ISO; wrong format
-
-    dialog._on_save_clicked()
-    assert client.create_decision.call_count == 0
-    err = dialog._widgets.error_labels["decision_date"].text()
-    assert "MM-DD-YY" in err
+# test_invalid_decision_date_format_blocks_submission removed in v0.2:
+# the calendar widget (DateField, per DEC-026) makes the invalid-format
+# input path unreachable. The widget enforces format by construction.
 
 
 def test_invalid_supersedes_format_blocks_submission(qtbot):
@@ -229,7 +222,7 @@ def test_invalid_supersedes_format_blocks_submission(qtbot):
 
     dialog._widgets.identifier.setText("DEC-100")
     dialog._widgets.title.setText("t")
-    dialog._widgets.decision_date.setText("05-08-26")
+    dialog._widgets.decision_date.set_date("05-08-26")
     dialog._widgets.supersedes.setText("abc")
 
     dialog._on_save_clicked()
@@ -246,7 +239,7 @@ def test_valid_formats_pass_through_to_api(qtbot):
 
     dialog._widgets.identifier.setText("DEC-099")
     dialog._widgets.title.setText("t")
-    dialog._widgets.decision_date.setText("05-09-26")
+    dialog._widgets.decision_date.set_date("05-09-26")
 
     with qtbot.waitSignal(dialog.accepted, timeout=2000):
         dialog._on_save_clicked()

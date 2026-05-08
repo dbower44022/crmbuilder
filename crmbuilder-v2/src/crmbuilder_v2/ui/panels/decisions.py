@@ -45,6 +45,7 @@ from crmbuilder_v2.ui.exceptions import (
     StorageClientError,
     StorageConnectionError,
 )
+from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.decisions")
 
@@ -190,34 +191,21 @@ class DecisionsPanel(ListDetailPanel):
             outer.addWidget(_long_text(record.get(field) or ""))
 
         outer.addWidget(_separator())
-        outer.addWidget(_label("References", bold=True))
-        refs = extras.get("references") or {}
-        as_source = refs.get("as_source") or []
-        as_target = refs.get("as_target") or []
-        rendered_any = False
-        # Inbound `decided_in` from sessions reads naturally; surface them first.
-        for ref in as_target:
-            if ref.get("relationship") == "decided_in" and ref.get(
-                "source_type"
-            ) == "session":
-                source_id = ref.get("source_id") or ""
-                outer.addWidget(self._reference_row(
-                    f'Decided in: <a href="session:{source_id}">{source_id}</a>'
-                ))
-                rendered_any = True
-        # Generic rendering for any remaining refs (both directions).
-        for ref in as_target:
-            if ref.get("relationship") == "decided_in" and ref.get(
-                "source_type"
-            ) == "session":
-                continue  # already rendered
-            outer.addWidget(self._reference_row(_format_ref(ref, direction="from")))
-            rendered_any = True
-        for ref in as_source:
-            outer.addWidget(self._reference_row(_format_ref(ref, direction="to")))
-            rendered_any = True
-        if not rendered_any:
-            outer.addWidget(_label("(no references)", dim=True))
+        # ReferencesSection renders inbound and outbound references via the
+        # shared widget (DEC-031). The Decisions detail pane already shows
+        # supersedes/superseded_by as top-level fields; suppress those
+        # outbound relationships in the section to avoid redundancy.
+        identifier = record.get("identifier") or ""
+        references_section = ReferencesSection(
+            "decision",
+            identifier,
+            extras.get("references") or {},
+            exclude_relationships={"supersedes"},
+        )
+        references_section.navigate_requested.connect(
+            self.navigate_requested
+        )
+        outer.addWidget(references_section)
 
         outer.addStretch(1)
         scroll.setWidget(container)
@@ -275,9 +263,6 @@ class DecisionsPanel(ListDetailPanel):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.refresh()
 
-    def _reference_row(self, html: str) -> QLabel:
-        return self._link_label(html)
-
     def _decision_link_or_dash(self, identifier: str | None) -> QLabel:
         if not identifier:
             return _label("—", dim=True)
@@ -294,23 +279,3 @@ class DecisionsPanel(ListDetailPanel):
         label.setWordWrap(True)
         label.linkActivated.connect(self._emit_link_navigation)
         return label
-
-
-def _format_ref(ref: dict, *, direction: str) -> str:
-    """Generic reference renderer: ``{relationship} ({direction}): <link>``."""
-    if direction == "from":
-        # Inbound: this entity is the target.
-        other_type = ref.get("source_type") or ""
-        other_id = ref.get("source_id") or ""
-    else:
-        other_type = ref.get("target_type") or ""
-        other_id = ref.get("target_id") or ""
-    relationship = ref.get("relationship") or "?"
-    href = f"{other_type}:{other_id}"
-    label_text = f"{other_type.replace('_', ' ').title()} {other_id}".strip()
-    if not label_text:
-        label_text = href
-    return (
-        f"{relationship} ({direction}): "
-        f'<a href="{href}">{label_text}</a>'
-    )

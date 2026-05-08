@@ -32,7 +32,7 @@ def test_construct_pre_populates_from_record(qtbot):
 
     assert dialog._widgets.identifier.text() == "DEC-007"
     assert dialog._widgets.title.text() == "Universal references pattern"
-    assert dialog._widgets.decision_date.text() == "05-06-26"
+    assert dialog._widgets.decision_date.date_text() == "05-06-26"
     assert dialog._widgets.status.currentText() == "Active"
     assert dialog._widgets.context.toPlainText() == "ctx"
     assert dialog._widgets.consequences.toPlainText() == "csq"
@@ -116,7 +116,7 @@ def test_not_found_shows_dialog_and_accepts(qtbot, monkeypatch):
             return 1
 
     monkeypatch.setattr(
-        "crmbuilder_v2.ui.dialogs.decision_edit.ErrorDialog", _Recorder
+        "crmbuilder_v2.ui.base.crud_dialog.ErrorDialog", _Recorder
     )
 
     client = MagicMock()
@@ -149,7 +149,7 @@ def test_validation_error_handled_inline(qtbot):
     qtbot.addWidget(dialog)
     # Use a valid-format date so client-side validation passes and the
     # mock's server-side ValidationError is the one surfaced.
-    dialog._widgets.decision_date.setText("05-09-26")
+    dialog._widgets.decision_date.set_date("05-09-26")
 
     dialog._on_save_clicked()
     qtbot.waitUntil(
@@ -160,18 +160,9 @@ def test_validation_error_handled_inline(qtbot):
     assert dialog.result() == 0
 
 
-def test_invalid_decision_date_format_blocks_submission(qtbot):
-    client = MagicMock()
-    dialog = DecisionEditDialog(client, _record())
-    qtbot.addWidget(dialog)
-    dialog._widgets.decision_date.setText("2026-05-08")  # ISO; wrong format
-
-    dialog._on_save_clicked()
-    # No API call.
-    assert client.update_decision.call_count == 0
-    err = dialog._widgets.error_labels["decision_date"].text()
-    assert "MM-DD-YY" in err
-    assert dialog.result() == 0
+# test_invalid_decision_date_format_blocks_submission removed in v0.2:
+# the calendar widget (DateField, per DEC-026) makes the invalid-format
+# input path unreachable; the widget enforces format by construction.
 
 
 def test_invalid_supersedes_format_blocks_submission(qtbot):

@@ -50,7 +50,7 @@ def test_conflict_routes_to_error_dialog(qtbot, monkeypatch):
             return 0
 
     monkeypatch.setattr(
-        "crmbuilder_v2.ui.dialogs.decision_delete.ErrorDialog",
+        "crmbuilder_v2.ui.base.crud_dialog.ErrorDialog",
         _StubErrorDialog,
     )
 

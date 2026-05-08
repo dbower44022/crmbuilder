@@ -136,15 +136,19 @@ def test_decision_to_session_link_navigates(qapp, qtbot, navigation_window):
         timeout=2000,
     )
 
-    # Find the "Decided in" link in the rendered detail.
+    # Find the SES-004 link in the rendered detail. The v0.2
+    # ReferencesSection widget renders each reference as its own QLabel
+    # with an `<a href="session:SES-004">` anchor; locate it by the href
+    # rather than by free-text co-occurrence with the relationship name
+    # (which is rendered in a separate group-header label).
     detail_widget = decisions_panel._detail_stack.currentWidget()
     link_label = None
     for label in detail_widget.findChildren(QLabel):
         text = label.text() or ""
-        if "Decided in" in text and "SES-004" in text:
+        if 'href="session:SES-004"' in text:
             link_label = label
             break
-    assert link_label is not None, "expected a Decided-in link to SES-004"
+    assert link_label is not None, "expected a session link to SES-004"
 
     # Simulate the click via the linkActivated signal (offscreen Qt
     # platform doesn't render or hit-test, so we drive the signal
