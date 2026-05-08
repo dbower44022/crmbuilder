@@ -208,6 +208,74 @@ def test_navigating_to_stale_entry_clears_indicator_and_refreshes(
     )
 
 
+def test_navigating_to_non_stale_entry_after_lifecycle_ready_refreshes(
+    qapp, qtbot, lifecycle_unreachable, counted_client, tmp_path
+):
+    """Selecting any panel after the lifecycle is ready triggers a refresh,
+    even when the panel was not marked stale. Closes the v0.1 bug where
+    panels other than the default-selected Decisions panel rendered empty
+    on first navigation because no refresh path fired for them.
+    """
+    _seed_snapshots(tmp_path)
+    client, counter = counted_client
+    window = MainWindow(
+        lifecycle=lifecycle_unreachable, client=client, snapshot_dir=tmp_path
+    )
+    qtbot.addWidget(window)
+    qtbot.wait(100)
+
+    # Simulate the lifecycle reaching readiness (the real lifecycle in
+    # this fixture points at an unreachable URL and never emits).
+    # _on_lifecycle_ready flips _lifecycle_ready and refreshes the
+    # current panel (Decisions).
+    window._on_lifecycle_ready()
+    assert _wait_until(
+        qtbot, lambda: counter["/decisions"] >= 1, timeout_ms=2000
+    ), "lifecycle-ready should refresh the default-selected Decisions panel"
+
+    # Sessions is not stale; navigating to it should still fire a refresh
+    # because the lifecycle is ready.
+    assert window._sidebar.is_stale("Sessions") is False
+    sessions_before_navigate = counter["/sessions"]
+
+    sessions_idx = None
+    for r in range(window._sidebar.count()):
+        if window._sidebar.item(r).text() == "Sessions":
+            sessions_idx = r
+            break
+    assert sessions_idx is not None
+    window._sidebar.setCurrentRow(sessions_idx)
+
+    assert _wait_until(
+        qtbot,
+        lambda: counter["/sessions"] > sessions_before_navigate,
+        timeout_ms=2000,
+    ), "selecting a non-stale entry post-ready should refresh that panel"
+
+
+def test_navigating_before_lifecycle_ready_does_not_refresh(
+    qapp, qtbot, lifecycle_unreachable, counted_client, tmp_path
+):
+    """The synchronous setCurrentRow during __init__ fires the sidebar
+    selection slot before the lifecycle has had a chance to probe. The
+    selection slot must not fire a refresh against the API in that
+    window — _on_lifecycle_ready owns the initial refresh of the
+    current panel once the API is reachable.
+    """
+    _seed_snapshots(tmp_path)
+    client, counter = counted_client
+    window = MainWindow(
+        lifecycle=lifecycle_unreachable, client=client, snapshot_dir=tmp_path
+    )
+    qtbot.addWidget(window)
+    qtbot.wait(100)
+
+    # No refresh should have fired for any entity panel: the lifecycle
+    # never emitted ready and no file-watch event has fired.
+    assert counter["/decisions"] == 0
+    assert counter["/sessions"] == 0
+
+
 def test_main_window_with_nonexistent_snapshot_dir_does_not_crash(
     qapp, qtbot, lifecycle_unreachable, counted_client, tmp_path
 ):

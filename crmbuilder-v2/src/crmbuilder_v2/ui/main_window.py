@@ -88,6 +88,13 @@ class MainWindow(QMainWindow):
         self._crash_banner = CrashBanner()
         self._pages_by_entry: dict[str, int] = {}
         self._stale_entries: set[str] = set()
+        # Tracks whether the storage API is currently reachable. Used by
+        # ``_on_sidebar_selected`` to gate the on-select refresh so that
+        # the synchronous ``setCurrentRow`` during ``__init__`` does not
+        # fire an HTTP request before the lifecycle's probe completes.
+        # ``_on_lifecycle_ready`` flips this to True; ``handle_crash``
+        # and ``_on_panel_connection_lost`` flip it back to False.
+        self._lifecycle_ready = False
 
         for entry in SIDEBAR_ENTRIES:
             if entry == "Charter":
@@ -160,6 +167,7 @@ class MainWindow(QMainWindow):
             )
         else:
             _log.warning("Storage server stopped (no captured output)")
+        self._lifecycle_ready = False
         self._crash_banner.show_with_message("Storage server stopped.")
         self._set_content_enabled(False)
 
@@ -182,13 +190,24 @@ class MainWindow(QMainWindow):
         index = self._pages_by_entry.get(entry)
         if index is not None:
             self._stack.setCurrentIndex(index)
-        if entry in self._stale_entries:
+        was_stale = entry in self._stale_entries
+        if was_stale:
             self._stale_entries.discard(entry)
             self._sidebar.set_stale(entry, False)
-            if index is not None:
-                page = self._stack.widget(index)
-                if isinstance(page, ListDetailPanel):
-                    page.refresh()
+        if index is None:
+            return
+        page = self._stack.widget(index)
+        if not isinstance(page, ListDetailPanel):
+            return
+        # Refresh the panel on every selection so it shows current data.
+        # Stale-path refreshes always fire, matching prior behavior;
+        # non-stale refreshes are gated on ``_lifecycle_ready`` so the
+        # default-row ``setCurrentRow`` during ``__init__`` does not fire
+        # an HTTP request before the lifecycle's probe completes.
+        # ``_on_lifecycle_ready`` performs the initial refresh of the
+        # current panel itself once the API is up.
+        if was_stale or self._lifecycle_ready:
+            page.refresh()
 
     def _on_reconnect_requested(self) -> None:
         _log.info("Reconnect requested; restarting lifecycle")
@@ -196,6 +215,7 @@ class MainWindow(QMainWindow):
 
     def _on_lifecycle_ready(self) -> None:
         # Fires on initial readiness AND on successful reconnect.
+        self._lifecycle_ready = True
         if self._crash_banner.isVisible():
             self._crash_banner.hide()
         self._set_content_enabled(True)
@@ -203,6 +223,7 @@ class MainWindow(QMainWindow):
 
     def _on_panel_connection_lost(self, message: str) -> None:
         _log.warning("Panel reported connection lost: %s", message)
+        self._lifecycle_ready = False
         self._crash_banner.show_with_message("Storage server unreachable.")
         self._set_content_enabled(False)
 
