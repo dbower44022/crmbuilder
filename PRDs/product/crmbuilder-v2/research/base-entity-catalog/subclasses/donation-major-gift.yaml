@@ -2,17 +2,17 @@ catalog_id: donation-major-gift
 catalog_version: "0.1"
 last_updated: "05-09-26 10:40"
 tier: 4
-entry_kind: specialization
+entry_kind: subclass
 
 parent_entity: donation
 discriminator:
   attribute: type
   value: Major Gift
 
-name: Major Gift (Donation specialization)
+name: Major Gift (Donation subclass)
 display_name: Major Gift
 purpose: >
-  A specialization of Donation representing a high-value gift that
+  A subclass of Donation representing a high-value gift that
   warrants distinct cultivation, stewardship, and acknowledgment
   workflows. Threshold for "major gift" varies by organization (commonly
   $1,000 / $10,000 / $25,000 / $100,000) but the operational distinction
@@ -33,7 +33,7 @@ business_context: >
   Contribution (financial_type=Major Gift, plus custom solicitor and
   stewardship-officer fields). Bloomerang uses Custom Fields on
   Transaction with Major Gift designation. The B2B systems would build
-  this out as part of full nonprofit customization. The specialization
+  this out as part of full nonprofit customization. The subclass
   matters because it formalizes the threshold-driven cultivation pattern
   rather than leaving it implicit in custom fields. When interviewing
   clients, surface "Major Gift" specifically (rather than just

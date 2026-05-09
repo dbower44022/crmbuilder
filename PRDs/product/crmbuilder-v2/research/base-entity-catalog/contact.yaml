@@ -32,7 +32,7 @@ business_context: >
   the entire data model. When interviewing clients, surface "Contact" by
   asking which categories of people they need to track: customers, donors,
   volunteers, mentees, applicants, alumni, board members, staff, vendors'
-  staff, and so on. Each category may map to a Contact specialization
+  staff, and so on. Each category may map to a Contact subclass
   (donor, volunteer, etc.) or to a Tag/Type discriminator. Personal-data
   protection rules (GDPR, CCPA, HIPAA) typically apply at the Contact level,
   so consent, communication preferences, and do-not-contact flags are

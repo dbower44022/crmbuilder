@@ -5,10 +5,10 @@ catalog_id: account-nonprofit
 catalog_version: "0.1"
 last_updated: "05-08-26 05:00"
 tier: 1
-entry_kind: specialization
+entry_kind: subclass
 
 # =============================================================================
-# Specialization metadata
+# Subclass metadata
 # =============================================================================
 parent_entity: account
 discriminator:
@@ -21,14 +21,14 @@ purpose: >
   An Account that operates under tax-exempt status (typically 501(c)(3) in
   the US, or international equivalents) and tracks distinct compliance,
   governance, and giving-history attributes that for-profit accounts do
-  not. A specialization of Account.
+  not. A subclass of Account.
 
 business_context: >
   Nonprofit Organization records are a subset of Account records distinguished
   by their tax-exempt legal status. They drive grant-eligibility checks,
   donor-acknowledgment letter generation, public 990 cross-references, and
   partnership relationships in CRMs that serve mission-driven sectors. The
-  specialization matters because reporting, tax handling, communication
+  subclass matters because reporting, tax handling, communication
   cadence, and stewardship strategies often differ from for-profit accounts:
   a nonprofit account record might need fields for EIN (federal tax ID),
   tax-exempt classification (501(c)(3) Public Charity vs Private Foundation
@@ -42,7 +42,7 @@ business_context: >
   community organizations, or other tax-exempt entities. If they need to
   generate IRS-compliant donor acknowledgment letters, manage grant
   applications and reports, or report giving by NTEE code, this
-  specialization is required.
+  subclass is required.
 
 data_model_role: anchor
 typically_required: false
@@ -57,8 +57,8 @@ common_synonyms:
 # =============================================================================
 # Cross-system implementation patterns
 # =============================================================================
-# `mechanism` describes HOW each system realizes this specialization. This is
-# what V2 uses at deploy time to translate the catalog specialization into
+# `mechanism` describes HOW each system realizes this subclass. This is
+# what V2 uses at deploy time to translate the catalog subclass into
 # concrete configuration on the target backend.
 systems:
   - system: salesforce
@@ -80,7 +80,7 @@ systems:
     is_standard: false
     mechanism: custom_property
     notes: >
-      HubSpot has no Record Type concept. Nonprofit specialization is
+      HubSpot has no Record Type concept. Nonprofit subclass is
       implemented as custom Properties on Company: "Organization Type"
       (multi-select) and additional EIN, Tax Exempt Status, NTEE Code
       properties. Nonprofit-specific fields are visible to all Company
@@ -124,7 +124,7 @@ systems:
       Organization (e.g., "Foundation," "Charitable Organization") with
       its own custom field group containing EIN, Tax-Exempt Status, NTEE
       Code, etc. Subtype-specific fields automatically appear/hide based
-      on the contact's contact_sub_type. This is the cleanest specialization
+      on the contact's contact_sub_type. This is the cleanest subclass
       mechanism among the seven systems — purpose-built for this pattern.
     docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/contact-types/
 
@@ -344,9 +344,9 @@ attributes:
       bloomerang: custom
 
 # =============================================================================
-# Relationships specific to the specialization
+# Relationships specific to the subclass
 # =============================================================================
-# Specialization-specific relationships beyond what the parent Account has.
+# Subclass-specific relationships beyond what the parent Account has.
 # Most universal Account relationships (to Contact, Activity, Note) apply
 # unchanged and are not repeated here.
 relationships:

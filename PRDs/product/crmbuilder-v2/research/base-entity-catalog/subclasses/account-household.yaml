@@ -2,17 +2,17 @@ catalog_id: account-household
 catalog_version: "0.1"
 last_updated: "05-09-26 10:35"
 tier: 4
-entry_kind: specialization
+entry_kind: subclass
 
 parent_entity: account
 discriminator:
   attribute: type
   value: Household
 
-name: Household (Account specialization)
+name: Household (Account subclass)
 display_name: Household Account
 purpose: >
-  An Account specialization representing a family or living unit, used in
+  An Account subclass representing a family or living unit, used in
   CRMs that model households as a Record Type or subtype on Account
   rather than as a separate first-class entity. Cross-references the
   household.yaml Tier 4 entity, which captures the same concept where it
@@ -20,7 +20,7 @@ purpose: >
   via Contact subtype).
 
 business_context: >
-  This specialization captures the NPSP modeling pattern where Household
+  This subclass captures the NPSP modeling pattern where Household
   is implemented as one of three Account Record Types (Household, 1-to-1,
   Organization). NPSP is by far the dominant deployment of this pattern
   in production. Salesforce vanilla and the B2B systems would implement
@@ -30,7 +30,7 @@ business_context: >
   the catalog mechanism field to know which deployment pattern to apply
   per target backend at deploy time. The two catalog entries cross-
   reference but don't duplicate — household.yaml has the universal
-  attribute set; this specialization captures the Account-specific
+  attribute set; this subclass captures the Account-specific
   delta and the deploy-time mechanism.
 
 data_model_role: anchor
@@ -71,11 +71,11 @@ systems:
     notes: Add a Household enum value to Account.type. No native modeling.
     docs_url: https://docs.espocrm.com/administration/entity-manager/
   - system: civicrm
-    name: "(handled at Tier 4 entity, not as Account specialization)"
+    name: "(handled at Tier 4 entity, not as Account subclass)"
     api_name: not_applicable
     is_standard: true
     mechanism: separate_object
-    notes: CiviCRM handles Household as a Contact subtype, not as an Account specialization. See household.yaml for CiviCRM modeling.
+    notes: CiviCRM handles Household as a Contact subtype, not as an Account subclass. See household.yaml for CiviCRM modeling.
     docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/contacts/
   - system: salesforce_npsp
     name: "Account with Household Record Type"
@@ -85,7 +85,7 @@ systems:
     notes: NPSP's dominant pattern. Household Account is the default Record Type when a Contact is created. Auto-generated household name, formal/informal greeting, and shared mailing address are all NPSP standard fields on Household-typed accounts.
     docs_url: https://trailhead.salesforce.com/content/learn/modules/constituent-data-management-with-nonprofit-success-pack/manage-household-accounts
   - system: bloomerang
-    name: "(handled at Tier 4 entity via Relationships, not as Account specialization)"
+    name: "(handled at Tier 4 entity via Relationships, not as Account subclass)"
     api_name: not_applicable
     is_standard: true
     mechanism: separate_object

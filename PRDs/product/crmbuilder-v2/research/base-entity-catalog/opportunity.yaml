@@ -127,7 +127,7 @@ systems:
       Membership, Recurring Donation. Each Record Type has different page
       layouts and field visibility. NPSP uses Closed Won = donation
       received; Closed Lost = donation declined / lapsed. The entity
-      itself is universal Opportunity; the specialization happens via
+      itself is universal Opportunity; the subclass happens via
       Record Types.
     docs_url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-success-pack-basics/organize-your-data-with-npsp
 

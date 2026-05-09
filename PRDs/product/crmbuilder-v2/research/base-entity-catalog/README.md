@@ -1,6 +1,6 @@
 # Base Entity Catalog
 
-**Last Updated:** 05-09-26 10:45
+**Last Updated:** 05-09-26 11:00
 **Status:** Tiers 1-4 complete; Tier 5 pending
 **Owner:** CRMBuilder v2
 
@@ -10,10 +10,14 @@
 
 | Version | Date | Description |
 |---------|------|-------------|
-| 0.4 | 05-09-26 | Tier 4 (nonprofit-specialized) added: donation, recurring-gift, grant, membership, volunteer-hour, household, affiliation, soft-credit, constituent, engagement. Plus two specializations: account-household (Account specialization for the NPSP record-type pattern), donation-major-gift (Donation specialization for major-gift cultivation). 12 entries total. Tier 5 pending. |
+| 0.5 | 05-09-26 | Refactor: renamed `specialization` → `subclass` throughout the catalog. Same conceptual model (parent entity + discriminator + delta attributes); friendlier terminology that maps cleanly to OOP subclassing for technical readers and is intuitive to non-technical readers. Changes: `entry_kind: specialization` → `entry_kind: subclass`; directory `specializations/` → `subclasses/`; all README prose updated. No semantic change to the catalog. |
+
+| Version | Date | Description |
+|---------|------|-------------|
+| 0.4 | 05-09-26 | Tier 4 (nonprofit-specialized) added: donation, recurring-gift, grant, membership, volunteer-hour, household, affiliation, soft-credit, constituent, engagement. Plus two subclasss: account-household (Account subclass for the NPSP record-type pattern), donation-major-gift (Donation subclass for major-gift cultivation). 12 entries total. Tier 5 pending. |
 | 0.3 | 05-08-26 | Tier 3 (vertical modules) added: case, solution, asset, campaign, campaign-member, email, form-submission, product, price-list, order, invoice, payment. 12 entities covering customer-service, marketing, and commerce concerns. |
 | 0.2 | 05-08-26 | Tier 2 (sales pipeline) added: lead, opportunity, pipeline-stage, quote. |
-| 0.1 | 05-08-26 | Initial Tier 1 sample: account, contact, activity, note, user, tag base entities plus account-nonprofit specialization. Schema established; sourcing methodology documented. |
+| 0.1 | 05-08-26 | Initial Tier 1 sample: account, contact, activity, note, user, tag base entities plus account-nonprofit subclass. Schema established; sourcing methodology documented. |
 
 ---
 
@@ -83,21 +87,21 @@ base-entity-catalog/
 ├── soft-credit.yaml                       # T4 base entity
 ├── constituent.yaml                       # T4 base entity
 ├── engagement.yaml                        # T4 base entity
-└── specializations/
-    ├── account-nonprofit.yaml             # T1 specialization of Account
-    ├── account-household.yaml             # T4 specialization of Account
-    └── donation-major-gift.yaml           # T4 specialization of Donation
+└── subclasses/
+    ├── account-nonprofit.yaml             # T1 subclass of Account
+    ├── account-household.yaml             # T4 subclass of Account
+    └── donation-major-gift.yaml           # T4 subclass of Donation
 ```
 
-Base entity files are universal types that every (or nearly every) CRM has. Specialization files reference a parent entity, name a discriminator (the parent attribute and value that selects this subclass), and list only delta attributes that the specialization adds beyond what the parent already defines.
+Base entity files are universal types that every (or nearly every) CRM has. Subclass files reference a parent entity, name a discriminator (the parent attribute and value that selects this subclass), and list only delta attributes that the subclass adds beyond what the parent already defines.
 
-A specialization may end up implemented as a record type, contact subtype, type discriminator, custom property, or even a separate entity depending on the target backend's subclassing capabilities. Each specialization YAML's `systems[]` block names the implementation pattern per system using a controlled `mechanism` vocabulary so V2 knows how to deploy the specialization to whichever target CRM is selected.
+A subclass may end up implemented as a record type, contact subtype, type discriminator, custom property, or even a separate entity depending on the target backend's subclassing capabilities. Each subclass YAML's `systems[]` block names the implementation pattern per system using a controlled `mechanism` vocabulary so V2 knows how to deploy the subclass to whichever target CRM is selected.
 
 ---
 
 ## Entity YAML schema
 
-Every base-entity YAML file follows this shape. Specialization files use the same shape with two additions: `entry_kind: specialization`, `parent_entity` reference, and a `discriminator` block.
+Every base-entity YAML file follows this shape. Subclass files use the same shape with two additions: `entry_kind: subclass`, `parent_entity` reference, and a `discriminator` block.
 
 ### Top-level fields
 
@@ -107,9 +111,9 @@ Every base-entity YAML file follows this shape. Specialization files use the sam
 | `catalog_version` | string | yes | Semantic version of this entry (e.g. `0.1`). |
 | `last_updated` | string | yes | `MM-DD-YY HH:MM` per project standard. |
 | `tier` | integer | yes | 1 (universal core), 2 (sales pipeline), 3 (vertical), 4 (nonprofit), 5 (comms detail). |
-| `entry_kind` | enum | yes | `universal` or `specialization`. |
-| `parent_entity` | string | conditional | Required when `entry_kind: specialization`. Catalog ID of the parent entity. |
-| `discriminator` | object | conditional | Required when `entry_kind: specialization`. Names the parent attribute and value that selects this subclass. |
+| `entry_kind` | enum | yes | `universal` or `subclass`. |
+| `parent_entity` | string | conditional | Required when `entry_kind: subclass`. Catalog ID of the parent entity. |
+| `discriminator` | object | conditional | Required when `entry_kind: subclass`. Names the parent attribute and value that selects this subclass. |
 | `name` | string | yes | Canonical display name (e.g. `Account`). |
 | `display_name` | string | yes | Human-readable name shown in V2 UI. |
 | `purpose` | string | yes | Terse what-it-is, two to three sentences. |
@@ -130,7 +134,7 @@ Every base-entity YAML file follows this shape. Specialization files use the sam
 | `name` | string | yes | What this system calls the entity. |
 | `api_name` | string | yes | The technical / API identifier in this system. |
 | `is_standard` | boolean | yes | Whether the entity is built-in (true) or has to be created custom (false). |
-| `mechanism` | enum | conditional | Required for specializations only. One of `record_type`, `contact_subtype`, `type_discriminator`, `custom_property`, `separate_object`, `entity_inheritance`. Names the architectural pattern used to realize this specialization in this system. |
+| `mechanism` | enum | conditional | Required for subclasss only. One of `record_type`, `contact_subtype`, `type_discriminator`, `custom_property`, `separate_object`, `entity_inheritance`. Names the architectural pattern used to realize this subclass in this system. |
 | `notes` | string | no | Any quirks, divergences, or implementation considerations specific to this system. |
 | `docs_url` | string | no | Direct URL to the system's reference for this entity. |
 
@@ -186,6 +190,6 @@ Once V2's methodology entity schema is built (Step 0 follow-on), the catalog ing
 
 **Advisor / gap-checker.** When a user defines their own entity, V2 compares the draft against the catalog and flags missing attributes that are standard in 5+ surveyed systems with a prompt like "Most CRMs that have a Contact entity also include `last_modified`, `owner`, and `do_not_contact` — do you want those?"
 
-**Cross-system mapper.** When a deployment target is selected (Attio, EspoCRM, HubSpot, etc.), V2 uses the catalog's `systems[]` blocks to translate the user's domain entity into the target backend's native entity / attribute names. The same `mechanism` vocabulary on specializations lets V2 know how to deploy a specialization (record type, subtype, separate object, etc.) to the chosen backend.
+**Cross-system mapper.** When a deployment target is selected (Attio, EspoCRM, HubSpot, etc.), V2 uses the catalog's `systems[]` blocks to translate the user's domain entity into the target backend's native entity / attribute names. The same `mechanism` vocabulary on subclasss lets V2 know how to deploy a subclass (record type, subtype, separate object, etc.) to the chosen backend.
 
 The interview methodology consumes the same catalog through the `business_context` and `usage` prose, which are written specifically to give interviewers context-aware probing questions for each entity and attribute.
