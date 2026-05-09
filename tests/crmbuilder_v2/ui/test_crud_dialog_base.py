@@ -6,14 +6,6 @@ import re
 
 import httpx
 import pytest
-from PySide6.QtWidgets import (
-    QComboBox,
-    QDialog,
-    QLineEdit,
-    QPlainTextEdit,
-    QPushButton,
-)
-
 from crmbuilder_v2.ui.base.crud_dialog import (
     EntityCrudDeleteDialog,
     EntityCrudDialog,
@@ -28,9 +20,15 @@ from crmbuilder_v2.ui.exceptions import (
 )
 from crmbuilder_v2.ui.widgets.date_field import DateField
 from crmbuilder_v2.ui.widgets.hierarchical_picker import HierarchicalEntityPicker
+from PySide6.QtWidgets import (
+    QComboBox,
+    QDialog,
+    QLineEdit,
+    QPlainTextEdit,
+    QPushButton,
+)
 
 from .conftest import build_client
-
 
 _VOCAB = frozenset({"Active", "Done", "Blocked"})
 
@@ -552,3 +550,164 @@ def test_delete_dialog_connection_error_rejects(qapp, qtbot):
     qtbot.addWidget(dialog)
     with qtbot.waitSignal(dialog.rejected, timeout=2000):
         dialog._on_delete_clicked()
+
+
+# ---------------------------------------------------------------------------
+# Cascading dependencies (v0.3 slice C — DEC-033)
+# ---------------------------------------------------------------------------
+
+
+def _cascade_schema():
+    """Two-field cascade: ``upstream`` (combo) and ``downstream`` (combo)."""
+
+    def compute_downstream(state):
+        upstream = state.get("upstream", "")
+        if upstream == "alpha":
+            return ["one", "two"]
+        if upstream == "beta":
+            return ["three", "four", "five"]
+        return []
+
+    return [
+        FieldSchema(
+            key="upstream",
+            label="Upstream",
+            widget="combo",
+            required=True,
+            vocab=frozenset({"alpha", "beta"}),
+        ),
+        FieldSchema(
+            key="downstream",
+            label="Downstream",
+            widget="combo",
+            required=True,
+            depends_on=["upstream"],
+            compute_options=compute_downstream,
+        ),
+    ]
+
+
+def test_cascade_downstream_disabled_when_upstream_empty(qapp, qtbot):
+    """Dependent field starts disabled when upstream value is empty."""
+    client = build_client(_success_handler("POST", "/things", {"identifier": "X-1"}))
+    dialog = EntityCrudDialog(
+        client,
+        _cascade_schema(),
+        mode="create",
+        title="Cascade",
+        create_method=lambda body: client._post("/things", json=body)["data"],
+    )
+    qtbot.addWidget(dialog)
+    # On open with no default on the upstream combo, downstream is disabled.
+    upstream = dialog._field_widgets["upstream"]
+    upstream.setCurrentIndex(-1)  # ensure empty
+    upstream.setEditText("")
+    dialog._refresh_dependent_fields()
+    downstream = dialog._field_widgets["downstream"]
+    assert downstream.isEnabled() is False
+    assert downstream.count() == 0
+
+
+def test_cascade_downstream_repopulates_when_upstream_changes(qapp, qtbot):
+    client = build_client(_success_handler("POST", "/things", {"identifier": "X-1"}))
+    dialog = EntityCrudDialog(
+        client,
+        _cascade_schema(),
+        mode="create",
+        title="Cascade",
+        create_method=lambda body: client._post("/things", json=body)["data"],
+    )
+    qtbot.addWidget(dialog)
+    upstream = dialog._field_widgets["upstream"]
+    upstream.setCurrentText("alpha")
+    downstream = dialog._field_widgets["downstream"]
+    items = [downstream.itemText(i) for i in range(downstream.count())]
+    assert items == ["one", "two"]
+    assert downstream.isEnabled() is True
+
+    upstream.setCurrentText("beta")
+    items = [downstream.itemText(i) for i in range(downstream.count())]
+    assert items == ["three", "four", "five"]
+
+
+def test_identifier_picker_widget_constructed_for_identifier_picker_type(
+    qapp, qtbot
+):
+    """A FieldSchema with widget='identifier_picker' produces an EntityIdentifierPicker."""
+    from crmbuilder_v2.ui.widgets.entity_identifier_picker import (
+        EntityIdentifierPicker,
+    )
+
+    schema = [
+        FieldSchema(
+            key="entity_id",
+            label="Entity",
+            widget="identifier_picker",
+            required=True,
+            compute_options=lambda _state: [("DEC-001", "First")],
+        ),
+    ]
+    client = build_client(_success_handler("POST", "/things", {"identifier": "X-1"}))
+    dialog = EntityCrudDialog(
+        client,
+        schema,
+        mode="create",
+        title="Picker",
+        create_method=lambda body: client._post("/things", json=body)["data"],
+    )
+    qtbot.addWidget(dialog)
+    widget = dialog._field_widgets["entity_id"]
+    assert isinstance(widget, EntityIdentifierPicker)
+
+
+def test_identifier_picker_options_come_from_compute_options_at_open(
+    qapp, qtbot
+):
+    """An identifier_picker with compute_options is populated at dialog open
+    time (no upstream needed when depends_on is None)."""
+    from crmbuilder_v2.ui.widgets.entity_identifier_picker import (
+        EntityIdentifierPicker,
+    )
+
+    schema = [
+        FieldSchema(
+            key="entity_id",
+            label="Entity",
+            widget="identifier_picker",
+            required=True,
+            depends_on=[],  # no dependencies; populated at open
+            compute_options=lambda _state: [
+                ("DEC-001", "First"),
+                ("DEC-002", "Second"),
+            ],
+        ),
+    ]
+    client = build_client(_success_handler("POST", "/things", {"identifier": "X-1"}))
+    dialog = EntityCrudDialog(
+        client,
+        schema,
+        mode="create",
+        title="Picker",
+        create_method=lambda body: client._post("/things", json=body)["data"],
+    )
+    qtbot.addWidget(dialog)
+    widget = dialog._field_widgets["entity_id"]
+    assert isinstance(widget, EntityIdentifierPicker)
+    assert widget.count() == 2
+
+
+def test_set_field_enabled_disables_widget(qapp, qtbot):
+    """The public set_field_enabled API toggles a field's widget."""
+    client = build_client(_success_handler("POST", "/things", {"identifier": "X-1"}))
+    dialog = EntityCrudDialog(
+        client,
+        _BASIC_SCHEMA,
+        mode="create",
+        title="X",
+        create_method=lambda body: client._post("/things", json=body)["data"],
+    )
+    qtbot.addWidget(dialog)
+    dialog.set_field_enabled("identifier", False)
+    assert dialog._field_widgets["identifier"].isEnabled() is False
+    dialog.set_field_enabled("identifier", True)
+    assert dialog._field_widgets["identifier"].isEnabled() is True

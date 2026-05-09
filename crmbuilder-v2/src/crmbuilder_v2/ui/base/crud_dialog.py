@@ -44,7 +44,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSignalBlocker, Qt
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -68,6 +68,7 @@ from crmbuilder_v2.ui.exceptions import (
     ValidationError,
 )
 from crmbuilder_v2.ui.widgets.date_field import DateField
+from crmbuilder_v2.ui.widgets.entity_identifier_picker import EntityIdentifierPicker
 from crmbuilder_v2.ui.widgets.hierarchical_picker import HierarchicalEntityPicker
 
 _log = logging.getLogger("crmbuilder_v2.ui.base.crud_dialog")
@@ -76,7 +77,7 @@ _LONG_TEXT_MIN_HEIGHT = 80
 _INLINE_ERROR_STYLE = "color: #B22222;"
 _READ_ONLY_STYLE = "color: #666; background: #f4f4f4;"
 
-WidgetKind = Literal["line", "text", "combo", "date", "tree_picker"]
+WidgetKind = Literal["line", "text", "combo", "date", "tree_picker", "identifier_picker"]
 DialogMode = Literal["create", "edit"]
 
 
@@ -116,6 +117,18 @@ class FieldSchema:
       predicate; consulted on Edit, defaults to "all selectable" on
       Create.
     * ``tree_picker_title`` — picker dialog title.
+    * ``depends_on`` — keys of upstream fields whose values feed this
+      field's options. v0.3 slice C: when any upstream field changes,
+      ``compute_options`` is invoked and the widget's options are
+      replaced. If any upstream field has an empty value, this field
+      is disabled and its current selection cleared.
+    * ``compute_options`` — callable taking the current form-state dict
+      (``{field_key: current_value}``) and returning the field's options.
+      For ``combo`` widgets the return is ``list[str]``; for
+      ``identifier_picker`` widgets it is ``list[tuple[str, str]]``
+      ``(identifier, title)``. Read at dialog-open time and on every
+      upstream-change event so vocab evolution is picked up without
+      UI changes.
     """
 
     key: str
@@ -137,6 +150,8 @@ class FieldSchema:
         | None
     ) = None
     tree_picker_title: str = "Select"
+    depends_on: list[str] | None = None
+    compute_options: Callable[[dict[str, str]], list[Any]] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -219,6 +234,8 @@ class FormWidgets:
         widget = self._widgets.get(field)
         if widget is None:
             return self._tree_picker_selections.get(field) or ""
+        if isinstance(widget, EntityIdentifierPicker):
+            return widget.selected_identifier() or ""
         if isinstance(widget, QLineEdit):
             return widget.text()
         if isinstance(widget, QPlainTextEdit):
@@ -235,6 +252,13 @@ class FormWidgets:
     def set_value(self, field: str, value: str) -> None:
         widget = self._widgets.get(field)
         if widget is None:
+            return
+        if isinstance(widget, EntityIdentifierPicker):
+            for index in range(widget.count()):
+                if widget.itemData(index) == value:
+                    widget.setCurrentIndex(index)
+                    return
+            widget.setEditText(value)
             return
         if isinstance(widget, QLineEdit):
             widget.setText(value)
@@ -384,6 +408,14 @@ class EntityCrudDialog(QDialog):
         else:
             self._record_initial_values()
 
+        # Wire cascading dependencies (v0.3 slice C — DEC-033). When any
+        # upstream field changes, downstream fields with ``depends_on``
+        # repopulate via ``compute_options``. Initial population runs
+        # once now so pre-populated source values feed the dependent
+        # fields immediately.
+        self._wire_cascade()
+        self._refresh_dependent_fields()
+
         self._set_initial_focus()
 
     # ------------------------------------------------------------------
@@ -436,6 +468,12 @@ class EntityCrudDialog(QDialog):
             self._tree_picker_selections[schema.key] = None
             return widget
 
+        if schema.widget == "identifier_picker":
+            widget = EntityIdentifierPicker()
+            if schema.placeholder:
+                widget.lineEdit().setPlaceholderText(schema.placeholder)
+            return widget
+
         raise ValueError(f"Unsupported widget kind: {schema.widget}")
 
     def _wire_clear_on_change(self, schema: FieldSchema, widget: QWidget) -> None:
@@ -445,7 +483,13 @@ class EntityCrudDialog(QDialog):
         def clear(_payload=None, k=key) -> None:
             self._clear_error(k)
 
-        if isinstance(widget, QLineEdit):
+        if isinstance(widget, EntityIdentifierPicker):
+            # Order matters: this isinstance must come before the
+            # QComboBox check below, since EntityIdentifierPicker
+            # inherits from QComboBox.
+            widget.editTextChanged.connect(clear)
+            widget.selection_changed.connect(lambda _id=None, _k=key: self._clear_error(_k))
+        elif isinstance(widget, QLineEdit):
             widget.textChanged.connect(clear)
         elif isinstance(widget, QPlainTextEdit):
             widget.textChanged.connect(clear)
@@ -489,6 +533,11 @@ class EntityCrudDialog(QDialog):
 
     def _current_value(self, schema: FieldSchema) -> str:
         widget = self._widgets[schema.key]
+        if isinstance(widget, EntityIdentifierPicker):
+            # EntityIdentifierPicker inherits from QComboBox; check
+            # first so we get the resolved identifier, not the visible
+            # display text.
+            return widget.selected_identifier() or ""
         if isinstance(widget, QLineEdit):
             return widget.text()
         if isinstance(widget, QPlainTextEdit):
@@ -503,6 +552,15 @@ class EntityCrudDialog(QDialog):
 
     def _set_widget_value(self, schema: FieldSchema, value: str) -> None:
         widget = self._widgets[schema.key]
+        if isinstance(widget, EntityIdentifierPicker):
+            # If the value matches a known entry's identifier, select it;
+            # otherwise treat it as free-text in the editable line edit.
+            for index in range(widget.count()):
+                if widget.itemData(index) == value:
+                    widget.setCurrentIndex(index)
+                    return
+            widget.setEditText(value)
+            return
         if isinstance(widget, QLineEdit):
             widget.setText(value)
             return
@@ -523,6 +581,157 @@ class EntityCrudDialog(QDialog):
             self._tree_picker_selections[schema.key] = value or None
             self._update_tree_picker_label(schema.key, value)
             return
+
+    # ------------------------------------------------------------------
+    # Cascading dependencies (v0.3 slice C — DEC-033)
+    # ------------------------------------------------------------------
+
+    def _wire_cascade(self) -> None:
+        """Subscribe each ``depends_on`` field to its upstream signals.
+
+        When an upstream field changes, all dependents repopulate via
+        :meth:`_refresh_dependent_fields`. Identifier-picker upstreams
+        emit ``selection_changed`` on item activation; combo upstreams
+        emit ``currentTextChanged`` on any selection change. The
+        downstream-update path is deliberately broad: any change anywhere
+        upstream re-runs every dependent ``compute_options``. The total
+        work is small (the form has only a handful of fields).
+        """
+        for schema in self._fields:
+            if not schema.depends_on:
+                continue
+            for upstream_key in schema.depends_on:
+                upstream = self._widgets.get(upstream_key) if hasattr(
+                    self._widgets, "get"
+                ) else self._field_widgets.get(upstream_key)
+                if upstream is None:
+                    _log.warning(
+                        "Field %s depends on unknown upstream %s",
+                        schema.key,
+                        upstream_key,
+                    )
+                    continue
+                if isinstance(upstream, EntityIdentifierPicker):
+                    upstream.selection_changed.connect(
+                        lambda _id=None: self._refresh_dependent_fields()
+                    )
+                    upstream.editTextChanged.connect(
+                        lambda _t=None: self._refresh_dependent_fields()
+                    )
+                elif isinstance(upstream, QComboBox):
+                    upstream.currentTextChanged.connect(
+                        lambda _t=None: self._refresh_dependent_fields()
+                    )
+
+    def _refresh_dependent_fields(self) -> None:
+        """Re-run ``compute_options`` for every field that has it.
+
+        For fields with ``depends_on`` upstream keys: disable and clear
+        if any upstream is empty; populate and enable if all upstreams
+        have values. For fields with ``compute_options`` but no
+        ``depends_on`` (or an empty list): populate unconditionally —
+        the field is dynamic but has no gating dependencies.
+
+        The form state is re-snapshotted inside the loop so each
+        field sees its upstream's just-populated value. The schema
+        list order is topological by convention (every field's
+        ``depends_on`` references only earlier-listed fields), so a
+        single forward pass is sufficient.
+        """
+        for schema in self._fields:
+            if schema.compute_options is None:
+                continue
+            widget = self._field_widgets.get(schema.key)
+            if widget is None:
+                continue
+            state = self._form_state()
+            depends = schema.depends_on or []
+            upstream_complete = all(
+                bool(state.get(upstream_key, "").strip())
+                for upstream_key in depends
+            )
+            if depends and not upstream_complete:
+                self._set_field_enabled(schema, False)
+                self._clear_widget_options(schema)
+                continue
+            try:
+                options = schema.compute_options(state)
+            except Exception:  # noqa: BLE001 — UI affordance; degrade to disabled
+                _log.exception(
+                    "compute_options failed for field %s", schema.key
+                )
+                self._set_field_enabled(schema, False)
+                self._clear_widget_options(schema)
+                continue
+            self._populate_widget_options(schema, options)
+            self._set_field_enabled(schema, True)
+
+    def _set_field_enabled(self, schema: FieldSchema, enabled: bool) -> None:
+        widget = self._field_widgets.get(schema.key)
+        if widget is None:
+            return
+        widget.setEnabled(enabled)
+
+    def _clear_widget_options(self, schema: FieldSchema) -> None:
+        widget = self._field_widgets.get(schema.key)
+        if widget is None:
+            return
+        with QSignalBlocker(widget):
+            if isinstance(widget, EntityIdentifierPicker):
+                widget.set_entries([])
+            elif isinstance(widget, QComboBox):
+                widget.clear()
+
+    def _populate_widget_options(
+        self, schema: FieldSchema, options: list[Any]
+    ) -> None:
+        widget = self._field_widgets.get(schema.key)
+        if widget is None:
+            return
+        # Block signals while we mutate the model so cascade-driven
+        # repopulation does not fire ``currentTextChanged`` /
+        # ``editTextChanged`` storms that re-trigger ``_refresh_-
+        # dependent_fields`` recursively. The blocker auto-restores
+        # signal state when the ``with`` block exits.
+        with QSignalBlocker(widget):
+            if isinstance(widget, EntityIdentifierPicker):
+                entries: list[tuple[str, str]] = []
+                for opt in options:
+                    if isinstance(opt, tuple) and len(opt) >= 2:
+                        entries.append((str(opt[0]), str(opt[1])))
+                    elif isinstance(opt, str):
+                        entries.append((opt, ""))
+                current = widget.selected_identifier()
+                widget.set_entries(entries)
+                if current is not None:
+                    self._set_widget_value(schema, current)
+            elif isinstance(widget, QComboBox):
+                current = widget.currentText()
+                widget.clear()
+                for opt in options:
+                    widget.addItem(str(opt))
+                if current:
+                    idx = widget.findText(current)
+                    if idx >= 0:
+                        widget.setCurrentIndex(idx)
+                    else:
+                        widget.setCurrentIndex(-1)
+
+    def _form_state(self) -> dict[str, str]:
+        """Snapshot of current values across every field, keyed by schema key."""
+        return {
+            schema.key: self._current_value(schema) for schema in self._fields
+        }
+
+    def set_field_enabled(self, key: str, enabled: bool) -> None:
+        """Public helper for subclasses to disable/enable a specific field.
+
+        Used by ``ReferenceCreateDialog`` to lock the source fields
+        when the dialog is opened with ``pre_populated_source``.
+        """
+        widget = self._field_widgets.get(key)
+        if widget is not None:
+            widget.setEnabled(enabled)
 
     # ------------------------------------------------------------------
     # Tree picker

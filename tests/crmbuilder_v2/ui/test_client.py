@@ -1141,3 +1141,106 @@ def test_restore_decision_patches_status_active():
     result = client.restore_decision("DEC-001")
     assert captured["body"] == {"status": "Active"}
     assert result == record
+
+
+# ---------------------------------------------------------------------------
+# Reference create / delete (v0.3 slice C — DEC-033)
+# ---------------------------------------------------------------------------
+
+
+def test_create_reference_posts_body_and_returns_dict():
+    captured: dict[str, Any] = {}
+    response_record = {
+        "id": 7,
+        "source_type": "session",
+        "source_id": "SES-008",
+        "target_type": "decision",
+        "target_id": "DEC-032",
+        "relationship": "decided_in",
+    }
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.method == "POST"
+        assert req.url.path == "/references"
+        captured["body"] = json.loads(req.read())
+        return httpx.Response(
+            201,
+            json={"data": response_record, "meta": {}, "errors": None},
+        )
+
+    client = _client(handler)
+    body = {
+        "source_type": "session",
+        "source_id": "SES-008",
+        "target_type": "decision",
+        "target_id": "DEC-032",
+        "relationship": "decided_in",
+    }
+    result = client.create_reference(body)
+    assert captured["body"] == body
+    assert result == response_record
+
+
+def test_create_reference_propagates_validation_error():
+    def handler(req: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            400,
+            json={
+                "data": None,
+                "meta": {},
+                "errors": [
+                    {
+                        "code": "validation",
+                        "message": "Invalid relationship",
+                        "field": "relationship",
+                    }
+                ],
+            },
+        )
+
+    client = _client(handler)
+    body = {
+        "source_type": "session",
+        "source_id": "SES-008",
+        "target_type": "decision",
+        "target_id": "DEC-032",
+        "relationship": "totally_made_up",
+    }
+    from crmbuilder_v2.ui.exceptions import ValidationError
+
+    with pytest.raises(ValidationError):
+        client.create_reference(body)
+
+
+def test_delete_reference_sends_delete_to_id_url():
+    captured: dict[str, Any] = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        captured["method"] = req.method
+        captured["path"] = req.url.path
+        return httpx.Response(
+            200, json={"data": {"id": 7}, "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    client.delete_reference(7)
+    assert captured["method"] == "DELETE"
+    assert captured["path"] == "/references/7"
+
+
+def test_delete_reference_propagates_not_found():
+    def handler(req: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            404,
+            json={
+                "data": None,
+                "meta": {},
+                "errors": [{"code": "not_found", "message": "missing"}],
+            },
+        )
+
+    client = _client(handler)
+    from crmbuilder_v2.ui.exceptions import NotFoundError
+
+    with pytest.raises(NotFoundError):
+        client.delete_reference(999)

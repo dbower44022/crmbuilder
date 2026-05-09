@@ -519,6 +519,33 @@ class StorageClient:
             return []
         return result
 
+    def create_reference(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /references. Returns the created reference dict.
+
+        v0.3 slice C — DEC-033. The body shape is
+        ``{source_type, source_id, target_type, target_id, relationship}``.
+        Raises ``ValidationError`` on 400, ``ConflictError`` on 409
+        (the (source, target, relationship) tuple is uniquely indexed).
+        """
+        result = self._request("POST", "/references", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for create_reference",
+            )
+        return result
+
+    def delete_reference(self, reference_id: int) -> None:
+        """DELETE /references/{id}. Hard-deletes by integer primary key.
+
+        v0.3 slice C — DEC-033. References are immutable identity-wise;
+        "edit" is delete + create. Raises ``NotFoundError`` if the id
+        doesn't exist (e.g., a stale UI view tried to delete a
+        reference another writer already removed).
+        """
+        self._request("DELETE", f"/references/{reference_id}")
+
     def list_references_touching(
         self, entity_type: str, entity_id: str
     ) -> dict[str, list[dict[str, Any]]]:
