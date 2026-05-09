@@ -1,1 +1,13 @@
-[]
+[
+  {
+    "created_at": "2026-05-09T15:26:22.897413",
+    "description": "Full styling design pass per DEC-024 deferred from v0.1 (per DEC-024), v0.2 (per DEC-026), and v0.3 (per DEC-037). The pass establishes a coherent visual language for the v2 desktop application: typography hierarchy, accent colors beyond the navy stub (#1F3864), error/warning/info states, button hierarchy, dialog framing, table row spacing, and accessibility considerations. Target release: v0.5 or whatever release follows v0.4 unless other priorities reorder. The next planning conversation should engage this planning item explicitly when scoping the next release. If three deferrals were not enough, this planning item is the lever that prevents a fourth from being silent.",
+    "id": 1,
+    "identifier": "PI-001",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Full styling design pass per DEC-024",
+    "updated_at": "2026-05-09T15:26:22.897416"
+  }
+]
