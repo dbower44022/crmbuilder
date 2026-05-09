@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QDate
-
 from crmbuilder_v2.ui.widgets.date_field import DateField
+from PySide6.QtCore import QDate
 
 
 def test_default_is_today(qapp, qtbot):

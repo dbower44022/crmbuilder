@@ -38,9 +38,11 @@ from crmbuilder_v2.access.models import (
     PlanningItem,
     Reference,
     Risk,
-    Session as SessionModel,
     Status,
     Topic,
+)
+from crmbuilder_v2.access.models import (
+    Session as SessionModel,
 )
 
 # Map: filename (no .json) → SQLAlchemy model. Order is the export order.

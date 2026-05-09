@@ -13,7 +13,6 @@ import json
 
 import httpx
 import pytest
-
 from crmbuilder_v2.api.main import create_app
 from crmbuilder_v2.mcp_server.server import build_server
 

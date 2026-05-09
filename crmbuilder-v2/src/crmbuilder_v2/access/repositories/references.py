@@ -17,9 +17,7 @@ from crmbuilder_v2.access._helpers import require_in, require_string, to_dict
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
-    FieldError,
     NotFoundError,
-    ValidationError,
 )
 from crmbuilder_v2.access.models import Reference
 from crmbuilder_v2.access.vocab import ENTITY_TYPES, REFERENCE_RELATIONSHIPS

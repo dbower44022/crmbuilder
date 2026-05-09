@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError
 
-from PySide6.QtWidgets import QFormLayout, QLabel
-
 from crmbuilder_v2.ui import about_dialog as about_module
 from crmbuilder_v2.ui.about_dialog import AboutDialog
+from PySide6.QtWidgets import QFormLayout, QLabel
 
 
 def _form_rows(dialog: AboutDialog) -> dict[str, str]:

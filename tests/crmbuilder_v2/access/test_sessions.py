@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.exceptions import (
     ConflictError,

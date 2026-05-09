@@ -7,7 +7,7 @@ topics) plus the universal references table (DEC-006) and change log.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import (
     JSON,
@@ -45,7 +45,7 @@ from crmbuilder_v2.access.vocab import (
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class Base(DeclarativeBase):
@@ -118,10 +118,10 @@ class Decision(Base):
         DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
     )
 
-    supersedes: Mapped["Decision | None"] = relationship(
+    supersedes: Mapped[Decision | None] = relationship(
         "Decision", remote_side="Decision.id", foreign_keys=[supersedes_id]
     )
-    superseded_by: Mapped["Decision | None"] = relationship(
+    superseded_by: Mapped[Decision | None] = relationship(
         "Decision", remote_side="Decision.id", foreign_keys=[superseded_by_id]
     )
 
@@ -225,7 +225,7 @@ class Topic(Base):
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
 
-    parent: Mapped["Topic | None"] = relationship(
+    parent: Mapped[Topic | None] = relationship(
         "Topic", remote_side="Topic.id", foreign_keys=[parent_topic_id]
     )
 

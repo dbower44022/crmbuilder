@@ -10,7 +10,7 @@ entry). The most recent version is flagged ``is_current=True``.
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 _HEADER_TOP = re.compile(r"^#\s+(.+)$", re.MULTILINE)
@@ -130,7 +130,7 @@ def _parse_date(s: str) -> datetime | None:
     s = s.strip()
     for fmt in ("%m-%d-%y %H:%M", "%m-%d-%y"):
         try:
-            return datetime.strptime(s, fmt).replace(tzinfo=timezone.utc)
+            return datetime.strptime(s, fmt).replace(tzinfo=UTC)
         except ValueError:
             continue
     return None

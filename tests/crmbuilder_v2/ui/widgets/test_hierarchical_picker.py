@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QDialog, QDialogButtonBox
-
 from crmbuilder_v2.ui.widgets.hierarchical_picker import HierarchicalEntityPicker
+from PySide6.QtWidgets import QDialog, QDialogButtonBox
 
 Node = HierarchicalEntityPicker.Node
 

@@ -6,7 +6,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.repositories import decisions
 

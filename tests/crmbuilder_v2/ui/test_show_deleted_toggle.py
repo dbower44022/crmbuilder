@@ -8,7 +8,7 @@ import httpx
 from crmbuilder_v2.ui.panels.decisions import DecisionsPanel
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QCheckBox, QDialog, QPushButton
+from PySide6.QtWidgets import QCheckBox, QPushButton
 
 from .conftest import build_client, envelope_ok
 

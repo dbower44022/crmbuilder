@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 
 import pytest
-
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.exceptions import NotFoundError
 from crmbuilder_v2.access.repositories import status

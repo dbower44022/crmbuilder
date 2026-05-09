@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
@@ -116,9 +115,8 @@ def test_get_returns_deleted_row(v2_env):
 
 def test_redelete_is_idempotent(v2_env):
     """Deleting an already-Deleted row is a no-op (no extra change_log entry)."""
-    from sqlalchemy import select
-
     from crmbuilder_v2.access.models import ChangeLog
+    from sqlalchemy import select
 
     with session_scope() as s:
         _make(s, identifier="DEC-001")

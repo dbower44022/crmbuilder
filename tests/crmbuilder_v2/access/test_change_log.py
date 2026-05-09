@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from sqlalchemy import select
-
 from crmbuilder_v2.access.change_log import current_actor, set_actor
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.models import ChangeLog
 from crmbuilder_v2.access.repositories import decisions
+from sqlalchemy import select
 
 
 def test_insert_emits_change_log(v2_env):

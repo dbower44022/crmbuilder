@@ -112,11 +112,10 @@ def test_export_round_trip(v2_env, source_dir: Path, export_dir: Path):
 
 def test_change_log_marked_actor_migration(v2_env, source_dir: Path):
     """All change-log entries from the migration are tagged ``actor=migration``."""
-    from sqlalchemy import select
-
     from crmbuilder_v2.access.db import session_scope
     from crmbuilder_v2.access.models import ChangeLog
     from crmbuilder_v2.bootstrap.migrate import migrate
+    from sqlalchemy import select
 
     migrate(source_dir)
     with session_scope(export=False) as s:

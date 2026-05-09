@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from fastapi.testclient import TestClient
-
 from crmbuilder_v2.api.main import create_app
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture

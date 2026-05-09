@@ -15,7 +15,7 @@ Usage:
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 
 from crmbuilder_v2.access.change_log import set_actor
@@ -25,6 +25,8 @@ from crmbuilder_v2.access.repositories import (
     decisions,
     references,
     sessions,
+)
+from crmbuilder_v2.access.repositories import (
     status as status_repo,
 )
 from crmbuilder_v2.bootstrap.parsers.charter import parse_charter
