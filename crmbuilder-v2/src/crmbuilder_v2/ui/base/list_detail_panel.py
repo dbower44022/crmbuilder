@@ -360,10 +360,11 @@ class ListDetailPanel(QWidget):
         configured with the same default policies the v0.2 implementation
         applied inline in ``_build_ui``.
 
-        Subclasses that need a custom model (e.g. a ``QStandardItemModel``
-        for a tree) may install it on the returned widget here; the base
-        ``_build_ui`` skips installing the default ``_RecordTableModel``
-        if a model is already set.
+        Subclasses may optionally pre-install a model on the returned
+        widget. If a model is already set when ``_build_ui`` receives the
+        widget, the base skips its default ``_RecordTableModel``
+        installation; ``TopicsPanel`` exercises this mode by installing
+        its ``QStandardItemModel`` here.
         """
         view = QTableView(self)
         view.setSelectionBehavior(
