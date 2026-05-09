@@ -157,14 +157,27 @@ attributes:
       short and verb-phrase or noun-phrase that captures the stage
       meaning.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: MasterLabel
+      hubspot:
+        status: standard
+        api_name: label
+      attio:
+        status: standard
+        api_name: label
+      espocrm:
+        status: standard
+        api_name: option_value
+      civicrm:
+        status: standard
+        api_name: label
+      salesforce_npsp:
+        status: standard
+        api_name: MasterLabel
+      bloomerang:
+        status: standard
+        api_name: Name
   - name: apiName
     display_name: Internal Name / API Name
     type: string
@@ -179,14 +192,27 @@ attributes:
       Salesforce uses MasterLabel + ApiName pair; EspoCRM uses the enum
       value directly.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: ApiName
+      hubspot:
+        status: standard
+        api_name: stageId
+      attio:
+        status: standard
+        api_name: id
+      espocrm:
+        status: standard
+        api_name: apiName
+      civicrm:
+        status: standard
+        api_name: api_name
+      salesforce_npsp:
+        status: standard
+        api_name: ApiName
+      bloomerang:
+        status: standard
+        api_name: Id
   - name: probability
     display_name: Probability
     type: decimal
@@ -201,14 +227,23 @@ attributes:
       EspoCRM derives it from the stage; Attio and CiviCRM don't have
       probability tracking.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: custom
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: DefaultProbability
+      hubspot:
+        status: standard
+        api_name: probability
+      attio:
+        status: absent
+      espocrm:
+        status: custom
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: DefaultProbability
+      bloomerang:
+        status: absent
   - name: order
     display_name: Sort Order
     type: integer
@@ -220,14 +255,27 @@ attributes:
       progression order in funnel reports. Editable by admins via drag-
       to-reorder UI in most systems.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: SortOrder
+      hubspot:
+        status: standard
+        api_name: displayOrder
+      attio:
+        status: standard
+        api_name: order
+      espocrm:
+        status: standard
+        api_name: order
+      civicrm:
+        status: standard
+        api_name: weight
+      salesforce_npsp:
+        status: standard
+        api_name: SortOrder
+      bloomerang:
+        status: standard
+        api_name: SortOrder
   - name: pipeline
     display_name: Pipeline
     type: reference
@@ -242,14 +290,22 @@ attributes:
       Processes (RecordType-pipeline mappings) rather than a separate
       Pipeline entity.
     presence:
-      salesforce: custom
-      hubspot: standard
-      attio: standard
-      espocrm: absent
-      civicrm: absent
-      salesforce_npsp: custom
-      bloomerang: absent
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: standard
+        api_name: pipeline
+      attio:
+        status: standard
+        api_name: pipeline
+      espocrm:
+        status: absent
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: absent
   - name: forecastCategory
     display_name: Forecast Category
     type: enum
@@ -269,14 +325,22 @@ attributes:
       stages without having them all roll up the same way. Less common
       in other systems.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: ForecastCategory
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: ForecastCategory
+      bloomerang:
+        status: absent
   - name: isClosed
     display_name: Is Closed
     type: boolean
@@ -291,14 +355,26 @@ attributes:
       uses dealstage probability=100 (won) or 0 (lost); Attio uses a
       stage type.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: IsClosed
+      hubspot:
+        status: standard
+        api_name: closedWon_or_closedLost
+      attio:
+        status: standard
+        api_name: is_closed
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: is_completed
+      salesforce_npsp:
+        status: standard
+        api_name: IsClosed
+      bloomerang:
+        status: standard
+        api_name: IsClosed
   - name: isWon
     display_name: Is Won
     type: boolean
@@ -311,14 +387,25 @@ attributes:
       win-rate calculations. Salesforce uses IsWon explicitly; HubSpot
       uses probability=100 to indicate won. Attio uses stage classification.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: custom
-
+      salesforce:
+        status: standard
+        api_name: IsWon
+      hubspot:
+        status: standard
+        api_name: iswon
+      attio:
+        status: standard
+        api_name: is_won
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: is_completed
+      salesforce_npsp:
+        status: standard
+        api_name: IsWon
+      bloomerang:
+        status: custom
   - name: color
     display_name: Color
     type: string
@@ -330,14 +417,23 @@ attributes:
       Pure cosmetic. HubSpot, Attio, and EspoCRM support stage colors;
       Salesforce does not.
     presence:
-      salesforce: absent
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: absent
-      bloomerang: absent
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: standard
+        api_name: color
+      attio:
+        status: standard
+        api_name: color
+      espocrm:
+        status: standard
+        api_name: color
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: absent
+      bloomerang:
+        status: absent
   - name: isActive
     display_name: Active
     type: boolean
@@ -350,17 +446,25 @@ attributes:
       hide from new-opportunity creation but remain in reports for
       historical records.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: custom
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
-# =============================================================================
-# Relationships to other entities
-# =============================================================================
+      salesforce:
+        status: standard
+        api_name: IsActive
+      hubspot:
+        status: standard
+        api_name: active
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: is_active
+      salesforce_npsp:
+        status: standard
+        api_name: IsActive
+      bloomerang:
+        status: standard
+        api_name: IsActive
 relationships:
   - target: opportunity
     cardinality: one-to-many

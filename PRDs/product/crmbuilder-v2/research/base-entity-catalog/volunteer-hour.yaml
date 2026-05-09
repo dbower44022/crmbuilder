@@ -94,13 +94,21 @@ attributes:
     description: The individual who volunteered.
     usage: Anchors hours to the volunteer's record. Drives lifetime-volunteer-hours rollups and recognition milestones.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: custom
-      salesforce_npsp: custom
-      bloomerang: standard
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: standard
+        api_name: AccountId
   - name: hours
     display_name: Hours
     type: decimal
@@ -108,13 +116,25 @@ attributes:
     description: Number of hours volunteered (typically supports decimals for partial hours).
     usage: The headline number. Aggregates across volunteers, programs, and time periods for impact reporting and grant applications.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: custom
-      salesforce_npsp: custom
-      bloomerang: standard
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: standard
+        api_name: Hours
+    common_synonyms:
+      - time
+      - service hours
+      - volunteer time
   - name: serviceDate
     display_name: Service Date
     type: date
@@ -122,13 +142,21 @@ attributes:
     description: Date the volunteer service was performed.
     usage: Drives time-period reporting (this month, this quarter, this year). Distinct from createdAt (record-creation time).
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: custom
-      salesforce_npsp: custom
-      bloomerang: standard
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: standard
+        api_name: Date
   - name: project
     display_name: Project / Program
     type: reference
@@ -137,13 +165,21 @@ attributes:
     description: The project, program, or event the hours were contributed to.
     usage: Drives program-impact reports (X hours of volunteer time delivered Y program). V4S models this as Volunteer Job; Bloomerang uses Project; CiviCRM uses Project.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: custom
-      salesforce_npsp: custom
-      bloomerang: standard
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: standard
+        api_name: ProjectId
   - name: role
     display_name: Role
     type: enum
@@ -151,13 +187,20 @@ attributes:
     description: Role or function the volunteer performed.
     usage: Categorizes hours by role type (Tutor, Driver, Event Setup, Phone Bank, etc). Drives skill-based-volunteer-pool reporting.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: custom
-      salesforce_npsp: custom
-      bloomerang: custom
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: custom
   - name: status
     display_name: Status
     type: enum
@@ -171,13 +214,20 @@ attributes:
     description: Lifecycle state of the volunteer assignment.
     usage: Distinguishes scheduled (Pledged) from completed. Drives no-show reporting and reliability metrics.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: custom
-      salesforce_npsp: custom
-      bloomerang: custom
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: custom
   - name: description
     display_name: Description
     type: text
@@ -185,13 +235,21 @@ attributes:
     description: Free-form notes on what was done.
     usage: Captures specifics of the service for context — useful for performance reviews and personalized acknowledgments.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: custom
-      salesforce_npsp: custom
-      bloomerang: standard
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: standard
+        api_name: Note
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -199,14 +257,21 @@ attributes:
     description: System timestamp of record creation.
     usage: Distinct from serviceDate. Drives data-entry-velocity reporting.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: custom
-      salesforce_npsp: custom
-      bloomerang: standard
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: standard
+        api_name: CreatedDate
 relationships:
   - target: contact
     cardinality: many-to-one

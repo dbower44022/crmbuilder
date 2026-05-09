@@ -57,7 +57,8 @@ systems:
     name: "(no native long-running Engagement; HubSpot 'Engagement' is single-touchpoint)"
     api_name: not_applicable
     is_standard: false
-    notes: HubSpot's Engagement entity is a single-touchpoint Activity (call, email, meeting, note). HubSpot has no long-running engagement concept analogous to NPSP Engagement Plan or CBM-style mentor engagement.
+    notes: HubSpot's Engagement entity is a single-touchpoint Activity (call, email, meeting, note). HubSpot has no long-running engagement concept analogous to NPSP Engagement Plan or CBM-style 
+      mentor engagement.
     docs_url: https://developers.hubspot.com/docs/api-reference/crm-engagements
   - system: attio
     name: "(custom object)"
@@ -81,13 +82,15 @@ systems:
     name: "Engagement Plan / Engagement Plan Task / Engagement Plan Template"
     api_name: "npe5__Engagement_Plan__c, npe5__Engagement_Plan_Task__c"
     is_standard: true
-    notes: NPSP's structured cultivation framework. Engagement Plan Templates define reusable cultivation tracks (e.g., "Major Gift Cultivation - 12 month"); Engagement Plans are instantiated per donor; Engagement Plan Tasks are the steps. Tracks completion of structured donor-cultivation touchpoints over time.
+    notes: NPSP's structured cultivation framework. Engagement Plan Templates define reusable cultivation tracks (e.g., "Major Gift Cultivation - 12 month"); Engagement Plans are instantiated per 
+      donor; Engagement Plan Tasks are the steps. Tracks completion of structured donor-cultivation touchpoints over time.
     docs_url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
   - system: bloomerang
     name: "(no first-class Engagement; tracked via Interactions)"
     api_name: not_applicable
     is_standard: false
-    notes: Bloomerang has no first-class long-running Engagement entity. Long-running relationships are tracked via accumulated Interactions on a Constituent's timeline. Custom Fields on Constituent can capture engagement stage.
+    notes: Bloomerang has no first-class long-running Engagement entity. Long-running relationships are tracked via accumulated Interactions on a Constituent's timeline. Custom Fields on Constituent 
+      can capture engagement stage.
     docs_url: https://bloomerang.com/api/rest-api-v1/
 
 attributes:
@@ -97,15 +100,25 @@ attributes:
     required: true
     max_length: 255
     description: Display name of the engagement.
-    usage: Identifies the engagement in lists. For mentoring contexts, often follows a pattern like "Smith-Jones Mentoring 2026"; for cultivation tracks, often "Acme Foundation Major Gift Cultivation."
+    usage: Identifies the engagement in lists. For mentoring contexts, often follows a pattern like "Smith-Jones Mentoring 2026"; for cultivation tracks, often "Acme Foundation Major Gift 
+      Cultivation."
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: subject
+      salesforce_npsp:
+        status: standard
+        api_name: Name
+      bloomerang:
+        status: absent
   - name: type
     display_name: Engagement Type
     type: enum
@@ -113,13 +126,22 @@ attributes:
     description: Category of engagement.
     usage: Distinguishes Mentoring / Cultivation / Case Management / Advocacy / Coaching / etc. Drives different lifecycle stage sets and reporting.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: case_type_id
+      salesforce_npsp:
+        status: standard
+        api_name: npe5__Engagement_Plan_Template__c
+      bloomerang:
+        status: absent
   - name: status
     display_name: Status
     type: enum
@@ -133,13 +155,22 @@ attributes:
     description: Lifecycle state of the engagement.
     usage: Drives "active engagements" filtering and dashboards. Status transitions trigger workflow automation (engagement-completion surveys, case-closeout reporting).
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: status_id
+      salesforce_npsp:
+        status: standard
+        api_name: npe5__Status__c
+      bloomerang:
+        status: absent
   - name: startDate
     display_name: Start Date
     type: date
@@ -147,13 +178,22 @@ attributes:
     description: Date the engagement began.
     usage: Anchors duration calculations and reporting cohorts (engagements started this quarter).
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: start_date
+      salesforce_npsp:
+        status: standard
+        api_name: npe5__StartDate__c
+      bloomerang:
+        status: absent
   - name: endDate
     display_name: End Date (Actual or Expected)
     type: date
@@ -161,13 +201,22 @@ attributes:
     description: Date the engagement ended (or expected end date for active engagements).
     usage: Drives expected-completion reporting and planning for capacity (how many engagements ending this quarter).
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: end_date
+      salesforce_npsp:
+        status: standard
+        api_name: npe5__EndDate__c
+      bloomerang:
+        status: absent
   - name: primaryContact
     display_name: Primary Contact
     type: reference
@@ -176,13 +225,27 @@ attributes:
     description: The primary subject contact of the engagement (e.g., the mentee in a mentor-mentee engagement; the donor in a cultivation track).
     usage: Anchors the engagement to the contact whose journey it tracks. Drives "show me everything for this contact" views.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: contact_id
+      salesforce_npsp:
+        status: standard
+        api_name: npe5__Contact__c
+      bloomerang:
+        status: absent
+    common_synonyms:
+      - mentee
+      - subject
+      - client
+      - beneficiary
   - name: secondaryContact
     display_name: Secondary Contact / Partner
     type: reference
@@ -191,13 +254,26 @@ attributes:
     description: The other party in a paired engagement (e.g., the mentor in a mentor-mentee pairing; the cultivation officer in a donor cultivation track).
     usage: For paired engagements (mentoring), models the other half of the dyad. For cultivation tracks, models the relationship-management officer.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: subject_id
+      salesforce_npsp:
+        status: standard
+        api_name: npe5__Secondary_Contact__c
+      bloomerang:
+        status: absent
+    common_synonyms:
+      - mentor
+      - partner
+      - cultivation officer
   - name: assignedUser
     display_name: Assigned Staff
     type: reference
@@ -206,13 +282,22 @@ attributes:
     description: Staff member responsible for the engagement.
     usage: Drives staff workload reporting and case-load management. Distinct from secondaryContact when the staff member is a User rather than a Contact.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: manager_contact_id
+      salesforce_npsp:
+        status: standard
+        api_name: OwnerId
+      bloomerang:
+        status: absent
   - name: description
     display_name: Description
     type: text
@@ -220,13 +305,22 @@ attributes:
     description: Free-form description of engagement goals and context.
     usage: Captures the why and the goals. Useful for new staff joining mid-engagement or for periodic engagement-review meetings.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: details
+      salesforce_npsp:
+        status: standard
+        api_name: Description
+      bloomerang:
+        status: absent
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -234,14 +328,22 @@ attributes:
     description: System timestamp.
     usage: Audit field. Distinct from startDate.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: created_date
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: absent
 relationships:
   - target: contact
     cardinality: many-to-many

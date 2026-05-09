@@ -155,14 +155,31 @@ attributes:
       search, and display in record sidebars. Should be short and
       meaningful — typically 1-3 words.
     presence:
-      salesforce: standard
-      hubspot: custom
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: Name
+      hubspot:
+        status: custom
+      attio:
+        status: standard
+        api_name: title
+      espocrm:
+        status: standard
+        api_name: name
+      civicrm:
+        status: standard
+        api_name: name
+      salesforce_npsp:
+        status: standard
+        api_name: Name
+      bloomerang:
+        status: standard
+        api_name: Name
+    common_synonyms:
+      - label
+      - tag label
+      - category
+      - topic
   - name: description
     display_name: Description
     type: text
@@ -174,14 +191,24 @@ attributes:
       consistently. Typically not shown when applying tags but visible in
       tag-management UI. Often empty in practice.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: custom
-      bloomerang: standard
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: standard
+        api_name: description
+      espocrm:
+        status: standard
+        api_name: description
+      civicrm:
+        status: standard
+        api_name: description
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: standard
+        api_name: Description
   - name: parent
     display_name: Parent Tag
     type: reference
@@ -196,14 +223,23 @@ attributes:
       drill-down filtering (find all records tagged with anything under
       Healthcare) and aggregation. Not all systems support this.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: custom
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: absent
-      bloomerang: standard
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: custom
+      espocrm:
+        status: standard
+        api_name: parentId
+      civicrm:
+        status: standard
+        api_name: parent_id
+      salesforce_npsp:
+        status: absent
+      bloomerang:
+        status: standard
+        api_name: ParentId
   - name: color
     display_name: Color
     type: string
@@ -215,14 +251,23 @@ attributes:
       tag colors natively. CiviCRM has color via the Tag's "color" field.
       Pure cosmetic — drives recognizability, not functionality.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: absent
-      bloomerang: custom
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: standard
+        api_name: color
+      espocrm:
+        status: standard
+        api_name: color
+      civicrm:
+        status: standard
+        api_name: color
+      salesforce_npsp:
+        status: absent
+      bloomerang:
+        status: custom
   - name: isActive
     display_name: Active
     type: boolean
@@ -234,14 +279,22 @@ attributes:
       records that have the tag). Inactive tags hide from the apply-tag
       UI but remain on records that already have them.
     presence:
-      salesforce: absent
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: absent
-      bloomerang: standard
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: is_active
+      salesforce_npsp:
+        status: absent
+      bloomerang:
+        status: standard
+        api_name: IsActive
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -251,17 +304,26 @@ attributes:
     usage: >
       Standard audit field. Used in tag-administration reports.
     presence:
-      salesforce: standard
-      hubspot: custom
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
-# =============================================================================
-# Relationships to other entities
-# =============================================================================
+      salesforce:
+        status: standard
+        api_name: CreatedDate
+      hubspot:
+        status: custom
+      attio:
+        status: standard
+        api_name: created_at
+      espocrm:
+        status: standard
+        api_name: createdAt
+      civicrm:
+        status: standard
+        api_name: created_date
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: standard
+        api_name: CreatedDate
 relationships:
   - target: account
     cardinality: many-to-many

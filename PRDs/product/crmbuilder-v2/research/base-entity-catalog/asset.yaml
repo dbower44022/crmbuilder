@@ -134,14 +134,22 @@ attributes:
       or "{Customer Name} - {Product Name}." Drives list-view legibility
       and search.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Name
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Name
+      bloomerang:
+        status: absent
   - name: account
     display_name: Account
     type: reference
@@ -153,14 +161,22 @@ attributes:
       Anchors the asset to its owner. Required because every asset
       represents one customer's instance of a product.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Account
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Account
+      bloomerang:
+        status: absent
   - name: contact
     display_name: Contact
     type: reference
@@ -174,14 +190,22 @@ attributes:
       holder for a software license, the technician assigned to a
       device).
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Contact
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Contact
+      bloomerang:
+        status: absent
   - name: product
     display_name: Product
     type: reference
@@ -193,14 +217,22 @@ attributes:
       Anchors asset back to the product catalog. Drives "all customers
       who own Product X" reports and product-recall workflows.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Product
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Product
+      bloomerang:
+        status: absent
   - name: serialNumber
     display_name: Serial Number
     type: string
@@ -213,14 +245,22 @@ attributes:
       to-asset matching when customers report issues. Often the unique
       key for asset records.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: SerialNumber
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: SerialNumber
+      bloomerang:
+        status: absent
   - name: installDate
     display_name: Install Date
     type: date
@@ -231,14 +271,22 @@ attributes:
       Drives warranty-period calculation and maintenance-schedule
       anchoring.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: InstallDate
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: InstallDate
+      bloomerang:
+        status: absent
   - name: purchaseDate
     display_name: Purchase Date
     type: date
@@ -249,14 +297,22 @@ attributes:
       Used in warranty calculations when warranty starts at purchase
       rather than install.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: PurchaseDate
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: PurchaseDate
+      bloomerang:
+        status: absent
   - name: usageEndDate
     display_name: Usage End Date / Warranty End Date
     type: date
@@ -267,14 +323,22 @@ attributes:
       Drives renewal workflows, expiring-warranty alerts, and out-of-
       warranty case-routing rules.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: UsageEndDate
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: UsageEndDate
+      bloomerang:
+        status: absent
   - name: status
     display_name: Status
     type: enum
@@ -294,14 +358,22 @@ attributes:
       and Decommissioned assets are typically excluded from preventive
       maintenance schedules.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Status
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Status
+      bloomerang:
+        status: absent
   - name: quantity
     display_name: Quantity
     type: decimal
@@ -313,14 +385,22 @@ attributes:
       multiple identical units. Used in seat-license tracking and
       consumable-product tracking.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Quantity
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Quantity
+      bloomerang:
+        status: absent
   - name: price
     display_name: Price
     type: currency
@@ -331,14 +411,22 @@ attributes:
       Captured at sale time. Drives lifetime-value reporting and renewal-
       pricing reference.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Price
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Price
+      bloomerang:
+        status: absent
   - name: parentAsset
     display_name: Parent Asset
     type: reference
@@ -352,14 +440,22 @@ attributes:
       of sub-assets, each independently serviced and tracked. Salesforce
       Field Service Lightning extension.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: ParentAsset
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: ParentAsset
+      bloomerang:
+        status: absent
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -369,17 +465,22 @@ attributes:
     usage: >
       Audit field; rarely used in workflows.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
-# =============================================================================
-# Relationships to other entities
-# =============================================================================
+      salesforce:
+        status: standard
+        api_name: CreatedDate
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: absent
 relationships:
   - target: account
     cardinality: many-to-one

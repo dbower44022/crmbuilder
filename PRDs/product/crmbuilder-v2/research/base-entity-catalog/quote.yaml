@@ -146,14 +146,24 @@ attributes:
       ("Acme - Annual Subscription - v2") and can include the quote
       number for clarity.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Name
+      hubspot:
+        status: standard
+        api_name: hs_title
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: name
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Name
+      bloomerang:
+        status: absent
   - name: quoteNumber
     display_name: Quote Number
     type: autonumber
@@ -166,14 +176,24 @@ attributes:
       Salesforce uses Quote.QuoteNumber (auto-numbered); EspoCRM uses
       number (auto-incremented).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: QuoteNumber
+      hubspot:
+        status: standard
+        api_name: hs_quote_number
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: number
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: QuoteNumber
+      bloomerang:
+        status: absent
   - name: opportunity
     display_name: Opportunity
     type: reference
@@ -186,14 +206,24 @@ attributes:
       every quote needs an opportunity. Salesforce supports many quotes
       per opportunity with one designated as "primary" (synced).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: OpportunityId
+      hubspot:
+        status: standard
+        api_name: hs_deal_id
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: opportunityId
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: OpportunityId
+      bloomerang:
+        status: absent
   - name: account
     display_name: Account
     type: reference
@@ -206,14 +236,24 @@ attributes:
       info, customer name on the document). Typically auto-populated
       from the opportunity's account.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: AccountId
+      hubspot:
+        status: standard
+        api_name: account
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: accountId
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: AccountId
+      bloomerang:
+        status: absent
   - name: contact
     display_name: Contact
     type: reference
@@ -227,14 +267,24 @@ attributes:
       automation — quotes get sent to a specific contact, not a generic
       account address.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: ContactId
+      hubspot:
+        status: standard
+        api_name: hs_associated_contact_ids
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: contactId
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: ContactId
+      bloomerang:
+        status: absent
   - name: status
     display_name: Status
     type: enum
@@ -257,14 +307,24 @@ attributes:
       Rejected) track post-send response. Expired is set automatically
       when validUntil passes without acceptance.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Status
+      hubspot:
+        status: standard
+        api_name: hs_status
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: status
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Status
+      bloomerang:
+        status: absent
   - name: validUntil
     display_name: Valid Until / Expiration Date
     type: date
@@ -277,14 +337,29 @@ attributes:
       90 days from creation. Often configured as a default offset rather
       than entered manually per quote.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: ExpirationDate
+      hubspot:
+        status: standard
+        api_name: hs_expiration_date
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: expirationDate
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: ExpirationDate
+      bloomerang:
+        status: absent
+    common_synonyms:
+      - expiration date
+      - expires
+      - expiry
+      - good through
   - name: subtotal
     display_name: Subtotal
     type: currency
@@ -296,14 +371,24 @@ attributes:
       calculation (discount applied to subtotal) and tax calculation
       (tax rate applied to subtotal minus discount).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Subtotal
+      hubspot:
+        status: standard
+        api_name: hs_subtotal
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: preDiscountedAmount
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Subtotal
+      bloomerang:
+        status: absent
   - name: discount
     display_name: Discount
     type: currency
@@ -315,14 +400,24 @@ attributes:
       Drives margin-impact reports and approval rules (some orgs require
       manager approval for discounts above a threshold).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Discount
+      hubspot:
+        status: standard
+        api_name: hs_discount_total
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: discount
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Discount
+      bloomerang:
+        status: absent
   - name: tax
     display_name: Tax
     type: currency
@@ -335,14 +430,24 @@ attributes:
       similar tax-calculation services; some use simple fixed rates per
       account.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Tax
+      hubspot:
+        status: standard
+        api_name: hs_tax_total
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: taxAmount
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Tax
+      bloomerang:
+        status: absent
   - name: grandTotal
     display_name: Grand Total
     type: currency
@@ -354,14 +459,29 @@ attributes:
       "synced quote" amount that flows back to the parent Opportunity.
       Auto-calculated in most systems.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: GrandTotal
+      hubspot:
+        status: standard
+        api_name: hs_total_amount
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: grandTotalAmount
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: GrandTotal
+      bloomerang:
+        status: absent
+    common_synonyms:
+      - total
+      - final total
+      - all-in
+      - total amount
   - name: billingAddress
     display_name: Billing Address
     type: address
@@ -374,14 +494,23 @@ attributes:
       multi-location customers may quote different sites. Auto-populated
       from the account but editable per-quote.
     presence:
-      salesforce: standard
-      hubspot: custom
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: BillingAddress
+      hubspot:
+        status: custom
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: billingAddress
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: BillingAddress
+      bloomerang:
+        status: absent
   - name: shippingAddress
     display_name: Shipping Address
     type: address
@@ -393,14 +522,23 @@ attributes:
       than where invoices go. Often the same; users override when
       different.
     presence:
-      salesforce: standard
-      hubspot: custom
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: ShippingAddress
+      hubspot:
+        status: custom
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: shippingAddress
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: ShippingAddress
+      bloomerang:
+        status: absent
   - name: description
     display_name: Description
     type: text
@@ -413,14 +551,24 @@ attributes:
       Distinct from line item descriptions which describe specific
       products or services.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Description
+      hubspot:
+        status: standard
+        api_name: hs_terms
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: description
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Description
+      bloomerang:
+        status: absent
   - name: assignedUser
     display_name: Owner
     type: reference
@@ -433,14 +581,24 @@ attributes:
       Drives "my quotes" filtering and approval routing. Quote ownership
       typically follows opportunity ownership.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: OwnerId
+      hubspot:
+        status: standard
+        api_name: hubspot_owner_id
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: assignedUserId
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: OwnerId
+      bloomerang:
+        status: absent
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -452,17 +610,24 @@ attributes:
       Used in quote-velocity reports (time from quote creation to
       acceptance).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
-# =============================================================================
-# Relationships to other entities
-# =============================================================================
+      salesforce:
+        status: standard
+        api_name: CreatedDate
+      hubspot:
+        status: standard
+        api_name: createdate
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: createdAt
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: absent
 relationships:
   - target: opportunity
     cardinality: many-to-one

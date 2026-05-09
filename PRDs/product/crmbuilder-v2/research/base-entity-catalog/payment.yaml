@@ -137,14 +137,26 @@ attributes:
     usage: >
       Internal cross-reference; sometimes appears on receipts.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: PaymentNumber
+      hubspot:
+        status: standard
+        api_name: paymentnumber
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: paymentNumber
+      civicrm:
+        status: standard
+        api_name: payment_number
+      salesforce_npsp:
+        status: standard
+        api_name: PaymentNumber
+      bloomerang:
+        status: standard
+        api_name: PaymentNumber
   - name: amount
     display_name: Amount
     type: currency
@@ -154,14 +166,26 @@ attributes:
     usage: >
       Headline figure. Drives revenue-recognition and AR-application.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: Amount
+      hubspot:
+        status: standard
+        api_name: amount
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: amount
+      civicrm:
+        status: standard
+        api_name: amount
+      salesforce_npsp:
+        status: standard
+        api_name: Amount
+      bloomerang:
+        status: standard
+        api_name: Amount
   - name: paymentDate
     display_name: Payment Date
     type: date
@@ -171,14 +195,26 @@ attributes:
     usage: >
       Drives revenue recognition timing and AR aging updates.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: PaymentDate
+      hubspot:
+        status: standard
+        api_name: paymentdate
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: paymentDate
+      civicrm:
+        status: standard
+        api_name: payment_date
+      salesforce_npsp:
+        status: standard
+        api_name: PaymentDate
+      bloomerang:
+        status: standard
+        api_name: PaymentDate
   - name: paymentMethod
     display_name: Payment Method
     type: enum
@@ -199,14 +235,26 @@ attributes:
       contexts also drives acknowledgment-letter language (different
       language for stock gifts vs cash).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: PaymentMethod
+      hubspot:
+        status: standard
+        api_name: paymentmethod
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: paymentMethod
+      civicrm:
+        status: standard
+        api_name: payment_method
+      salesforce_npsp:
+        status: standard
+        api_name: PaymentMethod
+      bloomerang:
+        status: standard
+        api_name: PaymentMethod
   - name: status
     display_name: Status
     type: enum
@@ -225,14 +273,26 @@ attributes:
       against invoices/donations. Failed and Voided payments require
       retry or write-off.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: Status
+      hubspot:
+        status: standard
+        api_name: status
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: status
+      civicrm:
+        status: standard
+        api_name: status
+      salesforce_npsp:
+        status: standard
+        api_name: Status
+      bloomerang:
+        status: standard
+        api_name: Status
   - name: invoice
     display_name: Invoice
     type: reference
@@ -245,14 +305,24 @@ attributes:
       core of accounts-receivable. For nonprofit contexts, payments
       typically reference Donation/Contribution rather than Invoice.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: absent
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Invoice
+      hubspot:
+        status: standard
+        api_name: invoice
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: invoice
+      civicrm:
+        status: standard
+        api_name: invoice
+      salesforce_npsp:
+        status: absent
+      bloomerang:
+        status: absent
   - name: account
     display_name: Account
     type: reference
@@ -264,14 +334,26 @@ attributes:
       Drives lifetime-value calculations and donor / customer-history
       reporting.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: Account
+      hubspot:
+        status: standard
+        api_name: account
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: account
+      civicrm:
+        status: standard
+        api_name: account
+      salesforce_npsp:
+        status: standard
+        api_name: Account
+      bloomerang:
+        status: standard
+        api_name: Account
   - name: referenceNumber
     display_name: Reference Number
     type: string
@@ -283,14 +365,26 @@ attributes:
       Drives reconciliation — match payment processor reports to CRM
       records by reference number.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: ReferenceNumber
+      hubspot:
+        status: standard
+        api_name: referencenumber
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: referenceNumber
+      civicrm:
+        status: standard
+        api_name: reference_number
+      salesforce_npsp:
+        status: standard
+        api_name: ReferenceNumber
+      bloomerang:
+        status: standard
+        api_name: ReferenceNumber
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -300,17 +394,26 @@ attributes:
     usage: >
       Audit field; can differ from paymentDate in retroactive entry.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
-# =============================================================================
-# Relationships to other entities
-# =============================================================================
+      salesforce:
+        status: standard
+        api_name: CreatedDate
+      hubspot:
+        status: standard
+        api_name: createdate
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: createdAt
+      civicrm:
+        status: standard
+        api_name: created_date
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: standard
+        api_name: CreatedDate
 relationships:
   - target: invoice
     cardinality: many-to-one

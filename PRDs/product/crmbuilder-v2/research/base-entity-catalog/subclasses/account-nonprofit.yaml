@@ -184,13 +184,22 @@ attributes:
       element of the Organization model. Other systems require it as a
       custom attribute.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: standard
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: Ein
+      bloomerang:
+        status: standard
+        api_name: Ein
     notes: >
       US-specific. International equivalents (Canadian Business Number, UK
       Company Number, EU VAT ID, etc.) should be considered as related but
@@ -225,14 +234,20 @@ attributes:
       typically tracks this via a custom Account field. Most systems
       require this as a custom attribute.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: custom
-      bloomerang: custom
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: custom
   - name: nteeCode
     display_name: NTEE Code
     type: string
@@ -250,14 +265,20 @@ attributes:
       letter subcategory format. Not natively supported in any of the
       seven surveyed systems — universally a custom attribute.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: custom
-      bloomerang: custom
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: custom
   - name: fiscalYearEnd
     display_name: Fiscal Year End
     type: date
@@ -272,14 +293,20 @@ attributes:
       Drives year-end giving statements and 990 cycle awareness in
       relationship-management automation.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: custom
-      bloomerang: custom
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: custom
   - name: missionStatement
     display_name: Mission Statement
     type: text
@@ -293,14 +320,20 @@ attributes:
       Candid/GuideStar profile. Not driven by automation in most
       deployments — primarily a reference field for staff context.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: custom
-      bloomerang: custom
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: custom
   - name: yearFounded
     display_name: Year Founded
     type: integer
@@ -314,14 +347,21 @@ attributes:
       attribute exists as a "Foundation date" on Companies (enriched for
       for-profit companies; less reliable for nonprofits).
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: standard
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: custom
-      bloomerang: custom
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: standard
+        api_name: year_founded
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: custom
   - name: irsRulingDate
     display_name: IRS Ruling Date
     type: date
@@ -335,20 +375,20 @@ attributes:
       2-5 years). Surfaces in due-diligence workflows. Pulled from the
       IRS determination letter or Pub 78 / IRS TEOS database.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: custom
-      bloomerang: custom
-
-# =============================================================================
-# Relationships specific to the subclass
-# =============================================================================
-# Subclass-specific relationships beyond what the parent Account has.
-# Most universal Account relationships (to Contact, Activity, Note) apply
-# unchanged and are not repeated here.
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: custom
 relationships:
   - target: contact
     cardinality: one-to-many

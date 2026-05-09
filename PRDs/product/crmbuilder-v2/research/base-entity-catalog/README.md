@@ -1,7 +1,7 @@
 # Base Entity Catalog
 
-**Last Updated:** 05-09-26 12:20
-**Status:** All 5 tiers complete; cross-cutting deliverables published; catalog at 42 entries
+**Last Updated:** 05-09-26 13:00
+**Status:** All 5 tiers complete; schema v0.8 with attribute synonyms and per-system api_names; catalog at 42 entries
 **Owner:** CRMBuilder v2
 
 ---
@@ -10,6 +10,7 @@
 
 | Version | Date | Description |
 |---------|------|-------------|
+| 0.8 | 05-09-26 | Schema enhancement (no new entries; existing 42 entries enriched). Two additions to attribute schema: (1) `common_synonyms` — optional list of alternate vocabulary terms users say when describing the attribute (e.g., `industry` synonyms = sector, vertical, line of business). 81 attributes backfilled with synonyms across high-divergence-vocabulary fields. (2) `presence` per-system value transformed from a flat status string into a structured object: `{ status: standard\|custom\|absent, api_name: "system-specific-field-name" }`. The api_name is populated on standard cells via a combination of: (a) explicit overrides from authoritative system documentation (~250 known divergences — Salesforce StageName, HubSpot lifecyclestage, NPSP npe-prefixed custom objects, CiviCRM snake_case fields, etc.), and (b) convention-based defaults for the rest (Salesforce PascalCase, HubSpot lowercase, EspoCRM camelCase, CiviCRM snake_case, Bloomerang PascalCase, Attio snake_case). All 1,545 standard cells across 2,898 total cells are populated; absent on `custom` cells (where the customer chooses the name at deploy time) and `absent` cells. **V2 deployment configuration should verify api_names against current target-system docs before applying** — convention-derived defaults are best-effort and may need correction for specific fields. Both changes are backward-compatible additions; ingestion-time consumers handle the new structure. |
 | 0.7 | 05-09-26 | Cross-cutting deliverables published as siblings to this directory: `../base-entity-catalog-research.md` (narrative companion documenting archetype patterns, modeling decisions, and V2 implementation recommendations) and `../entity-system-map.yaml` (programmatically-generated flat lookup table mapping each catalog entity to its representation in all 7 surveyed systems). Catalog content unchanged in this version. |
 | 0.6 | 05-09-26 | Tier 5 (communications detail) added: 5 Activity subclasses (activity-email, activity-phone-call, activity-meeting, activity-video-meeting, activity-sms) plus 2 standalone universal entities (document, contract). All 5 communication subclasses share Activity's parent attributes and add channel-specific delta attributes only. Catalog now stands at 42 entries: 34 universal + 8 subclasses across all 5 tiers. |
 | 0.5 | 05-09-26 | Refactor: renamed `specialization` → `subclass` throughout the catalog. Same conceptual model (parent entity + discriminator + delta attributes); friendlier terminology that maps cleanly to OOP subclassing for technical readers and is intuitive to non-technical readers. Changes: `entry_kind: specialization` → `entry_kind: subclass`; directory `specializations/` → `subclasses/`; all README prose updated. No semantic change to the catalog. |
@@ -170,8 +171,19 @@ Every base-entity YAML file follows this shape. Subclass files use the same shap
 | `reference_target` | string | conditional | Required for `reference` and `multireference` types. Names the target entity. |
 | `description` | string | yes | Terse what-it-is. |
 | `usage` | string | yes | Why it exists, what business processes it serves, what its presence on a record signals. Surfaced during interview methodology to guide field-level discussion. |
-| `presence` | object | yes | Per-system presence map — keys are system names, values are one of `standard` (system ships it built-in), `custom` (system supports it but you'd add it as a custom field/property), `absent` (system structurally cannot or doesn't represent this concept). |
+| `presence` | object | yes | Per-system presence map — keys are system names, values are structured objects with `status` (one of `standard` / `custom` / `absent`) and optional `api_name` (the system-specific field identifier when status is `standard`). See "Per-system presence schema" below. |
+| `common_synonyms` | array | no | Alternate vocabulary terms users say when describing the attribute. Example: `industry` carries `[sector, vertical, line of business, business type]`. Populated selectively on attributes where vocabulary divergence is high; absent on system fields and on attributes whose name is unambiguous. |
 | `notes` | string | no | Cross-system divergence, naming differences, or other implementation considerations. |
+
+#### Per-system presence schema (under `attributes[].presence`)
+
+Each system entry within `presence` is a structured object:
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `status` | enum | yes | One of `standard` (system ships it built-in), `custom` (system supports it but you'd add it as a custom field/property — name varies by deployment), `absent` (system structurally cannot or doesn't represent this concept). |
+| `api_name` | string | conditional | Populated when status is `standard` and the api_name is authoritatively known (e.g., `Industry` on Salesforce, `industry` on HubSpot, `categories` on Attio). Absent on `custom` cells (where the customer chooses the name at deploy time) and on `absent` cells. May also be absent on rare `standard` cells where authoritative naming wasn't yet captured — V2's cross-system mapper handles missing api_name as a TBD signal. |
+
 
 ### `relationships[]` schema (per-relationship)
 

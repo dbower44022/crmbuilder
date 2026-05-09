@@ -2,23 +2,24 @@
 # Entity-System Equivalence Map
 # =============================================================================
 # Cross-system lookup table generated from base-entity-catalog/.
-# For each catalog entity, lists the entity name, api_name, is_standard flag,
-# subclass mechanism (if applicable), and docs_url in each of the seven
-# surveyed systems. Used by V2 at deploy time to translate domain entities
-# into target backend native entities.
+# For each catalog entity, lists per-system entity-level mapping (name,
+# api_name, is_standard, mechanism, docs_url) AND per-attribute mapping
+# (status + api_name). Used by V2 at deploy time to translate domain entities
+# AND domain attributes into target-backend native names in one lookup.
 # =============================================================================
 
 catalog_id: entity-system-map
-catalog_version: "0.1"
-last_updated: "05-09-26 12:15"
-source_catalog: base-entity-catalog/
+catalog_version: "0.2"
+last_updated: "05-09-26 13:10"
+source_catalog: base-entity-catalog/ (schema v0.8)
 source_entries: 42
 systems: [salesforce, hubspot, attio, espocrm, civicrm, salesforce_npsp, bloomerang]
 
-# Each mapping entry shows where catalog_id lives in each system.
-# - is_standard: true=ships natively; false=requires custom build / extension; partial=mixed
-# - mechanism: only present for subclasses; one of record_type, contact_subtype,
-#              type_discriminator, custom_property, separate_object, entity_inheritance
+# Schema:
+#   mappings[].catalog_id, name, tier, entry_kind, parent_entity, discriminator
+#   mappings[].by_system[<sys>]:
+#     entity-level: name, api_name, is_standard, mechanism (subclasses only), docs_url
+#     attributes: { <attr_name>: { status, api_name? } }
 mappings:
 
   - catalog_id: account
@@ -31,36 +32,147 @@ mappings:
         api_name: "Account"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_account.htm
+        attributes:
+          name: { status: standard, api_name: "Name" }
+          type: { status: standard, api_name: "Type" }
+          industry: { status: standard, api_name: "Industry" }
+          website: { status: standard, api_name: "Website" }
+          phone: { status: standard, api_name: "Phone" }
+          emailAddress: { status: custom }
+          billingAddress: { status: standard, api_name: "BillingAddress" }
+          shippingAddress: { status: standard, api_name: "ShippingAddress" }
+          description: { status: standard, api_name: "Description" }
+          numberOfEmployees: { status: standard, api_name: "NumberOfEmployees" }
+          annualRevenue: { status: standard, api_name: "AnnualRevenue" }
+          parentAccount: { status: standard, api_name: "ParentId" }
+          assignedUser: { status: standard, api_name: "OwnerId" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
+          lastModifiedAt: { status: standard, api_name: "LastModifiedDate" }
       hubspot:
         name: "Company"
         api_name: "companies"
         is_standard: true
         docs_url: https://developers.hubspot.com/blog/a-developers-guide-to-hubspot-crm-objects-company-object
+        attributes:
+          name: { status: standard, api_name: "name" }
+          type: { status: standard, api_name: "type" }
+          industry: { status: standard, api_name: "industry" }
+          website: { status: standard, api_name: "website" }
+          phone: { status: standard, api_name: "phone" }
+          emailAddress: { status: custom }
+          billingAddress: { status: standard, api_name: "address" }
+          shippingAddress: { status: standard, api_name: "shippingaddress" }
+          description: { status: standard, api_name: "description" }
+          numberOfEmployees: { status: standard, api_name: "numberofemployees" }
+          annualRevenue: { status: standard, api_name: "annualrevenue" }
+          parentAccount: { status: standard, api_name: "hs_parent_company_id" }
+          assignedUser: { status: standard, api_name: "hubspot_owner_id" }
+          createdAt: { status: standard, api_name: "createdate" }
+          lastModifiedAt: { status: standard, api_name: "hs_lastmodifieddate" }
       attio:
         name: "Company"
         api_name: "companies"
         is_standard: true
         docs_url: https://attio.com/help/reference/managing-your-data/objects/manage-standard-objects
+        attributes:
+          name: { status: standard, api_name: "name" }
+          type: { status: custom }
+          industry: { status: standard, api_name: "categories" }
+          website: { status: standard, api_name: "domains" }
+          phone: { status: custom }
+          emailAddress: { status: custom }
+          billingAddress: { status: standard, api_name: "primary_location" }
+          shippingAddress: { status: custom }
+          description: { status: standard, api_name: "description" }
+          numberOfEmployees: { status: standard, api_name: "employee_range" }
+          annualRevenue: { status: standard, api_name: "estimated_arr_usd" }
+          parentAccount: { status: custom }
+          assignedUser: { status: standard, api_name: "workspace_member_owner" }
+          createdAt: { status: standard, api_name: "created_at" }
+          lastModifiedAt: { status: standard, api_name: "updated_at" }
       espocrm:
         name: "Account"
         api_name: "Account"
         is_standard: true
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Account.json
+        attributes:
+          name: { status: standard, api_name: "name" }
+          type: { status: standard, api_name: "type" }
+          industry: { status: standard, api_name: "industry" }
+          website: { status: standard, api_name: "website" }
+          phone: { status: standard, api_name: "phoneNumber" }
+          emailAddress: { status: standard, api_name: "emailAddress" }
+          billingAddress: { status: standard, api_name: "billingAddress" }
+          shippingAddress: { status: standard, api_name: "shippingAddress" }
+          description: { status: standard, api_name: "description" }
+          numberOfEmployees: { status: custom }
+          annualRevenue: { status: custom }
+          parentAccount: { status: custom }
+          assignedUser: { status: standard, api_name: "assignedUserId" }
+          createdAt: { status: standard, api_name: "createdAt" }
+          lastModifiedAt: { status: standard, api_name: "modifiedAt" }
       civicrm:
         name: "Organization (Contact subtype)"
         api_name: "Contact (contact_type=Organization)"
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/contacts/
+        attributes:
+          name: { status: standard, api_name: "organization_name" }
+          type: { status: standard, api_name: "contact_sub_type" }
+          industry: { status: custom }
+          website: { status: standard, api_name: "url" }
+          phone: { status: standard, api_name: "phone" }
+          emailAddress: { status: standard, api_name: "email" }
+          billingAddress: { status: standard, api_name: "street_address" }
+          shippingAddress: { status: standard, api_name: "shipping_address" }
+          description: { status: custom }
+          numberOfEmployees: { status: custom }
+          annualRevenue: { status: custom }
+          parentAccount: { status: custom }
+          assignedUser: { status: custom }
+          createdAt: { status: standard, api_name: "created_date" }
+          lastModifiedAt: { status: standard, api_name: "modified_date" }
       salesforce_npsp:
         name: "Account (Household, 1x1, or Organization Record Type)"
         api_name: "Account"
         is_standard: true
         docs_url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-success-pack-basics/organize-your-data-with-npsp
+        attributes:
+          name: { status: standard, api_name: "Name" }
+          type: { status: standard, api_name: "Type" }
+          industry: { status: standard, api_name: "Industry" }
+          website: { status: standard, api_name: "Website" }
+          phone: { status: standard, api_name: "Phone" }
+          emailAddress: { status: custom }
+          billingAddress: { status: standard, api_name: "BillingAddress" }
+          shippingAddress: { status: standard, api_name: "ShippingAddress" }
+          description: { status: standard, api_name: "Description" }
+          numberOfEmployees: { status: standard, api_name: "NumberOfEmployees" }
+          annualRevenue: { status: standard, api_name: "AnnualRevenue" }
+          parentAccount: { status: standard, api_name: "ParentId" }
+          assignedUser: { status: standard, api_name: "OwnerId" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
+          lastModifiedAt: { status: standard, api_name: "LastModifiedDate" }
       bloomerang:
         name: "Constituent (Organization Type)"
         api_name: "Constituent"
         is_standard: true
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          name: { status: standard, api_name: "FullName" }
+          type: { status: standard, api_name: "Type" }
+          industry: { status: custom }
+          website: { status: standard, api_name: "Website" }
+          phone: { status: standard, api_name: "PrimaryPhone" }
+          emailAddress: { status: standard, api_name: "PrimaryEmail" }
+          billingAddress: { status: standard, api_name: "PrimaryAddress" }
+          shippingAddress: { status: standard, api_name: "ShippingAddress" }
+          description: { status: custom }
+          numberOfEmployees: { status: custom }
+          annualRevenue: { status: custom }
+          parentAccount: { status: custom }
+          createdAt: { status: standard, api_name: "CreatedDate" }
+          lastModifiedAt: { status: standard, api_name: "LastModified" }
 
   - catalog_id: activity
     name: "Activity"
@@ -72,36 +184,125 @@ mappings:
         api_name: "Task, Event"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_task.htm
+        attributes:
+          subject: { status: standard, api_name: "Subject" }
+          activityType: { status: standard, api_name: "TaskSubtype" }
+          status: { status: standard, api_name: "Status" }
+          activityDate: { status: standard, api_name: "ActivityDate" }
+          dueDate: { status: standard, api_name: "ActivityDate" }
+          dateStart: { status: standard, api_name: "StartDateTime" }
+          dateEnd: { status: standard, api_name: "EndDateTime" }
+          description: { status: standard, api_name: "Description" }
+          parent: { status: standard, api_name: "WhatId" }
+          assignedUser: { status: standard, api_name: "OwnerId" }
+          priority: { status: standard, api_name: "Priority" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       hubspot:
         name: "Engagement"
         api_name: "engagements (subtypes: CALL, EMAIL, MEETING, TASK, NOTE, COMMUNICATION)"
         is_standard: true
         docs_url: https://developers.hubspot.com/docs/api-reference/crm-engagements
+        attributes:
+          subject: { status: standard, api_name: "hs_engagement_subject" }
+          activityType: { status: standard, api_name: "hs_engagement_type" }
+          status: { status: standard, api_name: "hs_task_status" }
+          activityDate: { status: standard, api_name: "hs_timestamp" }
+          dueDate: { status: standard, api_name: "hs_task_due_date" }
+          dateStart: { status: standard, api_name: "hs_meeting_start_time" }
+          dateEnd: { status: standard, api_name: "hs_meeting_end_time" }
+          description: { status: standard, api_name: "hs_engagement_body" }
+          parent: { status: standard, api_name: "parent" }
+          assignedUser: { status: standard, api_name: "hubspot_owner_id" }
+          priority: { status: standard, api_name: "hs_task_priority" }
+          createdAt: { status: standard, api_name: "createdate" }
       attio:
         name: "Tasks (with separate Meetings, Calls, Emails)"
         api_name: "tasks, meetings, calls"
         is_standard: true
         docs_url: https://attio.com/help/reference/managing-your-data/records/add-record-activities
+        attributes:
+          subject: { status: standard, api_name: "name" }
+          activityType: { status: standard, api_name: "type" }
+          status: { status: standard, api_name: "status" }
+          activityDate: { status: standard, api_name: "activity_date" }
+          dueDate: { status: standard, api_name: "deadline_at" }
+          dateStart: { status: standard, api_name: "starts_at" }
+          dateEnd: { status: standard, api_name: "ends_at" }
+          description: { status: standard, api_name: "description" }
+          parent: { status: standard, api_name: "parent" }
+          assignedUser: { status: standard, api_name: "workspace_member_owner" }
+          priority: { status: custom }
+          createdAt: { status: standard, api_name: "created_at" }
       espocrm:
         name: "Task, Meeting, Call"
         api_name: "Task, Meeting, Call"
         is_standard: true
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Task.json
+        attributes:
+          subject: { status: standard, api_name: "name" }
+          activityType: { status: standard, api_name: "type" }
+          status: { status: standard, api_name: "status" }
+          activityDate: { status: standard, api_name: "dateStart" }
+          dueDate: { status: standard, api_name: "dateEnd" }
+          dateStart: { status: standard, api_name: "dateStart" }
+          dateEnd: { status: standard, api_name: "dateEnd" }
+          description: { status: standard, api_name: "description" }
+          parent: { status: standard, api_name: "parentId" }
+          assignedUser: { status: standard, api_name: "assignedUserId" }
+          priority: { status: standard, api_name: "priority" }
+          createdAt: { status: standard, api_name: "createdAt" }
       civicrm:
         name: "Activity"
         api_name: "Activity"
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/the-user-interface/activities/
+        attributes:
+          subject: { status: standard, api_name: "subject" }
+          activityType: { status: standard, api_name: "activity_type_id" }
+          status: { status: standard, api_name: "status_id" }
+          activityDate: { status: standard, api_name: "activity_date_time" }
+          dueDate: { status: custom }
+          dateStart: { status: standard, api_name: "activity_date_time" }
+          dateEnd: { status: standard, api_name: "date_end" }
+          description: { status: standard, api_name: "details" }
+          parent: { status: standard, api_name: "parent" }
+          assignedUser: { status: standard, api_name: "assignee_id" }
+          priority: { status: custom }
+          createdAt: { status: standard, api_name: "created_date" }
       salesforce_npsp:
         name: "Task, Event (with NPSP-specific activity types)"
         api_name: "Task, Event"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_task.htm
+        attributes:
+          subject: { status: standard, api_name: "Subject" }
+          activityType: { status: standard, api_name: "TaskSubtype" }
+          status: { status: standard, api_name: "Status" }
+          activityDate: { status: standard, api_name: "ActivityDate" }
+          dueDate: { status: standard, api_name: "ActivityDate" }
+          dateStart: { status: standard, api_name: "StartDateTime" }
+          dateEnd: { status: standard, api_name: "EndDateTime" }
+          description: { status: standard, api_name: "Description" }
+          parent: { status: standard, api_name: "WhatId" }
+          assignedUser: { status: standard, api_name: "OwnerId" }
+          priority: { status: standard, api_name: "Priority" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "Interaction"
         api_name: "Interaction"
         is_standard: true
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          subject: { status: standard, api_name: "Subject" }
+          activityType: { status: standard, api_name: "Type" }
+          status: { status: custom }
+          activityDate: { status: standard, api_name: "Date" }
+          dateStart: { status: standard, api_name: "DateStart" }
+          dateEnd: { status: standard, api_name: "DateEnd" }
+          description: { status: standard, api_name: "Note" }
+          parent: { status: standard, api_name: "Parent" }
+          assignedUser: { status: standard, api_name: "CreatedBy" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
 
   - catalog_id: contact
     name: "Contact"
@@ -113,36 +314,154 @@ mappings:
         api_name: "Contact"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contact.htm
+        attributes:
+          firstName: { status: standard, api_name: "FirstName" }
+          lastName: { status: standard, api_name: "LastName" }
+          emailAddress: { status: standard, api_name: "Email" }
+          phoneNumber: { status: standard, api_name: "Phone" }
+          mobilePhone: { status: standard, api_name: "MobilePhone" }
+          title: { status: standard, api_name: "Title" }
+          department: { status: standard, api_name: "Department" }
+          account: { status: standard, api_name: "AccountId" }
+          mailingAddress: { status: standard, api_name: "MailingAddress" }
+          birthDate: { status: standard, api_name: "Birthdate" }
+          gender: { status: custom }
+          doNotContact: { status: standard, api_name: "DoNotCall" }
+          emailOptOut: { status: standard, api_name: "HasOptedOutOfEmail" }
+          assignedUser: { status: standard, api_name: "OwnerId" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
+          lastModifiedAt: { status: standard, api_name: "LastModifiedDate" }
       hubspot:
         name: "Contact"
         api_name: "contacts"
         is_standard: true
         docs_url: https://developers.hubspot.com/docs/reference/api/crm/objects/contacts
+        attributes:
+          firstName: { status: standard, api_name: "firstname" }
+          lastName: { status: standard, api_name: "lastname" }
+          emailAddress: { status: standard, api_name: "email" }
+          phoneNumber: { status: standard, api_name: "phone" }
+          mobilePhone: { status: standard, api_name: "mobilephone" }
+          title: { status: standard, api_name: "jobtitle" }
+          department: { status: standard, api_name: "department" }
+          account: { status: standard, api_name: "associatedcompanyid" }
+          mailingAddress: { status: standard, api_name: "address" }
+          birthDate: { status: standard, api_name: "date_of_birth" }
+          gender: { status: custom }
+          doNotContact: { status: standard, api_name: "hs_email_optout" }
+          emailOptOut: { status: standard, api_name: "hs_email_optout" }
+          assignedUser: { status: standard, api_name: "hubspot_owner_id" }
+          createdAt: { status: standard, api_name: "createdate" }
+          lastModifiedAt: { status: standard, api_name: "hs_lastmodifieddate" }
       attio:
         name: "Person"
         api_name: "people"
         is_standard: true
         docs_url: https://attio.com/help/reference/managing-your-data/objects/manage-standard-objects
+        attributes:
+          firstName: { status: standard, api_name: "name" }
+          lastName: { status: standard, api_name: "name" }
+          emailAddress: { status: standard, api_name: "email_addresses" }
+          phoneNumber: { status: standard, api_name: "phone_numbers" }
+          mobilePhone: { status: custom }
+          title: { status: standard, api_name: "job_title" }
+          department: { status: custom }
+          account: { status: standard, api_name: "company" }
+          mailingAddress: { status: custom }
+          birthDate: { status: custom }
+          gender: { status: custom }
+          doNotContact: { status: custom }
+          emailOptOut: { status: custom }
+          assignedUser: { status: standard, api_name: "workspace_member_owner" }
+          createdAt: { status: standard, api_name: "created_at" }
+          lastModifiedAt: { status: standard, api_name: "updated_at" }
       espocrm:
         name: "Contact"
         api_name: "Contact"
         is_standard: true
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Contact.json
+        attributes:
+          firstName: { status: standard, api_name: "firstName" }
+          lastName: { status: standard, api_name: "lastName" }
+          emailAddress: { status: standard, api_name: "emailAddress" }
+          phoneNumber: { status: standard, api_name: "phoneNumber" }
+          mobilePhone: { status: standard, api_name: "phoneNumberMobile" }
+          title: { status: standard, api_name: "title" }
+          department: { status: custom }
+          account: { status: standard, api_name: "accountId" }
+          mailingAddress: { status: standard, api_name: "addressStreet" }
+          birthDate: { status: standard, api_name: "birthdate" }
+          gender: { status: standard, api_name: "gender" }
+          doNotContact: { status: standard, api_name: "doNotCall" }
+          emailOptOut: { status: custom }
+          assignedUser: { status: standard, api_name: "assignedUserId" }
+          createdAt: { status: standard, api_name: "createdAt" }
+          lastModifiedAt: { status: standard, api_name: "modifiedAt" }
       civicrm:
         name: "Individual (Contact subtype)"
         api_name: "Contact (contact_type=Individual)"
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/contacts/
+        attributes:
+          firstName: { status: standard, api_name: "first_name" }
+          lastName: { status: standard, api_name: "last_name" }
+          emailAddress: { status: standard, api_name: "email" }
+          phoneNumber: { status: standard, api_name: "phone" }
+          mobilePhone: { status: standard, api_name: "phone" }
+          title: { status: standard, api_name: "job_title" }
+          department: { status: custom }
+          account: { status: custom }
+          mailingAddress: { status: standard, api_name: "street_address" }
+          birthDate: { status: standard, api_name: "birth_date" }
+          gender: { status: standard, api_name: "gender_id" }
+          doNotContact: { status: standard, api_name: "do_not_email" }
+          emailOptOut: { status: standard, api_name: "do_not_email" }
+          assignedUser: { status: custom }
+          createdAt: { status: standard, api_name: "created_date" }
+          lastModifiedAt: { status: standard, api_name: "modified_date" }
       salesforce_npsp:
         name: "Contact"
         api_name: "Contact"
         is_standard: true
         docs_url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-success-pack-basics/organize-your-data-with-npsp
+        attributes:
+          firstName: { status: standard, api_name: "FirstName" }
+          lastName: { status: standard, api_name: "LastName" }
+          emailAddress: { status: standard, api_name: "Email" }
+          phoneNumber: { status: standard, api_name: "Phone" }
+          mobilePhone: { status: standard, api_name: "MobilePhone" }
+          title: { status: standard, api_name: "Title" }
+          department: { status: standard, api_name: "Department" }
+          account: { status: standard, api_name: "AccountId" }
+          mailingAddress: { status: standard, api_name: "MailingAddress" }
+          birthDate: { status: standard, api_name: "Birthdate" }
+          gender: { status: standard, api_name: "GenderIdentity__c" }
+          doNotContact: { status: standard, api_name: "DoNotCall" }
+          emailOptOut: { status: standard, api_name: "HasOptedOutOfEmail" }
+          assignedUser: { status: standard, api_name: "OwnerId" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
+          lastModifiedAt: { status: standard, api_name: "LastModifiedDate" }
       bloomerang:
         name: "Constituent (Individual Type)"
         api_name: "Constituent"
         is_standard: true
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          firstName: { status: standard, api_name: "FirstName" }
+          lastName: { status: standard, api_name: "LastName" }
+          emailAddress: { status: standard, api_name: "PrimaryEmail" }
+          phoneNumber: { status: standard, api_name: "PrimaryPhone" }
+          mobilePhone: { status: standard, api_name: "MobilePhone" }
+          title: { status: custom }
+          department: { status: custom }
+          account: { status: custom }
+          mailingAddress: { status: standard, api_name: "PrimaryAddress" }
+          birthDate: { status: standard, api_name: "Birthdate" }
+          gender: { status: standard, api_name: "Gender" }
+          doNotContact: { status: standard, api_name: "CommunicationRestrictions" }
+          emailOptOut: { status: standard, api_name: "EmailInterestType" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
+          lastModifiedAt: { status: standard, api_name: "LastModified" }
 
   - catalog_id: note
     name: "Note"
@@ -154,36 +473,99 @@ mappings:
         api_name: "ContentNote"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contentnote.htm
+        attributes:
+          title: { status: standard, api_name: "Title" }
+          body: { status: standard, api_name: "Content" }
+          parent: { status: standard, api_name: "LinkedEntityId" }
+          privacy: { status: custom }
+          assignedUser: { status: standard, api_name: "OwnerId" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
+          lastModifiedAt: { status: standard, api_name: "LastModifiedDate" }
+          attachments: { status: standard, api_name: "ContentDocumentId" }
       hubspot:
         name: "Note (Engagement)"
         api_name: "notes"
         is_standard: true
         docs_url: https://developers.hubspot.com/docs/reference/api/crm/engagements/notes
+        attributes:
+          title: { status: custom }
+          body: { status: standard, api_name: "hs_note_body" }
+          parent: { status: standard, api_name: "parent" }
+          privacy: { status: custom }
+          assignedUser: { status: standard, api_name: "hubspot_owner_id" }
+          createdAt: { status: standard, api_name: "createdate" }
+          lastModifiedAt: { status: standard, api_name: "hs_lastmodifieddate" }
+          attachments: { status: standard, api_name: "attachments" }
       attio:
         name: "Note"
         api_name: "notes"
         is_standard: true
         docs_url: https://docs.attio.com/docs/notes
+        attributes:
+          title: { status: custom }
+          body: { status: standard, api_name: "content" }
+          parent: { status: standard, api_name: "parent" }
+          privacy: { status: custom }
+          assignedUser: { status: standard, api_name: "created_by" }
+          createdAt: { status: standard, api_name: "created_at" }
+          lastModifiedAt: { status: standard, api_name: "updated_at" }
+          attachments: { status: standard, api_name: "attachments" }
       espocrm:
         name: "Note"
         api_name: "Note"
         is_standard: true
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Resources/metadata/entityDefs/Note.json
+        attributes:
+          title: { status: standard, api_name: "name" }
+          body: { status: standard, api_name: "post" }
+          parent: { status: standard, api_name: "parentId" }
+          privacy: { status: custom }
+          assignedUser: { status: standard, api_name: "createdById" }
+          createdAt: { status: standard, api_name: "createdAt" }
+          lastModifiedAt: { status: standard, api_name: "modifiedAt" }
+          attachments: { status: standard, api_name: "attachmentsIds" }
       civicrm:
         name: "Note"
         api_name: "Note"
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/contributions/notes/
+        attributes:
+          title: { status: standard, api_name: "subject" }
+          body: { status: standard, api_name: "note" }
+          parent: { status: standard, api_name: "parent" }
+          privacy: { status: standard, api_name: "privacy" }
+          assignedUser: { status: standard, api_name: "contact_id" }
+          createdAt: { status: standard, api_name: "created_date" }
+          lastModifiedAt: { status: standard, api_name: "modified_date" }
+          attachments: { status: custom }
       salesforce_npsp:
         name: "ContentNote"
         api_name: "ContentNote"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contentnote.htm
+        attributes:
+          title: { status: standard, api_name: "Title" }
+          body: { status: standard, api_name: "Content" }
+          parent: { status: standard, api_name: "LinkedEntityId" }
+          privacy: { status: custom }
+          assignedUser: { status: standard, api_name: "OwnerId" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
+          lastModifiedAt: { status: standard, api_name: "LastModifiedDate" }
+          attachments: { status: standard, api_name: "ContentDocumentId" }
       bloomerang:
         name: "Note"
         api_name: "Note"
         is_standard: true
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          title: { status: standard, api_name: "Subject" }
+          body: { status: standard, api_name: "Description" }
+          parent: { status: standard, api_name: "Parent" }
+          privacy: { status: custom }
+          assignedUser: { status: standard, api_name: "CreatedBy" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
+          lastModifiedAt: { status: standard, api_name: "LastModified" }
+          attachments: { status: custom }
 
   - catalog_id: tag
     name: "Tag"
@@ -195,36 +577,77 @@ mappings:
         api_name: "Topic, TopicAssignment"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_topic.htm
+        attributes:
+          name: { status: standard, api_name: "Name" }
+          description: { status: custom }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       hubspot:
         name: "Multi-select property (no first-class tag)"
         api_name: "not_in_api_as_separate_entity"
         is_standard: false
         docs_url: https://knowledge.hubspot.com/properties/multi-select-properties
+        attributes:
+          name: { status: custom }
+          description: { status: custom }
+          isActive: { status: custom }
+          createdAt: { status: custom }
       attio:
         name: "Tag (multi-select attribute)"
         api_name: "tags (as a multi-select attribute on each object)"
         is_standard: true
         docs_url: https://attio.com/help/reference/managing-your-data/attributes/create-manage-attributes
+        attributes:
+          name: { status: standard, api_name: "title" }
+          description: { status: standard, api_name: "description" }
+          parent: { status: custom }
+          color: { status: standard, api_name: "color" }
+          isActive: { status: custom }
+          createdAt: { status: standard, api_name: "created_at" }
       espocrm:
         name: "Tag"
         api_name: "Tag"
         is_standard: true
         docs_url: https://docs.espocrm.com/user-guide/tags/
+        attributes:
+          name: { status: standard, api_name: "name" }
+          description: { status: standard, api_name: "description" }
+          parent: { status: standard, api_name: "parentId" }
+          color: { status: standard, api_name: "color" }
+          isActive: { status: custom }
+          createdAt: { status: standard, api_name: "createdAt" }
       civicrm:
         name: "Tag"
         api_name: "Tag"
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/tags/
+        attributes:
+          name: { status: standard, api_name: "name" }
+          description: { status: standard, api_name: "description" }
+          parent: { status: standard, api_name: "parent_id" }
+          color: { status: standard, api_name: "color" }
+          isActive: { status: standard, api_name: "is_active" }
+          createdAt: { status: standard, api_name: "created_date" }
       salesforce_npsp:
         name: "Topic / Multi-select picklist (same as Salesforce)"
         api_name: "Topic, TopicAssignment"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_topic.htm
+        attributes:
+          name: { status: standard, api_name: "Name" }
+          description: { status: custom }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "Tag (on Constituents)"
         api_name: "Tag"
         is_standard: true
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          name: { status: standard, api_name: "Name" }
+          description: { status: standard, api_name: "Description" }
+          parent: { status: standard, api_name: "ParentId" }
+          color: { status: custom }
+          isActive: { status: standard, api_name: "IsActive" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
 
   - catalog_id: user
     name: "User"
@@ -236,36 +659,119 @@ mappings:
         api_name: "User"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_user.htm
+        attributes:
+          username: { status: standard, api_name: "Username" }
+          emailAddress: { status: standard, api_name: "Email" }
+          firstName: { status: standard, api_name: "FirstName" }
+          lastName: { status: standard, api_name: "LastName" }
+          title: { status: standard, api_name: "Title" }
+          role: { status: standard, api_name: "UserRoleId" }
+          isActive: { status: standard, api_name: "IsActive" }
+          type: { status: standard, api_name: "UserType" }
+          phone: { status: standard, api_name: "Phone" }
+          timezone: { status: standard, api_name: "TimeZoneSidKey" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       hubspot:
         name: "Owner / User"
         api_name: "owners (users have a separate users API)"
         is_standard: true
         docs_url: https://developers.hubspot.com/docs/reference/api/crm/owners
+        attributes:
+          emailAddress: { status: standard, api_name: "email" }
+          firstName: { status: standard, api_name: "first_name" }
+          lastName: { status: standard, api_name: "last_name" }
+          title: { status: standard, api_name: "job_title" }
+          role: { status: standard, api_name: "role_id" }
+          isActive: { status: standard, api_name: "archived" }
+          type: { status: standard, api_name: "type" }
+          phone: { status: standard, api_name: "phone" }
+          timezone: { status: standard, api_name: "timezone" }
+          createdAt: { status: standard, api_name: "createdate" }
       attio:
         name: "Workspace member"
         api_name: "workspace_members"
         is_standard: true
         docs_url: https://attio.com/help/reference/workspace-settings-billing
+        attributes:
+          username: { status: standard, api_name: "email_address" }
+          emailAddress: { status: standard, api_name: "email_address" }
+          firstName: { status: standard, api_name: "first_name" }
+          lastName: { status: standard, api_name: "last_name" }
+          title: { status: standard, api_name: "title" }
+          role: { status: standard, api_name: "access_level" }
+          isActive: { status: standard, api_name: "is_active" }
+          type: { status: standard, api_name: "type" }
+          phone: { status: standard, api_name: "phone" }
+          timezone: { status: standard, api_name: "timezone" }
+          createdAt: { status: standard, api_name: "created_at" }
       espocrm:
         name: "User"
         api_name: "User"
         is_standard: true
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Resources/metadata/entityDefs/User.json
+        attributes:
+          username: { status: standard, api_name: "userName" }
+          emailAddress: { status: standard, api_name: "emailAddress" }
+          firstName: { status: standard, api_name: "firstName" }
+          lastName: { status: standard, api_name: "lastName" }
+          title: { status: standard, api_name: "title" }
+          role: { status: standard, api_name: "rolesIds" }
+          isActive: { status: standard, api_name: "isActive" }
+          type: { status: standard, api_name: "type" }
+          phone: { status: standard, api_name: "phoneNumber" }
+          timezone: { status: standard, api_name: "timeZone" }
+          createdAt: { status: standard, api_name: "createdAt" }
       civicrm:
         name: "User (via Drupal/Joomla/WordPress UF)"
         api_name: "User"
         is_standard: true
         docs_url: https://docs.civicrm.org/sysadmin/en/latest/setup/users/
+        attributes:
+          username: { status: standard, api_name: "name" }
+          emailAddress: { status: standard, api_name: "mail" }
+          firstName: { status: standard, api_name: "first_name" }
+          lastName: { status: standard, api_name: "last_name" }
+          title: { status: custom }
+          role: { status: standard, api_name: "role" }
+          isActive: { status: standard, api_name: "is_active" }
+          type: { status: custom }
+          phone: { status: custom }
+          timezone: { status: standard, api_name: "timezone" }
+          createdAt: { status: standard, api_name: "created_date" }
       salesforce_npsp:
         name: "User"
         api_name: "User"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_user.htm
+        attributes:
+          username: { status: standard, api_name: "Username" }
+          emailAddress: { status: standard, api_name: "Email" }
+          firstName: { status: standard, api_name: "FirstName" }
+          lastName: { status: standard, api_name: "LastName" }
+          title: { status: standard, api_name: "Title" }
+          role: { status: standard, api_name: "UserRoleId" }
+          isActive: { status: standard, api_name: "IsActive" }
+          type: { status: standard, api_name: "UserType" }
+          phone: { status: standard, api_name: "Phone" }
+          timezone: { status: standard, api_name: "TimeZoneSidKey" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "User (admin-only, no API)"
         api_name: "not_in_api"
         is_standard: true
         docs_url: https://support.bloomerang.co/s/article/13000076351
+        attributes:
+          username: { status: standard, api_name: "Username" }
+          emailAddress: { status: standard, api_name: "EmailAddress" }
+          firstName: { status: standard, api_name: "FirstName" }
+          lastName: { status: standard, api_name: "LastName" }
+          title: { status: custom }
+          role: { status: standard, api_name: "Role" }
+          isActive: { status: standard, api_name: "IsActive" }
+          type: { status: custom }
+          phone: { status: custom }
+          timezone: { status: custom }
+          createdAt: { status: standard, api_name: "CreatedDate" }
 
   - catalog_id: account-nonprofit
     name: "Nonprofit Organization"
@@ -281,42 +787,98 @@ mappings:
         is_standard: false
         mechanism: record_type
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_account.htm
+        attributes:
+          ein: { status: custom }
+          taxExemptStatus: { status: custom }
+          nteeCode: { status: custom }
+          fiscalYearEnd: { status: custom }
+          missionStatement: { status: custom }
+          yearFounded: { status: custom }
+          irsRulingDate: { status: custom }
       hubspot:
         name: "Company with custom Type property"
         api_name: "companies"
         is_standard: false
         mechanism: custom_property
         docs_url: https://developers.hubspot.com/docs/api-reference/crm-properties-v3/guide
+        attributes:
+          ein: { status: custom }
+          taxExemptStatus: { status: custom }
+          nteeCode: { status: custom }
+          fiscalYearEnd: { status: custom }
+          missionStatement: { status: custom }
+          yearFounded: { status: custom }
+          irsRulingDate: { status: custom }
       attio:
         name: "Either custom Nonprofit object, or Type attribute on Company"
         api_name: "either custom 'nonprofit' object or companies"
         is_standard: false
         mechanism: separate_object
         docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+        attributes:
+          ein: { status: custom }
+          taxExemptStatus: { status: custom }
+          nteeCode: { status: custom }
+          fiscalYearEnd: { status: custom }
+          missionStatement: { status: custom }
+          yearFounded: { status: standard, api_name: "year_founded" }
+          irsRulingDate: { status: custom }
       espocrm:
         name: "Account with type=Nonprofit (custom enum value)"
         api_name: "Account"
         is_standard: false
         mechanism: type_discriminator
         docs_url: https://docs.espocrm.com/administration/entity-manager/
+        attributes:
+          ein: { status: custom }
+          taxExemptStatus: { status: custom }
+          nteeCode: { status: custom }
+          fiscalYearEnd: { status: custom }
+          missionStatement: { status: custom }
+          yearFounded: { status: custom }
+          irsRulingDate: { status: custom }
       civicrm:
         name: "Custom subtype of Organization (e.g., Foundation, Charitable Org)"
         api_name: "Contact (contact_type=Organization, contact_sub_type=...)"
         is_standard: false
         mechanism: contact_subtype
         docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/contact-types/
+        attributes:
+          ein: { status: custom }
+          taxExemptStatus: { status: custom }
+          nteeCode: { status: custom }
+          fiscalYearEnd: { status: custom }
+          missionStatement: { status: custom }
+          yearFounded: { status: custom }
+          irsRulingDate: { status: custom }
       salesforce_npsp:
         name: "Organization Account Record Type (with custom nonprofit fields)"
         api_name: "Account"
         is_standard: "partial"
         mechanism: record_type
         docs_url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-success-pack-basics/organize-your-data-with-npsp
+        attributes:
+          ein: { status: standard, api_name: "Ein" }
+          taxExemptStatus: { status: custom }
+          nteeCode: { status: custom }
+          fiscalYearEnd: { status: custom }
+          missionStatement: { status: custom }
+          yearFounded: { status: custom }
+          irsRulingDate: { status: custom }
       bloomerang:
         name: "Organization Constituent with Industry/Type combination"
         api_name: "Constituent"
         is_standard: false
         mechanism: type_discriminator
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          ein: { status: standard, api_name: "Ein" }
+          taxExemptStatus: { status: custom }
+          nteeCode: { status: custom }
+          fiscalYearEnd: { status: custom }
+          missionStatement: { status: custom }
+          yearFounded: { status: custom }
+          irsRulingDate: { status: custom }
 
   - catalog_id: lead
     name: "Lead"
@@ -328,6 +890,23 @@ mappings:
         api_name: "Lead"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_lead.htm
+        attributes:
+          firstName: { status: standard, api_name: "FirstName" }
+          lastName: { status: standard, api_name: "LastName" }
+          company: { status: standard, api_name: "Company" }
+          emailAddress: { status: standard, api_name: "Email" }
+          phone: { status: standard, api_name: "Phone" }
+          title: { status: standard, api_name: "Title" }
+          leadSource: { status: standard, api_name: "LeadSource" }
+          leadStatus: { status: standard, api_name: "Status" }
+          rating: { status: standard, api_name: "Rating" }
+          industry: { status: standard, api_name: "Industry" }
+          numberOfEmployees: { status: standard, api_name: "NumberOfEmployees" }
+          annualRevenue: { status: standard, api_name: "AnnualRevenue" }
+          assignedUser: { status: standard, api_name: "OwnerId" }
+          isConverted: { status: standard, api_name: "IsConverted" }
+          convertedDate: { status: standard, api_name: "ConvertedDate" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       hubspot:
         name: "Contact (with lifecyclestage=lead)"
         api_name: "contacts"
@@ -343,6 +922,23 @@ mappings:
         api_name: "Lead"
         is_standard: true
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Lead.json
+        attributes:
+          firstName: { status: standard, api_name: "firstName" }
+          lastName: { status: standard, api_name: "lastName" }
+          company: { status: standard, api_name: "accountName" }
+          emailAddress: { status: standard, api_name: "emailAddress" }
+          phone: { status: standard, api_name: "phoneNumber" }
+          title: { status: standard, api_name: "title" }
+          leadSource: { status: standard, api_name: "source" }
+          leadStatus: { status: standard, api_name: "status" }
+          rating: { status: custom }
+          industry: { status: standard, api_name: "industry" }
+          numberOfEmployees: { status: standard, api_name: "opportunityAmount" }
+          annualRevenue: { status: standard, api_name: "annualRevenue" }
+          assignedUser: { status: standard, api_name: "assignedUserId" }
+          isConverted: { status: custom }
+          convertedDate: { status: custom }
+          createdAt: { status: standard, api_name: "createdAt" }
       civicrm:
         name: "Contact (no Lead entity)"
         api_name: "not_applicable"
@@ -353,6 +949,23 @@ mappings:
         api_name: "Lead"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_lead.htm
+        attributes:
+          firstName: { status: standard, api_name: "FirstName" }
+          lastName: { status: standard, api_name: "LastName" }
+          company: { status: standard, api_name: "Company" }
+          emailAddress: { status: standard, api_name: "Email" }
+          phone: { status: standard, api_name: "Phone" }
+          title: { status: standard, api_name: "Title" }
+          leadSource: { status: standard, api_name: "LeadSource" }
+          leadStatus: { status: standard, api_name: "Status" }
+          rating: { status: standard, api_name: "Rating" }
+          industry: { status: standard, api_name: "Industry" }
+          numberOfEmployees: { status: standard, api_name: "NumberOfEmployees" }
+          annualRevenue: { status: standard, api_name: "AnnualRevenue" }
+          assignedUser: { status: standard, api_name: "OwnerId" }
+          isConverted: { status: standard, api_name: "IsConverted" }
+          convertedDate: { status: standard, api_name: "ConvertedDate" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "Constituent (no Lead entity)"
         api_name: "not_applicable"
@@ -369,21 +982,77 @@ mappings:
         api_name: "Opportunity"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_opportunity.htm
+        attributes:
+          name: { status: standard, api_name: "Name" }
+          account: { status: standard, api_name: "AccountId" }
+          amount: { status: standard, api_name: "Amount" }
+          closeDate: { status: standard, api_name: "CloseDate" }
+          stage: { status: standard, api_name: "StageName" }
+          probability: { status: standard, api_name: "Probability" }
+          type: { status: standard, api_name: "Type" }
+          leadSource: { status: standard, api_name: "LeadSource" }
+          description: { status: standard, api_name: "Description" }
+          nextStep: { status: standard, api_name: "NextStep" }
+          assignedUser: { status: standard, api_name: "OwnerId" }
+          pipeline: { status: standard, api_name: "Pipeline__c" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       hubspot:
         name: "Deal"
         api_name: "deals"
         is_standard: true
         docs_url: https://developers.hubspot.com/docs/api-reference/crm-deals-v3/guide
+        attributes:
+          name: { status: standard, api_name: "dealname" }
+          account: { status: standard, api_name: "associatedcompanyids" }
+          amount: { status: standard, api_name: "amount" }
+          closeDate: { status: standard, api_name: "closedate" }
+          stage: { status: standard, api_name: "dealstage" }
+          probability: { status: standard, api_name: "hs_deal_stage_probability" }
+          type: { status: standard, api_name: "dealtype" }
+          leadSource: { status: custom }
+          description: { status: standard, api_name: "description" }
+          nextStep: { status: custom }
+          assignedUser: { status: standard, api_name: "hubspot_owner_id" }
+          pipeline: { status: standard, api_name: "pipeline" }
+          createdAt: { status: standard, api_name: "createdate" }
       attio:
         name: "Deal"
         api_name: "deals"
         is_standard: true
         docs_url: https://attio.com/help/reference/managing-your-data/objects/manage-standard-objects
+        attributes:
+          name: { status: standard, api_name: "name" }
+          account: { status: standard, api_name: "company" }
+          amount: { status: standard, api_name: "value" }
+          closeDate: { status: standard, api_name: "expected_close_date" }
+          stage: { status: standard, api_name: "stage" }
+          probability: { status: custom }
+          type: { status: custom }
+          leadSource: { status: custom }
+          description: { status: standard, api_name: "description" }
+          nextStep: { status: custom }
+          assignedUser: { status: standard, api_name: "workspace_member_owner" }
+          pipeline: { status: standard, api_name: "stage" }
+          createdAt: { status: standard, api_name: "created_at" }
       espocrm:
         name: "Opportunity"
         api_name: "Opportunity"
         is_standard: true
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Opportunity.json
+        attributes:
+          name: { status: standard, api_name: "name" }
+          account: { status: standard, api_name: "accountId" }
+          amount: { status: standard, api_name: "amount" }
+          closeDate: { status: standard, api_name: "closeDate" }
+          stage: { status: standard, api_name: "stage" }
+          probability: { status: standard, api_name: "probability" }
+          type: { status: custom }
+          leadSource: { status: standard, api_name: "leadSource" }
+          description: { status: standard, api_name: "description" }
+          nextStep: { status: custom }
+          assignedUser: { status: standard, api_name: "assignedUserId" }
+          pipeline: { status: custom }
+          createdAt: { status: standard, api_name: "createdAt" }
       civicrm:
         name: "Contribution (closest analog) / Case (for cultivation)"
         api_name: "not_applicable"
@@ -394,6 +1063,20 @@ mappings:
         api_name: "Opportunity"
         is_standard: true
         docs_url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-success-pack-basics/organize-your-data-with-npsp
+        attributes:
+          name: { status: standard, api_name: "Name" }
+          account: { status: standard, api_name: "AccountId" }
+          amount: { status: standard, api_name: "Amount" }
+          closeDate: { status: standard, api_name: "CloseDate" }
+          stage: { status: standard, api_name: "StageName" }
+          probability: { status: standard, api_name: "Probability" }
+          type: { status: standard, api_name: "Type" }
+          leadSource: { status: standard, api_name: "LeadSource" }
+          description: { status: standard, api_name: "Description" }
+          nextStep: { status: standard, api_name: "NextStep" }
+          assignedUser: { status: standard, api_name: "OwnerId" }
+          pipeline: { status: standard, api_name: "Pipeline__c" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "Transaction (closest analog) / Pledge (for committed-but-not-paid)"
         api_name: "not_applicable"
@@ -410,36 +1093,98 @@ mappings:
         api_name: "OpportunityStage"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_opportunitystage.htm
+        attributes:
+          name: { status: standard, api_name: "MasterLabel" }
+          apiName: { status: standard, api_name: "ApiName" }
+          probability: { status: standard, api_name: "DefaultProbability" }
+          order: { status: standard, api_name: "SortOrder" }
+          pipeline: { status: custom }
+          forecastCategory: { status: standard, api_name: "ForecastCategory" }
+          isClosed: { status: standard, api_name: "IsClosed" }
+          isWon: { status: standard, api_name: "IsWon" }
+          isActive: { status: standard, api_name: "IsActive" }
       hubspot:
         name: "Pipeline + Deal Stage"
         api_name: "pipelines, pipelines/{objectType}/stages"
         is_standard: true
         docs_url: https://developers.hubspot.com/docs/reference/api/crm/pipelines
+        attributes:
+          name: { status: standard, api_name: "label" }
+          apiName: { status: standard, api_name: "stageId" }
+          probability: { status: standard, api_name: "probability" }
+          order: { status: standard, api_name: "displayOrder" }
+          pipeline: { status: standard, api_name: "pipeline" }
+          isClosed: { status: standard, api_name: "closedWon_or_closedLost" }
+          isWon: { status: standard, api_name: "iswon" }
+          color: { status: standard, api_name: "color" }
+          isActive: { status: standard, api_name: "active" }
       attio:
         name: "Status attribute on Deals"
         api_name: "status (attribute on deals object)"
         is_standard: true
         docs_url: https://attio.com/help/reference/managing-your-data/views/create-and-manage-kanban-views
+        attributes:
+          name: { status: standard, api_name: "label" }
+          apiName: { status: standard, api_name: "id" }
+          order: { status: standard, api_name: "order" }
+          pipeline: { status: standard, api_name: "pipeline" }
+          isClosed: { status: standard, api_name: "is_closed" }
+          isWon: { status: standard, api_name: "is_won" }
+          color: { status: standard, api_name: "color" }
+          isActive: { status: custom }
       espocrm:
         name: "stage (enum on Opportunity)"
         api_name: "not_applicable_separate_entity"
         is_standard: true
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Opportunity.json
+        attributes:
+          name: { status: standard, api_name: "option_value" }
+          apiName: { status: standard, api_name: "apiName" }
+          probability: { status: custom }
+          order: { status: standard, api_name: "order" }
+          isClosed: { status: custom }
+          isWon: { status: custom }
+          color: { status: standard, api_name: "color" }
+          isActive: { status: custom }
       civicrm:
         name: "contribution_status (option group)"
         api_name: "not_applicable_separate_entity"
         is_standard: false
         docs_url: https://docs.civicrm.org/user/en/latest/contributions/
+        attributes:
+          name: { status: standard, api_name: "label" }
+          apiName: { status: standard, api_name: "api_name" }
+          order: { status: standard, api_name: "weight" }
+          isClosed: { status: standard, api_name: "is_completed" }
+          isWon: { status: standard, api_name: "is_completed" }
+          isActive: { status: standard, api_name: "is_active" }
       salesforce_npsp:
         name: "OpportunityStage (with NPSP-specific stages per Donation Record Type)"
         api_name: "OpportunityStage"
         is_standard: true
         docs_url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-success-pack-basics/organize-your-data-with-npsp
+        attributes:
+          name: { status: standard, api_name: "MasterLabel" }
+          apiName: { status: standard, api_name: "ApiName" }
+          probability: { status: standard, api_name: "DefaultProbability" }
+          order: { status: standard, api_name: "SortOrder" }
+          pipeline: { status: custom }
+          forecastCategory: { status: standard, api_name: "ForecastCategory" }
+          isClosed: { status: standard, api_name: "IsClosed" }
+          isWon: { status: standard, api_name: "IsWon" }
+          isActive: { status: standard, api_name: "IsActive" }
       bloomerang:
         name: "Status (on Transactions)"
         api_name: "not_applicable_separate_entity"
         is_standard: false
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          name: { status: standard, api_name: "Name" }
+          apiName: { status: standard, api_name: "Id" }
+          order: { status: standard, api_name: "SortOrder" }
+          isClosed: { status: standard, api_name: "IsClosed" }
+          isWon: { status: custom }
+          isActive: { status: standard, api_name: "IsActive" }
 
   - catalog_id: quote
     name: "Quote"
@@ -451,11 +1196,45 @@ mappings:
         api_name: "Quote"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_quote.htm
+        attributes:
+          name: { status: standard, api_name: "Name" }
+          quoteNumber: { status: standard, api_name: "QuoteNumber" }
+          opportunity: { status: standard, api_name: "OpportunityId" }
+          account: { status: standard, api_name: "AccountId" }
+          contact: { status: standard, api_name: "ContactId" }
+          status: { status: standard, api_name: "Status" }
+          validUntil: { status: standard, api_name: "ExpirationDate" }
+          subtotal: { status: standard, api_name: "Subtotal" }
+          discount: { status: standard, api_name: "Discount" }
+          tax: { status: standard, api_name: "Tax" }
+          grandTotal: { status: standard, api_name: "GrandTotal" }
+          billingAddress: { status: standard, api_name: "BillingAddress" }
+          shippingAddress: { status: standard, api_name: "ShippingAddress" }
+          description: { status: standard, api_name: "Description" }
+          assignedUser: { status: standard, api_name: "OwnerId" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       hubspot:
         name: "Quote"
         api_name: "quotes"
         is_standard: true
         docs_url: https://developers.hubspot.com/docs/reference/api/crm/objects/quotes
+        attributes:
+          name: { status: standard, api_name: "hs_title" }
+          quoteNumber: { status: standard, api_name: "hs_quote_number" }
+          opportunity: { status: standard, api_name: "hs_deal_id" }
+          account: { status: standard, api_name: "account" }
+          contact: { status: standard, api_name: "hs_associated_contact_ids" }
+          status: { status: standard, api_name: "hs_status" }
+          validUntil: { status: standard, api_name: "hs_expiration_date" }
+          subtotal: { status: standard, api_name: "hs_subtotal" }
+          discount: { status: standard, api_name: "hs_discount_total" }
+          tax: { status: standard, api_name: "hs_tax_total" }
+          grandTotal: { status: standard, api_name: "hs_total_amount" }
+          billingAddress: { status: custom }
+          shippingAddress: { status: custom }
+          description: { status: standard, api_name: "hs_terms" }
+          assignedUser: { status: standard, api_name: "hubspot_owner_id" }
+          createdAt: { status: standard, api_name: "createdate" }
       attio:
         name: "Custom object (no standard Quote)"
         api_name: "not_applicable"
@@ -466,6 +1245,23 @@ mappings:
         api_name: "Quote"
         is_standard: true
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Sales/Resources/metadata/entityDefs/Quote.json
+        attributes:
+          name: { status: standard, api_name: "name" }
+          quoteNumber: { status: standard, api_name: "number" }
+          opportunity: { status: standard, api_name: "opportunityId" }
+          account: { status: standard, api_name: "accountId" }
+          contact: { status: standard, api_name: "contactId" }
+          status: { status: standard, api_name: "status" }
+          validUntil: { status: standard, api_name: "expirationDate" }
+          subtotal: { status: standard, api_name: "preDiscountedAmount" }
+          discount: { status: standard, api_name: "discount" }
+          tax: { status: standard, api_name: "taxAmount" }
+          grandTotal: { status: standard, api_name: "grandTotalAmount" }
+          billingAddress: { status: standard, api_name: "billingAddress" }
+          shippingAddress: { status: standard, api_name: "shippingAddress" }
+          description: { status: standard, api_name: "description" }
+          assignedUser: { status: standard, api_name: "assignedUserId" }
+          createdAt: { status: standard, api_name: "createdAt" }
       civicrm:
         name: "(no Quote concept)"
         api_name: "not_applicable"
@@ -476,6 +1272,23 @@ mappings:
         api_name: "Quote"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_quote.htm
+        attributes:
+          name: { status: standard, api_name: "Name" }
+          quoteNumber: { status: standard, api_name: "QuoteNumber" }
+          opportunity: { status: standard, api_name: "OpportunityId" }
+          account: { status: standard, api_name: "AccountId" }
+          contact: { status: standard, api_name: "ContactId" }
+          status: { status: standard, api_name: "Status" }
+          validUntil: { status: standard, api_name: "ExpirationDate" }
+          subtotal: { status: standard, api_name: "Subtotal" }
+          discount: { status: standard, api_name: "Discount" }
+          tax: { status: standard, api_name: "Tax" }
+          grandTotal: { status: standard, api_name: "GrandTotal" }
+          billingAddress: { status: standard, api_name: "BillingAddress" }
+          shippingAddress: { status: standard, api_name: "ShippingAddress" }
+          description: { status: standard, api_name: "Description" }
+          assignedUser: { status: standard, api_name: "OwnerId" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "(no Quote concept)"
         api_name: "not_applicable"
@@ -492,6 +1305,20 @@ mappings:
         api_name: "Asset"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_asset.htm
+        attributes:
+          name: { status: standard, api_name: "Name" }
+          account: { status: standard, api_name: "Account" }
+          contact: { status: standard, api_name: "Contact" }
+          product: { status: standard, api_name: "Product" }
+          serialNumber: { status: standard, api_name: "SerialNumber" }
+          installDate: { status: standard, api_name: "InstallDate" }
+          purchaseDate: { status: standard, api_name: "PurchaseDate" }
+          usageEndDate: { status: standard, api_name: "UsageEndDate" }
+          status: { status: standard, api_name: "Status" }
+          quantity: { status: standard, api_name: "Quantity" }
+          price: { status: standard, api_name: "Price" }
+          parentAsset: { status: standard, api_name: "ParentAsset" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       hubspot:
         name: "(no native Asset; use custom object or line items on Deals)"
         api_name: "not_applicable"
@@ -517,6 +1344,20 @@ mappings:
         api_name: "Asset"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_asset.htm
+        attributes:
+          name: { status: standard, api_name: "Name" }
+          account: { status: standard, api_name: "Account" }
+          contact: { status: standard, api_name: "Contact" }
+          product: { status: standard, api_name: "Product" }
+          serialNumber: { status: standard, api_name: "SerialNumber" }
+          installDate: { status: standard, api_name: "InstallDate" }
+          purchaseDate: { status: standard, api_name: "PurchaseDate" }
+          usageEndDate: { status: standard, api_name: "UsageEndDate" }
+          status: { status: standard, api_name: "Status" }
+          quantity: { status: standard, api_name: "Quantity" }
+          price: { status: standard, api_name: "Price" }
+          parentAsset: { status: standard, api_name: "ParentAsset" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "(no Asset concept)"
         api_name: "not_applicable"
@@ -533,11 +1374,39 @@ mappings:
         api_name: "Campaign"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_campaign.htm
+        attributes:
+          name: { status: standard, api_name: "Name" }
+          type: { status: standard, api_name: "Type" }
+          status: { status: standard, api_name: "Status" }
+          startDate: { status: standard, api_name: "StartDate" }
+          endDate: { status: standard, api_name: "EndDate" }
+          budgetedCost: { status: standard, api_name: "BudgetedCost" }
+          actualCost: { status: standard, api_name: "ActualCost" }
+          goalAmount: { status: custom }
+          raisedAmount: { status: standard, api_name: "RaisedAmount" }
+          parentCampaign: { status: standard, api_name: "ParentCampaign" }
+          description: { status: standard, api_name: "Description" }
+          assignedUser: { status: standard, api_name: "OwnerId" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       hubspot:
         name: "Marketing Campaign"
         api_name: "marketing_campaigns"
         is_standard: true
         docs_url: https://developers.hubspot.com/docs/api-reference/marketing-marketing-events-v3
+        attributes:
+          name: { status: standard, api_name: "name" }
+          type: { status: standard, api_name: "campaign_type" }
+          status: { status: standard, api_name: "campaign_status" }
+          startDate: { status: standard, api_name: "startDate" }
+          endDate: { status: standard, api_name: "endDate" }
+          budgetedCost: { status: custom }
+          actualCost: { status: custom }
+          goalAmount: { status: standard, api_name: "goalamount" }
+          raisedAmount: { status: standard, api_name: "raisedamount" }
+          parentCampaign: { status: custom }
+          description: { status: standard, api_name: "description" }
+          assignedUser: { status: standard, api_name: "hubspot_owner_id" }
+          createdAt: { status: standard, api_name: "createdate" }
       attio:
         name: "(no native Campaign; use lists or custom object)"
         api_name: "not_applicable"
@@ -548,21 +1417,77 @@ mappings:
         api_name: "Campaign"
         is_standard: true
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Campaign.json
+        attributes:
+          name: { status: standard, api_name: "name" }
+          type: { status: standard, api_name: "type" }
+          status: { status: standard, api_name: "status" }
+          startDate: { status: standard, api_name: "startDate" }
+          endDate: { status: standard, api_name: "endDate" }
+          budgetedCost: { status: standard, api_name: "budgetedCost" }
+          actualCost: { status: custom }
+          goalAmount: { status: standard, api_name: "goalAmount" }
+          raisedAmount: { status: custom }
+          parentCampaign: { status: custom }
+          description: { status: standard, api_name: "description" }
+          assignedUser: { status: standard, api_name: "assignedUserId" }
+          createdAt: { status: standard, api_name: "createdAt" }
       civicrm:
         name: "Campaign"
         api_name: "Campaign"
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/campaign/what-is-civicampaign/
+        attributes:
+          name: { status: standard, api_name: "title" }
+          type: { status: standard, api_name: "campaign_type_id" }
+          status: { status: standard, api_name: "status_id" }
+          startDate: { status: standard, api_name: "start_date" }
+          endDate: { status: standard, api_name: "end_date" }
+          budgetedCost: { status: custom }
+          actualCost: { status: custom }
+          goalAmount: { status: standard, api_name: "goal_amount" }
+          raisedAmount: { status: standard, api_name: "raised_amount" }
+          parentCampaign: { status: standard, api_name: "parent_campaign" }
+          description: { status: standard, api_name: "description" }
+          assignedUser: { status: standard, api_name: "assigned_user" }
+          createdAt: { status: standard, api_name: "created_date" }
       salesforce_npsp:
         name: "Campaign"
         api_name: "Campaign"
         is_standard: true
         docs_url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-campaign-management
+        attributes:
+          name: { status: standard, api_name: "Name" }
+          type: { status: standard, api_name: "Type" }
+          status: { status: standard, api_name: "Status" }
+          startDate: { status: standard, api_name: "StartDate" }
+          endDate: { status: standard, api_name: "EndDate" }
+          budgetedCost: { status: standard, api_name: "BudgetedCost" }
+          actualCost: { status: standard, api_name: "ActualCost" }
+          goalAmount: { status: standard, api_name: "GoalAmount" }
+          raisedAmount: { status: standard, api_name: "RaisedAmount" }
+          parentCampaign: { status: standard, api_name: "ParentCampaign" }
+          description: { status: standard, api_name: "Description" }
+          assignedUser: { status: standard, api_name: "OwnerId" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "Campaign"
         api_name: "Campaign"
         is_standard: true
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          name: { status: standard, api_name: "Name" }
+          type: { status: custom }
+          status: { status: standard, api_name: "IsActive" }
+          startDate: { status: standard, api_name: "StartDate" }
+          endDate: { status: standard, api_name: "EndDate" }
+          budgetedCost: { status: custom }
+          actualCost: { status: custom }
+          goalAmount: { status: standard, api_name: "GoalAmount" }
+          raisedAmount: { status: standard, api_name: "RaisedAmount" }
+          parentCampaign: { status: custom }
+          description: { status: standard, api_name: "Description" }
+          assignedUser: { status: standard, api_name: "AssignedUser" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
 
   - catalog_id: campaign-member
     name: "Campaign Member"
@@ -574,6 +1499,14 @@ mappings:
         api_name: "CampaignMember"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_campaignmember.htm
+        attributes:
+          campaign: { status: standard, api_name: "Campaign" }
+          contact: { status: standard, api_name: "Contact" }
+          lead: { status: standard, api_name: "Lead" }
+          status: { status: standard, api_name: "Status" }
+          hasResponded: { status: standard, api_name: "HasResponded" }
+          firstRespondedDate: { status: standard, api_name: "FirstRespondedDate" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       hubspot:
         name: "Contact-Campaign Association (no junction object)"
         api_name: "not_applicable"
@@ -589,16 +1522,39 @@ mappings:
         api_name: "TargetList"
         is_standard: true
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/TargetList.json
+        attributes:
+          campaign: { status: standard, api_name: "campaign" }
+          contact: { status: standard, api_name: "contact" }
+          lead: { status: standard, api_name: "lead" }
+          status: { status: custom }
+          hasResponded: { status: custom }
+          firstRespondedDate: { status: custom }
+          createdAt: { status: standard, api_name: "createdAt" }
       civicrm:
         name: "Activity (of type Campaign Activity)"
         api_name: "not_applicable"
         is_standard: false
         docs_url: https://docs.civicrm.org/user/en/latest/email/
+        attributes:
+          campaign: { status: custom }
+          contact: { status: custom }
+          status: { status: custom }
+          hasResponded: { status: custom }
+          firstRespondedDate: { status: custom }
+          createdAt: { status: custom }
       salesforce_npsp:
         name: "CampaignMember"
         api_name: "CampaignMember"
         is_standard: true
         docs_url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-campaign-management
+        attributes:
+          campaign: { status: standard, api_name: "Campaign" }
+          contact: { status: standard, api_name: "Contact" }
+          lead: { status: standard, api_name: "Lead" }
+          status: { status: standard, api_name: "Status" }
+          hasResponded: { status: standard, api_name: "HasResponded" }
+          firstRespondedDate: { status: standard, api_name: "FirstRespondedDate" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "(no Campaign Member concept; Transactions link to Campaign directly)"
         api_name: "not_applicable"
@@ -615,11 +1571,39 @@ mappings:
         api_name: "Case"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_case.htm
+        attributes:
+          subject: { status: standard, api_name: "Subject" }
+          caseNumber: { status: standard, api_name: "CaseNumber" }
+          status: { status: standard, api_name: "Status" }
+          priority: { status: standard, api_name: "Priority" }
+          origin: { status: standard, api_name: "Origin" }
+          type: { status: standard, api_name: "Type" }
+          account: { status: standard, api_name: "AccountId" }
+          contact: { status: standard, api_name: "ContactId" }
+          description: { status: standard, api_name: "Description" }
+          resolution: { status: standard, api_name: "Resolution" }
+          closedDate: { status: standard, api_name: "ClosedDate" }
+          assignedUser: { status: standard, api_name: "OwnerId" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       hubspot:
         name: "Ticket"
         api_name: "tickets"
         is_standard: true
         docs_url: https://developers.hubspot.com/docs/api-reference/crm-tickets-v3/guide
+        attributes:
+          subject: { status: standard, api_name: "subject" }
+          caseNumber: { status: standard, api_name: "hs_ticket_id" }
+          status: { status: standard, api_name: "hs_pipeline_stage" }
+          priority: { status: standard, api_name: "hs_ticket_priority" }
+          origin: { status: standard, api_name: "source_type" }
+          type: { status: custom }
+          account: { status: standard, api_name: "company_id" }
+          contact: { status: standard, api_name: "contact_id" }
+          description: { status: standard, api_name: "content" }
+          resolution: { status: custom }
+          closedDate: { status: standard, api_name: "closed_date" }
+          assignedUser: { status: standard, api_name: "hubspot_owner_id" }
+          createdAt: { status: standard, api_name: "createdate" }
       attio:
         name: "Custom object (no standard Case)"
         api_name: "not_applicable"
@@ -630,16 +1614,58 @@ mappings:
         api_name: "Case"
         is_standard: true
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Case.json
+        attributes:
+          subject: { status: standard, api_name: "name" }
+          caseNumber: { status: standard, api_name: "number" }
+          status: { status: standard, api_name: "status" }
+          priority: { status: standard, api_name: "priority" }
+          origin: { status: custom }
+          type: { status: standard, api_name: "type" }
+          account: { status: standard, api_name: "accountId" }
+          contact: { status: standard, api_name: "contactId" }
+          description: { status: standard, api_name: "description" }
+          resolution: { status: custom }
+          closedDate: { status: standard, api_name: "closedDate" }
+          assignedUser: { status: standard, api_name: "assignedUserId" }
+          createdAt: { status: standard, api_name: "createdAt" }
       civicrm:
         name: "Case (general-purpose)"
         api_name: "Case"
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/case-management/
+        attributes:
+          subject: { status: standard, api_name: "subject" }
+          caseNumber: { status: standard, api_name: "case_id" }
+          status: { status: standard, api_name: "status_id" }
+          priority: { status: custom }
+          origin: { status: custom }
+          type: { status: standard, api_name: "type" }
+          account: { status: standard, api_name: "account" }
+          contact: { status: standard, api_name: "contact_id" }
+          description: { status: standard, api_name: "details" }
+          resolution: { status: custom }
+          closedDate: { status: standard, api_name: "closed_date" }
+          assignedUser: { status: standard, api_name: "manager_id" }
+          createdAt: { status: standard, api_name: "created_date" }
       salesforce_npsp:
         name: "Case"
         api_name: "Case"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_case.htm
+        attributes:
+          subject: { status: standard, api_name: "Subject" }
+          caseNumber: { status: standard, api_name: "CaseNumber" }
+          status: { status: standard, api_name: "Status" }
+          priority: { status: standard, api_name: "Priority" }
+          origin: { status: standard, api_name: "Origin" }
+          type: { status: standard, api_name: "Type" }
+          account: { status: standard, api_name: "AccountId" }
+          contact: { status: standard, api_name: "ContactId" }
+          description: { status: standard, api_name: "Description" }
+          resolution: { status: standard, api_name: "Resolution" }
+          closedDate: { status: standard, api_name: "ClosedDate" }
+          assignedUser: { status: standard, api_name: "OwnerId" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "(no Case concept)"
         api_name: "not_applicable"
@@ -656,36 +1682,119 @@ mappings:
         api_name: "EmailMessage"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_emailmessage.htm
+        attributes:
+          subject: { status: standard, api_name: "Subject" }
+          fromAddress: { status: standard, api_name: "FromAddress" }
+          toAddress: { status: standard, api_name: "ToAddress" }
+          ccAddress: { status: standard, api_name: "CcAddress" }
+          htmlBody: { status: standard, api_name: "HtmlBody" }
+          textBody: { status: standard, api_name: "TextBody" }
+          messageDate: { status: standard, api_name: "MessageDate" }
+          status: { status: standard, api_name: "Status" }
+          parent: { status: standard, api_name: "Parent" }
+          assignedUser: { status: standard, api_name: "AssignedUser" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       hubspot:
         name: "Email (Engagement subtype)"
         api_name: "emails"
         is_standard: true
         docs_url: https://developers.hubspot.com/docs/reference/api/crm/engagements/email
+        attributes:
+          subject: { status: standard, api_name: "subject" }
+          fromAddress: { status: standard, api_name: "fromaddress" }
+          toAddress: { status: standard, api_name: "toaddress" }
+          ccAddress: { status: standard, api_name: "ccaddress" }
+          htmlBody: { status: standard, api_name: "htmlbody" }
+          textBody: { status: standard, api_name: "textbody" }
+          messageDate: { status: standard, api_name: "messagedate" }
+          status: { status: standard, api_name: "status" }
+          parent: { status: standard, api_name: "parent" }
+          assignedUser: { status: standard, api_name: "assigneduser" }
+          createdAt: { status: standard, api_name: "createdate" }
       attio:
         name: "Email"
         api_name: "emails"
         is_standard: true
         docs_url: https://attio.com/help/reference/email-calendar/email-and-calendar-syncing
+        attributes:
+          subject: { status: standard, api_name: "subject" }
+          fromAddress: { status: standard, api_name: "from_address" }
+          toAddress: { status: standard, api_name: "to_address" }
+          ccAddress: { status: standard, api_name: "cc_address" }
+          htmlBody: { status: standard, api_name: "html_body" }
+          textBody: { status: standard, api_name: "text_body" }
+          messageDate: { status: standard, api_name: "message_date" }
+          status: { status: standard, api_name: "status" }
+          parent: { status: standard, api_name: "parent" }
+          assignedUser: { status: standard, api_name: "assigned_user" }
+          createdAt: { status: standard, api_name: "created_at" }
       espocrm:
         name: "Email"
         api_name: "Email"
         is_standard: true
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Resources/metadata/entityDefs/Email.json
+        attributes:
+          subject: { status: standard, api_name: "subject" }
+          fromAddress: { status: standard, api_name: "fromAddress" }
+          toAddress: { status: standard, api_name: "toAddress" }
+          ccAddress: { status: standard, api_name: "ccAddress" }
+          htmlBody: { status: standard, api_name: "htmlBody" }
+          textBody: { status: standard, api_name: "textBody" }
+          messageDate: { status: standard, api_name: "messageDate" }
+          status: { status: standard, api_name: "status" }
+          parent: { status: standard, api_name: "parent" }
+          assignedUser: { status: standard, api_name: "assignedUser" }
+          createdAt: { status: standard, api_name: "createdAt" }
       civicrm:
         name: "Activity (of type Email)"
         api_name: "not_applicable_separate_entity"
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/email/
+        attributes:
+          subject: { status: standard, api_name: "subject" }
+          fromAddress: { status: standard, api_name: "from_address" }
+          toAddress: { status: standard, api_name: "to_address" }
+          ccAddress: { status: custom }
+          htmlBody: { status: standard, api_name: "html_body" }
+          textBody: { status: standard, api_name: "text_body" }
+          messageDate: { status: standard, api_name: "message_date" }
+          status: { status: custom }
+          parent: { status: standard, api_name: "parent" }
+          assignedUser: { status: standard, api_name: "assigned_user" }
+          createdAt: { status: standard, api_name: "created_date" }
       salesforce_npsp:
         name: "EmailMessage / Task with TaskSubtype=Email"
         api_name: "EmailMessage"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_emailmessage.htm
+        attributes:
+          subject: { status: standard, api_name: "Subject" }
+          fromAddress: { status: standard, api_name: "FromAddress" }
+          toAddress: { status: standard, api_name: "ToAddress" }
+          ccAddress: { status: standard, api_name: "CcAddress" }
+          htmlBody: { status: standard, api_name: "HtmlBody" }
+          textBody: { status: standard, api_name: "TextBody" }
+          messageDate: { status: standard, api_name: "MessageDate" }
+          status: { status: standard, api_name: "Status" }
+          parent: { status: standard, api_name: "Parent" }
+          assignedUser: { status: standard, api_name: "AssignedUser" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "Interaction (of type Email)"
         api_name: "Interaction"
         is_standard: true
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          subject: { status: standard, api_name: "Subject" }
+          fromAddress: { status: custom }
+          toAddress: { status: custom }
+          htmlBody: { status: custom }
+          textBody: { status: standard, api_name: "TextBody" }
+          messageDate: { status: standard, api_name: "MessageDate" }
+          status: { status: custom }
+          parent: { status: standard, api_name: "Parent" }
+          assignedUser: { status: standard, api_name: "AssignedUser" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
 
   - catalog_id: form-submission
     name: "Form Submission"
@@ -702,11 +1811,30 @@ mappings:
         api_name: "form_submissions"
         is_standard: true
         docs_url: https://developers.hubspot.com/docs/api-reference/marketing-marketing-events-v3
+        attributes:
+          formId: { status: standard, api_name: "formid" }
+          submittedAt: { status: standard, api_name: "submittedat" }
+          pageUrl: { status: standard, api_name: "pageurl" }
+          referrer: { status: standard, api_name: "referrer" }
+          ipAddress: { status: standard, api_name: "ipaddress" }
+          contact: { status: standard, api_name: "contact" }
+          lead: { status: standard, api_name: "lead" }
+          rawValues: { status: standard, api_name: "rawvalues" }
+          createdAt: { status: standard, api_name: "createdate" }
       attio:
         name: "Form Submission (via Forms feature)"
         api_name: "forms"
         is_standard: true
         docs_url: https://attio.com/help/reference/managing-your-data/records/create-and-view-records
+        attributes:
+          formId: { status: standard, api_name: "form_id" }
+          submittedAt: { status: standard, api_name: "submitted_at" }
+          pageUrl: { status: custom }
+          referrer: { status: custom }
+          ipAddress: { status: custom }
+          contact: { status: standard, api_name: "contact" }
+          rawValues: { status: standard, api_name: "raw_values" }
+          createdAt: { status: standard, api_name: "created_at" }
       espocrm:
         name: "Web-to-Lead (no first-class submission entity)"
         api_name: "not_applicable"
@@ -717,6 +1845,9 @@ mappings:
         api_name: "not_applicable"
         is_standard: false
         docs_url: https://docs.civicrm.org/user/en/latest/initial-set-up/profiles/
+        attributes:
+          pageUrl: { status: custom }
+          ipAddress: { status: custom }
       salesforce_npsp:
         name: "Web-to-Lead / Donation form integrations (no first-class entity)"
         api_name: "not_applicable"
@@ -727,6 +1858,15 @@ mappings:
         api_name: "not_in_rest_api_directly"
         is_standard: true
         docs_url: https://bloomerang.com/api/
+        attributes:
+          formId: { status: standard, api_name: "FormId" }
+          submittedAt: { status: standard, api_name: "SubmittedAt" }
+          pageUrl: { status: custom }
+          referrer: { status: custom }
+          ipAddress: { status: custom }
+          contact: { status: standard, api_name: "Contact" }
+          rawValues: { status: custom }
+          createdAt: { status: standard, api_name: "CreatedDate" }
 
   - catalog_id: invoice
     name: "Invoice"
@@ -738,11 +1878,39 @@ mappings:
         api_name: "Invoice"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.industries_reference.meta/industries_reference/sforce_api_objects_invoice.htm
+        attributes:
+          invoiceNumber: { status: standard, api_name: "InvoiceNumber" }
+          account: { status: standard, api_name: "Account" }
+          order: { status: standard, api_name: "Order" }
+          status: { status: standard, api_name: "Status" }
+          invoiceDate: { status: standard, api_name: "InvoiceDate" }
+          dueDate: { status: standard, api_name: "DueDate" }
+          subtotal: { status: standard, api_name: "Subtotal" }
+          tax: { status: standard, api_name: "Tax" }
+          grandTotal: { status: standard, api_name: "GrandTotal" }
+          amountPaid: { status: standard, api_name: "AmountPaid" }
+          balanceDue: { status: standard, api_name: "BalanceDue" }
+          paymentTerms: { status: standard, api_name: "PaymentTerms" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       hubspot:
         name: "Invoice"
         api_name: "invoices"
         is_standard: true
         docs_url: https://developers.hubspot.com/docs/api-reference/crm-invoices-v3/guide
+        attributes:
+          invoiceNumber: { status: standard, api_name: "invoicenumber" }
+          account: { status: standard, api_name: "account" }
+          order: { status: standard, api_name: "order" }
+          status: { status: standard, api_name: "status" }
+          invoiceDate: { status: standard, api_name: "invoicedate" }
+          dueDate: { status: standard, api_name: "duedate" }
+          subtotal: { status: standard, api_name: "subtotal" }
+          tax: { status: standard, api_name: "tax" }
+          grandTotal: { status: standard, api_name: "grandtotal" }
+          amountPaid: { status: standard, api_name: "amountpaid" }
+          balanceDue: { status: standard, api_name: "balancedue" }
+          paymentTerms: { status: standard, api_name: "paymentterms" }
+          createdAt: { status: standard, api_name: "createdate" }
       attio:
         name: "(no native Invoice; use custom object)"
         api_name: "not_applicable"
@@ -753,16 +1921,57 @@ mappings:
         api_name: "Invoice"
         is_standard: true
         docs_url: https://docs.espocrm.com/
+        attributes:
+          invoiceNumber: { status: standard, api_name: "invoiceNumber" }
+          account: { status: standard, api_name: "account" }
+          order: { status: standard, api_name: "order" }
+          status: { status: standard, api_name: "status" }
+          invoiceDate: { status: standard, api_name: "invoiceDate" }
+          dueDate: { status: standard, api_name: "dueDate" }
+          subtotal: { status: standard, api_name: "subtotal" }
+          tax: { status: standard, api_name: "tax" }
+          grandTotal: { status: standard, api_name: "grandTotal" }
+          amountPaid: { status: standard, api_name: "amountPaid" }
+          balanceDue: { status: standard, api_name: "balanceDue" }
+          paymentTerms: { status: standard, api_name: "paymentTerms" }
+          createdAt: { status: standard, api_name: "createdAt" }
       civicrm:
         name: "(invoicing via Contributions)"
         api_name: "not_applicable"
         is_standard: false
         docs_url: https://docs.civicrm.org/user/en/latest/contributions/
+        attributes:
+          invoiceNumber: { status: standard, api_name: "invoice_number" }
+          account: { status: standard, api_name: "account" }
+          status: { status: standard, api_name: "status" }
+          invoiceDate: { status: standard, api_name: "invoice_date" }
+          dueDate: { status: standard, api_name: "due_date" }
+          subtotal: { status: standard, api_name: "subtotal" }
+          tax: { status: standard, api_name: "tax" }
+          grandTotal: { status: standard, api_name: "grand_total" }
+          amountPaid: { status: standard, api_name: "amount_paid" }
+          balanceDue: { status: standard, api_name: "balance_due" }
+          paymentTerms: { status: standard, api_name: "payment_terms" }
+          createdAt: { status: standard, api_name: "created_date" }
       salesforce_npsp:
         name: "Invoice (Salesforce Billing) / not standardly included"
         api_name: "Invoice"
         is_standard: false
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.industries_reference.meta/industries_reference/sforce_api_objects_invoice.htm
+        attributes:
+          invoiceNumber: { status: standard, api_name: "InvoiceNumber" }
+          account: { status: standard, api_name: "Account" }
+          order: { status: standard, api_name: "Order" }
+          status: { status: standard, api_name: "Status" }
+          invoiceDate: { status: standard, api_name: "InvoiceDate" }
+          dueDate: { status: standard, api_name: "DueDate" }
+          subtotal: { status: standard, api_name: "Subtotal" }
+          tax: { status: standard, api_name: "Tax" }
+          grandTotal: { status: standard, api_name: "GrandTotal" }
+          amountPaid: { status: standard, api_name: "AmountPaid" }
+          balanceDue: { status: standard, api_name: "BalanceDue" }
+          paymentTerms: { status: standard, api_name: "PaymentTerms" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "(no Invoice concept)"
         api_name: "not_applicable"
@@ -779,6 +1988,21 @@ mappings:
         api_name: "Order"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_order.htm
+        attributes:
+          orderNumber: { status: standard, api_name: "OrderNumber" }
+          account: { status: standard, api_name: "Account" }
+          contact: { status: standard, api_name: "Contact" }
+          opportunity: { status: standard, api_name: "Opportunity" }
+          quote: { status: standard, api_name: "Quote" }
+          status: { status: standard, api_name: "Status" }
+          orderDate: { status: standard, api_name: "OrderDate" }
+          effectiveDate: { status: standard, api_name: "EffectiveDate" }
+          subtotal: { status: standard, api_name: "Subtotal" }
+          grandTotal: { status: standard, api_name: "GrandTotal" }
+          billingAddress: { status: standard, api_name: "BillingAddress" }
+          shippingAddress: { status: standard, api_name: "ShippingAddress" }
+          assignedUser: { status: standard, api_name: "AssignedUser" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       hubspot:
         name: "(no native Order; Quote + Line Items typically used)"
         api_name: "not_applicable"
@@ -794,6 +2018,21 @@ mappings:
         api_name: "SalesOrder"
         is_standard: true
         docs_url: https://docs.espocrm.com/
+        attributes:
+          orderNumber: { status: standard, api_name: "orderNumber" }
+          account: { status: standard, api_name: "account" }
+          contact: { status: standard, api_name: "contact" }
+          opportunity: { status: standard, api_name: "opportunity" }
+          quote: { status: standard, api_name: "quote" }
+          status: { status: standard, api_name: "status" }
+          orderDate: { status: standard, api_name: "orderDate" }
+          effectiveDate: { status: custom }
+          subtotal: { status: standard, api_name: "subtotal" }
+          grandTotal: { status: standard, api_name: "grandTotal" }
+          billingAddress: { status: standard, api_name: "billingAddress" }
+          shippingAddress: { status: standard, api_name: "shippingAddress" }
+          assignedUser: { status: standard, api_name: "assignedUser" }
+          createdAt: { status: standard, api_name: "createdAt" }
       civicrm:
         name: "(no Order concept)"
         api_name: "not_applicable"
@@ -804,6 +2043,21 @@ mappings:
         api_name: "Order"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_order.htm
+        attributes:
+          orderNumber: { status: standard, api_name: "OrderNumber" }
+          account: { status: standard, api_name: "Account" }
+          contact: { status: standard, api_name: "Contact" }
+          opportunity: { status: standard, api_name: "Opportunity" }
+          quote: { status: standard, api_name: "Quote" }
+          status: { status: standard, api_name: "Status" }
+          orderDate: { status: standard, api_name: "OrderDate" }
+          effectiveDate: { status: standard, api_name: "EffectiveDate" }
+          subtotal: { status: standard, api_name: "Subtotal" }
+          grandTotal: { status: standard, api_name: "GrandTotal" }
+          billingAddress: { status: standard, api_name: "BillingAddress" }
+          shippingAddress: { status: standard, api_name: "ShippingAddress" }
+          assignedUser: { status: standard, api_name: "AssignedUser" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "(no Order concept)"
         api_name: "not_applicable"
@@ -820,11 +2074,31 @@ mappings:
         api_name: "Payment"
         is_standard: false
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.industries_reference.meta/industries_reference/sforce_api_objects_payment.htm
+        attributes:
+          paymentNumber: { status: standard, api_name: "PaymentNumber" }
+          amount: { status: standard, api_name: "Amount" }
+          paymentDate: { status: standard, api_name: "PaymentDate" }
+          paymentMethod: { status: standard, api_name: "PaymentMethod" }
+          status: { status: standard, api_name: "Status" }
+          invoice: { status: standard, api_name: "Invoice" }
+          account: { status: standard, api_name: "Account" }
+          referenceNumber: { status: standard, api_name: "ReferenceNumber" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       hubspot:
         name: "Payment"
         api_name: "payments"
         is_standard: true
         docs_url: https://developers.hubspot.com/docs/api-reference/crm-commerce-payments-v3
+        attributes:
+          paymentNumber: { status: standard, api_name: "paymentnumber" }
+          amount: { status: standard, api_name: "amount" }
+          paymentDate: { status: standard, api_name: "paymentdate" }
+          paymentMethod: { status: standard, api_name: "paymentmethod" }
+          status: { status: standard, api_name: "status" }
+          invoice: { status: standard, api_name: "invoice" }
+          account: { status: standard, api_name: "account" }
+          referenceNumber: { status: standard, api_name: "referencenumber" }
+          createdAt: { status: standard, api_name: "createdate" }
       attio:
         name: "(no native Payment; use custom object)"
         api_name: "not_applicable"
@@ -835,21 +2109,59 @@ mappings:
         api_name: "Receipt"
         is_standard: true
         docs_url: https://docs.espocrm.com/
+        attributes:
+          paymentNumber: { status: standard, api_name: "paymentNumber" }
+          amount: { status: standard, api_name: "amount" }
+          paymentDate: { status: standard, api_name: "paymentDate" }
+          paymentMethod: { status: standard, api_name: "paymentMethod" }
+          status: { status: standard, api_name: "status" }
+          invoice: { status: standard, api_name: "invoice" }
+          account: { status: standard, api_name: "account" }
+          referenceNumber: { status: standard, api_name: "referenceNumber" }
+          createdAt: { status: standard, api_name: "createdAt" }
       civicrm:
         name: "Payment"
         api_name: "Payment"
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/contributions/payments/
+        attributes:
+          paymentNumber: { status: standard, api_name: "payment_number" }
+          amount: { status: standard, api_name: "amount" }
+          paymentDate: { status: standard, api_name: "payment_date" }
+          paymentMethod: { status: standard, api_name: "payment_method" }
+          status: { status: standard, api_name: "status" }
+          invoice: { status: standard, api_name: "invoice" }
+          account: { status: standard, api_name: "account" }
+          referenceNumber: { status: standard, api_name: "reference_number" }
+          createdAt: { status: standard, api_name: "created_date" }
       salesforce_npsp:
         name: "OppPayment (npe01__OppPayment__c)"
         api_name: "npe01__OppPayment__c"
         is_standard: true
         docs_url: https://help.salesforce.com/s/articleView?id=sfdo.NPSP_Payments_overview.htm
+        attributes:
+          paymentNumber: { status: standard, api_name: "PaymentNumber" }
+          amount: { status: standard, api_name: "Amount" }
+          paymentDate: { status: standard, api_name: "PaymentDate" }
+          paymentMethod: { status: standard, api_name: "PaymentMethod" }
+          status: { status: standard, api_name: "Status" }
+          account: { status: standard, api_name: "Account" }
+          referenceNumber: { status: standard, api_name: "ReferenceNumber" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "(Transaction serves payment role; Pledge separate)"
         api_name: "Transaction"
         is_standard: true
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          paymentNumber: { status: standard, api_name: "PaymentNumber" }
+          amount: { status: standard, api_name: "Amount" }
+          paymentDate: { status: standard, api_name: "PaymentDate" }
+          paymentMethod: { status: standard, api_name: "PaymentMethod" }
+          status: { status: standard, api_name: "Status" }
+          account: { status: standard, api_name: "Account" }
+          referenceNumber: { status: standard, api_name: "ReferenceNumber" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
 
   - catalog_id: price-list
     name: "Price List"
@@ -861,6 +2173,15 @@ mappings:
         api_name: "Pricebook2"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_pricebook2.htm
+        attributes:
+          name: { status: standard, api_name: "Name" }
+          description: { status: standard, api_name: "Description" }
+          isActive: { status: standard, api_name: "IsActive" }
+          isStandard: { status: standard, api_name: "IsStandard" }
+          currency: { status: standard, api_name: "Currency" }
+          validFrom: { status: custom }
+          validUntil: { status: custom }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       hubspot:
         name: "(no native Price List; single price per Product)"
         api_name: "not_applicable"
@@ -876,16 +2197,43 @@ mappings:
         api_name: "PriceBook"
         is_standard: true
         docs_url: https://docs.espocrm.com/
+        attributes:
+          name: { status: standard, api_name: "name" }
+          description: { status: standard, api_name: "description" }
+          isActive: { status: standard, api_name: "isActive" }
+          isStandard: { status: custom }
+          currency: { status: standard, api_name: "currency" }
+          validFrom: { status: custom }
+          validUntil: { status: custom }
+          createdAt: { status: standard, api_name: "createdAt" }
       civicrm:
         name: "Price Set (for event registration / contribution pricing)"
         api_name: "PriceSet"
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/events/event-fees-and-payment/
+        attributes:
+          name: { status: standard, api_name: "name" }
+          description: { status: standard, api_name: "description" }
+          isActive: { status: standard, api_name: "is_active" }
+          isStandard: { status: standard, api_name: "is_standard" }
+          currency: { status: standard, api_name: "currency" }
+          validFrom: { status: standard, api_name: "valid_from" }
+          validUntil: { status: standard, api_name: "valid_until" }
+          createdAt: { status: standard, api_name: "created_date" }
       salesforce_npsp:
         name: "Pricebook2 / PricebookEntry"
         api_name: "Pricebook2"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_pricebook2.htm
+        attributes:
+          name: { status: standard, api_name: "Name" }
+          description: { status: standard, api_name: "Description" }
+          isActive: { status: standard, api_name: "IsActive" }
+          isStandard: { status: standard, api_name: "IsStandard" }
+          currency: { status: standard, api_name: "Currency" }
+          validFrom: { status: custom }
+          validUntil: { status: custom }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "(no Price List concept)"
         api_name: "not_applicable"
@@ -902,11 +2250,33 @@ mappings:
         api_name: "Product2"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_product2.htm
+        attributes:
+          name: { status: standard, api_name: "Name" }
+          productCode: { status: standard, api_name: "ProductCode" }
+          description: { status: standard, api_name: "Description" }
+          family: { status: standard, api_name: "Family" }
+          type: { status: custom }
+          unitPrice: { status: custom }
+          cost: { status: custom }
+          isActive: { status: standard, api_name: "IsActive" }
+          quantityUnitOfMeasure: { status: standard, api_name: "QuantityUnitOfMeasure" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       hubspot:
         name: "Product"
         api_name: "products"
         is_standard: true
         docs_url: https://developers.hubspot.com/docs/reference/api/crm/objects/products
+        attributes:
+          name: { status: standard, api_name: "name" }
+          productCode: { status: standard, api_name: "productcode" }
+          description: { status: standard, api_name: "description" }
+          family: { status: custom }
+          type: { status: custom }
+          unitPrice: { status: standard, api_name: "unitprice" }
+          cost: { status: standard, api_name: "cost" }
+          isActive: { status: standard, api_name: "isactive" }
+          quantityUnitOfMeasure: { status: custom }
+          createdAt: { status: standard, api_name: "createdate" }
       attio:
         name: "(no native Product; use custom object)"
         api_name: "not_applicable"
@@ -917,6 +2287,17 @@ mappings:
         api_name: "Product"
         is_standard: true
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Sales/Resources/metadata/entityDefs/Product.json
+        attributes:
+          name: { status: standard, api_name: "name" }
+          productCode: { status: standard, api_name: "productCode" }
+          description: { status: standard, api_name: "description" }
+          family: { status: standard, api_name: "family" }
+          type: { status: standard, api_name: "type" }
+          unitPrice: { status: standard, api_name: "unitPrice" }
+          cost: { status: custom }
+          isActive: { status: standard, api_name: "isActive" }
+          quantityUnitOfMeasure: { status: custom }
+          createdAt: { status: standard, api_name: "createdAt" }
       civicrm:
         name: "Premium / Price Field Value"
         api_name: "not_applicable"
@@ -927,6 +2308,17 @@ mappings:
         api_name: "Product2"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_product2.htm
+        attributes:
+          name: { status: standard, api_name: "Name" }
+          productCode: { status: standard, api_name: "ProductCode" }
+          description: { status: standard, api_name: "Description" }
+          family: { status: standard, api_name: "Family" }
+          type: { status: custom }
+          unitPrice: { status: custom }
+          cost: { status: custom }
+          isActive: { status: standard, api_name: "IsActive" }
+          quantityUnitOfMeasure: { status: standard, api_name: "QuantityUnitOfMeasure" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "(no Product concept)"
         api_name: "not_applicable"
@@ -943,11 +2335,33 @@ mappings:
         api_name: "Solution, KnowledgeArticleVersion"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_solution.htm
+        attributes:
+          title: { status: standard, api_name: "Title" }
+          body: { status: standard, api_name: "Body" }
+          status: { status: standard, api_name: "Status" }
+          language: { status: standard, api_name: "Language" }
+          category: { status: standard, api_name: "Category" }
+          keywords: { status: standard, api_name: "Keywords" }
+          viewCount: { status: standard, api_name: "ViewCount" }
+          helpfulCount: { status: standard, api_name: "HelpfulCount" }
+          assignedUser: { status: standard, api_name: "AssignedUser" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       hubspot:
         name: "Knowledge Base Article"
         api_name: "knowledge base (separate product, not in main CRM API)"
         is_standard: true
         docs_url: https://knowledge.hubspot.com/knowledge-base/create-and-manage-knowledge-base-articles
+        attributes:
+          title: { status: standard, api_name: "title" }
+          body: { status: standard, api_name: "body" }
+          status: { status: standard, api_name: "status" }
+          language: { status: standard, api_name: "language" }
+          category: { status: standard, api_name: "category" }
+          keywords: { status: custom }
+          viewCount: { status: standard, api_name: "viewcount" }
+          helpfulCount: { status: standard, api_name: "helpfulcount" }
+          assignedUser: { status: standard, api_name: "assigneduser" }
+          createdAt: { status: standard, api_name: "createdate" }
       attio:
         name: "(no native Knowledge concept)"
         api_name: "not_applicable"
@@ -958,6 +2372,16 @@ mappings:
         api_name: "KnowledgeBaseArticle"
         is_standard: true
         docs_url: https://docs.espocrm.com/user-guide/knowledge-base/
+        attributes:
+          title: { status: standard, api_name: "title" }
+          body: { status: standard, api_name: "body" }
+          status: { status: standard, api_name: "status" }
+          language: { status: standard, api_name: "language" }
+          category: { status: standard, api_name: "category" }
+          keywords: { status: custom }
+          viewCount: { status: custom }
+          assignedUser: { status: standard, api_name: "assignedUser" }
+          createdAt: { status: standard, api_name: "createdAt" }
       civicrm:
         name: "(no native Knowledge concept)"
         api_name: "not_applicable"
@@ -968,6 +2392,17 @@ mappings:
         api_name: "Solution, KnowledgeArticleVersion"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_solution.htm
+        attributes:
+          title: { status: standard, api_name: "Title" }
+          body: { status: standard, api_name: "Body" }
+          status: { status: standard, api_name: "Status" }
+          language: { status: standard, api_name: "Language" }
+          category: { status: standard, api_name: "Category" }
+          keywords: { status: standard, api_name: "Keywords" }
+          viewCount: { status: standard, api_name: "ViewCount" }
+          helpfulCount: { status: standard, api_name: "HelpfulCount" }
+          assignedUser: { status: standard, api_name: "AssignedUser" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "(no Knowledge concept)"
         api_name: "not_applicable"
@@ -984,36 +2419,99 @@ mappings:
         api_name: "AccountContactRelation"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_accountcontactrelation.htm
+        attributes:
+          contact: { status: standard, api_name: "ContactId" }
+          account: { status: standard, api_name: "AccountId" }
+          role: { status: standard, api_name: "Roles" }
+          status: { status: standard, api_name: "IsActive" }
+          startDate: { status: standard, api_name: "StartDate" }
+          endDate: { status: standard, api_name: "EndDate" }
+          isPrimary: { status: standard, api_name: "IsActive" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       hubspot:
         name: "Company Association (primary + secondary)"
         api_name: "companies (associations)"
         is_standard: true
         docs_url: https://knowledge.hubspot.com/contacts/associate-records
+        attributes:
+          contact: { status: standard, api_name: "contact_id" }
+          account: { status: standard, api_name: "company_id" }
+          role: { status: custom }
+          status: { status: custom }
+          startDate: { status: custom }
+          endDate: { status: custom }
+          isPrimary: { status: standard, api_name: "is_primary" }
+          createdAt: { status: standard, api_name: "createdate" }
       attio:
         name: "Custom relationship attribute"
         api_name: "not_applicable"
         is_standard: false
         docs_url: https://attio.com/help/reference/managing-your-data/attributes/create-manage-attributes
+        attributes:
+          contact: { status: custom }
+          account: { status: custom }
+          role: { status: custom }
+          status: { status: custom }
+          startDate: { status: custom }
+          endDate: { status: custom }
+          isPrimary: { status: custom }
+          createdAt: { status: standard, api_name: "created_at" }
       espocrm:
         name: "(custom or via custom relationship)"
         api_name: "not_applicable"
         is_standard: false
         docs_url: https://docs.espocrm.com/
+        attributes:
+          contact: { status: custom }
+          account: { status: custom }
+          role: { status: custom }
+          status: { status: custom }
+          startDate: { status: custom }
+          endDate: { status: custom }
+          isPrimary: { status: custom }
+          createdAt: { status: standard, api_name: "createdAt" }
       civicrm:
         name: "Relationship (with type=Employee Of / Board Member Of / etc.)"
         api_name: "Relationship"
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/relationships/
+        attributes:
+          contact: { status: standard, api_name: "contact_id_a" }
+          account: { status: standard, api_name: "contact_id_b" }
+          role: { status: standard, api_name: "relationship_type_id" }
+          status: { status: standard, api_name: "is_active" }
+          startDate: { status: standard, api_name: "start_date" }
+          endDate: { status: standard, api_name: "end_date" }
+          isPrimary: { status: custom }
+          createdAt: { status: standard, api_name: "created_date" }
       salesforce_npsp:
         name: "Affiliation (npe5__Affiliation__c)"
         api_name: "npe5__Affiliation__c"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
+        attributes:
+          contact: { status: standard, api_name: "npe5__Contact__c" }
+          account: { status: standard, api_name: "npe5__Organization__c" }
+          role: { status: standard, api_name: "npe5__Role__c" }
+          status: { status: standard, api_name: "npe5__Status__c" }
+          startDate: { status: standard, api_name: "npe5__StartDate__c" }
+          endDate: { status: standard, api_name: "npe5__EndDate__c" }
+          isPrimary: { status: standard, api_name: "npe5__Primary__c" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "Relationship"
         api_name: "Relationship"
         is_standard: true
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          contact: { status: standard, api_name: "RelationContactId" }
+          account: { status: standard, api_name: "AccountId" }
+          role: { status: standard, api_name: "Type" }
+          status: { status: standard, api_name: "Status" }
+          startDate: { status: custom }
+          endDate: { status: custom }
+          isPrimary: { status: custom }
+          createdAt: { status: standard, api_name: "CreatedDate" }
 
   - catalog_id: constituent
     name: "Constituent"
@@ -1045,6 +2543,13 @@ mappings:
         api_name: "Contact"
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/contacts/
+        attributes:
+          type: { status: standard, api_name: "contact_type" }
+          fullName: { status: standard, api_name: "display_name" }
+          emailAddress: { status: standard, api_name: "email" }
+          phone: { status: standard, api_name: "phone" }
+          address: { status: standard, api_name: "street_address" }
+          createdAt: { status: standard, api_name: "created_date" }
       salesforce_npsp:
         name: "(no native Constituent — split Contact / Account)"
         api_name: "not_applicable"
@@ -1055,6 +2560,14 @@ mappings:
         api_name: "Constituent"
         is_standard: true
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          type: { status: standard, api_name: "Type" }
+          fullName: { status: standard, api_name: "FullName" }
+          emailAddress: { status: standard, api_name: "PrimaryEmail" }
+          phone: { status: standard, api_name: "PrimaryPhone" }
+          address: { status: standard, api_name: "PrimaryAddress" }
+          generosityScore: { status: standard, api_name: "GenerosityScore" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
 
   - catalog_id: donation
     name: "Donation"
@@ -1066,36 +2579,134 @@ mappings:
         api_name: "Opportunity"
         is_standard: false
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_opportunity.htm
+        attributes:
+          amount: { status: custom }
+          donationDate: { status: custom }
+          status: { status: custom }
+          paymentMethod: { status: custom }
+          contact: { status: custom }
+          account: { status: custom }
+          campaign: { status: custom }
+          source: { status: custom }
+          fund: { status: custom }
+          acknowledgmentStatus: { status: custom }
+          acknowledgmentDate: { status: custom }
+          recurringDonation: { status: custom }
+          createdAt: { status: custom }
       hubspot:
         name: "Deal (with custom Type)"
         api_name: "deals"
         is_standard: false
         docs_url: https://developers.hubspot.com/docs/api-reference/crm-deals-v3/guide
+        attributes:
+          amount: { status: custom }
+          donationDate: { status: custom }
+          status: { status: custom }
+          paymentMethod: { status: custom }
+          contact: { status: custom }
+          account: { status: custom }
+          campaign: { status: custom }
+          source: { status: custom }
+          fund: { status: custom }
+          acknowledgmentStatus: { status: custom }
+          acknowledgmentDate: { status: custom }
+          recurringDonation: { status: custom }
+          createdAt: { status: custom }
       attio:
         name: "(custom object required)"
         api_name: "not_applicable"
         is_standard: false
         docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+        attributes:
+          amount: { status: custom }
+          donationDate: { status: custom }
+          status: { status: custom }
+          paymentMethod: { status: custom }
+          contact: { status: custom }
+          account: { status: custom }
+          campaign: { status: custom }
+          source: { status: custom }
+          fund: { status: custom }
+          acknowledgmentStatus: { status: custom }
+          acknowledgmentDate: { status: custom }
+          recurringDonation: { status: custom }
+          createdAt: { status: custom }
       espocrm:
         name: "Opportunity (no Donation entity)"
         api_name: "Opportunity"
         is_standard: false
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Opportunity.json
+        attributes:
+          amount: { status: custom }
+          donationDate: { status: custom }
+          status: { status: custom }
+          paymentMethod: { status: custom }
+          contact: { status: custom }
+          account: { status: custom }
+          campaign: { status: custom }
+          source: { status: custom }
+          fund: { status: custom }
+          acknowledgmentStatus: { status: custom }
+          acknowledgmentDate: { status: custom }
+          recurringDonation: { status: custom }
+          createdAt: { status: custom }
       civicrm:
         name: "Contribution"
         api_name: "Contribution"
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/contributions/
+        attributes:
+          amount: { status: standard, api_name: "total_amount" }
+          donationDate: { status: standard, api_name: "receive_date" }
+          status: { status: standard, api_name: "contribution_status_id" }
+          paymentMethod: { status: standard, api_name: "payment_instrument_id" }
+          contact: { status: standard, api_name: "contact_id" }
+          account: { status: standard, api_name: "contact_id" }
+          campaign: { status: standard, api_name: "campaign_id" }
+          source: { status: standard, api_name: "source" }
+          fund: { status: standard, api_name: "financial_type_id" }
+          acknowledgmentStatus: { status: custom }
+          acknowledgmentDate: { status: custom }
+          recurringDonation: { status: standard, api_name: "contribution_recur_id" }
+          createdAt: { status: standard, api_name: "created_date" }
       salesforce_npsp:
         name: "Opportunity (Donation Record Type)"
         api_name: "Opportunity"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
+        attributes:
+          amount: { status: standard, api_name: "Amount" }
+          donationDate: { status: standard, api_name: "CloseDate" }
+          status: { status: standard, api_name: "StageName" }
+          paymentMethod: { status: standard, api_name: "npe01__Payment_Method__c" }
+          contact: { status: standard, api_name: "npsp__Primary_Contact__c" }
+          account: { status: standard, api_name: "AccountId" }
+          campaign: { status: standard, api_name: "CampaignId" }
+          source: { status: custom }
+          fund: { status: standard, api_name: "npsp__General_Accounting_Unit__c" }
+          acknowledgmentStatus: { status: standard, api_name: "npsp__Acknowledgment_Status__c" }
+          acknowledgmentDate: { status: standard, api_name: "npsp__Acknowledgment_Date__c" }
+          recurringDonation: { status: standard, api_name: "npe03__Recurring_Donation__c" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "Transaction (received) / Pledge (committed)"
         api_name: "Transaction"
         is_standard: true
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          amount: { status: standard, api_name: "Amount" }
+          donationDate: { status: standard, api_name: "Date" }
+          status: { status: standard, api_name: "IsRefunded" }
+          paymentMethod: { status: standard, api_name: "Method" }
+          contact: { status: standard, api_name: "AccountId" }
+          account: { status: standard, api_name: "AccountId" }
+          campaign: { status: standard, api_name: "CampaignId" }
+          source: { status: standard, api_name: "Source" }
+          fund: { status: standard, api_name: "FundId" }
+          acknowledgmentStatus: { status: standard, api_name: "AcknowledgementStatus" }
+          acknowledgmentDate: { status: standard, api_name: "AcknowledgementDate" }
+          recurringDonation: { status: standard, api_name: "RecurringDonationId" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
 
   - catalog_id: engagement
     name: "Engagement"
@@ -1127,11 +2738,33 @@ mappings:
         api_name: "Case"
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/case-management/
+        attributes:
+          name: { status: standard, api_name: "subject" }
+          type: { status: standard, api_name: "case_type_id" }
+          status: { status: standard, api_name: "status_id" }
+          startDate: { status: standard, api_name: "start_date" }
+          endDate: { status: standard, api_name: "end_date" }
+          primaryContact: { status: standard, api_name: "contact_id" }
+          secondaryContact: { status: standard, api_name: "subject_id" }
+          assignedUser: { status: standard, api_name: "manager_contact_id" }
+          description: { status: standard, api_name: "details" }
+          createdAt: { status: standard, api_name: "created_date" }
       salesforce_npsp:
         name: "Engagement Plan / Engagement Plan Task / Engagement Plan Template"
         api_name: "npe5__Engagement_Plan__c, npe5__Engagement_Plan_Task__c"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
+        attributes:
+          name: { status: standard, api_name: "Name" }
+          type: { status: standard, api_name: "npe5__Engagement_Plan_Template__c" }
+          status: { status: standard, api_name: "npe5__Status__c" }
+          startDate: { status: standard, api_name: "npe5__StartDate__c" }
+          endDate: { status: standard, api_name: "npe5__EndDate__c" }
+          primaryContact: { status: standard, api_name: "npe5__Contact__c" }
+          secondaryContact: { status: standard, api_name: "npe5__Secondary_Contact__c" }
+          assignedUser: { status: standard, api_name: "OwnerId" }
+          description: { status: standard, api_name: "Description" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "(no first-class Engagement; tracked via Interactions)"
         api_name: "not_applicable"
@@ -1168,16 +2801,52 @@ mappings:
         api_name: "Grant"
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/grants/
+        attributes:
+          name: { status: standard, api_name: "rationale" }
+          amountRequested: { status: standard, api_name: "amount_requested" }
+          amountAwarded: { status: standard, api_name: "amount_granted" }
+          status: { status: standard, api_name: "status_id" }
+          applicationDate: { status: standard, api_name: "application_received_date" }
+          decisionDate: { status: standard, api_name: "decision_date" }
+          performancePeriodStart: { status: custom }
+          performancePeriodEnd: { status: custom }
+          account: { status: standard, api_name: "contact_id" }
+          programArea: { status: custom }
+          createdAt: { status: standard, api_name: "created_date" }
       salesforce_npsp:
         name: "Opportunity (Grant Record Type)"
         api_name: "Opportunity"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
+        attributes:
+          name: { status: standard, api_name: "Name" }
+          amountRequested: { status: custom }
+          amountAwarded: { status: standard, api_name: "Amount" }
+          status: { status: standard, api_name: "StageName" }
+          applicationDate: { status: custom }
+          decisionDate: { status: custom }
+          performancePeriodStart: { status: custom }
+          performancePeriodEnd: { status: custom }
+          account: { status: standard, api_name: "AccountId" }
+          programArea: { status: custom }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "Transaction with Grant fund"
         api_name: "Transaction"
         is_standard: false
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          name: { status: custom }
+          amountRequested: { status: custom }
+          amountAwarded: { status: custom }
+          status: { status: custom }
+          applicationDate: { status: custom }
+          decisionDate: { status: custom }
+          performancePeriodStart: { status: custom }
+          performancePeriodEnd: { status: custom }
+          account: { status: custom }
+          programArea: { status: custom }
+          createdAt: { status: standard, api_name: "CreatedDate" }
 
   - catalog_id: household
     name: "Household"
@@ -1209,11 +2878,27 @@ mappings:
         api_name: "Contact (contact_type=Household)"
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/contacts/
+        attributes:
+          name: { status: standard, api_name: "household_name" }
+          formalGreeting: { status: custom }
+          informalGreeting: { status: custom }
+          address: { status: standard, api_name: "street_address" }
+          phone: { status: standard, api_name: "phone" }
+          totalLifetimeGiving: { status: custom }
+          createdAt: { status: standard, api_name: "created_date" }
       salesforce_npsp:
         name: "Account (Household Record Type)"
         api_name: "Account"
         is_standard: true
         docs_url: https://trailhead.salesforce.com/content/learn/modules/constituent-data-management-with-nonprofit-success-pack/manage-household-accounts
+        attributes:
+          name: { status: standard, api_name: "Name" }
+          formalGreeting: { status: standard, api_name: "npo02__Formal_Greeting__c" }
+          informalGreeting: { status: standard, api_name: "npo02__Informal_Greeting__c" }
+          address: { status: standard, api_name: "BillingAddress" }
+          phone: { status: standard, api_name: "Phone" }
+          totalLifetimeGiving: { status: standard, api_name: "npo02__TotalOppAmount__c" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "(modeled via Relationships)"
         api_name: "not_applicable"
@@ -1250,16 +2935,46 @@ mappings:
         api_name: "Membership"
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/membership/
+        attributes:
+          contact: { status: standard, api_name: "contact_id" }
+          membershipType: { status: standard, api_name: "membership_type_id" }
+          status: { status: standard, api_name: "status_id" }
+          joinDate: { status: standard, api_name: "join_date" }
+          startDate: { status: standard, api_name: "start_date" }
+          endDate: { status: standard, api_name: "end_date" }
+          amount: { status: standard, api_name: "fee" }
+          source: { status: standard, api_name: "source" }
+          createdAt: { status: standard, api_name: "created_date" }
       salesforce_npsp:
         name: "Opportunity (Membership Record Type) + Level"
         api_name: "Opportunity"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
+        attributes:
+          contact: { status: standard, api_name: "ContactId" }
+          membershipType: { status: standard, api_name: "npe01__Membership_Origin__c" }
+          status: { status: standard, api_name: "npe01__Membership_Status__c" }
+          joinDate: { status: custom }
+          startDate: { status: standard, api_name: "npe01__Membership_Start_Date__c" }
+          endDate: { status: standard, api_name: "npe01__Membership_End_Date__c" }
+          amount: { status: standard, api_name: "Amount" }
+          source: { status: custom }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "Constituent custom fields"
         api_name: "not_applicable"
         is_standard: false
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          contact: { status: custom }
+          membershipType: { status: custom }
+          status: { status: custom }
+          joinDate: { status: custom }
+          startDate: { status: custom }
+          endDate: { status: custom }
+          amount: { status: custom }
+          source: { status: custom }
+          createdAt: { status: standard, api_name: "CreatedDate" }
 
   - catalog_id: recurring-gift
     name: "Recurring Gift"
@@ -1291,16 +3006,52 @@ mappings:
         api_name: "ContributionRecur"
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/contributions/recurring-contributions/
+        attributes:
+          amount: { status: standard, api_name: "amount" }
+          frequency: { status: standard, api_name: "frequency_unit" }
+          startDate: { status: standard, api_name: "start_date" }
+          endDate: { status: standard, api_name: "end_date" }
+          installments: { status: standard, api_name: "installments" }
+          status: { status: standard, api_name: "contribution_status_id" }
+          paymentMethod: { status: standard, api_name: "payment_instrument_id" }
+          contact: { status: standard, api_name: "contact_id" }
+          account: { status: standard, api_name: "contact_id" }
+          campaign: { status: standard, api_name: "campaign_id" }
+          createdAt: { status: standard, api_name: "created_date" }
       salesforce_npsp:
         name: "Recurring Donation (npe03__Recurring_Donation__c)"
         api_name: "npe03__Recurring_Donation__c"
         is_standard: true
         docs_url: https://trailhead.salesforce.com/content/learn/modules/opportunity-settings-in-nonprofit-success-pack/manage-recurring-donations-npsp
+        attributes:
+          amount: { status: standard, api_name: "npe03__Amount__c" }
+          frequency: { status: standard, api_name: "npe03__Installment_Period__c" }
+          startDate: { status: standard, api_name: "npe03__Date_Established__c" }
+          endDate: { status: standard, api_name: "npsp__EndDate__c" }
+          installments: { status: standard, api_name: "npe03__Installments__c" }
+          status: { status: standard, api_name: "npsp__Status__c" }
+          paymentMethod: { status: standard, api_name: "npe03__Payment_Method__c" }
+          contact: { status: standard, api_name: "npe03__Contact__c" }
+          account: { status: standard, api_name: "npe03__Organization__c" }
+          campaign: { status: standard, api_name: "npe03__Recurring_Donation_Campaign__c" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "Recurring Donation"
         api_name: "RecurringDonation"
         is_standard: true
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          amount: { status: standard, api_name: "Amount" }
+          frequency: { status: standard, api_name: "Frequency" }
+          startDate: { status: standard, api_name: "StartDate" }
+          endDate: { status: standard, api_name: "EndDate" }
+          installments: { status: custom }
+          status: { status: standard, api_name: "Status" }
+          paymentMethod: { status: standard, api_name: "Method" }
+          contact: { status: standard, api_name: "AccountId" }
+          account: { status: standard, api_name: "AccountId" }
+          campaign: { status: standard, api_name: "CampaignId" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
 
   - catalog_id: soft-credit
     name: "Soft Credit"
@@ -1312,6 +3063,13 @@ mappings:
         api_name: "OpportunityContactRole"
         is_standard: false
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_opportunitycontactrole.htm
+        attributes:
+          donation: { status: custom }
+          contact: { status: custom }
+          account: { status: custom }
+          amount: { status: custom }
+          type: { status: custom }
+          createdAt: { status: custom }
       hubspot:
         name: "(no native — custom)"
         api_name: "not_applicable"
@@ -1332,16 +3090,37 @@ mappings:
         api_name: "ContributionSoft"
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/contributions/soft-credits/
+        attributes:
+          donation: { status: standard, api_name: "contribution_id" }
+          contact: { status: standard, api_name: "contact_id" }
+          account: { status: custom }
+          amount: { status: standard, api_name: "amount" }
+          type: { status: standard, api_name: "soft_credit_type_id" }
+          createdAt: { status: standard, api_name: "created_date" }
       salesforce_npsp:
         name: "Partial Soft Credit + Account Soft Credit + Opportunity Contact Role"
         api_name: "npo02__Partial_Soft_Credit__c, npo02__Account_Soft_Credit__c"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
+        attributes:
+          donation: { status: standard, api_name: "npsp__Opportunity__c" }
+          contact: { status: standard, api_name: "npsp__Contact__c" }
+          account: { status: standard, api_name: "npo02__Organization__c" }
+          amount: { status: standard, api_name: "npsp__Amount__c" }
+          type: { status: standard, api_name: "npsp__Role_Name__c" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "Acknowledgement"
         api_name: "SoftCredit"
         is_standard: true
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          donation: { status: standard, api_name: "TransactionId" }
+          contact: { status: standard, api_name: "AccountId" }
+          account: { status: custom }
+          amount: { status: standard, api_name: "Amount" }
+          type: { status: standard, api_name: "Type" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
 
   - catalog_id: volunteer-hour
     name: "Volunteer Hour"
@@ -1373,16 +3152,43 @@ mappings:
         api_name: "VolunteerAssignment"
         is_standard: false
         docs_url: https://docs.civicrm.org/volunteer/en/latest/
+        attributes:
+          contact: { status: custom }
+          hours: { status: custom }
+          serviceDate: { status: custom }
+          project: { status: custom }
+          role: { status: custom }
+          status: { status: custom }
+          description: { status: custom }
+          createdAt: { status: custom }
       salesforce_npsp:
         name: "Volunteer Hours (V4S managed package)"
         api_name: "GW_Volunteers__Volunteer_Hours__c"
         is_standard: false
         docs_url: https://github.com/SalesforceFoundation/Volunteers-for-Salesforce
+        attributes:
+          contact: { status: custom }
+          hours: { status: custom }
+          serviceDate: { status: custom }
+          project: { status: custom }
+          role: { status: custom }
+          status: { status: custom }
+          description: { status: custom }
+          createdAt: { status: custom }
       bloomerang:
         name: "Volunteer Interaction (Interaction subtype)"
         api_name: "Interaction"
         is_standard: true
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          contact: { status: standard, api_name: "AccountId" }
+          hours: { status: standard, api_name: "Hours" }
+          serviceDate: { status: standard, api_name: "Date" }
+          project: { status: standard, api_name: "ProjectId" }
+          role: { status: custom }
+          status: { status: custom }
+          description: { status: standard, api_name: "Note" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
 
   - catalog_id: account-household
     name: "Household (Account subclass)"
@@ -1398,24 +3204,44 @@ mappings:
         is_standard: false
         mechanism: record_type
         docs_url: https://help.salesforce.com/s/articleView?id=sf.customize_recordtype.htm
+        attributes:
+          formalGreeting: { status: custom }
+          informalGreeting: { status: custom }
+          householdMembers: { status: custom }
+          totalLifetimeGiving: { status: custom }
       hubspot:
         name: "Company with custom Type=Household"
         api_name: "companies"
         is_standard: false
         mechanism: custom_property
         docs_url: https://developers.hubspot.com/docs/api-reference/crm-properties-v3/guide
+        attributes:
+          formalGreeting: { status: custom }
+          informalGreeting: { status: custom }
+          householdMembers: { status: custom }
+          totalLifetimeGiving: { status: custom }
       attio:
         name: "Custom Household object or Type attribute on Companies"
         api_name: "not_applicable"
         is_standard: false
         mechanism: separate_object
         docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+        attributes:
+          formalGreeting: { status: custom }
+          informalGreeting: { status: custom }
+          householdMembers: { status: custom }
+          totalLifetimeGiving: { status: custom }
       espocrm:
         name: "Account with type=Household (custom enum value)"
         api_name: "Account"
         is_standard: false
         mechanism: type_discriminator
         docs_url: https://docs.espocrm.com/administration/entity-manager/
+        attributes:
+          formalGreeting: { status: custom }
+          informalGreeting: { status: custom }
+          householdMembers: { status: custom }
+          totalLifetimeGiving: { status: custom }
       civicrm:
         name: "(handled at Tier 4 entity, not as Account subclass)"
         api_name: "not_applicable"
@@ -1428,6 +3254,11 @@ mappings:
         is_standard: true
         mechanism: record_type
         docs_url: https://trailhead.salesforce.com/content/learn/modules/constituent-data-management-with-nonprofit-success-pack/manage-household-accounts
+        attributes:
+          formalGreeting: { status: standard, api_name: "npo02__Formal_Greeting__c" }
+          informalGreeting: { status: standard, api_name: "npo02__Informal_Greeting__c" }
+          householdMembers: { status: standard, api_name: "HouseholdMembers" }
+          totalLifetimeGiving: { status: standard, api_name: "npo02__TotalOppAmount__c" }
       bloomerang:
         name: "(handled at Tier 4 entity via Relationships, not as Account subclass)"
         api_name: "not_applicable"
@@ -1449,42 +3280,91 @@ mappings:
         is_standard: false
         mechanism: record_type
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_opportunity.htm
+        attributes:
+          cultivationStage: { status: custom }
+          solicitor: { status: custom }
+          stewardshipOfficer: { status: custom }
+          tributeType: { status: custom }
+          tributeName: { status: custom }
+          recognitionPreference: { status: custom }
       hubspot:
         name: "Deal with custom Type=Major Gift"
         api_name: "deals"
         is_standard: false
         mechanism: custom_property
         docs_url: https://developers.hubspot.com/docs/api-reference/crm-deals-v3/guide
+        attributes:
+          cultivationStage: { status: custom }
+          solicitor: { status: custom }
+          stewardshipOfficer: { status: custom }
+          tributeType: { status: custom }
+          tributeName: { status: custom }
+          recognitionPreference: { status: custom }
       attio:
         name: "Custom Major Gift object or Type attribute on Deals"
         api_name: "not_applicable"
         is_standard: false
         mechanism: separate_object
         docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+        attributes:
+          cultivationStage: { status: custom }
+          solicitor: { status: custom }
+          stewardshipOfficer: { status: custom }
+          tributeType: { status: custom }
+          tributeName: { status: custom }
+          recognitionPreference: { status: custom }
       espocrm:
         name: "Opportunity with type=Major Gift (custom enum)"
         api_name: "Opportunity"
         is_standard: false
         mechanism: type_discriminator
         docs_url: https://docs.espocrm.com/administration/entity-manager/
+        attributes:
+          cultivationStage: { status: custom }
+          solicitor: { status: custom }
+          stewardshipOfficer: { status: custom }
+          tributeType: { status: custom }
+          tributeName: { status: custom }
+          recognitionPreference: { status: custom }
       civicrm:
         name: "Contribution with custom financial_type=Major Gift"
         api_name: "Contribution"
         is_standard: false
         mechanism: type_discriminator
         docs_url: https://docs.civicrm.org/user/en/latest/contributions/
+        attributes:
+          cultivationStage: { status: custom }
+          solicitor: { status: custom }
+          stewardshipOfficer: { status: custom }
+          tributeType: { status: custom }
+          tributeName: { status: custom }
+          recognitionPreference: { status: custom }
       salesforce_npsp:
         name: "Opportunity with Major Gift Record Type"
         api_name: "Opportunity"
         is_standard: true
         mechanism: record_type
         docs_url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
+        attributes:
+          cultivationStage: { status: custom }
+          solicitor: { status: custom }
+          stewardshipOfficer: { status: custom }
+          tributeType: { status: standard, api_name: "TributeType" }
+          tributeName: { status: standard, api_name: "TributeName" }
+          recognitionPreference: { status: custom }
       bloomerang:
         name: "Transaction with custom Type=Major Gift"
         api_name: "Transaction"
         is_standard: false
         mechanism: custom_property
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          cultivationStage: { status: custom }
+          solicitor: { status: custom }
+          stewardshipOfficer: { status: custom }
+          tributeType: { status: standard, api_name: "TributeType" }
+          tributeName: { status: standard, api_name: "TributeName" }
+          recognitionPreference: { status: standard, api_name: "RecognitionPreference" }
 
   - catalog_id: contract
     name: "Contract"
@@ -1496,11 +3376,39 @@ mappings:
         api_name: "Contract"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contract.htm
+        attributes:
+          contractNumber: { status: standard, api_name: "ContractNumber" }
+          name: { status: standard, api_name: "ContractName" }
+          account: { status: standard, api_name: "AccountId" }
+          status: { status: standard, api_name: "Status" }
+          startDate: { status: standard, api_name: "StartDate" }
+          endDate: { status: standard, api_name: "EndDate" }
+          term: { status: standard, api_name: "ContractTerm" }
+          contractValue: { status: standard, api_name: "TotalContractValue" }
+          signedDate: { status: standard, api_name: "ActivatedDate" }
+          autoRenew: { status: custom }
+          assignedUser: { status: standard, api_name: "OwnerId" }
+          opportunity: { status: custom }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       hubspot:
         name: "Contracts (Enterprise)"
         api_name: "contracts"
         is_standard: true
         docs_url: https://knowledge.hubspot.com/contracts/use-the-contract-object
+        attributes:
+          contractNumber: { status: standard, api_name: "hs_contract_number" }
+          name: { status: standard, api_name: "hs_contract_name" }
+          account: { status: standard, api_name: "hs_company_id" }
+          status: { status: standard, api_name: "hs_contract_status" }
+          startDate: { status: standard, api_name: "hs_start_date" }
+          endDate: { status: standard, api_name: "hs_end_date" }
+          term: { status: standard, api_name: "hs_contract_term" }
+          contractValue: { status: standard, api_name: "hs_contract_value" }
+          signedDate: { status: standard, api_name: "hs_signed_date" }
+          autoRenew: { status: standard, api_name: "hs_auto_renew" }
+          assignedUser: { status: standard, api_name: "hubspot_owner_id" }
+          opportunity: { status: standard, api_name: "hs_deal_id" }
+          createdAt: { status: standard, api_name: "createdate" }
       attio:
         name: "(custom object required)"
         api_name: "not_applicable"
@@ -1511,6 +3419,20 @@ mappings:
         api_name: "Contract"
         is_standard: true
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Sales/Resources/metadata/entityDefs/Contract.json
+        attributes:
+          contractNumber: { status: standard, api_name: "number" }
+          name: { status: standard, api_name: "name" }
+          account: { status: standard, api_name: "accountId" }
+          status: { status: standard, api_name: "status" }
+          startDate: { status: standard, api_name: "dateStart" }
+          endDate: { status: standard, api_name: "dateEnd" }
+          term: { status: standard, api_name: "term" }
+          contractValue: { status: standard, api_name: "amount" }
+          signedDate: { status: standard, api_name: "dateSigned" }
+          autoRenew: { status: custom }
+          assignedUser: { status: standard, api_name: "assignedUserId" }
+          opportunity: { status: custom }
+          createdAt: { status: standard, api_name: "createdAt" }
       civicrm:
         name: "(no native Contract — Document used for signed agreements)"
         api_name: "not_applicable"
@@ -1521,6 +3443,20 @@ mappings:
         api_name: "Contract"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contract.htm
+        attributes:
+          contractNumber: { status: standard, api_name: "ContractNumber" }
+          name: { status: standard, api_name: "ContractName" }
+          account: { status: standard, api_name: "AccountId" }
+          status: { status: standard, api_name: "Status" }
+          startDate: { status: standard, api_name: "StartDate" }
+          endDate: { status: standard, api_name: "EndDate" }
+          term: { status: standard, api_name: "ContractTerm" }
+          contractValue: { status: standard, api_name: "TotalContractValue" }
+          signedDate: { status: standard, api_name: "ActivatedDate" }
+          autoRenew: { status: custom }
+          assignedUser: { status: standard, api_name: "OwnerId" }
+          opportunity: { status: custom }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "(no native Contract)"
         api_name: "not_applicable"
@@ -1537,36 +3473,113 @@ mappings:
         api_name: "ContentDocument, ContentVersion"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contentdocument.htm
+        attributes:
+          name: { status: standard, api_name: "Title" }
+          fileName: { status: standard, api_name: "PathOnClient" }
+          mimeType: { status: standard, api_name: "FileType" }
+          fileSize: { status: standard, api_name: "ContentSize" }
+          description: { status: standard, api_name: "Description" }
+          parent: { status: standard, api_name: "LinkedEntityId" }
+          assignedUser: { status: standard, api_name: "OwnerId" }
+          status: { status: custom }
+          version: { status: standard, api_name: "VersionNumber" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       hubspot:
         name: "Files"
         api_name: "files"
         is_standard: true
         docs_url: https://developers.hubspot.com/docs/api-reference/files-files
+        attributes:
+          name: { status: standard, api_name: "name" }
+          fileName: { status: standard, api_name: "name" }
+          mimeType: { status: standard, api_name: "type" }
+          fileSize: { status: standard, api_name: "size" }
+          description: { status: custom }
+          parent: { status: standard, api_name: "parent" }
+          assignedUser: { status: standard, api_name: "created_by" }
+          status: { status: custom }
+          version: { status: custom }
+          createdAt: { status: standard, api_name: "createdate" }
       attio:
         name: "Attachments / Files"
         api_name: "attachments"
         is_standard: true
         docs_url: https://attio.com/help/reference/managing-your-data/records/file-attachments
+        attributes:
+          name: { status: standard, api_name: "name" }
+          fileName: { status: standard, api_name: "file_name" }
+          mimeType: { status: standard, api_name: "mime_type" }
+          fileSize: { status: standard, api_name: "size" }
+          description: { status: custom }
+          parent: { status: standard, api_name: "parent" }
+          assignedUser: { status: standard, api_name: "created_by" }
+          status: { status: custom }
+          version: { status: custom }
+          createdAt: { status: standard, api_name: "created_at" }
       espocrm:
         name: "Document / Attachment"
         api_name: "Document, Attachment"
         is_standard: true
         docs_url: https://docs.espocrm.com/user-guide/documents/
+        attributes:
+          name: { status: standard, api_name: "name" }
+          fileName: { status: standard, api_name: "name" }
+          mimeType: { status: standard, api_name: "type" }
+          fileSize: { status: standard, api_name: "size" }
+          description: { status: standard, api_name: "description" }
+          parent: { status: standard, api_name: "parentId" }
+          assignedUser: { status: standard, api_name: "createdById" }
+          status: { status: standard, api_name: "status" }
+          version: { status: standard, api_name: "publishVersion" }
+          createdAt: { status: standard, api_name: "createdAt" }
       civicrm:
         name: "Attachment (via File entity)"
         api_name: "Attachment"
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/the-user-interface/notes-attachments/
+        attributes:
+          name: { status: standard, api_name: "description" }
+          fileName: { status: standard, api_name: "file_name" }
+          mimeType: { status: standard, api_name: "mime_type" }
+          fileSize: { status: standard, api_name: "file_size" }
+          description: { status: standard, api_name: "description" }
+          parent: { status: standard, api_name: "entity_id" }
+          assignedUser: { status: standard, api_name: "upload_date" }
+          status: { status: custom }
+          version: { status: custom }
+          createdAt: { status: standard, api_name: "created_date" }
       salesforce_npsp:
         name: "ContentDocument / ContentVersion"
         api_name: "ContentDocument, ContentVersion"
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contentdocument.htm
+        attributes:
+          name: { status: standard, api_name: "Title" }
+          fileName: { status: standard, api_name: "PathOnClient" }
+          mimeType: { status: standard, api_name: "FileType" }
+          fileSize: { status: standard, api_name: "ContentSize" }
+          description: { status: standard, api_name: "Description" }
+          parent: { status: standard, api_name: "LinkedEntityId" }
+          assignedUser: { status: standard, api_name: "OwnerId" }
+          status: { status: custom }
+          version: { status: standard, api_name: "VersionNumber" }
+          createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "Document"
         api_name: "Document"
         is_standard: true
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          name: { status: standard, api_name: "Description" }
+          fileName: { status: standard, api_name: "FileName" }
+          mimeType: { status: standard, api_name: "MimeType" }
+          fileSize: { status: standard, api_name: "Size" }
+          description: { status: standard, api_name: "Description" }
+          parent: { status: standard, api_name: "Parent" }
+          assignedUser: { status: standard, api_name: "CreatedBy" }
+          status: { status: custom }
+          version: { status: custom }
+          createdAt: { status: standard, api_name: "CreatedDate" }
 
   - catalog_id: activity-email
     name: "Email (Activity subclass)"
@@ -1582,42 +3595,110 @@ mappings:
         is_standard: true
         mechanism: separate_object
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_emailmessage.htm
+        attributes:
+          fromAddress: { status: standard, api_name: "FromAddress" }
+          toAddresses: { status: standard, api_name: "ToAddress" }
+          ccAddresses: { status: standard, api_name: "CcAddress" }
+          bccAddresses: { status: standard, api_name: "BccAddress" }
+          bodyHtml: { status: standard, api_name: "HtmlBody" }
+          bodyText: { status: standard, api_name: "TextBody" }
+          direction: { status: standard, api_name: "Incoming" }
+          messageId: { status: standard, api_name: "MessageIdentifier" }
+          inReplyTo: { status: standard, api_name: "InReplyTo" }
       hubspot:
         name: "Email (Engagement subtype)"
         api_name: "emails"
         is_standard: true
         mechanism: type_discriminator
         docs_url: https://developers.hubspot.com/docs/reference/api/crm/engagements/email
+        attributes:
+          fromAddress: { status: standard, api_name: "hs_email_from_email" }
+          toAddresses: { status: standard, api_name: "hs_email_to_email" }
+          ccAddresses: { status: standard, api_name: "hs_email_cc_email" }
+          bccAddresses: { status: standard, api_name: "hs_email_bcc_email" }
+          bodyHtml: { status: standard, api_name: "hs_email_html" }
+          bodyText: { status: custom }
+          direction: { status: standard, api_name: "hs_email_direction" }
+          messageId: { status: standard, api_name: "hs_email_message_id" }
+          inReplyTo: { status: standard, api_name: "inreplyto" }
       attio:
         name: "(synced via Gmail / Outlook OAuth)"
         api_name: "emails"
         is_standard: true
         mechanism: separate_object
         docs_url: https://attio.com/help/reference/managing-your-data/records/add-record-activities
+        attributes:
+          fromAddress: { status: standard, api_name: "from_address" }
+          toAddresses: { status: standard, api_name: "to_addresses" }
+          ccAddresses: { status: standard, api_name: "cc_addresses" }
+          bccAddresses: { status: standard, api_name: "bcc_addresses" }
+          bodyHtml: { status: standard, api_name: "body_html" }
+          bodyText: { status: custom }
+          direction: { status: standard, api_name: "direction" }
+          messageId: { status: standard, api_name: "message_id" }
+          inReplyTo: { status: standard, api_name: "in_reply_to" }
       espocrm:
         name: "Email"
         api_name: "Email"
         is_standard: true
         mechanism: separate_object
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Resources/metadata/entityDefs/Email.json
+        attributes:
+          fromAddress: { status: standard, api_name: "from" }
+          toAddresses: { status: standard, api_name: "to" }
+          ccAddresses: { status: standard, api_name: "cc" }
+          bccAddresses: { status: standard, api_name: "bcc" }
+          bodyHtml: { status: standard, api_name: "body" }
+          bodyText: { status: standard, api_name: "bodyPlain" }
+          direction: { status: standard, api_name: "isReplied" }
+          messageId: { status: standard, api_name: "messageId" }
+          inReplyTo: { status: standard, api_name: "replied" }
       civicrm:
         name: "Activity (activity_type=Email)"
         api_name: "Activity"
         is_standard: true
         mechanism: type_discriminator
         docs_url: https://docs.civicrm.org/user/en/latest/email/
+        attributes:
+          fromAddress: { status: custom }
+          toAddresses: { status: custom }
+          ccAddresses: { status: custom }
+          bccAddresses: { status: custom }
+          bodyHtml: { status: custom }
+          bodyText: { status: custom }
+          direction: { status: custom }
+          messageId: { status: custom }
       salesforce_npsp:
         name: "EmailMessage"
         api_name: "EmailMessage"
         is_standard: true
         mechanism: separate_object
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_emailmessage.htm
+        attributes:
+          fromAddress: { status: standard, api_name: "FromAddress" }
+          toAddresses: { status: standard, api_name: "ToAddress" }
+          ccAddresses: { status: standard, api_name: "CcAddress" }
+          bccAddresses: { status: standard, api_name: "BccAddress" }
+          bodyHtml: { status: standard, api_name: "HtmlBody" }
+          bodyText: { status: standard, api_name: "TextBody" }
+          direction: { status: standard, api_name: "Incoming" }
+          messageId: { status: standard, api_name: "MessageIdentifier" }
+          inReplyTo: { status: standard, api_name: "InReplyTo" }
       bloomerang:
         name: "Interaction (subtype=Email)"
         api_name: "Interaction"
         is_standard: true
         mechanism: type_discriminator
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          fromAddress: { status: standard, api_name: "FromAddress" }
+          toAddresses: { status: standard, api_name: "ToAddresses" }
+          ccAddresses: { status: custom }
+          bccAddresses: { status: custom }
+          bodyHtml: { status: standard, api_name: "BodyHtml" }
+          bodyText: { status: standard, api_name: "BodyText" }
+          direction: { status: standard, api_name: "Direction" }
+          messageId: { status: custom }
 
   - catalog_id: activity-meeting
     name: "Meeting (Activity subclass)"
@@ -1633,42 +3714,77 @@ mappings:
         is_standard: true
         mechanism: separate_object
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_event.htm
+        attributes:
+          location: { status: standard, api_name: "Location" }
+          attendees: { status: standard, api_name: "EventRelations" }
+          agenda: { status: custom }
+          outcome: { status: standard, api_name: "Description" }
       hubspot:
         name: "Meeting (Engagement subtype)"
         api_name: "meetings"
         is_standard: true
         mechanism: type_discriminator
         docs_url: https://developers.hubspot.com/docs/reference/api/crm/engagements/meetings
+        attributes:
+          location: { status: standard, api_name: "hs_meeting_location" }
+          attendees: { status: standard, api_name: "hs_attendee_owner_ids" }
+          agenda: { status: custom }
+          outcome: { status: standard, api_name: "hs_meeting_outcome" }
       attio:
         name: "Meetings"
         api_name: "meetings"
         is_standard: true
         mechanism: separate_object
         docs_url: https://attio.com/help/reference/managing-your-data/records/add-record-activities
+        attributes:
+          location: { status: standard, api_name: "location" }
+          attendees: { status: standard, api_name: "attendees" }
+          agenda: { status: standard, api_name: "agenda" }
+          outcome: { status: standard, api_name: "outcome" }
       espocrm:
         name: "Meeting"
         api_name: "Meeting"
         is_standard: true
         mechanism: separate_object
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Meeting.json
+        attributes:
+          location: { status: standard, api_name: "location" }
+          attendees: { status: standard, api_name: "usersIds" }
+          agenda: { status: custom }
+          outcome: { status: custom }
       civicrm:
         name: "Activity (activity_type=Meeting)"
         api_name: "Activity"
         is_standard: true
         mechanism: type_discriminator
         docs_url: https://docs.civicrm.org/user/en/latest/the-user-interface/activities/
+        attributes:
+          location: { status: custom }
+          attendees: { status: standard, api_name: "target_contact_id" }
+          agenda: { status: custom }
+          outcome: { status: custom }
       salesforce_npsp:
         name: "Event"
         api_name: "Event"
         is_standard: true
         mechanism: separate_object
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_event.htm
+        attributes:
+          location: { status: standard, api_name: "Location" }
+          attendees: { status: standard, api_name: "EventRelations" }
+          agenda: { status: custom }
+          outcome: { status: standard, api_name: "Description" }
       bloomerang:
         name: "Interaction (subtype=In-Person)"
         api_name: "Interaction"
         is_standard: true
         mechanism: type_discriminator
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          location: { status: custom }
+          attendees: { status: custom }
+          agenda: { status: custom }
+          outcome: { status: standard, api_name: "Note" }
 
   - catalog_id: activity-phone-call
     name: "Phone Call (Activity subclass)"
@@ -1684,42 +3800,84 @@ mappings:
         is_standard: true
         mechanism: type_discriminator
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_voicecall.htm
+        attributes:
+          phoneNumber: { status: standard, api_name: "CallerNumber" }
+          direction: { status: standard, api_name: "CallType" }
+          durationSeconds: { status: standard, api_name: "CallDurationInSeconds" }
+          recordingUrl: { status: standard, api_name: "CallObject" }
+          outcome: { status: standard, api_name: "CallDisposition" }
       hubspot:
         name: "Call (Engagement subtype)"
         api_name: "calls"
         is_standard: true
         mechanism: type_discriminator
         docs_url: https://developers.hubspot.com/docs/reference/api/crm/engagements/calls
+        attributes:
+          phoneNumber: { status: standard, api_name: "hs_call_to_number" }
+          direction: { status: standard, api_name: "hs_call_direction" }
+          durationSeconds: { status: standard, api_name: "hs_call_duration" }
+          recordingUrl: { status: standard, api_name: "hs_call_recording_url" }
+          outcome: { status: standard, api_name: "hs_call_disposition" }
       attio:
         name: "Calls"
         api_name: "calls"
         is_standard: true
         mechanism: separate_object
         docs_url: https://attio.com/help/reference/managing-your-data/records/add-record-activities
+        attributes:
+          phoneNumber: { status: standard, api_name: "phone_number" }
+          direction: { status: standard, api_name: "direction" }
+          durationSeconds: { status: standard, api_name: "duration" }
+          recordingUrl: { status: standard, api_name: "recording_url" }
+          outcome: { status: custom }
       espocrm:
         name: "Call"
         api_name: "Call"
         is_standard: true
         mechanism: separate_object
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Call.json
+        attributes:
+          phoneNumber: { status: custom }
+          direction: { status: standard, api_name: "direction" }
+          durationSeconds: { status: custom }
+          recordingUrl: { status: custom }
+          outcome: { status: custom }
       civicrm:
         name: "Activity (activity_type=Phone Call)"
         api_name: "Activity"
         is_standard: true
         mechanism: type_discriminator
         docs_url: https://docs.civicrm.org/user/en/latest/the-user-interface/activities/
+        attributes:
+          phoneNumber: { status: custom }
+          direction: { status: custom }
+          durationSeconds: { status: custom }
+          recordingUrl: { status: custom }
+          outcome: { status: custom }
       salesforce_npsp:
         name: "Task (TaskSubtype=Call)"
         api_name: "Task"
         is_standard: true
         mechanism: type_discriminator
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_task.htm
+        attributes:
+          phoneNumber: { status: standard, api_name: "CallerNumber" }
+          direction: { status: standard, api_name: "CallType" }
+          durationSeconds: { status: standard, api_name: "CallDurationInSeconds" }
+          recordingUrl: { status: standard, api_name: "CallObject" }
+          outcome: { status: standard, api_name: "CallDisposition" }
       bloomerang:
         name: "Interaction (subtype=Phone Call)"
         api_name: "Interaction"
         is_standard: true
         mechanism: type_discriminator
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          phoneNumber: { status: custom }
+          direction: { status: custom }
+          durationSeconds: { status: custom }
+          recordingUrl: { status: custom }
+          outcome: { status: custom }
 
   - catalog_id: activity-sms
     name: "SMS (Activity subclass)"
@@ -1735,42 +3893,98 @@ mappings:
         is_standard: false
         mechanism: type_discriminator
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_messagingsession.htm
+        attributes:
+          fromNumber: { status: standard, api_name: "FromMessagingChannel" }
+          toNumber: { status: standard, api_name: "EndUser" }
+          body: { status: standard, api_name: "Content" }
+          direction: { status: standard, api_name: "IsInbound" }
+          platform: { status: custom }
+          deliveryStatus: { status: standard, api_name: "Status" }
+          messageId: { status: standard, api_name: "MessageIdentifier" }
       hubspot:
         name: "Communication (Engagement subtype)"
         api_name: "communications"
         is_standard: true
         mechanism: type_discriminator
         docs_url: https://developers.hubspot.com/docs/reference/api/crm/engagements/communications
+        attributes:
+          fromNumber: { status: standard, api_name: "hs_communication_channel" }
+          toNumber: { status: standard, api_name: "hs_communication_recipient" }
+          body: { status: standard, api_name: "hs_communication_body" }
+          direction: { status: standard, api_name: "hs_communication_direction" }
+          platform: { status: standard, api_name: "hs_communication_channel_type" }
+          deliveryStatus: { status: standard, api_name: "hs_communication_delivery_status" }
+          messageId: { status: standard, api_name: "hs_communication_message_id" }
       attio:
         name: "(custom — typically via Twilio integration)"
         api_name: "not_applicable"
         is_standard: false
         mechanism: separate_object
         docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+        attributes:
+          fromNumber: { status: custom }
+          toNumber: { status: custom }
+          body: { status: custom }
+          direction: { status: custom }
+          platform: { status: custom }
+          deliveryStatus: { status: custom }
+          messageId: { status: custom }
       espocrm:
         name: "(no native SMS)"
         api_name: "not_applicable"
         is_standard: false
         mechanism: type_discriminator
         docs_url: https://docs.espocrm.com/
+        attributes:
+          fromNumber: { status: custom }
+          toNumber: { status: custom }
+          body: { status: custom }
+          direction: { status: custom }
+          platform: { status: custom }
+          deliveryStatus: { status: custom }
+          messageId: { status: custom }
       civicrm:
         name: "Activity (activity_type=SMS)"
         api_name: "Activity"
         is_standard: true
         mechanism: type_discriminator
         docs_url: https://docs.civicrm.org/user/en/latest/sms/
+        attributes:
+          fromNumber: { status: standard, api_name: "phone_id" }
+          toNumber: { status: standard, api_name: "phone_id" }
+          body: { status: standard, api_name: "details" }
+          direction: { status: standard, api_name: "direction" }
+          platform: { status: custom }
+          deliveryStatus: { status: standard, api_name: "delivery_status" }
+          messageId: { status: standard, api_name: "message_id" }
       salesforce_npsp:
         name: "MessagingSession (Service Cloud)"
         api_name: "MessagingSession"
         is_standard: false
         mechanism: type_discriminator
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_messagingsession.htm
+        attributes:
+          fromNumber: { status: standard, api_name: "FromMessagingChannel" }
+          toNumber: { status: standard, api_name: "EndUser" }
+          body: { status: standard, api_name: "Content" }
+          direction: { status: standard, api_name: "IsInbound" }
+          platform: { status: custom }
+          deliveryStatus: { status: standard, api_name: "Status" }
+          messageId: { status: standard, api_name: "MessageIdentifier" }
       bloomerang:
         name: "Interaction (subtype=Text Message)"
         api_name: "Interaction"
         is_standard: true
         mechanism: type_discriminator
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          fromNumber: { status: custom }
+          toNumber: { status: custom }
+          body: { status: standard, api_name: "Body" }
+          direction: { status: standard, api_name: "Direction" }
+          platform: { status: custom }
+          deliveryStatus: { status: custom }
+          messageId: { status: custom }
 
   - catalog_id: activity-video-meeting
     name: "Video Meeting (Activity subclass)"
@@ -1786,39 +4000,88 @@ mappings:
         is_standard: false
         mechanism: type_discriminator
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_event.htm
+        attributes:
+          meetingUrl: { status: custom }
+          platform: { status: custom }
+          meetingId: { status: custom }
+          recordingUrl: { status: custom }
+          transcriptUrl: { status: custom }
+          attendees: { status: standard, api_name: "EventRelations" }
       hubspot:
         name: "Meeting with platform integration"
         api_name: "meetings"
         is_standard: false
         mechanism: type_discriminator
         docs_url: https://developers.hubspot.com/docs/reference/api/crm/engagements/meetings
+        attributes:
+          meetingUrl: { status: custom }
+          platform: { status: standard, api_name: "hs_meeting_source" }
+          meetingId: { status: custom }
+          recordingUrl: { status: standard, api_name: "hs_meeting_recording" }
+          transcriptUrl: { status: custom }
+          attendees: { status: standard, api_name: "hs_attendee_owner_ids" }
       attio:
         name: "Meeting with auto-detected video link"
         api_name: "meetings"
         is_standard: false
         mechanism: type_discriminator
         docs_url: https://attio.com/help/reference/managing-your-data/records/add-record-activities
+        attributes:
+          meetingUrl: { status: standard, api_name: "meeting_url" }
+          platform: { status: standard, api_name: "meeting_provider" }
+          meetingId: { status: standard, api_name: "meeting_id" }
+          recordingUrl: { status: standard, api_name: "recording_url" }
+          transcriptUrl: { status: standard, api_name: "transcript_url" }
+          attendees: { status: standard, api_name: "attendees" }
       espocrm:
         name: "Meeting with custom video fields"
         api_name: "Meeting"
         is_standard: false
         mechanism: type_discriminator
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Meeting.json
+        attributes:
+          meetingUrl: { status: custom }
+          platform: { status: custom }
+          meetingId: { status: custom }
+          recordingUrl: { status: custom }
+          transcriptUrl: { status: custom }
+          attendees: { status: standard, api_name: "usersIds" }
       civicrm:
         name: "Activity (activity_type=Meeting) with custom fields"
         api_name: "Activity"
         is_standard: false
         mechanism: type_discriminator
         docs_url: https://docs.civicrm.org/user/en/latest/the-user-interface/activities/
+        attributes:
+          meetingUrl: { status: custom }
+          platform: { status: custom }
+          meetingId: { status: custom }
+          recordingUrl: { status: custom }
+          transcriptUrl: { status: custom }
+          attendees: { status: standard, api_name: "target_contact_id" }
       salesforce_npsp:
         name: "Event with custom video fields"
         api_name: "Event"
         is_standard: false
         mechanism: type_discriminator
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_event.htm
+        attributes:
+          meetingUrl: { status: custom }
+          platform: { status: custom }
+          meetingId: { status: custom }
+          recordingUrl: { status: custom }
+          transcriptUrl: { status: custom }
+          attendees: { status: standard, api_name: "EventRelations" }
       bloomerang:
         name: "Interaction (subtype=Phone Call or custom Video)"
         api_name: "Interaction"
         is_standard: false
         mechanism: type_discriminator
         docs_url: https://bloomerang.com/api/rest-api-v1/
+        attributes:
+          meetingUrl: { status: custom }
+          platform: { status: custom }
+          meetingId: { status: custom }
+          recordingUrl: { status: custom }
+          transcriptUrl: { status: custom }
+          attendees: { status: custom }

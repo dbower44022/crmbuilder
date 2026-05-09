@@ -82,7 +82,8 @@ systems:
     api_name: Account
     is_standard: true
     mechanism: record_type
-    notes: NPSP's dominant pattern. Household Account is the default Record Type when a Contact is created. Auto-generated household name, formal/informal greeting, and shared mailing address are all NPSP standard fields on Household-typed accounts.
+    notes: NPSP's dominant pattern. Household Account is the default Record Type when a Contact is created. Auto-generated household name, formal/informal greeting, and shared mailing address are all 
+      NPSP standard fields on Household-typed accounts.
     docs_url: https://trailhead.salesforce.com/content/learn/modules/constituent-data-management-with-nonprofit-success-pack/manage-household-accounts
   - system: bloomerang
     name: "(handled at Tier 4 entity via Relationships, not as Account subclass)"
@@ -100,13 +101,21 @@ attributes:
     description: Formal salutation for written correspondence (e.g., "Mr. and Mrs. Smith").
     usage: Drives mail-merge in donor acknowledgment letters and major appeals. NPSP auto-generates from member contact names; manually editable.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: npo02__Formal_Greeting__c
+      bloomerang:
+        status: absent
   - name: informalGreeting
     display_name: Informal Greeting
     type: string
@@ -114,13 +123,21 @@ attributes:
     description: Informal salutation for casual correspondence (e.g., "John and Jane").
     usage: Drives less-formal communications. Distinct from formal for tone control.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: npo02__Informal_Greeting__c
+      bloomerang:
+        status: absent
   - name: householdMembers
     display_name: Member Count
     type: integer
@@ -128,13 +145,21 @@ attributes:
     description: Number of contact records that are members of this household.
     usage: Auto-derived from contacts where AccountId points to this Household. Used for household-size segmentation.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: HouseholdMembers
+      bloomerang:
+        status: absent
   - name: totalLifetimeGiving
     display_name: Total Lifetime Giving (Household Rollup)
     type: currency
@@ -142,14 +167,21 @@ attributes:
     description: Sum of all donations attributed to household members.
     usage: The marquee household-level rollup. Auto-calculated by NPSP as sum of donations linked to any Contact whose AccountId matches this Household. Drives major-donor recognition tiers.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: npo02__TotalOppAmount__c
+      bloomerang:
+        status: absent
 relationships:
   - target: contact
     cardinality: one-to-many

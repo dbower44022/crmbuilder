@@ -86,7 +86,8 @@ systems:
     name: Constituent
     api_name: Constituent
     is_standard: true
-    notes: Bloomerang's primary entity. Type=Individual or Type=Organization gates which attributes apply. Constituents have shared attributes (Generosity Score, lifetime giving, communication preferences) plus type-specific attributes (FirstName/LastName for Individual; FullName for Organization).
+    notes: Bloomerang's primary entity. Type=Individual or Type=Organization gates which attributes apply. Constituents have shared attributes (Generosity Score, lifetime giving, communication 
+      preferences) plus type-specific attributes (FirstName/LastName for Individual; FullName for Organization).
     docs_url: https://bloomerang.com/api/rest-api-v1/
 
 attributes:
@@ -101,13 +102,22 @@ attributes:
     description: Discriminator that selects which attribute subset applies.
     usage: Drives form rendering, validation rules, and reporting filters. The most fundamental attribute on Constituent records.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: absent
-      bloomerang: standard
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: contact_type
+      salesforce_npsp:
+        status: absent
+      bloomerang:
+        status: standard
+        api_name: Type
   - name: fullName
     display_name: Full Name / Display Name
     type: string
@@ -116,13 +126,22 @@ attributes:
     description: Display name shown in lists and reports.
     usage: For Individual, computed from FirstName + LastName; for Organization, the org name; for Household, family name. Bloomerang stores explicitly; CiviCRM uses display_name.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: absent
-      bloomerang: standard
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: display_name
+      salesforce_npsp:
+        status: absent
+      bloomerang:
+        status: standard
+        api_name: FullName
   - name: emailAddress
     display_name: Primary Email
     type: email
@@ -130,13 +149,22 @@ attributes:
     description: Primary email address.
     usage: Universal communication anchor. May have multiple email records depending on system.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: absent
-      bloomerang: standard
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: email
+      salesforce_npsp:
+        status: absent
+      bloomerang:
+        status: standard
+        api_name: PrimaryEmail
   - name: phone
     display_name: Primary Phone
     type: phone
@@ -144,13 +172,22 @@ attributes:
     description: Primary phone number.
     usage: Communication anchor. May have multiple phone records.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: absent
-      bloomerang: standard
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: phone
+      salesforce_npsp:
+        status: absent
+      bloomerang:
+        status: standard
+        api_name: PrimaryPhone
   - name: address
     display_name: Primary Address
     type: address
@@ -158,13 +195,22 @@ attributes:
     description: Primary mailing address.
     usage: Anchors mail campaigns and direct-mail acknowledgments.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: absent
-      bloomerang: standard
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: street_address
+      salesforce_npsp:
+        status: absent
+      bloomerang:
+        status: standard
+        api_name: PrimaryAddress
   - name: generosityScore
     display_name: Generosity Score
     type: integer
@@ -172,13 +218,21 @@ attributes:
     description: Bloomerang-specific calculated metric of donor engagement and giving health.
     usage: A 0-1000 calculated score combining recency, frequency, monetary value, and engagement. Drives at-a-glance donor segmentation and lapsed-donor identification. Unique to Bloomerang.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: absent
-      salesforce_npsp: absent
-      bloomerang: standard
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: absent
+      bloomerang:
+        status: standard
+        api_name: GenerosityScore
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -186,14 +240,22 @@ attributes:
     description: System timestamp.
     usage: Audit field.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: absent
-      bloomerang: standard
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: created_date
+      salesforce_npsp:
+        status: absent
+      bloomerang:
+        status: standard
+        api_name: CreatedDate
 relationships:
   - target: donation
     cardinality: one-to-many

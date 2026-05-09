@@ -141,14 +141,25 @@ attributes:
       Required in others (Salesforce ContentNote requires a Title field).
       Drives list-view display when notes are listed in bulk.
     presence:
-      salesforce: standard
-      hubspot: custom
-      attio: custom
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: Title
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: standard
+        api_name: name
+      civicrm:
+        status: standard
+        api_name: subject
+      salesforce_npsp:
+        status: standard
+        api_name: Title
+      bloomerang:
+        status: standard
+        api_name: Subject
   - name: body
     display_name: Note Content
     type: richtext
@@ -162,14 +173,32 @@ attributes:
       stores in the Content framework with effectively no practical limit.
       Bloomerang Notes are plain text with a Description field.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: Content
+      hubspot:
+        status: standard
+        api_name: hs_note_body
+      attio:
+        status: standard
+        api_name: content
+      espocrm:
+        status: standard
+        api_name: post
+      civicrm:
+        status: standard
+        api_name: note
+      salesforce_npsp:
+        status: standard
+        api_name: Content
+      bloomerang:
+        status: standard
+        api_name: Description
+    common_synonyms:
+      - content
+      - text
+      - note text
+      - note content
   - name: parent
     display_name: Related To
     type: reference
@@ -184,14 +213,30 @@ attributes:
       uses parent (linkParent) field; Bloomerang attaches Notes to
       Constituents via AccountId.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: LinkedEntityId
+      hubspot:
+        status: standard
+        api_name: parent
+      attio:
+        status: standard
+        api_name: parent
+      espocrm:
+        status: standard
+        api_name: parentId
+      civicrm:
+        status: standard
+        api_name: parent
+      salesforce_npsp:
+        status: standard
+        api_name: LinkedEntityId
+      bloomerang:
+        status: standard
+        api_name: Parent
+    common_synonyms:
+      - related to
+      - related record
   - name: privacy
     display_name: Privacy
     type: enum
@@ -209,14 +254,21 @@ attributes:
       built-in. Salesforce and Attio control privacy through sharing rules
       on the underlying object rather than a per-note privacy flag.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: custom
-      bloomerang: custom
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: privacy
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: custom
   - name: assignedUser
     display_name: Owner / Author
     type: reference
@@ -229,14 +281,31 @@ attributes:
       attribution in displays ("Note by Sarah - 2 days ago"), and edit
       permissions (some systems only allow the author to edit/delete).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: OwnerId
+      hubspot:
+        status: standard
+        api_name: hubspot_owner_id
+      attio:
+        status: standard
+        api_name: created_by
+      espocrm:
+        status: standard
+        api_name: createdById
+      civicrm:
+        status: standard
+        api_name: contact_id
+      salesforce_npsp:
+        status: standard
+        api_name: OwnerId
+      bloomerang:
+        status: standard
+        api_name: CreatedBy
+    common_synonyms:
+      - author
+      - created by
+      - note author
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -247,14 +316,27 @@ attributes:
       Drives chronological ordering in record activity feeds (newest notes
       first, typically). Read-only and system-managed.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: CreatedDate
+      hubspot:
+        status: standard
+        api_name: createdate
+      attio:
+        status: standard
+        api_name: created_at
+      espocrm:
+        status: standard
+        api_name: createdAt
+      civicrm:
+        status: standard
+        api_name: created_date
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: standard
+        api_name: CreatedDate
   - name: lastModifiedAt
     display_name: Last Modified Date
     type: datetime
@@ -265,14 +347,27 @@ attributes:
       Drives "edited" indicators in UI when a note has been modified after
       creation. Some systems also track edit history with diff details.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: LastModifiedDate
+      hubspot:
+        status: standard
+        api_name: hs_lastmodifieddate
+      attio:
+        status: standard
+        api_name: updated_at
+      espocrm:
+        status: standard
+        api_name: modifiedAt
+      civicrm:
+        status: standard
+        api_name: modified_date
+      salesforce_npsp:
+        status: standard
+        api_name: LastModifiedDate
+      bloomerang:
+        status: standard
+        api_name: LastModified
   - name: attachments
     display_name: Attachments
     type: multireference
@@ -287,17 +382,25 @@ attributes:
       support file attachments via the Engagements API. Less universally
       supported than the body field.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: custom
-
-# =============================================================================
-# Relationships to other entities
-# =============================================================================
+      salesforce:
+        status: standard
+        api_name: ContentDocumentId
+      hubspot:
+        status: standard
+        api_name: attachments
+      attio:
+        status: standard
+        api_name: attachments
+      espocrm:
+        status: standard
+        api_name: attachmentsIds
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: ContentDocumentId
+      bloomerang:
+        status: custom
 relationships:
   - target: account
     cardinality: many-to-one

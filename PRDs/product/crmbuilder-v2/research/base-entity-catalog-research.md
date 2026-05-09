@@ -1,8 +1,8 @@
 # Base Entity Catalog: Cross-System Research Narrative
 
-**Last Updated:** 05-09-26 12:00
-**Version:** 0.1
-**Companion to:** `base-entity-catalog/` (42 entries; Tiers 1-5 complete)
+**Last Updated:** 05-09-26 13:05
+**Version:** 0.2
+**Companion to:** `base-entity-catalog/` (42 entries; Tiers 1-5 complete; schema v0.8)
 **Owner:** CRMBuilder v2
 
 ---
@@ -11,6 +11,7 @@
 
 | Version | Date | Description |
 |---------|------|-------------|
+| 0.2 | 05-09-26 | Updated DB schema sketch in "Catalog ingestion at Step 0 follow-on" to reflect catalog schema v0.8: `catalog_attribute_presence` rows now carry `api_name` (in addition to status); `catalog_attribute` records optionally carry `common_synonyms`. No structural narrative changes; existing eight archetype patterns and modeling decisions remain accurate. |
 | 0.1 | 05-09-26 | Initial narrative covering all five tiers of the base entity catalog. Documents archetype patterns observed across seven surveyed CRMs, modeling divergences worth flagging for V2's interview methodology, and design recommendations for V2's catalog ingestion and cross-system mapping. |
 
 ---
@@ -204,9 +205,11 @@ When V2's methodology entity schema is built (the next major build milestone aft
 
 3. Each system entry on each catalog entity becomes a row in a `catalog_entity_system` table with: catalog_entity_id, system, system_name, api_name, is_standard, mechanism (nullable), notes.
 
-4. Each per-attribute presence value becomes a row in a `catalog_attribute_presence` table with: catalog_attribute_id, system, presence (standard / custom / absent).
+4. Each per-attribute presence value becomes a row in a `catalog_attribute_presence` table with: catalog_attribute_id, system, status (standard / custom / absent), and optional api_name (the system-specific field identifier on standard cells; null on custom and absent cells). The api_name column is what V2's cross-system mapper uses at deploy time to translate domain attributes into target-backend field names.
 
-5. Sources collapse into a `catalog_source` table referenced by catalog_entity.
+5. Each attribute may carry `common_synonyms` (alternate vocabulary terms users say when describing the attribute) — populated selectively on high-divergence-vocabulary fields (`industry` → sector / vertical / line of business; `doNotContact` → DNC / opt-out / suppress). Stored either as a JSON array column on `catalog_attribute` or as a separate `catalog_attribute_synonym` join table depending on V2's query patterns.
+
+6. Sources collapse into a `catalog_source` table referenced by catalog_entity.
 
 The denormalized YAML form is convenient for human authoring; the normalized DB form is what V2 queries at runtime.
 

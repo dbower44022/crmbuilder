@@ -132,14 +132,23 @@ attributes:
       Customer-facing identifier ("Order #SO-2026-1234"). Drives shipping
       labels, invoice generation, and ERP cross-referencing.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: OrderNumber
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: orderNumber
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: OrderNumber
+      bloomerang:
+        status: absent
   - name: account
     display_name: Account
     type: reference
@@ -150,14 +159,23 @@ attributes:
     usage: >
       Drives bill-to defaults, credit checks, and sales-rep ownership.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Account
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: account
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Account
+      bloomerang:
+        status: absent
   - name: contact
     display_name: Contact
     type: reference
@@ -169,14 +187,23 @@ attributes:
       Drives order-confirmation email recipient, support escalation
       routing for order issues.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Contact
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: contact
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Contact
+      bloomerang:
+        status: absent
   - name: opportunity
     display_name: Opportunity
     type: reference
@@ -188,14 +215,23 @@ attributes:
       Anchors order to its sales pursuit. Used in commission calculations
       and rep attribution.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Opportunity
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: opportunity
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Opportunity
+      bloomerang:
+        status: absent
   - name: quote
     display_name: Quote
     type: reference
@@ -207,14 +243,23 @@ attributes:
       Lineage anchor — proves which version of pricing the customer
       accepted.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Quote
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: quote
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Quote
+      bloomerang:
+        status: absent
   - name: status
     display_name: Status
     type: enum
@@ -236,14 +281,23 @@ attributes:
       shipping-label generation, billing events, and customer
       notifications.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Status
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: status
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Status
+      bloomerang:
+        status: absent
   - name: orderDate
     display_name: Order Date
     type: date
@@ -253,14 +307,23 @@ attributes:
     usage: >
       Anchors fulfillment SLAs, revenue recognition, and reporting.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: OrderDate
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: orderDate
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: OrderDate
+      bloomerang:
+        status: absent
   - name: effectiveDate
     display_name: Effective Date
     type: date
@@ -272,14 +335,22 @@ attributes:
       and effectivity (subscription start dates, contract effective
       dates).
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: custom
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: EffectiveDate
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: custom
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: EffectiveDate
+      bloomerang:
+        status: absent
   - name: subtotal
     display_name: Subtotal
     type: currency
@@ -289,14 +360,23 @@ attributes:
     usage: >
       Auto-calculated from order items.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Subtotal
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: subtotal
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Subtotal
+      bloomerang:
+        status: absent
   - name: grandTotal
     display_name: Grand Total
     type: currency
@@ -307,14 +387,23 @@ attributes:
       Headline value of the order. Drives revenue-recognition,
       commission calculation, and dashboard metrics.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: GrandTotal
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: grandTotal
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: GrandTotal
+      bloomerang:
+        status: absent
   - name: billingAddress
     display_name: Billing Address
     type: address
@@ -324,14 +413,23 @@ attributes:
     usage: >
       Captured per-order to allow per-order billing variation.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: BillingAddress
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: billingAddress
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: BillingAddress
+      bloomerang:
+        status: absent
   - name: shippingAddress
     display_name: Shipping Address
     type: address
@@ -342,14 +440,23 @@ attributes:
       Drives label-generation and shipping-rate calculation. Often
       different from billing address for multi-location customers.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: ShippingAddress
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: shippingAddress
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: ShippingAddress
+      bloomerang:
+        status: absent
   - name: assignedUser
     display_name: Owner
     type: reference
@@ -360,14 +467,23 @@ attributes:
     usage: >
       Drives commission attribution and "my orders" filtering.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: AssignedUser
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: assignedUser
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: AssignedUser
+      bloomerang:
+        status: absent
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -377,17 +493,23 @@ attributes:
     usage: >
       Audit field.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
-# =============================================================================
-# Relationships to other entities
-# =============================================================================
+      salesforce:
+        status: standard
+        api_name: CreatedDate
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: createdAt
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: absent
 relationships:
   - target: account
     cardinality: many-to-one

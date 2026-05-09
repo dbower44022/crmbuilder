@@ -157,14 +157,31 @@ attributes:
       describe what happened or what needs to happen ("Discussed Q2 renewal,"
       "Send proposal," "Birthday card").
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: Subject
+      hubspot:
+        status: standard
+        api_name: hs_engagement_subject
+      attio:
+        status: standard
+        api_name: name
+      espocrm:
+        status: standard
+        api_name: name
+      civicrm:
+        status: standard
+        api_name: subject
+      salesforce_npsp:
+        status: standard
+        api_name: Subject
+      bloomerang:
+        status: standard
+        api_name: Subject
+    common_synonyms:
+      - title
+      - topic
+      - summary
   - name: activityType
     display_name: Activity Type
     type: enum
@@ -185,14 +202,31 @@ attributes:
       heavily customized in nonprofit deployments to capture mission-specific
       activity types (Site Visit, Mentoring Session, Workshop Attendance).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: TaskSubtype
+      hubspot:
+        status: standard
+        api_name: hs_engagement_type
+      attio:
+        status: standard
+        api_name: type
+      espocrm:
+        status: standard
+        api_name: type
+      civicrm:
+        status: standard
+        api_name: activity_type_id
+      salesforce_npsp:
+        status: standard
+        api_name: TaskSubtype
+      bloomerang:
+        status: standard
+        api_name: Type
+    common_synonyms:
+      - type
+      - kind
+      - channel
   - name: status
     display_name: Status
     type: enum
@@ -213,14 +247,26 @@ attributes:
       scheduled rather than statused. Bloomerang's Interactions are
       typically log entries (already-happened) so status is less central.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: custom
-
+      salesforce:
+        status: standard
+        api_name: Status
+      hubspot:
+        status: standard
+        api_name: hs_task_status
+      attio:
+        status: standard
+        api_name: status
+      espocrm:
+        status: standard
+        api_name: status
+      civicrm:
+        status: standard
+        api_name: status_id
+      salesforce_npsp:
+        status: standard
+        api_name: Status
+      bloomerang:
+        status: custom
   - name: activityDate
     display_name: Activity Date
     type: date
@@ -233,14 +279,27 @@ attributes:
       and Meetings this is the date the interaction happened or is
       scheduled. For Emails this is the date sent or received.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: ActivityDate
+      hubspot:
+        status: standard
+        api_name: hs_timestamp
+      attio:
+        status: standard
+        api_name: activity_date
+      espocrm:
+        status: standard
+        api_name: dateStart
+      civicrm:
+        status: standard
+        api_name: activity_date_time
+      salesforce_npsp:
+        status: standard
+        api_name: ActivityDate
+      bloomerang:
+        status: standard
+        api_name: Date
   - name: dueDate
     display_name: Due Date
     type: date
@@ -253,14 +312,25 @@ attributes:
       for one date but due (results required) by another. Typically only
       populated on Task-type activities.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: ActivityDate
+      hubspot:
+        status: standard
+        api_name: hs_task_due_date
+      attio:
+        status: standard
+        api_name: deadline_at
+      espocrm:
+        status: standard
+        api_name: dateEnd
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: ActivityDate
+      bloomerang:
+        status: absent
   - name: dateStart
     display_name: Start Date/Time
     type: datetime
@@ -272,14 +342,27 @@ attributes:
       most systems. Combined with dateEnd determines duration. Drives
       calendar UI, conflict-detection, and meeting-reminder automation.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: StartDateTime
+      hubspot:
+        status: standard
+        api_name: hs_meeting_start_time
+      attio:
+        status: standard
+        api_name: starts_at
+      espocrm:
+        status: standard
+        api_name: dateStart
+      civicrm:
+        status: standard
+        api_name: activity_date_time
+      salesforce_npsp:
+        status: standard
+        api_name: StartDateTime
+      bloomerang:
+        status: standard
+        api_name: DateStart
   - name: dateEnd
     display_name: End Date/Time
     type: datetime
@@ -292,14 +375,27 @@ attributes:
       ("hours spent in meetings this week"). Some systems compute duration
       automatically from start + duration rather than storing dateEnd.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: EndDateTime
+      hubspot:
+        status: standard
+        api_name: hs_meeting_end_time
+      attio:
+        status: standard
+        api_name: ends_at
+      espocrm:
+        status: standard
+        api_name: dateEnd
+      civicrm:
+        status: standard
+        api_name: date_end
+      salesforce_npsp:
+        status: standard
+        api_name: EndDateTime
+      bloomerang:
+        status: standard
+        api_name: DateEnd
   - name: description
     display_name: Description
     type: text
@@ -313,14 +409,27 @@ attributes:
       substance the rest of the structured fields don't. In Bloomerang
       Interactions this is the primary content field.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: Description
+      hubspot:
+        status: standard
+        api_name: hs_engagement_body
+      attio:
+        status: standard
+        api_name: description
+      espocrm:
+        status: standard
+        api_name: description
+      civicrm:
+        status: standard
+        api_name: details
+      salesforce_npsp:
+        status: standard
+        api_name: Description
+      bloomerang:
+        status: standard
+        api_name: Note
   - name: parent
     display_name: Related To
     type: reference
@@ -338,19 +447,37 @@ attributes:
       Opportunity, Case]. HubSpot uses Associations. CiviCRM uses
       ActivityContact junction records.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
+      salesforce:
+        status: standard
+        api_name: WhatId
+      hubspot:
+        status: standard
+        api_name: parent
+      attio:
+        status: standard
+        api_name: parent
+      espocrm:
+        status: standard
+        api_name: parentId
+      civicrm:
+        status: standard
+        api_name: parent
+      salesforce_npsp:
+        status: standard
+        api_name: WhatId
+      bloomerang:
+        status: standard
+        api_name: Parent
     notes: >
       Polymorphism support varies. Salesforce, EspoCRM, CiviCRM model
       polymorphic activity-to-anything cleanly. HubSpot Engagements
       associate via Associations API. Bloomerang Interactions associate
       with Constituents only (no Account vs Contact distinction).
 
+    common_synonyms:
+      - related to
+      - related record
+      - subject record
   - name: assignedUser
     display_name: Assigned User
     type: reference
@@ -364,14 +491,31 @@ attributes:
       reports, and reassignment workflows. Almost universal — every
       activity needs an accountable user.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: OwnerId
+      hubspot:
+        status: standard
+        api_name: hubspot_owner_id
+      attio:
+        status: standard
+        api_name: workspace_member_owner
+      espocrm:
+        status: standard
+        api_name: assignedUserId
+      civicrm:
+        status: standard
+        api_name: assignee_id
+      salesforce_npsp:
+        status: standard
+        api_name: OwnerId
+      bloomerang:
+        status: standard
+        api_name: CreatedBy
+    common_synonyms:
+      - assigned to
+      - owner
+      - responsible party
   - name: priority
     display_name: Priority
     type: enum
@@ -387,14 +531,24 @@ attributes:
       Task-type activities where some are urgent and others routine.
       Typically not populated on Meetings, Calls, or completed Emails.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: custom
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Priority
+      hubspot:
+        status: standard
+        api_name: hs_task_priority
+      attio:
+        status: custom
+      espocrm:
+        status: standard
+        api_name: priority
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: Priority
+      bloomerang:
+        status: absent
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -406,17 +560,27 @@ attributes:
       scheduled). Drives "tasks created this week" reports and integration
       sync filters.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
-# =============================================================================
-# Relationships to other entities
-# =============================================================================
+      salesforce:
+        status: standard
+        api_name: CreatedDate
+      hubspot:
+        status: standard
+        api_name: createdate
+      attio:
+        status: standard
+        api_name: created_at
+      espocrm:
+        status: standard
+        api_name: createdAt
+      civicrm:
+        status: standard
+        api_name: created_date
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: standard
+        api_name: CreatedDate
 relationships:
   - target: account
     cardinality: many-to-one

@@ -134,14 +134,24 @@ attributes:
     usage: >
       Drives selection in quote/order creation flows.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Name
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: name
+      civicrm:
+        status: standard
+        api_name: name
+      salesforce_npsp:
+        status: standard
+        api_name: Name
+      bloomerang:
+        status: absent
   - name: description
     display_name: Description
     type: text
@@ -152,14 +162,24 @@ attributes:
       Internal documentation. Helps reps choose the right price list
       when creating quotes.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Description
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: description
+      civicrm:
+        status: standard
+        api_name: description
+      salesforce_npsp:
+        status: standard
+        api_name: Description
+      bloomerang:
+        status: absent
   - name: isActive
     display_name: Active
     type: boolean
@@ -170,14 +190,24 @@ attributes:
       Inactive price lists hide from selection but remain on historical
       records.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: IsActive
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: isActive
+      civicrm:
+        status: standard
+        api_name: is_active
+      salesforce_npsp:
+        status: standard
+        api_name: IsActive
+      bloomerang:
+        status: absent
   - name: isStandard
     display_name: Is Standard
     type: boolean
@@ -189,14 +219,23 @@ attributes:
       IsStandard=true. Other price books are non-standard. Drives
       default-pricing fallback logic.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: IsStandard
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: is_standard
+      salesforce_npsp:
+        status: standard
+        api_name: IsStandard
+      bloomerang:
+        status: absent
   - name: currency
     display_name: Currency
     type: enum
@@ -214,14 +253,24 @@ attributes:
       Drives currency-conversion logic on multi-currency deployments.
       Per-product price entries can override.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Currency
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: currency
+      civicrm:
+        status: standard
+        api_name: currency
+      salesforce_npsp:
+        status: standard
+        api_name: Currency
+      bloomerang:
+        status: absent
   - name: validFrom
     display_name: Valid From
     type: date
@@ -232,14 +281,21 @@ attributes:
       Used in pricing-history scenarios where price lists have explicit
       activation windows. Less commonly populated.
     presence:
-      salesforce: custom
-      hubspot: absent
-      attio: absent
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: custom
-      bloomerang: absent
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: valid_from
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: absent
   - name: validUntil
     display_name: Valid Until
     type: date
@@ -249,14 +305,21 @@ attributes:
     usage: >
       Used in scheduled-pricing scenarios.
     presence:
-      salesforce: custom
-      hubspot: absent
-      attio: absent
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: custom
-      bloomerang: absent
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: valid_until
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: absent
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -266,17 +329,24 @@ attributes:
     usage: >
       Audit field.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
-# =============================================================================
-# Relationships to other entities
-# =============================================================================
+      salesforce:
+        status: standard
+        api_name: CreatedDate
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: createdAt
+      civicrm:
+        status: standard
+        api_name: created_date
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: absent
 relationships:
   - target: product
     cardinality: many-to-many

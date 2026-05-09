@@ -48,7 +48,8 @@ systems:
     name: "ContentDocument / ContentVersion"
     api_name: "ContentDocument, ContentVersion"
     is_standard: true
-    notes: Modern Salesforce file framework. ContentDocument is the parent record; ContentVersion holds the actual binary content with versioning. ContentDocumentLink is the polymorphic junction to records. Replaced legacy Attachment object.
+    notes: Modern Salesforce file framework. ContentDocument is the parent record; ContentVersion holds the actual binary content with versioning. ContentDocumentLink is the polymorphic junction to 
+      records. Replaced legacy Attachment object.
     docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contentdocument.htm
   - system: hubspot
     name: Files
@@ -96,13 +97,27 @@ attributes:
     description: Display name of the document.
     usage: Drives list-view legibility and search. Often defaults to the original filename but can be edited.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
+      salesforce:
+        status: standard
+        api_name: Title
+      hubspot:
+        status: standard
+        api_name: name
+      attio:
+        status: standard
+        api_name: name
+      espocrm:
+        status: standard
+        api_name: name
+      civicrm:
+        status: standard
+        api_name: description
+      salesforce_npsp:
+        status: standard
+        api_name: Title
+      bloomerang:
+        status: standard
+        api_name: Description
   - name: fileName
     display_name: File Name
     type: string
@@ -111,13 +126,31 @@ attributes:
     description: Original filename of the uploaded file (with extension).
     usage: Distinct from display name; preserves the original upload filename for download. Drives MIME-type detection and extension-based handling.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
+      salesforce:
+        status: standard
+        api_name: PathOnClient
+      hubspot:
+        status: standard
+        api_name: name
+      attio:
+        status: standard
+        api_name: file_name
+      espocrm:
+        status: standard
+        api_name: name
+      civicrm:
+        status: standard
+        api_name: file_name
+      salesforce_npsp:
+        status: standard
+        api_name: PathOnClient
+      bloomerang:
+        status: standard
+        api_name: FileName
+    common_synonyms:
+      - filename
+      - name
+      - file
   - name: mimeType
     display_name: MIME Type
     type: string
@@ -125,13 +158,31 @@ attributes:
     description: IANA MIME type of the file content.
     usage: Drives inline preview behavior (PDFs render inline, images display thumbnails) and download routing.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
+      salesforce:
+        status: standard
+        api_name: FileType
+      hubspot:
+        status: standard
+        api_name: type
+      attio:
+        status: standard
+        api_name: mime_type
+      espocrm:
+        status: standard
+        api_name: type
+      civicrm:
+        status: standard
+        api_name: mime_type
+      salesforce_npsp:
+        status: standard
+        api_name: FileType
+      bloomerang:
+        status: standard
+        api_name: MimeType
+    common_synonyms:
+      - file type
+      - content type
+      - format
   - name: fileSize
     display_name: File Size (bytes)
     type: integer
@@ -139,13 +190,31 @@ attributes:
     description: Size of the file in bytes.
     usage: Drives storage-quota reporting, upload-progress UI, and large-file warning thresholds.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
+      salesforce:
+        status: standard
+        api_name: ContentSize
+      hubspot:
+        status: standard
+        api_name: size
+      attio:
+        status: standard
+        api_name: size
+      espocrm:
+        status: standard
+        api_name: size
+      civicrm:
+        status: standard
+        api_name: file_size
+      salesforce_npsp:
+        status: standard
+        api_name: ContentSize
+      bloomerang:
+        status: standard
+        api_name: Size
+    common_synonyms:
+      - size
+      - file size
+      - bytes
   - name: description
     display_name: Description
     type: text
@@ -153,13 +222,25 @@ attributes:
     description: Optional description of the document.
     usage: Free-form context. Helps users find documents by content rather than filename. Often empty in practice.
     presence:
-      salesforce: standard
-      hubspot: custom
-      attio: custom
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
+      salesforce:
+        status: standard
+        api_name: Description
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: standard
+        api_name: description
+      civicrm:
+        status: standard
+        api_name: description
+      salesforce_npsp:
+        status: standard
+        api_name: Description
+      bloomerang:
+        status: standard
+        api_name: Description
   - name: parent
     display_name: Related To
     type: reference
@@ -168,13 +249,27 @@ attributes:
     description: Polymorphic reference to the record this document is attached to (Contact, Account, Opportunity, Case, Donation, etc.).
     usage: Anchors the document to its parent record. Salesforce uses ContentDocumentLink junction; CiviCRM uses entity_table + entity_id; EspoCRM uses linkParent.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
+      salesforce:
+        status: standard
+        api_name: LinkedEntityId
+      hubspot:
+        status: standard
+        api_name: parent
+      attio:
+        status: standard
+        api_name: parent
+      espocrm:
+        status: standard
+        api_name: parentId
+      civicrm:
+        status: standard
+        api_name: entity_id
+      salesforce_npsp:
+        status: standard
+        api_name: LinkedEntityId
+      bloomerang:
+        status: standard
+        api_name: Parent
   - name: assignedUser
     display_name: Owner
     type: reference
@@ -183,13 +278,27 @@ attributes:
     description: User who uploaded or owns the document.
     usage: Drives permissions and accountability. Salesforce ContentVersion has CreatedById; HubSpot Files have created_by_id.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
+      salesforce:
+        status: standard
+        api_name: OwnerId
+      hubspot:
+        status: standard
+        api_name: created_by
+      attio:
+        status: standard
+        api_name: created_by
+      espocrm:
+        status: standard
+        api_name: createdById
+      civicrm:
+        status: standard
+        api_name: upload_date
+      salesforce_npsp:
+        status: standard
+        api_name: OwnerId
+      bloomerang:
+        status: standard
+        api_name: CreatedBy
   - name: status
     display_name: Status
     type: enum
@@ -204,13 +313,21 @@ attributes:
     description: Lifecycle state of the document.
     usage: Drives document-management workflows (review-and-approve cycles, expiration tracking). EspoCRM ships these enum values; most other systems require custom configuration.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: custom
-      bloomerang: custom
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: standard
+        api_name: status
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: custom
   - name: version
     display_name: Version
     type: string
@@ -218,13 +335,23 @@ attributes:
     description: Version identifier (e.g., "1.0", "1.1", "Final").
     usage: Drives version-history tracking when documents are updated. Salesforce ContentVersion auto-increments; other systems require manual versioning.
     presence:
-      salesforce: standard
-      hubspot: custom
-      attio: custom
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: custom
+      salesforce:
+        status: standard
+        api_name: VersionNumber
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: standard
+        api_name: publishVersion
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: VersionNumber
+      bloomerang:
+        status: custom
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -232,14 +359,27 @@ attributes:
     description: System timestamp of upload.
     usage: Drives document-vintage reporting and storage-cohort analysis.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: CreatedDate
+      hubspot:
+        status: standard
+        api_name: createdate
+      attio:
+        status: standard
+        api_name: created_at
+      espocrm:
+        status: standard
+        api_name: createdAt
+      civicrm:
+        status: standard
+        api_name: created_date
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: standard
+        api_name: CreatedDate
 relationships:
   - target: account
     cardinality: many-to-one

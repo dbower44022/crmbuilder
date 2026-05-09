@@ -55,7 +55,8 @@ systems:
     api_name: EmailMessage
     is_standard: true
     mechanism: separate_object
-    notes: Salesforce has EmailMessage as a first-class object distinct from Task. Captures FromAddress, ToAddress, CcAddress, BccAddress, Subject, TextBody, HtmlBody, MessageDate, Status, Incoming. Linked to Cases, Contacts, and other entities via EmailMessageRelation.
+    notes: Salesforce has EmailMessage as a first-class object distinct from Task. Captures FromAddress, ToAddress, CcAddress, BccAddress, Subject, TextBody, HtmlBody, MessageDate, Status, Incoming. 
+      Linked to Cases, Contacts, and other entities via EmailMessageRelation.
     docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_emailmessage.htm
   - system: hubspot
     name: "Email (Engagement subtype)"
@@ -76,7 +77,8 @@ systems:
     api_name: Email
     is_standard: true
     mechanism: separate_object
-    notes: First-class Email entity with rich threading (parent / repliedTo / replies links). Includes name (subject), from, to, cc, bcc, body, isHtml, messageId, status (Draft / Sending / Sent / Archived).
+    notes: First-class Email entity with rich threading (parent / repliedTo / replies links). Includes name (subject), from, to, cc, bcc, body, isHtml, messageId, status (Draft / Sending / Sent / 
+      Archived).
     docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Resources/metadata/entityDefs/Email.json
   - system: civicrm
     name: "Activity (activity_type=Email)"
@@ -108,13 +110,29 @@ attributes:
     description: Sender's email address.
     usage: Anchors sender identification. For sent emails, the user's address; for received, the contact's. Drives email-thread reconciliation.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: standard
+      salesforce:
+        status: standard
+        api_name: FromAddress
+      hubspot:
+        status: standard
+        api_name: hs_email_from_email
+      attio:
+        status: standard
+        api_name: from_address
+      espocrm:
+        status: standard
+        api_name: from
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: FromAddress
+      bloomerang:
+        status: standard
+        api_name: FromAddress
+    common_synonyms:
+      - sender
+      - from
   - name: toAddresses
     display_name: To
     type: text
@@ -122,13 +140,30 @@ attributes:
     description: Comma-separated recipient email addresses.
     usage: Drives recipient identification. Multiple recipients common; first recipient typically used for primary contact-association.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: standard
+      salesforce:
+        status: standard
+        api_name: ToAddress
+      hubspot:
+        status: standard
+        api_name: hs_email_to_email
+      attio:
+        status: standard
+        api_name: to_addresses
+      espocrm:
+        status: standard
+        api_name: to
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: ToAddress
+      bloomerang:
+        status: standard
+        api_name: ToAddresses
+    common_synonyms:
+      - recipients
+      - to
+      - sent to
   - name: ccAddresses
     display_name: CC
     type: text
@@ -136,13 +171,25 @@ attributes:
     description: Comma-separated CC recipient email addresses.
     usage: Identifies copied stakeholders. Useful for relationship-mapping (who's looped in on conversations with this contact).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: custom
+      salesforce:
+        status: standard
+        api_name: CcAddress
+      hubspot:
+        status: standard
+        api_name: hs_email_cc_email
+      attio:
+        status: standard
+        api_name: cc_addresses
+      espocrm:
+        status: standard
+        api_name: cc
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: CcAddress
+      bloomerang:
+        status: custom
   - name: bccAddresses
     display_name: BCC
     type: text
@@ -150,13 +197,25 @@ attributes:
     description: Comma-separated BCC recipient email addresses.
     usage: Captures hidden recipients. The CRM's catch-all alias is often BCCed for auto-logging.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: custom
+      salesforce:
+        status: standard
+        api_name: BccAddress
+      hubspot:
+        status: standard
+        api_name: hs_email_bcc_email
+      attio:
+        status: standard
+        api_name: bcc_addresses
+      espocrm:
+        status: standard
+        api_name: bcc
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: BccAddress
+      bloomerang:
+        status: custom
   - name: bodyHtml
     display_name: Body (HTML)
     type: richtext
@@ -164,13 +223,31 @@ attributes:
     description: Rich-text HTML body of the email.
     usage: The actual email content as rendered. Drives full-text search and content review. Storage size can be substantial for long email threads.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: standard
+      salesforce:
+        status: standard
+        api_name: HtmlBody
+      hubspot:
+        status: standard
+        api_name: hs_email_html
+      attio:
+        status: standard
+        api_name: body_html
+      espocrm:
+        status: standard
+        api_name: body
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: HtmlBody
+      bloomerang:
+        status: standard
+        api_name: BodyHtml
+    common_synonyms:
+      - body
+      - content
+      - message
+      - email content
   - name: bodyText
     display_name: Body (Plaintext)
     type: text
@@ -178,13 +255,24 @@ attributes:
     description: Plaintext fallback body of the email.
     usage: Used for searching, plaintext-only display, and as a fallback when HTML rendering is suppressed.
     presence:
-      salesforce: standard
-      hubspot: custom
-      attio: custom
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: standard
+      salesforce:
+        status: standard
+        api_name: TextBody
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: standard
+        api_name: bodyPlain
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: TextBody
+      bloomerang:
+        status: standard
+        api_name: BodyText
   - name: direction
     display_name: Direction
     type: enum
@@ -196,13 +284,26 @@ attributes:
     description: Whether the email was sent by the org, received, or saved as draft.
     usage: Distinguishes outbound from inbound. Drives "my sent" filtering and incoming-email routing.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: standard
+      salesforce:
+        status: standard
+        api_name: Incoming
+      hubspot:
+        status: standard
+        api_name: hs_email_direction
+      attio:
+        status: standard
+        api_name: direction
+      espocrm:
+        status: standard
+        api_name: isReplied
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: Incoming
+      bloomerang:
+        status: standard
+        api_name: Direction
   - name: messageId
     display_name: Message-ID
     type: string
@@ -210,13 +311,25 @@ attributes:
     description: RFC-822 Message-ID header for the email.
     usage: Used for thread reconciliation across systems and to dedupe email logging when multiple recipients each BCC the CRM.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: custom
+      salesforce:
+        status: standard
+        api_name: MessageIdentifier
+      hubspot:
+        status: standard
+        api_name: hs_email_message_id
+      attio:
+        status: standard
+        api_name: message_id
+      espocrm:
+        status: standard
+        api_name: messageId
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: MessageIdentifier
+      bloomerang:
+        status: custom
   - name: inReplyTo
     display_name: In-Reply-To
     type: string
@@ -224,14 +337,25 @@ attributes:
     description: RFC-822 In-Reply-To header pointing at the message this email replies to.
     usage: Drives email-threading. Lets the CRM display conversation threads rather than scattered individual emails.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: InReplyTo
+      hubspot:
+        status: standard
+        api_name: inreplyto
+      attio:
+        status: standard
+        api_name: in_reply_to
+      espocrm:
+        status: standard
+        api_name: replied
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: InReplyTo
+      bloomerang:
+        status: absent
 sources:
   - title: "Salesforce Object Reference: EmailMessage"
     url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_emailmessage.htm

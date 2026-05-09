@@ -125,7 +125,23 @@ attributes:
     max_length: 255
     description: Display name of the grant.
     usage: Identifies the specific grant in lists, reports, and reporting deadlines.
-    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: standard, salesforce_npsp: standard, bloomerang: custom }
+    presence:
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: rationale
+      salesforce_npsp:
+        status: standard
+        api_name: Name
+      bloomerang:
+        status: custom
 
   - name: amountRequested
     display_name: Amount Requested
@@ -133,7 +149,26 @@ attributes:
     required: false
     description: Amount applied for in the grant proposal.
     usage: Distinct from amount awarded. Drives award-rate reporting (awards / requests ratio per funder).
-    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: standard, salesforce_npsp: custom, bloomerang: custom }
+    presence:
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: amount_requested
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: custom
+    common_synonyms:
+      - requested amount
+      - ask amount
+      - proposal amount
 
   - name: amountAwarded
     display_name: Amount Awarded
@@ -141,7 +176,27 @@ attributes:
     required: false
     description: Amount actually granted.
     usage: Drives revenue reporting and compares to amountRequested for funder-relations analysis.
-    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: standard, salesforce_npsp: standard, bloomerang: custom }
+    presence:
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: amount_granted
+      salesforce_npsp:
+        status: standard
+        api_name: Amount
+      bloomerang:
+        status: custom
+    common_synonyms:
+      - awarded
+      - granted amount
+      - awarded amount
 
   - name: status
     display_name: Status
@@ -153,7 +208,23 @@ attributes:
       Drives grant-pipeline reporting. Also gates automation — submit-due
       reminders before Submitted, reporting-due reminders during Reporting
       Period.
-    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: standard, salesforce_npsp: standard, bloomerang: custom }
+    presence:
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: status_id
+      salesforce_npsp:
+        status: standard
+        api_name: StageName
+      bloomerang:
+        status: custom
 
   - name: applicationDate
     display_name: Application Submitted Date
@@ -161,7 +232,22 @@ attributes:
     required: false
     description: Date the proposal was submitted.
     usage: Drives time-to-decision reporting (decision date minus submission date).
-    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: standard, salesforce_npsp: custom, bloomerang: custom }
+    presence:
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: application_received_date
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: custom
 
   - name: decisionDate
     display_name: Decision Date
@@ -169,7 +255,22 @@ attributes:
     required: false
     description: Date the funder made the award/decline decision.
     usage: Anchor for award-pipeline reporting and the start of the reporting period if awarded.
-    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: standard, salesforce_npsp: custom, bloomerang: custom }
+    presence:
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: decision_date
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: custom
 
   - name: performancePeriodStart
     display_name: Performance Period Start
@@ -177,7 +278,21 @@ attributes:
     required: false
     description: Start of the funded period during which grant funds may be spent.
     usage: Defines the window for grant-eligible expenses. Critical for compliance.
-    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: custom, salesforce_npsp: custom, bloomerang: custom }
+    presence:
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: custom
 
   - name: performancePeriodEnd
     display_name: Performance Period End
@@ -185,7 +300,21 @@ attributes:
     required: false
     description: End of the funded period.
     usage: Drives spend-down deadlines and sets the date by which final reports must be submitted.
-    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: custom, salesforce_npsp: custom, bloomerang: custom }
+    presence:
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: custom
 
   - name: account
     display_name: Funder (Account)
@@ -194,7 +323,23 @@ attributes:
     reference_target: account
     description: The foundation, government agency, or corporate funder providing the grant.
     usage: Anchors the grant to its funder for funder-relationship history.
-    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: standard, salesforce_npsp: standard, bloomerang: custom }
+    presence:
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: contact_id
+      salesforce_npsp:
+        status: standard
+        api_name: AccountId
+      bloomerang:
+        status: custom
 
   - name: programArea
     display_name: Program Area
@@ -202,7 +347,21 @@ attributes:
     required: false
     description: Which program or initiative the grant supports.
     usage: Drives restricted-funds tracking and program-impact reporting.
-    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: custom, salesforce_npsp: custom, bloomerang: custom }
+    presence:
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: custom
 
   - name: createdAt
     display_name: Created Date
@@ -210,7 +369,24 @@ attributes:
     required: true
     description: System timestamp of grant record creation.
     usage: Drives grant-prospecting cohort reporting.
-    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: standard, salesforce_npsp: standard, bloomerang: standard }
+    presence:
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: created_date
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: standard
+        api_name: CreatedDate
 
 # =============================================================================
 # Relationships to other entities
@@ -220,19 +396,19 @@ relationships:
     cardinality: many-to-one
     role: child
     description: A grant is awarded by one funder organization.
-    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: standard, salesforce_npsp: standard, bloomerang: custom }
+    presence: {salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: standard, salesforce_npsp: standard, bloomerang: custom}
 
   - target: contact
     cardinality: many-to-one
     role: child
     description: A grant typically has a primary program officer or funder contact.
-    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: custom, salesforce_npsp: standard, bloomerang: custom }
+    presence: {salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: custom, salesforce_npsp: standard, bloomerang: custom}
 
   - target: donation
     cardinality: one-to-many
     role: parent
     description: A grant generates one or more payment installments.
-    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: standard, salesforce_npsp: standard, bloomerang: custom }
+    presence: {salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: standard, salesforce_npsp: standard, bloomerang: custom}
 
 # =============================================================================
 # Sources

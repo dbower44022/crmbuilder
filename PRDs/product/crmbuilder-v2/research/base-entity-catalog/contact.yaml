@@ -150,14 +150,27 @@ attributes:
       email/display_name on Individual contacts. Salesforce, HubSpot, EspoCRM
       typically allow either first or last name to be empty.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: FirstName
+      hubspot:
+        status: standard
+        api_name: firstname
+      attio:
+        status: standard
+        api_name: name
+      espocrm:
+        status: standard
+        api_name: firstName
+      civicrm:
+        status: standard
+        api_name: first_name
+      salesforce_npsp:
+        status: standard
+        api_name: FirstName
+      bloomerang:
+        status: standard
+        api_name: FirstName
   - name: lastName
     display_name: Last Name
     type: string
@@ -172,14 +185,27 @@ attributes:
       systems' duplicate-detection rules use the combination of last name
       plus email or last name plus phone.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: LastName
+      hubspot:
+        status: standard
+        api_name: lastname
+      attio:
+        status: standard
+        api_name: name
+      espocrm:
+        status: standard
+        api_name: lastName
+      civicrm:
+        status: standard
+        api_name: last_name
+      salesforce_npsp:
+        status: standard
+        api_name: LastName
+      bloomerang:
+        status: standard
+        api_name: LastName
   - name: emailAddress
     display_name: Email Address
     type: email
@@ -195,14 +221,27 @@ attributes:
       HubSpot, Attio, EspoCRM model email as one or more flat attributes on
       Contact.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: Email
+      hubspot:
+        status: standard
+        api_name: email
+      attio:
+        status: standard
+        api_name: email_addresses
+      espocrm:
+        status: standard
+        api_name: emailAddress
+      civicrm:
+        status: standard
+        api_name: email
+      salesforce_npsp:
+        status: standard
+        api_name: Email
+      bloomerang:
+        status: standard
+        api_name: PrimaryEmail
   - name: phoneNumber
     display_name: Phone Number
     type: phone
@@ -217,14 +256,27 @@ attributes:
       Contact, many Phone records). HubSpot has separate properties for
       `phone` (general) and `mobilephone`.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: Phone
+      hubspot:
+        status: standard
+        api_name: phone
+      attio:
+        status: standard
+        api_name: phone_numbers
+      espocrm:
+        status: standard
+        api_name: phoneNumber
+      civicrm:
+        status: standard
+        api_name: phone
+      salesforce_npsp:
+        status: standard
+        api_name: Phone
+      bloomerang:
+        status: standard
+        api_name: PrimaryPhone
   - name: mobilePhone
     display_name: Mobile Phone
     type: phone
@@ -238,14 +290,31 @@ attributes:
       into one. In EspoCRM, Mobile is one of the type values on the unified
       phoneNumber attribute rather than a separate field.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: custom
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: MobilePhone
+      hubspot:
+        status: standard
+        api_name: mobilephone
+      attio:
+        status: custom
+      espocrm:
+        status: standard
+        api_name: phoneNumberMobile
+      civicrm:
+        status: standard
+        api_name: phone
+      salesforce_npsp:
+        status: standard
+        api_name: MobilePhone
+      bloomerang:
+        status: standard
+        api_name: MobilePhone
+    common_synonyms:
+      - cell
+      - cellular
+      - cell phone
+      - mobile number
   - name: title
     display_name: Title
     type: string
@@ -260,14 +329,30 @@ attributes:
       form fills. Distinct from a Role or Persona attribute that classifies
       what kind of stakeholder the contact is to your business.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: custom
-
+      salesforce:
+        status: standard
+        api_name: Title
+      hubspot:
+        status: standard
+        api_name: jobtitle
+      attio:
+        status: standard
+        api_name: job_title
+      espocrm:
+        status: standard
+        api_name: title
+      civicrm:
+        status: standard
+        api_name: job_title
+      salesforce_npsp:
+        status: standard
+        api_name: Title
+      bloomerang:
+        status: custom
+    common_synonyms:
+      - job title
+      - position
+      - role
   - name: department
     display_name: Department
     type: string
@@ -282,14 +367,23 @@ attributes:
       replaced by Affiliation records that track which department or group
       the contact belongs to.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: custom
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: custom
-
+      salesforce:
+        status: standard
+        api_name: Department
+      hubspot:
+        status: standard
+        api_name: department
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: Department
+      bloomerang:
+        status: custom
   - name: account
     display_name: Account
     type: reference
@@ -308,13 +402,25 @@ attributes:
       none specified). Attio uses a relationship attribute "Company" on the
       Person object.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: custom
+      salesforce:
+        status: standard
+        api_name: AccountId
+      hubspot:
+        status: standard
+        api_name: associatedcompanyid
+      attio:
+        status: standard
+        api_name: company
+      espocrm:
+        status: standard
+        api_name: accountId
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: AccountId
+      bloomerang:
+        status: custom
     notes: >
       In CiviCRM and Bloomerang, the Account-Contact relationship is modeled
       via Relationship records (employer, member of household, etc.) rather
@@ -333,14 +439,29 @@ attributes:
       Salesforce uses MailingAddress as a composite (MailingStreet,
       MailingCity, etc.). HubSpot uses flat individual properties.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: custom
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: MailingAddress
+      hubspot:
+        status: standard
+        api_name: address
+      attio:
+        status: custom
+      espocrm:
+        status: standard
+        api_name: addressStreet
+      civicrm:
+        status: standard
+        api_name: street_address
+      salesforce_npsp:
+        status: standard
+        api_name: MailingAddress
+      bloomerang:
+        status: standard
+        api_name: PrimaryAddress
+    common_synonyms:
+      - home address
+      - postal address
   - name: birthDate
     display_name: Birth Date
     type: date
@@ -354,14 +475,30 @@ attributes:
       sets. In nonprofit deployments commonly used for board-member tenure
       tracking and volunteer-eligibility verification.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: custom
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: Birthdate
+      hubspot:
+        status: standard
+        api_name: date_of_birth
+      attio:
+        status: custom
+      espocrm:
+        status: standard
+        api_name: birthdate
+      civicrm:
+        status: standard
+        api_name: birth_date
+      salesforce_npsp:
+        status: standard
+        api_name: Birthdate
+      bloomerang:
+        status: standard
+        api_name: Birthdate
+    common_synonyms:
+      - DOB
+      - date of birth
+      - birthday
   - name: gender
     display_name: Gender
     type: enum
@@ -382,14 +519,24 @@ attributes:
       options; Salesforce and HubSpot do not have a standard Gender field
       and require it as a custom property.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: standard
+        api_name: gender
+      civicrm:
+        status: standard
+        api_name: gender_id
+      salesforce_npsp:
+        status: standard
+        api_name: GenderIdentity__c
+      bloomerang:
+        status: standard
+        api_name: Gender
   - name: doNotContact
     display_name: Do Not Contact
     type: boolean
@@ -405,14 +552,32 @@ attributes:
       field. Required to be respected in essentially every modern CRM
       deployment for legal-compliance reasons.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: custom
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: DoNotCall
+      hubspot:
+        status: standard
+        api_name: hs_email_optout
+      attio:
+        status: custom
+      espocrm:
+        status: standard
+        api_name: doNotCall
+      civicrm:
+        status: standard
+        api_name: do_not_email
+      salesforce_npsp:
+        status: standard
+        api_name: DoNotCall
+      bloomerang:
+        status: standard
+        api_name: CommunicationRestrictions
+    common_synonyms:
+      - DNC
+      - opt-out
+      - suppress
+      - no-contact
+      - blacklist
   - name: emailOptOut
     display_name: Email Opt-Out
     type: boolean
@@ -426,14 +591,30 @@ attributes:
       communication (donation receipts, account alerts) while opting out of
       marketing.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: custom
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: HasOptedOutOfEmail
+      hubspot:
+        status: standard
+        api_name: hs_email_optout
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: do_not_email
+      salesforce_npsp:
+        status: standard
+        api_name: HasOptedOutOfEmail
+      bloomerang:
+        status: standard
+        api_name: EmailInterestType
+    common_synonyms:
+      - email opt-out
+      - unsubscribed
+      - email DNC
+      - no-email
   - name: assignedUser
     display_name: Owner
     type: reference
@@ -446,14 +627,30 @@ attributes:
       filtering, and assignment automation. In nonprofit contexts often
       represents the assigned development officer or relationship manager.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: OwnerId
+      hubspot:
+        status: standard
+        api_name: hubspot_owner_id
+      attio:
+        status: standard
+        api_name: workspace_member_owner
+      espocrm:
+        status: standard
+        api_name: assignedUserId
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: OwnerId
+      bloomerang:
+        status: absent
+    common_synonyms:
+      - owner
+      - rep
+      - sales rep
+      - account manager
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -464,14 +661,27 @@ attributes:
       Audit and analytics field. Drives "new contacts this month" reports
       and acquisition-cohort analysis. Always read-only and system-managed.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: CreatedDate
+      hubspot:
+        status: standard
+        api_name: createdate
+      attio:
+        status: standard
+        api_name: created_at
+      espocrm:
+        status: standard
+        api_name: createdAt
+      civicrm:
+        status: standard
+        api_name: created_date
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: standard
+        api_name: CreatedDate
   - name: lastModifiedAt
     display_name: Last Modified Date
     type: datetime
@@ -482,17 +692,27 @@ attributes:
       Audit field. Used in change-tracking workflows and integration sync
       filters (only pull contacts modified since last sync).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
-# =============================================================================
-# Relationships to other entities
-# =============================================================================
+      salesforce:
+        status: standard
+        api_name: LastModifiedDate
+      hubspot:
+        status: standard
+        api_name: hs_lastmodifieddate
+      attio:
+        status: standard
+        api_name: updated_at
+      espocrm:
+        status: standard
+        api_name: modifiedAt
+      civicrm:
+        status: standard
+        api_name: modified_date
+      salesforce_npsp:
+        status: standard
+        api_name: LastModifiedDate
+      bloomerang:
+        status: standard
+        api_name: LastModified
 relationships:
   - target: account
     cardinality: many-to-one

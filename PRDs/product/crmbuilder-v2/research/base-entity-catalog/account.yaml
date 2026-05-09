@@ -153,14 +153,27 @@ attributes:
       Organization. In Bloomerang the equivalent is `FullName` for
       Organization-type constituents.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: Name
+      hubspot:
+        status: standard
+        api_name: name
+      attio:
+        status: standard
+        api_name: name
+      espocrm:
+        status: standard
+        api_name: name
+      civicrm:
+        status: standard
+        api_name: organization_name
+      salesforce_npsp:
+        status: standard
+        api_name: Name
+      bloomerang:
+        status: standard
+        api_name: FullName
   - name: type
     display_name: Type
     type: enum
@@ -184,18 +197,35 @@ attributes:
       is reframed as Constituent Type (donor / volunteer / foundation /
       corporate sponsor / etc.).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: custom
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
+      salesforce:
+        status: standard
+        api_name: Type
+      hubspot:
+        status: standard
+        api_name: type
+      attio:
+        status: custom
+      espocrm:
+        status: standard
+        api_name: type
+      civicrm:
+        status: standard
+        api_name: contact_sub_type
+      salesforce_npsp:
+        status: standard
+        api_name: Type
+      bloomerang:
+        status: standard
+        api_name: Type
     notes: >
       In CiviCRM this maps to contact_sub_type rather than a separate Type
       attribute. In Bloomerang this is the Type discriminator that selects
       Individual vs Organization.
 
+    common_synonyms:
+      - account type
+      - classification
+      - category
   - name: industry
     display_name: Industry
     type: enum
@@ -221,14 +251,30 @@ attributes:
       codes (National Taxonomy of Exempt Entities) often replace this for
       nonprofit accounts.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: custom
-
+      salesforce:
+        status: standard
+        api_name: Industry
+      hubspot:
+        status: standard
+        api_name: industry
+      attio:
+        status: standard
+        api_name: categories
+      espocrm:
+        status: standard
+        api_name: industry
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: Industry
+      bloomerang:
+        status: custom
+    common_synonyms:
+      - sector
+      - vertical
+      - line of business
+      - business type
   - name: website
     display_name: Website
     type: url
@@ -242,14 +288,32 @@ attributes:
       keys), grant-eligibility verification for nonprofits (verifying a
       foundation's claimed website matches their public-facing identity).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: Website
+      hubspot:
+        status: standard
+        api_name: website
+      attio:
+        status: standard
+        api_name: domains
+      espocrm:
+        status: standard
+        api_name: website
+      civicrm:
+        status: standard
+        api_name: url
+      salesforce_npsp:
+        status: standard
+        api_name: Website
+      bloomerang:
+        status: standard
+        api_name: Website
+    common_synonyms:
+      - url
+      - web address
+      - homepage
+      - domain
   - name: phone
     display_name: Main Phone
     type: phone
@@ -262,14 +326,30 @@ attributes:
       address-verification workflows. EspoCRM models this as a multi-type
       phoneNumber field with subtypes (Office, Mobile, Fax, Other).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: custom
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: Phone
+      hubspot:
+        status: standard
+        api_name: phone
+      attio:
+        status: custom
+      espocrm:
+        status: standard
+        api_name: phoneNumber
+      civicrm:
+        status: standard
+        api_name: phone
+      salesforce_npsp:
+        status: standard
+        api_name: Phone
+      bloomerang:
+        status: standard
+        api_name: PrimaryPhone
+    common_synonyms:
+      - main phone
+      - office phone
+      - switchboard
   - name: emailAddress
     display_name: Email Address
     type: email
@@ -283,14 +363,23 @@ attributes:
       systems (HubSpot, Attio) don't provide a first-class email attribute on
       Company/Account at all — assuming all email goes to individual Contacts.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: custom
-      bloomerang: standard
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: standard
+        api_name: emailAddress
+      civicrm:
+        status: standard
+        api_name: email
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: standard
+        api_name: PrimaryEmail
   - name: billingAddress
     display_name: Billing Address
     type: address
@@ -306,13 +395,27 @@ attributes:
       generation, tax jurisdiction calculation, and shipping-versus-billing
       address differentiation.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
+      salesforce:
+        status: standard
+        api_name: BillingAddress
+      hubspot:
+        status: standard
+        api_name: address
+      attio:
+        status: standard
+        api_name: primary_location
+      espocrm:
+        status: standard
+        api_name: billingAddress
+      civicrm:
+        status: standard
+        api_name: street_address
+      salesforce_npsp:
+        status: standard
+        api_name: BillingAddress
+      bloomerang:
+        status: standard
+        api_name: PrimaryAddress
     notes: >
       Address modeling varies dramatically. CiviCRM and Bloomerang model
       Address as a separate first-class entity allowing multiple addresses
@@ -332,14 +435,26 @@ attributes:
       deployments collapse this into billing address. In nonprofit deployments
       this often becomes "mailing address" for direct-mail solicitations.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: custom
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: ShippingAddress
+      hubspot:
+        status: standard
+        api_name: shippingaddress
+      attio:
+        status: custom
+      espocrm:
+        status: standard
+        api_name: shippingAddress
+      civicrm:
+        status: standard
+        api_name: shipping_address
+      salesforce_npsp:
+        status: standard
+        api_name: ShippingAddress
+      bloomerang:
+        status: standard
+        api_name: ShippingAddress
   - name: description
     display_name: Description
     type: text
@@ -353,14 +468,25 @@ attributes:
       a human-readable scratchpad. In Attio this attribute is enriched
       automatically with a brief AI-generated summary.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: custom
-
+      salesforce:
+        status: standard
+        api_name: Description
+      hubspot:
+        status: standard
+        api_name: description
+      attio:
+        status: standard
+        api_name: description
+      espocrm:
+        status: standard
+        api_name: description
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: Description
+      bloomerang:
+        status: custom
   - name: numberOfEmployees
     display_name: Number of Employees
     type: integer
@@ -373,14 +499,29 @@ attributes:
       attribute (1-10, 11-50, etc.) rather than a numeric value. Most useful
       for B2B sales motions; rarely populated for nonprofit donor management.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: custom
-
+      salesforce:
+        status: standard
+        api_name: NumberOfEmployees
+      hubspot:
+        status: standard
+        api_name: numberofemployees
+      attio:
+        status: standard
+        api_name: employee_range
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: NumberOfEmployees
+      bloomerang:
+        status: custom
+    common_synonyms:
+      - headcount
+      - team size
+      - employee count
+      - staff size
   - name: annualRevenue
     display_name: Annual Revenue
     type: currency
@@ -393,14 +534,30 @@ attributes:
       (enriched). Frequently used in B2B sales motions for ICP scoring;
       typically irrelevant for nonprofit donor records.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: custom
-
+      salesforce:
+        status: standard
+        api_name: AnnualRevenue
+      hubspot:
+        status: standard
+        api_name: annualrevenue
+      attio:
+        status: standard
+        api_name: estimated_arr_usd
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: AnnualRevenue
+      bloomerang:
+        status: custom
+    common_synonyms:
+      - ARR
+      - annual recurring revenue
+      - turnover
+      - top-line
+      - sales
   - name: parentAccount
     display_name: Parent Account
     type: reference
@@ -415,14 +572,27 @@ attributes:
       with complex corporate structures. In Attio handled via custom
       relationship attributes rather than a built-in self-reference.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: custom
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: custom
-
+      salesforce:
+        status: standard
+        api_name: ParentId
+      hubspot:
+        status: standard
+        api_name: hs_parent_company_id
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: ParentId
+      bloomerang:
+        status: custom
+    common_synonyms:
+      - parent company
+      - parent organization
+      - parent
   - name: assignedUser
     display_name: Owner
     type: reference
@@ -438,14 +608,30 @@ attributes:
       EspoCRM calls it assignedUserId. Bloomerang assigns ownership at the
       database level rather than per-record.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: OwnerId
+      hubspot:
+        status: standard
+        api_name: hubspot_owner_id
+      attio:
+        status: standard
+        api_name: workspace_member_owner
+      espocrm:
+        status: standard
+        api_name: assignedUserId
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: OwnerId
+      bloomerang:
+        status: absent
+    common_synonyms:
+      - owner
+      - account owner
+      - account manager
+      - AM
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -457,14 +643,27 @@ attributes:
       Drives "new accounts this month" reports, vintage cohort analysis, and
       data-quality checks (records older than X without activity).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: CreatedDate
+      hubspot:
+        status: standard
+        api_name: createdate
+      attio:
+        status: standard
+        api_name: created_at
+      espocrm:
+        status: standard
+        api_name: createdAt
+      civicrm:
+        status: standard
+        api_name: created_date
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: standard
+        api_name: CreatedDate
   - name: lastModifiedAt
     display_name: Last Modified Date
     type: datetime
@@ -476,17 +675,27 @@ attributes:
       filters (only pull records modified since last sync), and stale-data
       detection (records not touched in X months).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
-# =============================================================================
-# Relationships to other entities
-# =============================================================================
+      salesforce:
+        status: standard
+        api_name: LastModifiedDate
+      hubspot:
+        status: standard
+        api_name: hs_lastmodifieddate
+      attio:
+        status: standard
+        api_name: updated_at
+      espocrm:
+        status: standard
+        api_name: modifiedAt
+      civicrm:
+        status: standard
+        api_name: modified_date
+      salesforce_npsp:
+        status: standard
+        api_name: LastModifiedDate
+      bloomerang:
+        status: standard
+        api_name: LastModified
 relationships:
   - target: contact
     cardinality: one-to-many

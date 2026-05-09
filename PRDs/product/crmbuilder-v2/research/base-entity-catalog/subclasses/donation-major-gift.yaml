@@ -90,7 +90,8 @@ systems:
     api_name: Opportunity
     is_standard: true
     mechanism: record_type
-    notes: NPSP ships a Major Gift Record Type. Used by major-gift teams alongside the Donation Record Type. Major Gift typically has a higher amount threshold and triggers different cultivation workflows.
+    notes: NPSP ships a Major Gift Record Type. Used by major-gift teams alongside the Donation Record Type. Major Gift typically has a higher amount threshold and triggers different cultivation 
+      workflows.
     docs_url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
   - system: bloomerang
     name: "Transaction with custom Type=Major Gift"
@@ -113,15 +114,23 @@ attributes:
       - Stewardship
       - Closed
     description: Stage in the major-gift cultivation cycle.
-    usage: Drives major-gift pipeline reporting. Distinct from Opportunity stage (which tracks gift-level lifecycle); cultivation stage tracks the relationship-level cycle that may span multiple gifts.
+    usage: Drives major-gift pipeline reporting. Distinct from Opportunity stage (which tracks gift-level lifecycle); cultivation stage tracks the relationship-level cycle that may span multiple 
+      gifts.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: custom
-      bloomerang: custom
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: custom
   - name: solicitor
     display_name: Solicitor
     type: reference
@@ -130,13 +139,20 @@ attributes:
     description: The contact (typically a board member or peer-influencer) who solicited the gift.
     usage: Drives peer-solicitor reporting and recognition. Distinct from the major-gift officer (a User / staff member) who manages the relationship.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: custom
-      bloomerang: custom
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: custom
   - name: stewardshipOfficer
     display_name: Stewardship Officer
     type: reference
@@ -145,13 +161,20 @@ attributes:
     description: The staff member responsible for the donor relationship.
     usage: Drives major-gift staff workload reports and ensures every major donor has a dedicated relationship manager.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: custom
-      bloomerang: custom
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: custom
   - name: tributeType
     display_name: Tribute Type
     type: enum
@@ -164,13 +187,22 @@ attributes:
     description: Whether this major gift was given in tribute to someone.
     usage: Triggers tribute-acknowledgment workflows where the honoree (or honoree's family) is notified of the gift. Common at funerals (memorial gifts) and milestone events (honor gifts).
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: standard
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: TributeType
+      bloomerang:
+        status: standard
+        api_name: TributeType
   - name: tributeName
     display_name: Tribute Name
     type: string
@@ -178,13 +210,22 @@ attributes:
     description: Name of the person being honored or memorialized.
     usage: Free-text field for the honoree's name. May or may not be a Contact in the system.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: standard
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: TributeName
+      bloomerang:
+        status: standard
+        api_name: TributeName
   - name: recognitionPreference
     display_name: Recognition Preference
     type: enum
@@ -196,14 +237,21 @@ attributes:
     description: Donor's preferred level of public recognition for this gift.
     usage: Drives annual-report listing logic, donor-event invitations, and major-gift announcement workflows. Anonymous gifts are excluded from public recognition lists.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: custom
-      bloomerang: standard
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: standard
+        api_name: RecognitionPreference
 relationships:
   - target: contact
     cardinality: many-to-one

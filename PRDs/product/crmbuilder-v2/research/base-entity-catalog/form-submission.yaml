@@ -142,14 +142,23 @@ attributes:
       Anchors the submission to its source form definition. Drives
       per-form analytics ("conversion rate of the Demo Request form").
     presence:
-      salesforce: absent
-      hubspot: standard
-      attio: standard
-      espocrm: absent
-      civicrm: absent
-      salesforce_npsp: absent
-      bloomerang: standard
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: standard
+        api_name: formid
+      attio:
+        status: standard
+        api_name: form_id
+      espocrm:
+        status: absent
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: absent
+      bloomerang:
+        status: standard
+        api_name: FormId
   - name: submittedAt
     display_name: Submitted At
     type: datetime
@@ -160,14 +169,23 @@ attributes:
       Anchors all timing analytics (conversion velocity, time-of-day
       patterns).
     presence:
-      salesforce: absent
-      hubspot: standard
-      attio: standard
-      espocrm: absent
-      civicrm: absent
-      salesforce_npsp: absent
-      bloomerang: standard
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: standard
+        api_name: submittedat
+      attio:
+        status: standard
+        api_name: submitted_at
+      espocrm:
+        status: absent
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: absent
+      bloomerang:
+        status: standard
+        api_name: SubmittedAt
   - name: pageUrl
     display_name: Page URL
     type: url
@@ -179,14 +197,21 @@ attributes:
       forms used on multiple pages, identifies which placement is
       converting.
     presence:
-      salesforce: absent
-      hubspot: standard
-      attio: custom
-      espocrm: absent
-      civicrm: custom
-      salesforce_npsp: absent
-      bloomerang: custom
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: standard
+        api_name: pageurl
+      attio:
+        status: custom
+      espocrm:
+        status: absent
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: absent
+      bloomerang:
+        status: custom
   - name: referrer
     display_name: Referrer
     type: url
@@ -197,14 +222,21 @@ attributes:
       Marketing-attribution input — was this conversion driven by a
       specific email, social post, or external link?
     presence:
-      salesforce: absent
-      hubspot: standard
-      attio: custom
-      espocrm: absent
-      civicrm: absent
-      salesforce_npsp: absent
-      bloomerang: custom
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: standard
+        api_name: referrer
+      attio:
+        status: custom
+      espocrm:
+        status: absent
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: absent
+      bloomerang:
+        status: custom
   - name: ipAddress
     display_name: IP Address
     type: string
@@ -214,14 +246,21 @@ attributes:
     usage: >
       Spam-detection input, geolocation analytics, and abuse mitigation.
     presence:
-      salesforce: absent
-      hubspot: standard
-      attio: custom
-      espocrm: absent
-      civicrm: custom
-      salesforce_npsp: absent
-      bloomerang: custom
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: standard
+        api_name: ipaddress
+      attio:
+        status: custom
+      espocrm:
+        status: absent
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: absent
+      bloomerang:
+        status: custom
   - name: contact
     display_name: Resulting Contact
     type: reference
@@ -233,14 +272,23 @@ attributes:
       Anchors data lineage — proves which form drove the contact's CRM
       creation.
     presence:
-      salesforce: absent
-      hubspot: standard
-      attio: standard
-      espocrm: absent
-      civicrm: absent
-      salesforce_npsp: absent
-      bloomerang: standard
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: standard
+        api_name: contact
+      attio:
+        status: standard
+        api_name: contact
+      espocrm:
+        status: absent
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: absent
+      bloomerang:
+        status: standard
+        api_name: Contact
   - name: lead
     display_name: Resulting Lead
     type: reference
@@ -253,14 +301,21 @@ attributes:
       Same as resulting Contact, but for systems where form submissions
       typically produce Leads rather than Contacts.
     presence:
-      salesforce: absent
-      hubspot: standard
-      attio: absent
-      espocrm: absent
-      civicrm: absent
-      salesforce_npsp: absent
-      bloomerang: absent
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: standard
+        api_name: lead
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: absent
+      bloomerang:
+        status: absent
   - name: rawValues
     display_name: Submitted Values
     type: text
@@ -273,14 +328,22 @@ attributes:
       mapping changes. Lets analysts see what was actually entered (vs
       what made it onto the resulting CRM record).
     presence:
-      salesforce: absent
-      hubspot: standard
-      attio: standard
-      espocrm: absent
-      civicrm: absent
-      salesforce_npsp: absent
-      bloomerang: custom
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: standard
+        api_name: rawvalues
+      attio:
+        status: standard
+        api_name: raw_values
+      espocrm:
+        status: absent
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: absent
+      bloomerang:
+        status: custom
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -290,17 +353,23 @@ attributes:
     usage: >
       Standard audit field.
     presence:
-      salesforce: absent
-      hubspot: standard
-      attio: standard
-      espocrm: absent
-      civicrm: absent
-      salesforce_npsp: absent
-      bloomerang: standard
-
-# =============================================================================
-# Relationships to other entities
-# =============================================================================
+      salesforce:
+        status: absent
+      hubspot:
+        status: standard
+        api_name: createdate
+      attio:
+        status: standard
+        api_name: created_at
+      espocrm:
+        status: absent
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: absent
+      bloomerang:
+        status: standard
+        api_name: CreatedDate
 relationships:
   - target: contact
     cardinality: many-to-one

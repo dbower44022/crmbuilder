@@ -129,14 +129,25 @@ attributes:
       Customer-facing identifier ("INV-2026-1234"). Drives accounting
       cross-references and customer-payment-tracking.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: InvoiceNumber
+      hubspot:
+        status: standard
+        api_name: invoicenumber
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: invoiceNumber
+      civicrm:
+        status: standard
+        api_name: invoice_number
+      salesforce_npsp:
+        status: standard
+        api_name: InvoiceNumber
+      bloomerang:
+        status: absent
   - name: account
     display_name: Account
     type: reference
@@ -147,14 +158,25 @@ attributes:
     usage: >
       Drives bill-to defaults, accounts-receivable aging reports.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Account
+      hubspot:
+        status: standard
+        api_name: account
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: account
+      civicrm:
+        status: standard
+        api_name: account
+      salesforce_npsp:
+        status: standard
+        api_name: Account
+      bloomerang:
+        status: absent
   - name: order
     display_name: Order
     type: reference
@@ -166,14 +188,24 @@ attributes:
       Anchors invoice to its source order. Used in fulfillment-billing
       reconciliation.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Order
+      hubspot:
+        status: standard
+        api_name: order
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: order
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Order
+      bloomerang:
+        status: absent
   - name: status
     display_name: Status
     type: enum
@@ -194,14 +226,25 @@ attributes:
       payment-collection follow-up; Overdue invoices trigger collection
       escalation; Void/Canceled remove from AR aging.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Status
+      hubspot:
+        status: standard
+        api_name: status
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: status
+      civicrm:
+        status: standard
+        api_name: status
+      salesforce_npsp:
+        status: standard
+        api_name: Status
+      bloomerang:
+        status: absent
   - name: invoiceDate
     display_name: Invoice Date
     type: date
@@ -212,14 +255,25 @@ attributes:
       Anchors due-date calculation (invoice date + payment terms = due
       date) and revenue-recognition timing.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: InvoiceDate
+      hubspot:
+        status: standard
+        api_name: invoicedate
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: invoiceDate
+      civicrm:
+        status: standard
+        api_name: invoice_date
+      salesforce_npsp:
+        status: standard
+        api_name: InvoiceDate
+      bloomerang:
+        status: absent
   - name: dueDate
     display_name: Due Date
     type: date
@@ -230,14 +284,25 @@ attributes:
       Drives overdue alerts and AR aging reports. Often computed as
       invoice date + payment terms (Net 30, Net 60, etc.).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: DueDate
+      hubspot:
+        status: standard
+        api_name: duedate
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: dueDate
+      civicrm:
+        status: standard
+        api_name: due_date
+      salesforce_npsp:
+        status: standard
+        api_name: DueDate
+      bloomerang:
+        status: absent
   - name: subtotal
     display_name: Subtotal
     type: currency
@@ -247,14 +312,25 @@ attributes:
     usage: >
       Auto-calculated.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Subtotal
+      hubspot:
+        status: standard
+        api_name: subtotal
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: subtotal
+      civicrm:
+        status: standard
+        api_name: subtotal
+      salesforce_npsp:
+        status: standard
+        api_name: Subtotal
+      bloomerang:
+        status: absent
   - name: tax
     display_name: Tax
     type: currency
@@ -265,14 +341,25 @@ attributes:
       Auto-calculated based on tax rate and jurisdiction. Often pulled
       from external tax calculation service.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Tax
+      hubspot:
+        status: standard
+        api_name: tax
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: tax
+      civicrm:
+        status: standard
+        api_name: tax
+      salesforce_npsp:
+        status: standard
+        api_name: Tax
+      bloomerang:
+        status: absent
   - name: grandTotal
     display_name: Grand Total
     type: currency
@@ -283,14 +370,25 @@ attributes:
       Headline figure on the customer-facing document. Drives AR aging
       and payment-application logic.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: GrandTotal
+      hubspot:
+        status: standard
+        api_name: grandtotal
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: grandTotal
+      civicrm:
+        status: standard
+        api_name: grand_total
+      salesforce_npsp:
+        status: standard
+        api_name: GrandTotal
+      bloomerang:
+        status: absent
   - name: amountPaid
     display_name: Amount Paid
     type: currency
@@ -301,14 +399,25 @@ attributes:
       Auto-calculated rollup from related Payment records. Drives
       partial-payment tracking and balance-due calculation.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: AmountPaid
+      hubspot:
+        status: standard
+        api_name: amountpaid
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: amountPaid
+      civicrm:
+        status: standard
+        api_name: amount_paid
+      salesforce_npsp:
+        status: standard
+        api_name: AmountPaid
+      bloomerang:
+        status: absent
   - name: balanceDue
     display_name: Balance Due
     type: currency
@@ -318,14 +427,25 @@ attributes:
     usage: >
       Auto-calculated. Drives AR reports.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: BalanceDue
+      hubspot:
+        status: standard
+        api_name: balancedue
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: balanceDue
+      civicrm:
+        status: standard
+        api_name: balance_due
+      salesforce_npsp:
+        status: standard
+        api_name: BalanceDue
+      bloomerang:
+        status: absent
   - name: paymentTerms
     display_name: Payment Terms
     type: enum
@@ -342,14 +462,25 @@ attributes:
     usage: >
       Drives due-date calculation. Often defaulted from Account.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: PaymentTerms
+      hubspot:
+        status: standard
+        api_name: paymentterms
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: paymentTerms
+      civicrm:
+        status: standard
+        api_name: payment_terms
+      salesforce_npsp:
+        status: standard
+        api_name: PaymentTerms
+      bloomerang:
+        status: absent
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -359,17 +490,25 @@ attributes:
     usage: >
       Audit field.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
-# =============================================================================
-# Relationships to other entities
-# =============================================================================
+      salesforce:
+        status: standard
+        api_name: CreatedDate
+      hubspot:
+        status: standard
+        api_name: createdate
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: createdAt
+      civicrm:
+        status: standard
+        api_name: created_date
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: absent
 relationships:
   - target: account
     cardinality: many-to-one

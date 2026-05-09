@@ -142,14 +142,24 @@ attributes:
       be question-formatted ("How do I reset my password?") for best
       search performance.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Title
+      hubspot:
+        status: standard
+        api_name: title
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: title
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Title
+      bloomerang:
+        status: absent
   - name: body
     display_name: Body / Content
     type: richtext
@@ -161,14 +171,24 @@ attributes:
       embedded video, and code blocks. Legacy Salesforce Solutions used
       plain text only.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Body
+      hubspot:
+        status: standard
+        api_name: body
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: body
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Body
+      bloomerang:
+        status: absent
   - name: status
     display_name: Status
     type: enum
@@ -185,14 +205,24 @@ attributes:
       facing portals and agent search results. Draft and In Review states
       gate authoring quality.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Status
+      hubspot:
+        status: standard
+        api_name: status
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: status
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Status
+      bloomerang:
+        status: absent
   - name: language
     display_name: Language
     type: enum
@@ -204,14 +234,24 @@ attributes:
       across multiple language versions. Modern Salesforce Knowledge is
       built around language variants of the same article.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Language
+      hubspot:
+        status: standard
+        api_name: language
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: language
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Language
+      bloomerang:
+        status: absent
   - name: category
     display_name: Category
     type: reference
@@ -225,14 +265,24 @@ attributes:
       (hierarchical); HubSpot uses Topic; EspoCRM uses Categories
       (linkMultiple).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Category
+      hubspot:
+        status: standard
+        api_name: category
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: category
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Category
+      bloomerang:
+        status: absent
   - name: keywords
     display_name: Keywords
     type: text
@@ -245,14 +295,22 @@ attributes:
       include keywords "lost password, can't log in, login problem,
       forgot password."
     presence:
-      salesforce: standard
-      hubspot: custom
-      attio: absent
-      espocrm: custom
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Keywords
+      hubspot:
+        status: custom
+      attio:
+        status: absent
+      espocrm:
+        status: custom
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Keywords
+      bloomerang:
+        status: absent
   - name: viewCount
     display_name: View Count
     type: integer
@@ -264,14 +322,23 @@ attributes:
       content. Auto-incremented on view in self-service portals. Salesforce
       Knowledge tracks this; legacy Solutions don't.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: custom
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: ViewCount
+      hubspot:
+        status: standard
+        api_name: viewcount
+      attio:
+        status: absent
+      espocrm:
+        status: custom
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: ViewCount
+      bloomerang:
+        status: absent
   - name: helpfulCount
     display_name: Helpful Count
     type: integer
@@ -283,14 +350,23 @@ attributes:
       content-quality reporting (which articles need rewriting, which
       ones are reliably effective).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: absent
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: HelpfulCount
+      hubspot:
+        status: standard
+        api_name: helpfulcount
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: HelpfulCount
+      bloomerang:
+        status: absent
   - name: assignedUser
     display_name: Author / Owner
     type: reference
@@ -302,14 +378,24 @@ attributes:
       Author attribution and content-ownership tracking. Drives review
       workflows when articles need updating.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: AssignedUser
+      hubspot:
+        status: standard
+        api_name: assigneduser
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: assignedUser
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: AssignedUser
+      bloomerang:
+        status: absent
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -320,17 +406,24 @@ attributes:
       Drives content-aging reports (articles older than X months without
       updates are flagged for review).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
-# =============================================================================
-# Relationships to other entities
-# =============================================================================
+      salesforce:
+        status: standard
+        api_name: CreatedDate
+      hubspot:
+        status: standard
+        api_name: createdate
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: createdAt
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: absent
 relationships:
   - target: case
     cardinality: many-to-many

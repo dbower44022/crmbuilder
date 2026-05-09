@@ -55,7 +55,8 @@ systems:
     api_name: MessagingSession
     is_standard: false
     mechanism: type_discriminator
-    notes: Salesforce splits SMS across products. Service Cloud Messaging covers conversational SMS via MessagingSession and MessagingEnduser. Marketing Cloud MobileConnect handles bulk-marketing SMS via separate data model. No unified SMS entity in core Sales Cloud.
+    notes: Salesforce splits SMS across products. Service Cloud Messaging covers conversational SMS via MessagingSession and MessagingEnduser. Marketing Cloud MobileConnect handles bulk-marketing SMS 
+      via separate data model. No unified SMS entity in core Sales Cloud.
     docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_messagingsession.htm
   - system: hubspot
     name: "Communication (Engagement subtype)"
@@ -108,13 +109,24 @@ attributes:
     description: Phone number the message was sent from.
     usage: For sent messages, the org's outbound number (often a Twilio-provisioned number); for received, the contact's number.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: custom
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: custom
+      salesforce:
+        status: standard
+        api_name: FromMessagingChannel
+      hubspot:
+        status: standard
+        api_name: hs_communication_channel
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: phone_id
+      salesforce_npsp:
+        status: standard
+        api_name: FromMessagingChannel
+      bloomerang:
+        status: custom
   - name: toNumber
     display_name: To Number
     type: phone
@@ -122,13 +134,24 @@ attributes:
     description: Phone number the message was sent to.
     usage: For sent messages, the contact's mobile; for received, the org's number. Must match a contact's mobile to auto-associate.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: custom
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: custom
+      salesforce:
+        status: standard
+        api_name: EndUser
+      hubspot:
+        status: standard
+        api_name: hs_communication_recipient
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: phone_id
+      salesforce_npsp:
+        status: standard
+        api_name: EndUser
+      bloomerang:
+        status: custom
   - name: body
     display_name: Body
     type: text
@@ -136,13 +159,30 @@ attributes:
     description: Message content.
     usage: The actual text. Subject to platform character limits (160 for single-segment SMS; 1600+ for concatenated; longer for messaging apps).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: custom
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
+      salesforce:
+        status: standard
+        api_name: Content
+      hubspot:
+        status: standard
+        api_name: hs_communication_body
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: details
+      salesforce_npsp:
+        status: standard
+        api_name: Content
+      bloomerang:
+        status: standard
+        api_name: Body
+    common_synonyms:
+      - message
+      - text
+      - message body
+      - sms text
   - name: direction
     display_name: Direction
     type: enum
@@ -153,13 +193,25 @@ attributes:
     description: Whether the message was outbound or inbound.
     usage: Drives reporting (sent-message volume per rep) and inbound-routing rules.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: custom
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
+      salesforce:
+        status: standard
+        api_name: IsInbound
+      hubspot:
+        status: standard
+        api_name: hs_communication_direction
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: direction
+      salesforce_npsp:
+        status: standard
+        api_name: IsInbound
+      bloomerang:
+        status: standard
+        api_name: Direction
   - name: platform
     display_name: Platform
     type: enum
@@ -173,13 +225,21 @@ attributes:
     description: Messaging platform used.
     usage: Distinguishes SMS from over-the-top messaging apps. Drives platform-specific compliance and integration logic.
     presence:
-      salesforce: custom
-      hubspot: standard
-      attio: custom
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: custom
-      bloomerang: custom
+      salesforce:
+        status: custom
+      hubspot:
+        status: standard
+        api_name: hs_communication_channel_type
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: custom
   - name: deliveryStatus
     display_name: Delivery Status
     type: enum
@@ -193,13 +253,27 @@ attributes:
     description: Delivery state reported by the messaging provider.
     usage: Drives retry workflows, undeliverable-cleanup automation (auto-flag bad numbers), and compliance reporting.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: custom
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: custom
+      salesforce:
+        status: standard
+        api_name: Status
+      hubspot:
+        status: standard
+        api_name: hs_communication_delivery_status
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: delivery_status
+      salesforce_npsp:
+        status: standard
+        api_name: Status
+      bloomerang:
+        status: custom
+    common_synonyms:
+      - delivery state
+      - send status
   - name: messageId
     display_name: Provider Message ID
     type: string
@@ -207,14 +281,24 @@ attributes:
     description: Unique identifier from the messaging provider (Twilio SID, etc.).
     usage: Used for delivery-status webhooks, dedup, and correlation between provider logs and CRM records.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: custom
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: custom
-
+      salesforce:
+        status: standard
+        api_name: MessageIdentifier
+      hubspot:
+        status: standard
+        api_name: hs_communication_message_id
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: message_id
+      salesforce_npsp:
+        status: standard
+        api_name: MessageIdentifier
+      bloomerang:
+        status: custom
 sources:
   - title: "Salesforce Object Reference: MessagingSession"
     url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_messagingsession.htm

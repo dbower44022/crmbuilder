@@ -94,27 +94,51 @@ attributes:
     description: The contact who holds the membership.
     usage: Anchors the membership to the member's record. Drives "active members" filtering.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: custom
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: contact_id
+      salesforce_npsp:
+        status: standard
+        api_name: ContactId
+      bloomerang:
+        status: custom
   - name: membershipType
     display_name: Membership Type
     type: enum
     required: true
     description: Category or level of membership.
-    usage: Distinguishes Individual / Family / Student / Senior / Lifetime / Corporate / Patron. Drives benefits, dues amount, and term length. CiviCRM has a separate MembershipType entity for managing these definitions.
+    usage: Distinguishes Individual / Family / Student / Senior / Lifetime / Corporate / Patron. Drives benefits, dues amount, and term length. CiviCRM has a separate MembershipType entity for 
+      managing these definitions.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: custom
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: membership_type_id
+      salesforce_npsp:
+        status: standard
+        api_name: npe01__Membership_Origin__c
+      bloomerang:
+        status: custom
+    common_synonyms:
+      - member type
+      - level
+      - tier
+      - membership level
   - name: status
     display_name: Status
     type: enum
@@ -130,13 +154,22 @@ attributes:
     description: Current state of the membership.
     usage: Drives renewal workflows. Grace Period is a window post-expiration during which the member is still treated as active for renewal-reminder purposes.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: custom
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: status_id
+      salesforce_npsp:
+        status: standard
+        api_name: npe01__Membership_Status__c
+      bloomerang:
+        status: custom
   - name: joinDate
     display_name: Join Date
     type: date
@@ -144,13 +177,21 @@ attributes:
     description: Date the contact first became a member.
     usage: Distinct from start date — join date stays constant across renewals; start date refreshes each term.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: custom
-      bloomerang: custom
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: join_date
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: custom
   - name: startDate
     display_name: Start Date (Current Term)
     type: date
@@ -158,13 +199,22 @@ attributes:
     description: Start date of the current membership term.
     usage: Updates with each renewal. Drives current-term reporting.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: custom
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: start_date
+      salesforce_npsp:
+        status: standard
+        api_name: npe01__Membership_Start_Date__c
+      bloomerang:
+        status: custom
   - name: endDate
     display_name: End Date (Current Term)
     type: date
@@ -172,13 +222,22 @@ attributes:
     description: End date of the current membership term.
     usage: Drives renewal reminders, expiring-soon reports, and grace-period transitions. Often calculated as startDate + term length but stored explicitly for audit.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: custom
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: end_date
+      salesforce_npsp:
+        status: standard
+        api_name: npe01__Membership_End_Date__c
+      bloomerang:
+        status: custom
   - name: amount
     display_name: Dues Amount
     type: currency
@@ -186,13 +245,22 @@ attributes:
     description: Amount of membership dues for the current term.
     usage: Recorded for audit. Actual payment tracking happens on linked Donation records.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: custom
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: fee
+      salesforce_npsp:
+        status: standard
+        api_name: Amount
+      bloomerang:
+        status: custom
   - name: source
     display_name: Source
     type: enum
@@ -200,13 +268,21 @@ attributes:
     description: Channel through which the membership was acquired.
     usage: Drives acquisition-channel reporting (which channels produce best-retained members).
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: custom
-      bloomerang: custom
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: source
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: custom
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -214,14 +290,23 @@ attributes:
     description: System timestamp.
     usage: Audit field.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: created_date
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: standard
+        api_name: CreatedDate
 relationships:
   - target: contact
     cardinality: many-to-one

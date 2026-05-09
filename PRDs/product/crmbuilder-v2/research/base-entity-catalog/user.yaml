@@ -149,14 +149,26 @@ attributes:
       In HubSpot the email is the identifier; there is no separate
       username field.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: Username
+      hubspot:
+        status: absent
+      attio:
+        status: standard
+        api_name: email_address
+      espocrm:
+        status: standard
+        api_name: userName
+      civicrm:
+        status: standard
+        api_name: name
+      salesforce_npsp:
+        status: standard
+        api_name: Username
+      bloomerang:
+        status: standard
+        api_name: Username
   - name: emailAddress
     display_name: Email Address
     type: email
@@ -169,14 +181,27 @@ attributes:
       user sends mail through the CRM. Required and typically unique
       per organization.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: Email
+      hubspot:
+        status: standard
+        api_name: email
+      attio:
+        status: standard
+        api_name: email_address
+      espocrm:
+        status: standard
+        api_name: emailAddress
+      civicrm:
+        status: standard
+        api_name: mail
+      salesforce_npsp:
+        status: standard
+        api_name: Email
+      bloomerang:
+        status: standard
+        api_name: EmailAddress
   - name: firstName
     display_name: First Name
     type: string
@@ -188,14 +213,27 @@ attributes:
       Used in displays ("Owner: Sarah Johnson"), email signatures, and
       personalized in-app messaging. Required varies by system.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: FirstName
+      hubspot:
+        status: standard
+        api_name: first_name
+      attio:
+        status: standard
+        api_name: first_name
+      espocrm:
+        status: standard
+        api_name: firstName
+      civicrm:
+        status: standard
+        api_name: first_name
+      salesforce_npsp:
+        status: standard
+        api_name: FirstName
+      bloomerang:
+        status: standard
+        api_name: FirstName
   - name: lastName
     display_name: Last Name
     type: string
@@ -207,14 +245,27 @@ attributes:
       Same uses as Contact.lastName but for the operator. Salesforce
       requires last name on User records.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: LastName
+      hubspot:
+        status: standard
+        api_name: last_name
+      attio:
+        status: standard
+        api_name: last_name
+      espocrm:
+        status: standard
+        api_name: lastName
+      civicrm:
+        status: standard
+        api_name: last_name
+      salesforce_npsp:
+        status: standard
+        api_name: LastName
+      bloomerang:
+        status: standard
+        api_name: LastName
   - name: title
     display_name: Title
     type: string
@@ -226,14 +277,25 @@ attributes:
       Display field for organization charts, email signatures, and assignee
       identification. Often populated from HR system integration.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: custom
-
+      salesforce:
+        status: standard
+        api_name: Title
+      hubspot:
+        status: standard
+        api_name: job_title
+      attio:
+        status: standard
+        api_name: title
+      espocrm:
+        status: standard
+        api_name: title
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: Title
+      bloomerang:
+        status: custom
   - name: role
     display_name: Role
     type: reference
@@ -248,14 +310,31 @@ attributes:
       and Teams; Attio uses Access Levels per object. Different from
       "Title" (display label) — Role is functional and machine-readable.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: UserRoleId
+      hubspot:
+        status: standard
+        api_name: role_id
+      attio:
+        status: standard
+        api_name: access_level
+      espocrm:
+        status: standard
+        api_name: rolesIds
+      civicrm:
+        status: standard
+        api_name: role
+      salesforce_npsp:
+        status: standard
+        api_name: UserRoleId
+      bloomerang:
+        status: standard
+        api_name: Role
+    common_synonyms:
+      - permission set
+      - access level
+      - security role
   - name: isActive
     display_name: Active
     type: boolean
@@ -268,14 +347,31 @@ attributes:
       isActive=false is the standard "deactivate user" operation;
       deletion is rarely supported because of audit-trail integrity.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: IsActive
+      hubspot:
+        status: standard
+        api_name: archived
+      attio:
+        status: standard
+        api_name: is_active
+      espocrm:
+        status: standard
+        api_name: isActive
+      civicrm:
+        status: standard
+        api_name: is_active
+      salesforce_npsp:
+        status: standard
+        api_name: IsActive
+      bloomerang:
+        status: standard
+        api_name: IsActive
+    common_synonyms:
+      - active
+      - enabled
+      - login enabled
   - name: type
     display_name: User Type
     type: enum
@@ -296,14 +392,25 @@ attributes:
       CustomerSuccess, Guest, Partner. License tier is a separate
       consideration in most systems.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: custom
-
+      salesforce:
+        status: standard
+        api_name: UserType
+      hubspot:
+        status: standard
+        api_name: type
+      attio:
+        status: standard
+        api_name: type
+      espocrm:
+        status: standard
+        api_name: type
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: UserType
+      bloomerang:
+        status: custom
   - name: phone
     display_name: Phone
     type: phone
@@ -315,14 +422,25 @@ attributes:
       Less universally populated than email. Sometimes used for two-factor
       authentication SMS.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: custom
-
+      salesforce:
+        status: standard
+        api_name: Phone
+      hubspot:
+        status: standard
+        api_name: phone
+      attio:
+        status: standard
+        api_name: phone
+      espocrm:
+        status: standard
+        api_name: phoneNumber
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: Phone
+      bloomerang:
+        status: custom
   - name: timezone
     display_name: Time Zone
     type: enum
@@ -335,14 +453,26 @@ attributes:
       teams. IANA time zone identifier in modern systems (America/New_York,
       Europe/London).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: custom
-
+      salesforce:
+        status: standard
+        api_name: TimeZoneSidKey
+      hubspot:
+        status: standard
+        api_name: timezone
+      attio:
+        status: standard
+        api_name: timezone
+      espocrm:
+        status: standard
+        api_name: timeZone
+      civicrm:
+        status: standard
+        api_name: timezone
+      salesforce_npsp:
+        status: standard
+        api_name: TimeZoneSidKey
+      bloomerang:
+        status: custom
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -353,17 +483,27 @@ attributes:
       Audit field; rarely used in workflows but useful for license-cohort
       reporting and seat utilization analysis.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
-# =============================================================================
-# Relationships to other entities
-# =============================================================================
+      salesforce:
+        status: standard
+        api_name: CreatedDate
+      hubspot:
+        status: standard
+        api_name: createdate
+      attio:
+        status: standard
+        api_name: created_at
+      espocrm:
+        status: standard
+        api_name: createdAt
+      civicrm:
+        status: standard
+        api_name: created_date
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: standard
+        api_name: CreatedDate
 relationships:
   - target: account
     cardinality: one-to-many

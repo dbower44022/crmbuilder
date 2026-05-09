@@ -148,14 +148,25 @@ attributes:
       Drives list-view legibility and search. Often auto-populated from
       email subject when the case originates via email-to-case.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Subject
+      hubspot:
+        status: standard
+        api_name: subject
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: name
+      civicrm:
+        status: standard
+        api_name: subject
+      salesforce_npsp:
+        status: standard
+        api_name: Subject
+      bloomerang:
+        status: absent
   - name: caseNumber
     display_name: Case Number / Ticket Number
     type: autonumber
@@ -166,14 +177,25 @@ attributes:
       Customer-facing identifier used in support-portal URLs, email-thread
       tracking, and SLA reporting. Required and read-only.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: CaseNumber
+      hubspot:
+        status: standard
+        api_name: hs_ticket_id
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: number
+      civicrm:
+        status: standard
+        api_name: case_id
+      salesforce_npsp:
+        status: standard
+        api_name: CaseNumber
+      bloomerang:
+        status: absent
   - name: status
     display_name: Status
     type: enum
@@ -193,14 +215,25 @@ attributes:
       statuses pause the SLA clock), and reopening workflows. Heavily
       customized per organization's support process.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Status
+      hubspot:
+        status: standard
+        api_name: hs_pipeline_stage
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: status
+      civicrm:
+        status: standard
+        api_name: status_id
+      salesforce_npsp:
+        status: standard
+        api_name: Status
+      bloomerang:
+        status: absent
   - name: priority
     display_name: Priority
     type: enum
@@ -217,14 +250,27 @@ attributes:
       Often set automatically based on customer tier or case type, with
       manual override. Critical-priority cases often page on-call staff.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Priority
+      hubspot:
+        status: standard
+        api_name: hs_ticket_priority
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: priority
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: Priority
+      bloomerang:
+        status: absent
+    common_synonyms:
+      - severity
+      - urgency
   - name: origin
     display_name: Origin
     type: enum
@@ -243,14 +289,27 @@ attributes:
       most cases, which channels have the highest resolution rates) and
       automatic-routing rules.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Origin
+      hubspot:
+        status: standard
+        api_name: source_type
+      attio:
+        status: absent
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: Origin
+      bloomerang:
+        status: absent
+    common_synonyms:
+      - source
+      - channel
+      - how reported
   - name: type
     display_name: Type
     type: enum
@@ -262,14 +321,24 @@ attributes:
       Feature Request, Bug Report, Account Issue, Billing Inquiry. Drives
       routing rules and reporting.
     presence:
-      salesforce: standard
-      hubspot: custom
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Type
+      hubspot:
+        status: custom
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: type
+      civicrm:
+        status: standard
+        api_name: type
+      salesforce_npsp:
+        status: standard
+        api_name: Type
+      bloomerang:
+        status: absent
   - name: account
     display_name: Account
     type: reference
@@ -282,14 +351,25 @@ attributes:
       (account history, entitlements, billing status). Auto-derived from
       contact in Salesforce when contact is set.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: AccountId
+      hubspot:
+        status: standard
+        api_name: company_id
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: accountId
+      civicrm:
+        status: standard
+        api_name: account
+      salesforce_npsp:
+        status: standard
+        api_name: AccountId
+      bloomerang:
+        status: absent
   - name: contact
     display_name: Contact
     type: reference
@@ -301,14 +381,25 @@ attributes:
       Anchors customer-facing communication. Drives email-thread
       addressing, satisfaction-survey routing, and contact-history views.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: ContactId
+      hubspot:
+        status: standard
+        api_name: contact_id
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: contactId
+      civicrm:
+        status: standard
+        api_name: contact_id
+      salesforce_npsp:
+        status: standard
+        api_name: ContactId
+      bloomerang:
+        status: absent
   - name: description
     display_name: Description
     type: text
@@ -320,14 +411,25 @@ attributes:
       submission. The substantive content of the case before resolution
       activity is logged.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Description
+      hubspot:
+        status: standard
+        api_name: content
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: description
+      civicrm:
+        status: standard
+        api_name: details
+      salesforce_npsp:
+        status: standard
+        api_name: Description
+      bloomerang:
+        status: absent
   - name: resolution
     display_name: Resolution
     type: text
@@ -339,14 +441,22 @@ attributes:
       be promoted to Knowledge Articles for reuse) and post-resolution
       audit. Required for close in some configurations.
     presence:
-      salesforce: standard
-      hubspot: custom
-      attio: absent
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Resolution
+      hubspot:
+        status: custom
+      attio:
+        status: absent
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: Resolution
+      bloomerang:
+        status: absent
   - name: closedDate
     display_name: Closed Date
     type: datetime
@@ -357,14 +467,25 @@ attributes:
       Drives time-to-resolution reporting (closed - created = duration).
       Auto-set when status transitions to Closed in most systems.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: ClosedDate
+      hubspot:
+        status: standard
+        api_name: closed_date
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: closedDate
+      civicrm:
+        status: standard
+        api_name: closed_date
+      salesforce_npsp:
+        status: standard
+        api_name: ClosedDate
+      bloomerang:
+        status: absent
   - name: assignedUser
     display_name: Owner
     type: reference
@@ -377,14 +498,25 @@ attributes:
       rules. Often set by automatic-assignment rules based on case type,
       priority, and queue.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: OwnerId
+      hubspot:
+        status: standard
+        api_name: hubspot_owner_id
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: assignedUserId
+      civicrm:
+        status: standard
+        api_name: manager_id
+      salesforce_npsp:
+        status: standard
+        api_name: OwnerId
+      bloomerang:
+        status: absent
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -395,17 +527,25 @@ attributes:
       Anchors SLA-clock calculations. Drives time-to-resolution metrics
       and case-volume reporting by time period.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: absent
-
-# =============================================================================
-# Relationships to other entities
-# =============================================================================
+      salesforce:
+        status: standard
+        api_name: CreatedDate
+      hubspot:
+        status: standard
+        api_name: createdate
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: createdAt
+      civicrm:
+        status: standard
+        api_name: created_date
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: absent
 relationships:
   - target: account
     cardinality: many-to-one

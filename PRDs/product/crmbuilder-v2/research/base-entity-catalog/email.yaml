@@ -145,14 +145,27 @@ attributes:
       Drives list-view legibility, search, and threading. Auto-extracted
       from incoming emails; manually entered for outbound.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: Subject
+      hubspot:
+        status: standard
+        api_name: subject
+      attio:
+        status: standard
+        api_name: subject
+      espocrm:
+        status: standard
+        api_name: subject
+      civicrm:
+        status: standard
+        api_name: subject
+      salesforce_npsp:
+        status: standard
+        api_name: Subject
+      bloomerang:
+        status: standard
+        api_name: Subject
   - name: fromAddress
     display_name: From
     type: email
@@ -163,14 +176,26 @@ attributes:
       Anchors sender attribution. For inbound, identifies the sender;
       for outbound, identifies the rep / system address.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: custom
-
+      salesforce:
+        status: standard
+        api_name: FromAddress
+      hubspot:
+        status: standard
+        api_name: fromaddress
+      attio:
+        status: standard
+        api_name: from_address
+      espocrm:
+        status: standard
+        api_name: fromAddress
+      civicrm:
+        status: standard
+        api_name: from_address
+      salesforce_npsp:
+        status: standard
+        api_name: FromAddress
+      bloomerang:
+        status: custom
   - name: toAddress
     display_name: To
     type: email
@@ -182,14 +207,26 @@ attributes:
       address is matched to a Contact to associate the email correctly.
       Often supports multiple addresses (comma-separated or array).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: custom
-
+      salesforce:
+        status: standard
+        api_name: ToAddress
+      hubspot:
+        status: standard
+        api_name: toaddress
+      attio:
+        status: standard
+        api_name: to_address
+      espocrm:
+        status: standard
+        api_name: toAddress
+      civicrm:
+        status: standard
+        api_name: to_address
+      salesforce_npsp:
+        status: standard
+        api_name: ToAddress
+      bloomerang:
+        status: custom
   - name: ccAddress
     display_name: CC
     type: email
@@ -200,14 +237,25 @@ attributes:
       Captured for completeness; not typically driving any automation
       beyond display.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: CcAddress
+      hubspot:
+        status: standard
+        api_name: ccaddress
+      attio:
+        status: standard
+        api_name: cc_address
+      espocrm:
+        status: standard
+        api_name: ccAddress
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: CcAddress
+      bloomerang:
+        status: absent
   - name: htmlBody
     display_name: HTML Body
     type: richtext
@@ -218,14 +266,26 @@ attributes:
       The visual content of the email. Most modern systems store both
       HTML and plain text and display whichever is appropriate.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: custom
-
+      salesforce:
+        status: standard
+        api_name: HtmlBody
+      hubspot:
+        status: standard
+        api_name: htmlbody
+      attio:
+        status: standard
+        api_name: html_body
+      espocrm:
+        status: standard
+        api_name: htmlBody
+      civicrm:
+        status: standard
+        api_name: html_body
+      salesforce_npsp:
+        status: standard
+        api_name: HtmlBody
+      bloomerang:
+        status: custom
   - name: textBody
     display_name: Text Body
     type: text
@@ -236,14 +296,27 @@ attributes:
       Fallback content for plain-text email clients and search-indexing
       purposes.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: TextBody
+      hubspot:
+        status: standard
+        api_name: textbody
+      attio:
+        status: standard
+        api_name: text_body
+      espocrm:
+        status: standard
+        api_name: textBody
+      civicrm:
+        status: standard
+        api_name: text_body
+      salesforce_npsp:
+        status: standard
+        api_name: TextBody
+      bloomerang:
+        status: standard
+        api_name: TextBody
   - name: messageDate
     display_name: Message Date
     type: datetime
@@ -255,14 +328,27 @@ attributes:
       was created in the CRM, which may be later than the actual email
       send).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: MessageDate
+      hubspot:
+        status: standard
+        api_name: messagedate
+      attio:
+        status: standard
+        api_name: message_date
+      espocrm:
+        status: standard
+        api_name: messageDate
+      civicrm:
+        status: standard
+        api_name: message_date
+      salesforce_npsp:
+        status: standard
+        api_name: MessageDate
+      bloomerang:
+        status: standard
+        api_name: MessageDate
   - name: status
     display_name: Status
     type: enum
@@ -281,14 +367,25 @@ attributes:
       delivered from bounced. Drives "drafts" filtering and bounce-rate
       reporting.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: custom
-
+      salesforce:
+        status: standard
+        api_name: Status
+      hubspot:
+        status: standard
+        api_name: status
+      attio:
+        status: standard
+        api_name: status
+      espocrm:
+        status: standard
+        api_name: status
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: Status
+      bloomerang:
+        status: custom
   - name: parent
     display_name: Related To
     type: reference
@@ -302,14 +399,27 @@ attributes:
       Polymorphic — same email can be associated with Account, Contact,
       Opportunity, Case, or other entities.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: Parent
+      hubspot:
+        status: standard
+        api_name: parent
+      attio:
+        status: standard
+        api_name: parent
+      espocrm:
+        status: standard
+        api_name: parent
+      civicrm:
+        status: standard
+        api_name: parent
+      salesforce_npsp:
+        status: standard
+        api_name: Parent
+      bloomerang:
+        status: standard
+        api_name: Parent
   - name: assignedUser
     display_name: Owner / Sender
     type: reference
@@ -322,14 +432,27 @@ attributes:
       For outbound emails: which rep sent it. For inbound emails: which
       rep is responsible for following up.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: standard
+        api_name: AssignedUser
+      hubspot:
+        status: standard
+        api_name: assigneduser
+      attio:
+        status: standard
+        api_name: assigned_user
+      espocrm:
+        status: standard
+        api_name: assignedUser
+      civicrm:
+        status: standard
+        api_name: assigned_user
+      salesforce_npsp:
+        status: standard
+        api_name: AssignedUser
+      bloomerang:
+        status: standard
+        api_name: AssignedUser
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -340,17 +463,27 @@ attributes:
     usage: >
       Audit field. Distinct from messageDate.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
-# =============================================================================
-# Relationships to other entities
-# =============================================================================
+      salesforce:
+        status: standard
+        api_name: CreatedDate
+      hubspot:
+        status: standard
+        api_name: createdate
+      attio:
+        status: standard
+        api_name: created_at
+      espocrm:
+        status: standard
+        api_name: createdAt
+      civicrm:
+        status: standard
+        api_name: created_date
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: standard
+        api_name: CreatedDate
 relationships:
   - target: contact
     cardinality: many-to-many

@@ -150,14 +150,27 @@ attributes:
       generation. For in-kind gifts this is fair market value. For stock
       gifts it's typically value at the date received.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: total_amount
+      salesforce_npsp:
+        status: standard
+        api_name: Amount
+      bloomerang:
+        status: standard
+        api_name: Amount
+    common_synonyms:
+      - gift amount
+      - contribution amount
+      - value
   - name: donationDate
     display_name: Donation Date
     type: date
@@ -169,14 +182,27 @@ attributes:
       of the year following the donation). NPSP uses CloseDate; CiviCRM
       uses receive_date; Bloomerang uses date.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: receive_date
+      salesforce_npsp:
+        status: standard
+        api_name: CloseDate
+      bloomerang:
+        status: standard
+        api_name: Date
+    common_synonyms:
+      - gift date
+      - received date
+      - received on
   - name: status
     display_name: Status
     type: enum
@@ -195,14 +221,23 @@ attributes:
       Opportunity stages; CiviCRM uses contribution_status; Bloomerang
       uses Transaction status.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: contribution_status_id
+      salesforce_npsp:
+        status: standard
+        api_name: StageName
+      bloomerang:
+        status: standard
+        api_name: IsRefunded
   - name: paymentMethod
     display_name: Payment Method
     type: enum
@@ -224,14 +259,28 @@ attributes:
       requirements (stock gifts and in-kind require valuation
       documentation).
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: payment_instrument_id
+      salesforce_npsp:
+        status: standard
+        api_name: npe01__Payment_Method__c
+      bloomerang:
+        status: standard
+        api_name: Method
+    common_synonyms:
+      - method
+      - payment instrument
+      - how paid
+      - tender
   - name: contact
     display_name: Donor (Contact)
     type: reference
@@ -244,14 +293,23 @@ attributes:
       organization. NPSP requires either Contact or Account on Donation
       Opportunity.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: contact_id
+      salesforce_npsp:
+        status: standard
+        api_name: npsp__Primary_Contact__c
+      bloomerang:
+        status: standard
+        api_name: AccountId
   - name: account
     display_name: Donor (Account / Organization)
     type: reference
@@ -264,14 +322,23 @@ attributes:
       reference on every donation; Organization donations use the
       Organization Account.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: contact_id
+      salesforce_npsp:
+        status: standard
+        api_name: AccountId
+      bloomerang:
+        status: standard
+        api_name: AccountId
   - name: campaign
     display_name: Campaign
     type: reference
@@ -283,14 +350,27 @@ attributes:
       year-end appeals, capital campaigns, and event-specific fundraising
       where attribution matters.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: campaign_id
+      salesforce_npsp:
+        status: standard
+        api_name: CampaignId
+      bloomerang:
+        status: standard
+        api_name: CampaignId
+    common_synonyms:
+      - appeal
+      - fundraising campaign
+      - initiative
   - name: source
     display_name: Source / Channel
     type: enum
@@ -309,14 +389,26 @@ attributes:
       reporting that informs investment in different donation acquisition
       channels.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: custom
-      bloomerang: standard
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: source
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: standard
+        api_name: Source
+    common_synonyms:
+      - channel
+      - how received
+      - inbound channel
   - name: fund
     display_name: Fund / Designation
     type: reference
@@ -329,14 +421,28 @@ attributes:
       with multiple restricted funds. NPSP calls this General Accounting
       Unit (GAU); Bloomerang and CiviCRM use Fund.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: financial_type_id
+      salesforce_npsp:
+        status: standard
+        api_name: npsp__General_Accounting_Unit__c
+      bloomerang:
+        status: standard
+        api_name: FundId
+    common_synonyms:
+      - designation
+      - fund designation
+      - restricted to
+      - allocation
   - name: acknowledgmentStatus
     display_name: Acknowledgment Status
     type: enum
@@ -352,14 +458,26 @@ attributes:
       receipts. IRS rules require receipts for tax-deductible gifts above
       certain thresholds.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: npsp__Acknowledgment_Status__c
+      bloomerang:
+        status: standard
+        api_name: AcknowledgementStatus
+    common_synonyms:
+      - thank-you status
+      - receipt status
+      - acknowledged
   - name: acknowledgmentDate
     display_name: Acknowledgment Date
     type: date
@@ -370,14 +488,26 @@ attributes:
       required window?) and donor-relations reporting (response time
       from gift to thank-you).
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: npsp__Acknowledgment_Date__c
+      bloomerang:
+        status: standard
+        api_name: AcknowledgementDate
+    common_synonyms:
+      - thank-you date
+      - receipt date
+      - acknowledged on
   - name: recurringDonation
     display_name: Recurring Donation Schedule
     type: reference
@@ -389,14 +519,23 @@ attributes:
       Makes it possible to roll up "this recurring donor has given X over
       time" while preserving the per-installment audit trail.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: contribution_recur_id
+      salesforce_npsp:
+        status: standard
+        api_name: npe03__Recurring_Donation__c
+      bloomerang:
+        status: standard
+        api_name: RecurringDonationId
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -406,17 +545,23 @@ attributes:
       Distinct from donationDate (which is when the gift was received).
       Drives data-entry-velocity reports and integration sync filters.
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
-# =============================================================================
-# Relationships to other entities
-# =============================================================================
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: standard
+        api_name: created_date
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: standard
+        api_name: CreatedDate
 relationships:
   - target: contact
     cardinality: many-to-one

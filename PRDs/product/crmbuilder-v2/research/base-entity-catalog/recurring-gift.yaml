@@ -138,14 +138,27 @@ attributes:
       fixed-length schedules) and lifetime giving (amount × actual
       installments received).
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: amount
+      salesforce_npsp:
+        status: standard
+        api_name: npe03__Amount__c
+      bloomerang:
+        status: standard
+        api_name: Amount
+    common_synonyms:
+      - installment amount
+      - recurring amount
+      - monthly amount
   - name: frequency
     display_name: Frequency
     type: enum
@@ -164,14 +177,27 @@ attributes:
       schedules. CiviCRM models this as frequency_unit + frequency_interval
       pair.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: frequency_unit
+      salesforce_npsp:
+        status: standard
+        api_name: npe03__Installment_Period__c
+      bloomerang:
+        status: standard
+        api_name: Frequency
+    common_synonyms:
+      - cadence
+      - period
+      - interval
   - name: startDate
     display_name: Start Date
     type: date
@@ -183,14 +209,23 @@ attributes:
       donors sometimes start their recurring gift at the beginning of
       the next month.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: start_date
+      salesforce_npsp:
+        status: standard
+        api_name: npe03__Date_Established__c
+      bloomerang:
+        status: standard
+        api_name: StartDate
   - name: endDate
     display_name: End Date
     type: date
@@ -201,14 +236,23 @@ attributes:
       NPSP's RecurringType field distinguishes these explicitly. Drives
       sustainer-retention reporting (cancelled-vs-completed).
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: end_date
+      salesforce_npsp:
+        status: standard
+        api_name: npsp__EndDate__c
+      bloomerang:
+        status: standard
+        api_name: EndDate
   - name: installments
     display_name: Number of Installments
     type: integer
@@ -219,14 +263,22 @@ attributes:
       fixed-length pledges. Important for capital campaigns where multi-
       year fixed pledges are common.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: custom
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: installments
+      salesforce_npsp:
+        status: standard
+        api_name: npe03__Installments__c
+      bloomerang:
+        status: custom
   - name: status
     display_name: Status
     type: enum
@@ -244,14 +296,23 @@ attributes:
       Cancelled = donor explicitly stopped; Completed = fixed-length
       schedule reached its end; Paused = temporary hold.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: contribution_status_id
+      salesforce_npsp:
+        status: standard
+        api_name: npsp__Status__c
+      bloomerang:
+        status: standard
+        api_name: Status
   - name: paymentMethod
     display_name: Payment Method
     type: enum
@@ -268,14 +329,23 @@ attributes:
       installment entry. NPSP copies this to each Payment record
       automatically.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: payment_instrument_id
+      salesforce_npsp:
+        status: standard
+        api_name: npe03__Payment_Method__c
+      bloomerang:
+        status: standard
+        api_name: Method
   - name: contact
     display_name: Donor (Contact)
     type: reference
@@ -287,14 +357,23 @@ attributes:
       sustainers" filtering on Contact records. Nullable for organization
       donors.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: contact_id
+      salesforce_npsp:
+        status: standard
+        api_name: npe03__Contact__c
+      bloomerang:
+        status: standard
+        api_name: AccountId
   - name: account
     display_name: Donor (Account)
     type: reference
@@ -305,14 +384,23 @@ attributes:
       Used when the donor is an organization (corporate sponsor, family
       foundation) or a Household account.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: contact_id
+      salesforce_npsp:
+        status: standard
+        api_name: npe03__Organization__c
+      bloomerang:
+        status: standard
+        api_name: AccountId
   - name: campaign
     display_name: Campaign
     type: reference
@@ -324,14 +412,23 @@ attributes:
       important for sustainer-acquisition campaigns where the goal is
       to convert one-time donors into recurring donors.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: campaign_id
+      salesforce_npsp:
+        status: standard
+        api_name: npe03__Recurring_Donation_Campaign__c
+      bloomerang:
+        status: standard
+        api_name: CampaignId
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -341,17 +438,23 @@ attributes:
       Distinct from startDate (when installments begin). Drives sustainer-
       acquisition cohort reporting.
     presence:
-      salesforce: absent
-      hubspot: absent
-      attio: absent
-      espocrm: absent
-      civicrm: standard
-      salesforce_npsp: standard
-      bloomerang: standard
-
-# =============================================================================
-# Relationships to other entities
-# =============================================================================
+      salesforce:
+        status: absent
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: created_date
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: standard
+        api_name: CreatedDate
 relationships:
   - target: donation
     cardinality: one-to-many

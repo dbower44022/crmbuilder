@@ -103,13 +103,24 @@ attributes:
     description: Phone number dialed (for outbound) or received from (for inbound).
     usage: Used for caller-ID / dialer integration and post-call reporting (which numbers were called).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: custom
+      salesforce:
+        status: standard
+        api_name: CallerNumber
+      hubspot:
+        status: standard
+        api_name: hs_call_to_number
+      attio:
+        status: standard
+        api_name: phone_number
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: CallerNumber
+      bloomerang:
+        status: custom
   - name: direction
     display_name: Direction
     type: enum
@@ -120,13 +131,25 @@ attributes:
     description: Whether the call was placed (outbound) or received (inbound).
     usage: Drives reporting (outbound-call-volume metrics, inbound-response-time SLAs).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: custom
+      salesforce:
+        status: standard
+        api_name: CallType
+      hubspot:
+        status: standard
+        api_name: hs_call_direction
+      attio:
+        status: standard
+        api_name: direction
+      espocrm:
+        status: standard
+        api_name: direction
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: CallType
+      bloomerang:
+        status: custom
   - name: durationSeconds
     display_name: Duration (seconds)
     type: integer
@@ -134,13 +157,28 @@ attributes:
     description: Length of the call in seconds.
     usage: Drives sales-rep productivity reporting (time spent on calls per day) and quality metrics (very-short calls indicating drop-offs).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: custom
+      salesforce:
+        status: standard
+        api_name: CallDurationInSeconds
+      hubspot:
+        status: standard
+        api_name: hs_call_duration
+      attio:
+        status: standard
+        api_name: duration
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: CallDurationInSeconds
+      bloomerang:
+        status: custom
+    common_synonyms:
+      - duration
+      - call length
+      - talk time
   - name: recordingUrl
     display_name: Recording URL
     type: url
@@ -148,13 +186,28 @@ attributes:
     description: URL of the call recording (when capture is enabled and consent obtained).
     usage: Drives quality-assurance reviews, AI coaching tools (Gong, Chorus), and compliance audit trails. Storage is typically external (telephony provider).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: custom
+      salesforce:
+        status: standard
+        api_name: CallObject
+      hubspot:
+        status: standard
+        api_name: hs_call_recording_url
+      attio:
+        status: standard
+        api_name: recording_url
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: CallObject
+      bloomerang:
+        status: custom
+    common_synonyms:
+      - recording
+      - call recording
+      - audio
   - name: outcome
     display_name: Call Outcome
     type: enum
@@ -169,14 +222,27 @@ attributes:
     description: Result of the call attempt.
     usage: Drives outreach-effectiveness reporting (connect rate per dialer / per rep / per list).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: custom
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: custom
-
+      salesforce:
+        status: standard
+        api_name: CallDisposition
+      hubspot:
+        status: standard
+        api_name: hs_call_disposition
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: CallDisposition
+      bloomerang:
+        status: custom
+    common_synonyms:
+      - disposition
+      - result
+      - call result
 sources:
   - title: "Salesforce Object Reference: VoiceCall"
     url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_voicecall.htm

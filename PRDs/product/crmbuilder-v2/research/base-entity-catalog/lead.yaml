@@ -158,14 +158,23 @@ attributes:
       Used for personalization in outreach, lead-scoring rules, and
       duplicate detection during conversion. Same role as Contact.firstName.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: FirstName
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: firstName
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: FirstName
+      bloomerang:
+        status: absent
   - name: lastName
     display_name: Last Name
     type: string
@@ -179,14 +188,23 @@ attributes:
       the system checks for existing Contacts with the same last name +
       email or last name + company.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: LastName
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: lastName
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: LastName
+      bloomerang:
+        status: absent
   - name: company
     display_name: Company
     type: string
@@ -202,14 +220,27 @@ attributes:
       For B2C leads, conventional values are "(Individual)" or the lead's
       personal name.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Company
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: accountName
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Company
+      bloomerang:
+        status: absent
+    common_synonyms:
+      - organization
+      - employer
+      - firm
   - name: emailAddress
     display_name: Email Address
     type: email
@@ -221,14 +252,23 @@ attributes:
       During conversion, often used as the matching key against existing
       Contacts.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Email
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: emailAddress
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Email
+      bloomerang:
+        status: absent
   - name: phone
     display_name: Phone
     type: phone
@@ -239,14 +279,23 @@ attributes:
       Used by SDR teams for cold-call outreach and lead-routing rules
       (territory-based assignment by area code).
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Phone
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: phoneNumber
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Phone
+      bloomerang:
+        status: absent
   - name: title
     display_name: Title
     type: string
@@ -259,14 +308,23 @@ attributes:
       and above goes to AE; below goes to SDR). Often the differentiator
       between MQL and SQL classification.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Title
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: title
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Title
+      bloomerang:
+        status: absent
   - name: leadSource
     display_name: Lead Source
     type: enum
@@ -287,14 +345,28 @@ attributes:
       (web leads to inside sales, tradeshow leads to field sales). Often
       the single most analyzed attribute on Lead records.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: LeadSource
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: source
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: LeadSource
+      bloomerang:
+        status: absent
+    common_synonyms:
+      - source
+      - channel
+      - origin
+      - how did they find us
   - name: leadStatus
     display_name: Lead Status
     type: enum
@@ -314,14 +386,27 @@ attributes:
       Rules and SLAs typically attach to status transitions (e.g., New
       Leads must move to Working within 1 business day).
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Status
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: status
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Status
+      bloomerang:
+        status: absent
+    common_synonyms:
+      - status
+      - stage
+      - qualification status
   - name: rating
     display_name: Rating
     type: enum
@@ -338,14 +423,26 @@ attributes:
       apply. Often replaced by an AI-calculated lead score in modern
       deployments.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: custom
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Rating
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: custom
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Rating
+      bloomerang:
+        status: absent
+    common_synonyms:
+      - lead score
+      - temperature
+      - priority
   - name: industry
     display_name: Industry
     type: enum
@@ -357,14 +454,23 @@ attributes:
       Vocabulary matches Account.industry so that conversion preserves
       the value cleanly.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Industry
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: industry
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Industry
+      bloomerang:
+        status: absent
   - name: numberOfEmployees
     display_name: Number of Employees
     type: integer
@@ -376,14 +482,23 @@ attributes:
       Account.numberOfEmployees, captured at the lead stage so the value
       is available before conversion.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: NumberOfEmployees
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: opportunityAmount
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: NumberOfEmployees
+      bloomerang:
+        status: absent
   - name: annualRevenue
     display_name: Annual Revenue
     type: currency
@@ -394,14 +509,23 @@ attributes:
       ICP-scoring input — sales orgs often segment leads by company size
       using revenue and employee count combined.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: AnnualRevenue
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: annualRevenue
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: AnnualRevenue
+      bloomerang:
+        status: absent
   - name: assignedUser
     display_name: Owner
     type: reference
@@ -415,14 +539,23 @@ attributes:
       Account/Contact ownership (territory-based or round-robin rather
       than relationship-based).
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: OwnerId
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: assignedUserId
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: OwnerId
+      bloomerang:
+        status: absent
   - name: isConverted
     display_name: Converted
     type: boolean
@@ -437,14 +570,22 @@ attributes:
       action; EspoCRM uses status=Converted instead. Drives "open leads"
       versus "converted leads" reporting.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: custom
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: IsConverted
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: custom
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: IsConverted
+      bloomerang:
+        status: absent
   - name: convertedDate
     display_name: Converted Date
     type: datetime
@@ -456,14 +597,22 @@ attributes:
       from each source / channel / SDR). Read-only and system-set on
       conversion.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: custom
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: ConvertedDate
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: custom
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: ConvertedDate
+      bloomerang:
+        status: absent
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -474,17 +623,23 @@ attributes:
       Drives "leads created this week" reports, SLA tracking (time from
       creation to first touch), and integration sync filters.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
-# =============================================================================
-# Relationships to other entities
-# =============================================================================
+      salesforce:
+        status: standard
+        api_name: CreatedDate
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: createdAt
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: absent
 relationships:
   - target: account
     cardinality: one-to-one

@@ -145,14 +145,23 @@ attributes:
     usage: >
       One of two foreign keys on the junction. Required.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Campaign
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: campaign
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: Campaign
+      bloomerang:
+        status: absent
   - name: contact
     display_name: Contact
     type: reference
@@ -163,14 +172,23 @@ attributes:
     usage: >
       Either contact or lead is set (not both, in Salesforce).
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Contact
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: contact
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: Contact
+      bloomerang:
+        status: absent
   - name: lead
     display_name: Lead
     type: reference
@@ -184,14 +202,23 @@ attributes:
       been converted yet. Only one of LeadId or ContactId is populated
       per record.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Lead
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: lead
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Lead
+      bloomerang:
+        status: absent
   - name: status
     display_name: Member Status
     type: enum
@@ -215,14 +242,22 @@ attributes:
       table holds per-Campaign status options. Drives response-rate
       reporting.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Status
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: Status
+      bloomerang:
+        status: absent
   - name: hasResponded
     display_name: Has Responded
     type: boolean
@@ -235,14 +270,22 @@ attributes:
       have a HasResponded boolean that tags which statuses count as
       responses. Drives response-rate calculations.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: HasResponded
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: HasResponded
+      bloomerang:
+        status: absent
   - name: firstRespondedDate
     display_name: First Responded Date
     type: date
@@ -253,14 +296,22 @@ attributes:
       Drives time-to-response analysis (avg days from Sent to Responded
       per campaign type).
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: custom
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: FirstRespondedDate
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: custom
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: FirstRespondedDate
+      bloomerang:
+        status: absent
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -271,17 +322,23 @@ attributes:
       Anchors response-time calculations. Drives "added this week"
       reports during active campaigns.
     presence:
-      salesforce: standard
-      hubspot: absent
-      attio: absent
-      espocrm: standard
-      civicrm: custom
-      salesforce_npsp: standard
-      bloomerang: absent
-
-# =============================================================================
-# Relationships to other entities
-# =============================================================================
+      salesforce:
+        status: standard
+        api_name: CreatedDate
+      hubspot:
+        status: absent
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: createdAt
+      civicrm:
+        status: custom
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: absent
 relationships:
   - target: campaign
     cardinality: many-to-one

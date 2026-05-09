@@ -137,14 +137,24 @@ attributes:
     usage: >
       Anchors search, list views, and quote line item display.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Name
+      hubspot:
+        status: standard
+        api_name: name
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: name
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Name
+      bloomerang:
+        status: absent
   - name: productCode
     display_name: Product Code / SKU
     type: string
@@ -157,14 +167,24 @@ attributes:
       duplicate-detection on product import. Salesforce calls this
       ProductCode; HubSpot calls it sku.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: ProductCode
+      hubspot:
+        status: standard
+        api_name: productcode
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: productCode
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: ProductCode
+      bloomerang:
+        status: absent
   - name: description
     display_name: Description
     type: text
@@ -174,14 +194,24 @@ attributes:
     usage: >
       Customer-facing copy for quotes, web catalogs, and proposals.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Description
+      hubspot:
+        status: standard
+        api_name: description
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: description
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Description
+      bloomerang:
+        status: absent
   - name: family
     display_name: Family / Category
     type: string
@@ -193,14 +223,23 @@ attributes:
       application, and customer-facing catalog navigation. Salesforce
       uses Family; EspoCRM uses Category (linked to ProductCategory entity).
     presence:
-      salesforce: standard
-      hubspot: custom
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Family
+      hubspot:
+        status: custom
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: family
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Family
+      bloomerang:
+        status: absent
   - name: type
     display_name: Type
     type: enum
@@ -216,14 +255,21 @@ attributes:
       Drives accounting treatment, billing-frequency UI, and inventory
       tracking applicability (services don't have stock).
     presence:
-      salesforce: custom
-      hubspot: custom
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: custom
-      bloomerang: absent
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: type
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: absent
   - name: unitPrice
     display_name: Unit Price / Standard Price
     type: currency
@@ -236,14 +282,22 @@ attributes:
       directly on Product2 to support multiple price books; HubSpot and
       EspoCRM store price directly on Product.
     presence:
-      salesforce: custom
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: custom
-      bloomerang: absent
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: standard
+        api_name: unitprice
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: unitPrice
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: absent
   - name: cost
     display_name: Cost / Cost of Goods Sold
     type: currency
@@ -255,14 +309,21 @@ attributes:
       hs_cost_of_goods_sold property. Salesforce typically requires a
       custom field.
     presence:
-      salesforce: custom
-      hubspot: standard
-      attio: absent
-      espocrm: custom
-      civicrm: absent
-      salesforce_npsp: custom
-      bloomerang: absent
-
+      salesforce:
+        status: custom
+      hubspot:
+        status: standard
+        api_name: cost
+      attio:
+        status: absent
+      espocrm:
+        status: custom
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: absent
   - name: isActive
     display_name: Active
     type: boolean
@@ -274,14 +335,24 @@ attributes:
       remain visible on historical records. Salesforce uses IsActive;
       EspoCRM uses status (Available / Out of Stock / Discontinued).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: IsActive
+      hubspot:
+        status: standard
+        api_name: isactive
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: isActive
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: IsActive
+      bloomerang:
+        status: absent
   - name: quantityUnitOfMeasure
     display_name: Quantity Unit of Measure
     type: enum
@@ -300,14 +371,22 @@ attributes:
       Drives quote-line-item display ("8 Hours" rather than "8") and
       pricing calculations.
     presence:
-      salesforce: standard
-      hubspot: custom
-      attio: absent
-      espocrm: custom
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: QuantityUnitOfMeasure
+      hubspot:
+        status: custom
+      attio:
+        status: absent
+      espocrm:
+        status: custom
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: QuantityUnitOfMeasure
+      bloomerang:
+        status: absent
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -317,17 +396,24 @@ attributes:
     usage: >
       Audit field.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
-# =============================================================================
-# Relationships to other entities
-# =============================================================================
+      salesforce:
+        status: standard
+        api_name: CreatedDate
+      hubspot:
+        status: standard
+        api_name: createdate
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: createdAt
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: absent
 relationships:
   - target: opportunity
     cardinality: many-to-many

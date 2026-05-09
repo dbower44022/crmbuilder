@@ -51,7 +51,8 @@ systems:
     name: Contract
     api_name: Contract
     is_standard: true
-    notes: Foundational standard object. Includes ContractNumber, AccountId, Status (Draft / In Approval Process / Activated / Terminated / Expired), StartDate, ContractTerm (months), EndDate, ActivatedDate, OwnerExpirationNotice, BillingAddress, ShippingAddress, OwnerId.
+    notes: Foundational standard object. Includes ContractNumber, AccountId, Status (Draft / In Approval Process / Activated / Terminated / Expired), StartDate, ContractTerm (months), EndDate, 
+      ActivatedDate, OwnerExpirationNotice, BillingAddress, ShippingAddress, OwnerId.
     docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contract.htm
   - system: hubspot
     name: "Contracts (Enterprise)"
@@ -98,13 +99,24 @@ attributes:
     description: System-generated unique identifier for the contract.
     usage: Customer-facing identifier. Salesforce auto-numbers; EspoCRM uses sequential numbers.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
+      salesforce:
+        status: standard
+        api_name: ContractNumber
+      hubspot:
+        status: standard
+        api_name: hs_contract_number
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: number
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: ContractNumber
+      bloomerang:
+        status: absent
   - name: name
     display_name: Contract Name
     type: string
@@ -113,13 +125,24 @@ attributes:
     description: Display name of the contract.
     usage: Often follows naming conventions like "Acme - Annual MSA - 2026". Drives list-view legibility.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
+      salesforce:
+        status: standard
+        api_name: ContractName
+      hubspot:
+        status: standard
+        api_name: hs_contract_name
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: name
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: ContractName
+      bloomerang:
+        status: absent
   - name: account
     display_name: Account
     type: reference
@@ -128,13 +151,24 @@ attributes:
     description: The counterparty account on the contract.
     usage: Anchors the contract to the customer / partner / vendor account. Drives "show me all active contracts for this account" views.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
+      salesforce:
+        status: standard
+        api_name: AccountId
+      hubspot:
+        status: standard
+        api_name: hs_company_id
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: accountId
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: AccountId
+      bloomerang:
+        status: absent
   - name: status
     display_name: Status
     type: enum
@@ -151,13 +185,24 @@ attributes:
     description: Current state in the contract lifecycle.
     usage: Drives lifecycle workflow. Status transitions trigger automation (signed → activate; expiring soon → renewal-opportunity creation; terminated → churn-tracking).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
+      salesforce:
+        status: standard
+        api_name: Status
+      hubspot:
+        status: standard
+        api_name: hs_contract_status
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: status
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Status
+      bloomerang:
+        status: absent
   - name: startDate
     display_name: Start Date
     type: date
@@ -165,13 +210,24 @@ attributes:
     description: Effective date the contract begins.
     usage: Anchors contract-term reporting and active-contract filtering.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
+      salesforce:
+        status: standard
+        api_name: StartDate
+      hubspot:
+        status: standard
+        api_name: hs_start_date
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: dateStart
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: StartDate
+      bloomerang:
+        status: absent
   - name: endDate
     display_name: End Date
     type: date
@@ -179,13 +235,24 @@ attributes:
     description: Date the contract expires (calculated from StartDate + Term, or explicitly set).
     usage: Drives expiring-soon reports, renewal-pipeline generation, and end-of-life reminders. Salesforce auto-calculates from StartDate + ContractTerm.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
+      salesforce:
+        status: standard
+        api_name: EndDate
+      hubspot:
+        status: standard
+        api_name: hs_end_date
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: dateEnd
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: EndDate
+      bloomerang:
+        status: absent
   - name: term
     display_name: Term (months)
     type: integer
@@ -193,13 +260,28 @@ attributes:
     description: Length of the contract in months.
     usage: Drives end-date calculation and renewal-cadence logic. 12, 24, and 36 are most common contract terms.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
+      salesforce:
+        status: standard
+        api_name: ContractTerm
+      hubspot:
+        status: standard
+        api_name: hs_contract_term
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: term
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: ContractTerm
+      bloomerang:
+        status: absent
+    common_synonyms:
+      - contract length
+      - term length
+      - duration
   - name: contractValue
     display_name: Contract Value
     type: currency
@@ -207,13 +289,28 @@ attributes:
     description: Total monetary value of the contract over its full term.
     usage: Drives revenue-recognition reporting, account-tier classification, and renewal-opportunity sizing.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
+      salesforce:
+        status: standard
+        api_name: TotalContractValue
+      hubspot:
+        status: standard
+        api_name: hs_contract_value
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: amount
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: TotalContractValue
+      bloomerang:
+        status: absent
+    common_synonyms:
+      - total value
+      - TCV
+      - total contract value
   - name: signedDate
     display_name: Signed Date
     type: date
@@ -221,13 +318,24 @@ attributes:
     description: Date the contract was fully executed (all parties signed).
     usage: Anchors compliance reporting and time-to-close metrics (sent-for-signature → signed duration).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
+      salesforce:
+        status: standard
+        api_name: ActivatedDate
+      hubspot:
+        status: standard
+        api_name: hs_signed_date
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: dateSigned
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: ActivatedDate
+      bloomerang:
+        status: absent
   - name: autoRenew
     display_name: Auto-Renew
     type: boolean
@@ -235,13 +343,25 @@ attributes:
     description: Whether the contract auto-renews at the end of the current term.
     usage: Drives renewal-vs-churn workflows. Auto-renew contracts may need cancellation-prevention outreach; non-auto-renew contracts trigger renewal opportunities.
     presence:
-      salesforce: custom
-      hubspot: standard
-      attio: absent
-      espocrm: custom
-      civicrm: absent
-      salesforce_npsp: custom
-      bloomerang: absent
+      salesforce:
+        status: custom
+      hubspot:
+        status: standard
+        api_name: hs_auto_renew
+      attio:
+        status: absent
+      espocrm:
+        status: custom
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: absent
+    common_synonyms:
+      - auto-renewal
+      - auto renew
+      - evergreen
   - name: assignedUser
     display_name: Owner
     type: reference
@@ -250,13 +370,24 @@ attributes:
     description: User responsible for the contract.
     usage: Drives "my contracts" filtering and renewal-responsibility routing. Typically the account owner.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
+      salesforce:
+        status: standard
+        api_name: OwnerId
+      hubspot:
+        status: standard
+        api_name: hubspot_owner_id
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: assignedUserId
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: OwnerId
+      bloomerang:
+        status: absent
   - name: opportunity
     display_name: Originating Opportunity
     type: reference
@@ -265,13 +396,21 @@ attributes:
     description: The opportunity this contract closed from.
     usage: Links signed contracts back to the deals they came from. Drives contract-from-pipeline analytics.
     presence:
-      salesforce: custom
-      hubspot: standard
-      attio: absent
-      espocrm: custom
-      civicrm: absent
-      salesforce_npsp: custom
-      bloomerang: absent
+      salesforce:
+        status: custom
+      hubspot:
+        status: standard
+        api_name: hs_deal_id
+      attio:
+        status: absent
+      espocrm:
+        status: custom
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: custom
+      bloomerang:
+        status: absent
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -279,14 +418,24 @@ attributes:
     description: System timestamp.
     usage: Audit field.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: absent
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: CreatedDate
+      hubspot:
+        status: standard
+        api_name: createdate
+      attio:
+        status: absent
+      espocrm:
+        status: standard
+        api_name: createdAt
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: absent
 relationships:
   - target: account
     cardinality: many-to-one

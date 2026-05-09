@@ -161,14 +161,25 @@ attributes:
       use freeform descriptions. Anchors search and pipeline-review
       conversations ("the Acme renewal opp").
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Name
+      hubspot:
+        status: standard
+        api_name: dealname
+      attio:
+        status: standard
+        api_name: name
+      espocrm:
+        status: standard
+        api_name: name
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Name
+      bloomerang:
+        status: absent
   - name: account
     display_name: Account
     type: reference
@@ -183,14 +194,25 @@ attributes:
       auto-generated names). Drives account-rollup reporting (sum of all
       opportunities for one account).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: AccountId
+      hubspot:
+        status: standard
+        api_name: associatedcompanyids
+      attio:
+        status: standard
+        api_name: company
+      espocrm:
+        status: standard
+        api_name: accountId
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: AccountId
+      bloomerang:
+        status: absent
   - name: amount
     display_name: Amount
     type: currency
@@ -203,14 +225,30 @@ attributes:
       compensation calculations. NPSP uses this for donation amount when
       Opportunity tracks donations.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Amount
+      hubspot:
+        status: standard
+        api_name: amount
+      attio:
+        status: standard
+        api_name: value
+      espocrm:
+        status: standard
+        api_name: amount
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Amount
+      bloomerang:
+        status: absent
+    common_synonyms:
+      - deal size
+      - value
+      - opportunity value
+      - deal amount
   - name: closeDate
     display_name: Close Date
     type: date
@@ -224,14 +262,29 @@ attributes:
       close date." Required in most systems. HubSpot auto-sets this to
       end-of-current-month if not specified at creation.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: CloseDate
+      hubspot:
+        status: standard
+        api_name: closedate
+      attio:
+        status: standard
+        api_name: expected_close_date
+      espocrm:
+        status: standard
+        api_name: closeDate
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: CloseDate
+      bloomerang:
+        status: absent
+    common_synonyms:
+      - expected close
+      - target close
+      - forecast close
   - name: stage
     display_name: Stage
     type: enum
@@ -254,14 +307,29 @@ attributes:
       heavily customized per organization. See the separate Pipeline Stage
       catalog entry for stage-as-an-entity treatment.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: StageName
+      hubspot:
+        status: standard
+        api_name: dealstage
+      attio:
+        status: standard
+        api_name: stage
+      espocrm:
+        status: standard
+        api_name: stage
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: StageName
+      bloomerang:
+        status: absent
+    common_synonyms:
+      - pipeline stage
+      - phase
+      - sales stage
   - name: probability
     display_name: Probability
     type: decimal
@@ -274,14 +342,28 @@ attributes:
       but rep-overridable in some configurations. Salesforce auto-sets;
       HubSpot configures per stage in pipeline settings.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: custom
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Probability
+      hubspot:
+        status: standard
+        api_name: hs_deal_stage_probability
+      attio:
+        status: custom
+      espocrm:
+        status: standard
+        api_name: probability
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Probability
+      bloomerang:
+        status: absent
+    common_synonyms:
+      - likelihood
+      - win probability
+      - confidence
   - name: type
     display_name: Type
     type: enum
@@ -300,14 +382,27 @@ attributes:
       In NPSP this becomes Donation Type (with values like Cash, Stock,
       In-Kind, Matching Gift) via the Type or Record Type field.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: custom
-      espocrm: custom
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Type
+      hubspot:
+        status: standard
+        api_name: dealtype
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Type
+      bloomerang:
+        status: absent
+    common_synonyms:
+      - deal type
+      - opportunity type
+      - business type
   - name: leadSource
     display_name: Lead Source
     type: enum
@@ -320,14 +415,27 @@ attributes:
       Drives marketing-attribution analysis (which channels produce the
       most won revenue).
     presence:
-      salesforce: standard
-      hubspot: custom
-      attio: custom
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: LeadSource
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: standard
+        api_name: leadSource
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: LeadSource
+      bloomerang:
+        status: absent
+    common_synonyms:
+      - source
+      - channel
+      - origin
   - name: description
     display_name: Description
     type: text
@@ -339,14 +447,25 @@ attributes:
       deal strategy, key requirements, competitive landscape. Often
       duplicated by Notes attached to the opportunity.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Description
+      hubspot:
+        status: standard
+        api_name: description
+      attio:
+        status: standard
+        api_name: description
+      espocrm:
+        status: standard
+        api_name: description
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Description
+      bloomerang:
+        status: absent
   - name: nextStep
     display_name: Next Step
     type: string
@@ -359,14 +478,26 @@ attributes:
       whether reps have a credible path forward on each open deal. If
       Next Step is empty or stale, the deal is often flagged as at-risk.
     presence:
-      salesforce: standard
-      hubspot: custom
-      attio: custom
-      espocrm: custom
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: NextStep
+      hubspot:
+        status: custom
+      attio:
+        status: custom
+      espocrm:
+        status: custom
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: NextStep
+      bloomerang:
+        status: absent
+    common_synonyms:
+      - next action
+      - next move
+      - planned next step
   - name: assignedUser
     display_name: Owner
     type: reference
@@ -380,14 +511,30 @@ attributes:
       reporting; opportunity ownership is the primary attribute that
       determines whose number a deal counts toward.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: OwnerId
+      hubspot:
+        status: standard
+        api_name: hubspot_owner_id
+      attio:
+        status: standard
+        api_name: workspace_member_owner
+      espocrm:
+        status: standard
+        api_name: assignedUserId
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: OwnerId
+      bloomerang:
+        status: absent
+    common_synonyms:
+      - owner
+      - rep
+      - AE
+      - account executive
   - name: pipeline
     display_name: Pipeline
     type: reference
@@ -402,14 +549,24 @@ attributes:
       Direct Sales and Channel Sales pipelines. Each pipeline has its own
       stages. Required when more than one pipeline exists.
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: custom
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
+      salesforce:
+        status: standard
+        api_name: Pipeline__c
+      hubspot:
+        status: standard
+        api_name: pipeline
+      attio:
+        status: standard
+        api_name: stage
+      espocrm:
+        status: custom
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: Pipeline__c
+      bloomerang:
+        status: absent
   - name: createdAt
     display_name: Created Date
     type: datetime
@@ -420,17 +577,25 @@ attributes:
       Drives sales-cycle calculations (close date minus created date) and
       cohort reporting (deals created in Q1 — how many closed?).
     presence:
-      salesforce: standard
-      hubspot: standard
-      attio: standard
-      espocrm: standard
-      civicrm: absent
-      salesforce_npsp: standard
-      bloomerang: absent
-
-# =============================================================================
-# Relationships to other entities
-# =============================================================================
+      salesforce:
+        status: standard
+        api_name: CreatedDate
+      hubspot:
+        status: standard
+        api_name: createdate
+      attio:
+        status: standard
+        api_name: created_at
+      espocrm:
+        status: standard
+        api_name: createdAt
+      civicrm:
+        status: absent
+      salesforce_npsp:
+        status: standard
+        api_name: CreatedDate
+      bloomerang:
+        status: absent
 relationships:
   - target: account
     cardinality: many-to-one
