@@ -35,6 +35,18 @@ def delete(body: ReferenceDeleteIn):
         return ok(references.delete(s, **body.model_dump()))
 
 
+@router.delete("/{ref_id}")
+def delete_by_id(ref_id: int):
+    """Hard-delete a reference by integer primary key.
+
+    Added in v0.3 slice C so the UI's ``ReferenceDeleteDialog`` can
+    delete by the ``id`` surfaced on every list-response row, without
+    re-sending the full identifying tuple.
+    """
+    with writable_session() as s:
+        return ok(references.delete_by_id(s, ref_id))
+
+
 @router.get("/from/{source_type}/{source_id}")
 def list_from(source_type: str, source_id: str):
     with readonly_session() as s:

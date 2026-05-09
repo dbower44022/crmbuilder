@@ -168,6 +168,32 @@ def create(
     return after
 
 
+def delete_by_id(session: Session, ref_id: int) -> dict:
+    """Hard-delete a reference by integer primary key.
+
+    Mirrors :func:`delete` but addresses the row by ``id`` instead of
+    by the full tuple. Used by the v0.3 ``DELETE /references/{id}``
+    REST endpoint (added in slice C) so the UI can issue a delete
+    using the integer id surfaced on every reference row.
+    """
+    row = session.get(Reference, ref_id)
+    if row is None:
+        raise NotFoundError(_ENTITY_TYPE, str(ref_id))
+    before = _row_dict(row)
+    identifier = _identifier(row)
+    session.delete(row)
+    session.flush()
+    emit(
+        session,
+        entity_type=_ENTITY_TYPE,
+        entity_identifier=identifier,
+        operation="delete",
+        before=before,
+        after=None,
+    )
+    return before
+
+
 def delete(
     session: Session,
     *,

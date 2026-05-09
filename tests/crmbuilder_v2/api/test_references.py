@@ -75,3 +75,19 @@ def test_delete_via_post(client):
     assert r.status_code == 200
     r = client.get("/references")
     assert r.json()["data"] == []
+
+
+def test_delete_by_id(client):
+    """v0.3 slice C: DELETE /references/{id} hard-deletes by integer id."""
+    create = _add_session_decision_ref(client)
+    ref_id = create.json()["data"]["id"]
+
+    r = client.delete(f"/references/{ref_id}")
+    assert r.status_code == 200
+    r = client.get("/references")
+    assert r.json()["data"] == []
+
+
+def test_delete_by_id_unknown_returns_404(client):
+    r = client.delete("/references/999999")
+    assert r.status_code == 404

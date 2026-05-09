@@ -131,3 +131,19 @@ def test_upsert_idempotent(v2_env):
             relationship="decided_in",
         )
     assert first["id"] == second["id"]
+
+
+def test_delete_by_id_removes_row(v2_env):
+    with session_scope() as s:
+        created = _add(s)
+    ref_id = created["id"]
+    with session_scope() as s:
+        before = references.delete_by_id(s, ref_id)
+    assert before["id"] == ref_id
+    with session_scope() as s, pytest.raises(NotFoundError):
+        references.get(s, ref_id)
+
+
+def test_delete_by_id_unknown_id_raises(v2_env):
+    with session_scope() as s, pytest.raises(NotFoundError):
+        references.delete_by_id(s, 999_999)

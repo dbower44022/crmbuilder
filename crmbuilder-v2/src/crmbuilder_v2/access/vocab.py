@@ -49,6 +49,91 @@ ENTITY_TYPES: frozenset[str] = frozenset(
     }
 )
 
+
+def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
+    """Return the valid relationship kinds for a (source, target) pair.
+
+    Used to populate :data:`RELATIONSHIP_RULES` and the cascading
+    `ReferenceCreateDialog` (v0.3 slice C, DEC-033). The semantic rules:
+
+    * ``is_about`` and ``references`` — generic, valid for any pair.
+    * ``decided_in`` — target must be a session.
+    * ``supersedes`` — source and target types must match.
+    * ``affects`` — source must be a risk.
+    * ``covers`` — source must be charter or status.
+    * ``blocks`` — source must be a risk or planning_item.
+
+    The ruleset is permissive by design: every pair has at least the
+    two generic kinds, so the dialog never produces an empty kind list
+    for a valid (source, target) combination. Specific kinds (e.g.
+    ``decided_in``) constrain only their target side. Future iterations
+    may tighten the rules; the dict-shape lookup pattern is unchanged.
+    """
+    kinds = {"is_about", "references"}
+    if target_type == "session":
+        kinds.add("decided_in")
+    if source_type == target_type:
+        kinds.add("supersedes")
+    if source_type == "risk":
+        kinds.add("affects")
+        kinds.add("blocks")
+    if source_type == "planning_item":
+        kinds.add("blocks")
+    if source_type in ("charter", "status"):
+        kinds.add("covers")
+    return frozenset(kinds)
+
+
+# Tuple-keyed dict mapping ``(source_type, target_type)`` to the set of
+# relationship kinds valid for that pair. Computed at module load from
+# :func:`_kinds_for_pair`. Read by the v0.3 cascading
+# `ReferenceCreateDialog` to enforce strict vocab compliance: dropdowns
+# show only valid choices for the partially-filled state, so invalid
+# combinations are unrepresentable in the dialog (per DEC-033).
+RELATIONSHIP_RULES: dict[tuple[str, str], frozenset[str]] = {
+    (s, t): _kinds_for_pair(s, t)
+    for s in sorted(ENTITY_TYPES)
+    for t in sorted(ENTITY_TYPES)
+}
+
+
+def kinds_for_source(source_type: str) -> frozenset[str]:
+    """Union of relationship kinds valid for any pair where source_type matches."""
+    out: set[str] = set()
+    for (s, _t), kinds in RELATIONSHIP_RULES.items():
+        if s == source_type:
+            out.update(kinds)
+    return frozenset(out)
+
+
+def target_types_for(source_type: str, kind: str) -> frozenset[str]:
+    """Return the target types valid for ``(source_type, kind)``.
+
+    Used by the cascading dialog after the user picks source type and
+    relationship kind to filter the target type combo.
+    """
+    out: set[str] = set()
+    for (s, t), kinds in RELATIONSHIP_RULES.items():
+        if s == source_type and kind in kinds:
+            out.add(t)
+    return frozenset(out)
+
+
+def source_types_with_relationships() -> frozenset[str]:
+    """Return the set of source types that have at least one valid relationship.
+
+    Used by the cascading dialog to populate the source-type combo.
+    Every entity type currently has valid relationships (the two generic
+    kinds always apply), so this returns ``ENTITY_TYPES`` today, but the
+    helper is exposed so future restrictive rule changes don't require
+    UI changes.
+    """
+    out: set[str] = set()
+    for (s, _t), kinds in RELATIONSHIP_RULES.items():
+        if kinds:
+            out.add(s)
+    return frozenset(out)
+
 CHANGE_LOG_OPERATIONS: frozenset[str] = frozenset({"insert", "update", "delete"})
 
 CHANGE_LOG_ACTORS: frozenset[str] = frozenset(
