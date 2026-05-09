@@ -1,0 +1,192 @@
+catalog_id: activity-phone-call
+catalog_version: "0.1"
+last_updated: "05-09-26 11:15"
+tier: 5
+entry_kind: subclass
+
+parent_entity: activity
+discriminator:
+  attribute: activityType
+  value: Phone Call
+
+name: Phone Call (Activity subclass)
+display_name: Phone Call
+purpose: >
+  A voice call placed or received as part of a relationship. A subclass
+  of Activity that adds phone-specific delta attributes: phone number
+  dialed, direction (outbound / inbound), call duration, optional
+  recording URL.
+
+business_context: >
+  Phone-call records capture voice-touchpoint metadata that generic
+  Activity records can't structure: duration matters for sales-rep
+  productivity reporting; direction (inbound vs outbound) drives
+  different workflows (inbound calls usually trigger SLA-tracked
+  responses); call recordings (with consent) feed quality-assurance
+  reviews and AI coaching tools. Modeling diverges: Salesforce
+  historically used Task with TaskSubtype=Call; Salesforce Voice and
+  Service Cloud Voice introduce a dedicated VoiceCall object.
+  HubSpot has Call as an Engagement type with HubSpot Calling integration.
+  EspoCRM has Call as a separate first-class entity. CiviCRM uses
+  Activity records with activity_type=Phone Call. Attio has Calls as a
+  separate object (with call recording integrations). Bloomerang uses
+  Interaction subtype=Phone Call. NPSP follows Salesforce. When
+  interviewing clients, surface "Phone Call" by asking whether they need
+  to track call duration, distinguish inbound from outbound, or capture
+  call recordings — if any of those, a structured phone-call entity is
+  preferred over generic Activity logging.
+
+data_model_role: log
+typically_required: false
+common_synonyms:
+  - Call
+  - Voice Call
+  - Logged Call
+  - Phone Conversation
+
+systems:
+  - system: salesforce
+    name: "Task (TaskSubtype=Call) or VoiceCall"
+    api_name: "Task or VoiceCall"
+    is_standard: true
+    mechanism: type_discriminator
+    notes: Historical model uses Task with TaskSubtype=Call. Modern Service Cloud Voice introduces a dedicated VoiceCall object with richer telephony metadata.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_voicecall.htm
+  - system: hubspot
+    name: "Call (Engagement subtype)"
+    api_name: calls
+    is_standard: true
+    mechanism: type_discriminator
+    notes: HubSpot Call engagement with subject, body, direction, duration, recording_url. Integrates with HubSpot Calling and third-party providers (Twilio, Aircall).
+    docs_url: https://developers.hubspot.com/docs/reference/api/crm/engagements/calls
+  - system: attio
+    name: Calls
+    api_name: calls
+    is_standard: true
+    mechanism: separate_object
+    notes: First-class Calls entity with call recording integrations (Gong, Chorus, etc.). Surfaces on Person and Company timelines.
+    docs_url: https://attio.com/help/reference/managing-your-data/records/add-record-activities
+  - system: espocrm
+    name: Call
+    api_name: Call
+    is_standard: true
+    mechanism: separate_object
+    notes: First-class Call entity with name (subject), status (Planned / Held / Not Held), direction (Outbound / Inbound), date_start, date_end, parent (polymorphic).
+    docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Call.json
+  - system: civicrm
+    name: "Activity (activity_type=Phone Call)"
+    api_name: Activity
+    is_standard: true
+    mechanism: type_discriminator
+    notes: CiviCRM uses unified Activity with activity_type=Phone Call. Duration not standard; tracked via custom field if needed.
+    docs_url: https://docs.civicrm.org/user/en/latest/the-user-interface/activities/
+  - system: salesforce_npsp
+    name: "Task (TaskSubtype=Call)"
+    api_name: Task
+    is_standard: true
+    mechanism: type_discriminator
+    notes: NPSP follows Salesforce. Calls to donors logged as Task with TaskSubtype=Call.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_task.htm
+  - system: bloomerang
+    name: "Interaction (subtype=Phone Call)"
+    api_name: Interaction
+    is_standard: true
+    mechanism: type_discriminator
+    notes: Bloomerang Interaction with Phone Call type. Includes Description, Date, Constituent.
+    docs_url: https://bloomerang.com/api/rest-api-v1/
+
+attributes:
+  - name: phoneNumber
+    display_name: Phone Number
+    type: phone
+    required: false
+    description: Phone number dialed (for outbound) or received from (for inbound).
+    usage: Used for caller-ID / dialer integration and post-call reporting (which numbers were called).
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: custom
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: custom
+  - name: direction
+    display_name: Direction
+    type: enum
+    required: true
+    enum_values:
+      - Outbound
+      - Inbound
+    description: Whether the call was placed (outbound) or received (inbound).
+    usage: Drives reporting (outbound-call-volume metrics, inbound-response-time SLAs).
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: custom
+  - name: durationSeconds
+    display_name: Duration (seconds)
+    type: integer
+    required: false
+    description: Length of the call in seconds.
+    usage: Drives sales-rep productivity reporting (time spent on calls per day) and quality metrics (very-short calls indicating drop-offs).
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: custom
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: custom
+  - name: recordingUrl
+    display_name: Recording URL
+    type: url
+    required: false
+    description: URL of the call recording (when capture is enabled and consent obtained).
+    usage: Drives quality-assurance reviews, AI coaching tools (Gong, Chorus), and compliance audit trails. Storage is typically external (telephony provider).
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: custom
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: custom
+  - name: outcome
+    display_name: Call Outcome
+    type: enum
+    required: false
+    enum_values:
+      - Connected
+      - Voicemail
+      - No Answer
+      - Busy
+      - Wrong Number
+      - Bad Number
+    description: Result of the call attempt.
+    usage: Drives outreach-effectiveness reporting (connect rate per dialer / per rep / per list).
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: custom
+      espocrm: custom
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: custom
+
+sources:
+  - title: "Salesforce Object Reference: VoiceCall"
+    url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_voicecall.htm
+  - title: "HubSpot Engagements: Calls"
+    url: https://developers.hubspot.com/docs/reference/api/crm/engagements/calls
+  - title: "EspoCRM: Call entity definition"
+    url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Call.json
+  - title: "Attio: Add record activities"
+    url: https://attio.com/help/reference/managing-your-data/records/add-record-activities
+  - title: "CiviCRM: Activities user guide"
+    url: https://docs.civicrm.org/user/en/latest/the-user-interface/activities/
+  - title: "Bloomerang REST API documentation"
+    url: https://bloomerang.com/api/rest-api-v1/

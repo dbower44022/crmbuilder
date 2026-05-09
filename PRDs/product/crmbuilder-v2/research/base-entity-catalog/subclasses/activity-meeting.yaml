@@ -1,0 +1,171 @@
+catalog_id: activity-meeting
+catalog_version: "0.1"
+last_updated: "05-09-26 11:20"
+tier: 5
+entry_kind: subclass
+
+parent_entity: activity
+discriminator:
+  attribute: activityType
+  value: Meeting
+
+name: Meeting (Activity subclass)
+display_name: Meeting (In-Person)
+purpose: >
+  An in-person meeting or event scheduled with one or more contacts. A
+  subclass of Activity that adds meeting-specific delta attributes:
+  physical location, attendee list, agenda, outcome notes. Distinct from
+  Video Meeting (which has a meeting URL and platform metadata).
+
+business_context: >
+  Meeting records capture scheduled in-person interactions: client
+  meetings, lunch meetings, conference attendance, on-site visits, board
+  meetings. They differ from generic Activity records in carrying
+  location data (where the meeting happens) and a multi-attendee list
+  (who's there). Modern CRMs increasingly distinguish in-person Meetings
+  from Video Meetings (separate subclass) because the workflows differ:
+  in-person involves physical-location coordination, travel time, and
+  often expense tracking; video involves URL provisioning, platform
+  selection, and recording management. Most surveyed systems don't
+  natively split these — they have a single Meeting / Event entity that
+  serves both purposes with optional location or URL fields. The catalog
+  documents both as separate subclasses to make the distinction explicit
+  and capture the cross-system mapping at deploy time. When interviewing
+  clients, surface "Meeting" by asking whether they need to track
+  in-person events distinct from video calls (often relevant for
+  field-sales orgs, board management, donor-cultivation events) or
+  whether one combined Meeting concept suffices.
+
+data_model_role: event
+typically_required: false
+common_synonyms:
+  - In-Person Meeting
+  - Event
+  - Visit
+  - Site Visit
+  - Appointment
+
+systems:
+  - system: salesforce
+    name: Event
+    api_name: Event
+    is_standard: true
+    mechanism: separate_object
+    notes: Salesforce Event object covers all meeting types (in-person and virtual). Includes Location field; no first-class virtual-meeting URL field but commonly added as custom.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_event.htm
+  - system: hubspot
+    name: "Meeting (Engagement subtype)"
+    api_name: meetings
+    is_standard: true
+    mechanism: type_discriminator
+    notes: HubSpot Meeting engagement covers both in-person and video. Includes meeting_outcome, location, internal_notes, body. Video meetings carry meeting URL via integrations.
+    docs_url: https://developers.hubspot.com/docs/reference/api/crm/engagements/meetings
+  - system: attio
+    name: Meetings
+    api_name: meetings
+    is_standard: true
+    mechanism: separate_object
+    notes: Attio Meetings auto-created from calendar sync (Google / Outlook). Surfaces on Person and Company timelines. Recognizes virtual-meeting URLs but doesn't natively split in-person from virtual.
+    docs_url: https://attio.com/help/reference/managing-your-data/records/add-record-activities
+  - system: espocrm
+    name: Meeting
+    api_name: Meeting
+    is_standard: true
+    mechanism: separate_object
+    notes: First-class Meeting entity with name, status (Planned / Held / Not Held), date_start, date_end, parent (polymorphic), users (link-multiple for attendees), description.
+    docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Meeting.json
+  - system: civicrm
+    name: "Activity (activity_type=Meeting)"
+    api_name: Activity
+    is_standard: true
+    mechanism: type_discriminator
+    notes: CiviCRM Activity with activity_type=Meeting. Doesn't natively distinguish in-person from virtual.
+    docs_url: https://docs.civicrm.org/user/en/latest/the-user-interface/activities/
+  - system: salesforce_npsp
+    name: Event
+    api_name: Event
+    is_standard: true
+    mechanism: separate_object
+    notes: Same as Salesforce. Donor cultivation meetings, board meetings, and donor events all use the Event object.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_event.htm
+  - system: bloomerang
+    name: "Interaction (subtype=In-Person)"
+    api_name: Interaction
+    is_standard: true
+    mechanism: type_discriminator
+    notes: Bloomerang Interaction with In-Person type. Captures Date, Description, Constituent.
+    docs_url: https://bloomerang.com/api/rest-api-v1/
+
+attributes:
+  - name: location
+    display_name: Location
+    type: string
+    required: false
+    max_length: 255
+    description: Physical location of the meeting (address, room name, venue).
+    usage: Drives logistics coordination, calendar invitations, and travel-time estimation. Distinct from videoMeetingUrl on the video-meeting subclass.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: custom
+  - name: attendees
+    display_name: Attendees
+    type: multireference
+    required: false
+    reference_target: contact
+    description: Contacts attending the meeting.
+    usage: Multi-attendee list. Drives meeting-attendance reporting and contact-engagement-frequency calculations. Salesforce uses EventRelation junction; EspoCRM uses link-multiple.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: custom
+  - name: agenda
+    display_name: Agenda
+    type: text
+    required: false
+    description: Pre-meeting agenda or talking points.
+    usage: Drives meeting-prep workflow. Often populated from a meeting-template before the meeting; reviewed and updated as outcome notes after.
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: standard
+      espocrm: custom
+      civicrm: custom
+      salesforce_npsp: custom
+      bloomerang: custom
+  - name: outcome
+    display_name: Outcome
+    type: text
+    required: false
+    description: Post-meeting summary of what was discussed and what's next.
+    usage: Captured after the meeting. Drives next-action assignment, follow-up tasks, and CRM activity-history continuity. The most-read field on completed meeting records.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: custom
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: standard
+
+sources:
+  - title: "Salesforce Object Reference: Event"
+    url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_event.htm
+  - title: "HubSpot Engagements: Meetings"
+    url: https://developers.hubspot.com/docs/reference/api/crm/engagements/meetings
+  - title: "EspoCRM: Meeting entity definition"
+    url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Meeting.json
+  - title: "Attio: Add record activities"
+    url: https://attio.com/help/reference/managing-your-data/records/add-record-activities
+  - title: "CiviCRM: Activities user guide"
+    url: https://docs.civicrm.org/user/en/latest/the-user-interface/activities/
+  - title: "Bloomerang REST API documentation"
+    url: https://bloomerang.com/api/rest-api-v1/

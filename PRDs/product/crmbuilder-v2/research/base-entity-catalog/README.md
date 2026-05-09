@@ -1,7 +1,7 @@
 # Base Entity Catalog
 
-**Last Updated:** 05-09-26 11:00
-**Status:** Tiers 1-4 complete; Tier 5 pending
+**Last Updated:** 05-09-26 11:45
+**Status:** All 5 tiers complete; catalog at 42 entries
 **Owner:** CRMBuilder v2
 
 ---
@@ -10,6 +10,7 @@
 
 | Version | Date | Description |
 |---------|------|-------------|
+| 0.6 | 05-09-26 | Tier 5 (communications detail) added: 5 Activity subclasses (activity-email, activity-phone-call, activity-meeting, activity-video-meeting, activity-sms) plus 2 standalone universal entities (document, contract). Reflects expanded scope versus original plan: Video Meeting and SMS added as distinct subclasses. All 5 communication subclasses share Activity's parent attributes and add channel-specific delta attributes only (call duration, meeting URL, message body, etc.). Catalog now stands at 42 entries: 34 universal + 8 subclasses across all 5 tiers. |
 | 0.5 | 05-09-26 | Refactor: renamed `specialization` → `subclass` throughout the catalog. Same conceptual model (parent entity + discriminator + delta attributes); friendlier terminology that maps cleanly to OOP subclassing for technical readers and is intuitive to non-technical readers. Changes: `entry_kind: specialization` → `entry_kind: subclass`; directory `specializations/` → `subclasses/`; all README prose updated. No semantic change to the catalog. |
 
 | Version | Date | Description |
@@ -87,10 +88,17 @@ base-entity-catalog/
 ├── soft-credit.yaml                       # T4 base entity
 ├── constituent.yaml                       # T4 base entity
 ├── engagement.yaml                        # T4 base entity
+├── document.yaml                          # T5 base entity
+├── contract.yaml                          # T5 base entity
 └── subclasses/
     ├── account-nonprofit.yaml             # T1 subclass of Account
     ├── account-household.yaml             # T4 subclass of Account
-    └── donation-major-gift.yaml           # T4 subclass of Donation
+    ├── donation-major-gift.yaml           # T4 subclass of Donation
+    ├── activity-email.yaml                # T5 subclass of Activity
+    ├── activity-phone-call.yaml           # T5 subclass of Activity
+    ├── activity-meeting.yaml              # T5 subclass of Activity
+    ├── activity-video-meeting.yaml        # T5 subclass of Activity
+    └── activity-sms.yaml                  # T5 subclass of Activity
 ```
 
 Base entity files are universal types that every (or nearly every) CRM has. Subclass files reference a parent entity, name a discriminator (the parent attribute and value that selects this subclass), and list only delta attributes that the subclass adds beyond what the parent already defines.
