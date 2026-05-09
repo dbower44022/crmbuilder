@@ -86,6 +86,38 @@ Confirm the second call flips the status back to Active and returns the updated 
 
 If either path doesn't work, add the missing piece. Mechanical work.
 
+### Topic `parent_topic` empty-string clearing fix
+
+Slice D surfaced a parallel bug to v0.1 slice H's `supersedes=""` clearing fix on decisions: the topics access layer rejects `parent_topic=""` and ignores `parent_topic=None`. As a result, operators can re-parent a topic but not detach it (clear its parent to NULL). The Topics edit dialog produces `parent_topic=""` when the user clears the parent picker, and that value currently fails validation.
+
+The fix is the same shape as `_resolve_decision_id` got in v0.1 slice H — special-case empty string at the `_resolve_topic_id` (or equivalent) helper in `crmbuilder-v2/src/crmbuilder_v2/access/repositories/topics.py`:
+
+```python
+def _resolve_topic_id(session: Session, identifier: str | None) -> int | None:
+    """Resolve an identifier string to an integer FK.
+
+    None and empty string both return None. Callers in update() use
+    None to mean "don't touch" (the if-not-None guard prevents the
+    assignment) and empty string to mean "clear the FK" (the guard
+    fires; this helper returns None; the caller assigns None to the
+    foreign-key column).
+    """
+    if identifier is None or identifier == "":
+        return None
+    # ... existing lookup logic ...
+```
+
+Verify the exact function name and existing shape against the actual file. If the topics repository uses a different helper or pattern (e.g., resolves inline rather than via a helper), adjust the fix to match.
+
+### Tests for the topic parent_topic fix
+
+In `tests/crmbuilder_v2/access/test_topics.py` (or wherever the topics access-layer tests live):
+
+- `update(topic_id, parent_topic="")` clears the FK; the next `get(topic_id)` returns `parent_topic_identifier: None`.
+- `update(topic_id, parent_topic="TOP-X")` sets the FK to TOP-X.
+- `update(topic_id, parent_topic=None)` does not touch the existing parent_topic value.
+- `update(topic_id, parent_topic="TOP-NONEXISTENT")` raises ValidationError.
+
 ## Step 2 — Extend `StorageClient` for show-deleted and restore
 
 ```python
@@ -269,6 +301,9 @@ Suggested items:
 5. **Log noise.** Verify `~/.crmbuilder-v2/ui.log` doesn't fill with WARNINGs or ERRORs for routine operations.
 6. **References fetch failure handling.** If `ReferencesSection`'s fetch fails (network blip, API restart), the section should render an error placeholder rather than the loading state forever.
 7. **Tree picker scroll-to-current.** When opening the Topics parent picker on Edit, the picker should scroll to the current parent (if any) so the user sees their starting point. The slice A widget supports this via the `current_id` parameter; verify it's passed through correctly from the EntityCrudDialog tree_picker handling.
+8. **`ListDetailPanel` master-pane factory refactor.** Slice D found that `ListDetailPanel._build_ui` is hardcoded around `QTableView`. The Topics panel works around this with an override-and-alias pattern (`self._table = self._tree`) which is fragile. Refactor `_build_ui` so that subclasses can supply a master-pane widget via a factory method (e.g., `_create_master_widget(self) -> QAbstractItemView`); QTableView remains the default for table-style panels, while QTreeView panels override the factory. Migrate the Topics panel to use the factory; v0.1's existing tests for Decisions/Sessions/Risks/etc. are the regression net.
+9. **Promote `_select_by_identifier` to the base class.** Slice D found that `select_record_by_identifier` walks `self._records` by row index, which doesn't work for tree panels. The Topics panel implemented a local identifier-based fallback. Promote that helper into `ListDetailPanel` so any subclass (table or tree) can reuse it. Subclass override remains possible for special cases.
+10. **`VersionedReplaceDialog` Validate button — add inline schema-error rendering on Save failure.** The current Validate button only runs `json.loads()`; structurally-valid JSON that fails the API's Pydantic schema surfaces as a modal `ErrorDialog` after the API roundtrip. Improve UX by parsing the API's `ValidationError` field-error envelope on Save failure and rendering the field errors inline below (or beside) the JSON editor — same envelope-driven pattern the entity dialogs use, scoped down to a single text area. The `ErrorDialog` modal stays as the fallback for non-field errors. Do NOT import Pydantic schemas client-side (preserves the v0.1 layer separation between UI and access/api). Slice E's tests for charter/status replace pass through the existing ErrorDialog path; the inline rendering is additive.
 
 Where a fix introduces a behavior change worth verifying, add a test. Where it's a cosmetic tweak, skip.
 
@@ -326,7 +361,7 @@ Run the full test suite:
 uv run pytest tests/crmbuilder_v2/ -v
 ```
 
-Expected: all v0.1 tests + all v0.2 slice A through F tests. Estimated 360+ passing.
+Expected: all v0.1 tests + all v0.2 slice A through F tests. v0.2 slice E ended at 439 passing; slice F adds tests for the show-deleted toggle, restore button, StorageClient extensions, the topic parent_topic clearing fix, and the polish items that introduce behavior changes. Estimated 470+ passing.
 
 ### Final manual acceptance pass
 
