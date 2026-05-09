@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QStandardItem, QStandardItemModel
@@ -46,7 +45,7 @@ class _Node:
 
     id: str
     label: str
-    parent_id: Optional[str] = None
+    parent_id: str | None = None
 
 
 class HierarchicalEntityPicker(QDialog):

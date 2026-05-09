@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
     QLabel,
+    QMenu,
     QWidget,
 )
 
@@ -185,6 +186,46 @@ class ReferencesPanel(ListDetailPanel):
             identifier = record.get("target_id") or ""
         else:
             return
+        if entity_type not in _NAVIGABLE_TYPES or not identifier:
+            return
+        self.navigate_requested.emit(entity_type, identifier)
+
+    # ------------------------------------------------------------------
+    # Right-click context menu (v0.3 — DEC-036)
+    # ------------------------------------------------------------------
+
+    def _build_context_menu(self, index: QModelIndex) -> QMenu:
+        menu = QMenu(self)
+        if not index.isValid():
+            # Slice C adds "New reference" here.
+            return menu
+
+        record = self._record_at_index(index)
+        if record is None:
+            return menu
+
+        go_source_action = menu.addAction("Go to source")
+        go_source_action.triggered.connect(
+            lambda _checked=False, r=record: self._navigate_to_endpoint(
+                r.get("source_type") or "", r.get("source_id") or ""
+            )
+        )
+        go_target_action = menu.addAction("Go to target")
+        go_target_action.triggered.connect(
+            lambda _checked=False, r=record: self._navigate_to_endpoint(
+                r.get("target_type") or "", r.get("target_id") or ""
+            )
+        )
+        # Slice C extends the row context with "Delete reference".
+        return menu
+
+    def _navigate_to_endpoint(self, entity_type: str, identifier: str) -> None:
+        """Emit ``navigate_requested`` for one side of a reference edge.
+
+        Mirrors the existing click-to-navigate path used by
+        ``_on_cell_clicked``: only navigable entity types fire; missing
+        identifiers are no-ops.
+        """
         if entity_type not in _NAVIGABLE_TYPES or not identifier:
             return
         self.navigate_requested.emit(entity_type, identifier)

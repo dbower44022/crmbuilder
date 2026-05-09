@@ -10,12 +10,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QModelIndex, Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
+    QApplication,
     QFormLayout,
     QFrame,
     QLabel,
+    QMenu,
     QPlainTextEdit,
     QScrollArea,
     QVBoxLayout,
@@ -75,6 +77,48 @@ def _separator() -> QFrame:
 
 class SessionsPanel(ListDetailPanel):
     """Read-only Sessions panel."""
+
+    # ------------------------------------------------------------------
+    # Right-click context menu (v0.3 — DEC-036)
+    # ------------------------------------------------------------------
+
+    def _build_context_menu(self, index: QModelIndex) -> QMenu:
+        menu = QMenu(self)
+        if not index.isValid():
+            # Slice D adds "New session" here; slice B leaves whitespace
+            # right-click empty (no menu shown).
+            return menu
+
+        record = self._record_at_index(index)
+        if record is None:
+            return menu
+
+        go_refs_action = menu.addAction("Go to references")
+        go_refs_action.triggered.connect(
+            lambda _checked=False, r=record: self._show_references_for(r)
+        )
+
+        copy_id_action = menu.addAction("Copy identifier")
+        copy_id_action.triggered.connect(
+            lambda _checked=False, r=record: self._copy_identifier(r)
+        )
+        return menu
+
+    def _show_references_for(self, record: dict[str, Any]) -> None:
+        """Select the row so the detail pane (with ReferencesSection) loads."""
+        identifier = record.get("identifier")
+        if identifier:
+            self.select_record_by_identifier(identifier)
+
+    def _copy_identifier(self, record: dict[str, Any]) -> None:
+        """Place the session's identifier on the system clipboard."""
+        identifier = record.get("identifier") or ""
+        if identifier:
+            QApplication.clipboard().setText(identifier)
+
+    # ------------------------------------------------------------------
+    # Read-only panel hooks
+    # ------------------------------------------------------------------
 
     def entity_title(self) -> str:
         return "Sessions"

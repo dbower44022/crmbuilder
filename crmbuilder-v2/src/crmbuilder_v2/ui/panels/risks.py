@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QModelIndex, Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QDialog,
@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QMenu,
     QPlainTextEdit,
     QPushButton,
     QScrollArea,
@@ -185,6 +186,31 @@ class RisksPanel(ListDetailPanel):
         outer.addStretch(1)
         scroll.setWidget(container)
         return scroll
+
+    # ------------------------------------------------------------------
+    # Right-click context menu (v0.3 — DEC-036)
+    # ------------------------------------------------------------------
+
+    def _build_context_menu(self, index: QModelIndex) -> QMenu:
+        menu = QMenu(self)
+        if not index.isValid():
+            new_action = menu.addAction("New risk")
+            new_action.triggered.connect(self._on_new_risk_clicked)
+            return menu
+
+        record = self._record_at_index(index)
+        if record is None:
+            return menu
+
+        edit_action = menu.addAction("Edit")
+        edit_action.triggered.connect(
+            lambda _checked=False, r=record: self._on_edit_clicked(r)
+        )
+        delete_action = menu.addAction("Delete")
+        delete_action.triggered.connect(
+            lambda _checked=False, r=record: self._on_delete_clicked(r)
+        )
+        return menu
 
     # ------------------------------------------------------------------
     # Write-surface click handlers (v0.2 slice B)

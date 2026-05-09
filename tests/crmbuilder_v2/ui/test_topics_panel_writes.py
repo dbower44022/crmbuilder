@@ -343,3 +343,25 @@ def test_select_record_by_identifier_through_pending_select(qtbot):
     item = panel._tree_model.itemFromIndex(current)
     from crmbuilder_v2.ui.panels.topics import _IDENTIFIER_ROLE
     assert item.data(_IDENTIFIER_ROLE) == "TOP-100"
+
+
+def test_topics_panel_right_click_invokes_context_menu_factory(
+    qtbot, client_stub
+):
+    """v0.3 slice B: right-click on the master view calls _build_context_menu."""
+    from unittest.mock import patch
+
+    from PySide6.QtCore import QPoint
+    from PySide6.QtWidgets import QMenu
+
+    panel = TopicsPanel(client=client_stub)
+    qtbot.addWidget(panel)
+    # Use return_value=QMenu() so the slot's blocking menu.exec() branch
+    # (taken when the factory returns a non-empty menu) is skipped — the
+    # smoke test only needs to confirm the factory is invoked.
+    empty_menu = QMenu(panel)
+    with patch.object(
+        panel, "_build_context_menu", return_value=empty_menu
+    ) as spy:
+        panel._master_view.customContextMenuRequested.emit(QPoint(10, 10))
+        assert spy.called

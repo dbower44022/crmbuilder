@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QModelIndex, Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QMenu,
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
@@ -236,6 +237,55 @@ class DecisionsPanel(ListDetailPanel):
         outer.addStretch(1)
         scroll.setWidget(container)
         return scroll
+
+    # ------------------------------------------------------------------
+    # Right-click context menu (v0.3 — DEC-036)
+    # ------------------------------------------------------------------
+
+    def _build_context_menu(self, index: QModelIndex) -> QMenu:
+        menu = QMenu(self)
+        if not index.isValid():
+            new_action = menu.addAction("New decision")
+            new_action.triggered.connect(self._on_new_decision_clicked)
+            return menu
+
+        record = self._record_at_index(index)
+        if record is None:
+            return menu
+
+        edit_action = menu.addAction("Edit")
+        edit_action.triggered.connect(
+            lambda _checked=False, r=record: self._on_edit_clicked(r)
+        )
+
+        if record.get("status") == "Deleted":
+            restore_action = menu.addAction("Restore")
+            restore_action.triggered.connect(
+                lambda _checked=False, r=record: self._on_restore_clicked(r)
+            )
+        else:
+            delete_action = menu.addAction("Delete")
+            delete_action.triggered.connect(
+                lambda _checked=False, r=record: self._on_delete_clicked(r)
+            )
+
+        show_refs_action = menu.addAction("Show references")
+        show_refs_action.triggered.connect(
+            lambda _checked=False, r=record: self._show_references_for(r)
+        )
+        return menu
+
+    def _show_references_for(self, record: dict[str, Any]) -> None:
+        """Right-click "Show references" handler — selects the row.
+
+        Selecting the row triggers the existing detail-pane load, which
+        renders the ``ReferencesSection`` widget at the bottom. No
+        explicit scroll is performed in v0.3 slice B; if the section is
+        below the fold the user scrolls naturally.
+        """
+        identifier = record.get("identifier")
+        if identifier:
+            self.select_record_by_identifier(identifier)
 
     # ------------------------------------------------------------------
     # Write-surface click handlers (slice G)

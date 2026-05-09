@@ -23,11 +23,14 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QModelIndex, Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
+    QDialog,
+    QDialogButtonBox,
     QFormLayout,
     QLabel,
+    QMenu,
     QPlainTextEdit,
     QScrollArea,
     QVBoxLayout,
@@ -53,6 +56,73 @@ class VersionedPanel(ListDetailPanel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._initial_select_done = False
+
+    # ------------------------------------------------------------------
+    # Right-click context menu (v0.3 — DEC-036)
+    # ------------------------------------------------------------------
+
+    def _build_context_menu(self, index: QModelIndex) -> QMenu:
+        """Versioned panels share a uniform menu shape.
+
+        Whitespace right-click: ``New version``. Row right-click: ``Make
+        Current`` (only on non-current rows) plus ``View payload``
+        (always). Subclasses don't override this; they only provide the
+        ``_on_new_version_clicked`` and ``_on_make_current(version)``
+        slots, which already exist on :class:`CharterPanel` and
+        :class:`StatusPanel`.
+        """
+        menu = QMenu(self)
+        if not index.isValid():
+            new_action = menu.addAction("New version")
+            new_action.triggered.connect(self._on_new_version_clicked)
+            return menu
+
+        record = self._record_at_index(index)
+        if record is None:
+            return menu
+
+        if not record.get("is_current"):
+            version = record.get("version")
+            if version is not None:
+                make_current_action = menu.addAction("Make Current")
+                make_current_action.triggered.connect(
+                    lambda _checked=False, v=version: self._on_make_current(v)
+                )
+
+        view_payload_action = menu.addAction("View payload")
+        view_payload_action.triggered.connect(
+            lambda _checked=False, r=record: self._on_view_payload_clicked(r)
+        )
+        return menu
+
+    def _on_view_payload_clicked(self, record: dict[str, Any]) -> None:
+        """Open a small read-only modal showing the version's payload as JSON.
+
+        v0.3 slice B addition. Implementation cost is small (~25 lines)
+        per the slice prompt; the modal stays in this base class so both
+        ``CharterPanel`` and ``StatusPanel`` get it for free.
+        """
+        version = record.get("version", "?")
+        payload = record.get("payload") or {}
+        try:
+            text = json.dumps(payload, indent=2, sort_keys=True)
+        except (TypeError, ValueError):
+            text = repr(payload)
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"{self.entity_title()} — version {version} payload")
+        dialog.resize(720, 540)
+        layout = QVBoxLayout(dialog)
+        editor = QPlainTextEdit()
+        editor.setReadOnly(True)
+        editor.setPlainText(text)
+        editor.setFont(QFont("monospace"))
+        layout.addWidget(editor, stretch=1)
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        button_box.rejected.connect(dialog.reject)
+        button_box.accepted.connect(dialog.accept)
+        layout.addWidget(button_box)
+        dialog.exec()
 
     # ------------------------------------------------------------------
     # ListDetailPanel overrides

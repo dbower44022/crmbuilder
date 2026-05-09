@@ -33,6 +33,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QMenu,
     QPlainTextEdit,
     QPushButton,
     QScrollArea,
@@ -199,6 +200,45 @@ class TopicsPanel(ListDetailPanel):
         outer.addStretch(1)
         scroll.setWidget(container)
         return scroll
+
+    # ------------------------------------------------------------------
+    # Right-click context menu (v0.3 — DEC-036)
+    # ------------------------------------------------------------------
+
+    def _build_context_menu(self, index: QModelIndex) -> QMenu:
+        menu = QMenu(self)
+        if not index.isValid():
+            new_action = menu.addAction("New topic")
+            new_action.triggered.connect(self._on_new_clicked)
+            return menu
+
+        record = self._record_at_index(index)
+        if record is None:
+            return menu
+
+        edit_action = menu.addAction("Edit")
+        edit_action.triggered.connect(
+            lambda _checked=False, r=record: self._on_edit_clicked(r)
+        )
+        delete_action = menu.addAction("Delete")
+        delete_action.triggered.connect(
+            lambda _checked=False, r=record: self._on_delete_clicked(r)
+        )
+        return menu
+
+    def _record_at_index(self, index: QModelIndex) -> dict[str, Any] | None:
+        """Map a tree-view index to the record dict via the identifier role.
+
+        Overrides the base's ``record_at(row)`` lookup because the tree
+        model is a ``QStandardItemModel``, not a ``_RecordTableModel``.
+        """
+        if not index.isValid():
+            return None
+        item = self._tree_model.itemFromIndex(index)
+        if item is None:
+            return None
+        identifier = item.data(_IDENTIFIER_ROLE)
+        return self._record_by_identifier(identifier)
 
     # ------------------------------------------------------------------
     # Master-pane factory override — QTreeView in place of QTableView

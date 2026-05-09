@@ -147,3 +147,25 @@ def test_source_target_display_fields_are_set(qapp, qtbot):
 
     assert panel._records[0]["_source_display"] == "session:SES-004"
     assert panel._records[0]["_target_display"] == "decision:DEC-018"
+
+
+def test_references_panel_right_click_invokes_context_menu_factory(
+    qtbot, client_stub
+):
+    """v0.3 slice B: right-click on the master view calls _build_context_menu."""
+    from unittest.mock import patch
+
+    from PySide6.QtCore import QPoint
+    from PySide6.QtWidgets import QMenu
+
+    panel = ReferencesPanel(client=client_stub)
+    qtbot.addWidget(panel)
+    # Use return_value=QMenu() so the slot's blocking menu.exec() branch
+    # (taken when the factory returns a non-empty menu) is skipped — the
+    # smoke test only needs to confirm the factory is invoked.
+    empty_menu = QMenu(panel)
+    with patch.object(
+        panel, "_build_context_menu", return_value=empty_menu
+    ) as spy:
+        panel._master_view.customContextMenuRequested.emit(QPoint(10, 10))
+        assert spy.called

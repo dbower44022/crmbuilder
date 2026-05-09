@@ -63,6 +63,6 @@ def test_panel_context_menu_factory_returns_qmenu(qtbot, client_stub, panel_cls)
     qtbot.addWidget(panel)
     menu = panel._build_context_menu(QModelIndex())
     assert isinstance(menu, QMenu)
-    # The default empty menu has no actions; slice B will populate per
-    # panel. The factory contract is the empty-menu return.
-    assert menu.actions() == []
+    # Action-set assertions per panel live in test_context_menus.py
+    # (slice B). This parity test only confirms the factory contract:
+    # returning a QMenu instance, valid or invalid index.

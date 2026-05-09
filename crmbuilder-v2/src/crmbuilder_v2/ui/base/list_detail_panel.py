@@ -388,6 +388,24 @@ class ListDetailPanel(QWidget):
         """
         return QMenu(self)
 
+    def _record_at_index(
+        self, index: QModelIndex
+    ) -> dict[str, Any] | None:
+        """Look up the record dict at the given master-view index.
+
+        The default implementation works for any model that exposes a
+        ``record_at(row)`` method (the base ``_RecordTableModel`` does).
+        Subclasses with a non-table model (e.g. ``TopicsPanel`` with a
+        ``QStandardItemModel`` tree) override this to map an index to a
+        record dict via their own lookup.
+        """
+        if not index.isValid():
+            return None
+        record_at = getattr(self._model, "record_at", None)
+        if record_at is None:
+            return None
+        return record_at(index.row())
+
     # ------------------------------------------------------------------
     # Internal
     # ------------------------------------------------------------------
