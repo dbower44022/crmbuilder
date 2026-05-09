@@ -1,7 +1,7 @@
 # Base Entity Catalog
 
-**Last Updated:** 05-09-26 11:45
-**Status:** All 5 tiers complete; catalog at 42 entries
+**Last Updated:** 05-09-26 12:20
+**Status:** All 5 tiers complete; cross-cutting deliverables published; catalog at 42 entries
 **Owner:** CRMBuilder v2
 
 ---
@@ -10,7 +10,8 @@
 
 | Version | Date | Description |
 |---------|------|-------------|
-| 0.6 | 05-09-26 | Tier 5 (communications detail) added: 5 Activity subclasses (activity-email, activity-phone-call, activity-meeting, activity-video-meeting, activity-sms) plus 2 standalone universal entities (document, contract). Reflects expanded scope versus original plan: Video Meeting and SMS added as distinct subclasses. All 5 communication subclasses share Activity's parent attributes and add channel-specific delta attributes only (call duration, meeting URL, message body, etc.). Catalog now stands at 42 entries: 34 universal + 8 subclasses across all 5 tiers. |
+| 0.7 | 05-09-26 | Cross-cutting deliverables published as siblings to this directory: `../base-entity-catalog-research.md` (narrative companion documenting archetype patterns, modeling decisions, and V2 implementation recommendations) and `../entity-system-map.yaml` (programmatically-generated flat lookup table mapping each catalog entity to its representation in all 7 surveyed systems). Catalog content unchanged in this version. |
+| 0.6 | 05-09-26 | Tier 5 (communications detail) added: 5 Activity subclasses (activity-email, activity-phone-call, activity-meeting, activity-video-meeting, activity-sms) plus 2 standalone universal entities (document, contract). All 5 communication subclasses share Activity's parent attributes and add channel-specific delta attributes only. Catalog now stands at 42 entries: 34 universal + 8 subclasses across all 5 tiers. |
 | 0.5 | 05-09-26 | Refactor: renamed `specialization` → `subclass` throughout the catalog. Same conceptual model (parent entity + discriminator + delta attributes); friendlier terminology that maps cleanly to OOP subclassing for technical readers and is intuitive to non-technical readers. Changes: `entry_kind: specialization` → `entry_kind: subclass`; directory `specializations/` → `subclasses/`; all README prose updated. No semantic change to the catalog. |
 
 | Version | Date | Description |
@@ -48,6 +49,16 @@ The catalog is authored in YAML so it ingests cleanly into V2's future entity sc
 | CiviCRM | Open-source nonprofit-oriented CRM | https://docs.civicrm.org/user/en/latest/organising-your-data/contacts/ |
 | Salesforce NPSP | Salesforce-based nonprofit pack | https://trailhead.salesforce.com/content/learn/modules/nonprofit-success-pack-administration-basics/understand-the-npsp-data-model |
 | Bloomerang | Nonprofit donor-management CRM | https://bloomerang.com/api/rest-api-v1/ |
+
+## Companion deliverables
+
+The catalog has two cross-cutting companions stored alongside this directory:
+
+- `../base-entity-catalog-research.md` — narrative document covering archetype patterns observed across the survey (Person+Org unification debate, donation modeling divergence, activity fragmentation, subclassing mechanisms, etc.), modeling decisions worth flagging, and V2 implementation recommendations. Read this for the "why behind the catalog."
+
+- `../entity-system-map.yaml` — flat lookup table programmatically generated from the catalog, listing for each of the 42 entities its representation in all 7 surveyed systems (name, api_name, is_standard, mechanism for subclasses, docs_url). Optimized for V2's deploy-time cross-system mapping use case.
+
+Both are authoritative; the entity-system-map regenerates from the catalog YAMLs and should be regenerated when catalog entries change.
 
 ---
 

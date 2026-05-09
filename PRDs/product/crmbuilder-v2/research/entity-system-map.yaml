@@ -1,0 +1,1824 @@
+# =============================================================================
+# Entity-System Equivalence Map
+# =============================================================================
+# Cross-system lookup table generated from base-entity-catalog/.
+# For each catalog entity, lists the entity name, api_name, is_standard flag,
+# subclass mechanism (if applicable), and docs_url in each of the seven
+# surveyed systems. Used by V2 at deploy time to translate domain entities
+# into target backend native entities.
+# =============================================================================
+
+catalog_id: entity-system-map
+catalog_version: "0.1"
+last_updated: "05-09-26 12:15"
+source_catalog: base-entity-catalog/
+source_entries: 42
+systems: [salesforce, hubspot, attio, espocrm, civicrm, salesforce_npsp, bloomerang]
+
+# Each mapping entry shows where catalog_id lives in each system.
+# - is_standard: true=ships natively; false=requires custom build / extension; partial=mixed
+# - mechanism: only present for subclasses; one of record_type, contact_subtype,
+#              type_discriminator, custom_property, separate_object, entity_inheritance
+mappings:
+
+  - catalog_id: account
+    name: "Account"
+    tier: 1
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "Account"
+        api_name: "Account"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_account.htm
+      hubspot:
+        name: "Company"
+        api_name: "companies"
+        is_standard: true
+        docs_url: https://developers.hubspot.com/blog/a-developers-guide-to-hubspot-crm-objects-company-object
+      attio:
+        name: "Company"
+        api_name: "companies"
+        is_standard: true
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/manage-standard-objects
+      espocrm:
+        name: "Account"
+        api_name: "Account"
+        is_standard: true
+        docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Account.json
+      civicrm:
+        name: "Organization (Contact subtype)"
+        api_name: "Contact (contact_type=Organization)"
+        is_standard: true
+        docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/contacts/
+      salesforce_npsp:
+        name: "Account (Household, 1x1, or Organization Record Type)"
+        api_name: "Account"
+        is_standard: true
+        docs_url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-success-pack-basics/organize-your-data-with-npsp
+      bloomerang:
+        name: "Constituent (Organization Type)"
+        api_name: "Constituent"
+        is_standard: true
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: activity
+    name: "Activity"
+    tier: 1
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "Activity (Task + Event)"
+        api_name: "Task, Event"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_task.htm
+      hubspot:
+        name: "Engagement"
+        api_name: "engagements (subtypes: CALL, EMAIL, MEETING, TASK, NOTE, COMMUNICATION)"
+        is_standard: true
+        docs_url: https://developers.hubspot.com/docs/api-reference/crm-engagements
+      attio:
+        name: "Tasks (with separate Meetings, Calls, Emails)"
+        api_name: "tasks, meetings, calls"
+        is_standard: true
+        docs_url: https://attio.com/help/reference/managing-your-data/records/add-record-activities
+      espocrm:
+        name: "Task, Meeting, Call"
+        api_name: "Task, Meeting, Call"
+        is_standard: true
+        docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Task.json
+      civicrm:
+        name: "Activity"
+        api_name: "Activity"
+        is_standard: true
+        docs_url: https://docs.civicrm.org/user/en/latest/the-user-interface/activities/
+      salesforce_npsp:
+        name: "Task, Event (with NPSP-specific activity types)"
+        api_name: "Task, Event"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_task.htm
+      bloomerang:
+        name: "Interaction"
+        api_name: "Interaction"
+        is_standard: true
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: contact
+    name: "Contact"
+    tier: 1
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "Contact"
+        api_name: "Contact"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contact.htm
+      hubspot:
+        name: "Contact"
+        api_name: "contacts"
+        is_standard: true
+        docs_url: https://developers.hubspot.com/docs/reference/api/crm/objects/contacts
+      attio:
+        name: "Person"
+        api_name: "people"
+        is_standard: true
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/manage-standard-objects
+      espocrm:
+        name: "Contact"
+        api_name: "Contact"
+        is_standard: true
+        docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Contact.json
+      civicrm:
+        name: "Individual (Contact subtype)"
+        api_name: "Contact (contact_type=Individual)"
+        is_standard: true
+        docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/contacts/
+      salesforce_npsp:
+        name: "Contact"
+        api_name: "Contact"
+        is_standard: true
+        docs_url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-success-pack-basics/organize-your-data-with-npsp
+      bloomerang:
+        name: "Constituent (Individual Type)"
+        api_name: "Constituent"
+        is_standard: true
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: note
+    name: "Note"
+    tier: 1
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "ContentNote (modern) / Note (legacy)"
+        api_name: "ContentNote"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contentnote.htm
+      hubspot:
+        name: "Note (Engagement)"
+        api_name: "notes"
+        is_standard: true
+        docs_url: https://developers.hubspot.com/docs/reference/api/crm/engagements/notes
+      attio:
+        name: "Note"
+        api_name: "notes"
+        is_standard: true
+        docs_url: https://docs.attio.com/docs/notes
+      espocrm:
+        name: "Note"
+        api_name: "Note"
+        is_standard: true
+        docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Resources/metadata/entityDefs/Note.json
+      civicrm:
+        name: "Note"
+        api_name: "Note"
+        is_standard: true
+        docs_url: https://docs.civicrm.org/user/en/latest/contributions/notes/
+      salesforce_npsp:
+        name: "ContentNote"
+        api_name: "ContentNote"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contentnote.htm
+      bloomerang:
+        name: "Note"
+        api_name: "Note"
+        is_standard: true
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: tag
+    name: "Tag"
+    tier: 1
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "Topic / Multi-select picklist"
+        api_name: "Topic, TopicAssignment"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_topic.htm
+      hubspot:
+        name: "Multi-select property (no first-class tag)"
+        api_name: "not_in_api_as_separate_entity"
+        is_standard: false
+        docs_url: https://knowledge.hubspot.com/properties/multi-select-properties
+      attio:
+        name: "Tag (multi-select attribute)"
+        api_name: "tags (as a multi-select attribute on each object)"
+        is_standard: true
+        docs_url: https://attio.com/help/reference/managing-your-data/attributes/create-manage-attributes
+      espocrm:
+        name: "Tag"
+        api_name: "Tag"
+        is_standard: true
+        docs_url: https://docs.espocrm.com/user-guide/tags/
+      civicrm:
+        name: "Tag"
+        api_name: "Tag"
+        is_standard: true
+        docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/tags/
+      salesforce_npsp:
+        name: "Topic / Multi-select picklist (same as Salesforce)"
+        api_name: "Topic, TopicAssignment"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_topic.htm
+      bloomerang:
+        name: "Tag (on Constituents)"
+        api_name: "Tag"
+        is_standard: true
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: user
+    name: "User"
+    tier: 1
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "User"
+        api_name: "User"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_user.htm
+      hubspot:
+        name: "Owner / User"
+        api_name: "owners (users have a separate users API)"
+        is_standard: true
+        docs_url: https://developers.hubspot.com/docs/reference/api/crm/owners
+      attio:
+        name: "Workspace member"
+        api_name: "workspace_members"
+        is_standard: true
+        docs_url: https://attio.com/help/reference/workspace-settings-billing
+      espocrm:
+        name: "User"
+        api_name: "User"
+        is_standard: true
+        docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Resources/metadata/entityDefs/User.json
+      civicrm:
+        name: "User (via Drupal/Joomla/WordPress UF)"
+        api_name: "User"
+        is_standard: true
+        docs_url: https://docs.civicrm.org/sysadmin/en/latest/setup/users/
+      salesforce_npsp:
+        name: "User"
+        api_name: "User"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_user.htm
+      bloomerang:
+        name: "User (admin-only, no API)"
+        api_name: "not_in_api"
+        is_standard: true
+        docs_url: https://support.bloomerang.co/s/article/13000076351
+
+  - catalog_id: account-nonprofit
+    name: "Nonprofit Organization"
+    tier: 1
+    entry_kind: subclass
+    parent_entity: account
+    discriminator_attribute: "type"
+    discriminator_value: "Nonprofit Organization"
+    by_system:
+      salesforce:
+        name: "Nonprofit Account (Account with custom Record Type and Type field)"
+        api_name: "Account"
+        is_standard: false
+        mechanism: record_type
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_account.htm
+      hubspot:
+        name: "Company with custom Type property"
+        api_name: "companies"
+        is_standard: false
+        mechanism: custom_property
+        docs_url: https://developers.hubspot.com/docs/api-reference/crm-properties-v3/guide
+      attio:
+        name: "Either custom Nonprofit object, or Type attribute on Company"
+        api_name: "either custom 'nonprofit' object or companies"
+        is_standard: false
+        mechanism: separate_object
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+      espocrm:
+        name: "Account with type=Nonprofit (custom enum value)"
+        api_name: "Account"
+        is_standard: false
+        mechanism: type_discriminator
+        docs_url: https://docs.espocrm.com/administration/entity-manager/
+      civicrm:
+        name: "Custom subtype of Organization (e.g., Foundation, Charitable Org)"
+        api_name: "Contact (contact_type=Organization, contact_sub_type=...)"
+        is_standard: false
+        mechanism: contact_subtype
+        docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/contact-types/
+      salesforce_npsp:
+        name: "Organization Account Record Type (with custom nonprofit fields)"
+        api_name: "Account"
+        is_standard: "partial"
+        mechanism: record_type
+        docs_url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-success-pack-basics/organize-your-data-with-npsp
+      bloomerang:
+        name: "Organization Constituent with Industry/Type combination"
+        api_name: "Constituent"
+        is_standard: false
+        mechanism: type_discriminator
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: lead
+    name: "Lead"
+    tier: 2
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "Lead"
+        api_name: "Lead"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_lead.htm
+      hubspot:
+        name: "Contact (with lifecyclestage=lead)"
+        api_name: "contacts"
+        is_standard: false
+        docs_url: https://knowledge.hubspot.com/contacts/use-lifecycle-stages
+      attio:
+        name: "Person (no Lead entity)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/manage-standard-objects
+      espocrm:
+        name: "Lead"
+        api_name: "Lead"
+        is_standard: true
+        docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Lead.json
+      civicrm:
+        name: "Contact (no Lead entity)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/contacts/
+      salesforce_npsp:
+        name: "Lead"
+        api_name: "Lead"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_lead.htm
+      bloomerang:
+        name: "Constituent (no Lead entity)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: opportunity
+    name: "Opportunity"
+    tier: 2
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "Opportunity"
+        api_name: "Opportunity"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_opportunity.htm
+      hubspot:
+        name: "Deal"
+        api_name: "deals"
+        is_standard: true
+        docs_url: https://developers.hubspot.com/docs/api-reference/crm-deals-v3/guide
+      attio:
+        name: "Deal"
+        api_name: "deals"
+        is_standard: true
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/manage-standard-objects
+      espocrm:
+        name: "Opportunity"
+        api_name: "Opportunity"
+        is_standard: true
+        docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Opportunity.json
+      civicrm:
+        name: "Contribution (closest analog) / Case (for cultivation)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://docs.civicrm.org/user/en/latest/contributions/
+      salesforce_npsp:
+        name: "Opportunity (with Donation Record Types)"
+        api_name: "Opportunity"
+        is_standard: true
+        docs_url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-success-pack-basics/organize-your-data-with-npsp
+      bloomerang:
+        name: "Transaction (closest analog) / Pledge (for committed-but-not-paid)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: pipeline-stage
+    name: "Pipeline Stage"
+    tier: 2
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "OpportunityStage (setup) / StageName (picklist)"
+        api_name: "OpportunityStage"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_opportunitystage.htm
+      hubspot:
+        name: "Pipeline + Deal Stage"
+        api_name: "pipelines, pipelines/{objectType}/stages"
+        is_standard: true
+        docs_url: https://developers.hubspot.com/docs/reference/api/crm/pipelines
+      attio:
+        name: "Status attribute on Deals"
+        api_name: "status (attribute on deals object)"
+        is_standard: true
+        docs_url: https://attio.com/help/reference/managing-your-data/views/create-and-manage-kanban-views
+      espocrm:
+        name: "stage (enum on Opportunity)"
+        api_name: "not_applicable_separate_entity"
+        is_standard: true
+        docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Opportunity.json
+      civicrm:
+        name: "contribution_status (option group)"
+        api_name: "not_applicable_separate_entity"
+        is_standard: false
+        docs_url: https://docs.civicrm.org/user/en/latest/contributions/
+      salesforce_npsp:
+        name: "OpportunityStage (with NPSP-specific stages per Donation Record Type)"
+        api_name: "OpportunityStage"
+        is_standard: true
+        docs_url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-success-pack-basics/organize-your-data-with-npsp
+      bloomerang:
+        name: "Status (on Transactions)"
+        api_name: "not_applicable_separate_entity"
+        is_standard: false
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: quote
+    name: "Quote"
+    tier: 2
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "Quote"
+        api_name: "Quote"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_quote.htm
+      hubspot:
+        name: "Quote"
+        api_name: "quotes"
+        is_standard: true
+        docs_url: https://developers.hubspot.com/docs/reference/api/crm/objects/quotes
+      attio:
+        name: "Custom object (no standard Quote)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+      espocrm:
+        name: "Quote"
+        api_name: "Quote"
+        is_standard: true
+        docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Sales/Resources/metadata/entityDefs/Quote.json
+      civicrm:
+        name: "(no Quote concept)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://docs.civicrm.org/user/en/latest/
+      salesforce_npsp:
+        name: "Quote"
+        api_name: "Quote"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_quote.htm
+      bloomerang:
+        name: "(no Quote concept)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: asset
+    name: "Asset"
+    tier: 3
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "Asset"
+        api_name: "Asset"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_asset.htm
+      hubspot:
+        name: "(no native Asset; use custom object or line items on Deals)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://knowledge.hubspot.com/crm-setup/custom-objects
+      attio:
+        name: "(no native Asset; use custom object)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+      espocrm:
+        name: "(no standard Asset module; available in some commercial extensions)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://docs.espocrm.com/
+      civicrm:
+        name: "(no Asset concept)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://docs.civicrm.org/
+      salesforce_npsp:
+        name: "Asset"
+        api_name: "Asset"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_asset.htm
+      bloomerang:
+        name: "(no Asset concept)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: campaign
+    name: "Campaign"
+    tier: 3
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "Campaign"
+        api_name: "Campaign"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_campaign.htm
+      hubspot:
+        name: "Marketing Campaign"
+        api_name: "marketing_campaigns"
+        is_standard: true
+        docs_url: https://developers.hubspot.com/docs/api-reference/marketing-marketing-events-v3
+      attio:
+        name: "(no native Campaign; use lists or custom object)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://attio.com/platform/sequences
+      espocrm:
+        name: "Campaign"
+        api_name: "Campaign"
+        is_standard: true
+        docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Campaign.json
+      civicrm:
+        name: "Campaign"
+        api_name: "Campaign"
+        is_standard: true
+        docs_url: https://docs.civicrm.org/user/en/latest/campaign/what-is-civicampaign/
+      salesforce_npsp:
+        name: "Campaign"
+        api_name: "Campaign"
+        is_standard: true
+        docs_url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-campaign-management
+      bloomerang:
+        name: "Campaign"
+        api_name: "Campaign"
+        is_standard: true
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: campaign-member
+    name: "Campaign Member"
+    tier: 3
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "CampaignMember"
+        api_name: "CampaignMember"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_campaignmember.htm
+      hubspot:
+        name: "Contact-Campaign Association (no junction object)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://developers.hubspot.com/docs/api-reference/crm-marketing-events-v3
+      attio:
+        name: "(no native concept)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://attio.com/platform/sequences
+      espocrm:
+        name: "TargetList (linkMultiple on Campaign)"
+        api_name: "TargetList"
+        is_standard: true
+        docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/TargetList.json
+      civicrm:
+        name: "Activity (of type Campaign Activity)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://docs.civicrm.org/user/en/latest/email/
+      salesforce_npsp:
+        name: "CampaignMember"
+        api_name: "CampaignMember"
+        is_standard: true
+        docs_url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-campaign-management
+      bloomerang:
+        name: "(no Campaign Member concept; Transactions link to Campaign directly)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: case
+    name: "Case"
+    tier: 3
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "Case"
+        api_name: "Case"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_case.htm
+      hubspot:
+        name: "Ticket"
+        api_name: "tickets"
+        is_standard: true
+        docs_url: https://developers.hubspot.com/docs/api-reference/crm-tickets-v3/guide
+      attio:
+        name: "Custom object (no standard Case)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+      espocrm:
+        name: "Case"
+        api_name: "Case"
+        is_standard: true
+        docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Case.json
+      civicrm:
+        name: "Case (general-purpose)"
+        api_name: "Case"
+        is_standard: true
+        docs_url: https://docs.civicrm.org/user/en/latest/case-management/
+      salesforce_npsp:
+        name: "Case"
+        api_name: "Case"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_case.htm
+      bloomerang:
+        name: "(no Case concept)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: email
+    name: "Email"
+    tier: 3
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "EmailMessage (modern) / Task with TaskSubtype=Email (legacy)"
+        api_name: "EmailMessage"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_emailmessage.htm
+      hubspot:
+        name: "Email (Engagement subtype)"
+        api_name: "emails"
+        is_standard: true
+        docs_url: https://developers.hubspot.com/docs/reference/api/crm/engagements/email
+      attio:
+        name: "Email"
+        api_name: "emails"
+        is_standard: true
+        docs_url: https://attio.com/help/reference/email-calendar/email-and-calendar-syncing
+      espocrm:
+        name: "Email"
+        api_name: "Email"
+        is_standard: true
+        docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Resources/metadata/entityDefs/Email.json
+      civicrm:
+        name: "Activity (of type Email)"
+        api_name: "not_applicable_separate_entity"
+        is_standard: true
+        docs_url: https://docs.civicrm.org/user/en/latest/email/
+      salesforce_npsp:
+        name: "EmailMessage / Task with TaskSubtype=Email"
+        api_name: "EmailMessage"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_emailmessage.htm
+      bloomerang:
+        name: "Interaction (of type Email)"
+        api_name: "Interaction"
+        is_standard: true
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: form-submission
+    name: "Form Submission"
+    tier: 3
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "Web-to-Lead capture (no first-class submission entity)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://help.salesforce.com/s/articleView?id=sf.setting_up_web-to-lead.htm
+      hubspot:
+        name: "Form Submission"
+        api_name: "form_submissions"
+        is_standard: true
+        docs_url: https://developers.hubspot.com/docs/api-reference/marketing-marketing-events-v3
+      attio:
+        name: "Form Submission (via Forms feature)"
+        api_name: "forms"
+        is_standard: true
+        docs_url: https://attio.com/help/reference/managing-your-data/records/create-and-view-records
+      espocrm:
+        name: "Web-to-Lead (no first-class submission entity)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://docs.espocrm.com/user-guide/web-to-lead/
+      civicrm:
+        name: "Profile / Webform submission (host CMS)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://docs.civicrm.org/user/en/latest/initial-set-up/profiles/
+      salesforce_npsp:
+        name: "Web-to-Lead / Donation form integrations (no first-class entity)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://help.salesforce.com/s/articleView?id=sf.setting_up_web-to-lead.htm
+      bloomerang:
+        name: "Form Submission (via Bloomerang Forms)"
+        api_name: "not_in_rest_api_directly"
+        is_standard: true
+        docs_url: https://bloomerang.com/api/
+
+  - catalog_id: invoice
+    name: "Invoice"
+    tier: 3
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "Invoice (Salesforce Billing)"
+        api_name: "Invoice"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.industries_reference.meta/industries_reference/sforce_api_objects_invoice.htm
+      hubspot:
+        name: "Invoice"
+        api_name: "invoices"
+        is_standard: true
+        docs_url: https://developers.hubspot.com/docs/api-reference/crm-invoices-v3/guide
+      attio:
+        name: "(no native Invoice; use custom object)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+      espocrm:
+        name: "Invoice"
+        api_name: "Invoice"
+        is_standard: true
+        docs_url: https://docs.espocrm.com/
+      civicrm:
+        name: "(invoicing via Contributions)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://docs.civicrm.org/user/en/latest/contributions/
+      salesforce_npsp:
+        name: "Invoice (Salesforce Billing) / not standardly included"
+        api_name: "Invoice"
+        is_standard: false
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.industries_reference.meta/industries_reference/sforce_api_objects_invoice.htm
+      bloomerang:
+        name: "(no Invoice concept)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: order
+    name: "Order"
+    tier: 3
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "Order"
+        api_name: "Order"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_order.htm
+      hubspot:
+        name: "(no native Order; Quote + Line Items typically used)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://developers.hubspot.com/docs/reference/api/crm/objects/quotes
+      attio:
+        name: "(no native Order; use custom object)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+      espocrm:
+        name: "Sales Order"
+        api_name: "SalesOrder"
+        is_standard: true
+        docs_url: https://docs.espocrm.com/
+      civicrm:
+        name: "(no Order concept)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://docs.civicrm.org/
+      salesforce_npsp:
+        name: "Order"
+        api_name: "Order"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_order.htm
+      bloomerang:
+        name: "(no Order concept)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: payment
+    name: "Payment"
+    tier: 3
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "Payment (via Salesforce Billing) / npe01__OppPayment__c (NPSP)"
+        api_name: "Payment"
+        is_standard: false
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.industries_reference.meta/industries_reference/sforce_api_objects_payment.htm
+      hubspot:
+        name: "Payment"
+        api_name: "payments"
+        is_standard: true
+        docs_url: https://developers.hubspot.com/docs/api-reference/crm-commerce-payments-v3
+      attio:
+        name: "(no native Payment; use custom object)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+      espocrm:
+        name: "Receipt / Payment (Sales Pack module)"
+        api_name: "Receipt"
+        is_standard: true
+        docs_url: https://docs.espocrm.com/
+      civicrm:
+        name: "Payment"
+        api_name: "Payment"
+        is_standard: true
+        docs_url: https://docs.civicrm.org/user/en/latest/contributions/payments/
+      salesforce_npsp:
+        name: "OppPayment (npe01__OppPayment__c)"
+        api_name: "npe01__OppPayment__c"
+        is_standard: true
+        docs_url: https://help.salesforce.com/s/articleView?id=sfdo.NPSP_Payments_overview.htm
+      bloomerang:
+        name: "(Transaction serves payment role; Pledge separate)"
+        api_name: "Transaction"
+        is_standard: true
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: price-list
+    name: "Price List"
+    tier: 3
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "Pricebook2 / PricebookEntry"
+        api_name: "Pricebook2"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_pricebook2.htm
+      hubspot:
+        name: "(no native Price List; single price per Product)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://developers.hubspot.com/docs/reference/api/crm/objects/products
+      attio:
+        name: "(no native Price List; use custom object)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+      espocrm:
+        name: "Price Book / Price Book Item"
+        api_name: "PriceBook"
+        is_standard: true
+        docs_url: https://docs.espocrm.com/
+      civicrm:
+        name: "Price Set (for event registration / contribution pricing)"
+        api_name: "PriceSet"
+        is_standard: true
+        docs_url: https://docs.civicrm.org/user/en/latest/events/event-fees-and-payment/
+      salesforce_npsp:
+        name: "Pricebook2 / PricebookEntry"
+        api_name: "Pricebook2"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_pricebook2.htm
+      bloomerang:
+        name: "(no Price List concept)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: product
+    name: "Product"
+    tier: 3
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "Product2"
+        api_name: "Product2"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_product2.htm
+      hubspot:
+        name: "Product"
+        api_name: "products"
+        is_standard: true
+        docs_url: https://developers.hubspot.com/docs/reference/api/crm/objects/products
+      attio:
+        name: "(no native Product; use custom object)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+      espocrm:
+        name: "Product"
+        api_name: "Product"
+        is_standard: true
+        docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Sales/Resources/metadata/entityDefs/Product.json
+      civicrm:
+        name: "Premium / Price Field Value"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://docs.civicrm.org/user/en/latest/contributions/premiums/
+      salesforce_npsp:
+        name: "Product2"
+        api_name: "Product2"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_product2.htm
+      bloomerang:
+        name: "(no Product concept)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: solution
+    name: "Solution"
+    tier: 3
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "Solution (legacy) / KnowledgeArticle (modern)"
+        api_name: "Solution, KnowledgeArticleVersion"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_solution.htm
+      hubspot:
+        name: "Knowledge Base Article"
+        api_name: "knowledge base (separate product, not in main CRM API)"
+        is_standard: true
+        docs_url: https://knowledge.hubspot.com/knowledge-base/create-and-manage-knowledge-base-articles
+      attio:
+        name: "(no native Knowledge concept)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://attio.com/help
+      espocrm:
+        name: "Knowledge Base Article"
+        api_name: "KnowledgeBaseArticle"
+        is_standard: true
+        docs_url: https://docs.espocrm.com/user-guide/knowledge-base/
+      civicrm:
+        name: "(no native Knowledge concept)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://docs.civicrm.org/
+      salesforce_npsp:
+        name: "Solution (legacy) / KnowledgeArticle (modern)"
+        api_name: "Solution, KnowledgeArticleVersion"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_solution.htm
+      bloomerang:
+        name: "(no Knowledge concept)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: affiliation
+    name: "Affiliation"
+    tier: 4
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "AccountContactRelation"
+        api_name: "AccountContactRelation"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_accountcontactrelation.htm
+      hubspot:
+        name: "Company Association (primary + secondary)"
+        api_name: "companies (associations)"
+        is_standard: true
+        docs_url: https://knowledge.hubspot.com/contacts/associate-records
+      attio:
+        name: "Custom relationship attribute"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://attio.com/help/reference/managing-your-data/attributes/create-manage-attributes
+      espocrm:
+        name: "(custom or via custom relationship)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://docs.espocrm.com/
+      civicrm:
+        name: "Relationship (with type=Employee Of / Board Member Of / etc.)"
+        api_name: "Relationship"
+        is_standard: true
+        docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/relationships/
+      salesforce_npsp:
+        name: "Affiliation (npe5__Affiliation__c)"
+        api_name: "npe5__Affiliation__c"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
+      bloomerang:
+        name: "Relationship"
+        api_name: "Relationship"
+        is_standard: true
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: constituent
+    name: "Constituent"
+    tier: 4
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "(no native Constituent — split Contact / Account)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contact.htm
+      hubspot:
+        name: "(no native Constituent — split Contact / Company)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://developers.hubspot.com/docs/reference/api/crm/objects/contacts
+      attio:
+        name: "(no native Constituent — split Person / Company)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/manage-standard-objects
+      espocrm:
+        name: "(no native Constituent — split Contact / Account)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://docs.espocrm.com/
+      civicrm:
+        name: "Contact (with contact_type = Individual / Household / Organization)"
+        api_name: "Contact"
+        is_standard: true
+        docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/contacts/
+      salesforce_npsp:
+        name: "(no native Constituent — split Contact / Account)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
+      bloomerang:
+        name: "Constituent"
+        api_name: "Constituent"
+        is_standard: true
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: donation
+    name: "Donation"
+    tier: 4
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "Opportunity (no Donation entity in vanilla Salesforce)"
+        api_name: "Opportunity"
+        is_standard: false
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_opportunity.htm
+      hubspot:
+        name: "Deal (with custom Type)"
+        api_name: "deals"
+        is_standard: false
+        docs_url: https://developers.hubspot.com/docs/api-reference/crm-deals-v3/guide
+      attio:
+        name: "(custom object required)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+      espocrm:
+        name: "Opportunity (no Donation entity)"
+        api_name: "Opportunity"
+        is_standard: false
+        docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Opportunity.json
+      civicrm:
+        name: "Contribution"
+        api_name: "Contribution"
+        is_standard: true
+        docs_url: https://docs.civicrm.org/user/en/latest/contributions/
+      salesforce_npsp:
+        name: "Opportunity (Donation Record Type)"
+        api_name: "Opportunity"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
+      bloomerang:
+        name: "Transaction (received) / Pledge (committed)"
+        api_name: "Transaction"
+        is_standard: true
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: engagement
+    name: "Engagement"
+    tier: 4
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "(no native — custom required)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_account.htm
+      hubspot:
+        name: "(no native long-running Engagement; HubSpot 'Engagement' is single-touchpoint)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://developers.hubspot.com/docs/api-reference/crm-engagements
+      attio:
+        name: "(custom object)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+      espocrm:
+        name: "(no Engagement entity)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://docs.espocrm.com/
+      civicrm:
+        name: "Case (used for case management with longitudinal arcs)"
+        api_name: "Case"
+        is_standard: true
+        docs_url: https://docs.civicrm.org/user/en/latest/case-management/
+      salesforce_npsp:
+        name: "Engagement Plan / Engagement Plan Task / Engagement Plan Template"
+        api_name: "npe5__Engagement_Plan__c, npe5__Engagement_Plan_Task__c"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
+      bloomerang:
+        name: "(no first-class Engagement; tracked via Interactions)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: grant
+    name: "Grant"
+    tier: 4
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "(no Grant entity in vanilla)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_opportunity.htm
+      hubspot:
+        name: "(custom required)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://developers.hubspot.com/docs/api-reference/crm-deals-v3/guide
+      attio:
+        name: "(custom object)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+      espocrm:
+        name: "(no Grant entity)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://docs.espocrm.com/
+      civicrm:
+        name: "Grant"
+        api_name: "Grant"
+        is_standard: true
+        docs_url: https://docs.civicrm.org/user/en/latest/grants/
+      salesforce_npsp:
+        name: "Opportunity (Grant Record Type)"
+        api_name: "Opportunity"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
+      bloomerang:
+        name: "Transaction with Grant fund"
+        api_name: "Transaction"
+        is_standard: false
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: household
+    name: "Household"
+    tier: 4
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "(no native — custom required)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_account.htm
+      hubspot:
+        name: "(custom — typically Company)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://developers.hubspot.com/docs/api-reference/crm-companies-v3/guide
+      attio:
+        name: "(custom object)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+      espocrm:
+        name: "(no native Household)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://docs.espocrm.com/
+      civicrm:
+        name: "Household (Contact subtype)"
+        api_name: "Contact (contact_type=Household)"
+        is_standard: true
+        docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/contacts/
+      salesforce_npsp:
+        name: "Account (Household Record Type)"
+        api_name: "Account"
+        is_standard: true
+        docs_url: https://trailhead.salesforce.com/content/learn/modules/constituent-data-management-with-nonprofit-success-pack/manage-household-accounts
+      bloomerang:
+        name: "(modeled via Relationships)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: membership
+    name: "Membership"
+    tier: 4
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "(no native Membership)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_opportunity.htm
+      hubspot:
+        name: "(custom property or custom object)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://developers.hubspot.com/docs/api-reference/crm-deals-v3/guide
+      attio:
+        name: "(custom object)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+      espocrm:
+        name: "(no Membership entity)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://docs.espocrm.com/
+      civicrm:
+        name: "Membership"
+        api_name: "Membership"
+        is_standard: true
+        docs_url: https://docs.civicrm.org/user/en/latest/membership/
+      salesforce_npsp:
+        name: "Opportunity (Membership Record Type) + Level"
+        api_name: "Opportunity"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
+      bloomerang:
+        name: "Constituent custom fields"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: recurring-gift
+    name: "Recurring Gift"
+    tier: 4
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "(no native Recurring Gift)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_opportunity.htm
+      hubspot:
+        name: "(custom or via Subscriptions in Commerce Hub)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://developers.hubspot.com/docs/api-reference/crm-commerce-subscriptions
+      attio:
+        name: "(custom object required)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+      espocrm:
+        name: "(no native Recurring Gift)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://docs.espocrm.com/
+      civicrm:
+        name: "ContributionRecur"
+        api_name: "ContributionRecur"
+        is_standard: true
+        docs_url: https://docs.civicrm.org/user/en/latest/contributions/recurring-contributions/
+      salesforce_npsp:
+        name: "Recurring Donation (npe03__Recurring_Donation__c)"
+        api_name: "npe03__Recurring_Donation__c"
+        is_standard: true
+        docs_url: https://trailhead.salesforce.com/content/learn/modules/opportunity-settings-in-nonprofit-success-pack/manage-recurring-donations-npsp
+      bloomerang:
+        name: "Recurring Donation"
+        api_name: "RecurringDonation"
+        is_standard: true
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: soft-credit
+    name: "Soft Credit"
+    tier: 4
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "(no native — Opportunity Contact Role partial)"
+        api_name: "OpportunityContactRole"
+        is_standard: false
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_opportunitycontactrole.htm
+      hubspot:
+        name: "(no native — custom)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://developers.hubspot.com/docs/api-reference/crm-deals-v3/guide
+      attio:
+        name: "(custom relationship attribute)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+      espocrm:
+        name: "(no Soft Credit entity)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://docs.espocrm.com/
+      civicrm:
+        name: "Soft Credit (child of Contribution)"
+        api_name: "ContributionSoft"
+        is_standard: true
+        docs_url: https://docs.civicrm.org/user/en/latest/contributions/soft-credits/
+      salesforce_npsp:
+        name: "Partial Soft Credit + Account Soft Credit + Opportunity Contact Role"
+        api_name: "npo02__Partial_Soft_Credit__c, npo02__Account_Soft_Credit__c"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
+      bloomerang:
+        name: "Acknowledgement"
+        api_name: "SoftCredit"
+        is_standard: true
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: volunteer-hour
+    name: "Volunteer Hour"
+    tier: 4
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "(no native — V4S extension required)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://help.salesforce.com/s/articleView?id=000384741&type=1
+      hubspot:
+        name: "(custom required)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://developers.hubspot.com/docs/api-reference/crm-deals-v3/guide
+      attio:
+        name: "(custom object)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+      espocrm:
+        name: "(no Volunteer Hour entity)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://docs.espocrm.com/
+      civicrm:
+        name: "Volunteer Assignment (CiviVolunteer extension)"
+        api_name: "VolunteerAssignment"
+        is_standard: false
+        docs_url: https://docs.civicrm.org/volunteer/en/latest/
+      salesforce_npsp:
+        name: "Volunteer Hours (V4S managed package)"
+        api_name: "GW_Volunteers__Volunteer_Hours__c"
+        is_standard: false
+        docs_url: https://github.com/SalesforceFoundation/Volunteers-for-Salesforce
+      bloomerang:
+        name: "Volunteer Interaction (Interaction subtype)"
+        api_name: "Interaction"
+        is_standard: true
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: account-household
+    name: "Household (Account subclass)"
+    tier: 4
+    entry_kind: subclass
+    parent_entity: account
+    discriminator_attribute: "type"
+    discriminator_value: "Household"
+    by_system:
+      salesforce:
+        name: "Account with Household Record Type (custom)"
+        api_name: "Account"
+        is_standard: false
+        mechanism: record_type
+        docs_url: https://help.salesforce.com/s/articleView?id=sf.customize_recordtype.htm
+      hubspot:
+        name: "Company with custom Type=Household"
+        api_name: "companies"
+        is_standard: false
+        mechanism: custom_property
+        docs_url: https://developers.hubspot.com/docs/api-reference/crm-properties-v3/guide
+      attio:
+        name: "Custom Household object or Type attribute on Companies"
+        api_name: "not_applicable"
+        is_standard: false
+        mechanism: separate_object
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+      espocrm:
+        name: "Account with type=Household (custom enum value)"
+        api_name: "Account"
+        is_standard: false
+        mechanism: type_discriminator
+        docs_url: https://docs.espocrm.com/administration/entity-manager/
+      civicrm:
+        name: "(handled at Tier 4 entity, not as Account subclass)"
+        api_name: "not_applicable"
+        is_standard: true
+        mechanism: separate_object
+        docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/contacts/
+      salesforce_npsp:
+        name: "Account with Household Record Type"
+        api_name: "Account"
+        is_standard: true
+        mechanism: record_type
+        docs_url: https://trailhead.salesforce.com/content/learn/modules/constituent-data-management-with-nonprofit-success-pack/manage-household-accounts
+      bloomerang:
+        name: "(handled at Tier 4 entity via Relationships, not as Account subclass)"
+        api_name: "not_applicable"
+        is_standard: true
+        mechanism: separate_object
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: donation-major-gift
+    name: "Major Gift (Donation subclass)"
+    tier: 4
+    entry_kind: subclass
+    parent_entity: donation
+    discriminator_attribute: "type"
+    discriminator_value: "Major Gift"
+    by_system:
+      salesforce:
+        name: "Opportunity with custom Major Gift Record Type"
+        api_name: "Opportunity"
+        is_standard: false
+        mechanism: record_type
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_opportunity.htm
+      hubspot:
+        name: "Deal with custom Type=Major Gift"
+        api_name: "deals"
+        is_standard: false
+        mechanism: custom_property
+        docs_url: https://developers.hubspot.com/docs/api-reference/crm-deals-v3/guide
+      attio:
+        name: "Custom Major Gift object or Type attribute on Deals"
+        api_name: "not_applicable"
+        is_standard: false
+        mechanism: separate_object
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+      espocrm:
+        name: "Opportunity with type=Major Gift (custom enum)"
+        api_name: "Opportunity"
+        is_standard: false
+        mechanism: type_discriminator
+        docs_url: https://docs.espocrm.com/administration/entity-manager/
+      civicrm:
+        name: "Contribution with custom financial_type=Major Gift"
+        api_name: "Contribution"
+        is_standard: false
+        mechanism: type_discriminator
+        docs_url: https://docs.civicrm.org/user/en/latest/contributions/
+      salesforce_npsp:
+        name: "Opportunity with Major Gift Record Type"
+        api_name: "Opportunity"
+        is_standard: true
+        mechanism: record_type
+        docs_url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
+      bloomerang:
+        name: "Transaction with custom Type=Major Gift"
+        api_name: "Transaction"
+        is_standard: false
+        mechanism: custom_property
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: contract
+    name: "Contract"
+    tier: 5
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "Contract"
+        api_name: "Contract"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contract.htm
+      hubspot:
+        name: "Contracts (Enterprise)"
+        api_name: "contracts"
+        is_standard: true
+        docs_url: https://knowledge.hubspot.com/contracts/use-the-contract-object
+      attio:
+        name: "(custom object required)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+      espocrm:
+        name: "Contract"
+        api_name: "Contract"
+        is_standard: true
+        docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Sales/Resources/metadata/entityDefs/Contract.json
+      civicrm:
+        name: "(no native Contract — Document used for signed agreements)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://docs.civicrm.org/user/en/latest/
+      salesforce_npsp:
+        name: "Contract"
+        api_name: "Contract"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contract.htm
+      bloomerang:
+        name: "(no native Contract)"
+        api_name: "not_applicable"
+        is_standard: false
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: document
+    name: "Document"
+    tier: 5
+    entry_kind: universal
+    by_system:
+      salesforce:
+        name: "ContentDocument / ContentVersion"
+        api_name: "ContentDocument, ContentVersion"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contentdocument.htm
+      hubspot:
+        name: "Files"
+        api_name: "files"
+        is_standard: true
+        docs_url: https://developers.hubspot.com/docs/api-reference/files-files
+      attio:
+        name: "Attachments / Files"
+        api_name: "attachments"
+        is_standard: true
+        docs_url: https://attio.com/help/reference/managing-your-data/records/file-attachments
+      espocrm:
+        name: "Document / Attachment"
+        api_name: "Document, Attachment"
+        is_standard: true
+        docs_url: https://docs.espocrm.com/user-guide/documents/
+      civicrm:
+        name: "Attachment (via File entity)"
+        api_name: "Attachment"
+        is_standard: true
+        docs_url: https://docs.civicrm.org/user/en/latest/the-user-interface/notes-attachments/
+      salesforce_npsp:
+        name: "ContentDocument / ContentVersion"
+        api_name: "ContentDocument, ContentVersion"
+        is_standard: true
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contentdocument.htm
+      bloomerang:
+        name: "Document"
+        api_name: "Document"
+        is_standard: true
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: activity-email
+    name: "Email (Activity subclass)"
+    tier: 5
+    entry_kind: subclass
+    parent_entity: activity
+    discriminator_attribute: "activityType"
+    discriminator_value: "Email"
+    by_system:
+      salesforce:
+        name: "EmailMessage"
+        api_name: "EmailMessage"
+        is_standard: true
+        mechanism: separate_object
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_emailmessage.htm
+      hubspot:
+        name: "Email (Engagement subtype)"
+        api_name: "emails"
+        is_standard: true
+        mechanism: type_discriminator
+        docs_url: https://developers.hubspot.com/docs/reference/api/crm/engagements/email
+      attio:
+        name: "(synced via Gmail / Outlook OAuth)"
+        api_name: "emails"
+        is_standard: true
+        mechanism: separate_object
+        docs_url: https://attio.com/help/reference/managing-your-data/records/add-record-activities
+      espocrm:
+        name: "Email"
+        api_name: "Email"
+        is_standard: true
+        mechanism: separate_object
+        docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Resources/metadata/entityDefs/Email.json
+      civicrm:
+        name: "Activity (activity_type=Email)"
+        api_name: "Activity"
+        is_standard: true
+        mechanism: type_discriminator
+        docs_url: https://docs.civicrm.org/user/en/latest/email/
+      salesforce_npsp:
+        name: "EmailMessage"
+        api_name: "EmailMessage"
+        is_standard: true
+        mechanism: separate_object
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_emailmessage.htm
+      bloomerang:
+        name: "Interaction (subtype=Email)"
+        api_name: "Interaction"
+        is_standard: true
+        mechanism: type_discriminator
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: activity-meeting
+    name: "Meeting (Activity subclass)"
+    tier: 5
+    entry_kind: subclass
+    parent_entity: activity
+    discriminator_attribute: "activityType"
+    discriminator_value: "Meeting"
+    by_system:
+      salesforce:
+        name: "Event"
+        api_name: "Event"
+        is_standard: true
+        mechanism: separate_object
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_event.htm
+      hubspot:
+        name: "Meeting (Engagement subtype)"
+        api_name: "meetings"
+        is_standard: true
+        mechanism: type_discriminator
+        docs_url: https://developers.hubspot.com/docs/reference/api/crm/engagements/meetings
+      attio:
+        name: "Meetings"
+        api_name: "meetings"
+        is_standard: true
+        mechanism: separate_object
+        docs_url: https://attio.com/help/reference/managing-your-data/records/add-record-activities
+      espocrm:
+        name: "Meeting"
+        api_name: "Meeting"
+        is_standard: true
+        mechanism: separate_object
+        docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Meeting.json
+      civicrm:
+        name: "Activity (activity_type=Meeting)"
+        api_name: "Activity"
+        is_standard: true
+        mechanism: type_discriminator
+        docs_url: https://docs.civicrm.org/user/en/latest/the-user-interface/activities/
+      salesforce_npsp:
+        name: "Event"
+        api_name: "Event"
+        is_standard: true
+        mechanism: separate_object
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_event.htm
+      bloomerang:
+        name: "Interaction (subtype=In-Person)"
+        api_name: "Interaction"
+        is_standard: true
+        mechanism: type_discriminator
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: activity-phone-call
+    name: "Phone Call (Activity subclass)"
+    tier: 5
+    entry_kind: subclass
+    parent_entity: activity
+    discriminator_attribute: "activityType"
+    discriminator_value: "Phone Call"
+    by_system:
+      salesforce:
+        name: "Task (TaskSubtype=Call) or VoiceCall"
+        api_name: "Task or VoiceCall"
+        is_standard: true
+        mechanism: type_discriminator
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_voicecall.htm
+      hubspot:
+        name: "Call (Engagement subtype)"
+        api_name: "calls"
+        is_standard: true
+        mechanism: type_discriminator
+        docs_url: https://developers.hubspot.com/docs/reference/api/crm/engagements/calls
+      attio:
+        name: "Calls"
+        api_name: "calls"
+        is_standard: true
+        mechanism: separate_object
+        docs_url: https://attio.com/help/reference/managing-your-data/records/add-record-activities
+      espocrm:
+        name: "Call"
+        api_name: "Call"
+        is_standard: true
+        mechanism: separate_object
+        docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Call.json
+      civicrm:
+        name: "Activity (activity_type=Phone Call)"
+        api_name: "Activity"
+        is_standard: true
+        mechanism: type_discriminator
+        docs_url: https://docs.civicrm.org/user/en/latest/the-user-interface/activities/
+      salesforce_npsp:
+        name: "Task (TaskSubtype=Call)"
+        api_name: "Task"
+        is_standard: true
+        mechanism: type_discriminator
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_task.htm
+      bloomerang:
+        name: "Interaction (subtype=Phone Call)"
+        api_name: "Interaction"
+        is_standard: true
+        mechanism: type_discriminator
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: activity-sms
+    name: "SMS (Activity subclass)"
+    tier: 5
+    entry_kind: subclass
+    parent_entity: activity
+    discriminator_attribute: "activityType"
+    discriminator_value: "SMS"
+    by_system:
+      salesforce:
+        name: "MessagingSession (Service Cloud) or Marketing Cloud MobileConnect"
+        api_name: "MessagingSession"
+        is_standard: false
+        mechanism: type_discriminator
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_messagingsession.htm
+      hubspot:
+        name: "Communication (Engagement subtype)"
+        api_name: "communications"
+        is_standard: true
+        mechanism: type_discriminator
+        docs_url: https://developers.hubspot.com/docs/reference/api/crm/engagements/communications
+      attio:
+        name: "(custom — typically via Twilio integration)"
+        api_name: "not_applicable"
+        is_standard: false
+        mechanism: separate_object
+        docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+      espocrm:
+        name: "(no native SMS)"
+        api_name: "not_applicable"
+        is_standard: false
+        mechanism: type_discriminator
+        docs_url: https://docs.espocrm.com/
+      civicrm:
+        name: "Activity (activity_type=SMS)"
+        api_name: "Activity"
+        is_standard: true
+        mechanism: type_discriminator
+        docs_url: https://docs.civicrm.org/user/en/latest/sms/
+      salesforce_npsp:
+        name: "MessagingSession (Service Cloud)"
+        api_name: "MessagingSession"
+        is_standard: false
+        mechanism: type_discriminator
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_messagingsession.htm
+      bloomerang:
+        name: "Interaction (subtype=Text Message)"
+        api_name: "Interaction"
+        is_standard: true
+        mechanism: type_discriminator
+        docs_url: https://bloomerang.com/api/rest-api-v1/
+
+  - catalog_id: activity-video-meeting
+    name: "Video Meeting (Activity subclass)"
+    tier: 5
+    entry_kind: subclass
+    parent_entity: activity
+    discriminator_attribute: "activityType"
+    discriminator_value: "Video Meeting"
+    by_system:
+      salesforce:
+        name: "Event with custom video fields"
+        api_name: "Event"
+        is_standard: false
+        mechanism: type_discriminator
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_event.htm
+      hubspot:
+        name: "Meeting with platform integration"
+        api_name: "meetings"
+        is_standard: false
+        mechanism: type_discriminator
+        docs_url: https://developers.hubspot.com/docs/reference/api/crm/engagements/meetings
+      attio:
+        name: "Meeting with auto-detected video link"
+        api_name: "meetings"
+        is_standard: false
+        mechanism: type_discriminator
+        docs_url: https://attio.com/help/reference/managing-your-data/records/add-record-activities
+      espocrm:
+        name: "Meeting with custom video fields"
+        api_name: "Meeting"
+        is_standard: false
+        mechanism: type_discriminator
+        docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Meeting.json
+      civicrm:
+        name: "Activity (activity_type=Meeting) with custom fields"
+        api_name: "Activity"
+        is_standard: false
+        mechanism: type_discriminator
+        docs_url: https://docs.civicrm.org/user/en/latest/the-user-interface/activities/
+      salesforce_npsp:
+        name: "Event with custom video fields"
+        api_name: "Event"
+        is_standard: false
+        mechanism: type_discriminator
+        docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_event.htm
+      bloomerang:
+        name: "Interaction (subtype=Phone Call or custom Video)"
+        api_name: "Interaction"
+        is_standard: false
+        mechanism: type_discriminator
+        docs_url: https://bloomerang.com/api/rest-api-v1/
