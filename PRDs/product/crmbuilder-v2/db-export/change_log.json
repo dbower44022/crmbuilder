@@ -2566,5 +2566,171 @@
     "id": 96,
     "operation": "update",
     "timestamp": "2026-05-08T23:25:03.606504"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "Six prompts (CLAUDE-CODE-PROMPT-v2-ui-v0.2-A through F) under PRDs/product/crmbuilder-v2/prompts/. Source under crmbuilder-v2/src/crmbuilder_v2/ui/widgets/, base/crud_dialog.py, base/versioned_replace_dialog.py, plus per-entity dialogs and panel modifications. Test files under tests/crmbuilder_v2/ui/ for each new dialog and panel write surface. Storage-system additions where required: API decisions list endpoint plumbed include_deleted query param through to the access layer's list_all (the access layer already supported it from v0.1 slice H); topics access fix special-cases parent_topic='' as 'clear FK' parallel to v0.1 slice H's supersedes='' fix; StorageClient gained restore_decision() convenience method. About dialog version reads from crmbuilder_v2.__version__ which is bumped to 0.2.0.",
+      "conversation_reference": "Six Claude Code execution sessions per the CLAUDE-CODE-PROMPT-v2-ui-v0.2-A through F prompt series. No transcripts preserved per DEC-025.",
+      "created_at": "2026-05-09T05:10:47.896148+00:00",
+      "id": 7,
+      "identifier": "SES-007",
+      "in_flight_at_end": "v0.3 backlog: References write surface as its own focused slice (relationship vocabulary picker, source/target picker UX, edge-deletion semantics); Sessions write surface only if DEC-013/DEC-014 are revised to permit non-Claude session records; full styling design pass per DEC-024; ListDetailPanel master-pane factory refactor (slice F polish item 8 deferred); reference filtering by relationship type if reference volume warrants it; diff-with-current view for the JSON payload editor if friction surfaces; methodology entity panels post-schema-design; global search across entities; keyboard shortcuts beyond Qt defaults; export visible panel to CSV/JSON; bulk operations.",
+      "session_date": "05-09-26",
+      "status": "Complete",
+      "summary": "UI v0.2 shipped: full create/edit/delete for Risks, Planning Items, and Topics; versioned replace with Make Current for Charter and Status; reference rendering on every detail pane via the shared ReferencesSection widget; calendar widget on date inputs (DateField); QTreeView master panel for Topics with reusable HierarchicalEntityPicker; Show-deleted toggle and Restore affordance on the Decisions panel. v0.1's tests continue to pass after the slice A refactor; total v2 test count grew to 458. Sessions and References write surfaces remain deferred to v0.3 per DEC-027.",
+      "title": "UI v0.2 build",
+      "topics_covered": "Six-prompt execution of the UI v0.2 build per ui-v0.2-implementation-plan.md: foundation refactor (A), risks CRUD (B), planning items CRUD (C), topics CRUD with QTreeView and HierarchicalEntityPicker (D), charter and status replace flows + sessions references section (E), show-deleted toggle + polish + closeout (F). Foundation refactor extracted EntityCrudDialog and EntityCrudDeleteDialog base classes plus a new widgets/ subpackage with DateField, ReferencesSection, and HierarchicalEntityPicker; v0.1's decisions dialogs migrated to use the base. Each subsequent slice instantiated the base for its entity, added the entity's panel-side write integration, and dropped ReferencesSection on the detail pane. Charter/Status got the parallel VersionedReplaceDialog with raw JSON editor and Make Current affordance. Slice F closed with the Show-deleted toggle + Restore affordance, About dialog version bump, README update, base-class polish (promoted _select_by_identifier, JSON inline error rendering), and this record."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-007",
+    "entity_type": "session",
+    "id": 97,
+    "operation": "insert",
+    "timestamp": "2026-05-09T05:10:47.897217"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-09T05:11:20.258234+00:00",
+      "id": 8,
+      "is_current": true,
+      "payload": {
+        "active_work": "None — UI v0.2 shipped. Awaiting v0.3 planning conversation.",
+        "blockers": "None.",
+        "live_inventory": {
+          "in_database": [
+            "31 decisions (DEC-001 through DEC-031); slice F adds none",
+            "7 sessions (SES-001 through SES-007)",
+            "4 charter versions (latest is_current)",
+            "8 status versions (this is the new current)",
+            "30 references unchanged from SES-006 (slice F adds the SES-007 row but no new decisions, so no decided_in references are added)"
+          ],
+          "still_markdown": [
+            "PRDs/product/crmbuilder-v2/storage-system-PRD-v0.1.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/storage-system-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/prompts/*.md (Claude Code prompt files)",
+            "PRDs/product/crmbuilder-v2/ui-PRD-v0.1.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/ui-PRD-v0.2.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/ui-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/ui-v0.2-implementation-plan.md"
+          ],
+          "v1_unchanged": [
+            "espo_impl/ — CRMBuilder PySide6 application code",
+            "automation/ — server management layer",
+            "PRDs/process/ — methodology guides",
+            "PRDs/product/CRMBuilder-PRD.md, app-*.md, crmbuilder-automation-PRD/ — v1 product specs",
+            "ClevelandBusinessMentoring/ — CBM client repo"
+          ]
+        },
+        "metadata": {
+          "Last Updated": "05-09-26",
+          "Status": "Active"
+        },
+        "pending": {
+          "build_after_v0_2": [
+            "Step 0 follow-on — methodology entity schema (personas, entities, fields, processes, requirements, manual-config items, test specifications)",
+            "Renderers — Word, YAML, test cases generated from the database (DEC-008)",
+            "Application integration — CRMBuilder PySide6 reads/writes against the v2 database",
+            "MN domain migration as proving ground (per DEC-010)",
+            "Test infrastructure first deliverable (CRUD layer)",
+            "Subsequent: MR, CR, FU migration; integration / process / UI test layers; methodology guide evolution"
+          ],
+          "planning_paused_until_ui_complete": [
+            "Planning dimension #6 — division of labor",
+            "Planning dimension #7 — risk register",
+            "Planning dimension #8 — exit criteria",
+            "Project-structure split decision (Claude Project, repository) — deferred to end of planning per DEC-012"
+          ],
+          "ui_v0_3_backlog": [
+            "References write surface as its own focused slice (relationship vocabulary picker, source/target picker UX, edge-deletion semantics)",
+            "Sessions write surface only if DEC-013/DEC-014 are revised to permit non-Claude session records",
+            "Full styling design pass per DEC-024",
+            "ListDetailPanel master-pane factory refactor (slice F polish item 8 deferred for regression-risk reasons)",
+            "Diff-with-current view for the JSON payload editor",
+            "Reference filtering by relationship type if reference volume warrants it",
+            "Methodology entity panels post-schema-design",
+            "Global search across entities",
+            "Export visible panel to CSV/JSON, bulk operations"
+          ]
+        },
+        "phase": "v0.2 complete",
+        "reading_order_for_new_sessions": "Tier 1: read crmbuilder/CLAUDE.md.\nTier 2 (MCP-connected): call get_current_status, get_current_charter, list_recent_sessions(limit=3), then get_decision or list_decisions_for_session as needed.\nTier 2 (file-fallback): read JSON snapshots under PRDs/product/crmbuilder-v2/db-export/ — status.json, charter.json, sessions.json, decisions.json, references.json.\nTier 3 (on-demand): targeted MCP/API queries during conversation.",
+        "sub_step": "All six v0.2 slices shipped (A foundation refactor, B risks CRUD, C planning items CRUD, D topics CRUD + QTreeView + HierarchicalEntityPicker, E charter and status replace flows + sessions references, F show-deleted toggle + polish + closeout). v2 stack now offers full CRUD for the four governance entity types with daily-use needs (Decisions, Risks, Planning Items, Topics), versioned replace + history for Charter and Status, and uniform reference rendering. Next priorities are v0.3 backlog (References write surface, full styling pass, possibly Sessions write surface pending DEC-013/DEC-014 revisit) and resuming planning dimensions #6/#7/#8.",
+        "title": "CRMBuilder v2 — Status",
+        "version_label": "0.8"
+      },
+      "version": 8
+    },
+    "before_payload": {
+      "created_at": "2026-05-08T23:25:03.606115",
+      "id": 7,
+      "is_current": true,
+      "payload": {
+        "active_work": "Slice A — foundation refactor (this conversation's execution work).",
+        "blockers": "None.",
+        "live_inventory": {
+          "in_database": [
+            "30 decisions (DEC-001 through DEC-031)",
+            "6 sessions (SES-001 through SES-006)",
+            "4 charter versions (latest is_current)",
+            "7 status versions (this is the new current)",
+            "30 references (24 from prior sessions + 6 from SES-006 to DEC-026 through DEC-031)"
+          ],
+          "still_markdown": [
+            "PRDs/product/crmbuilder-v2/storage-system-PRD-v0.1.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/storage-system-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/prompts/*.md (Claude Code prompt files)",
+            "PRDs/product/crmbuilder-v2/ui-PRD-v0.1.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/ui-implementation-plan.md"
+          ],
+          "v1_unchanged": [
+            "espo_impl/ — CRMBuilder PySide6 application code",
+            "automation/ — server management layer",
+            "PRDs/process/ — methodology guides",
+            "PRDs/product/CRMBuilder-PRD.md, app-*.md, crmbuilder-automation-PRD/ — v1 product specs",
+            "ClevelandBusinessMentoring/ — CBM client repo"
+          ]
+        },
+        "metadata": {
+          "Last Updated": "05-08-26",
+          "Status": "Active"
+        },
+        "pending": {
+          "build_after_v0_1": [
+            "Step 0 follow-on — methodology entity schema (personas, entities, fields, processes, requirements, manual-config items, test specifications)",
+            "Renderers — Word, YAML, test cases generated from the database (DEC-008)",
+            "Application integration — CRMBuilder PySide6 reads/writes against the v2 database",
+            "MN domain migration as proving ground (per DEC-010)",
+            "Test infrastructure first deliverable (CRUD layer)",
+            "Subsequent: MR, CR, FU migration; integration / process / UI test layers; methodology guide evolution"
+          ],
+          "planning_paused_until_v0_1": [
+            "Planning dimension #6 — division of labor",
+            "Planning dimension #7 — risk register",
+            "Planning dimension #8 — exit criteria",
+            "Project-structure split decision (Claude Project, repository) — deferred to end of planning per DEC-012"
+          ],
+          "ui_v0_2_remaining_slices": [
+            "v2-ui-v0.2-B — risks CRUD",
+            "v2-ui-v0.2-C — planning items CRUD",
+            "v2-ui-v0.2-D — topics CRUD + QTreeView + HierarchicalEntityPicker",
+            "v2-ui-v0.2-E — charter and status replace flows + sessions references section",
+            "v2-ui-v0.2-F — show-deleted toggle + polish + closeout (SES-007)"
+          ]
+        },
+        "phase": "v0.2 in build",
+        "reading_order_for_new_sessions": "Tier 1: read crmbuilder/CLAUDE.md.\nTier 2 (MCP-connected): call get_current_status, get_current_charter, list_recent_sessions(limit=3), then get_decision or list_decisions_for_session as needed.\nTier 2 (file-fallback): read JSON snapshots under PRDs/product/crmbuilder-v2/db-export/ — status.json, charter.json, sessions.json, decisions.json, references.json.\nTier 3 (on-demand): targeted MCP/API queries during conversation.",
+        "sub_step": "Slice A foundation refactor in progress: extracting EntityCrudDialog and VersionedReplaceDialog base classes, adding widgets/ subpackage with DateField + ReferencesSection + HierarchicalEntityPicker, migrating decisions dialogs to the new base.",
+        "title": "CRMBuilder v2 — Status",
+        "version_label": "0.7"
+      },
+      "version": 7
+    },
+    "entity_identifier": "status",
+    "entity_type": "status",
+    "id": 98,
+    "operation": "update",
+    "timestamp": "2026-05-09T05:11:20.258876"
   }
 ]
