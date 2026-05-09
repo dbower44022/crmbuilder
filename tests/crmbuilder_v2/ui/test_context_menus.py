@@ -93,12 +93,14 @@ def test_decisions_context_menu_deleted_row_shows_restore(qtbot, client_stub):
 # ---------------------------------------------------------------------------
 
 
-def test_sessions_context_menu_whitespace_is_empty(qtbot, client_stub):
+def test_sessions_context_menu_whitespace_offers_new_session(
+    qtbot, client_stub
+):
     panel = SessionsPanel(client=client_stub)
     qtbot.addWidget(panel)
     menu = panel._build_context_menu(QModelIndex())
-    # Slice D adds "New session" here. Slice B leaves it empty.
-    assert _action_labels(menu) == []
+    # v0.3 slice D — DEC-034 authorizes user-authored sessions.
+    assert _action_labels(menu) == ["New session"]
 
 
 def test_sessions_context_menu_row(qtbot, client_stub):

@@ -1244,3 +1244,84 @@ def test_delete_reference_propagates_not_found():
 
     with pytest.raises(NotFoundError):
         client.delete_reference(999)
+
+
+# ---------------------------------------------------------------------------
+# v0.3 slice D: session create
+# ---------------------------------------------------------------------------
+
+
+def _session_body() -> dict:
+    return {
+        "identifier": "SES-009",
+        "title": "Slice D landed",
+        "session_date": "05-09-26",
+        "status": "Complete",
+        "summary": "Summary body",
+        "topics_covered": "Topics body",
+        "artifacts_produced": "Artifacts body",
+        "in_flight_at_end": "",
+        "conversation_reference": "Conversation reference body",
+    }
+
+
+def test_create_session_posts_correct_payload():
+    body_in = _session_body()
+    captured: dict = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.method == "POST"
+        assert req.url.path == "/sessions"
+        captured["body"] = json.loads(req.read())
+        return httpx.Response(
+            201, json={"data": body_in, "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    result = client.create_session(body_in)
+    assert result == body_in
+    assert captured["body"] == body_in
+
+
+def test_create_session_propagates_validation_error():
+    body = {
+        "data": None,
+        "meta": {},
+        "errors": [
+            {
+                "code": "validation_error",
+                "field": "status",
+                "message": "must be one of Complete, In Progress",
+            }
+        ],
+    }
+
+    def handler(_req: httpx.Request) -> httpx.Response:
+        return httpx.Response(400, json=body)
+
+    client = _client(handler)
+    with pytest.raises(ValidationError) as excinfo:
+        client.create_session(_session_body())
+    assert excinfo.value.field_errors() == {
+        "status": "must be one of Complete, In Progress"
+    }
+
+
+def test_create_session_propagates_identifier_collision():
+    body = {
+        "data": None,
+        "meta": {},
+        "errors": [
+            {
+                "code": "conflict",
+                "message": "session 'SES-009' already exists",
+            }
+        ],
+    }
+
+    def handler(_req: httpx.Request) -> httpx.Response:
+        return httpx.Response(409, json=body)
+
+    client = _client(handler)
+    with pytest.raises(ConflictError):
+        client.create_session(_session_body())

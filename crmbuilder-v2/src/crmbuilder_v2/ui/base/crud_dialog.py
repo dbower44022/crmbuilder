@@ -102,6 +102,10 @@ class FieldSchema:
       check fails.
     * ``read_only_on_edit`` — field becomes ``setReadOnly(True)`` on
       Edit mode (typically the identifier).
+    * ``read_only`` — field becomes ``setReadOnly(True)`` regardless
+      of mode. Used for fields that the dialog auto-assigns and the
+      user must not edit (e.g. an auto-generated identifier in a
+      create-only dialog). Applies to ``line`` and ``text`` widgets.
     * ``record_field_for_edit`` — when an Edit-mode record carries the
       field's value under a different key (e.g., the decision's
       ``supersedes_identifier`` for a ``supersedes`` field), specify
@@ -141,6 +145,7 @@ class FieldSchema:
     regex: re.Pattern[str] | None = None
     regex_hint: str | None = None
     read_only_on_edit: bool = False
+    read_only: bool = False
     record_field_for_edit: str | None = None
     omit_when_empty_in_create: bool = False
     strip_before_compare: bool = True
@@ -434,7 +439,11 @@ class EntityCrudDialog(QDialog):
             widget = QLineEdit()
             if schema.placeholder:
                 widget.setPlaceholderText(schema.placeholder)
-            if self._mode == "edit" and schema.read_only_on_edit:
+            if self._mode == "create" and schema.default:
+                widget.setText(schema.default)
+            if schema.read_only or (
+                self._mode == "edit" and schema.read_only_on_edit
+            ):
                 widget.setReadOnly(True)
                 widget.setStyleSheet(_READ_ONLY_STYLE)
             return widget
@@ -442,6 +451,11 @@ class EntityCrudDialog(QDialog):
         if schema.widget == "text":
             widget = QPlainTextEdit()
             widget.setMinimumHeight(_LONG_TEXT_MIN_HEIGHT)
+            if schema.placeholder:
+                widget.setPlaceholderText(schema.placeholder)
+            if schema.read_only:
+                widget.setReadOnly(True)
+                widget.setStyleSheet(_READ_ONLY_STYLE)
             return widget
 
         if schema.widget == "combo":

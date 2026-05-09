@@ -195,6 +195,25 @@ class StorageClient:
             )
         return result
 
+    def create_session(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /sessions. Returns the created record dict.
+
+        v0.3 slice D — DEC-034. The body shape is the nine-field
+        session payload (identifier, title, session_date, status,
+        and the five long-text fields). Raises ``ValidationError``
+        on 400, ``ConflictError`` on 409 (duplicate identifier),
+        other ``StorageClientError`` subclasses per the standard
+        error matrix.
+        """
+        result = self._request("POST", "/sessions", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for create_session",
+            )
+        return result
+
     def list_risks(self) -> list[dict[str, Any]]:
         """Return all risks as a list of dicts.
 

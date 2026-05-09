@@ -1,9 +1,11 @@
-"""Sessions panel — read-only PRD §4.6 implementation.
+"""Sessions panel — append-only write surface (PRD §4.6, v0.3 §4.4).
 
-Slice D wires the Sessions panel to the storage API. Columns and detail
-fields are per PRD §4.6. Reference rendering on the detail pane (e.g.
-"Decisions decided in this session") is deferred to a later slice — this
-slice only wires the basic record fields.
+v0.1 slice D wired the read-only surface (columns, detail fields, list
+fetch). v0.3 slice D adds the create-only write surface per DEC-034:
+a ``New Session`` toolbar button, a whitespace right-click ``New
+session`` action, and the ``SessionCreateDialog`` it launches. Per
+DEC-013 / DEC-034, sessions remain append-only — no Edit, no Delete,
+no Restore appears anywhere on this panel.
 """
 
 from __future__ import annotations
@@ -14,17 +16,20 @@ from PySide6.QtCore import QModelIndex, Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QApplication,
+    QDialog,
     QFormLayout,
     QFrame,
     QLabel,
     QMenu,
     QPlainTextEdit,
+    QPushButton,
     QScrollArea,
     QVBoxLayout,
     QWidget,
 )
 
 from crmbuilder_v2.ui.base.list_detail_panel import ColumnSpec, ListDetailPanel
+from crmbuilder_v2.ui.dialogs.session_create import SessionCreateDialog
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 
 _LONG_TEXT_MIN_HEIGHT = 80
@@ -76,17 +81,26 @@ def _separator() -> QFrame:
 
 
 class SessionsPanel(ListDetailPanel):
-    """Read-only Sessions panel."""
+    """Append-only Sessions panel — read + create-only writes."""
+
+    def __init__(self, client, parent=None):
+        super().__init__(client, parent)
+        self._new_session_button = QPushButton("New Session")
+        self._new_session_button.setObjectName("new_session_button")
+        self._new_session_button.clicked.connect(
+            self._on_new_session_clicked
+        )
+        self._action_layout.addWidget(self._new_session_button)
 
     # ------------------------------------------------------------------
-    # Right-click context menu (v0.3 — DEC-036)
+    # Right-click context menu (v0.3 — DEC-036, slice D)
     # ------------------------------------------------------------------
 
     def _build_context_menu(self, index: QModelIndex) -> QMenu:
         menu = QMenu(self)
         if not index.isValid():
-            # Slice D adds "New session" here; slice B leaves whitespace
-            # right-click empty (no menu shown).
+            new_action = menu.addAction("New session")
+            new_action.triggered.connect(self._on_new_session_clicked)
             return menu
 
         record = self._record_at_index(index)
@@ -103,6 +117,19 @@ class SessionsPanel(ListDetailPanel):
             lambda _checked=False, r=record: self._copy_identifier(r)
         )
         return menu
+
+    # ------------------------------------------------------------------
+    # New Session click handler (v0.3 slice D — DEC-034)
+    # ------------------------------------------------------------------
+
+    def _on_new_session_clicked(self) -> None:
+        dialog = SessionCreateDialog(self._client, self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            new_id = dialog.created_identifier()
+            if new_id:
+                self.select_record_by_identifier(new_id)
+            else:
+                self.refresh()
 
     def _show_references_for(self, record: dict[str, Any]) -> None:
         """Select the row so the detail pane (with ReferencesSection) loads."""
