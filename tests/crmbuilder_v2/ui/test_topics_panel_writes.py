@@ -339,7 +339,7 @@ def test_select_record_by_identifier_through_pending_select(qtbot):
         lambda: panel._items_by_identifier.get("TOP-100") is not None,
         timeout=2000,
     )
-    current = panel._tree.selectionModel().currentIndex()
+    current = panel._table.selectionModel().currentIndex()
     item = panel._tree_model.itemFromIndex(current)
     from crmbuilder_v2.ui.panels.topics import _IDENTIFIER_ROLE
     assert item.data(_IDENTIFIER_ROLE) == "TOP-100"

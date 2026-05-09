@@ -1,6 +1,6 @@
 """Topics panel — PRD §4.6 list/detail with QTreeView master + v0.2 §4.4 write surfaces.
 
-Slice D rewrites the v0.1 read-only panel: the master pane switches
+Slice D rewrote the v0.1 read-only panel: the master pane switches
 from a flat ``QTableView`` (with name-prefix indentation) to a
 ``QTreeView`` backed by a ``QStandardItemModel``. Roots are top-level
 topics; children nest under their parent via ``parent_topic_id``.
@@ -10,11 +10,13 @@ pane — opens the create/edit/delete dialogs from
 ``ui.dialogs.topic_*``. The shared ``ReferencesSection`` widget renders
 inbound and outbound references on the detail pane.
 
-The base ``ListDetailPanel`` is built around a ``QTableView``; this
-subclass overrides ``_build_ui`` to install a tree as the visible
-master pane while keeping ``self._records`` as the canonical
-in-memory source so ``select_record_by_identifier`` and the detail-
-extras worker flow continue to work without modification.
+v0.3 slice A migrates the panel to the ``_create_master_widget``
+factory introduced on ``ListDetailPanel`` (DEC-035). The factory
+returns a configured ``QTreeView`` with its ``QStandardItemModel``
+pre-installed; the v0.2 ``_build_ui`` override and the
+``self._table = self._tree`` workaround are gone. Selection still flows
+through the base's ``_on_current_changed`` slot, which Topics
+overrides to route to ``_on_tree_current_changed``.
 """
 
 from __future__ import annotations
@@ -34,8 +36,6 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QPushButton,
     QScrollArea,
-    QSplitter,
-    QStackedWidget,
     QTreeView,
     QVBoxLayout,
     QWidget,
@@ -55,8 +55,6 @@ from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.topics")
 
-_INITIAL_LIST_WIDTH = 480
-_INITIAL_DETAIL_WIDTH = 720
 _LONG_TEXT_MIN_HEIGHT = 80
 
 _IDENTIFIER_ROLE = Qt.ItemDataRole.UserRole + 1
@@ -203,58 +201,30 @@ class TopicsPanel(ListDetailPanel):
         return scroll
 
     # ------------------------------------------------------------------
-    # Master-pane override — QTreeView in place of QTableView
+    # Master-pane factory override — QTreeView in place of QTableView
     # ------------------------------------------------------------------
 
-    def _build_ui(self) -> None:
-        outer = QVBoxLayout(self)
-        outer.setContentsMargins(8, 8, 8, 8)
-        outer.setSpacing(6)
+    def _create_master_widget(self) -> QAbstractItemView:
+        """Return a configured ``QTreeView`` with the topics tree model.
 
-        self._toolbar_widget = self._build_toolbar()
-        outer.addWidget(self._toolbar_widget)
-
-        self._tree = QTreeView()
-        self._tree.setHeaderHidden(False)
-        self._tree.setSelectionBehavior(
+        v0.3 slice A — DEC-035. Pre-installs ``self._tree_model`` so the
+        base's default ``_RecordTableModel`` setup is skipped (the base's
+        ``_build_ui`` checks ``self._master_view.model() is None``).
+        """
+        tree = QTreeView(self)
+        tree.setHeaderHidden(False)
+        tree.setSelectionBehavior(
             QAbstractItemView.SelectionBehavior.SelectRows
         )
-        self._tree.setSelectionMode(
+        tree.setSelectionMode(
             QAbstractItemView.SelectionMode.SingleSelection
         )
-        self._tree.setEditTriggers(
-            QAbstractItemView.EditTrigger.NoEditTriggers
-        )
-        self._tree.setUniformRowHeights(True)
+        tree.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        tree.setUniformRowHeights(True)
         self._tree_model = QStandardItemModel()
         self._tree_model.setHorizontalHeaderLabels(["Topic"])
-        self._tree.setModel(self._tree_model)
-        self._tree.selectionModel().currentChanged.connect(
-            self._on_tree_current_changed
-        )
-        # Alias so base-class methods that touch ``self._table`` (e.g.
-        # ``set_enabled_state``) keep working.
-        self._table = self._tree
-        # Keep the base-class ``self._model`` reference pointing to a
-        # benign object — nothing should call it on this panel since we
-        # override every method that touches it.
-        self._model = self._tree_model
-
-        self._detail_stack = QStackedWidget()
-        self._empty_detail = QLabel("Select a topic to see its detail.")
-        self._empty_detail.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._detail_stack.addWidget(self._empty_detail)
-        self._loading_detail = QLabel("Loading detail…")
-        self._loading_detail.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._detail_stack.addWidget(self._loading_detail)
-
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.addWidget(self._tree)
-        splitter.addWidget(self._detail_stack)
-        splitter.setSizes([_INITIAL_LIST_WIDTH, _INITIAL_DETAIL_WIDTH])
-        splitter.setStretchFactor(0, 1)
-        splitter.setStretchFactor(1, 2)
-        outer.addWidget(splitter, stretch=1)
+        tree.setModel(self._tree_model)
+        return tree
 
     # ------------------------------------------------------------------
     # Refresh — populate the tree from the flat record list
@@ -339,7 +309,7 @@ class TopicsPanel(ListDetailPanel):
             self._tree_model.appendRow(item)
             self._items_by_identifier[ident] = item
 
-        self._tree.expandAll()
+        self._table.expandAll()
 
     # ------------------------------------------------------------------
     # Selection routing
@@ -388,8 +358,8 @@ class TopicsPanel(ListDetailPanel):
         item = self._items_by_identifier.get(identifier)
         if item is None:
             return False
-        self._tree.setCurrentIndex(item.index())
-        self._tree.scrollTo(item.index())
+        self._table.setCurrentIndex(item.index())
+        self._table.scrollTo(item.index())
         return True
 
     def _select_row(self, row: int) -> None:  # pragma: no cover — base-class fallback
@@ -400,13 +370,6 @@ class TopicsPanel(ListDetailPanel):
             ident = self._records[row].get("identifier")
             if ident:
                 self._select_by_identifier(ident)
-
-    def set_enabled_state(self, enabled: bool) -> None:
-        self._toolbar_widget.setEnabled(enabled)
-        self._tree.setEnabled(enabled)
-        self._detail_stack.setEnabled(enabled)
-        if enabled:
-            self.refresh()
 
     # ------------------------------------------------------------------
     # Helpers

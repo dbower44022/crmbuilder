@@ -29,18 +29,18 @@ or as a small banner at the top of the detail pane for extras.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, ClassVar
 
-from collections.abc import Callable
-
-from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, Signal
+from PySide6.QtCore import QAbstractTableModel, QModelIndex, QPoint, Qt, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QMenu,
     QPushButton,
     QSplitter,
     QStackedWidget,
@@ -349,6 +349,46 @@ class ListDetailPanel(QWidget):
         self.navigate_requested.emit(entity_type, identifier)
 
     # ------------------------------------------------------------------
+    # Factory methods (v0.3 — DEC-035)
+    # ------------------------------------------------------------------
+
+    def _create_master_widget(self) -> QAbstractItemView:
+        """Factory for the master pane's view widget.
+
+        Override to use a non-default widget type (e.g., ``QTreeView`` for
+        hierarchical entities). The default returns a ``QTableView``
+        configured with the same default policies the v0.2 implementation
+        applied inline in ``_build_ui``.
+
+        Subclasses that need a custom model (e.g. a ``QStandardItemModel``
+        for a tree) may install it on the returned widget here; the base
+        ``_build_ui`` skips installing the default ``_RecordTableModel``
+        if a model is already set.
+        """
+        view = QTableView(self)
+        view.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        view.setSelectionMode(
+            QAbstractItemView.SelectionMode.SingleSelection
+        )
+        view.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        view.verticalHeader().setVisible(False)
+        view.horizontalHeader().setStretchLastSection(True)
+        view.setAlternatingRowColors(True)
+        return view
+
+    def _build_context_menu(self, index: QModelIndex) -> QMenu:
+        """Factory for the right-click context menu.
+
+        Override to add entity-specific actions. The default returns an
+        empty ``QMenu``, which the base treats as "no menu shown" — the
+        ``customContextMenuRequested`` handler silently returns when the
+        menu has no actions.
+        """
+        return QMenu(self)
+
+    # ------------------------------------------------------------------
     # Internal
     # ------------------------------------------------------------------
 
@@ -366,32 +406,35 @@ class ListDetailPanel(QWidget):
         if filter_strip is not None:
             outer.addWidget(filter_strip)
 
-        self._table = QTableView()
-        self._table.setSelectionBehavior(
-            QAbstractItemView.SelectionBehavior.SelectRows
-        )
-        self._table.setSelectionMode(
-            QAbstractItemView.SelectionMode.SingleSelection
-        )
-        self._table.setEditTriggers(
-            QAbstractItemView.EditTrigger.NoEditTriggers
-        )
-        self._table.verticalHeader().setVisible(False)
-        self._table.horizontalHeader().setStretchLastSection(True)
-        self._table.setAlternatingRowColors(True)
+        self._master_view = self._create_master_widget()
+        # Backwards-compat alias: subclasses (and tests) reference the
+        # master view via ``self._table``; preserved per v0.3 slice A.
+        self._table = self._master_view
 
-        columns = self.list_columns()
-        self._model = _RecordTableModel(
-            columns,
-            self,
-            strikethrough_predicate=self._strikethrough_for_record,
+        # Wire right-click context-menu factory (v0.3 — DEC-035 / DEC-036).
+        self._master_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._master_view.customContextMenuRequested.connect(
+            self._on_context_menu_requested
         )
-        self._table.setModel(self._model)
-        for col_idx, spec in enumerate(columns):
-            if spec.width is not None:
-                self._table.setColumnWidth(col_idx, spec.width)
+
+        # Default model installation: only if the factory didn't pre-install
+        # one. Subclasses with a custom model (e.g. TopicsPanel's
+        # ``QStandardItemModel`` tree) skip this branch.
+        columns = self.list_columns()
+        if self._master_view.model() is None:
+            self._model = _RecordTableModel(
+                columns,
+                self,
+                strikethrough_predicate=self._strikethrough_for_record,
+            )
+            self._master_view.setModel(self._model)
+            for col_idx, spec in enumerate(columns):
+                if spec.width is not None:
+                    self._master_view.setColumnWidth(col_idx, spec.width)
+        else:
+            self._model = self._master_view.model()
         # Wire selection AFTER model is set so currentChanged fires.
-        self._table.selectionModel().currentChanged.connect(
+        self._master_view.selectionModel().currentChanged.connect(
             self._on_current_changed
         )
 
@@ -406,7 +449,7 @@ class ListDetailPanel(QWidget):
             self._detail_stack.addWidget(self._loading_detail)
 
             splitter = QSplitter(Qt.Orientation.Horizontal)
-            splitter.addWidget(self._table)
+            splitter.addWidget(self._master_view)
             splitter.addWidget(self._detail_stack)
             splitter.setSizes([_INITIAL_LIST_WIDTH, _INITIAL_DETAIL_WIDTH])
             splitter.setStretchFactor(0, 1)
@@ -418,7 +461,19 @@ class ListDetailPanel(QWidget):
             self._detail_stack = None
             self._empty_detail = None
             self._loading_detail = None
-            outer.addWidget(self._table, stretch=1)
+            outer.addWidget(self._master_view, stretch=1)
+
+    def _on_context_menu_requested(self, position: QPoint) -> None:
+        """Slot wired to ``customContextMenuRequested`` on the master view.
+
+        Calls ``_build_context_menu`` and pops the resulting menu at the
+        cursor position. Empty menus (the default factory's return) are
+        silently ignored — no menu is shown.
+        """
+        index = self._master_view.indexAt(position)
+        menu = self._build_context_menu(index)
+        if menu.actions():
+            menu.exec(self._master_view.viewport().mapToGlobal(position))
 
     def _build_toolbar(self) -> QWidget:
         toolbar = QWidget()

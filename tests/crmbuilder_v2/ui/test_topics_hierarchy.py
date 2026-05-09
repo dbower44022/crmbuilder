@@ -62,8 +62,8 @@ def _all_items(model) -> list[QStandardItem]:
 def test_master_pane_renders_as_qtreeview(qtbot):
     panel = _build_panel(qtbot)
     from PySide6.QtWidgets import QTreeView
-    assert isinstance(panel._tree, QTreeView)
-    assert panel._table is panel._tree
+    assert isinstance(panel._table, QTreeView)
+    assert panel._master_view is panel._table
 
 
 def test_tree_populates_with_parent_child_nesting(qapp, qtbot):
@@ -191,10 +191,10 @@ def test_clicking_parent_node_emits_navigation_via_select_record(qapp, qtbot):
 
     # Select the parent row.
     parent_item = panel._items_by_identifier["TOP-1"]
-    panel._tree.setCurrentIndex(parent_item.index())
+    panel._table.setCurrentIndex(parent_item.index())
 
     # The current selection's identifier is TOP-1.
-    current = panel._tree.selectionModel().currentIndex()
+    current = panel._table.selectionModel().currentIndex()
     item = panel._tree_model.itemFromIndex(current)
     from crmbuilder_v2.ui.panels.topics import _IDENTIFIER_ROLE
     assert item.data(_IDENTIFIER_ROLE) == "TOP-1"
@@ -212,7 +212,7 @@ def test_select_record_by_identifier_jumps_to_node(qapp, qtbot):
 
     selected = panel._select_by_identifier("TOP-2")
     assert selected is True
-    current = panel._tree.selectionModel().currentIndex()
+    current = panel._table.selectionModel().currentIndex()
     item = panel._tree_model.itemFromIndex(current)
     from crmbuilder_v2.ui.panels.topics import _IDENTIFIER_ROLE
     assert item.data(_IDENTIFIER_ROLE) == "TOP-2"
@@ -232,8 +232,8 @@ def test_expand_all_after_populate(qapp, qtbot):
 
     parent_item = panel._items_by_identifier["TOP-1"]
     child_item = panel._items_by_identifier["TOP-2"]
-    assert panel._tree.isExpanded(parent_item.index()) is True
-    assert panel._tree.isExpanded(child_item.index()) is True
+    assert panel._table.isExpanded(parent_item.index()) is True
+    assert panel._table.isExpanded(child_item.index()) is True
 
 
 def test_refresh_through_worker_populates_tree(qapp, qtbot):
