@@ -36,7 +36,7 @@ Per DEC-036, right-click is a global UX principle: every entity row across every
    - `db-export/status.json` shows version_label `"0.9"` and phase `"v0.3 in build"`.
    - `crmbuilder-v2/src/crmbuilder_v2/ui/base/list_detail_panel.py` defines `_create_master_widget` and `_build_context_menu`.
    - `crmbuilder-v2/src/crmbuilder_v2/ui/panels/topics.py` no longer contains `self._table = self._tree`.
-6. Confirm the storage system is operational: `uv run crmbuilder-v2-api &`; `curl http://127.0.0.1:8765/health` returns 200.
+6. Confirm the storage system is operational. Verify-first: `curl -sf http://127.0.0.1:8765/health` — if 200, proceed. If it fails, start the API in the background (`uv run crmbuilder-v2-api &`), wait ~3 seconds, re-check; if still failing, stop and report.
 7. Confirm the v2 test suite passes: `uv run pytest tests/crmbuilder_v2/ -v`. Expected ~474 tests passing (458 v0.2 + ~16 slice-A parity tests).
 
 ## Reading order

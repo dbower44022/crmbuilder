@@ -46,7 +46,7 @@ Test suite is at ~579 tests passing as of slice D's report.
    - `dialogs/session_create.py` exists.
    - Sessions panel has `New Session` toolbar button and whitespace right-click `New session`.
    - Sessions panel detail pane has no Edit / Delete / Restore button.
-6. Confirm storage system is operational: `uv run crmbuilder-v2-api &`; `curl http://127.0.0.1:8765/health` returns 200.
+6. Confirm storage system is operational. Verify-first: `curl -sf http://127.0.0.1:8765/health` — if 200, proceed. If it fails, start the API in the background (`uv run crmbuilder-v2-api &`), wait ~3 seconds, re-check; if still failing, stop and report.
 7. Confirm test suite passes: `uv run pytest tests/crmbuilder_v2/ -v`. Expected ~579 passing.
 
 ## Reading order

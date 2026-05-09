@@ -38,9 +38,9 @@ The v0.3 architecture introduces no new layer or transport. The factory refactor
    - `git config user.name` should return `Doug`
    - `git config user.email` should return `doug@dougbower.com`
 4. Pull latest from origin: `git pull --rebase origin main`.
-5. Confirm the storage system is operational:
-   - `uv run crmbuilder-v2-api &` to start the API in the background.
-   - `curl http://127.0.0.1:8765/health` should return 200.
+5. Confirm the storage system is operational. Verify-first, only start if not already running:
+   - First check: `curl -sf http://127.0.0.1:8765/health` — if it returns 200, the API is already running; proceed to step 6.
+   - If the health check fails (connection refused or no response), start the API in the background: `uv run crmbuilder-v2-api &`. Wait ~3 seconds, then re-run the health check. If the second check still fails, stop and report to Doug before proceeding.
 6. Confirm the existing v2 test suite passes: `uv run pytest tests/crmbuilder_v2/ -v` should show 458 tests passing.
 
 ## Reading order
