@@ -212,6 +212,15 @@ class VersionedReplaceDialog(QDialog):
             self.reject()
             return
         if isinstance(exc, ValidationError):
+            # Render the API's field-error envelope inline below the
+            # editor (parallel to the entity dialogs' inline-errors
+            # pattern) and keep the dialog open. ErrorDialog stays as
+            # the fallback for ValidationErrors that carry no
+            # field_errors (e.g., a top-level error message only).
+            field_errors = exc.field_errors()
+            if field_errors:
+                self._render_inline_field_errors(field_errors)
+                return
             ErrorDialog(
                 "Invalid payload",
                 "The payload was rejected by the server.",
@@ -235,6 +244,26 @@ class VersionedReplaceDialog(QDialog):
             detail=repr(exc),
             parent=self,
         ).exec()
+
+    def _render_inline_field_errors(self, field_errors: dict[str, str]) -> None:
+        """Render the API's per-field validation errors inline.
+
+        Replaces the validation status with a list of ``field: message``
+        rows so the user sees exactly what the server rejected without
+        leaving the dialog. The pre-validate status (e.g., "Valid JSON.")
+        is overwritten — that signal was about JSON shape, not schema.
+        """
+        rows = "<br>".join(
+            f"&bull; <b>{field}</b>: {msg}"
+            for field, msg in field_errors.items()
+        )
+        self._validation_status.setText(
+            "<span style='color: #B22222;'>"
+            "Server rejected the payload:<br>"
+            f"{rows}"
+            "</span>"
+        )
+        self._validated_payload = None
 
     def closeEvent(self, event):  # noqa: N802 (Qt naming)
         for worker in list(self._in_flight_workers):

@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+import crmbuilder_v2
 from crmbuilder_v2.config import get_settings
 
 _APP_NAME = "CRMBuilder v2"
@@ -29,7 +30,10 @@ def _resolve_version() -> str:
     try:
         return version(_APP_PACKAGE)
     except PackageNotFoundError:
-        return "unknown (development install)"
+        # Bundled into the parent ``crmbuilder`` distribution; no
+        # standalone ``crmbuilder-v2`` package metadata exists. Fall
+        # back to the package-level ``__version__`` constant.
+        return getattr(crmbuilder_v2, "__version__", "unknown (development install)")
 
 
 class AboutDialog(QDialog):

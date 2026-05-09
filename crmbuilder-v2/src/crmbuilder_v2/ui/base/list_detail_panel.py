@@ -296,13 +296,29 @@ class ListDetailPanel(QWidget):
         If the record is already loaded, selects it immediately and
         returns True. Otherwise schedules a select-on-next-refresh and
         triggers a refresh, returning False.
+
+        Subclasses can override ``_select_by_identifier`` to provide
+        a custom selection path (e.g., a tree panel addressing items
+        by an identifier→item map rather than by row index).
+        """
+        if self._select_by_identifier(identifier):
+            return True
+        self._pending_select_identifier = identifier
+        self.refresh()
+        return False
+
+    def _select_by_identifier(self, identifier: str) -> bool:
+        """Select the in-memory record with this identifier; return True on hit.
+
+        Default walks ``self._records`` by row and calls ``_select_row``,
+        which is correct for table-style panels. Tree-style panels (e.g.,
+        Topics) override to look the item up via an identifier→item map.
+        Returns ``False`` if the identifier is not in the in-memory list.
         """
         for row, record in enumerate(self._records):
             if record.get("identifier") == identifier:
                 self._select_row(row)
                 return True
-        self._pending_select_identifier = identifier
-        self.refresh()
         return False
 
     def closeEvent(self, event):  # noqa: N802 (Qt naming)

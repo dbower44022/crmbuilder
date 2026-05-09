@@ -482,7 +482,7 @@ already running, and shuts it down on close. If the API is already
 running externally (e.g., for the MCP server), the UI uses the
 existing instance instead of spawning a duplicate.
 
-Features:
+### v0.1 (read-only foundation + decisions write surface)
 
 - Sidebar navigation across all eight v2 entity types: Charter,
   Status, Decisions, Sessions, Risks, Planning Items, Topics,
@@ -495,17 +495,43 @@ Features:
   ~500 ms; non-visible panels show a stale-data indicator. Content
   hashing suppresses no-op rewrites from the storage exporter so
   only entities with real changes signal staleness.
-- Full create / edit / delete operations for decisions, with
-  client-side format validation for the identifier (`DEC-NNN`) and
-  decision date (`MM-DD-YY`). Delete is soft-delete by status; the
-  row stays in the database with `status='Deleted'` so cross-entity
-  references to it continue to resolve. Other entities are read-only
-  in v0.1.
+- Create / edit / delete operations for decisions, with client-side
+  format validation for the identifier (`DEC-NNN`) and decision date
+  (`MM-DD-YY`). Delete is soft-delete by status; the row stays in
+  the database with `status='Deleted'` so cross-entity references
+  continue to resolve.
 - Help → About surfaces app version, API URL, database path, and
   snapshot directory.
 
+### v0.2 (current — expanded write surface)
+
+In addition to the v0.1 surface, v0.2 adds:
+
+- Full create / edit / delete for **Risks**, **Planning Items**, and
+  **Topics**, sharing a common `EntityCrudDialog` base.
+- **Versioned-replace** flows for **Charter** and **Status**: a raw
+  JSON editor with Validate button, plus a "Make Current" affordance
+  on any historical version that promotes it back to the current
+  pointer without rewriting payload.
+- A shared **`ReferencesSection`** widget that renders inbound and
+  outbound references on every detail pane (Decisions, Sessions,
+  Risks, Planning Items, Topics, Charter, Status).
+- A **calendar widget** (`DateField`) for date inputs (decision date,
+  session date) that round-trips with the schema's `MM-DD-YY` text
+  format.
+- A **`QTreeView`** master panel for Topics with a reusable
+  `HierarchicalEntityPicker` widget for selecting `parent_topic`.
+- A **"Show deleted"** toggle on the Decisions panel toolbar that
+  surfaces soft-deleted decisions (hidden by default). Toggled on,
+  deleted rows render with strikethrough and the detail pane shows
+  Restore + Edit (no Delete); Restore PATCHes status back to Active.
+
+Sessions and References write surfaces remain deferred to v0.3, as
+does the full styling design pass per DEC-024.
+
 Logs land at `~/.crmbuilder-v2/ui.log`. Full requirements:
-`PRDs/product/crmbuilder-v2/ui-PRD-v0.1.md`.
+`PRDs/product/crmbuilder-v2/ui-PRD-v0.2.md` (current); v0.1 baseline at
+`ui-PRD-v0.1.md`.
 
 ---
 

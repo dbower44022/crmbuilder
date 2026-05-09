@@ -379,6 +379,12 @@ class TopicsPanel(ListDetailPanel):
         return None
 
     def _select_by_identifier(self, identifier: str) -> bool:
+        """Override the base: select the tree item via the identifier→item map.
+
+        With a QTreeView, "row" doesn't address an item uniquely, so the
+        base's row-walk fallback in ``ListDetailPanel._select_by_identifier``
+        is replaced by a direct map lookup populated in ``_populate_tree``.
+        """
         item = self._items_by_identifier.get(identifier)
         if item is None:
             return False
@@ -387,22 +393,13 @@ class TopicsPanel(ListDetailPanel):
         return True
 
     def _select_row(self, row: int) -> None:  # pragma: no cover — base-class fallback
-        # ``select_record_by_identifier`` (in the base) calls this with a
-        # row index; we re-route to identifier-based selection via the
-        # in-memory record list.
+        # The base's ``_select_by_identifier`` is now the public path; this
+        # remains as a defensive fallback in case anything still calls
+        # ``_select_row`` directly.
         if 0 <= row < len(self._records):
             ident = self._records[row].get("identifier")
             if ident:
                 self._select_by_identifier(ident)
-
-    def select_record_by_identifier(self, identifier: str) -> bool:
-        # Override the base: with a tree, "row" doesn't address an item
-        # directly, so look up by identifier in the items map.
-        if self._select_by_identifier(identifier):
-            return True
-        self._pending_select_identifier = identifier
-        self.refresh()
-        return False
 
     def set_enabled_state(self, enabled: bool) -> None:
         self._toolbar_widget.setEnabled(enabled)

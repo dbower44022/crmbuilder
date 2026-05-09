@@ -55,7 +55,12 @@ def test_application_name_is_crmbuilder_v2(qtbot):
     assert rows["Application"] == "CRMBuilder v2"
 
 
-def test_version_falls_back_when_package_metadata_missing(qtbot, monkeypatch):
+def test_version_falls_back_to_package_dunder(qtbot, monkeypatch):
+    """When the standalone distribution metadata is absent (the bundled
+    layout in this repo), AboutDialog falls back to ``crmbuilder_v2.__version__``.
+    """
+    import crmbuilder_v2
+
     def _raise(_name):
         raise PackageNotFoundError("not installed")
 
@@ -63,7 +68,37 @@ def test_version_falls_back_when_package_metadata_missing(qtbot, monkeypatch):
     dialog = AboutDialog()
     qtbot.addWidget(dialog)
     rows = _form_rows(dialog)
+    assert rows["Version"] == crmbuilder_v2.__version__
+
+
+def test_version_falls_back_to_unknown_when_dunder_missing(
+    qtbot, monkeypatch
+):
+    """If both the distribution metadata and the package dunder are missing,
+    AboutDialog returns the 'unknown' sentinel."""
+    import crmbuilder_v2
+
+    def _raise(_name):
+        raise PackageNotFoundError("not installed")
+
+    monkeypatch.setattr(about_module, "version", _raise)
+    monkeypatch.delattr(crmbuilder_v2, "__version__", raising=False)
+    dialog = AboutDialog()
+    qtbot.addWidget(dialog)
+    rows = _form_rows(dialog)
     assert "unknown" in rows["Version"].lower()
+
+
+def test_version_displays_0_2_0(qtbot, monkeypatch):
+    """v0.2 closeout: package version is 0.2.0."""
+    def _raise(_name):
+        raise PackageNotFoundError("not installed")
+
+    monkeypatch.setattr(about_module, "version", _raise)
+    dialog = AboutDialog()
+    qtbot.addWidget(dialog)
+    rows = _form_rows(dialog)
+    assert rows["Version"] == "0.2.0"
 
 
 def test_paths_are_strings_from_settings(qtbot):

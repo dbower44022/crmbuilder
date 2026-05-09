@@ -145,10 +145,64 @@ def test_save_storage_connection_error_rejects_dialog(qapp, qtbot):
     )
 
 
-def test_save_validation_error_keeps_dialog_open(qapp, qtbot, monkeypatch):
+def test_save_validation_error_with_field_errors_renders_inline(
+    qapp, qtbot, monkeypatch
+):
+    """Slice F polish item 10: per-field validation errors render inline
+    below the editor instead of opening an ErrorDialog.
+    """
     def cb(_payload):
         raise ValidationError(
-            errors=[{"field": "scope", "message": "must be string"}],
+            errors=[
+                {"field": "scope", "message": "must be string"},
+                {"field": "phase", "message": "unknown phase"},
+            ],
+            message="Validation failed",
+        )
+
+    error_dialogs: list[Any] = []
+
+    class _StubError:
+        def __init__(self, *a, **kw):
+            error_dialogs.append((a, kw))
+
+        def exec(self):  # noqa: A003
+            return 0
+
+    monkeypatch.setattr(
+        "crmbuilder_v2.ui.base.versioned_replace_dialog.ErrorDialog",
+        _StubError,
+    )
+
+    dialog = VersionedReplaceDialog({"a": 1}, save_callback=cb, title="T")
+    qtbot.addWidget(dialog)
+    _save_button(dialog).click()
+    qtbot.waitUntil(
+        lambda: dialog._validated_payload is None
+        and "scope" in dialog._validation_status.text(),
+        timeout=2000,
+    )
+    # Dialog stays open. ErrorDialog is NOT used for field-level errors.
+    assert dialog.result() != QDialog.DialogCode.Accepted
+    assert _save_button(dialog).isEnabled()
+    assert error_dialogs == []
+    # Both field errors are rendered.
+    text = dialog._validation_status.text()
+    assert "scope" in text
+    assert "must be string" in text
+    assert "phase" in text
+    assert "unknown phase" in text
+
+
+def test_save_validation_error_without_field_errors_falls_back_to_dialog(
+    qapp, qtbot, monkeypatch
+):
+    """A ValidationError carrying no per-field details still opens the
+    ErrorDialog fallback (e.g., a top-level message-only error envelope).
+    """
+    def cb(_payload):
+        raise ValidationError(
+            errors=[{"message": "schema mismatch"}],
             message="Validation failed",
         )
 
@@ -170,9 +224,7 @@ def test_save_validation_error_keeps_dialog_open(qapp, qtbot, monkeypatch):
     qtbot.addWidget(dialog)
     _save_button(dialog).click()
     qtbot.waitUntil(lambda: len(error_dialogs) == 1, timeout=2000)
-    # Dialog stays open.
     assert dialog.result() != QDialog.DialogCode.Accepted
-    # Save button re-enabled so the user can correct and retry.
     assert _save_button(dialog).isEnabled()
 
 
