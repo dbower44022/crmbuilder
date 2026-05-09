@@ -1,6 +1,6 @@
 # CLAUDE-CODE-PROMPT-v2-ui-v0.3-C-references-write-surface
 
-**Last Updated:** 05-09-26 17:30
+**Last Updated:** 05-09-26 19:15
 **Series:** v2-ui-v0.3
 **Slice:** C (3 of 5)
 **Status:** Ready to execute (after slice B is reported complete)
@@ -65,6 +65,29 @@ Per DEC-033, the References write surface combines:
    - `crmbuilder-v2/src/crmbuilder_v2/ui/refresh.py` — confirm `references` is in the entity-type → signal map; extend if not.
    - `crmbuilder-v2/src/crmbuilder_v2/ui/panels/references.py` — to add `New Reference` toolbar button and extend the slice-B context menu with `Delete reference` and `New reference`.
 
+## Step 0 — Preliminary: `_create_master_widget` docstring capture
+
+Slice A's factory refactor under-specified the `_create_master_widget` contract. The actual landed contract: a subclass may either return a model-less view (the base installs its default `_RecordTableModel`) or return a view with a model already attached (the base respects it and skips its default model installation). `TopicsPanel` exercises the second mode by installing its `QStandardItemModel` inside the factory.
+
+Slice A's prompt said the factory returns a model-less widget. Slice A's actual implementation extended the contract to allow the factory to optionally pre-install a model. The change is sound — without it, `TopicsPanel` would have to either override `_build_ui` again (defeating the refactor) or fight the base post-init by re-replacing the model. All slice A and slice B tests pass with the extended contract.
+
+Update the `_create_master_widget` docstring in `crmbuilder-v2/src/crmbuilder_v2/ui/base/list_detail_panel.py` to capture this. Append two sentences to the existing docstring along these lines (adapt to match the existing prose):
+
+```
+Subclasses may optionally pre-install a model on the returned widget.
+If a model is already set when _build_ui receives the widget, the base
+skips its default _RecordTableModel installation; TopicsPanel exercises
+this mode by installing its QStandardItemModel here.
+```
+
+This is the slice's first commit:
+
+```
+v2: ui v0.3 — _create_master_widget docstring captures factory may pre-install model
+```
+
+After this commit lands, proceed to Step 1.
+
 ## Step 1 — Investigate the storage layer surface
 
 Before writing any UI code, verify the access-layer and REST API surface for references.
@@ -98,6 +121,20 @@ Read `crmbuilder-v2/src/crmbuilder_v2/api/routers/references.py`. Confirm:
 
 If `DELETE /references/{id}` is missing, add it as a thin wrapper around the access-layer `delete_reference(id)` method. If `delete_reference` is also missing on the access layer, add it — hard-delete is a one-line `session.delete(record)` against the SQLAlchemy model. Mirror the existing pattern of any other access-layer hard-delete in the repo.
 
+### Naming alignment — `relationship` vs `relationship_kind`
+
+Slice A's reporting flagged a pre-existing v0.2 naming inconsistency: the `POST /references` body field is `relationship`, but the database column and the `references.json` snapshot field are `relationship_kind`. The cascading `ReferenceCreateDialog` and the `client.create_reference` method this slice builds need to know which name to use in the API payload.
+
+Investigate the actual API field name by reading the Pydantic request schema (likely in `crmbuilder-v2/src/crmbuilder_v2/api/schemas/references.py`, or wherever `ReferenceCreateRequest` or its equivalent lives). Confirm the request body field name. The slice resolves between two paths:
+
+**Option A — Align API to DB (rename API field).** Rename the request body field from `relationship` to `relationship_kind` in the Pydantic schema. Existing consumers using the `relationship` name need to be updated; check what's actually using the endpoint today (likely the v2 MCP server's references tool wrapper and any one-off scripts under `crmbuilder-v2/scripts/`). Run `git grep '"relationship"' crmbuilder-v2/` and `git grep "relationship=" crmbuilder-v2/` to inventory callers. If the surface is small and contained, Option A is the cleaner long-term choice — one consistent name across the API, DB, snapshots, and UI.
+
+**Option B — Keep API as-is, translate at the client layer.** The Pydantic schema continues to use `relationship`. The UI's `client.create_reference` method accepts `relationship_kind` as a kwarg (matching the form-field naming and DB-column naming) and translates to `relationship` in the JSON payload. The dialog's form schema uses `relationship_kind` as the field key; nothing outside the client method has to know about the translation.
+
+**Decision criterion:** if the only consumers of the existing `relationship` field name are inside v2 (MCP server, internal scripts), prefer Option A. If any external or hard-to-update consumer exists, take Option B.
+
+Whichever option is chosen, capture the decision and the rationale in this slice's reporting. The example code blocks in Steps 4 and 6 below use `relationship_kind` for the form-field key, the kwarg name on `create_reference`, and the API payload field; if Option B is chosen, the API payload field becomes `relationship` while the kwarg and form key stay `relationship_kind` (the translation happens inside the client method).
+
 ### Refresh service entity-type map
 
 Read `crmbuilder-v2/src/crmbuilder_v2/ui/refresh.py`. Confirm `references` is in the file → entity-type → signal map. If not, extend the map. The pattern:
@@ -115,10 +152,12 @@ Plus the corresponding signal connection on the panel side (`references_changed`
 
 ### Storage-layer commit
 
-If any storage-layer change was made (vocab reshape, missing endpoint, refresh map extension), commit it as a separate first commit:
+If any storage-layer change was made (vocab reshape, missing endpoint, refresh map extension, naming alignment per Option A above), commit it as a separate first commit (or split into multiple commits if the changes are independent):
 
 ```
-v2: storage — references DELETE endpoint + RELATIONSHIP_TYPES vocab structure
+v2: storage — references DELETE endpoint
+v2: storage — RELATIONSHIP_TYPES vocab structure for cascading queries
+v2: storage — align references API field name to relationship_kind  (if Option A chosen)
 ```
 
 (Adjust the commit message based on what was actually changed.)
@@ -798,6 +837,8 @@ git push origin main
 
 ## Acceptance gates
 
+- [ ] Step 0: `_create_master_widget` docstring captures that subclasses may pre-install a model on the returned widget. Single preliminary commit landed.
+- [ ] `relationship` vs `relationship_kind` naming decision resolved (Option A or Option B; documented in slice reporting).
 - [ ] `RELATIONSHIP_TYPES` vocab supports cascading queries (or was reshaped in Step 1).
 - [ ] `DELETE /references/{id}` endpoint exists.
 - [ ] Refresh service map includes `references`.
@@ -811,7 +852,7 @@ git push origin main
 - [ ] No edit affordance on references anywhere.
 - [ ] Manual verification cases all pass.
 - [ ] Full v2 test suite passes (~554 tests).
-- [ ] Three commits pushed (plus optional storage commit if applicable).
+- [ ] Commits pushed (one preliminary docstring commit + zero-to-three storage commits if applicable + three feature commits per the strategy in Step 10).
 
 ## Out of slice
 
@@ -832,10 +873,11 @@ git push origin main
 
 ## Reporting
 
-After all ten steps complete, report:
+After all eleven steps (Step 0 through Step 10) complete, report:
 
 - Confirmation that all acceptance gates above are checked.
-- The cascading-filter framework path chosen (Option 1 or Option 2) and rationale.
+- The naming alignment path chosen (Option A — rename API field to `relationship_kind`; or Option B — keep API as `relationship` and translate at client layer) and rationale.
+- The cascading-filter framework path chosen (Option 1 — extend `FieldSchema`; or Option 2 — parallel `CascadingDialog` base) and rationale.
 - Any storage-layer additions made in Step 1.
 - The final test count.
 - Any deviations or surprises.
