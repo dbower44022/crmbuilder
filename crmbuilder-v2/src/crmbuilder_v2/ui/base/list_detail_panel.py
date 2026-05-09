@@ -32,6 +32,8 @@ import logging
 from dataclasses import dataclass
 from typing import Any, ClassVar
 
+from collections.abc import Callable
+
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
@@ -78,10 +80,17 @@ class ColumnSpec:
 class _RecordTableModel(QAbstractTableModel):
     """Lightweight model backing the master list."""
 
-    def __init__(self, columns: list[ColumnSpec], parent: QWidget | None = None):
+    def __init__(
+        self,
+        columns: list[ColumnSpec],
+        parent: QWidget | None = None,
+        *,
+        strikethrough_predicate: Callable[[dict[str, Any]], bool] | None = None,
+    ):
         super().__init__(parent)
         self._columns = columns
         self._records: list[dict[str, Any]] = []
+        self._strikethrough_predicate = strikethrough_predicate
 
     def set_records(self, records: list[dict[str, Any]]) -> None:
         self.beginResetModel()
@@ -100,14 +109,23 @@ class _RecordTableModel(QAbstractTableModel):
         return len(self._columns)
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole):
-        if not index.isValid() or role != Qt.ItemDataRole.DisplayRole:
+        if not index.isValid():
             return None
-        record = self._records[index.row()]
-        spec = self._columns[index.column()]
-        value = record.get(spec.field)
-        if value is None:
-            return ""
-        return str(value)
+        if role == Qt.ItemDataRole.DisplayRole:
+            record = self._records[index.row()]
+            spec = self._columns[index.column()]
+            value = record.get(spec.field)
+            if value is None:
+                return ""
+            return str(value)
+        if role == Qt.ItemDataRole.FontRole and self._strikethrough_predicate:
+            record = self._records[index.row()]
+            if self._strikethrough_predicate(record):
+                font = QFont()
+                font.setStrikeOut(True)
+                return font
+            return None
+        return None
 
     def headerData(  # noqa: N802 (Qt naming)
         self,
@@ -213,6 +231,14 @@ class ListDetailPanel(QWidget):
         master/detail layouts but the typical usage is list-only panels.
         """
         return None
+
+    def _strikethrough_for_record(self, record: dict[str, Any]) -> bool:
+        """Return True if this record should render with strikethrough.
+
+        Default ``False``. Subclasses (e.g. the Decisions panel with the
+        Show-deleted toggle) override to mark deleted rows visually.
+        """
+        return False
 
     def _post_process_records(
         self, records: list[dict[str, Any]]
@@ -339,7 +365,11 @@ class ListDetailPanel(QWidget):
         self._table.setAlternatingRowColors(True)
 
         columns = self.list_columns()
-        self._model = _RecordTableModel(columns, self)
+        self._model = _RecordTableModel(
+            columns,
+            self,
+            strikethrough_predicate=self._strikethrough_for_record,
+        )
         self._table.setModel(self._model)
         for col_idx, spec in enumerate(columns):
             if spec.width is not None:

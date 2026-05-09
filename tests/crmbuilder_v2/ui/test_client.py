@@ -1084,3 +1084,60 @@ def test_delete_planning_item_returns_response_data():
 
     client = _client(handler)
     assert client.delete_planning_item("PI-001") == deleted
+
+
+# ---------------------------------------------------------------------------
+# v0.2 slice F: show-deleted toggle support and restore convenience method
+# ---------------------------------------------------------------------------
+
+
+def test_list_decisions_default_does_not_send_include_deleted():
+    captured: dict = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        captured["query"] = dict(req.url.params)
+        return httpx.Response(
+            200, json={"data": [], "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    client.list_decisions()
+    assert "include_deleted" not in captured["query"]
+
+
+def test_list_decisions_include_deleted_sends_query_param():
+    captured: dict = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        captured["query"] = dict(req.url.params)
+        return httpx.Response(
+            200, json={"data": [], "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    client.list_decisions(include_deleted=True)
+    assert captured["query"].get("include_deleted") == "true"
+
+
+def test_restore_decision_patches_status_active():
+    record = {
+        "identifier": "DEC-001",
+        "title": "restored",
+        "decision_date": "05-08-26",
+        "status": "Active",
+    }
+
+    captured: dict = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.method == "PATCH"
+        assert req.url.path == "/decisions/DEC-001"
+        captured["body"] = json.loads(req.read())
+        return httpx.Response(
+            200, json={"data": record, "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    result = client.restore_decision("DEC-001")
+    assert captured["body"] == {"status": "Active"}
+    assert result == record

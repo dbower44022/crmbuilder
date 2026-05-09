@@ -13,9 +13,9 @@ router = APIRouter(prefix="/decisions", tags=["decisions"])
 
 
 @router.get("")
-def list_all():
+def list_all(include_deleted: bool = False):
     with readonly_session() as s:
-        return ok(decisions.list_all(s))
+        return ok(decisions.list_all(s, include_deleted=include_deleted))
 
 
 @router.get("/{identifier}")

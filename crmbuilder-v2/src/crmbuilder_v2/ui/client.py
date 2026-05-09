@@ -84,16 +84,32 @@ class StorageClient:
     ) -> None:
         self.close()
 
-    def list_decisions(self) -> list[dict[str, Any]]:
+    def list_decisions(
+        self, *, include_deleted: bool = False
+    ) -> list[dict[str, Any]]:
         """Return all decisions as a list of dicts (one per decision record).
 
         Shape matches the API's response model in
-        ``crmbuilder_v2/api/routers/decisions.py``.
+        ``crmbuilder_v2/api/routers/decisions.py``. When ``include_deleted``
+        is True, soft-deleted decisions are also returned (``status="Deleted"``);
+        without it, the API filters them out (default behavior from v0.1
+        slice H).
         """
-        result = self._request("GET", "/decisions")
+        path = "/decisions"
+        if include_deleted:
+            path = "/decisions?include_deleted=true"
+        result = self._request("GET", path)
         if not isinstance(result, list):
             return []
         return result
+
+    def restore_decision(self, identifier: str) -> dict[str, Any]:
+        """Restore a soft-deleted decision by PATCHing status back to Active.
+
+        Convenience method around ``update_decision`` with the same on-the-wire
+        call; the named method makes the restore intent explicit at call sites.
+        """
+        return self.update_decision(identifier, {"status": "Active"})
 
     def get_decision(self, identifier: str) -> dict[str, Any]:
         """Return a single decision by identifier (e.g. ``"DEC-019"``).

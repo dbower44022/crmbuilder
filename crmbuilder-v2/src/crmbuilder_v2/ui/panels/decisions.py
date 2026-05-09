@@ -23,11 +23,13 @@ from typing import Any
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
+    QCheckBox,
     QDialog,
     QFormLayout,
     QFrame,
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QPlainTextEdit,
     QPushButton,
     QScrollArea,
@@ -102,7 +104,12 @@ class DecisionsPanel(ListDetailPanel):
     """Decisions panel with read + write surfaces."""
 
     def __init__(self, client, parent=None):
+        self._include_deleted = False
         super().__init__(client, parent)
+        self._show_deleted_check = QCheckBox("Show deleted")
+        self._show_deleted_check.setObjectName("show_deleted_check")
+        self._show_deleted_check.toggled.connect(self._on_show_deleted_toggled)
+        self._action_layout.addWidget(self._show_deleted_check)
         self._new_button = QPushButton("New Decision")
         self._new_button.setObjectName("new_decision_button")
         self._new_button.clicked.connect(self._on_new_decision_clicked)
@@ -112,7 +119,14 @@ class DecisionsPanel(ListDetailPanel):
         return "Decisions"
 
     def fetch_records(self) -> list[dict[str, Any]]:
-        return self._client.list_decisions()
+        return self._client.list_decisions(include_deleted=self._include_deleted)
+
+    def _strikethrough_for_record(self, record: dict[str, Any]) -> bool:
+        return record.get("status") == "Deleted"
+
+    def _on_show_deleted_toggled(self, checked: bool) -> None:
+        self._include_deleted = checked
+        self.refresh()
 
     def list_columns(self) -> list[ColumnSpec]:
         return [
@@ -147,19 +161,31 @@ class DecisionsPanel(ListDetailPanel):
         outer.setContentsMargins(12, 12, 12, 12)
         outer.setSpacing(10)
 
-        # Edit / Delete button strip at the top of the detail pane.
+        # Edit / Delete (or Restore / Edit, for soft-deleted records) at the
+        # top of the detail pane.
         button_strip = QWidget()
         button_strip_layout = QHBoxLayout(button_strip)
         button_strip_layout.setContentsMargins(0, 0, 0, 0)
         button_strip_layout.setSpacing(6)
+        is_deleted = record.get("status") == "Deleted"
+        if is_deleted:
+            restore_btn = QPushButton("Restore")
+            restore_btn.setObjectName("restore_decision_button")
+            restore_btn.clicked.connect(
+                lambda _checked=False, r=record: self._on_restore_clicked(r)
+            )
+            button_strip_layout.addWidget(restore_btn)
         edit_btn = QPushButton("Edit")
         edit_btn.setObjectName("edit_decision_button")
         edit_btn.clicked.connect(lambda _checked=False, r=record: self._on_edit_clicked(r))
         button_strip_layout.addWidget(edit_btn)
-        delete_btn = QPushButton("Delete")
-        delete_btn.setObjectName("delete_decision_button")
-        delete_btn.clicked.connect(lambda _checked=False, r=record: self._on_delete_clicked(r))
-        button_strip_layout.addWidget(delete_btn)
+        if not is_deleted:
+            delete_btn = QPushButton("Delete")
+            delete_btn.setObjectName("delete_decision_button")
+            delete_btn.clicked.connect(
+                lambda _checked=False, r=record: self._on_delete_clicked(r)
+            )
+            button_strip_layout.addWidget(delete_btn)
         button_strip_layout.addStretch(1)
         outer.addWidget(button_strip)
 
@@ -262,6 +288,46 @@ class DecisionsPanel(ListDetailPanel):
         dialog = DecisionDeleteDialog(self._client, identifier, title, self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.refresh()
+
+    def _on_restore_clicked(self, record: dict[str, Any]) -> None:
+        identifier = record.get("identifier") or ""
+        title = record.get("title") or ""
+        if not identifier:
+            return
+        confirm = QMessageBox(self)
+        confirm.setWindowTitle("Restore decision")
+        confirm.setText(
+            f"Restore {identifier} — {title or '(untitled)'}?\n\n"
+            "Its status will return to Active."
+        )
+        confirm.setStandardButtons(
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        confirm.setDefaultButton(QMessageBox.StandardButton.No)
+        if confirm.exec() != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            self._client.restore_decision(identifier)
+        except NotFoundError:
+            self.refresh()
+            return
+        except StorageConnectionError as exc:
+            _log.warning("Connection lost restoring %s: %s", identifier, exc)
+            self.connection_lost.emit(str(exc))
+            return
+        except StorageClientError as exc:
+            _log.warning("Domain error restoring %s: %s", identifier, exc)
+            ErrorDialog(
+                title="Could not restore decision",
+                message=(
+                    "An error occurred while restoring the decision. "
+                    "Please try again."
+                ),
+                detail=str(exc),
+                parent=self,
+            ).exec()
+            return
+        self.refresh()
 
     def _decision_link_or_dash(self, identifier: str | None) -> QLabel:
         if not identifier:

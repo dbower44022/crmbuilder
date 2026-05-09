@@ -22,7 +22,14 @@ _UPDATABLE_FIELDS = frozenset({"name", "description"})
 
 
 def _resolve_parent_id(session: Session, parent_identifier: str | None) -> int | None:
-    if parent_identifier is None:
+    """Resolve an identifier to an integer FK.
+
+    None and empty string both return None. Callers in update() use None to
+    mean "don't touch" (the if-not-None guard prevents the assignment) and
+    empty string to mean "clear the FK" (the guard fires; this helper
+    returns None; the caller assigns None to the foreign-key column).
+    """
+    if parent_identifier is None or parent_identifier == "":
         return None
     row = session.scalar(select(Topic).where(Topic.identifier == parent_identifier))
     if row is None:

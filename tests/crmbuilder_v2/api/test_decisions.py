@@ -102,6 +102,29 @@ def test_list_excludes_deleted(client):
     assert identifiers == {"DEC-001"}
 
 
+def test_list_includes_deleted_with_query_param(client):
+    """GET /decisions?include_deleted=true returns soft-deleted rows."""
+    _create(client, identifier="DEC-001")
+    _create(client, identifier="DEC-002")
+    client.delete("/decisions/DEC-002")
+    r = client.get("/decisions?include_deleted=true")
+    assert r.status_code == 200
+    identifiers = {row["identifier"] for row in r.json()["data"]}
+    assert identifiers == {"DEC-001", "DEC-002"}
+
+
+def test_patch_status_back_to_active_restores(client):
+    """PATCH status=Active on a soft-deleted decision restores it (slice F restore path)."""
+    _create(client, identifier="DEC-001")
+    client.delete("/decisions/DEC-001")
+    r = client.patch("/decisions/DEC-001", json={"status": "Active"})
+    assert r.status_code == 200
+    assert r.json()["data"]["status"] == "Active"
+    r = client.get("/decisions")
+    identifiers = {row["identifier"] for row in r.json()["data"]}
+    assert "DEC-001" in identifiers
+
+
 def test_patch_supersedes_empty_string_clears_link(client):
     _create(client, identifier="DEC-001")
     _create(client, identifier="DEC-002", supersedes="DEC-001")
