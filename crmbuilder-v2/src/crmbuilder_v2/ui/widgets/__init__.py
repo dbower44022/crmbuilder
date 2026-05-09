@@ -6,7 +6,13 @@ strictly widgets ← (panels, dialogs).
 """
 
 from crmbuilder_v2.ui.widgets.date_field import DateField
+from crmbuilder_v2.ui.widgets.entity_identifier_picker import EntityIdentifierPicker
 from crmbuilder_v2.ui.widgets.hierarchical_picker import HierarchicalEntityPicker
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 
-__all__ = ["DateField", "HierarchicalEntityPicker", "ReferencesSection"]
+__all__ = [
+    "DateField",
+    "EntityIdentifierPicker",
+    "HierarchicalEntityPicker",
+    "ReferencesSection",
+]
