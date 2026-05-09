@@ -9,7 +9,8 @@ Slice C exposed read methods for the smoke-grade Decisions panel.
 Slice D added sessions, risks, and references-touching for the round-1
 read-only views. Slice E adds versioned reads for charter and status,
 plus topics, planning items, and the full references list. Slice G
-adds decision write methods (create, update, delete).
+adds decision write methods (create, update, delete). v0.2 slice B
+adds risk write methods (create, update, delete).
 """
 
 from __future__ import annotations
@@ -199,6 +200,50 @@ class StorageClient:
                 message="Expected dict body for get_risk",
             )
         return result
+
+    def create_risk(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /risks. Returns the created record dict.
+
+        Raises ``ValidationError`` on 400, ``ConflictError`` on 409
+        (duplicate identifier), other ``StorageClientError`` subclasses
+        per the standard error matrix.
+        """
+        result = self._request("POST", "/risks", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for create_risk",
+            )
+        return result
+
+    def update_risk(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PATCH /risks/{identifier}. Body should contain only the fields
+        that changed. Returns the updated record dict.
+
+        Raises ``ValidationError`` on 400, ``NotFoundError`` on 404
+        (risk was deleted by another writer between read and update).
+        """
+        result = self._request(
+            "PATCH", f"/risks/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for update_risk",
+            )
+        return result
+
+    def delete_risk(self, identifier: str) -> Any:
+        """DELETE /risks/{identifier}. Returns the API's response data.
+
+        Raises ``NotFoundError`` on 404, ``ConflictError`` on 409
+        (risk is referenced by other records).
+        """
+        return self._request("DELETE", f"/risks/{identifier}")
 
     # ------------------------------------------------------------------
     # Charter (versioned read)

@@ -696,3 +696,152 @@ def test_delete_decision_referenced_raises_conflict():
     with pytest.raises(ConflictError) as excinfo:
         client.delete_decision("DEC-018")
     assert "referenced" in str(excinfo.value)
+
+
+# ---------------------------------------------------------------------------
+# v0.2 slice B: risk write methods
+# ---------------------------------------------------------------------------
+
+
+def test_create_risk_returns_created_dict():
+    record = {
+        "identifier": "RSK-001",
+        "title": "Schema drift",
+        "description": "",
+        "probability": "Low",
+        "impact": "Medium",
+        "response_plan": "",
+        "status": "Open",
+    }
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.method == "POST"
+        assert req.url.path == "/risks"
+        return httpx.Response(
+            201, json={"data": record, "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    result = client.create_risk(
+        {
+            "identifier": "RSK-001",
+            "title": "Schema drift",
+            "probability": "Low",
+            "impact": "Medium",
+            "status": "Open",
+        }
+    )
+    assert result == record
+
+
+def test_create_risk_duplicate_raises_conflict():
+    body = {
+        "data": None,
+        "meta": {},
+        "errors": [
+            {"code": "conflict", "message": "risk 'RSK-001' already exists"}
+        ],
+    }
+
+    def handler(_req: httpx.Request) -> httpx.Response:
+        return httpx.Response(409, json=body)
+
+    client = _client(handler)
+    with pytest.raises(ConflictError):
+        client.create_risk(
+            {
+                "identifier": "RSK-001",
+                "title": "dup",
+                "probability": "Low",
+                "impact": "Low",
+                "status": "Open",
+            }
+        )
+
+
+def test_create_risk_invalid_probability_raises_validation():
+    body = {
+        "data": None,
+        "meta": {},
+        "errors": [
+            {
+                "code": "validation_error",
+                "field": "probability",
+                "message": "must be one of Low, Medium, High",
+            }
+        ],
+    }
+
+    def handler(_req: httpx.Request) -> httpx.Response:
+        return httpx.Response(400, json=body)
+
+    client = _client(handler)
+    with pytest.raises(ValidationError) as excinfo:
+        client.create_risk(
+            {
+                "identifier": "RSK-001",
+                "title": "x",
+                "probability": "Bogus",
+                "impact": "Low",
+                "status": "Open",
+            }
+        )
+    assert excinfo.value.field_errors() == {
+        "probability": "must be one of Low, Medium, High"
+    }
+
+
+def test_update_risk_returns_updated_dict():
+    record = {
+        "identifier": "RSK-001",
+        "title": "new title",
+        "probability": "Low",
+        "impact": "Medium",
+        "status": "Open",
+    }
+
+    captured: dict = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.method == "PATCH"
+        assert req.url.path == "/risks/RSK-001"
+        captured["body"] = req.read()
+        return httpx.Response(
+            200, json={"data": record, "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    result = client.update_risk("RSK-001", {"title": "new title"})
+    assert result == record
+    assert b'"title"' in captured["body"]
+    assert b'"new title"' in captured["body"]
+
+
+def test_update_risk_missing_raises_not_found():
+    def handler(_req: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            404,
+            json={
+                "data": None,
+                "meta": {},
+                "errors": [{"code": "not_found", "message": "missing"}],
+            },
+        )
+
+    client = _client(handler)
+    with pytest.raises(NotFoundError):
+        client.update_risk("RSK-999", {"title": "x"})
+
+
+def test_delete_risk_returns_response_data():
+    deleted = {"identifier": "RSK-001", "title": "gone"}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.method == "DELETE"
+        assert req.url.path == "/risks/RSK-001"
+        return httpx.Response(
+            200, json={"data": deleted, "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    assert client.delete_risk("RSK-001") == deleted
