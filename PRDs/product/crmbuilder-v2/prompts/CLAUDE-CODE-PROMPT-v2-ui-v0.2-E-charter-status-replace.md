@@ -359,11 +359,30 @@ def _on_make_current(self, version: dict) -> None:
 
 Run the make-current call through a worker per the v0.2 threading rules. The above sketch is synchronous for clarity; actual implementation uses `run_in_thread`.
 
-### `ReferencesSection` on Charter detail pane
+### `fetch_detail_extras` override and `ReferencesSection` on Charter detail pane
 
-Append `ReferencesSection(self._client, "charter", current["identifier_or_id"], parent=self)` to the detail pane. For Charter, "the current version's references" is the most relevant view; if the detail pane shows a specific version (not necessarily current), the references are for that version's id.
+The Charter panel needs a `fetch_detail_extras` override per slice A's actual `ReferencesSection` API (pure rendering, pre-fetched payload). Charter and status records identify by version number, not a string identifier like decisions; the references graph uses whatever stable identifier the storage layer's `references` table records as the entity_id for charter/status entries — verify by inspecting an existing reference row or the `list_references_touching` output for an existing charter version, and adjust the identifier expression accordingly. If charter/status versions don't have inbound or outbound references in practice, `list_references_touching` returns empty groups and the widget renders "(none)" — that's fine.
 
-Note: charter and status records identify by version number, not a string identifier like decisions. The `ReferencesSection` widget takes an identifier; pass the version's stable identifier in whatever shape the references graph uses (likely a numeric version id or a composite). Verify against the existing `references` table data and adjust the call accordingly. If charter/status versions don't have inbound or outbound references in practice, the widget renders "(none)" — that's fine.
+```python
+def fetch_detail_extras(self, record: dict[str, Any]) -> dict[str, Any]:
+    identifier = record.get("identifier_or_id")  # adjust per actual record shape
+    if not identifier:
+        return {"references": {"as_source": [], "as_target": []}}
+    return {
+        "references": self._client.list_references_touching(
+            "charter", identifier
+        ),
+    }
+```
+
+```python
+references_section = ReferencesSection(
+    "charter",
+    record["identifier_or_id"],
+    extras.get("references") or {},
+)
+references_section.navigate_requested.connect(self.navigate_requested)
+```
 
 ### Tests
 
@@ -419,19 +438,30 @@ New Version button + Make Current button + ReferencesSection.
 
 ## Step 4 — `ReferencesSection` on the Sessions detail pane
 
-`panels/sessions.py` is read-only — no write surface in v0.2. Add only the `ReferencesSection` widget:
+`panels/sessions.py` is read-only — no write surface in v0.2. Add the `fetch_detail_extras` override and the `ReferencesSection` widget per slice A's actual `ReferencesSection` API (pure rendering, pre-fetched payload):
+
+```python
+def fetch_detail_extras(self, record: dict[str, Any]) -> dict[str, Any]:
+    identifier = record.get("identifier")
+    if not identifier:
+        return {"references": {"as_source": [], "as_target": []}}
+    return {
+        "references": self._client.list_references_touching(
+            "session", identifier
+        ),
+    }
+```
 
 ```python
 references_section = ReferencesSection(
-    self._client,
     "session",
     record["identifier"],
-    parent=self,
+    extras.get("references") or {},
 )
 references_section.navigate_requested.connect(self.navigate_requested)
 ```
 
-Append it to the detail pane layout beneath the existing form fields.
+Append the `ReferencesSection` to the detail pane layout beneath the existing form fields.
 
 ### Test
 

@@ -281,16 +281,29 @@ def _on_delete_clicked(self, record: dict) -> None:
         self.refresh()
 ```
 
-### `ReferencesSection` on the detail pane
+### `fetch_detail_extras` override and `ReferencesSection` on the detail pane
 
-Append the `ReferencesSection` widget to the detail pane layout, beneath the form fields. The widget connects its `navigate_requested` signal to the panel's existing navigate-out pattern (the same signal Decisions wires up):
+The Risks panel needs a `fetch_detail_extras` override to fetch references on a worker thread (consistent with v0.1's master/detail data flow; the same pattern slice A added to the Decisions panel during the migration). The `render_detail` method then receives the fetched payload via its `extras` parameter and passes it to the `ReferencesSection`:
+
+```python
+def fetch_detail_extras(self, record: dict[str, Any]) -> dict[str, Any]:
+    identifier = record.get("identifier")
+    if not identifier:
+        return {"references": {"as_source": [], "as_target": []}}
+    return {
+        "references": self._client.list_references_touching(
+            "risk", identifier
+        ),
+    }
+```
+
+Append the `ReferencesSection` widget to the detail pane layout in `render_detail`, beneath the form fields. The widget is pure-rendering — it consumes the pre-fetched payload from `extras`, not a client (per slice A's deviation). The `navigate_requested` signal connects to the panel's existing navigate-out pattern (same wiring slice A added for Decisions):
 
 ```python
 references_section = ReferencesSection(
-    self._client,
     "risk",
     record["identifier"],
-    parent=self,
+    extras.get("references") or {},
 )
 references_section.navigate_requested.connect(self.navigate_requested)
 ```

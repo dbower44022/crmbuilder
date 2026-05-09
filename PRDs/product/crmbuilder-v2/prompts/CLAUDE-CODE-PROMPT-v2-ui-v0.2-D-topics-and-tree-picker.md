@@ -291,14 +291,27 @@ The `selection_changed` signal carries the topic identifier (string) and is wire
 
 Add the New Topic button and Edit/Delete buttons per slice B/C pattern.
 
-### `ReferencesSection` on detail pane
+### `fetch_detail_extras` override and `ReferencesSection` on detail pane
+
+Per slice A's actual `ReferencesSection` API (pure rendering, pre-fetched payload), the Topics panel needs a `fetch_detail_extras` override mirroring slice B/C:
+
+```python
+def fetch_detail_extras(self, record: dict[str, Any]) -> dict[str, Any]:
+    identifier = record.get("identifier")
+    if not identifier:
+        return {"references": {"as_source": [], "as_target": []}}
+    return {
+        "references": self._client.list_references_touching(
+            "topic", identifier
+        ),
+    }
+```
 
 ```python
 references_section = ReferencesSection(
-    self._client,
     "topic",
     record["identifier"],
-    parent=self,
+    extras.get("references") or {},
 )
 references_section.navigate_requested.connect(self.navigate_requested)
 ```

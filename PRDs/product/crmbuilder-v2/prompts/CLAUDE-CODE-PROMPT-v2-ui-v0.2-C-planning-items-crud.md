@@ -192,15 +192,27 @@ class PlanningItemDeleteDialog(EntityCrudDeleteDialog):
 
 - "New Planning Item" button in the toolbar action layout.
 - Edit and Delete buttons in the detail-pane button strip rendered by `render_detail`.
-- `ReferencesSection` widget appended to the detail pane.
+- `fetch_detail_extras` override that fetches references via `list_references_touching("planning_item", identifier)`.
+- `ReferencesSection` widget appended to the detail pane in `render_detail`, consuming the pre-fetched payload from `extras` (per slice A's actual ReferencesSection API — pure rendering, not self-fetching).
 - Same `_on_new_clicked` / `_on_edit_clicked` / `_on_delete_clicked` handler pattern.
 
 ```python
+def fetch_detail_extras(self, record: dict[str, Any]) -> dict[str, Any]:
+    identifier = record.get("identifier")
+    if not identifier:
+        return {"references": {"as_source": [], "as_target": []}}
+    return {
+        "references": self._client.list_references_touching(
+            "planning_item", identifier
+        ),
+    }
+```
+
+```python
 references_section = ReferencesSection(
-    self._client,
     "planning_item",
     record["identifier"],
-    parent=self,
+    extras.get("references") or {},
 )
 references_section.navigate_requested.connect(self.navigate_requested)
 ```
