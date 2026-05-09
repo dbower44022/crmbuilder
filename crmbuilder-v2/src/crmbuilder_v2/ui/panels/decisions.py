@@ -228,10 +228,12 @@ class DecisionsPanel(ListDetailPanel):
             identifier,
             extras.get("references") or {},
             exclude_relationships={"supersedes"},
+            client=self._client,
         )
         references_section.navigate_requested.connect(
             self.navigate_requested
         )
+        references_section.references_changed.connect(self.refresh)
         outer.addWidget(references_section)
 
         outer.addStretch(1)

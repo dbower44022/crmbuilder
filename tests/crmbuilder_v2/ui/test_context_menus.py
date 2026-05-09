@@ -206,15 +206,18 @@ def test_topics_context_menu_row(qtbot, client_stub):
 # ---------------------------------------------------------------------------
 
 
-def test_references_context_menu_whitespace_is_empty(qtbot, client_stub):
+def test_references_context_menu_whitespace_includes_new_reference(
+    qtbot, client_stub
+):
+    """v0.3 slice C adds "New reference" to the whitespace context."""
     panel = ReferencesPanel(client=client_stub)
     qtbot.addWidget(panel)
     menu = panel._build_context_menu(QModelIndex())
-    # Slice C adds "New reference" here. Slice B leaves it empty.
-    assert _action_labels(menu) == []
+    assert _action_labels(menu) == ["New reference"]
 
 
-def test_references_context_menu_row(qtbot, client_stub):
+def test_references_context_menu_row_includes_delete(qtbot, client_stub):
+    """v0.3 slice C extends row context with "Delete reference"."""
     panel = ReferencesPanel(client=client_stub)
     qtbot.addWidget(panel)
     record = {
@@ -223,14 +226,15 @@ def test_references_context_menu_row(qtbot, client_stub):
         "source_id": "SES-008",
         "target_type": "decision",
         "target_id": "DEC-032",
-        "relationship_kind": "decided_in",
+        "relationship": "decided_in",
         "_source_display": "session:SES-008",
         "_target_display": "decision:DEC-032",
     }
     index = _seed_table_records(panel, [record])
     menu = panel._build_context_menu(index)
-    # Slice C extends with "Delete reference"; slice B keeps it at two.
-    assert _action_labels(menu) == ["Go to source", "Go to target"]
+    # Separator entries have empty text; assert non-separator labels.
+    labels = [a.text() for a in menu.actions() if not a.isSeparator()]
+    assert labels == ["Go to source", "Go to target", "Delete reference"]
 
 
 def test_references_go_to_source_emits_navigation(qtbot, client_stub):

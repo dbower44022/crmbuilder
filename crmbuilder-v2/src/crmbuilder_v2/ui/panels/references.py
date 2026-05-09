@@ -18,13 +18,20 @@ from typing import Any
 from PySide6.QtCore import QModelIndex
 from PySide6.QtWidgets import (
     QComboBox,
+    QDialog,
     QHBoxLayout,
     QLabel,
     QMenu,
+    QPushButton,
     QWidget,
 )
 
 from crmbuilder_v2.ui.base.list_detail_panel import ColumnSpec, ListDetailPanel
+from crmbuilder_v2.ui.dialogs.reference_create import ReferenceCreateDialog
+from crmbuilder_v2.ui.dialogs.reference_delete import (
+    ReferenceDeleteDialog,
+    edge_text,
+)
 
 _ALL = "All"
 
@@ -55,6 +62,13 @@ class ReferencesPanel(ListDetailPanel):
         super().__init__(*args, **kwargs)
         # Connect single-click navigation now that the table exists.
         self._table.clicked.connect(self._on_cell_clicked)
+        # New Reference toolbar button (v0.3 slice C — DEC-033).
+        self._new_reference_button = QPushButton("New Reference")
+        self._new_reference_button.setObjectName("new_reference_button")
+        self._new_reference_button.clicked.connect(
+            self._on_new_reference_clicked
+        )
+        self._action_layout.addWidget(self._new_reference_button)
 
     def entity_title(self) -> str:
         return "References"
@@ -197,7 +211,8 @@ class ReferencesPanel(ListDetailPanel):
     def _build_context_menu(self, index: QModelIndex) -> QMenu:
         menu = QMenu(self)
         if not index.isValid():
-            # Slice C adds "New reference" here.
+            new_action = menu.addAction("New reference")
+            new_action.triggered.connect(self._on_new_reference_clicked)
             return menu
 
         record = self._record_at_index(index)
@@ -216,8 +231,41 @@ class ReferencesPanel(ListDetailPanel):
                 r.get("target_type") or "", r.get("target_id") or ""
             )
         )
-        # Slice C extends the row context with "Delete reference".
+        menu.addSeparator()
+        delete_action = menu.addAction("Delete reference")
+        delete_action.triggered.connect(
+            lambda _checked=False, r=record: self._on_delete_reference_clicked(r)
+        )
         return menu
+
+    # ------------------------------------------------------------------
+    # Write-surface click handlers (v0.3 slice C — DEC-033)
+    # ------------------------------------------------------------------
+
+    def _on_new_reference_clicked(self) -> None:
+        """Open ``ReferenceCreateDialog`` with no pre-populated source.
+
+        On accept, refresh the panel. The file-watcher would also pick
+        up the new reference, but the explicit refresh is a fast-path
+        safety net so the row appears immediately.
+        """
+        dialog = ReferenceCreateDialog(self._client, parent=self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.refresh()
+
+    def _on_delete_reference_clicked(self, record: dict[str, Any]) -> None:
+        """Open ``ReferenceDeleteDialog`` for the given reference row."""
+        ref_id = record.get("id")
+        if ref_id is None:
+            return
+        dialog = ReferenceDeleteDialog(
+            self._client,
+            reference_id=int(ref_id),
+            edge=edge_text(record),
+            parent=self,
+        )
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.refresh()
 
     def _navigate_to_endpoint(self, entity_type: str, identifier: str) -> None:
         """Emit ``navigate_requested`` for one side of a reference edge.
