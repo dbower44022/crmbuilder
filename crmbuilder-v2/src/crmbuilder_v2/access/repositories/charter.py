@@ -73,6 +73,37 @@ def replace(session: Session, *, payload: dict) -> dict:
     return after
 
 
+def make_version_current(session: Session, *, version: int) -> dict:
+    """Flip ``is_current`` to the named version without creating a new row.
+
+    Demotes the existing current version (if any) to ``is_current=False``
+    and promotes the named version to ``is_current=True``. Idempotent on
+    a no-op (target is already current).
+
+    Raises :class:`NotFoundError` if no charter version with that number
+    exists.
+    """
+    target = session.scalar(select(Charter).where(Charter.version == version))
+    if target is None:
+        raise NotFoundError(_ENTITY_TYPE, f"version {version}")
+    before = to_dict(target)
+    current = session.scalar(select(Charter).where(Charter.is_current.is_(True)))
+    if current is not None and current.id != target.id:
+        current.is_current = False
+    target.is_current = True
+    session.flush()
+    after = to_dict(target)
+    emit(
+        session,
+        entity_type=_ENTITY_TYPE,
+        entity_identifier=_SINGLETON_ID,
+        operation="update",
+        before=before,
+        after=after,
+    )
+    return after
+
+
 def upsert_seed(
     session: Session,
     *,

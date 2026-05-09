@@ -45,6 +45,37 @@ def test_replace_rejects_non_dict_payload(v2_env):
         charter.replace(s, payload="oh hi")  # type: ignore[arg-type]
 
 
+def test_make_version_current_flips_flag_back(v2_env):
+    with session_scope() as s:
+        charter.replace(s, payload={"scope": "v1"})
+        charter.replace(s, payload={"scope": "v2"})
+    with session_scope() as s:
+        charter.make_version_current(s, version=1)
+    with session_scope() as s:
+        cur = charter.get_current(s)
+        all_versions = charter.list_versions(s)
+    assert cur["version"] == 1
+    by_version = {v["version"]: v for v in all_versions}
+    assert by_version[1]["is_current"] is True
+    assert by_version[2]["is_current"] is False
+
+
+def test_make_version_current_idempotent(v2_env):
+    with session_scope() as s:
+        charter.replace(s, payload={"scope": "v1"})
+    with session_scope() as s:
+        charter.make_version_current(s, version=1)
+    with session_scope() as s:
+        cur = charter.get_current(s)
+    assert cur["version"] == 1
+    assert cur["is_current"] is True
+
+
+def test_make_version_current_unknown_version_raises(v2_env):
+    with session_scope() as s, pytest.raises(NotFoundError):
+        charter.make_version_current(s, version=99)
+
+
 def test_export_reflects_charter_state(v2_env, export_dir: Path):
     with session_scope() as s:
         charter.replace(s, payload={"scope": "demo"})

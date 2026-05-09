@@ -68,6 +68,32 @@ def replace(session: Session, *, payload: dict) -> dict:
     return after
 
 
+def make_version_current(session: Session, *, version: int) -> dict:
+    """Flip ``is_current`` to the named status version without creating a new row.
+
+    Mirrors :func:`crmbuilder_v2.access.repositories.charter.make_version_current`.
+    """
+    target = session.scalar(select(Status).where(Status.version == version))
+    if target is None:
+        raise NotFoundError(_ENTITY_TYPE, f"version {version}")
+    before = to_dict(target)
+    current = session.scalar(select(Status).where(Status.is_current.is_(True)))
+    if current is not None and current.id != target.id:
+        current.is_current = False
+    target.is_current = True
+    session.flush()
+    after = to_dict(target)
+    emit(
+        session,
+        entity_type=_ENTITY_TYPE,
+        entity_identifier=_SINGLETON_ID,
+        operation="update",
+        before=before,
+        after=after,
+    )
+    return after
+
+
 def upsert_seed(
     session: Session,
     *,

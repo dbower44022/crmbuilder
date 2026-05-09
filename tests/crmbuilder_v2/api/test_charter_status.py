@@ -32,3 +32,32 @@ def test_status_lifecycle(client):
     assert r.status_code == 200
     r = client.get("/status")
     assert r.json()["data"]["payload"]["phase"] == "Build"
+
+
+def test_charter_make_version_current(client):
+    client.put("/charter", json={"payload": {"scope": "v1"}})
+    client.put("/charter", json={"payload": {"scope": "v2"}})
+    r = client.patch("/charter/versions/1/make-current")
+    assert r.status_code == 200
+    assert r.json()["data"]["version"] == 1
+    r = client.get("/charter")
+    assert r.json()["data"]["version"] == 1
+    versions = client.get("/charter/versions").json()["data"]
+    by_version = {v["version"]: v for v in versions}
+    assert by_version[1]["is_current"] is True
+    assert by_version[2]["is_current"] is False
+
+
+def test_charter_make_version_current_unknown(client):
+    client.put("/charter", json={"payload": {"scope": "v1"}})
+    r = client.patch("/charter/versions/99/make-current")
+    assert r.status_code == 404
+
+
+def test_status_make_version_current(client):
+    client.put("/status", json={"payload": {"phase": "Plan"}})
+    client.put("/status", json={"payload": {"phase": "Build"}})
+    r = client.patch("/status/versions/1/make-current")
+    assert r.status_code == 200
+    r = client.get("/status")
+    assert r.json()["data"]["version"] == 1

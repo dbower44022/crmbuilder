@@ -141,6 +141,27 @@ def test_main_window_references_page_is_panel(
     assert isinstance(page, ReferencesPanel)
 
 
+def test_sessions_panel_renders_references_section(qapp, qtbot, client_stub):
+    """Slice E (v0.2): Sessions detail pane includes ReferencesSection."""
+    from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
+
+    panel = SessionsPanel(client_stub)
+    qtbot.addWidget(panel)
+    record = {
+        "identifier": "SES-001",
+        "title": "Slice E v0.2 wiring",
+        "session_date": "2026-05-09",
+        "status": "complete",
+        "topics_covered": "",
+        "summary": "",
+        "artifacts_produced": "",
+        "in_flight_at_end": "",
+        "conversation_reference": "",
+    }
+    rendered = panel.render_detail(record, {"references": {"as_source": [], "as_target": []}})
+    assert rendered.findChildren(ReferencesSection)
+
+
 def test_sidebar_set_stale_toggles_icon(qapp, qtbot):
     sidebar = Sidebar()
     qtbot.addWidget(sidebar)

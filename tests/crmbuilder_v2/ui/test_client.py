@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import httpx
 import pytest
 from crmbuilder_v2.ui.client import StorageClient
@@ -419,6 +421,99 @@ def test_get_status_version_missing_raises_not_found():
     client = _client(handler)
     with pytest.raises(NotFoundError):
         client.get_status_version(99)
+
+
+def test_replace_charter_returns_record():
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.method == "PUT"
+        assert req.url.path == "/charter"
+        body = json.loads(req.content)
+        assert body == {"payload": {"scope": "v3"}}
+        return httpx.Response(
+            200,
+            json={
+                "data": {"version": 3, "is_current": True, "payload": {"scope": "v3"}},
+                "meta": {},
+                "errors": None,
+            },
+        )
+
+    client = _client(handler)
+    record = client.replace_charter({"scope": "v3"})
+    assert record["version"] == 3
+
+
+def test_make_charter_version_current_returns_record():
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.method == "PATCH"
+        assert req.url.path == "/charter/versions/2/make-current"
+        return httpx.Response(
+            200,
+            json={
+                "data": {"version": 2, "is_current": True, "payload": {}},
+                "meta": {},
+                "errors": None,
+            },
+        )
+
+    client = _client(handler)
+    record = client.make_charter_version_current(2)
+    assert record["version"] == 2
+
+
+def test_make_charter_version_current_not_found():
+    def handler(_req: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            404,
+            json={
+                "data": None,
+                "meta": {},
+                "errors": [{"code": "not_found", "message": "missing"}],
+            },
+        )
+
+    client = _client(handler)
+    with pytest.raises(NotFoundError):
+        client.make_charter_version_current(99)
+
+
+def test_replace_status_returns_record():
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.method == "PUT"
+        assert req.url.path == "/status"
+        return httpx.Response(
+            200,
+            json={
+                "data": {
+                    "version": 4,
+                    "is_current": True,
+                    "payload": {"phase": "v0.2"},
+                },
+                "meta": {},
+                "errors": None,
+            },
+        )
+
+    client = _client(handler)
+    record = client.replace_status({"phase": "v0.2"})
+    assert record["payload"]["phase"] == "v0.2"
+
+
+def test_make_status_version_current_returns_record():
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.method == "PATCH"
+        assert req.url.path == "/status/versions/3/make-current"
+        return httpx.Response(
+            200,
+            json={
+                "data": {"version": 3, "is_current": True, "payload": {}},
+                "meta": {},
+                "errors": None,
+            },
+        )
+
+    client = _client(handler)
+    assert client.make_status_version_current(3)["version"] == 3
 
 
 def test_list_topics_returns_list():

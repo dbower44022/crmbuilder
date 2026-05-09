@@ -34,3 +34,9 @@ def get_version(version: int):
 def replace(body: StatusReplaceIn):
     with writable_session() as s:
         return ok(status_repo.replace(s, payload=body.payload))
+
+
+@router.patch("/versions/{version}/make-current")
+def make_version_current(version: int):
+    with writable_session() as s:
+        return ok(status_repo.make_version_current(s, version=version))

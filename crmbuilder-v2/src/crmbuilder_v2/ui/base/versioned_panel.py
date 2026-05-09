@@ -101,6 +101,13 @@ class VersionedPanel(ListDetailPanel):
     # ------------------------------------------------------------------
 
     def _render_payload(self, payload: dict[str, Any]) -> QWidget:
+        """Render the payload as a scrollable form. Used by the default
+        ``render_detail`` implementation.
+
+        Subclasses that compose additional widgets (e.g. action buttons,
+        references section) typically call :meth:`_build_payload_form`
+        directly instead and embed the result in their own layout.
+        """
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
 
@@ -109,13 +116,25 @@ class VersionedPanel(ListDetailPanel):
         outer.setContentsMargins(12, 12, 12, 12)
         outer.setSpacing(10)
 
+        outer.addWidget(self._build_payload_form(payload))
+        outer.addStretch(1)
+        scroll.setWidget(container)
+        return scroll
+
+    def _build_payload_form(self, payload: dict[str, Any]) -> QWidget:
+        """Return a non-scrollable widget containing the payload form.
+
+        Empty payloads render as a dimmed ``(empty payload)`` placeholder.
+        """
         if not payload:
             empty = QLabel("(empty payload)")
             empty.setStyleSheet("color: #888;")
-            outer.addWidget(empty)
-            outer.addStretch(1)
-            scroll.setWidget(container)
-            return scroll
+            return empty
+
+        wrapper = QWidget()
+        wrapper_layout = QVBoxLayout(wrapper)
+        wrapper_layout.setContentsMargins(0, 0, 0, 0)
+        wrapper_layout.setSpacing(6)
 
         form = QFormLayout()
         form.setLabelAlignment(
@@ -130,10 +149,8 @@ class VersionedPanel(ListDetailPanel):
             field_widget = _payload_value_widget(value)
             form.addRow(_form_label(label_text), field_widget)
 
-        outer.addLayout(form)
-        outer.addStretch(1)
-        scroll.setWidget(container)
-        return scroll
+        wrapper_layout.addLayout(form)
+        return wrapper
 
 
 # ----------------------------------------------------------------------

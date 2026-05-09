@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from crmbuilder_v2.ui.base.list_detail_panel import ColumnSpec, ListDetailPanel
+from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 
 _LONG_TEXT_MIN_HEIGHT = 80
 _LONG_TEXT_FIELDS = (
@@ -81,6 +82,16 @@ class SessionsPanel(ListDetailPanel):
     def fetch_records(self) -> list[dict[str, Any]]:
         return self._client.list_sessions()
 
+    def fetch_detail_extras(self, record: dict[str, Any]) -> dict[str, Any]:
+        identifier = record.get("identifier")
+        if not identifier:
+            return {"references": {"as_source": [], "as_target": []}}
+        return {
+            "references": self._client.list_references_touching(
+                "session", identifier
+            ),
+        }
+
     def list_columns(self) -> list[ColumnSpec]:
         return [
             ColumnSpec(field="identifier", title="Identifier", width=120),
@@ -128,6 +139,16 @@ class SessionsPanel(ListDetailPanel):
             _label(record.get("conversation_reference") or "—"),
         )
         outer.addLayout(conv_form)
+
+        outer.addWidget(_separator())
+        identifier = record.get("identifier") or ""
+        references_section = ReferencesSection(
+            "session",
+            identifier,
+            extras.get("references") or {},
+        )
+        references_section.navigate_requested.connect(self.navigate_requested)
+        outer.addWidget(references_section)
 
         outer.addStretch(1)
         scroll.setWidget(container)

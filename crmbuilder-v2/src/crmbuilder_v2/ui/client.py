@@ -269,6 +269,39 @@ class StorageClient:
             )
         return result
 
+    def replace_charter(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """PUT /charter. Creates a new charter version with the given payload.
+
+        Returns the new version record.
+        """
+        result = self._request("PUT", "/charter", json_body={"payload": payload})
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for replace_charter",
+            )
+        return result
+
+    def make_charter_version_current(
+        self, version: int
+    ) -> dict[str, Any]:
+        """PATCH /charter/versions/{n}/make-current. Flips ``is_current``
+        to the named version. Returns the updated version record.
+
+        Raises :class:`NotFoundError` if no version with that number exists.
+        """
+        result = self._request(
+            "PATCH", f"/charter/versions/{version}/make-current"
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for make_charter_version_current",
+            )
+        return result
+
     # ------------------------------------------------------------------
     # Status (versioned read)
     # ------------------------------------------------------------------
@@ -288,6 +321,39 @@ class StorageClient:
                 status_code=200,
                 errors=[],
                 message="Expected dict body for get_status_version",
+            )
+        return result
+
+    def replace_status(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """PUT /status. Creates a new status version with the given payload.
+
+        Returns the new version record.
+        """
+        result = self._request("PUT", "/status", json_body={"payload": payload})
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for replace_status",
+            )
+        return result
+
+    def make_status_version_current(
+        self, version: int
+    ) -> dict[str, Any]:
+        """PATCH /status/versions/{n}/make-current. Flips ``is_current``
+        to the named version. Returns the updated version record.
+
+        Raises :class:`NotFoundError` if no version with that number exists.
+        """
+        result = self._request(
+            "PATCH", f"/status/versions/{version}/make-current"
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for make_status_version_current",
             )
         return result
 
