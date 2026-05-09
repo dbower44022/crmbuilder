@@ -10,7 +10,8 @@ Slice D added sessions, risks, and references-touching for the round-1
 read-only views. Slice E adds versioned reads for charter and status,
 plus topics, planning items, and the full references list. Slice G
 adds decision write methods (create, update, delete). v0.2 slice B
-adds risk write methods (create, update, delete).
+adds risk write methods (create, update, delete). v0.2 slice C adds
+planning-item write methods (create, update, delete).
 """
 
 from __future__ import annotations
@@ -330,6 +331,51 @@ class StorageClient:
                 message="Expected dict body for get_planning_item",
             )
         return result
+
+    def create_planning_item(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /planning-items. Returns the created record dict.
+
+        Raises ``ValidationError`` on 400, ``ConflictError`` on 409
+        (duplicate identifier), other ``StorageClientError`` subclasses
+        per the standard error matrix.
+        """
+        result = self._request("POST", "/planning-items", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for create_planning_item",
+            )
+        return result
+
+    def update_planning_item(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PATCH /planning-items/{identifier}. Body should contain only
+        the fields that changed. Returns the updated record dict.
+
+        Raises ``ValidationError`` on 400, ``NotFoundError`` on 404
+        (planning item was deleted by another writer between read and
+        update).
+        """
+        result = self._request(
+            "PATCH", f"/planning-items/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for update_planning_item",
+            )
+        return result
+
+    def delete_planning_item(self, identifier: str) -> Any:
+        """DELETE /planning-items/{identifier}. Returns the API's response data.
+
+        Raises ``NotFoundError`` on 404, ``ConflictError`` on 409
+        (planning item is referenced by other records).
+        """
+        return self._request("DELETE", f"/planning-items/{identifier}")
 
     # ------------------------------------------------------------------
     # References (full list)

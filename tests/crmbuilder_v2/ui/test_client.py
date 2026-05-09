@@ -845,3 +845,147 @@ def test_delete_risk_returns_response_data():
 
     client = _client(handler)
     assert client.delete_risk("RSK-001") == deleted
+
+
+# ---------------------------------------------------------------------------
+# v0.2 slice C: planning-item write methods
+# ---------------------------------------------------------------------------
+
+
+def test_create_planning_item_returns_created_dict():
+    record = {
+        "identifier": "PI-001",
+        "title": "Pacing dimension",
+        "item_type": "planning_dimension",
+        "description": "",
+        "status": "Open",
+        "resolution_reference": None,
+    }
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.method == "POST"
+        assert req.url.path == "/planning-items"
+        return httpx.Response(
+            201, json={"data": record, "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    result = client.create_planning_item(
+        {
+            "identifier": "PI-001",
+            "title": "Pacing dimension",
+            "item_type": "planning_dimension",
+            "status": "Open",
+        }
+    )
+    assert result == record
+
+
+def test_create_planning_item_duplicate_raises_conflict():
+    body = {
+        "data": None,
+        "meta": {},
+        "errors": [
+            {"code": "conflict", "message": "planning_item 'PI-001' already exists"}
+        ],
+    }
+
+    def handler(_req: httpx.Request) -> httpx.Response:
+        return httpx.Response(409, json=body)
+
+    client = _client(handler)
+    with pytest.raises(ConflictError):
+        client.create_planning_item(
+            {
+                "identifier": "PI-001",
+                "title": "dup",
+                "item_type": "planning_dimension",
+                "status": "Open",
+            }
+        )
+
+
+def test_create_planning_item_invalid_type_raises_validation():
+    body = {
+        "data": None,
+        "meta": {},
+        "errors": [
+            {
+                "code": "validation_error",
+                "field": "item_type",
+                "message": "must be one of planning_dimension, open_question, pending_work",
+            }
+        ],
+    }
+
+    def handler(_req: httpx.Request) -> httpx.Response:
+        return httpx.Response(400, json=body)
+
+    client = _client(handler)
+    with pytest.raises(ValidationError) as excinfo:
+        client.create_planning_item(
+            {
+                "identifier": "PI-001",
+                "title": "x",
+                "item_type": "Bogus",
+                "status": "Open",
+            }
+        )
+    assert excinfo.value.field_errors() == {
+        "item_type": "must be one of planning_dimension, open_question, pending_work"
+    }
+
+
+def test_update_planning_item_returns_updated_dict():
+    record = {
+        "identifier": "PI-001",
+        "title": "new title",
+        "item_type": "planning_dimension",
+        "status": "Open",
+    }
+
+    captured: dict = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.method == "PATCH"
+        assert req.url.path == "/planning-items/PI-001"
+        captured["body"] = req.read()
+        return httpx.Response(
+            200, json={"data": record, "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    result = client.update_planning_item("PI-001", {"title": "new title"})
+    assert result == record
+    assert b'"title"' in captured["body"]
+    assert b'"new title"' in captured["body"]
+
+
+def test_update_planning_item_missing_raises_not_found():
+    def handler(_req: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            404,
+            json={
+                "data": None,
+                "meta": {},
+                "errors": [{"code": "not_found", "message": "missing"}],
+            },
+        )
+
+    client = _client(handler)
+    with pytest.raises(NotFoundError):
+        client.update_planning_item("PI-999", {"title": "x"})
+
+
+def test_delete_planning_item_returns_response_data():
+    deleted = {"identifier": "PI-001", "title": "gone"}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        assert req.method == "DELETE"
+        assert req.url.path == "/planning-items/PI-001"
+        return httpx.Response(
+            200, json={"data": deleted, "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    assert client.delete_planning_item("PI-001") == deleted
