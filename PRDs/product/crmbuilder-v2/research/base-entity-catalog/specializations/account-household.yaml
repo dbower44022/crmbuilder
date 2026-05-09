@@ -1,0 +1,173 @@
+catalog_id: account-household
+catalog_version: "0.1"
+last_updated: "05-09-26 10:35"
+tier: 4
+entry_kind: specialization
+
+parent_entity: account
+discriminator:
+  attribute: type
+  value: Household
+
+name: Household (Account specialization)
+display_name: Household Account
+purpose: >
+  An Account specialization representing a family or living unit, used in
+  CRMs that model households as a Record Type or subtype on Account
+  rather than as a separate first-class entity. Cross-references the
+  household.yaml Tier 4 entity, which captures the same concept where it
+  is modeled as a distinct entity (Bloomerang via Relationships, CiviCRM
+  via Contact subtype).
+
+business_context: >
+  This specialization captures the NPSP modeling pattern where Household
+  is implemented as one of three Account Record Types (Household, 1-to-1,
+  Organization). NPSP is by far the dominant deployment of this pattern
+  in production. Salesforce vanilla and the B2B systems would implement
+  Household via custom Account record types if at all. The companion
+  Tier 4 household.yaml entity captures the alternative pattern (Household
+  as its own first-class entity, as in CiviCRM and Bloomerang). V2 uses
+  the catalog mechanism field to know which deployment pattern to apply
+  per target backend at deploy time. The two catalog entries cross-
+  reference but don't duplicate — household.yaml has the universal
+  attribute set; this specialization captures the Account-specific
+  delta and the deploy-time mechanism.
+
+data_model_role: anchor
+typically_required: false
+common_synonyms:
+  - Household Account
+  - Family Account
+  - NPSP Household
+  - Joint Donor Account
+
+systems:
+  - system: salesforce
+    name: "Account with Household Record Type (custom)"
+    api_name: Account
+    is_standard: false
+    mechanism: record_type
+    notes: Customers without NPSP add a custom Household Record Type to Account. Less common than full NPSP installation.
+    docs_url: https://help.salesforce.com/s/articleView?id=sf.customize_recordtype.htm
+  - system: hubspot
+    name: "Company with custom Type=Household"
+    api_name: companies
+    is_standard: false
+    mechanism: custom_property
+    notes: HubSpot has no Record Type concept. Households are represented via custom Type property on Company.
+    docs_url: https://developers.hubspot.com/docs/api-reference/crm-properties-v3/guide
+  - system: attio
+    name: "Custom Household object or Type attribute on Companies"
+    api_name: not_applicable
+    is_standard: false
+    mechanism: separate_object
+    notes: Attio supports either a custom Household object or a Type attribute on the Companies object.
+    docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+  - system: espocrm
+    name: "Account with type=Household (custom enum value)"
+    api_name: Account
+    is_standard: false
+    mechanism: type_discriminator
+    notes: Add a Household enum value to Account.type. No native modeling.
+    docs_url: https://docs.espocrm.com/administration/entity-manager/
+  - system: civicrm
+    name: "(handled at Tier 4 entity, not as Account specialization)"
+    api_name: not_applicable
+    is_standard: true
+    mechanism: separate_object
+    notes: CiviCRM handles Household as a Contact subtype, not as an Account specialization. See household.yaml for CiviCRM modeling.
+    docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/contacts/
+  - system: salesforce_npsp
+    name: "Account with Household Record Type"
+    api_name: Account
+    is_standard: true
+    mechanism: record_type
+    notes: NPSP's dominant pattern. Household Account is the default Record Type when a Contact is created. Auto-generated household name, formal/informal greeting, and shared mailing address are all NPSP standard fields on Household-typed accounts.
+    docs_url: https://trailhead.salesforce.com/content/learn/modules/constituent-data-management-with-nonprofit-success-pack/manage-household-accounts
+  - system: bloomerang
+    name: "(handled at Tier 4 entity via Relationships, not as Account specialization)"
+    api_name: not_applicable
+    is_standard: true
+    mechanism: separate_object
+    notes: Bloomerang has no Account entity. Households are modeled via Relationships between individual Constituents. See household.yaml for Bloomerang modeling.
+    docs_url: https://bloomerang.com/api/rest-api-v1/
+
+attributes:
+  - name: formalGreeting
+    display_name: Formal Greeting
+    type: string
+    required: false
+    description: Formal salutation for written correspondence (e.g., "Mr. and Mrs. Smith").
+    usage: Drives mail-merge in donor acknowledgment letters and major appeals. NPSP auto-generates from member contact names; manually editable.
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+  - name: informalGreeting
+    display_name: Informal Greeting
+    type: string
+    required: false
+    description: Informal salutation for casual correspondence (e.g., "John and Jane").
+    usage: Drives less-formal communications. Distinct from formal for tone control.
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+  - name: householdMembers
+    display_name: Member Count
+    type: integer
+    required: false
+    description: Number of contact records that are members of this household.
+    usage: Auto-derived from contacts where AccountId points to this Household. Used for household-size segmentation.
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+  - name: totalLifetimeGiving
+    display_name: Total Lifetime Giving (Household Rollup)
+    type: currency
+    required: false
+    description: Sum of all donations attributed to household members.
+    usage: The marquee household-level rollup. Auto-calculated by NPSP as sum of donations linked to any Contact whose AccountId matches this Household. Drives major-donor recognition tiers.
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+relationships:
+  - target: contact
+    cardinality: one-to-many
+    role: parent
+    description: A household account contains many member contacts.
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: absent
+      salesforce_npsp: standard
+      bloomerang: absent
+
+sources:
+  - title: "Salesforce NPSP: Manage Household Accounts"
+    url: https://trailhead.salesforce.com/content/learn/modules/constituent-data-management-with-nonprofit-success-pack/manage-household-accounts
+  - title: "Salesforce NPSP: Data Model Gallery"
+    url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
+  - title: "Salesforce: Customize record types"
+    url: https://help.salesforce.com/s/articleView?id=sf.customize_recordtype.htm

@@ -1,0 +1,501 @@
+# =============================================================================
+# Catalog metadata
+# =============================================================================
+catalog_id: donation
+catalog_version: "0.1"
+last_updated: "05-08-26 14:30"
+tier: 4
+entry_kind: universal
+
+# =============================================================================
+# Entity-level definition
+# =============================================================================
+name: Donation
+display_name: Donation
+purpose: >
+  A monetary or in-kind gift made by a constituent (individual or
+  organization) to a nonprofit. The central revenue-tracking entity in
+  nonprofit CRMs — anchors donor reporting, acknowledgment letter
+  generation, financial reporting, and fundraising-effectiveness analysis.
+
+business_context: >
+  Donation records hold the executed gift transactions that fund nonprofit
+  operations. Each donation has an amount, a date, a payment method, a
+  donor (Contact or Account), an optional campaign attribution, and a
+  status that distinguishes pledged-but-not-paid (committed) from received
+  (paid). Modeling diverges sharply across systems: CiviCRM uses
+  Contribution as a first-class entity purpose-built for this concept;
+  Bloomerang uses Transaction (and Pledge for committed-but-not-paid);
+  NPSP repurposes Salesforce Opportunity with a Donation Record Type and
+  uses Closed Won = received, Pledged = committed. The B2B systems
+  (Salesforce, HubSpot, Attio, EspoCRM) without nonprofit overlays don't
+  have a Donation entity at all — they have Opportunity / Deal which
+  conceptually maps but operationally requires significant customization
+  (custom record types, custom fields for tax receipt info, custom rollup
+  fields for lifetime giving). Donation records anchor essentially every
+  nonprofit reporting concern: lifetime giving by donor, year-over-year
+  growth, donor retention rate, average gift size, gift frequency,
+  lapsed-donor identification, IRS Form 990 revenue reporting.
+  Acknowledgment-letter generation is typically the most visible
+  automation tied to donations — receipts must go out within IRS-required
+  windows for tax-deductibility. When interviewing clients, surface
+  "Donation" by asking how they currently receive and track gifts: by what
+  channels (online, check, stock, in-kind), with what acknowledgment
+  cadence, with what reporting needs (lifetime giving, year-end giving,
+  source attribution by campaign).
+
+data_model_role: event
+typically_required: true
+common_synonyms:
+  - Gift
+  - Contribution
+  - Transaction
+  - Pledge
+  - Donation Opportunity (NPSP terminology)
+
+# =============================================================================
+# Cross-system equivalents
+# =============================================================================
+systems:
+  - system: salesforce
+    name: "Opportunity (no Donation entity in vanilla Salesforce)"
+    api_name: Opportunity
+    is_standard: false
+    notes: >
+      Vanilla Salesforce has no Donation entity. Customers without NPSP
+      typically build donation tracking via custom Opportunity Record Types
+      and a flock of custom fields. Not turnkey.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_opportunity.htm
+
+  - system: hubspot
+    name: "Deal (with custom Type)"
+    api_name: deals
+    is_standard: false
+    notes: >
+      HubSpot has no Donation entity. Nonprofits using HubSpot configure
+      Deals with a Donation pipeline, custom Deal Type values, and custom
+      properties for tax-receipt fields.
+    docs_url: https://developers.hubspot.com/docs/api-reference/crm-deals-v3/guide
+
+  - system: attio
+    name: "(custom object required)"
+    api_name: not_applicable
+    is_standard: false
+    notes: >
+      Attio has no native Donation entity. Nonprofits would build a custom
+      object linked to People and Companies.
+    docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+
+  - system: espocrm
+    name: "Opportunity (no Donation entity)"
+    api_name: Opportunity
+    is_standard: false
+    notes: >
+      EspoCRM has no Donation entity. Nonprofit deployments use Opportunity
+      with custom stages and fields, similar to vanilla Salesforce pattern.
+    docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Opportunity.json
+
+  - system: civicrm
+    name: Contribution
+    api_name: Contribution
+    is_standard: true
+    notes: >
+      CiviCRM's first-class Contribution entity. Includes total_amount,
+      receive_date, financial_type_id (Donation, Member Dues, Campaign
+      Contribution, Event Fee), payment_instrument_id, contribution_status_id
+      (Completed, Pending, Cancelled, Failed, Refunded, In Progress),
+      source, contribution_recur_id (links to ContributionRecur), campaign_id.
+      Tax-receipt PDF generation is built-in.
+    docs_url: https://docs.civicrm.org/user/en/latest/contributions/
+
+  - system: salesforce_npsp
+    name: "Opportunity (Donation Record Type)"
+    api_name: Opportunity
+    is_standard: true
+    notes: >
+      NPSP repurposes Opportunity for donations via a Donation Record Type
+      (also Major Gift, Grant, In-Kind Gift, Matching Gift, Membership
+      record types). Pledged stage = committed; Closed Won (or Posted) =
+      received. NPSP custom fields add donor-acknowledgment tracking, tax
+      receipt fields, and rollup fields (Total Gifts, Last Gift Amount,
+      Largest Gift Amount on the related Contact and Household Account).
+      Payment is a separate child object (npe01__OppPayment__c).
+    docs_url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
+
+  - system: bloomerang
+    name: "Transaction (received) / Pledge (committed)"
+    api_name: Transaction
+    is_standard: true
+    notes: >
+      Bloomerang uses Transaction for received donations and Pledge for
+      committed-but-unpaid. Transaction records include amount, date,
+      method (Cash, Check, Credit Card, etc.), fund (allocation),
+      campaign, appeal, acknowledgment status. Receipt PDF generation
+      is a built-in feature.
+    docs_url: https://bloomerang.com/api/rest-api-v1/
+
+# =============================================================================
+# Attributes
+# =============================================================================
+attributes:
+  - name: amount
+    display_name: Amount
+    type: currency
+    required: true
+    description: >
+      Monetary value of the donation.
+    usage: >
+      The headline number on every donation. Drives lifetime-giving rollups,
+      year-over-year reports, average-gift calculations, and tax-receipt
+      generation. For in-kind gifts this is fair market value. For stock
+      gifts it's typically value at the date received.
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: donationDate
+    display_name: Donation Date
+    type: date
+    required: true
+    description: Date the donation was received (or pledged date for committed donations).
+    usage: >
+      Anchors fiscal-year reporting, year-end giving statements, and
+      tax-receipt timing requirements (US: receipts must be sent by Jan 31
+      of the year following the donation). NPSP uses CloseDate; CiviCRM
+      uses receive_date; Bloomerang uses date.
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: status
+    display_name: Status
+    type: enum
+    required: true
+    enum_values:
+      - Pledged
+      - Received
+      - Cancelled
+      - Refunded
+      - Failed
+    description: Lifecycle state of the donation.
+    usage: >
+      Distinguishes committed-but-unpaid (Pledged) from received from
+      reversed. Drives accounts-receivable reports for outstanding pledges,
+      refund tracking, and failed-payment retry workflows. NPSP uses
+      Opportunity stages; CiviCRM uses contribution_status; Bloomerang
+      uses Transaction status.
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: paymentMethod
+    display_name: Payment Method
+    type: enum
+    required: false
+    enum_values:
+      - Cash
+      - Check
+      - Credit Card
+      - ACH / Bank Transfer
+      - Stock
+      - Wire Transfer
+      - In-Kind
+      - Other
+    description: How the donation was paid.
+    usage: >
+      Drives reconciliation against bank deposits, credit-card processor
+      reports, and in-kind valuation workflows. Different methods have
+      different processing costs and different tax-receipt language
+      requirements (stock gifts and in-kind require valuation
+      documentation).
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: contact
+    display_name: Donor (Contact)
+    type: reference
+    required: false
+    reference_target: contact
+    description: The individual donor who made the gift.
+    usage: >
+      Anchors donor-history views, lifetime giving rollups, and
+      acknowledgment-letter recipient. Nullable when donor is an
+      organization. NPSP requires either Contact or Account on Donation
+      Opportunity.
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: account
+    display_name: Donor (Account / Organization)
+    type: reference
+    required: false
+    reference_target: account
+    description: The organization donor (foundation, corporate sponsor, household account).
+    usage: >
+      Used when the giving entity is an organization rather than an
+      individual. NPSP's Household Account model puts the Account
+      reference on every donation; Organization donations use the
+      Organization Account.
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: campaign
+    display_name: Campaign
+    type: reference
+    required: false
+    reference_target: campaign
+    description: The fundraising campaign this donation is attributed to.
+    usage: >
+      Drives campaign ROI reporting (revenue / cost). Important for
+      year-end appeals, capital campaigns, and event-specific fundraising
+      where attribution matters.
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: source
+    display_name: Source / Channel
+    type: enum
+    required: false
+    enum_values:
+      - Online
+      - Mail
+      - Phone
+      - In-Person
+      - Event
+      - Third-Party Platform
+      - Other
+    description: Channel through which the donation was received.
+    usage: >
+      Distinguishes online giving from offline. Drives channel-mix
+      reporting that informs investment in different donation acquisition
+      channels.
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: custom
+      bloomerang: standard
+
+  - name: fund
+    display_name: Fund / Designation
+    type: reference
+    required: false
+    reference_target: tag
+    description: The fund or program area the donation is designated to support.
+    usage: >
+      Critical for restricted-funds tracking — donors often specify which
+      program their gift should support. Required for financial reporting
+      with multiple restricted funds. NPSP calls this General Accounting
+      Unit (GAU); Bloomerang and CiviCRM use Fund.
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: acknowledgmentStatus
+    display_name: Acknowledgment Status
+    type: enum
+    required: false
+    enum_values:
+      - Not Yet Acknowledged
+      - Acknowledged
+      - Do Not Acknowledge
+    description: Whether the donation has been acknowledged with a thank-you letter or receipt.
+    usage: >
+      Drives acknowledgment-letter generation workflows. "Do Not Acknowledge"
+      is set for anonymous gifts or when the donor has explicitly declined
+      receipts. IRS rules require receipts for tax-deductible gifts above
+      certain thresholds.
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: acknowledgmentDate
+    display_name: Acknowledgment Date
+    type: date
+    required: false
+    description: Date the acknowledgment letter or receipt was sent.
+    usage: >
+      Drives compliance audits (was every gift acknowledged within the
+      required window?) and donor-relations reporting (response time
+      from gift to thank-you).
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: recurringDonation
+    display_name: Recurring Donation Schedule
+    type: reference
+    required: false
+    reference_target: recurring-gift
+    description: Reference to the parent recurring donation schedule, if this donation is one installment.
+    usage: >
+      Links individual donation records to their parent recurring schedule.
+      Makes it possible to roll up "this recurring donor has given X over
+      time" while preserving the per-installment audit trail.
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - name: createdAt
+    display_name: Created Date
+    type: datetime
+    required: true
+    description: System timestamp of when the donation record was created.
+    usage: >
+      Distinct from donationDate (which is when the gift was received).
+      Drives data-entry-velocity reports and integration sync filters.
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+# =============================================================================
+# Relationships to other entities
+# =============================================================================
+relationships:
+  - target: contact
+    cardinality: many-to-one
+    role: child
+    description: A donation is typically attributed to one individual donor.
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - target: account
+    cardinality: many-to-one
+    role: child
+    description: A donation may be attributed to an organization or household account.
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - target: campaign
+    cardinality: many-to-one
+    role: child
+    description: A donation may be attributed to a fundraising campaign.
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - target: recurring-gift
+    cardinality: many-to-one
+    role: child
+    description: A donation may be one installment of a recurring schedule.
+    presence:
+      salesforce: custom
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+  - target: soft-credit
+    cardinality: one-to-many
+    role: parent
+    description: A donation may have soft credits attributed to influencers, advisors, or household members.
+    presence:
+      salesforce: absent
+      hubspot: absent
+      attio: absent
+      espocrm: absent
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+# =============================================================================
+# Sources
+# =============================================================================
+sources:
+  - title: "CiviCRM: Contributions user guide"
+    url: https://docs.civicrm.org/user/en/latest/contributions/
+  - title: "Salesforce NPSP: Data Model Gallery"
+    url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
+  - title: "Salesforce NPSP: Donation management basics"
+    url: https://trailhead.salesforce.com/content/learn/modules/donation-management-basics-with-nonprofit-success-pack
+  - title: "Bloomerang REST API: Transaction endpoint"
+    url: https://bloomerang.com/api/rest-api-v1/
+  - title: "Salesforce Object Reference: Opportunity (used by NPSP for donations)"
+    url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_opportunity.htm
+  - title: "IRS Publication 1771: Charitable Contributions Substantiation and Disclosure"
+    url: https://www.irs.gov/pub/irs-pdf/p1771.pdf

@@ -1,0 +1,227 @@
+catalog_id: soft-credit
+catalog_version: "0.1"
+last_updated: "05-09-26 10:20"
+tier: 4
+entry_kind: universal
+
+name: Soft Credit
+display_name: Soft Credit
+purpose: >
+  A non-financial credit attributed to a contact (or organization) for a
+  donation they influenced but did not directly contribute. Used to
+  recognize spouses, household members, board members, advisors, and
+  influencers whose involvement helped secure a gift, without
+  double-counting actual revenue.
+
+business_context: >
+  Soft Credit records solve a recognition problem unique to nonprofit
+  fundraising: a single donation often involves multiple stakeholders
+  beyond the legal donor. A husband's $10,000 gift should also recognize
+  his wife (household soft credit) so she's invited to donor events. A
+  donation that came in from a Donor Advised Fund (DAF — like Fidelity
+  Charitable) is legally from the DAF, but the individual recommending
+  the gift should receive cultivation credit. A board member who
+  introduced the org to a corporate funder deserves recognition even
+  though the corporation made the actual gift. Soft credits let
+  organizations track these contributions without double-counting
+  revenue. NPSP has the most elaborate model: separate Partial Soft
+  Credit and Account Soft Credit objects, plus Opportunity Contact Role
+  records that auto-generate soft credits, with nightly batch rollup to
+  Contact and Household Account level. CiviCRM has Soft Credit as a
+  child of Contribution with type discriminators (Solicited, In Honor Of,
+  In Memory Of, Workplace Giving). Bloomerang uses Acknowledgement
+  records with credit-share percentages. The B2B systems have no native
+  concept and would require custom build-out. When interviewing clients,
+  surface "Soft Credit" by asking whether they need to recognize spouses
+  for joint giving, DAF advisors for grants from their funds, or
+  influencers/connectors for gifts they helped secure.
+
+data_model_role: junction
+typically_required: false
+common_synonyms:
+  - Recognition Credit
+  - Honor Credit
+  - Acknowledgment Credit
+  - Memorial Credit
+  - Influence Credit
+
+systems:
+  - system: salesforce
+    name: "(no native — Opportunity Contact Role partial)"
+    api_name: OpportunityContactRole
+    is_standard: false
+    notes: Vanilla Salesforce has Opportunity Contact Role for recognizing multiple contacts on an Opportunity, but no first-class Soft Credit concept with rollups.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_opportunitycontactrole.htm
+  - system: hubspot
+    name: "(no native — custom)"
+    api_name: not_applicable
+    is_standard: false
+    notes: HubSpot has no Soft Credit concept.
+    docs_url: https://developers.hubspot.com/docs/api-reference/crm-deals-v3/guide
+  - system: attio
+    name: "(custom relationship attribute)"
+    api_name: not_applicable
+    is_standard: false
+    notes: Attio has no Soft Credit concept.
+    docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+  - system: espocrm
+    name: "(no Soft Credit entity)"
+    api_name: not_applicable
+    is_standard: false
+    notes: EspoCRM has no Soft Credit concept.
+    docs_url: https://docs.espocrm.com/
+  - system: civicrm
+    name: "Soft Credit (child of Contribution)"
+    api_name: ContributionSoft
+    is_standard: true
+    notes: First-class child entity of Contribution. Includes amount, contact_id (the soft-credit recipient), soft_credit_type_id (Solicited, In Honor Of, In Memory Of, Workplace Giving, Workplace Match, Personal Campaign Page).
+    docs_url: https://docs.civicrm.org/user/en/latest/contributions/soft-credits/
+  - system: salesforce_npsp
+    name: "Partial Soft Credit + Account Soft Credit + Opportunity Contact Role"
+    api_name: "npo02__Partial_Soft_Credit__c, npo02__Account_Soft_Credit__c"
+    is_standard: true
+    notes: NPSP has the richest soft-credit model. Three layers - (1) Opportunity Contact Role assigns a role like Influencer; (2) Partial Soft Credit gives a percentage or amount to a Contact; (3) Account Soft Credit recognizes an Organization Account. Rollups are batched nightly to update Contact and Household giving totals.
+    docs_url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
+  - system: bloomerang
+    name: Acknowledgement
+    api_name: SoftCredit
+    is_standard: true
+    notes: Bloomerang has Acknowledgement records (also called Soft Credits in their UI) on Transactions, with percentage-of-gift and recipient Constituent. Used for spousal recognition, DAF advisor crediting, and influencer recognition.
+    docs_url: https://bloomerang.com/api/rest-api-v1/
+
+attributes:
+  - name: donation
+    display_name: Donation
+    type: reference
+    required: true
+    reference_target: donation
+    description: The donation this soft credit is associated with.
+    usage: Anchors the soft credit to the actual gift transaction. A donation may have multiple soft credits.
+    presence:
+      salesforce: custom
+      hubspot: absent
+      attio: absent
+      espocrm: absent
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+  - name: contact
+    display_name: Recipient (Contact)
+    type: reference
+    required: false
+    reference_target: contact
+    description: The contact receiving the soft credit.
+    usage: Drives soft-credit-rollup at the Contact level. NPSP includes soft credits in lifetime giving rollups via custom rollup fields.
+    presence:
+      salesforce: custom
+      hubspot: absent
+      attio: absent
+      espocrm: absent
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+  - name: account
+    display_name: Recipient (Account)
+    type: reference
+    required: false
+    reference_target: account
+    description: The organization account receiving the soft credit (used for Account Soft Credits).
+    usage: Recognizes corporate sponsors and matching-gift companies. NPSP has separate Account Soft Credit object distinct from Contact-level soft credits.
+    presence:
+      salesforce: custom
+      hubspot: absent
+      attio: absent
+      espocrm: absent
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: custom
+  - name: amount
+    display_name: Amount
+    type: currency
+    required: false
+    description: Soft-credit amount (may be full amount of donation or a percentage).
+    usage: For Partial Soft Credits, allows a fractional credit (e.g., $5K of a $10K joint gift to each of two spouses). NPSP supports partial; CiviCRM and Bloomerang support percentage-based.
+    presence:
+      salesforce: custom
+      hubspot: absent
+      attio: absent
+      espocrm: absent
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+  - name: type
+    display_name: Soft Credit Type
+    type: enum
+    required: false
+    enum_values:
+      - Solicitor
+      - Spouse
+      - Household
+      - Influencer
+      - In Honor Of
+      - In Memory Of
+      - Workplace Match
+      - DAF Advisor
+      - Other
+    description: Why this contact is receiving soft credit.
+    usage: Drives different cultivation paths based on credit type. Spouse soft credits update household rollups; In Memory Of triggers tribute-gift acknowledgments; Workplace Match drives matching-gift outreach.
+    presence:
+      salesforce: custom
+      hubspot: absent
+      attio: absent
+      espocrm: absent
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+  - name: createdAt
+    display_name: Created Date
+    type: datetime
+    required: true
+    description: System timestamp.
+    usage: Audit field.
+    presence:
+      salesforce: custom
+      hubspot: absent
+      attio: absent
+      espocrm: absent
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+relationships:
+  - target: donation
+    cardinality: many-to-one
+    role: child
+    description: A soft credit is attached to one donation.
+    presence:
+      salesforce: custom
+      hubspot: absent
+      attio: absent
+      espocrm: absent
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+  - target: contact
+    cardinality: many-to-one
+    role: child
+    description: A soft credit is awarded to one contact (or one organization).
+    presence:
+      salesforce: custom
+      hubspot: absent
+      attio: absent
+      espocrm: absent
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+sources:
+  - title: "Salesforce NPSP: Data Model Gallery"
+    url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
+  - title: "Guide to Salesforce NPSP Soft Credits"
+    url: https://www.salesforceben.com/guide-to-salesforce-npsp-soft-credits/
+  - title: "CiviCRM: Soft credits user guide"
+    url: https://docs.civicrm.org/user/en/latest/contributions/soft-credits/
+  - title: "Bloomerang REST API: SoftCredit endpoint"
+    url: https://bloomerang.com/api/rest-api-v1/
+  - title: "Salesforce Object Reference: OpportunityContactRole"
+    url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_opportunitycontactrole.htm

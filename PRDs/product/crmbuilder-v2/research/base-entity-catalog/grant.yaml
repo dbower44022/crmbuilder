@@ -1,0 +1,246 @@
+# =============================================================================
+# Catalog metadata
+# =============================================================================
+catalog_id: grant
+catalog_version: "0.1"
+last_updated: "05-08-26 14:40"
+tier: 4
+entry_kind: universal
+
+# =============================================================================
+# Entity-level definition
+# =============================================================================
+name: Grant
+display_name: Grant
+purpose: >
+  A funded award from a foundation, government agency, or corporate
+  funder, with specific use restrictions, reporting requirements, and a
+  defined performance period. Distinct from individual Donations because
+  Grants involve formal applications, restricted use of funds, and
+  multi-stage workflows (proposal, review, award, payment, reporting,
+  closeout).
+
+business_context: >
+  Grant records track institutional funding awards — the structured,
+  formalized cousin of individual donations. Where a Donation is typically
+  a single-event gift, a Grant is a multi-stage relationship with a
+  funder: writing the proposal, submission, review period, award decision,
+  award letter signing, payment installments, periodic progress reports,
+  outcomes reporting, and closeout. Each stage may have its own deadlines
+  and stakeholders. Restricted-use is the defining characteristic — grant
+  funds typically must be spent on specific programs, with reporting
+  requirements that document compliance. NPSP has a Grant Record Type on
+  Opportunity (and a Grant Deadline / Deliverable concept for tracking
+  reporting deadlines). CiviCRM has a Grants extension. Bloomerang
+  doesn't have first-class grants but accommodates them via Transaction
+  with grant-specific custom fields and Funds. When interviewing clients,
+  surface "Grant" by asking whether they receive funding from foundations
+  or government bodies, whether they need to track proposal-to-award
+  workflows separately from donations, and whether they have grant
+  reporting / compliance requirements that need deadline tracking.
+
+data_model_role: event
+typically_required: false
+common_synonyms:
+  - Foundation Grant
+  - Government Grant
+  - Corporate Grant
+  - Sponsorship
+  - Award
+
+# =============================================================================
+# Cross-system equivalents
+# =============================================================================
+systems:
+  - system: salesforce
+    name: "(no Grant entity in vanilla)"
+    api_name: not_applicable
+    is_standard: false
+    notes: Vanilla Salesforce has no Grant entity.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_opportunity.htm
+
+  - system: hubspot
+    name: "(custom required)"
+    api_name: not_applicable
+    is_standard: false
+    notes: HubSpot has no Grant entity.
+    docs_url: https://developers.hubspot.com/docs/api-reference/crm-deals-v3/guide
+
+  - system: attio
+    name: "(custom object)"
+    api_name: not_applicable
+    is_standard: false
+    notes: Attio has no Grant entity.
+    docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
+
+  - system: espocrm
+    name: "(no Grant entity)"
+    api_name: not_applicable
+    is_standard: false
+    notes: EspoCRM has no Grant entity.
+    docs_url: https://docs.espocrm.com/
+
+  - system: civicrm
+    name: Grant
+    api_name: Grant
+    is_standard: true
+    notes: >
+      First-class entity via CiviGrant extension. Includes amount_total,
+      amount_requested, amount_granted, application_received_date,
+      decision_date, money_transfer_date, grant_report_received,
+      status_id (Submitted / Granted / Approved for Payment / Rejected /
+      Awaiting Information), grant_type_id, contact_id (the grantee).
+    docs_url: https://docs.civicrm.org/user/en/latest/grants/
+
+  - system: salesforce_npsp
+    name: "Opportunity (Grant Record Type)"
+    api_name: Opportunity
+    is_standard: true
+    notes: >
+      NPSP ships a Grant Record Type on Opportunity. NPSP also has the
+      Grant Deadline concept (Deliverable in newer NPSP) for tracking
+      reporting milestones. Used heavily by foundations, government
+      agencies, and corporate-grant-receiving nonprofits.
+    docs_url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
+
+  - system: bloomerang
+    name: "Transaction with Grant fund"
+    api_name: Transaction
+    is_standard: false
+    notes: >
+      Bloomerang doesn't have a first-class Grant entity. Grants are
+      typically tracked as Transactions assigned to grant-specific Funds,
+      with custom fields for grant lifecycle (proposal date, award date,
+      reporting due dates).
+    docs_url: https://bloomerang.com/api/rest-api-v1/
+
+# =============================================================================
+# Attributes
+# =============================================================================
+attributes:
+  - name: name
+    display_name: Grant Name
+    type: string
+    required: true
+    max_length: 255
+    description: Display name of the grant.
+    usage: Identifies the specific grant in lists, reports, and reporting deadlines.
+    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: standard, salesforce_npsp: standard, bloomerang: custom }
+
+  - name: amountRequested
+    display_name: Amount Requested
+    type: currency
+    required: false
+    description: Amount applied for in the grant proposal.
+    usage: Distinct from amount awarded. Drives award-rate reporting (awards / requests ratio per funder).
+    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: standard, salesforce_npsp: custom, bloomerang: custom }
+
+  - name: amountAwarded
+    display_name: Amount Awarded
+    type: currency
+    required: false
+    description: Amount actually granted.
+    usage: Drives revenue reporting and compares to amountRequested for funder-relations analysis.
+    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: standard, salesforce_npsp: standard, bloomerang: custom }
+
+  - name: status
+    display_name: Status
+    type: enum
+    required: true
+    enum_values: [Researching, In Application, Submitted, Under Review, Awarded, Declined, Reporting Period, Closed]
+    description: Current stage of the grant lifecycle.
+    usage: >
+      Drives grant-pipeline reporting. Also gates automation — submit-due
+      reminders before Submitted, reporting-due reminders during Reporting
+      Period.
+    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: standard, salesforce_npsp: standard, bloomerang: custom }
+
+  - name: applicationDate
+    display_name: Application Submitted Date
+    type: date
+    required: false
+    description: Date the proposal was submitted.
+    usage: Drives time-to-decision reporting (decision date minus submission date).
+    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: standard, salesforce_npsp: custom, bloomerang: custom }
+
+  - name: decisionDate
+    display_name: Decision Date
+    type: date
+    required: false
+    description: Date the funder made the award/decline decision.
+    usage: Anchor for award-pipeline reporting and the start of the reporting period if awarded.
+    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: standard, salesforce_npsp: custom, bloomerang: custom }
+
+  - name: performancePeriodStart
+    display_name: Performance Period Start
+    type: date
+    required: false
+    description: Start of the funded period during which grant funds may be spent.
+    usage: Defines the window for grant-eligible expenses. Critical for compliance.
+    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: custom, salesforce_npsp: custom, bloomerang: custom }
+
+  - name: performancePeriodEnd
+    display_name: Performance Period End
+    type: date
+    required: false
+    description: End of the funded period.
+    usage: Drives spend-down deadlines and sets the date by which final reports must be submitted.
+    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: custom, salesforce_npsp: custom, bloomerang: custom }
+
+  - name: account
+    display_name: Funder (Account)
+    type: reference
+    required: true
+    reference_target: account
+    description: The foundation, government agency, or corporate funder providing the grant.
+    usage: Anchors the grant to its funder for funder-relationship history.
+    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: standard, salesforce_npsp: standard, bloomerang: custom }
+
+  - name: programArea
+    display_name: Program Area
+    type: enum
+    required: false
+    description: Which program or initiative the grant supports.
+    usage: Drives restricted-funds tracking and program-impact reporting.
+    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: custom, salesforce_npsp: custom, bloomerang: custom }
+
+  - name: createdAt
+    display_name: Created Date
+    type: datetime
+    required: true
+    description: System timestamp of grant record creation.
+    usage: Drives grant-prospecting cohort reporting.
+    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: standard, salesforce_npsp: standard, bloomerang: standard }
+
+# =============================================================================
+# Relationships to other entities
+# =============================================================================
+relationships:
+  - target: account
+    cardinality: many-to-one
+    role: child
+    description: A grant is awarded by one funder organization.
+    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: standard, salesforce_npsp: standard, bloomerang: custom }
+
+  - target: contact
+    cardinality: many-to-one
+    role: child
+    description: A grant typically has a primary program officer or funder contact.
+    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: custom, salesforce_npsp: standard, bloomerang: custom }
+
+  - target: donation
+    cardinality: one-to-many
+    role: parent
+    description: A grant generates one or more payment installments.
+    presence: { salesforce: absent, hubspot: absent, attio: absent, espocrm: absent, civicrm: standard, salesforce_npsp: standard, bloomerang: custom }
+
+# =============================================================================
+# Sources
+# =============================================================================
+sources:
+  - title: "CiviCRM: Grants user guide"
+    url: https://docs.civicrm.org/user/en/latest/grants/
+  - title: "Salesforce NPSP: Data Model Gallery"
+    url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
+  - title: "Bloomerang REST API: Transaction endpoint (used for grant tracking via custom fields)"
+    url: https://bloomerang.com/api/rest-api-v1/

@@ -1,0 +1,255 @@
+catalog_id: affiliation
+catalog_version: "0.1"
+last_updated: "05-09-26 10:15"
+tier: 4
+entry_kind: universal
+
+name: Affiliation
+display_name: Affiliation
+purpose: >
+  A relationship link between a Contact and an Organization Account that
+  captures role, dates, and significance — distinct from the Contact's
+  primary Account. Used to track multiple concurrent associations
+  (employer, board membership, volunteer organization, alumni status,
+  affiliated foundation) without disrupting the primary Contact-Account
+  relationship.
+
+business_context: >
+  Affiliation records solve a common nonprofit modeling problem: a single
+  individual is often associated with multiple organizations
+  simultaneously. They might be a Contact whose primary Account is their
+  Household, while also being a board member at a foundation, a senior
+  executive at a corporate partner, an alumnus of an affiliated school,
+  and a former employee of a current major-gift donor. Each of these is a
+  meaningful relationship that drives different cultivation strategies,
+  but Salesforce's standard one-to-one Account-to-Contact model can only
+  hold one. Affiliation records add a many-to-many junction. Modeling
+  varies: NPSP has Affiliation as a custom object (npe5__Affiliation__c)
+  with start/end dates, role, status, and primary-flag; CiviCRM uses
+  Relationship records (with relationship_type_id values like Employee
+  Of, Board Member Of, Volunteer For); Bloomerang has Relationships with
+  similar role types. The B2B systems handle this poorly — Salesforce
+  vanilla has AccountContactRelation but it's underused; HubSpot's
+  primary-and-secondary company associations help but aren't role-aware.
+  When interviewing clients, surface "Affiliation" by asking how they
+  track contacts who have multiple meaningful organizational connections,
+  and whether those connections need start/end dates and role
+  classifications.
+
+data_model_role: junction
+typically_required: false
+common_synonyms:
+  - Association
+  - Organizational Relationship
+  - Connection
+  - Employment
+
+systems:
+  - system: salesforce
+    name: AccountContactRelation
+    api_name: AccountContactRelation
+    is_standard: true
+    notes: Salesforce's standard junction for multiple Account-Contact links. Underused in B2B; primary use case is allowing one Contact to be associated with multiple Accounts. Has IsActive, StartDate, EndDate, Roles fields.
+    docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_accountcontactrelation.htm
+  - system: hubspot
+    name: "Company Association (primary + secondary)"
+    api_name: companies (associations)
+    is_standard: true
+    notes: HubSpot allows multiple Company associations per Contact, with one designated as primary. Less role-aware than Affiliation-style models — associations are typed but don't carry rich start/end/role metadata.
+    docs_url: https://knowledge.hubspot.com/contacts/associate-records
+  - system: attio
+    name: "Custom relationship attribute"
+    api_name: not_applicable
+    is_standard: false
+    notes: Attio supports custom relationship attributes between People and Companies but no standard Affiliation entity with role and date metadata.
+    docs_url: https://attio.com/help/reference/managing-your-data/attributes/create-manage-attributes
+  - system: espocrm
+    name: "(custom or via custom relationship)"
+    api_name: not_applicable
+    is_standard: false
+    notes: EspoCRM has no standard Affiliation entity. Custom build-out required for nonprofit deployments.
+    docs_url: https://docs.espocrm.com/
+  - system: civicrm
+    name: "Relationship (with type=Employee Of / Board Member Of / etc.)"
+    api_name: Relationship
+    is_standard: true
+    notes: First-class Relationship entity with relationship_type_id discriminator. Built-in types include Employee Of, Employer Of, Spouse Of, Child Of, Parent Of, Volunteer For, Board Member Of. Custom types can be added.
+    docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/relationships/
+  - system: salesforce_npsp
+    name: "Affiliation (npe5__Affiliation__c)"
+    api_name: npe5__Affiliation__c
+    is_standard: true
+    notes: NPSP custom object specifically for tracking Contact-to-Organization-Account affiliations. Includes Role, Status (Current / Former), StartDate, EndDate, Primary flag (only one Primary Affiliation per Contact). Auto-generates from Contact's AccountId by default.
+    docs_url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
+  - system: bloomerang
+    name: Relationship
+    api_name: Relationship
+    is_standard: true
+    notes: Bloomerang has Relationships between Constituents with type discriminators (Family, Employer, Board Member, Volunteer Coordinator, etc.). Constituent-to-Constituent rather than Contact-to-Account specifically.
+    docs_url: https://bloomerang.com/api/rest-api-v1/
+
+attributes:
+  - name: contact
+    display_name: Contact
+    type: reference
+    required: true
+    reference_target: contact
+    description: The contact (individual) in the affiliation.
+    usage: One side of the junction. Drives "show me everyone affiliated with this organization" queries.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+  - name: account
+    display_name: Account / Organization
+    type: reference
+    required: true
+    reference_target: account
+    description: The organization in the affiliation.
+    usage: Other side of the junction.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+  - name: role
+    display_name: Role
+    type: enum
+    required: false
+    enum_values:
+      - Employee
+      - Executive
+      - Board Member
+      - Advisory Council
+      - Volunteer
+      - Alumnus
+      - Donor
+      - Other
+    description: The role or function the contact has at the organization.
+    usage: Drives role-based reporting (all board members across funder organizations) and cultivation strategy (board members are major-gift prospects; volunteers are stewardship priorities).
+    presence:
+      salesforce: standard
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+  - name: status
+    display_name: Status
+    type: enum
+    required: true
+    enum_values:
+      - Current
+      - Former
+    description: Whether the affiliation is active or historical.
+    usage: Distinguishes "still works there" from "used to work there." Critical for accurate communications — sending an event invitation addressed to a current employer when the contact left 2 years ago is embarrassing.
+    presence:
+      salesforce: standard
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+  - name: startDate
+    display_name: Start Date
+    type: date
+    required: false
+    description: Date the affiliation began.
+    usage: Anchors tenure reporting and historical context. Often unknown for legacy affiliations imported from older systems.
+    presence:
+      salesforce: standard
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: custom
+  - name: endDate
+    display_name: End Date
+    type: date
+    required: false
+    description: Date the affiliation ended (null if still current).
+    usage: Drives auto-deactivation workflows (when endDate is set, status auto-flips to Former).
+    presence:
+      salesforce: standard
+      hubspot: custom
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: custom
+  - name: isPrimary
+    display_name: Primary Affiliation
+    type: boolean
+    required: false
+    description: Flag indicating this is the contact's primary affiliation.
+    usage: Drives the auto-population of Contact's primary Account field. Only one primary affiliation per contact (system-enforced in NPSP).
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: custom
+      espocrm: custom
+      civicrm: custom
+      salesforce_npsp: standard
+      bloomerang: custom
+  - name: createdAt
+    display_name: Created Date
+    type: datetime
+    required: true
+    description: System timestamp.
+    usage: Audit field.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: standard
+      espocrm: standard
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+relationships:
+  - target: contact
+    cardinality: many-to-one
+    role: child
+    description: An affiliation links to one contact.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+  - target: account
+    cardinality: many-to-one
+    role: child
+    description: An affiliation links to one organization account.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      attio: custom
+      espocrm: custom
+      civicrm: standard
+      salesforce_npsp: standard
+      bloomerang: standard
+
+sources:
+  - title: "Salesforce Object Reference: AccountContactRelation"
+    url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_accountcontactrelation.htm
+  - title: "Salesforce NPSP: Data Model Gallery"
+    url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
+  - title: "CiviCRM: Relationships user guide"
+    url: https://docs.civicrm.org/user/en/latest/organising-your-data/relationships/
+  - title: "HubSpot: Associate records"
+    url: https://knowledge.hubspot.com/contacts/associate-records
+  - title: "Bloomerang REST API: Relationship endpoint"
+    url: https://bloomerang.com/api/rest-api-v1/

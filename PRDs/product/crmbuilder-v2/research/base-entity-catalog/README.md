@@ -1,7 +1,7 @@
 # Base Entity Catalog
 
-**Last Updated:** 05-08-26 14:00
-**Status:** Tiers 1-3 complete; Tiers 4-5 pending
+**Last Updated:** 05-09-26 10:45
+**Status:** Tiers 1-4 complete; Tier 5 pending
 **Owner:** CRMBuilder v2
 
 ---
@@ -10,8 +10,9 @@
 
 | Version | Date | Description |
 |---------|------|-------------|
-| 0.3 | 05-08-26 | Tier 3 (vertical modules) added: case, solution, asset, campaign, campaign-member, email, form-submission, product, price-list, order, invoice, payment. 12 entities covering customer-service, marketing, and commerce concerns. Schema unchanged from 0.2. Tiers 4-5 pending. |
-| 0.2 | 05-08-26 | Tier 2 (sales pipeline) added: lead, opportunity, pipeline-stage, quote. Schema unchanged from 0.1; same authorship style applied. |
+| 0.4 | 05-09-26 | Tier 4 (nonprofit-specialized) added: donation, recurring-gift, grant, membership, volunteer-hour, household, affiliation, soft-credit, constituent, engagement. Plus two specializations: account-household (Account specialization for the NPSP record-type pattern), donation-major-gift (Donation specialization for major-gift cultivation). 12 entries total. Tier 5 pending. |
+| 0.3 | 05-08-26 | Tier 3 (vertical modules) added: case, solution, asset, campaign, campaign-member, email, form-submission, product, price-list, order, invoice, payment. 12 entities covering customer-service, marketing, and commerce concerns. |
+| 0.2 | 05-08-26 | Tier 2 (sales pipeline) added: lead, opportunity, pipeline-stage, quote. |
 | 0.1 | 05-08-26 | Initial Tier 1 sample: account, contact, activity, note, user, tag base entities plus account-nonprofit specialization. Schema established; sourcing methodology documented. |
 
 ---
@@ -72,8 +73,20 @@ base-entity-catalog/
 ├── order.yaml                             # T3 base entity
 ├── invoice.yaml                           # T3 base entity
 ├── payment.yaml                           # T3 base entity
+├── donation.yaml                          # T4 base entity
+├── recurring-gift.yaml                    # T4 base entity
+├── grant.yaml                             # T4 base entity
+├── membership.yaml                        # T4 base entity
+├── volunteer-hour.yaml                    # T4 base entity
+├── household.yaml                         # T4 base entity
+├── affiliation.yaml                       # T4 base entity
+├── soft-credit.yaml                       # T4 base entity
+├── constituent.yaml                       # T4 base entity
+├── engagement.yaml                        # T4 base entity
 └── specializations/
-    └── account-nonprofit.yaml             # specialization of Account
+    ├── account-nonprofit.yaml             # T1 specialization of Account
+    ├── account-household.yaml             # T4 specialization of Account
+    └── donation-major-gift.yaml           # T4 specialization of Donation
 ```
 
 Base entity files are universal types that every (or nearly every) CRM has. Specialization files reference a parent entity, name a discriminator (the parent attribute and value that selects this subclass), and list only delta attributes that the specialization adds beyond what the parent already defines.
