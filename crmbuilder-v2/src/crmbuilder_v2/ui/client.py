@@ -11,7 +11,8 @@ read-only views. Slice E adds versioned reads for charter and status,
 plus topics, planning items, and the full references list. Slice G
 adds decision write methods (create, update, delete). v0.2 slice B
 adds risk write methods (create, update, delete). v0.2 slice C adds
-planning-item write methods (create, update, delete).
+planning-item write methods (create, update, delete). v0.2 slice D
+adds topic write methods (create, update, delete).
 """
 
 from __future__ import annotations
@@ -310,6 +311,50 @@ class StorageClient:
                 message="Expected dict body for get_topic",
             )
         return result
+
+    def create_topic(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /topics. Returns the created record dict.
+
+        Raises ``ValidationError`` on 400, ``ConflictError`` on 409
+        (duplicate identifier), other ``StorageClientError`` subclasses
+        per the standard error matrix.
+        """
+        result = self._request("POST", "/topics", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for create_topic",
+            )
+        return result
+
+    def update_topic(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PATCH /topics/{identifier}. Body should contain only the fields
+        that changed. Returns the updated record dict.
+
+        Raises ``ValidationError`` on 400, ``NotFoundError`` on 404
+        (topic was deleted by another writer between read and update).
+        """
+        result = self._request(
+            "PATCH", f"/topics/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for update_topic",
+            )
+        return result
+
+    def delete_topic(self, identifier: str) -> Any:
+        """DELETE /topics/{identifier}. Returns the API's response data.
+
+        Raises ``NotFoundError`` on 404, ``ConflictError`` on 409
+        (topic is referenced by other records or has children).
+        """
+        return self._request("DELETE", f"/topics/{identifier}")
 
     # ------------------------------------------------------------------
     # Planning items
