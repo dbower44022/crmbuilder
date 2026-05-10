@@ -384,7 +384,7 @@
   {
     "created_at": "2026-05-09T15:26:23.100466",
     "id": 9,
-    "is_current": true,
+    "is_current": false,
     "payload": {
       "active_work": "Slice A — foundation and factory refactor (this conversation's execution work).",
       "blockers": "None.",
@@ -449,5 +449,78 @@
       "version_label": "0.9"
     },
     "version": 9
+  },
+  {
+    "created_at": "2026-05-10T04:39:46.996077",
+    "id": 10,
+    "is_current": true,
+    "payload": {
+      "active_work": "v0.3 shipped 05-10-26 (SES-009). Awaiting v0.4 planning conversation; PI-001 (full styling design pass per DEC-024) is the forcing-function tracker for the deferred-three-times styling work and should anchor v0.4 scoping.",
+      "blockers": "None.",
+      "live_inventory": {
+        "in_database": [
+          "37 decisions (DEC-001 through DEC-037)",
+          "9 sessions (SES-001 through SES-009)",
+          "4 charter versions (latest is_current)",
+          "10 status versions (this is the new current)",
+          "36 references (30 from prior sessions + 6 from SES-008 to DEC-032 through DEC-037)",
+          "1 planning_item (PI-001)"
+        ],
+        "still_markdown": [
+          "PRDs/product/crmbuilder-v2/storage-system-PRD-v0.1.md (PRD, not bootstrapped governance content)",
+          "PRDs/product/crmbuilder-v2/storage-system-implementation-plan.md",
+          "PRDs/product/crmbuilder-v2/prompts/*.md (Claude Code prompt files)",
+          "PRDs/product/crmbuilder-v2/ui-PRD-v0.1.md (PRD, not bootstrapped governance content)",
+          "PRDs/product/crmbuilder-v2/ui-PRD-v0.2.md (PRD, not bootstrapped governance content)",
+          "PRDs/product/crmbuilder-v2/ui-PRD-v0.3.md (PRD, not bootstrapped governance content)",
+          "PRDs/product/crmbuilder-v2/ui-implementation-plan.md",
+          "PRDs/product/crmbuilder-v2/ui-v0.2-implementation-plan.md",
+          "PRDs/product/crmbuilder-v2/ui-v0.3-implementation-plan.md"
+        ],
+        "v1_unchanged": [
+          "espo_impl/ — CRMBuilder PySide6 application code",
+          "automation/ — server management layer",
+          "PRDs/process/ — methodology guides",
+          "PRDs/product/CRMBuilder-PRD.md, app-*.md, crmbuilder-automation-PRD/ — v1 product specs",
+          "ClevelandBusinessMentoring/ — CBM client repo"
+        ]
+      },
+      "metadata": {
+        "Last Updated": "05-10-26",
+        "Status": "Active"
+      },
+      "pending": {
+        "build_after_v0_2": [
+          "Step 0 follow-on — methodology entity schema (personas, entities, fields, processes, requirements, manual-config items, test specifications)",
+          "Renderers — Word, YAML, test cases generated from the database (DEC-008)",
+          "Application integration — CRMBuilder PySide6 reads/writes against the v2 database",
+          "MN domain migration as proving ground (per DEC-010)",
+          "Test infrastructure first deliverable (CRUD layer)",
+          "Subsequent: MR, CR, FU migration; integration / process / UI test layers; methodology guide evolution"
+        ],
+        "planning_paused_until_ui_complete": [
+          "Planning dimension #6 — division of labor",
+          "Planning dimension #7 — risk register",
+          "Planning dimension #8 — exit criteria",
+          "Project-structure split decision (Claude Project, repository) — deferred to end of planning per DEC-012"
+        ],
+        "ui_v0_4_candidates": [
+          "Full styling design pass per DEC-024 / DEC-037 — tracked by PI-001, deferred three times now",
+          "Reference filtering by relationship type on detail-pane sections",
+          "JSON diff view for Charter/Status versioned-replace",
+          "Methodology entity panels (gated on schema design)",
+          "Global search across entities",
+          "Keyboard shortcuts beyond Qt defaults (Ctrl-N for new, etc.)",
+          "Export visible panel to CSV/JSON",
+          "Bulk operations (multi-row select + delete, multi-row update)",
+          "Reimplementation of v1 saved-views / duplicate-checks / workflow managers if their no-public-REST-API constraint is resolved"
+        ]
+      },
+      "phase": "v0.3 complete",
+      "reading_order_for_new_sessions": "Tier 1: read crmbuilder/CLAUDE.md.\nTier 2 (MCP-connected): call get_current_status, get_current_charter, list_recent_sessions(limit=3), then get_decision or list_decisions_for_session as needed.\nTier 2 (file-fallback): read JSON snapshots under PRDs/product/crmbuilder-v2/db-export/ — status.json, charter.json, sessions.json, decisions.json, references.json.\nTier 3 (on-demand): targeted MCP/API queries during conversation.",
+      "title": "CRMBuilder v2 — Status",
+      "version_label": "1.0"
+    },
+    "version": 10
   }
 ]
