@@ -1,6 +1,6 @@
 # CLAUDE-CODE-PROMPT-v2-ui-v0.3-E-closeout
 
-**Last Updated:** 05-09-26 17:30
+**Last Updated:** 05-09-26 21:10
 **Series:** v2-ui-v0.3
 **Slice:** E (5 of 5)
 **Status:** Ready to execute (after slice D is reported complete)
@@ -120,8 +120,9 @@ The CRMBuilder v2 desktop UI is a standalone PySide6 application that
 consumes the storage system REST API. It provides full create/edit/delete
 support for Decisions, Risks, Planning Items, and Topics; versioned-replace
 with version-history browsing for Charter and Status; full create/delete
-support for the references graph (with strict RELATIONSHIP_TYPES vocab
-compliance); and append-only create support for Sessions.
+support for the references graph (with strict relationship-rules vocab
+compliance computed from semantic source/target constraints); and
+append-only create support for Sessions.
 
 Right-click context menus are uniform across every entity row; the menu
 actions parallel the toolbar and detail-pane buttons. Reference creation
@@ -137,7 +138,38 @@ build plan.
 
 ## Step 4 — Friction polish
 
-For any rough edges noticed during slices A–D that didn't fit cleanly into their owning slice, address them here. Examples of plausible items:
+For any rough edges noticed during slices A–D that didn't fit cleanly into their owning slice, address them here.
+
+### 4a. CLAUDE.md note about relationship-rules location
+
+Slice C established `_kinds_for_pair` in `crmbuilder-v2/src/crmbuilder_v2/access/vocab.py` as the canonical location for the seven semantic rules that define which relationship kinds are valid for which `(source_type, target_type)` pairs. These rules are now load-bearing — adding a new relationship kind to `REFERENCE_RELATIONSHIPS` requires updating `_kinds_for_pair` to define how it constrains source and target types.
+
+Add a short note to `crmbuilder/CLAUDE.md` under the v2 section (or the v2 methodology rearchitecture section, wherever entity-vocab guidance lives). Two sentences is enough:
+
+```
+Reference relationship kinds are defined in
+crmbuilder-v2/src/crmbuilder_v2/access/vocab.py. The set of kinds lives
+in REFERENCE_RELATIONSHIPS; the (source_type, target_type) → frozenset[kinds]
+constraint mapping is precomputed at module load by _kinds_for_pair from
+seven semantic rules. Adding a new kind requires updating both —
+REFERENCE_RELATIONSHIPS for the kind's existence and _kinds_for_pair
+for its source/target constraints.
+```
+
+(Adjust the prose to match the existing CLAUDE.md voice.)
+
+### 4b. Pre-existing lint warnings (opportunistic)
+
+Slice D's report noted three pre-existing lint warnings untouched by any v0.3 work:
+
+- `F402` in `crmbuilder-v2/src/crmbuilder_v2/ui/base/crud_dialog.py`
+- Two `F821` in `crmbuilder-v2/tests/crmbuilder_v2/ui/test_client.py`
+
+If these are quick to fix (likely <5 minutes total), fix them as part of slice E's polish. If they have non-obvious causes, leave them and note in the slice reporting.
+
+### 4c. Other polish items observed during build
+
+Plausible candidates depending on what slices A–D actually surfaced:
 
 - A panel toolbar that's becoming visually crowded after the new buttons (Sessions and References each gained a button in v0.3); reordering or grouping might help.
 - An error message somewhere that reads differently from the rest of the application's error voice.
@@ -146,7 +178,7 @@ For any rough edges noticed during slices A–D that didn't fit cleanly into the
 
 Small commits per polish item (or one combined polish commit at the end), prefixed `v2:` per convention.
 
-If no friction items surfaced, skip this step.
+If no friction items surfaced beyond 4a and 4b, those are still required.
 
 ## Step 5 — Closeout governance records
 
@@ -165,7 +197,7 @@ Use the dialog itself (the slice D feature) to write SES-009 — this is the use
 - `summary`:
 
 ```
-The v0.3 build executed five Claude Code prompts (slices A through E) per the v0.3 implementation plan. Slice A landed planning records (SES-008, DEC-032 through DEC-037, PI-NNN), the ListDetailPanel master-widget and context-menu factory refactor, and the Topics panel migration to the new factory. Slice B swept right-click context menus across every existing entity panel. Slice C delivered the full References write surface — EntityIdentifierPicker widget, ReferenceCreateDialog with source-first cascading filters, ReferenceDeleteDialog, panel toolbar New Reference button, and detail-pane Add reference affordance with right-click delete. Slice D delivered the Sessions create-only dialog with auto-assigned identifier, sensible defaults, DEC-025-aware placeholder text, and panel toolbar/right-click integration. Slice E shipped v0.3 — micro-visual adjustments observed during build, version bump to 0.3.0, About dialog refresh, README update, SES-009 (this record, written through the new Sessions create dialog as the user-facing acceptance test), and status update to v1.0 phase "v0.3 complete".
+The v0.3 build executed five Claude Code prompts (slices A through E) per the v0.3 implementation plan. Slice A landed planning records (SES-008, DEC-032 through DEC-037, PI-001), the ListDetailPanel master-widget and context-menu factory refactor, and the Topics panel migration to the new factory. Slice B swept right-click context menus across every existing entity panel. Slice C delivered the full References write surface — EntityIdentifierPicker widget, ReferenceCreateDialog with source-first cascading filters and strict relationship-rules vocab compliance, ReferenceDeleteDialog, panel toolbar New Reference button, and detail-pane Add reference affordance with right-click delete. Slice D delivered the Sessions create-only dialog with auto-assigned identifier, sensible defaults, DEC-025-aware placeholder text, and panel toolbar/right-click integration. Slice E shipped v0.3 — micro-visual adjustments observed during build, version bump to 0.3.0, About dialog refresh, README update, SES-009 (this record, written through the new Sessions create dialog as the user-facing acceptance test), and status update to v1.0 phase "v0.3 complete".
 ```
 
 - `topics_covered`:
@@ -179,21 +211,21 @@ A — Foundation and factory refactor. Wrote planning records (SES-008, DEC-032 
 
 B — Right-click context menus across existing panels. Each of the eight existing entity panels (Decisions, Sessions, Risks, Planning Items, Topics, References, Charter, Status) overrode _build_context_menu with action sets paralleling the existing toolbar and detail-pane buttons. Action handlers reused existing slots — no new business logic introduced. Sweep test in test_context_menus.py asserts action-set parity per panel.
 
-C — References write surface. New EntityIdentifierPicker widget under widgets/ for autocomplete identifier selection. ReferenceCreateDialog with source-first cascading filters and strict RELATIONSHIP_TYPES vocab compliance. ReferenceDeleteDialog with edge-text confirmation and cannot-be-undone notice. Cascading-filter framework strategy resolved: [Option 1 — extended FieldSchema with depends_on / compute_options OR Option 2 — parallel CascadingDialog base — fill in the actual choice made by the slice]. Storage-layer additions [if any — DELETE /references/{id} endpoint, RELATIONSHIP_TYPES vocab reshape, refresh map extension]. Panel and detail-pane integration: New Reference toolbar button, Add reference affordance on every detail pane's ReferencesSection, right-click Delete reference on rows in both surfaces.
+C — References write surface. New EntityIdentifierPicker widget under widgets/ for autocomplete identifier selection. ReferenceCreateDialog with source-first cascading filters and strict relationship-rules vocab compliance. ReferenceDeleteDialog with edge-text confirmation and cannot-be-undone notice. Cascading-filter framework strategy resolved: Option 1 — extended FieldSchema with optional depends_on and compute_options fields plus a new identifier_picker widget kind. The cascade-wiring methods (_wire_cascade and _refresh_dependent_fields with per-iteration state re-snapshot) and the QSignalBlocker guard around option mutation were debugged through a Qt signal-storm hang and fixed before integration. Naming alignment resolved: Option B variant — kept relationship as the canonical name throughout the API and UI (form key, client kwarg, payload field), with relationship_kind preserved only as the DB column name; the existing _row_dict translation at the access layer boundary is the single translation point. Storage-layer additions: RELATIONSHIP_RULES tuple-keyed dict (source_type, target_type) → frozenset[kinds] in access/vocab.py with seven semantic-rule helpers (kinds_for_source, target_types_for, source_types_with_relationships); delete_by_id on the access-layer references repository; DELETE /references/{id} REST endpoint; create_reference and delete_reference on the UI's StorageClient. Panel and detail-pane integration: New Reference toolbar button on the References panel, Add reference affordance on every detail pane's ReferencesSection (opt-in via the client parameter so read-only embedders continue to work), right-click Delete reference on rows in both surfaces.
 
-D — Sessions create-only dialog. SessionCreateDialog as instance of EntityCrudDialog with the nine-field schema per PRD §2.4: identifier (auto-assigned, read-only), session_date (default today), status (default Complete), title, summary, topics_covered (with DEC-025 placeholder), artifacts_produced, in_flight_at_end (optional), conversation_reference (with DEC-025 placeholder). Sessions panel toolbar New Session button; whitespace right-click New session. Detail pane verified to have no Edit, Delete, or Restore button — append-only stays strict per DEC-013 / DEC-034.
+D — Sessions create-only dialog. SessionCreateDialog as instance of EntityCrudDialog with the nine-field schema per PRD §2.4: identifier (auto-assigned, read-only), session_date (default today), status (default Complete), title, summary, topics_covered (with DEC-025 placeholder), artifacts_produced, in_flight_at_end (optional), conversation_reference (with DEC-025 placeholder). Identifier auto-assignment via compute_next_session_identifier free function (extracted for unit-testability without the qtbot fixture). EntityCrudDialog framework extensions made: FieldSchema.read_only flag (always read-only, distinct from existing read_only_on_edit), placeholder support extended to text widgets (was line-only), default support extended to line widgets in create mode (was combo-only) — all additive, no ripple to existing dialogs. Sessions panel toolbar New Session button; whitespace right-click New session. Detail pane verified to have no Edit, Delete, or Restore button — append-only stays strict per DEC-013 / DEC-034 (asserted via blanket findChildren(QPushButton) scans excluding the ReferencesSection subtree, whose per-row Delete affordance targets references not the session record).
 
 E — Closeout. [List the actual micro-adjustments landed, polish items addressed, and version/README updates per the actual slice E execution.] SES-009 written through the new Sessions create dialog as the user-facing acceptance test for v0.3. Status update to version_label 1.0, phase "v0.3 complete".
 ```
 
-(Replace the bracketed `[fill in]` placeholders with the actual decisions made during slices C and E. The `topics_covered` field is meant to be a faithful summary of what was done.)
+(The slice E paragraph in `topics_covered` above has a `[List the actual micro-adjustments landed...]` placeholder — slice E is the slice writing this record, so fill it in based on what slice E actually did during this run, including any items addressed in Step 1 and Step 4. The slice C and slice D paragraphs are now factual based on those slices' completion reports.)
 
 - `artifacts_produced`:
 
 ```
 - Code: ListDetailPanel factory refactor; TopicsPanel migration; right-click _build_context_menu overrides on all eight panels; EntityIdentifierPicker widget; ReferenceCreateDialog and ReferenceDeleteDialog; SessionCreateDialog; references panel write integration; ReferencesSection extensions; sessions panel write integration; About 0.3.0; README update.
-- Tests: per-panel factory parity tests; context-menu sweep test; entity_identifier_picker tests; reference_create_dialog and reference_delete_dialog tests; references_panel_writes tests; session_create_dialog tests; sessions_panel_writes tests; references_section extension tests. Approximately 120 new tests across the series.
-- Storage layer: [list any storage-layer changes made — DELETE /references/{id}, RELATIONSHIP_TYPES vocab reshape, refresh map extensions]
+- Tests: per-panel factory parity tests; context-menu sweep test; entity_identifier_picker tests; reference_create_dialog and reference_delete_dialog tests; references_panel_writes tests; session_create_dialog tests; sessions_panel_writes tests; references_section extension tests; cascade-framework tests; vocab semantic-rule tests; access delete-by-id tests. Approximately 150 new tests across the series.
+- Storage layer: RELATIONSHIP_RULES tuple-keyed dict + seven-rule kinds_for_pair helper + helpers (kinds_for_source, target_types_for, source_types_with_relationships) in access/vocab.py; delete_by_id on the access-layer references repository; DELETE /references/{id} REST endpoint; create_reference and delete_reference on the UI's StorageClient.
 - Governance records: SES-009 (this record), status update to version_label 1.0 phase "v0.3 complete".
 ```
 
