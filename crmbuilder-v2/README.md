@@ -503,9 +503,9 @@ existing instance instead of spawning a duplicate.
 - Help → About surfaces app version, API URL, database path, and
   snapshot directory.
 
-### v0.2 (current — expanded write surface)
+### v0.2 (expanded write surface)
 
-In addition to the v0.1 surface, v0.2 adds:
+In addition to the v0.1 surface, v0.2 added:
 
 - Full create / edit / delete for **Risks**, **Planning Items**, and
   **Topics**, sharing a common `EntityCrudDialog` base.
@@ -526,12 +526,51 @@ In addition to the v0.1 surface, v0.2 adds:
   deleted rows render with strikethrough and the detail pane shows
   Restore + Edit (no Delete); Restore PATCHes status back to Active.
 
-Sessions and References write surfaces remain deferred to v0.3, as
-does the full styling design pass per DEC-024.
+### v0.3 (current — closes the testability gap)
+
+In addition to the v0.1 + v0.2 surface, v0.3 adds:
+
+- Full create / delete for **References** (the universal cross-entity
+  graph edges per DEC-006), reachable from two entry points:
+  the References panel toolbar's `New Reference` button, and an
+  `Add reference` affordance on every detail pane's
+  `ReferencesSection` (which pre-populates the source side from the
+  hosting entity). The create dialog uses **source-first cascading
+  filters** with strict `RELATIONSHIP_TYPES` vocab compliance —
+  invalid `(source_type, kind, target_type)` combinations are
+  unrepresentable in the dialog. Hard-delete only; references are
+  immutable identity-wise (no edit affordance), and the audit trail
+  goes through the git-tracked `db-export/references.json` snapshot.
+- Append-only create for **Sessions** via a `New Session` toolbar
+  button and the panel's whitespace right-click. The dialog
+  auto-assigns the next `SES-NNN` at open time, defaults
+  `session_date` to today and `status` to `Complete`, and renders
+  DEC-025-aware placeholders on `topics_covered` and
+  `conversation_reference`. No edit, no delete, no draft mode —
+  append-only stays strict per DEC-013 / DEC-034.
+- **Right-click context menus uniform across every entity row** as
+  a global UX principle (per DEC-036). Whitespace right-click
+  surfaces creation actions; row right-click parallels the
+  toolbar / detail-pane buttons. Per-row `Delete reference` and
+  `Go to [other side]` actions appear on rendered references inside
+  any detail pane's `ReferencesSection`.
+- A **`ListDetailPanel` factory refactor** (per DEC-035): the base
+  panel exposes `_create_master_widget` and `_build_context_menu`
+  factory methods so subclasses customise the master widget and
+  context menu without overriding `_build_ui`. The Topics panel's
+  v0.2 `self._table = self._tree` workaround is retired.
+
+After v0.3, every governance write — including the records of v0.3's
+own build conversation — can be authored through the desktop
+application without leaving the UI.
+
+The full styling design pass per DEC-024 remains deferred (PI-001
+tracks the deferral); v0.3 introduced only the small visual
+adjustments demanded by its scope.
 
 Logs land at `~/.crmbuilder-v2/ui.log`. Full requirements:
-`PRDs/product/crmbuilder-v2/ui-PRD-v0.2.md` (current); v0.1 baseline at
-`ui-PRD-v0.1.md`.
+`PRDs/product/crmbuilder-v2/ui-PRD-v0.3.md` (current); v0.2 and v0.1
+baselines at `ui-PRD-v0.2.md` and `ui-PRD-v0.1.md`.
 
 ---
 
