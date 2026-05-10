@@ -271,6 +271,9 @@ class DecisionsPanel(ListDetailPanel):
                 lambda _checked=False, r=record: self._on_delete_clicked(r)
             )
 
+        # Visual hierarchy between write and read actions, matching the
+        # References panel's separator placement (slice E micro-adjust).
+        menu.addSeparator()
         show_refs_action = menu.addAction("Show references")
         show_refs_action.triggered.connect(
             lambda _checked=False, r=record: self._show_references_for(r)

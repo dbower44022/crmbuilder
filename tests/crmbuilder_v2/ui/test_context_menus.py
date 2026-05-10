@@ -76,7 +76,9 @@ def test_decisions_context_menu_active_row(qtbot, client_stub):
     record = {"identifier": "DEC-007", "title": "Test", "status": "Active"}
     index = _seed_table_records(panel, [record])
     menu = panel._build_context_menu(index)
-    assert _action_labels(menu) == ["Edit", "Delete", "Show references"]
+    # Separator entries have empty text; assert non-separator labels.
+    labels = [a.text() for a in menu.actions() if not a.isSeparator()]
+    assert labels == ["Edit", "Delete", "Show references"]
 
 
 def test_decisions_context_menu_deleted_row_shows_restore(qtbot, client_stub):
@@ -85,7 +87,29 @@ def test_decisions_context_menu_deleted_row_shows_restore(qtbot, client_stub):
     record = {"identifier": "DEC-007", "title": "Test", "status": "Deleted"}
     index = _seed_table_records(panel, [record])
     menu = panel._build_context_menu(index)
-    assert _action_labels(menu) == ["Edit", "Restore", "Show references"]
+    labels = [a.text() for a in menu.actions() if not a.isSeparator()]
+    assert labels == ["Edit", "Restore", "Show references"]
+
+
+def test_decisions_context_menu_separator_between_write_and_read(
+    qtbot, client_stub
+):
+    """v0.3 slice E micro-adjust: a visual separator distinguishes the
+    write actions (Edit / Delete or Restore) from the read action
+    (Show references), mirroring the References panel's hierarchy.
+    """
+    panel = DecisionsPanel(client=client_stub)
+    qtbot.addWidget(panel)
+    record = {"identifier": "DEC-007", "title": "Test", "status": "Active"}
+    index = _seed_table_records(panel, [record])
+    menu = panel._build_context_menu(index)
+    actions = list(menu.actions())
+    # Find the separator and assert it sits between "Delete" and "Show references".
+    separator_indices = [i for i, a in enumerate(actions) if a.isSeparator()]
+    assert len(separator_indices) == 1
+    sep = separator_indices[0]
+    assert actions[sep - 1].text() == "Delete"
+    assert actions[sep + 1].text() == "Show references"
 
 
 # ---------------------------------------------------------------------------

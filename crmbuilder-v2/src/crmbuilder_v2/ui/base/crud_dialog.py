@@ -300,8 +300,8 @@ class FormWidgets:
         label.setVisible(False)
 
     def clear_all_errors(self) -> None:
-        for field in self._error_labels:
-            self.clear_error(field)
+        for field_key in self._error_labels:
+            self.clear_error(field_key)
 
 
 # ---------------------------------------------------------------------------

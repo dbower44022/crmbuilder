@@ -45,6 +45,8 @@ When a session engages v2 work — by the conversation referencing v2, or the us
 - **Tier 2 (file-fallback when MCP is not connected):** Read the JSON snapshots under `PRDs/product/crmbuilder-v2/db-export/` directly — `status.json`, `charter.json`, `sessions.json`, `decisions.json`, `references.json`. Same content as the MCP returns; just static.
 - **Tier 3 (on-demand):** Targeted queries during conversation as topics arise.
 
+**Reference relationship vocabulary lives in `crmbuilder-v2/src/crmbuilder_v2/access/vocab.py`.** The set of valid kinds is `REFERENCE_RELATIONSHIPS`; the `(source_type, target_type) → frozenset[kinds]` constraint mapping (`RELATIONSHIP_RULES`) is precomputed at module load by `_kinds_for_pair` from seven semantic rules. The UI's references-create dialog drives its cascading filters from `RELATIONSHIP_RULES` directly, so vocab compliance is strict end-to-end. **Adding a new relationship kind requires updating both** — `REFERENCE_RELATIONSHIPS` for the kind's existence, and `_kinds_for_pair` for its source/target constraints. (The `refs.relationship_kind` CHECK constraint also needs an Alembic migration.)
+
 v1 work continues normally — the deployment engine, methodology guides, and existing app code are not part of v2 and are maintained under their existing locations.
 
 ## Commands
