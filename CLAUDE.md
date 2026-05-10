@@ -47,6 +47,8 @@ When a session engages v2 work — by the conversation referencing v2, or the us
 
 **Reference relationship vocabulary lives in `crmbuilder-v2/src/crmbuilder_v2/access/vocab.py`.** The set of valid kinds is `REFERENCE_RELATIONSHIPS`; the `(source_type, target_type) → frozenset[kinds]` constraint mapping (`RELATIONSHIP_RULES`) is precomputed at module load by `_kinds_for_pair` from seven semantic rules. The UI's references-create dialog drives its cascading filters from `RELATIONSHIP_RULES` directly, so vocab compliance is strict end-to-end. **Adding a new relationship kind requires updating both** — `REFERENCE_RELATIONSHIPS` for the kind's existence, and `_kinds_for_pair` for its source/target constraints. (The `refs.relationship_kind` CHECK constraint also needs an Alembic migration.)
 
+**v2 version source lives in `crmbuilder-v2/src/crmbuilder_v2/__init__.py` as the `__version__` constant.** The repo bundles v2 into the parent crmbuilder distribution's root `pyproject.toml` rather than a v2-specific one — there is no `crmbuilder-v2/pyproject.toml`. The About dialog reads via `importlib.metadata` with a fallback to `__version__`. Version bumps for v2 release closeout (e.g., slice E of any v2-ui-vX.Y series) update `__version__` only.
+
 v1 work continues normally — the deployment engine, methodology guides, and existing app code are not part of v2 and are maintained under their existing locations.
 
 ## Commands

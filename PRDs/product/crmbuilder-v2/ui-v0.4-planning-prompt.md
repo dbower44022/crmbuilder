@@ -1,6 +1,6 @@
 # v2 UI v0.4 — Planning Kickoff Prompt
 
-**Last Updated:** 05-09-26 21:30
+**Last Updated:** 05-09-26 23:45
 **Purpose:** Seed prompt for a new Claude.ai conversation that plans v0.4 of the v2 desktop UI.
 **Predecessor:** v0.3 shipped 05-09-26 via the five-prompt v2-ui-v0.3 series (slices A through E).
 **Goal posture:** Deliberately open. v0.4's frame is the first architectural question of the planning conversation. PI-001 (the styling pass deferred three times — DEC-024, DEC-026, DEC-037) is a forcing function: v0.4 must engage it explicitly. How v0.4 engages — primary frame, secondary work alongside another frame, or fourth deferral with new tracking mechanism — is what the planning conversation decides.
@@ -103,19 +103,25 @@ Per the user's preferences:
 
 ## Governance — at conversation close
 
-Per DEC-025, when the v0.4 planning session record is created at the close of the planning conversation:
+Per DEC-013, one Claude.ai conversation produces one session record. The v0.4 planning session record is written **at the actual close of this Claude.ai conversation, not in slice A of the build**. v0.3's planning conversation deviated from this pattern — SES-008 was written in slice A's planning records, which captured only the v0.3 planning portion of the conversation; subsequent work in the same chat (slice review, prompt amendments, v0.5 kickoff prep) was uncovered by SES-008 and required a supplemental record. v0.4 closes this gap.
 
-- `identifier`: the next available SES-NNN at conversation close. Compute by querying `client.list_sessions()` (or read `db-export/sessions.json`) for the highest existing identifier and incrementing.
+**Session-record-at-close pattern:**
+
+- **Slice A of the v0.4 build writes only** the decisions (DEC-NNN through DEC-MMM), the references from the planning session record to those decisions, the planning item(s) for any deferred work, and the status update. **Slice A does NOT write the session record** — the references it writes use the planning session's identifier (e.g., `source_id: "SES-NNN"`) but the session record itself is created later.
+- **The session record is written at the close of THIS Claude.ai planning conversation**, by Doug, through the v0.3 desktop application's `New Session` dialog. The conversation's last action is dialog open → fields filled → Save. This is the production dogfood for v0.3, continuing the SES-009 pattern.
+- **A subsequent session record captures the v0.4 build itself** at slice E close, also through the dialog.
+
+**Per DEC-025, when the v0.4 planning session record is created:**
+
+- `identifier`: the next available SES-NNN at conversation close. The dialog auto-assigns by querying `client.list_sessions()` and incrementing.
 - `conversation_reference`: descriptive text identifying the conversation by deliverables. Example template: `"Claude.ai planning conversation that produced ui-PRD-v0.4.md, ui-v0.4-implementation-plan.md, and the CLAUDE-CODE-PROMPT-v2-ui-v0.4 series under PRDs/product/crmbuilder-v2/. No transcript preserved per DEC-025."`
-- `topics_covered`: opens with the verbatim seed prompt rendered as `Seed prompt: "<the task statement at the top of this document>"`, followed by a structured summary of the architectural questions discussed.
+- `topics_covered`: opens with the verbatim seed prompt rendered as `Seed prompt: "<the task statement at the top of this document>"`, followed by a structured summary of the architectural questions discussed and decisions made.
 - `artifacts_produced`: list of deliverables (PRD, plan, prompts).
 - `in_flight_at_end`: anything explicitly deferred to v0.5 or later.
 
 If PI-001 is fully discharged in v0.4, mark its status accordingly and note the discharge in the v0.4 planning session record. If PI-001 is partially addressed or deferred again, document the rationale and (if deferred) the new tracking mechanism.
 
-A subsequent session record captures the v0.4 build itself once execution begins.
-
-**This planning conversation should be authored through the v0.3 desktop application's `New Session` dialog**, not through a Python script. Authoring this record through the dialog is the production dogfood for v0.3 — every Claude.ai conversation that engages v2 work from this point forward should be captured this way unless a specific reason prevents it.
+**The session record is the conversation's last action.** If post-record work happens in the same chat (e.g., review of subsequent slice reports, amendments to slice prompts, kickoff prep for v0.5), those are governance-uncovered and should either be done in a separate Claude.ai conversation (which produces its own session record) or captured in a supplemental record at THIS conversation's actual end. Prefer separate conversations for clarity.
 
 ---
 
