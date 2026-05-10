@@ -1,6 +1,6 @@
 # v2 UI v0.4 — Planning Kickoff Prompt
 
-**Last Updated:** 05-09-26 23:45
+**Last Updated:** 05-10-26 00:30
 **Purpose:** Seed prompt for a new Claude.ai conversation that plans v0.4 of the v2 desktop UI.
 **Predecessor:** v0.3 shipped 05-09-26 via the five-prompt v2-ui-v0.3 series (slices A through E).
 **Goal posture:** Deliberately open. v0.4's frame is the first architectural question of the planning conversation. PI-001 (the styling pass deferred three times — DEC-024, DEC-026, DEC-037) is a forcing function: v0.4 must engage it explicitly. How v0.4 engages — primary frame, secondary work alongside another frame, or fourth deferral with new tracking mechanism — is what the planning conversation decides.
@@ -77,6 +77,10 @@ From SES-009's `in_flight_at_end` (the canonical v0.4 candidate backlog):
 ### Production-use friction (highest weight, populated dynamically)
 
 Anything Doug discovers from using v0.3 for real governance work between v0.3 close and v0.4 planning. Read recent session records (post-SES-009) for friction points — those are the highest-priority candidates because they reflect actual use rather than speculation.
+
+Known friction inputs at kickoff time:
+
+- **SES-010 — identifier auto-assignment asymmetry between dialog and direct-API consumers.** The desktop dialog's `compute_next_session_identifier` hides identifier computation from end users, but `POST /sessions` (and `POST /decisions`, `POST /planning_items`, etc.) requires the identifier in the body — direct-API consumers (curl, MCP, scripts) hit `request_validation_error: body.identifier — Field required` if they don't compute and supply it. v0.4 may engage one of three resolutions: (A) document the pattern only — already done in `crmbuilder/CLAUDE.md` post-SES-010; (B) add `GET /<entity>/next-identifier` helper endpoints for each prefixed-identifier entity type; (C) make `identifier` optional in POST bodies and have the API auto-assign when omitted (changes API semantics; affects all prefixed-identifier entities consistently). Decision is v0.4's to make.
 
 ---
 

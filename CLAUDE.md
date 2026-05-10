@@ -49,6 +49,8 @@ When a session engages v2 work — by the conversation referencing v2, or the us
 
 **v2 version source lives in `crmbuilder-v2/src/crmbuilder_v2/__init__.py` as the `__version__` constant.** The repo bundles v2 into the parent crmbuilder distribution's root `pyproject.toml` rather than a v2-specific one — there is no `crmbuilder-v2/pyproject.toml`. The About dialog reads via `importlib.metadata` with a fallback to `__version__`. Version bumps for v2 release closeout (e.g., slice E of any v2-ui-vX.Y series) update `__version__` only.
 
+**Direct-API writes for prefixed-identifier entity types compute the identifier client-side, not server-side.** Sessions (`SES-NNN`), decisions (`DEC-NNN`), planning items (`PI-NNN`), risks, topics, charter/status versions, and any other entity using a prefixed-string identifier require the identifier in the POST body — the API does not auto-assign. The dialogs in the v0.3+ desktop UI hide this via per-entity helpers like `compute_next_session_identifier(client.list_sessions())`, but consumers writing through curl, MCP tool calls, or scripts must compute it themselves: query `GET /<entity>` for the highest existing prefixed identifier, increment the numeric suffix, supply it in the POST. Surfaced in SES-010 (a direct-API session write that initially failed `request_validation_error: body.identifier — Field required`). Whether to lift identifier auto-assignment to the API is a v0.4 candidate per SES-010's friction note.
+
 v1 work continues normally — the deployment engine, methodology guides, and existing app code are not part of v2 and are maintained under their existing locations.
 
 ## Commands
