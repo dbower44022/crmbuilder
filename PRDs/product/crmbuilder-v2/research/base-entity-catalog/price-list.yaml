@@ -123,7 +123,7 @@ systems:
 # Attributes
 # =============================================================================
 attributes:
-  - name: name
+  - name: priceListName
     display_name: Price List Name
     type: string
     required: true

@@ -148,7 +148,7 @@ systems:
 # Attributes
 # =============================================================================
 attributes:
-  - name: name
+  - name: opportunityName
     display_name: Opportunity Name
     type: string
     required: true
@@ -213,8 +213,8 @@ attributes:
         api_name: AccountId
       bloomerang:
         status: absent
-  - name: amount
-    display_name: Amount
+  - name: opportunityAmount
+    display_name: Opportunity Amount
     type: currency
     required: false
     description: >
@@ -285,8 +285,8 @@ attributes:
       - expected close
       - target close
       - forecast close
-  - name: stage
-    display_name: Stage
+  - name: opportunityStage
+    display_name: Opportunity Stage
     type: enum
     required: true
     enum_values:
@@ -364,8 +364,8 @@ attributes:
       - likelihood
       - win probability
       - confidence
-  - name: type
-    display_name: Type
+  - name: opportunityType
+    display_name: Opportunity Type
     type: enum
     required: false
     enum_values:

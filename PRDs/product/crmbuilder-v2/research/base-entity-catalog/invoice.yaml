@@ -206,8 +206,8 @@ attributes:
         api_name: Order
       bloomerang:
         status: absent
-  - name: status
-    display_name: Status
+  - name: invoiceStatus
+    display_name: Invoice Status
     type: enum
     required: true
     enum_values:

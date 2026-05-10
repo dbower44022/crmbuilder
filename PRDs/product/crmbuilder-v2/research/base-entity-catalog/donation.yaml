@@ -138,8 +138,8 @@ systems:
 # Attributes
 # =============================================================================
 attributes:
-  - name: amount
-    display_name: Amount
+  - name: giftAmount
+    display_name: Gift Amount
     type: currency
     required: true
     description: >
@@ -203,8 +203,8 @@ attributes:
       - gift date
       - received date
       - received on
-  - name: status
-    display_name: Status
+  - name: donationStatus
+    display_name: Donation Status
     type: enum
     required: true
     enum_values:

@@ -137,7 +137,7 @@ systems:
 # Attributes
 # =============================================================================
 attributes:
-  - name: name
+  - name: accountName
     display_name: Account Name
     type: string
     required: true
@@ -174,8 +174,8 @@ attributes:
       bloomerang:
         status: standard
         api_name: FullName
-  - name: type
-    display_name: Type
+  - name: accountType
+    display_name: Account Type
     type: enum
     required: false
     enum_values:

@@ -135,7 +135,7 @@ systems:
 # =============================================================================
 attributes:
   - name: subject
-    display_name: Subject
+    display_name: Email Subject
     type: string
     required: true
     max_length: 255
@@ -349,8 +349,8 @@ attributes:
       bloomerang:
         status: standard
         api_name: MessageDate
-  - name: status
-    display_name: Status
+  - name: emailStatus
+    display_name: Email Status
     type: enum
     required: false
     enum_values:

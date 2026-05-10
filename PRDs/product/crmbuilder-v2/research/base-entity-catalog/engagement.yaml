@@ -94,7 +94,7 @@ systems:
     docs_url: https://bloomerang.com/api/rest-api-v1/
 
 attributes:
-  - name: name
+  - name: engagementName
     display_name: Engagement Name
     type: string
     required: true
@@ -119,7 +119,7 @@ attributes:
         api_name: Name
       bloomerang:
         status: absent
-  - name: type
+  - name: engagementType
     display_name: Engagement Type
     type: enum
     required: true
@@ -142,8 +142,8 @@ attributes:
         api_name: npe5__Engagement_Plan_Template__c
       bloomerang:
         status: absent
-  - name: status
-    display_name: Status
+  - name: engagementStatus
+    display_name: Engagement Status
     type: enum
     required: true
     enum_values:

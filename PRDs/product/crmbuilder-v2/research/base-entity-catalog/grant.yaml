@@ -118,7 +118,7 @@ systems:
 # Attributes
 # =============================================================================
 attributes:
-  - name: name
+  - name: grantName
     display_name: Grant Name
     type: string
     required: true
@@ -198,8 +198,8 @@ attributes:
       - granted amount
       - awarded amount
 
-  - name: status
-    display_name: Status
+  - name: grantStatus
+    display_name: Grant Status
     type: enum
     required: true
     enum_values: [Researching, In Application, Submitted, Under Review, Awarded, Declined, Reporting Period, Closed]

@@ -139,8 +139,8 @@ attributes:
       - level
       - tier
       - membership level
-  - name: status
-    display_name: Status
+  - name: membershipStatus
+    display_name: Membership Status
     type: enum
     required: true
     enum_values:
@@ -238,7 +238,7 @@ attributes:
         api_name: npe01__Membership_End_Date__c
       bloomerang:
         status: custom
-  - name: amount
+  - name: duesAmount
     display_name: Dues Amount
     type: currency
     required: false

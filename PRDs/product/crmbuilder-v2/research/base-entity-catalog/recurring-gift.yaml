@@ -126,7 +126,7 @@ systems:
 # Attributes
 # =============================================================================
 attributes:
-  - name: amount
+  - name: installmentAmount
     display_name: Installment Amount
     type: currency
     required: true
@@ -279,8 +279,8 @@ attributes:
         api_name: npe03__Installments__c
       bloomerang:
         status: custom
-  - name: status
-    display_name: Status
+  - name: recurringStatus
+    display_name: Recurring Donation Status
     type: enum
     required: true
     enum_values:

@@ -157,8 +157,8 @@ attributes:
       bloomerang:
         status: standard
         api_name: PaymentNumber
-  - name: amount
-    display_name: Amount
+  - name: paymentAmount
+    display_name: Payment Amount
     type: currency
     required: true
     description: >
@@ -255,8 +255,8 @@ attributes:
       bloomerang:
         status: standard
         api_name: PaymentMethod
-  - name: status
-    display_name: Status
+  - name: paymentStatus
+    display_name: Payment Status
     type: enum
     required: true
     enum_values:

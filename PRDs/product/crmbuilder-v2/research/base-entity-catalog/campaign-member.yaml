@@ -219,7 +219,7 @@ attributes:
         api_name: Lead
       bloomerang:
         status: absent
-  - name: status
+  - name: memberStatus
     display_name: Member Status
     type: enum
     required: true

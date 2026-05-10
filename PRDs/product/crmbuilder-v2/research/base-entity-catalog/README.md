@@ -1,7 +1,7 @@
 # Base Entity Catalog
 
-**Last Updated:** 05-09-26 13:00
-**Status:** All 5 tiers complete; schema v0.8 with attribute synonyms and per-system api_names; catalog at 42 entries
+**Last Updated:** 05-09-26 14:05
+**Status:** All 5 tiers complete; schema v0.9 with naming-convention rationalized; catalog at 42 entries
 **Owner:** CRMBuilder v2
 
 ---
@@ -10,6 +10,7 @@
 
 | Version | Date | Description |
 |---------|------|-------------|
+| 0.9 | 05-09-26 | Naming convention rationalization. Selectively renamed generic-noun attribute internal names (Pattern C from the design discussion): bare `name`, `status`, `type`, `amount` get entity-context prefixes — e.g., `account.name` → `account.accountName`, `donation.amount` → `donation.giftAmount`, `case.status` → `case.caseStatus`. ~50 attributes renamed across 31 entities. Display names also standardized: any bare `Status` / `Type` / `Subject` / `Body` / `Role` display gets entity prefix (`Activity Status`, `Engagement Type`, `Note Body`, etc.). `Description` and `Title` stayed bare (judged contextually clear). Subclass discriminators referencing renamed parent attributes were updated (`account-household` and `account-nonprofit` discriminator now references `accountType` not `type`). Naming convention documented in new "Naming conventions" section below. Note: `donation-major-gift` subclass discriminator still references `parent.type` but `donation.yaml` has no `type` attribute — pre-existing latent bug not addressed by this rename pass; flagged for follow-up commit that adds `donationType` to donation.yaml. The api_name overrides in `presence` are unchanged — system api_names stayed the same (Salesforce.Account.Name is still `Name`, etc.); only the catalog-internal name was prefixed. Map regenerated to v0.3. |
 | 0.8 | 05-09-26 | Schema enhancement (no new entries; existing 42 entries enriched). Two additions to attribute schema: (1) `common_synonyms` — optional list of alternate vocabulary terms users say when describing the attribute (e.g., `industry` synonyms = sector, vertical, line of business). 81 attributes backfilled with synonyms across high-divergence-vocabulary fields. (2) `presence` per-system value transformed from a flat status string into a structured object: `{ status: standard\|custom\|absent, api_name: "system-specific-field-name" }`. The api_name is populated on standard cells via a combination of: (a) explicit overrides from authoritative system documentation (~250 known divergences — Salesforce StageName, HubSpot lifecyclestage, NPSP npe-prefixed custom objects, CiviCRM snake_case fields, etc.), and (b) convention-based defaults for the rest (Salesforce PascalCase, HubSpot lowercase, EspoCRM camelCase, CiviCRM snake_case, Bloomerang PascalCase, Attio snake_case). All 1,545 standard cells across 2,898 total cells are populated; absent on `custom` cells (where the customer chooses the name at deploy time) and `absent` cells. **V2 deployment configuration should verify api_names against current target-system docs before applying** — convention-derived defaults are best-effort and may need correction for specific fields. Both changes are backward-compatible additions; ingestion-time consumers handle the new structure. |
 | 0.7 | 05-09-26 | Cross-cutting deliverables published as siblings to this directory: `../base-entity-catalog-research.md` (narrative companion documenting archetype patterns, modeling decisions, and V2 implementation recommendations) and `../entity-system-map.yaml` (programmatically-generated flat lookup table mapping each catalog entity to its representation in all 7 surveyed systems). Catalog content unchanged in this version. |
 | 0.6 | 05-09-26 | Tier 5 (communications detail) added: 5 Activity subclasses (activity-email, activity-phone-call, activity-meeting, activity-video-meeting, activity-sms) plus 2 standalone universal entities (document, contract). All 5 communication subclasses share Activity's parent attributes and add channel-specific delta attributes only. Catalog now stands at 42 entries: 34 universal + 8 subclasses across all 5 tiers. |
@@ -197,7 +198,45 @@ Each system entry within `presence` is a structured object:
 
 ---
 
-## Sourcing methodology
+## Naming conventions
+
+Catalog field names follow these conventions. They emerged from the v0.9 rationalization and apply to all future entries.
+
+### Internal attribute name (`attributes[].name`)
+
+The internal name is what V2's logic uses for identity, lookup, and cross-reference. Two rules:
+
+1. **Descriptive names stay bare.** When the attribute name is unambiguous in any context — `industry`, `firstName`, `birthDate`, `paymentMethod`, `phoneNumber`, `mailingAddress`, `numberOfEmployees`, `annualRevenue` — the internal name uses the descriptive form without entity prefix.
+
+2. **Generic-noun names get an entity-context prefix.** When the bare name is too generic to stand alone in queries / cross-references / API code (`name`, `status`, `type`, `amount`), the internal name adopts an entity-context prefix:
+   - `account.accountName` (not `account.name`)
+   - `donation.giftAmount` (not `donation.amount`)
+   - `case.caseStatus` (not `case.status`)
+   - `engagement.engagementType` (not `engagement.type`)
+   - `pipeline-stage.stageName` (not `pipeline-stage.name`)
+   - Audit fields (`createdAt`, `lastModifiedAt`, `id`) and reference fields whose name already implies the target (`assignedUser`, `parentAccount`, `account`, `contact`) stay bare — they're universally understood.
+
+### Display name (`attributes[].display_name`)
+
+The display name is what V2 surfaces to users in interview methodology, gap reports, and cross-system mapping output. Always entity-prefixed when bare would be ambiguous:
+
+- `Account Name`, `Donation Status`, `Gift Amount`, `Case Subject`, `Note Body`, `User Role`
+- Already-descriptive names display bare: `First Name`, `Industry`, `Email`, `Phone`, `Mobile Phone`
+- Internal name and display_name conventions are aligned but not identical — `internal: industry` displays as `Industry` (no prefix needed); `internal: accountName` displays as `Account Name`.
+
+### Subclass attributes
+
+Subclasses inherit the parent's attribute conventions. Discriminator references in `discriminator.attribute` must match the (post-rename) parent attribute name. When a parent attribute is renamed, all subclass discriminators referencing it must also be updated.
+
+### Why these conventions
+
+The rule set balances three pressures: (1) most CRM systems use bare attribute names natively (Salesforce.Account.Name, HubSpot.companies.name, Attio.companies.name), so prefixing in the catalog adds catalog-only naming that diverges from system conventions — handled in the api_name override table at deployment time; (2) catalog readers and V2 logic frequently encounter attribute references out of entity context (in cross-references, gap reports, multi-entity queries), where bare generic nouns are genuinely ambiguous; (3) display names are user-facing and benefit from disambiguation regardless of internal naming.
+
+The chosen pattern — bare internal names for descriptive attributes, prefixed internal names for generic-noun attributes, always-prefixed display names for ambiguous bare nouns — minimizes friction with system conventions while resolving the genuine ambiguity in catalog-internal contexts.
+
+---
+
+
 
 For every entry in this catalog, claims are grounded in the following sources, in order of authority:
 

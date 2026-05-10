@@ -9,17 +9,12 @@
 # =============================================================================
 
 catalog_id: entity-system-map
-catalog_version: "0.2"
-last_updated: "05-09-26 13:10"
-source_catalog: base-entity-catalog/ (schema v0.8)
+catalog_version: "0.3"
+last_updated: "05-09-26 14:00"
+source_catalog: base-entity-catalog/ (schema v0.9 — generic-noun rename)
 source_entries: 42
 systems: [salesforce, hubspot, attio, espocrm, civicrm, salesforce_npsp, bloomerang]
 
-# Schema:
-#   mappings[].catalog_id, name, tier, entry_kind, parent_entity, discriminator
-#   mappings[].by_system[<sys>]:
-#     entity-level: name, api_name, is_standard, mechanism (subclasses only), docs_url
-#     attributes: { <attr_name>: { status, api_name? } }
 mappings:
 
   - catalog_id: account
@@ -33,8 +28,8 @@ mappings:
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_account.htm
         attributes:
-          name: { status: standard, api_name: "Name" }
-          type: { status: standard, api_name: "Type" }
+          accountName: { status: standard, api_name: "Name" }
+          accountType: { status: standard, api_name: "Type" }
           industry: { status: standard, api_name: "Industry" }
           website: { status: standard, api_name: "Website" }
           phone: { status: standard, api_name: "Phone" }
@@ -54,8 +49,8 @@ mappings:
         is_standard: true
         docs_url: https://developers.hubspot.com/blog/a-developers-guide-to-hubspot-crm-objects-company-object
         attributes:
-          name: { status: standard, api_name: "name" }
-          type: { status: standard, api_name: "type" }
+          accountName: { status: standard, api_name: "name" }
+          accountType: { status: standard, api_name: "type" }
           industry: { status: standard, api_name: "industry" }
           website: { status: standard, api_name: "website" }
           phone: { status: standard, api_name: "phone" }
@@ -75,8 +70,8 @@ mappings:
         is_standard: true
         docs_url: https://attio.com/help/reference/managing-your-data/objects/manage-standard-objects
         attributes:
-          name: { status: standard, api_name: "name" }
-          type: { status: custom }
+          accountName: { status: standard, api_name: "name" }
+          accountType: { status: custom }
           industry: { status: standard, api_name: "categories" }
           website: { status: standard, api_name: "domains" }
           phone: { status: custom }
@@ -96,8 +91,8 @@ mappings:
         is_standard: true
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Account.json
         attributes:
-          name: { status: standard, api_name: "name" }
-          type: { status: standard, api_name: "type" }
+          accountName: { status: standard, api_name: "name" }
+          accountType: { status: standard, api_name: "type" }
           industry: { status: standard, api_name: "industry" }
           website: { status: standard, api_name: "website" }
           phone: { status: standard, api_name: "phoneNumber" }
@@ -117,8 +112,8 @@ mappings:
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/contacts/
         attributes:
-          name: { status: standard, api_name: "organization_name" }
-          type: { status: standard, api_name: "contact_sub_type" }
+          accountName: { status: standard, api_name: "organization_name" }
+          accountType: { status: standard, api_name: "contact_sub_type" }
           industry: { status: custom }
           website: { status: standard, api_name: "url" }
           phone: { status: standard, api_name: "phone" }
@@ -138,8 +133,8 @@ mappings:
         is_standard: true
         docs_url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-success-pack-basics/organize-your-data-with-npsp
         attributes:
-          name: { status: standard, api_name: "Name" }
-          type: { status: standard, api_name: "Type" }
+          accountName: { status: standard, api_name: "Name" }
+          accountType: { status: standard, api_name: "Type" }
           industry: { status: standard, api_name: "Industry" }
           website: { status: standard, api_name: "Website" }
           phone: { status: standard, api_name: "Phone" }
@@ -159,8 +154,8 @@ mappings:
         is_standard: true
         docs_url: https://bloomerang.com/api/rest-api-v1/
         attributes:
-          name: { status: standard, api_name: "FullName" }
-          type: { status: standard, api_name: "Type" }
+          accountName: { status: standard, api_name: "FullName" }
+          accountType: { status: standard, api_name: "Type" }
           industry: { status: custom }
           website: { status: standard, api_name: "Website" }
           phone: { status: standard, api_name: "PrimaryPhone" }
@@ -187,7 +182,7 @@ mappings:
         attributes:
           subject: { status: standard, api_name: "Subject" }
           activityType: { status: standard, api_name: "TaskSubtype" }
-          status: { status: standard, api_name: "Status" }
+          activityStatus: { status: standard, api_name: "Status" }
           activityDate: { status: standard, api_name: "ActivityDate" }
           dueDate: { status: standard, api_name: "ActivityDate" }
           dateStart: { status: standard, api_name: "StartDateTime" }
@@ -205,7 +200,7 @@ mappings:
         attributes:
           subject: { status: standard, api_name: "hs_engagement_subject" }
           activityType: { status: standard, api_name: "hs_engagement_type" }
-          status: { status: standard, api_name: "hs_task_status" }
+          activityStatus: { status: standard, api_name: "hs_task_status" }
           activityDate: { status: standard, api_name: "hs_timestamp" }
           dueDate: { status: standard, api_name: "hs_task_due_date" }
           dateStart: { status: standard, api_name: "hs_meeting_start_time" }
@@ -223,7 +218,7 @@ mappings:
         attributes:
           subject: { status: standard, api_name: "name" }
           activityType: { status: standard, api_name: "type" }
-          status: { status: standard, api_name: "status" }
+          activityStatus: { status: standard, api_name: "status" }
           activityDate: { status: standard, api_name: "activity_date" }
           dueDate: { status: standard, api_name: "deadline_at" }
           dateStart: { status: standard, api_name: "starts_at" }
@@ -241,7 +236,7 @@ mappings:
         attributes:
           subject: { status: standard, api_name: "name" }
           activityType: { status: standard, api_name: "type" }
-          status: { status: standard, api_name: "status" }
+          activityStatus: { status: standard, api_name: "status" }
           activityDate: { status: standard, api_name: "dateStart" }
           dueDate: { status: standard, api_name: "dateEnd" }
           dateStart: { status: standard, api_name: "dateStart" }
@@ -259,7 +254,7 @@ mappings:
         attributes:
           subject: { status: standard, api_name: "subject" }
           activityType: { status: standard, api_name: "activity_type_id" }
-          status: { status: standard, api_name: "status_id" }
+          activityStatus: { status: standard, api_name: "status_id" }
           activityDate: { status: standard, api_name: "activity_date_time" }
           dueDate: { status: custom }
           dateStart: { status: standard, api_name: "activity_date_time" }
@@ -277,7 +272,7 @@ mappings:
         attributes:
           subject: { status: standard, api_name: "Subject" }
           activityType: { status: standard, api_name: "TaskSubtype" }
-          status: { status: standard, api_name: "Status" }
+          activityStatus: { status: standard, api_name: "Status" }
           activityDate: { status: standard, api_name: "ActivityDate" }
           dueDate: { status: standard, api_name: "ActivityDate" }
           dateStart: { status: standard, api_name: "StartDateTime" }
@@ -295,7 +290,7 @@ mappings:
         attributes:
           subject: { status: standard, api_name: "Subject" }
           activityType: { status: standard, api_name: "Type" }
-          status: { status: custom }
+          activityStatus: { status: custom }
           activityDate: { status: standard, api_name: "Date" }
           dateStart: { status: standard, api_name: "DateStart" }
           dateEnd: { status: standard, api_name: "DateEnd" }
@@ -578,7 +573,7 @@ mappings:
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_topic.htm
         attributes:
-          name: { status: standard, api_name: "Name" }
+          tagName: { status: standard, api_name: "Name" }
           description: { status: custom }
           createdAt: { status: standard, api_name: "CreatedDate" }
       hubspot:
@@ -587,7 +582,7 @@ mappings:
         is_standard: false
         docs_url: https://knowledge.hubspot.com/properties/multi-select-properties
         attributes:
-          name: { status: custom }
+          tagName: { status: custom }
           description: { status: custom }
           isActive: { status: custom }
           createdAt: { status: custom }
@@ -597,7 +592,7 @@ mappings:
         is_standard: true
         docs_url: https://attio.com/help/reference/managing-your-data/attributes/create-manage-attributes
         attributes:
-          name: { status: standard, api_name: "title" }
+          tagName: { status: standard, api_name: "title" }
           description: { status: standard, api_name: "description" }
           parent: { status: custom }
           color: { status: standard, api_name: "color" }
@@ -609,7 +604,7 @@ mappings:
         is_standard: true
         docs_url: https://docs.espocrm.com/user-guide/tags/
         attributes:
-          name: { status: standard, api_name: "name" }
+          tagName: { status: standard, api_name: "name" }
           description: { status: standard, api_name: "description" }
           parent: { status: standard, api_name: "parentId" }
           color: { status: standard, api_name: "color" }
@@ -621,7 +616,7 @@ mappings:
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/tags/
         attributes:
-          name: { status: standard, api_name: "name" }
+          tagName: { status: standard, api_name: "name" }
           description: { status: standard, api_name: "description" }
           parent: { status: standard, api_name: "parent_id" }
           color: { status: standard, api_name: "color" }
@@ -633,7 +628,7 @@ mappings:
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_topic.htm
         attributes:
-          name: { status: standard, api_name: "Name" }
+          tagName: { status: standard, api_name: "Name" }
           description: { status: custom }
           createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
@@ -642,7 +637,7 @@ mappings:
         is_standard: true
         docs_url: https://bloomerang.com/api/rest-api-v1/
         attributes:
-          name: { status: standard, api_name: "Name" }
+          tagName: { status: standard, api_name: "Name" }
           description: { status: standard, api_name: "Description" }
           parent: { status: standard, api_name: "ParentId" }
           color: { status: custom }
@@ -667,7 +662,7 @@ mappings:
           title: { status: standard, api_name: "Title" }
           role: { status: standard, api_name: "UserRoleId" }
           isActive: { status: standard, api_name: "IsActive" }
-          type: { status: standard, api_name: "UserType" }
+          userType: { status: standard, api_name: "UserType" }
           phone: { status: standard, api_name: "Phone" }
           timezone: { status: standard, api_name: "TimeZoneSidKey" }
           createdAt: { status: standard, api_name: "CreatedDate" }
@@ -683,7 +678,7 @@ mappings:
           title: { status: standard, api_name: "job_title" }
           role: { status: standard, api_name: "role_id" }
           isActive: { status: standard, api_name: "archived" }
-          type: { status: standard, api_name: "type" }
+          userType: { status: standard, api_name: "type" }
           phone: { status: standard, api_name: "phone" }
           timezone: { status: standard, api_name: "timezone" }
           createdAt: { status: standard, api_name: "createdate" }
@@ -700,7 +695,7 @@ mappings:
           title: { status: standard, api_name: "title" }
           role: { status: standard, api_name: "access_level" }
           isActive: { status: standard, api_name: "is_active" }
-          type: { status: standard, api_name: "type" }
+          userType: { status: standard, api_name: "type" }
           phone: { status: standard, api_name: "phone" }
           timezone: { status: standard, api_name: "timezone" }
           createdAt: { status: standard, api_name: "created_at" }
@@ -717,7 +712,7 @@ mappings:
           title: { status: standard, api_name: "title" }
           role: { status: standard, api_name: "rolesIds" }
           isActive: { status: standard, api_name: "isActive" }
-          type: { status: standard, api_name: "type" }
+          userType: { status: standard, api_name: "type" }
           phone: { status: standard, api_name: "phoneNumber" }
           timezone: { status: standard, api_name: "timeZone" }
           createdAt: { status: standard, api_name: "createdAt" }
@@ -734,7 +729,7 @@ mappings:
           title: { status: custom }
           role: { status: standard, api_name: "role" }
           isActive: { status: standard, api_name: "is_active" }
-          type: { status: custom }
+          userType: { status: custom }
           phone: { status: custom }
           timezone: { status: standard, api_name: "timezone" }
           createdAt: { status: standard, api_name: "created_date" }
@@ -751,7 +746,7 @@ mappings:
           title: { status: standard, api_name: "Title" }
           role: { status: standard, api_name: "UserRoleId" }
           isActive: { status: standard, api_name: "IsActive" }
-          type: { status: standard, api_name: "UserType" }
+          userType: { status: standard, api_name: "UserType" }
           phone: { status: standard, api_name: "Phone" }
           timezone: { status: standard, api_name: "TimeZoneSidKey" }
           createdAt: { status: standard, api_name: "CreatedDate" }
@@ -768,7 +763,7 @@ mappings:
           title: { status: custom }
           role: { status: standard, api_name: "Role" }
           isActive: { status: standard, api_name: "IsActive" }
-          type: { status: custom }
+          userType: { status: custom }
           phone: { status: custom }
           timezone: { status: custom }
           createdAt: { status: standard, api_name: "CreatedDate" }
@@ -778,7 +773,7 @@ mappings:
     tier: 1
     entry_kind: subclass
     parent_entity: account
-    discriminator_attribute: "type"
+    discriminator_attribute: "accountType"
     discriminator_value: "Nonprofit Organization"
     by_system:
       salesforce:
@@ -983,13 +978,13 @@ mappings:
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_opportunity.htm
         attributes:
-          name: { status: standard, api_name: "Name" }
+          opportunityName: { status: standard, api_name: "Name" }
           account: { status: standard, api_name: "AccountId" }
-          amount: { status: standard, api_name: "Amount" }
+          opportunityAmount: { status: standard, api_name: "Amount" }
           closeDate: { status: standard, api_name: "CloseDate" }
-          stage: { status: standard, api_name: "StageName" }
+          opportunityStage: { status: standard, api_name: "StageName" }
           probability: { status: standard, api_name: "Probability" }
-          type: { status: standard, api_name: "Type" }
+          opportunityType: { status: standard, api_name: "Type" }
           leadSource: { status: standard, api_name: "LeadSource" }
           description: { status: standard, api_name: "Description" }
           nextStep: { status: standard, api_name: "NextStep" }
@@ -1002,13 +997,13 @@ mappings:
         is_standard: true
         docs_url: https://developers.hubspot.com/docs/api-reference/crm-deals-v3/guide
         attributes:
-          name: { status: standard, api_name: "dealname" }
+          opportunityName: { status: standard, api_name: "dealname" }
           account: { status: standard, api_name: "associatedcompanyids" }
-          amount: { status: standard, api_name: "amount" }
+          opportunityAmount: { status: standard, api_name: "amount" }
           closeDate: { status: standard, api_name: "closedate" }
-          stage: { status: standard, api_name: "dealstage" }
+          opportunityStage: { status: standard, api_name: "dealstage" }
           probability: { status: standard, api_name: "hs_deal_stage_probability" }
-          type: { status: standard, api_name: "dealtype" }
+          opportunityType: { status: standard, api_name: "dealtype" }
           leadSource: { status: custom }
           description: { status: standard, api_name: "description" }
           nextStep: { status: custom }
@@ -1021,13 +1016,13 @@ mappings:
         is_standard: true
         docs_url: https://attio.com/help/reference/managing-your-data/objects/manage-standard-objects
         attributes:
-          name: { status: standard, api_name: "name" }
+          opportunityName: { status: standard, api_name: "name" }
           account: { status: standard, api_name: "company" }
-          amount: { status: standard, api_name: "value" }
+          opportunityAmount: { status: standard, api_name: "value" }
           closeDate: { status: standard, api_name: "expected_close_date" }
-          stage: { status: standard, api_name: "stage" }
+          opportunityStage: { status: standard, api_name: "stage" }
           probability: { status: custom }
-          type: { status: custom }
+          opportunityType: { status: custom }
           leadSource: { status: custom }
           description: { status: standard, api_name: "description" }
           nextStep: { status: custom }
@@ -1040,13 +1035,13 @@ mappings:
         is_standard: true
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Opportunity.json
         attributes:
-          name: { status: standard, api_name: "name" }
+          opportunityName: { status: standard, api_name: "name" }
           account: { status: standard, api_name: "accountId" }
-          amount: { status: standard, api_name: "amount" }
+          opportunityAmount: { status: standard, api_name: "amount" }
           closeDate: { status: standard, api_name: "closeDate" }
-          stage: { status: standard, api_name: "stage" }
+          opportunityStage: { status: standard, api_name: "stage" }
           probability: { status: standard, api_name: "probability" }
-          type: { status: custom }
+          opportunityType: { status: custom }
           leadSource: { status: standard, api_name: "leadSource" }
           description: { status: standard, api_name: "description" }
           nextStep: { status: custom }
@@ -1064,13 +1059,13 @@ mappings:
         is_standard: true
         docs_url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-success-pack-basics/organize-your-data-with-npsp
         attributes:
-          name: { status: standard, api_name: "Name" }
+          opportunityName: { status: standard, api_name: "Name" }
           account: { status: standard, api_name: "AccountId" }
-          amount: { status: standard, api_name: "Amount" }
+          opportunityAmount: { status: standard, api_name: "Amount" }
           closeDate: { status: standard, api_name: "CloseDate" }
-          stage: { status: standard, api_name: "StageName" }
+          opportunityStage: { status: standard, api_name: "StageName" }
           probability: { status: standard, api_name: "Probability" }
-          type: { status: standard, api_name: "Type" }
+          opportunityType: { status: standard, api_name: "Type" }
           leadSource: { status: standard, api_name: "LeadSource" }
           description: { status: standard, api_name: "Description" }
           nextStep: { status: standard, api_name: "NextStep" }
@@ -1094,7 +1089,7 @@ mappings:
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_opportunitystage.htm
         attributes:
-          name: { status: standard, api_name: "MasterLabel" }
+          stageName: { status: standard, api_name: "MasterLabel" }
           apiName: { status: standard, api_name: "ApiName" }
           probability: { status: standard, api_name: "DefaultProbability" }
           order: { status: standard, api_name: "SortOrder" }
@@ -1109,7 +1104,7 @@ mappings:
         is_standard: true
         docs_url: https://developers.hubspot.com/docs/reference/api/crm/pipelines
         attributes:
-          name: { status: standard, api_name: "label" }
+          stageName: { status: standard, api_name: "label" }
           apiName: { status: standard, api_name: "stageId" }
           probability: { status: standard, api_name: "probability" }
           order: { status: standard, api_name: "displayOrder" }
@@ -1124,7 +1119,7 @@ mappings:
         is_standard: true
         docs_url: https://attio.com/help/reference/managing-your-data/views/create-and-manage-kanban-views
         attributes:
-          name: { status: standard, api_name: "label" }
+          stageName: { status: standard, api_name: "label" }
           apiName: { status: standard, api_name: "id" }
           order: { status: standard, api_name: "order" }
           pipeline: { status: standard, api_name: "pipeline" }
@@ -1138,7 +1133,7 @@ mappings:
         is_standard: true
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Opportunity.json
         attributes:
-          name: { status: standard, api_name: "option_value" }
+          stageName: { status: standard, api_name: "option_value" }
           apiName: { status: standard, api_name: "apiName" }
           probability: { status: custom }
           order: { status: standard, api_name: "order" }
@@ -1152,7 +1147,7 @@ mappings:
         is_standard: false
         docs_url: https://docs.civicrm.org/user/en/latest/contributions/
         attributes:
-          name: { status: standard, api_name: "label" }
+          stageName: { status: standard, api_name: "label" }
           apiName: { status: standard, api_name: "api_name" }
           order: { status: standard, api_name: "weight" }
           isClosed: { status: standard, api_name: "is_completed" }
@@ -1164,7 +1159,7 @@ mappings:
         is_standard: true
         docs_url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-success-pack-basics/organize-your-data-with-npsp
         attributes:
-          name: { status: standard, api_name: "MasterLabel" }
+          stageName: { status: standard, api_name: "MasterLabel" }
           apiName: { status: standard, api_name: "ApiName" }
           probability: { status: standard, api_name: "DefaultProbability" }
           order: { status: standard, api_name: "SortOrder" }
@@ -1179,7 +1174,7 @@ mappings:
         is_standard: false
         docs_url: https://bloomerang.com/api/rest-api-v1/
         attributes:
-          name: { status: standard, api_name: "Name" }
+          stageName: { status: standard, api_name: "Name" }
           apiName: { status: standard, api_name: "Id" }
           order: { status: standard, api_name: "SortOrder" }
           isClosed: { status: standard, api_name: "IsClosed" }
@@ -1197,12 +1192,12 @@ mappings:
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_quote.htm
         attributes:
-          name: { status: standard, api_name: "Name" }
+          quoteName: { status: standard, api_name: "Name" }
           quoteNumber: { status: standard, api_name: "QuoteNumber" }
           opportunity: { status: standard, api_name: "OpportunityId" }
           account: { status: standard, api_name: "AccountId" }
           contact: { status: standard, api_name: "ContactId" }
-          status: { status: standard, api_name: "Status" }
+          quoteStatus: { status: standard, api_name: "Status" }
           validUntil: { status: standard, api_name: "ExpirationDate" }
           subtotal: { status: standard, api_name: "Subtotal" }
           discount: { status: standard, api_name: "Discount" }
@@ -1219,12 +1214,12 @@ mappings:
         is_standard: true
         docs_url: https://developers.hubspot.com/docs/reference/api/crm/objects/quotes
         attributes:
-          name: { status: standard, api_name: "hs_title" }
+          quoteName: { status: standard, api_name: "hs_title" }
           quoteNumber: { status: standard, api_name: "hs_quote_number" }
           opportunity: { status: standard, api_name: "hs_deal_id" }
           account: { status: standard, api_name: "account" }
           contact: { status: standard, api_name: "hs_associated_contact_ids" }
-          status: { status: standard, api_name: "hs_status" }
+          quoteStatus: { status: standard, api_name: "hs_status" }
           validUntil: { status: standard, api_name: "hs_expiration_date" }
           subtotal: { status: standard, api_name: "hs_subtotal" }
           discount: { status: standard, api_name: "hs_discount_total" }
@@ -1246,12 +1241,12 @@ mappings:
         is_standard: true
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Sales/Resources/metadata/entityDefs/Quote.json
         attributes:
-          name: { status: standard, api_name: "name" }
+          quoteName: { status: standard, api_name: "name" }
           quoteNumber: { status: standard, api_name: "number" }
           opportunity: { status: standard, api_name: "opportunityId" }
           account: { status: standard, api_name: "accountId" }
           contact: { status: standard, api_name: "contactId" }
-          status: { status: standard, api_name: "status" }
+          quoteStatus: { status: standard, api_name: "status" }
           validUntil: { status: standard, api_name: "expirationDate" }
           subtotal: { status: standard, api_name: "preDiscountedAmount" }
           discount: { status: standard, api_name: "discount" }
@@ -1273,12 +1268,12 @@ mappings:
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_quote.htm
         attributes:
-          name: { status: standard, api_name: "Name" }
+          quoteName: { status: standard, api_name: "Name" }
           quoteNumber: { status: standard, api_name: "QuoteNumber" }
           opportunity: { status: standard, api_name: "OpportunityId" }
           account: { status: standard, api_name: "AccountId" }
           contact: { status: standard, api_name: "ContactId" }
-          status: { status: standard, api_name: "Status" }
+          quoteStatus: { status: standard, api_name: "Status" }
           validUntil: { status: standard, api_name: "ExpirationDate" }
           subtotal: { status: standard, api_name: "Subtotal" }
           discount: { status: standard, api_name: "Discount" }
@@ -1306,7 +1301,7 @@ mappings:
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_asset.htm
         attributes:
-          name: { status: standard, api_name: "Name" }
+          assetName: { status: standard, api_name: "Name" }
           account: { status: standard, api_name: "Account" }
           contact: { status: standard, api_name: "Contact" }
           product: { status: standard, api_name: "Product" }
@@ -1314,7 +1309,7 @@ mappings:
           installDate: { status: standard, api_name: "InstallDate" }
           purchaseDate: { status: standard, api_name: "PurchaseDate" }
           usageEndDate: { status: standard, api_name: "UsageEndDate" }
-          status: { status: standard, api_name: "Status" }
+          assetStatus: { status: standard, api_name: "Status" }
           quantity: { status: standard, api_name: "Quantity" }
           price: { status: standard, api_name: "Price" }
           parentAsset: { status: standard, api_name: "ParentAsset" }
@@ -1345,7 +1340,7 @@ mappings:
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_asset.htm
         attributes:
-          name: { status: standard, api_name: "Name" }
+          assetName: { status: standard, api_name: "Name" }
           account: { status: standard, api_name: "Account" }
           contact: { status: standard, api_name: "Contact" }
           product: { status: standard, api_name: "Product" }
@@ -1353,7 +1348,7 @@ mappings:
           installDate: { status: standard, api_name: "InstallDate" }
           purchaseDate: { status: standard, api_name: "PurchaseDate" }
           usageEndDate: { status: standard, api_name: "UsageEndDate" }
-          status: { status: standard, api_name: "Status" }
+          assetStatus: { status: standard, api_name: "Status" }
           quantity: { status: standard, api_name: "Quantity" }
           price: { status: standard, api_name: "Price" }
           parentAsset: { status: standard, api_name: "ParentAsset" }
@@ -1375,9 +1370,9 @@ mappings:
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_campaign.htm
         attributes:
-          name: { status: standard, api_name: "Name" }
-          type: { status: standard, api_name: "Type" }
-          status: { status: standard, api_name: "Status" }
+          campaignName: { status: standard, api_name: "Name" }
+          campaignType: { status: standard, api_name: "Type" }
+          campaignStatus: { status: standard, api_name: "Status" }
           startDate: { status: standard, api_name: "StartDate" }
           endDate: { status: standard, api_name: "EndDate" }
           budgetedCost: { status: standard, api_name: "BudgetedCost" }
@@ -1394,9 +1389,9 @@ mappings:
         is_standard: true
         docs_url: https://developers.hubspot.com/docs/api-reference/marketing-marketing-events-v3
         attributes:
-          name: { status: standard, api_name: "name" }
-          type: { status: standard, api_name: "campaign_type" }
-          status: { status: standard, api_name: "campaign_status" }
+          campaignName: { status: standard, api_name: "name" }
+          campaignType: { status: standard, api_name: "campaign_type" }
+          campaignStatus: { status: standard, api_name: "campaign_status" }
           startDate: { status: standard, api_name: "startDate" }
           endDate: { status: standard, api_name: "endDate" }
           budgetedCost: { status: custom }
@@ -1418,9 +1413,9 @@ mappings:
         is_standard: true
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Campaign.json
         attributes:
-          name: { status: standard, api_name: "name" }
-          type: { status: standard, api_name: "type" }
-          status: { status: standard, api_name: "status" }
+          campaignName: { status: standard, api_name: "name" }
+          campaignType: { status: standard, api_name: "type" }
+          campaignStatus: { status: standard, api_name: "status" }
           startDate: { status: standard, api_name: "startDate" }
           endDate: { status: standard, api_name: "endDate" }
           budgetedCost: { status: standard, api_name: "budgetedCost" }
@@ -1437,9 +1432,9 @@ mappings:
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/campaign/what-is-civicampaign/
         attributes:
-          name: { status: standard, api_name: "title" }
-          type: { status: standard, api_name: "campaign_type_id" }
-          status: { status: standard, api_name: "status_id" }
+          campaignName: { status: standard, api_name: "title" }
+          campaignType: { status: standard, api_name: "campaign_type_id" }
+          campaignStatus: { status: standard, api_name: "status_id" }
           startDate: { status: standard, api_name: "start_date" }
           endDate: { status: standard, api_name: "end_date" }
           budgetedCost: { status: custom }
@@ -1456,9 +1451,9 @@ mappings:
         is_standard: true
         docs_url: https://trailhead.salesforce.com/content/learn/modules/nonprofit-campaign-management
         attributes:
-          name: { status: standard, api_name: "Name" }
-          type: { status: standard, api_name: "Type" }
-          status: { status: standard, api_name: "Status" }
+          campaignName: { status: standard, api_name: "Name" }
+          campaignType: { status: standard, api_name: "Type" }
+          campaignStatus: { status: standard, api_name: "Status" }
           startDate: { status: standard, api_name: "StartDate" }
           endDate: { status: standard, api_name: "EndDate" }
           budgetedCost: { status: standard, api_name: "BudgetedCost" }
@@ -1475,9 +1470,9 @@ mappings:
         is_standard: true
         docs_url: https://bloomerang.com/api/rest-api-v1/
         attributes:
-          name: { status: standard, api_name: "Name" }
-          type: { status: custom }
-          status: { status: standard, api_name: "IsActive" }
+          campaignName: { status: standard, api_name: "Name" }
+          campaignType: { status: custom }
+          campaignStatus: { status: standard, api_name: "IsActive" }
           startDate: { status: standard, api_name: "StartDate" }
           endDate: { status: standard, api_name: "EndDate" }
           budgetedCost: { status: custom }
@@ -1503,7 +1498,7 @@ mappings:
           campaign: { status: standard, api_name: "Campaign" }
           contact: { status: standard, api_name: "Contact" }
           lead: { status: standard, api_name: "Lead" }
-          status: { status: standard, api_name: "Status" }
+          memberStatus: { status: standard, api_name: "Status" }
           hasResponded: { status: standard, api_name: "HasResponded" }
           firstRespondedDate: { status: standard, api_name: "FirstRespondedDate" }
           createdAt: { status: standard, api_name: "CreatedDate" }
@@ -1526,7 +1521,7 @@ mappings:
           campaign: { status: standard, api_name: "campaign" }
           contact: { status: standard, api_name: "contact" }
           lead: { status: standard, api_name: "lead" }
-          status: { status: custom }
+          memberStatus: { status: custom }
           hasResponded: { status: custom }
           firstRespondedDate: { status: custom }
           createdAt: { status: standard, api_name: "createdAt" }
@@ -1538,7 +1533,7 @@ mappings:
         attributes:
           campaign: { status: custom }
           contact: { status: custom }
-          status: { status: custom }
+          memberStatus: { status: custom }
           hasResponded: { status: custom }
           firstRespondedDate: { status: custom }
           createdAt: { status: custom }
@@ -1551,7 +1546,7 @@ mappings:
           campaign: { status: standard, api_name: "Campaign" }
           contact: { status: standard, api_name: "Contact" }
           lead: { status: standard, api_name: "Lead" }
-          status: { status: standard, api_name: "Status" }
+          memberStatus: { status: standard, api_name: "Status" }
           hasResponded: { status: standard, api_name: "HasResponded" }
           firstRespondedDate: { status: standard, api_name: "FirstRespondedDate" }
           createdAt: { status: standard, api_name: "CreatedDate" }
@@ -1574,10 +1569,10 @@ mappings:
         attributes:
           subject: { status: standard, api_name: "Subject" }
           caseNumber: { status: standard, api_name: "CaseNumber" }
-          status: { status: standard, api_name: "Status" }
+          caseStatus: { status: standard, api_name: "Status" }
           priority: { status: standard, api_name: "Priority" }
           origin: { status: standard, api_name: "Origin" }
-          type: { status: standard, api_name: "Type" }
+          caseType: { status: standard, api_name: "Type" }
           account: { status: standard, api_name: "AccountId" }
           contact: { status: standard, api_name: "ContactId" }
           description: { status: standard, api_name: "Description" }
@@ -1593,10 +1588,10 @@ mappings:
         attributes:
           subject: { status: standard, api_name: "subject" }
           caseNumber: { status: standard, api_name: "hs_ticket_id" }
-          status: { status: standard, api_name: "hs_pipeline_stage" }
+          caseStatus: { status: standard, api_name: "hs_pipeline_stage" }
           priority: { status: standard, api_name: "hs_ticket_priority" }
           origin: { status: standard, api_name: "source_type" }
-          type: { status: custom }
+          caseType: { status: custom }
           account: { status: standard, api_name: "company_id" }
           contact: { status: standard, api_name: "contact_id" }
           description: { status: standard, api_name: "content" }
@@ -1617,10 +1612,10 @@ mappings:
         attributes:
           subject: { status: standard, api_name: "name" }
           caseNumber: { status: standard, api_name: "number" }
-          status: { status: standard, api_name: "status" }
+          caseStatus: { status: standard, api_name: "status" }
           priority: { status: standard, api_name: "priority" }
           origin: { status: custom }
-          type: { status: standard, api_name: "type" }
+          caseType: { status: standard, api_name: "type" }
           account: { status: standard, api_name: "accountId" }
           contact: { status: standard, api_name: "contactId" }
           description: { status: standard, api_name: "description" }
@@ -1636,10 +1631,10 @@ mappings:
         attributes:
           subject: { status: standard, api_name: "subject" }
           caseNumber: { status: standard, api_name: "case_id" }
-          status: { status: standard, api_name: "status_id" }
+          caseStatus: { status: standard, api_name: "status_id" }
           priority: { status: custom }
           origin: { status: custom }
-          type: { status: standard, api_name: "type" }
+          caseType: { status: standard, api_name: "type" }
           account: { status: standard, api_name: "account" }
           contact: { status: standard, api_name: "contact_id" }
           description: { status: standard, api_name: "details" }
@@ -1655,10 +1650,10 @@ mappings:
         attributes:
           subject: { status: standard, api_name: "Subject" }
           caseNumber: { status: standard, api_name: "CaseNumber" }
-          status: { status: standard, api_name: "Status" }
+          caseStatus: { status: standard, api_name: "Status" }
           priority: { status: standard, api_name: "Priority" }
           origin: { status: standard, api_name: "Origin" }
-          type: { status: standard, api_name: "Type" }
+          caseType: { status: standard, api_name: "Type" }
           account: { status: standard, api_name: "AccountId" }
           contact: { status: standard, api_name: "ContactId" }
           description: { status: standard, api_name: "Description" }
@@ -1690,7 +1685,7 @@ mappings:
           htmlBody: { status: standard, api_name: "HtmlBody" }
           textBody: { status: standard, api_name: "TextBody" }
           messageDate: { status: standard, api_name: "MessageDate" }
-          status: { status: standard, api_name: "Status" }
+          emailStatus: { status: standard, api_name: "Status" }
           parent: { status: standard, api_name: "Parent" }
           assignedUser: { status: standard, api_name: "AssignedUser" }
           createdAt: { status: standard, api_name: "CreatedDate" }
@@ -1707,7 +1702,7 @@ mappings:
           htmlBody: { status: standard, api_name: "htmlbody" }
           textBody: { status: standard, api_name: "textbody" }
           messageDate: { status: standard, api_name: "messagedate" }
-          status: { status: standard, api_name: "status" }
+          emailStatus: { status: standard, api_name: "status" }
           parent: { status: standard, api_name: "parent" }
           assignedUser: { status: standard, api_name: "assigneduser" }
           createdAt: { status: standard, api_name: "createdate" }
@@ -1724,7 +1719,7 @@ mappings:
           htmlBody: { status: standard, api_name: "html_body" }
           textBody: { status: standard, api_name: "text_body" }
           messageDate: { status: standard, api_name: "message_date" }
-          status: { status: standard, api_name: "status" }
+          emailStatus: { status: standard, api_name: "status" }
           parent: { status: standard, api_name: "parent" }
           assignedUser: { status: standard, api_name: "assigned_user" }
           createdAt: { status: standard, api_name: "created_at" }
@@ -1741,7 +1736,7 @@ mappings:
           htmlBody: { status: standard, api_name: "htmlBody" }
           textBody: { status: standard, api_name: "textBody" }
           messageDate: { status: standard, api_name: "messageDate" }
-          status: { status: standard, api_name: "status" }
+          emailStatus: { status: standard, api_name: "status" }
           parent: { status: standard, api_name: "parent" }
           assignedUser: { status: standard, api_name: "assignedUser" }
           createdAt: { status: standard, api_name: "createdAt" }
@@ -1758,7 +1753,7 @@ mappings:
           htmlBody: { status: standard, api_name: "html_body" }
           textBody: { status: standard, api_name: "text_body" }
           messageDate: { status: standard, api_name: "message_date" }
-          status: { status: custom }
+          emailStatus: { status: custom }
           parent: { status: standard, api_name: "parent" }
           assignedUser: { status: standard, api_name: "assigned_user" }
           createdAt: { status: standard, api_name: "created_date" }
@@ -1775,7 +1770,7 @@ mappings:
           htmlBody: { status: standard, api_name: "HtmlBody" }
           textBody: { status: standard, api_name: "TextBody" }
           messageDate: { status: standard, api_name: "MessageDate" }
-          status: { status: standard, api_name: "Status" }
+          emailStatus: { status: standard, api_name: "Status" }
           parent: { status: standard, api_name: "Parent" }
           assignedUser: { status: standard, api_name: "AssignedUser" }
           createdAt: { status: standard, api_name: "CreatedDate" }
@@ -1791,7 +1786,7 @@ mappings:
           htmlBody: { status: custom }
           textBody: { status: standard, api_name: "TextBody" }
           messageDate: { status: standard, api_name: "MessageDate" }
-          status: { status: custom }
+          emailStatus: { status: custom }
           parent: { status: standard, api_name: "Parent" }
           assignedUser: { status: standard, api_name: "AssignedUser" }
           createdAt: { status: standard, api_name: "CreatedDate" }
@@ -1882,7 +1877,7 @@ mappings:
           invoiceNumber: { status: standard, api_name: "InvoiceNumber" }
           account: { status: standard, api_name: "Account" }
           order: { status: standard, api_name: "Order" }
-          status: { status: standard, api_name: "Status" }
+          invoiceStatus: { status: standard, api_name: "Status" }
           invoiceDate: { status: standard, api_name: "InvoiceDate" }
           dueDate: { status: standard, api_name: "DueDate" }
           subtotal: { status: standard, api_name: "Subtotal" }
@@ -1901,7 +1896,7 @@ mappings:
           invoiceNumber: { status: standard, api_name: "invoicenumber" }
           account: { status: standard, api_name: "account" }
           order: { status: standard, api_name: "order" }
-          status: { status: standard, api_name: "status" }
+          invoiceStatus: { status: standard, api_name: "status" }
           invoiceDate: { status: standard, api_name: "invoicedate" }
           dueDate: { status: standard, api_name: "duedate" }
           subtotal: { status: standard, api_name: "subtotal" }
@@ -1925,7 +1920,7 @@ mappings:
           invoiceNumber: { status: standard, api_name: "invoiceNumber" }
           account: { status: standard, api_name: "account" }
           order: { status: standard, api_name: "order" }
-          status: { status: standard, api_name: "status" }
+          invoiceStatus: { status: standard, api_name: "status" }
           invoiceDate: { status: standard, api_name: "invoiceDate" }
           dueDate: { status: standard, api_name: "dueDate" }
           subtotal: { status: standard, api_name: "subtotal" }
@@ -1943,7 +1938,7 @@ mappings:
         attributes:
           invoiceNumber: { status: standard, api_name: "invoice_number" }
           account: { status: standard, api_name: "account" }
-          status: { status: standard, api_name: "status" }
+          invoiceStatus: { status: standard, api_name: "status" }
           invoiceDate: { status: standard, api_name: "invoice_date" }
           dueDate: { status: standard, api_name: "due_date" }
           subtotal: { status: standard, api_name: "subtotal" }
@@ -1962,7 +1957,7 @@ mappings:
           invoiceNumber: { status: standard, api_name: "InvoiceNumber" }
           account: { status: standard, api_name: "Account" }
           order: { status: standard, api_name: "Order" }
-          status: { status: standard, api_name: "Status" }
+          invoiceStatus: { status: standard, api_name: "Status" }
           invoiceDate: { status: standard, api_name: "InvoiceDate" }
           dueDate: { status: standard, api_name: "DueDate" }
           subtotal: { status: standard, api_name: "Subtotal" }
@@ -1994,7 +1989,7 @@ mappings:
           contact: { status: standard, api_name: "Contact" }
           opportunity: { status: standard, api_name: "Opportunity" }
           quote: { status: standard, api_name: "Quote" }
-          status: { status: standard, api_name: "Status" }
+          orderStatus: { status: standard, api_name: "Status" }
           orderDate: { status: standard, api_name: "OrderDate" }
           effectiveDate: { status: standard, api_name: "EffectiveDate" }
           subtotal: { status: standard, api_name: "Subtotal" }
@@ -2024,7 +2019,7 @@ mappings:
           contact: { status: standard, api_name: "contact" }
           opportunity: { status: standard, api_name: "opportunity" }
           quote: { status: standard, api_name: "quote" }
-          status: { status: standard, api_name: "status" }
+          orderStatus: { status: standard, api_name: "status" }
           orderDate: { status: standard, api_name: "orderDate" }
           effectiveDate: { status: custom }
           subtotal: { status: standard, api_name: "subtotal" }
@@ -2049,7 +2044,7 @@ mappings:
           contact: { status: standard, api_name: "Contact" }
           opportunity: { status: standard, api_name: "Opportunity" }
           quote: { status: standard, api_name: "Quote" }
-          status: { status: standard, api_name: "Status" }
+          orderStatus: { status: standard, api_name: "Status" }
           orderDate: { status: standard, api_name: "OrderDate" }
           effectiveDate: { status: standard, api_name: "EffectiveDate" }
           subtotal: { status: standard, api_name: "Subtotal" }
@@ -2076,10 +2071,10 @@ mappings:
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.industries_reference.meta/industries_reference/sforce_api_objects_payment.htm
         attributes:
           paymentNumber: { status: standard, api_name: "PaymentNumber" }
-          amount: { status: standard, api_name: "Amount" }
+          paymentAmount: { status: standard, api_name: "Amount" }
           paymentDate: { status: standard, api_name: "PaymentDate" }
           paymentMethod: { status: standard, api_name: "PaymentMethod" }
-          status: { status: standard, api_name: "Status" }
+          paymentStatus: { status: standard, api_name: "Status" }
           invoice: { status: standard, api_name: "Invoice" }
           account: { status: standard, api_name: "Account" }
           referenceNumber: { status: standard, api_name: "ReferenceNumber" }
@@ -2091,10 +2086,10 @@ mappings:
         docs_url: https://developers.hubspot.com/docs/api-reference/crm-commerce-payments-v3
         attributes:
           paymentNumber: { status: standard, api_name: "paymentnumber" }
-          amount: { status: standard, api_name: "amount" }
+          paymentAmount: { status: standard, api_name: "amount" }
           paymentDate: { status: standard, api_name: "paymentdate" }
           paymentMethod: { status: standard, api_name: "paymentmethod" }
-          status: { status: standard, api_name: "status" }
+          paymentStatus: { status: standard, api_name: "status" }
           invoice: { status: standard, api_name: "invoice" }
           account: { status: standard, api_name: "account" }
           referenceNumber: { status: standard, api_name: "referencenumber" }
@@ -2111,10 +2106,10 @@ mappings:
         docs_url: https://docs.espocrm.com/
         attributes:
           paymentNumber: { status: standard, api_name: "paymentNumber" }
-          amount: { status: standard, api_name: "amount" }
+          paymentAmount: { status: standard, api_name: "amount" }
           paymentDate: { status: standard, api_name: "paymentDate" }
           paymentMethod: { status: standard, api_name: "paymentMethod" }
-          status: { status: standard, api_name: "status" }
+          paymentStatus: { status: standard, api_name: "status" }
           invoice: { status: standard, api_name: "invoice" }
           account: { status: standard, api_name: "account" }
           referenceNumber: { status: standard, api_name: "referenceNumber" }
@@ -2126,10 +2121,10 @@ mappings:
         docs_url: https://docs.civicrm.org/user/en/latest/contributions/payments/
         attributes:
           paymentNumber: { status: standard, api_name: "payment_number" }
-          amount: { status: standard, api_name: "amount" }
+          paymentAmount: { status: standard, api_name: "amount" }
           paymentDate: { status: standard, api_name: "payment_date" }
           paymentMethod: { status: standard, api_name: "payment_method" }
-          status: { status: standard, api_name: "status" }
+          paymentStatus: { status: standard, api_name: "status" }
           invoice: { status: standard, api_name: "invoice" }
           account: { status: standard, api_name: "account" }
           referenceNumber: { status: standard, api_name: "reference_number" }
@@ -2141,10 +2136,10 @@ mappings:
         docs_url: https://help.salesforce.com/s/articleView?id=sfdo.NPSP_Payments_overview.htm
         attributes:
           paymentNumber: { status: standard, api_name: "PaymentNumber" }
-          amount: { status: standard, api_name: "Amount" }
+          paymentAmount: { status: standard, api_name: "Amount" }
           paymentDate: { status: standard, api_name: "PaymentDate" }
           paymentMethod: { status: standard, api_name: "PaymentMethod" }
-          status: { status: standard, api_name: "Status" }
+          paymentStatus: { status: standard, api_name: "Status" }
           account: { status: standard, api_name: "Account" }
           referenceNumber: { status: standard, api_name: "ReferenceNumber" }
           createdAt: { status: standard, api_name: "CreatedDate" }
@@ -2155,10 +2150,10 @@ mappings:
         docs_url: https://bloomerang.com/api/rest-api-v1/
         attributes:
           paymentNumber: { status: standard, api_name: "PaymentNumber" }
-          amount: { status: standard, api_name: "Amount" }
+          paymentAmount: { status: standard, api_name: "Amount" }
           paymentDate: { status: standard, api_name: "PaymentDate" }
           paymentMethod: { status: standard, api_name: "PaymentMethod" }
-          status: { status: standard, api_name: "Status" }
+          paymentStatus: { status: standard, api_name: "Status" }
           account: { status: standard, api_name: "Account" }
           referenceNumber: { status: standard, api_name: "ReferenceNumber" }
           createdAt: { status: standard, api_name: "CreatedDate" }
@@ -2174,7 +2169,7 @@ mappings:
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_pricebook2.htm
         attributes:
-          name: { status: standard, api_name: "Name" }
+          priceListName: { status: standard, api_name: "Name" }
           description: { status: standard, api_name: "Description" }
           isActive: { status: standard, api_name: "IsActive" }
           isStandard: { status: standard, api_name: "IsStandard" }
@@ -2198,7 +2193,7 @@ mappings:
         is_standard: true
         docs_url: https://docs.espocrm.com/
         attributes:
-          name: { status: standard, api_name: "name" }
+          priceListName: { status: standard, api_name: "name" }
           description: { status: standard, api_name: "description" }
           isActive: { status: standard, api_name: "isActive" }
           isStandard: { status: custom }
@@ -2212,7 +2207,7 @@ mappings:
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/events/event-fees-and-payment/
         attributes:
-          name: { status: standard, api_name: "name" }
+          priceListName: { status: standard, api_name: "name" }
           description: { status: standard, api_name: "description" }
           isActive: { status: standard, api_name: "is_active" }
           isStandard: { status: standard, api_name: "is_standard" }
@@ -2226,7 +2221,7 @@ mappings:
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_pricebook2.htm
         attributes:
-          name: { status: standard, api_name: "Name" }
+          priceListName: { status: standard, api_name: "Name" }
           description: { status: standard, api_name: "Description" }
           isActive: { status: standard, api_name: "IsActive" }
           isStandard: { status: standard, api_name: "IsStandard" }
@@ -2251,11 +2246,11 @@ mappings:
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_product2.htm
         attributes:
-          name: { status: standard, api_name: "Name" }
+          productName: { status: standard, api_name: "Name" }
           productCode: { status: standard, api_name: "ProductCode" }
           description: { status: standard, api_name: "Description" }
           family: { status: standard, api_name: "Family" }
-          type: { status: custom }
+          productType: { status: custom }
           unitPrice: { status: custom }
           cost: { status: custom }
           isActive: { status: standard, api_name: "IsActive" }
@@ -2267,11 +2262,11 @@ mappings:
         is_standard: true
         docs_url: https://developers.hubspot.com/docs/reference/api/crm/objects/products
         attributes:
-          name: { status: standard, api_name: "name" }
+          productName: { status: standard, api_name: "name" }
           productCode: { status: standard, api_name: "productcode" }
           description: { status: standard, api_name: "description" }
           family: { status: custom }
-          type: { status: custom }
+          productType: { status: custom }
           unitPrice: { status: standard, api_name: "unitprice" }
           cost: { status: standard, api_name: "cost" }
           isActive: { status: standard, api_name: "isactive" }
@@ -2288,11 +2283,11 @@ mappings:
         is_standard: true
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Sales/Resources/metadata/entityDefs/Product.json
         attributes:
-          name: { status: standard, api_name: "name" }
+          productName: { status: standard, api_name: "name" }
           productCode: { status: standard, api_name: "productCode" }
           description: { status: standard, api_name: "description" }
           family: { status: standard, api_name: "family" }
-          type: { status: standard, api_name: "type" }
+          productType: { status: standard, api_name: "type" }
           unitPrice: { status: standard, api_name: "unitPrice" }
           cost: { status: custom }
           isActive: { status: standard, api_name: "isActive" }
@@ -2309,11 +2304,11 @@ mappings:
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_product2.htm
         attributes:
-          name: { status: standard, api_name: "Name" }
+          productName: { status: standard, api_name: "Name" }
           productCode: { status: standard, api_name: "ProductCode" }
           description: { status: standard, api_name: "Description" }
           family: { status: standard, api_name: "Family" }
-          type: { status: custom }
+          productType: { status: custom }
           unitPrice: { status: custom }
           cost: { status: custom }
           isActive: { status: standard, api_name: "IsActive" }
@@ -2338,7 +2333,7 @@ mappings:
         attributes:
           title: { status: standard, api_name: "Title" }
           body: { status: standard, api_name: "Body" }
-          status: { status: standard, api_name: "Status" }
+          articleStatus: { status: standard, api_name: "Status" }
           language: { status: standard, api_name: "Language" }
           category: { status: standard, api_name: "Category" }
           keywords: { status: standard, api_name: "Keywords" }
@@ -2354,7 +2349,7 @@ mappings:
         attributes:
           title: { status: standard, api_name: "title" }
           body: { status: standard, api_name: "body" }
-          status: { status: standard, api_name: "status" }
+          articleStatus: { status: standard, api_name: "status" }
           language: { status: standard, api_name: "language" }
           category: { status: standard, api_name: "category" }
           keywords: { status: custom }
@@ -2375,7 +2370,7 @@ mappings:
         attributes:
           title: { status: standard, api_name: "title" }
           body: { status: standard, api_name: "body" }
-          status: { status: standard, api_name: "status" }
+          articleStatus: { status: standard, api_name: "status" }
           language: { status: standard, api_name: "language" }
           category: { status: standard, api_name: "category" }
           keywords: { status: custom }
@@ -2395,7 +2390,7 @@ mappings:
         attributes:
           title: { status: standard, api_name: "Title" }
           body: { status: standard, api_name: "Body" }
-          status: { status: standard, api_name: "Status" }
+          articleStatus: { status: standard, api_name: "Status" }
           language: { status: standard, api_name: "Language" }
           category: { status: standard, api_name: "Category" }
           keywords: { status: standard, api_name: "Keywords" }
@@ -2423,7 +2418,7 @@ mappings:
           contact: { status: standard, api_name: "ContactId" }
           account: { status: standard, api_name: "AccountId" }
           role: { status: standard, api_name: "Roles" }
-          status: { status: standard, api_name: "IsActive" }
+          affiliationStatus: { status: standard, api_name: "IsActive" }
           startDate: { status: standard, api_name: "StartDate" }
           endDate: { status: standard, api_name: "EndDate" }
           isPrimary: { status: standard, api_name: "IsActive" }
@@ -2437,7 +2432,7 @@ mappings:
           contact: { status: standard, api_name: "contact_id" }
           account: { status: standard, api_name: "company_id" }
           role: { status: custom }
-          status: { status: custom }
+          affiliationStatus: { status: custom }
           startDate: { status: custom }
           endDate: { status: custom }
           isPrimary: { status: standard, api_name: "is_primary" }
@@ -2451,7 +2446,7 @@ mappings:
           contact: { status: custom }
           account: { status: custom }
           role: { status: custom }
-          status: { status: custom }
+          affiliationStatus: { status: custom }
           startDate: { status: custom }
           endDate: { status: custom }
           isPrimary: { status: custom }
@@ -2465,7 +2460,7 @@ mappings:
           contact: { status: custom }
           account: { status: custom }
           role: { status: custom }
-          status: { status: custom }
+          affiliationStatus: { status: custom }
           startDate: { status: custom }
           endDate: { status: custom }
           isPrimary: { status: custom }
@@ -2479,7 +2474,7 @@ mappings:
           contact: { status: standard, api_name: "contact_id_a" }
           account: { status: standard, api_name: "contact_id_b" }
           role: { status: standard, api_name: "relationship_type_id" }
-          status: { status: standard, api_name: "is_active" }
+          affiliationStatus: { status: standard, api_name: "is_active" }
           startDate: { status: standard, api_name: "start_date" }
           endDate: { status: standard, api_name: "end_date" }
           isPrimary: { status: custom }
@@ -2493,7 +2488,7 @@ mappings:
           contact: { status: standard, api_name: "npe5__Contact__c" }
           account: { status: standard, api_name: "npe5__Organization__c" }
           role: { status: standard, api_name: "npe5__Role__c" }
-          status: { status: standard, api_name: "npe5__Status__c" }
+          affiliationStatus: { status: standard, api_name: "npe5__Status__c" }
           startDate: { status: standard, api_name: "npe5__StartDate__c" }
           endDate: { status: standard, api_name: "npe5__EndDate__c" }
           isPrimary: { status: standard, api_name: "npe5__Primary__c" }
@@ -2507,7 +2502,7 @@ mappings:
           contact: { status: standard, api_name: "RelationContactId" }
           account: { status: standard, api_name: "AccountId" }
           role: { status: standard, api_name: "Type" }
-          status: { status: standard, api_name: "Status" }
+          affiliationStatus: { status: standard, api_name: "Status" }
           startDate: { status: custom }
           endDate: { status: custom }
           isPrimary: { status: custom }
@@ -2544,7 +2539,7 @@ mappings:
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/contacts/
         attributes:
-          type: { status: standard, api_name: "contact_type" }
+          constituentType: { status: standard, api_name: "contact_type" }
           fullName: { status: standard, api_name: "display_name" }
           emailAddress: { status: standard, api_name: "email" }
           phone: { status: standard, api_name: "phone" }
@@ -2561,7 +2556,7 @@ mappings:
         is_standard: true
         docs_url: https://bloomerang.com/api/rest-api-v1/
         attributes:
-          type: { status: standard, api_name: "Type" }
+          constituentType: { status: standard, api_name: "Type" }
           fullName: { status: standard, api_name: "FullName" }
           emailAddress: { status: standard, api_name: "PrimaryEmail" }
           phone: { status: standard, api_name: "PrimaryPhone" }
@@ -2580,9 +2575,9 @@ mappings:
         is_standard: false
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_opportunity.htm
         attributes:
-          amount: { status: custom }
+          giftAmount: { status: custom }
           donationDate: { status: custom }
-          status: { status: custom }
+          donationStatus: { status: custom }
           paymentMethod: { status: custom }
           contact: { status: custom }
           account: { status: custom }
@@ -2599,9 +2594,9 @@ mappings:
         is_standard: false
         docs_url: https://developers.hubspot.com/docs/api-reference/crm-deals-v3/guide
         attributes:
-          amount: { status: custom }
+          giftAmount: { status: custom }
           donationDate: { status: custom }
-          status: { status: custom }
+          donationStatus: { status: custom }
           paymentMethod: { status: custom }
           contact: { status: custom }
           account: { status: custom }
@@ -2618,9 +2613,9 @@ mappings:
         is_standard: false
         docs_url: https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects
         attributes:
-          amount: { status: custom }
+          giftAmount: { status: custom }
           donationDate: { status: custom }
-          status: { status: custom }
+          donationStatus: { status: custom }
           paymentMethod: { status: custom }
           contact: { status: custom }
           account: { status: custom }
@@ -2637,9 +2632,9 @@ mappings:
         is_standard: false
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Opportunity.json
         attributes:
-          amount: { status: custom }
+          giftAmount: { status: custom }
           donationDate: { status: custom }
-          status: { status: custom }
+          donationStatus: { status: custom }
           paymentMethod: { status: custom }
           contact: { status: custom }
           account: { status: custom }
@@ -2656,9 +2651,9 @@ mappings:
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/contributions/
         attributes:
-          amount: { status: standard, api_name: "total_amount" }
+          giftAmount: { status: standard, api_name: "total_amount" }
           donationDate: { status: standard, api_name: "receive_date" }
-          status: { status: standard, api_name: "contribution_status_id" }
+          donationStatus: { status: standard, api_name: "contribution_status_id" }
           paymentMethod: { status: standard, api_name: "payment_instrument_id" }
           contact: { status: standard, api_name: "contact_id" }
           account: { status: standard, api_name: "contact_id" }
@@ -2675,9 +2670,9 @@ mappings:
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
         attributes:
-          amount: { status: standard, api_name: "Amount" }
+          giftAmount: { status: standard, api_name: "Amount" }
           donationDate: { status: standard, api_name: "CloseDate" }
-          status: { status: standard, api_name: "StageName" }
+          donationStatus: { status: standard, api_name: "StageName" }
           paymentMethod: { status: standard, api_name: "npe01__Payment_Method__c" }
           contact: { status: standard, api_name: "npsp__Primary_Contact__c" }
           account: { status: standard, api_name: "AccountId" }
@@ -2694,9 +2689,9 @@ mappings:
         is_standard: true
         docs_url: https://bloomerang.com/api/rest-api-v1/
         attributes:
-          amount: { status: standard, api_name: "Amount" }
+          giftAmount: { status: standard, api_name: "Amount" }
           donationDate: { status: standard, api_name: "Date" }
-          status: { status: standard, api_name: "IsRefunded" }
+          donationStatus: { status: standard, api_name: "IsRefunded" }
           paymentMethod: { status: standard, api_name: "Method" }
           contact: { status: standard, api_name: "AccountId" }
           account: { status: standard, api_name: "AccountId" }
@@ -2739,9 +2734,9 @@ mappings:
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/case-management/
         attributes:
-          name: { status: standard, api_name: "subject" }
-          type: { status: standard, api_name: "case_type_id" }
-          status: { status: standard, api_name: "status_id" }
+          engagementName: { status: standard, api_name: "subject" }
+          engagementType: { status: standard, api_name: "case_type_id" }
+          engagementStatus: { status: standard, api_name: "status_id" }
           startDate: { status: standard, api_name: "start_date" }
           endDate: { status: standard, api_name: "end_date" }
           primaryContact: { status: standard, api_name: "contact_id" }
@@ -2755,9 +2750,9 @@ mappings:
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
         attributes:
-          name: { status: standard, api_name: "Name" }
-          type: { status: standard, api_name: "npe5__Engagement_Plan_Template__c" }
-          status: { status: standard, api_name: "npe5__Status__c" }
+          engagementName: { status: standard, api_name: "Name" }
+          engagementType: { status: standard, api_name: "npe5__Engagement_Plan_Template__c" }
+          engagementStatus: { status: standard, api_name: "npe5__Status__c" }
           startDate: { status: standard, api_name: "npe5__StartDate__c" }
           endDate: { status: standard, api_name: "npe5__EndDate__c" }
           primaryContact: { status: standard, api_name: "npe5__Contact__c" }
@@ -2802,10 +2797,10 @@ mappings:
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/grants/
         attributes:
-          name: { status: standard, api_name: "rationale" }
+          grantName: { status: standard, api_name: "rationale" }
           amountRequested: { status: standard, api_name: "amount_requested" }
           amountAwarded: { status: standard, api_name: "amount_granted" }
-          status: { status: standard, api_name: "status_id" }
+          grantStatus: { status: standard, api_name: "status_id" }
           applicationDate: { status: standard, api_name: "application_received_date" }
           decisionDate: { status: standard, api_name: "decision_date" }
           performancePeriodStart: { status: custom }
@@ -2819,10 +2814,10 @@ mappings:
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html
         attributes:
-          name: { status: standard, api_name: "Name" }
+          grantName: { status: standard, api_name: "Name" }
           amountRequested: { status: custom }
           amountAwarded: { status: standard, api_name: "Amount" }
-          status: { status: standard, api_name: "StageName" }
+          grantStatus: { status: standard, api_name: "StageName" }
           applicationDate: { status: custom }
           decisionDate: { status: custom }
           performancePeriodStart: { status: custom }
@@ -2836,10 +2831,10 @@ mappings:
         is_standard: false
         docs_url: https://bloomerang.com/api/rest-api-v1/
         attributes:
-          name: { status: custom }
+          grantName: { status: custom }
           amountRequested: { status: custom }
           amountAwarded: { status: custom }
-          status: { status: custom }
+          grantStatus: { status: custom }
           applicationDate: { status: custom }
           decisionDate: { status: custom }
           performancePeriodStart: { status: custom }
@@ -2879,7 +2874,7 @@ mappings:
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/organising-your-data/contacts/
         attributes:
-          name: { status: standard, api_name: "household_name" }
+          householdName: { status: standard, api_name: "household_name" }
           formalGreeting: { status: custom }
           informalGreeting: { status: custom }
           address: { status: standard, api_name: "street_address" }
@@ -2892,7 +2887,7 @@ mappings:
         is_standard: true
         docs_url: https://trailhead.salesforce.com/content/learn/modules/constituent-data-management-with-nonprofit-success-pack/manage-household-accounts
         attributes:
-          name: { status: standard, api_name: "Name" }
+          householdName: { status: standard, api_name: "Name" }
           formalGreeting: { status: standard, api_name: "npo02__Formal_Greeting__c" }
           informalGreeting: { status: standard, api_name: "npo02__Informal_Greeting__c" }
           address: { status: standard, api_name: "BillingAddress" }
@@ -2938,11 +2933,11 @@ mappings:
         attributes:
           contact: { status: standard, api_name: "contact_id" }
           membershipType: { status: standard, api_name: "membership_type_id" }
-          status: { status: standard, api_name: "status_id" }
+          membershipStatus: { status: standard, api_name: "status_id" }
           joinDate: { status: standard, api_name: "join_date" }
           startDate: { status: standard, api_name: "start_date" }
           endDate: { status: standard, api_name: "end_date" }
-          amount: { status: standard, api_name: "fee" }
+          duesAmount: { status: standard, api_name: "fee" }
           source: { status: standard, api_name: "source" }
           createdAt: { status: standard, api_name: "created_date" }
       salesforce_npsp:
@@ -2953,11 +2948,11 @@ mappings:
         attributes:
           contact: { status: standard, api_name: "ContactId" }
           membershipType: { status: standard, api_name: "npe01__Membership_Origin__c" }
-          status: { status: standard, api_name: "npe01__Membership_Status__c" }
+          membershipStatus: { status: standard, api_name: "npe01__Membership_Status__c" }
           joinDate: { status: custom }
           startDate: { status: standard, api_name: "npe01__Membership_Start_Date__c" }
           endDate: { status: standard, api_name: "npe01__Membership_End_Date__c" }
-          amount: { status: standard, api_name: "Amount" }
+          duesAmount: { status: standard, api_name: "Amount" }
           source: { status: custom }
           createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
@@ -2968,11 +2963,11 @@ mappings:
         attributes:
           contact: { status: custom }
           membershipType: { status: custom }
-          status: { status: custom }
+          membershipStatus: { status: custom }
           joinDate: { status: custom }
           startDate: { status: custom }
           endDate: { status: custom }
-          amount: { status: custom }
+          duesAmount: { status: custom }
           source: { status: custom }
           createdAt: { status: standard, api_name: "CreatedDate" }
 
@@ -3007,12 +3002,12 @@ mappings:
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/contributions/recurring-contributions/
         attributes:
-          amount: { status: standard, api_name: "amount" }
+          installmentAmount: { status: standard, api_name: "amount" }
           frequency: { status: standard, api_name: "frequency_unit" }
           startDate: { status: standard, api_name: "start_date" }
           endDate: { status: standard, api_name: "end_date" }
           installments: { status: standard, api_name: "installments" }
-          status: { status: standard, api_name: "contribution_status_id" }
+          recurringStatus: { status: standard, api_name: "contribution_status_id" }
           paymentMethod: { status: standard, api_name: "payment_instrument_id" }
           contact: { status: standard, api_name: "contact_id" }
           account: { status: standard, api_name: "contact_id" }
@@ -3024,12 +3019,12 @@ mappings:
         is_standard: true
         docs_url: https://trailhead.salesforce.com/content/learn/modules/opportunity-settings-in-nonprofit-success-pack/manage-recurring-donations-npsp
         attributes:
-          amount: { status: standard, api_name: "npe03__Amount__c" }
+          installmentAmount: { status: standard, api_name: "npe03__Amount__c" }
           frequency: { status: standard, api_name: "npe03__Installment_Period__c" }
           startDate: { status: standard, api_name: "npe03__Date_Established__c" }
           endDate: { status: standard, api_name: "npsp__EndDate__c" }
           installments: { status: standard, api_name: "npe03__Installments__c" }
-          status: { status: standard, api_name: "npsp__Status__c" }
+          recurringStatus: { status: standard, api_name: "npsp__Status__c" }
           paymentMethod: { status: standard, api_name: "npe03__Payment_Method__c" }
           contact: { status: standard, api_name: "npe03__Contact__c" }
           account: { status: standard, api_name: "npe03__Organization__c" }
@@ -3041,12 +3036,12 @@ mappings:
         is_standard: true
         docs_url: https://bloomerang.com/api/rest-api-v1/
         attributes:
-          amount: { status: standard, api_name: "Amount" }
+          installmentAmount: { status: standard, api_name: "Amount" }
           frequency: { status: standard, api_name: "Frequency" }
           startDate: { status: standard, api_name: "StartDate" }
           endDate: { status: standard, api_name: "EndDate" }
           installments: { status: custom }
-          status: { status: standard, api_name: "Status" }
+          recurringStatus: { status: standard, api_name: "Status" }
           paymentMethod: { status: standard, api_name: "Method" }
           contact: { status: standard, api_name: "AccountId" }
           account: { status: standard, api_name: "AccountId" }
@@ -3067,8 +3062,8 @@ mappings:
           donation: { status: custom }
           contact: { status: custom }
           account: { status: custom }
-          amount: { status: custom }
-          type: { status: custom }
+          creditAmount: { status: custom }
+          creditType: { status: custom }
           createdAt: { status: custom }
       hubspot:
         name: "(no native — custom)"
@@ -3094,8 +3089,8 @@ mappings:
           donation: { status: standard, api_name: "contribution_id" }
           contact: { status: standard, api_name: "contact_id" }
           account: { status: custom }
-          amount: { status: standard, api_name: "amount" }
-          type: { status: standard, api_name: "soft_credit_type_id" }
+          creditAmount: { status: standard, api_name: "amount" }
+          creditType: { status: standard, api_name: "soft_credit_type_id" }
           createdAt: { status: standard, api_name: "created_date" }
       salesforce_npsp:
         name: "Partial Soft Credit + Account Soft Credit + Opportunity Contact Role"
@@ -3106,8 +3101,8 @@ mappings:
           donation: { status: standard, api_name: "npsp__Opportunity__c" }
           contact: { status: standard, api_name: "npsp__Contact__c" }
           account: { status: standard, api_name: "npo02__Organization__c" }
-          amount: { status: standard, api_name: "npsp__Amount__c" }
-          type: { status: standard, api_name: "npsp__Role_Name__c" }
+          creditAmount: { status: standard, api_name: "npsp__Amount__c" }
+          creditType: { status: standard, api_name: "npsp__Role_Name__c" }
           createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
         name: "Acknowledgement"
@@ -3118,8 +3113,8 @@ mappings:
           donation: { status: standard, api_name: "TransactionId" }
           contact: { status: standard, api_name: "AccountId" }
           account: { status: custom }
-          amount: { status: standard, api_name: "Amount" }
-          type: { status: standard, api_name: "Type" }
+          creditAmount: { status: standard, api_name: "Amount" }
+          creditType: { status: standard, api_name: "Type" }
           createdAt: { status: standard, api_name: "CreatedDate" }
 
   - catalog_id: volunteer-hour
@@ -3158,7 +3153,7 @@ mappings:
           serviceDate: { status: custom }
           project: { status: custom }
           role: { status: custom }
-          status: { status: custom }
+          volunteerStatus: { status: custom }
           description: { status: custom }
           createdAt: { status: custom }
       salesforce_npsp:
@@ -3172,7 +3167,7 @@ mappings:
           serviceDate: { status: custom }
           project: { status: custom }
           role: { status: custom }
-          status: { status: custom }
+          volunteerStatus: { status: custom }
           description: { status: custom }
           createdAt: { status: custom }
       bloomerang:
@@ -3186,7 +3181,7 @@ mappings:
           serviceDate: { status: standard, api_name: "Date" }
           project: { status: standard, api_name: "ProjectId" }
           role: { status: custom }
-          status: { status: custom }
+          volunteerStatus: { status: custom }
           description: { status: standard, api_name: "Note" }
           createdAt: { status: standard, api_name: "CreatedDate" }
 
@@ -3195,7 +3190,7 @@ mappings:
     tier: 4
     entry_kind: subclass
     parent_entity: account
-    discriminator_attribute: "type"
+    discriminator_attribute: "accountType"
     discriminator_value: "Household"
     by_system:
       salesforce:
@@ -3378,9 +3373,9 @@ mappings:
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contract.htm
         attributes:
           contractNumber: { status: standard, api_name: "ContractNumber" }
-          name: { status: standard, api_name: "ContractName" }
+          contractName: { status: standard, api_name: "ContractName" }
           account: { status: standard, api_name: "AccountId" }
-          status: { status: standard, api_name: "Status" }
+          contractStatus: { status: standard, api_name: "Status" }
           startDate: { status: standard, api_name: "StartDate" }
           endDate: { status: standard, api_name: "EndDate" }
           term: { status: standard, api_name: "ContractTerm" }
@@ -3397,9 +3392,9 @@ mappings:
         docs_url: https://knowledge.hubspot.com/contracts/use-the-contract-object
         attributes:
           contractNumber: { status: standard, api_name: "hs_contract_number" }
-          name: { status: standard, api_name: "hs_contract_name" }
+          contractName: { status: standard, api_name: "hs_contract_name" }
           account: { status: standard, api_name: "hs_company_id" }
-          status: { status: standard, api_name: "hs_contract_status" }
+          contractStatus: { status: standard, api_name: "hs_contract_status" }
           startDate: { status: standard, api_name: "hs_start_date" }
           endDate: { status: standard, api_name: "hs_end_date" }
           term: { status: standard, api_name: "hs_contract_term" }
@@ -3421,9 +3416,9 @@ mappings:
         docs_url: https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Sales/Resources/metadata/entityDefs/Contract.json
         attributes:
           contractNumber: { status: standard, api_name: "number" }
-          name: { status: standard, api_name: "name" }
+          contractName: { status: standard, api_name: "name" }
           account: { status: standard, api_name: "accountId" }
-          status: { status: standard, api_name: "status" }
+          contractStatus: { status: standard, api_name: "status" }
           startDate: { status: standard, api_name: "dateStart" }
           endDate: { status: standard, api_name: "dateEnd" }
           term: { status: standard, api_name: "term" }
@@ -3445,9 +3440,9 @@ mappings:
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contract.htm
         attributes:
           contractNumber: { status: standard, api_name: "ContractNumber" }
-          name: { status: standard, api_name: "ContractName" }
+          contractName: { status: standard, api_name: "ContractName" }
           account: { status: standard, api_name: "AccountId" }
-          status: { status: standard, api_name: "Status" }
+          contractStatus: { status: standard, api_name: "Status" }
           startDate: { status: standard, api_name: "StartDate" }
           endDate: { status: standard, api_name: "EndDate" }
           term: { status: standard, api_name: "ContractTerm" }
@@ -3474,14 +3469,14 @@ mappings:
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contentdocument.htm
         attributes:
-          name: { status: standard, api_name: "Title" }
+          documentName: { status: standard, api_name: "Title" }
           fileName: { status: standard, api_name: "PathOnClient" }
           mimeType: { status: standard, api_name: "FileType" }
           fileSize: { status: standard, api_name: "ContentSize" }
           description: { status: standard, api_name: "Description" }
           parent: { status: standard, api_name: "LinkedEntityId" }
           assignedUser: { status: standard, api_name: "OwnerId" }
-          status: { status: custom }
+          documentStatus: { status: custom }
           version: { status: standard, api_name: "VersionNumber" }
           createdAt: { status: standard, api_name: "CreatedDate" }
       hubspot:
@@ -3490,14 +3485,14 @@ mappings:
         is_standard: true
         docs_url: https://developers.hubspot.com/docs/api-reference/files-files
         attributes:
-          name: { status: standard, api_name: "name" }
+          documentName: { status: standard, api_name: "name" }
           fileName: { status: standard, api_name: "name" }
           mimeType: { status: standard, api_name: "type" }
           fileSize: { status: standard, api_name: "size" }
           description: { status: custom }
           parent: { status: standard, api_name: "parent" }
           assignedUser: { status: standard, api_name: "created_by" }
-          status: { status: custom }
+          documentStatus: { status: custom }
           version: { status: custom }
           createdAt: { status: standard, api_name: "createdate" }
       attio:
@@ -3506,14 +3501,14 @@ mappings:
         is_standard: true
         docs_url: https://attio.com/help/reference/managing-your-data/records/file-attachments
         attributes:
-          name: { status: standard, api_name: "name" }
+          documentName: { status: standard, api_name: "name" }
           fileName: { status: standard, api_name: "file_name" }
           mimeType: { status: standard, api_name: "mime_type" }
           fileSize: { status: standard, api_name: "size" }
           description: { status: custom }
           parent: { status: standard, api_name: "parent" }
           assignedUser: { status: standard, api_name: "created_by" }
-          status: { status: custom }
+          documentStatus: { status: custom }
           version: { status: custom }
           createdAt: { status: standard, api_name: "created_at" }
       espocrm:
@@ -3522,14 +3517,14 @@ mappings:
         is_standard: true
         docs_url: https://docs.espocrm.com/user-guide/documents/
         attributes:
-          name: { status: standard, api_name: "name" }
+          documentName: { status: standard, api_name: "name" }
           fileName: { status: standard, api_name: "name" }
           mimeType: { status: standard, api_name: "type" }
           fileSize: { status: standard, api_name: "size" }
           description: { status: standard, api_name: "description" }
           parent: { status: standard, api_name: "parentId" }
           assignedUser: { status: standard, api_name: "createdById" }
-          status: { status: standard, api_name: "status" }
+          documentStatus: { status: standard, api_name: "status" }
           version: { status: standard, api_name: "publishVersion" }
           createdAt: { status: standard, api_name: "createdAt" }
       civicrm:
@@ -3538,14 +3533,14 @@ mappings:
         is_standard: true
         docs_url: https://docs.civicrm.org/user/en/latest/the-user-interface/notes-attachments/
         attributes:
-          name: { status: standard, api_name: "description" }
+          documentName: { status: standard, api_name: "description" }
           fileName: { status: standard, api_name: "file_name" }
           mimeType: { status: standard, api_name: "mime_type" }
           fileSize: { status: standard, api_name: "file_size" }
           description: { status: standard, api_name: "description" }
           parent: { status: standard, api_name: "entity_id" }
           assignedUser: { status: standard, api_name: "upload_date" }
-          status: { status: custom }
+          documentStatus: { status: custom }
           version: { status: custom }
           createdAt: { status: standard, api_name: "created_date" }
       salesforce_npsp:
@@ -3554,14 +3549,14 @@ mappings:
         is_standard: true
         docs_url: https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contentdocument.htm
         attributes:
-          name: { status: standard, api_name: "Title" }
+          documentName: { status: standard, api_name: "Title" }
           fileName: { status: standard, api_name: "PathOnClient" }
           mimeType: { status: standard, api_name: "FileType" }
           fileSize: { status: standard, api_name: "ContentSize" }
           description: { status: standard, api_name: "Description" }
           parent: { status: standard, api_name: "LinkedEntityId" }
           assignedUser: { status: standard, api_name: "OwnerId" }
-          status: { status: custom }
+          documentStatus: { status: custom }
           version: { status: standard, api_name: "VersionNumber" }
           createdAt: { status: standard, api_name: "CreatedDate" }
       bloomerang:
@@ -3570,14 +3565,14 @@ mappings:
         is_standard: true
         docs_url: https://bloomerang.com/api/rest-api-v1/
         attributes:
-          name: { status: standard, api_name: "Description" }
+          documentName: { status: standard, api_name: "Description" }
           fileName: { status: standard, api_name: "FileName" }
           mimeType: { status: standard, api_name: "MimeType" }
           fileSize: { status: standard, api_name: "Size" }
           description: { status: standard, api_name: "Description" }
           parent: { status: standard, api_name: "Parent" }
           assignedUser: { status: standard, api_name: "CreatedBy" }
-          status: { status: custom }
+          documentStatus: { status: custom }
           version: { status: custom }
           createdAt: { status: standard, api_name: "CreatedDate" }
 

@@ -122,7 +122,7 @@ systems:
 # Attributes
 # =============================================================================
 attributes:
-  - name: name
+  - name: assetName
     display_name: Asset Name
     type: string
     required: true
@@ -339,8 +339,8 @@ attributes:
         api_name: UsageEndDate
       bloomerang:
         status: absent
-  - name: status
-    display_name: Status
+  - name: assetStatus
+    display_name: Asset Status
     type: enum
     required: false
     enum_values:

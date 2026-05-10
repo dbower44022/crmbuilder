@@ -117,7 +117,7 @@ attributes:
         api_name: ContractNumber
       bloomerang:
         status: absent
-  - name: name
+  - name: contractName
     display_name: Contract Name
     type: string
     required: true
@@ -169,8 +169,8 @@ attributes:
         api_name: AccountId
       bloomerang:
         status: absent
-  - name: status
-    display_name: Status
+  - name: contractStatus
+    display_name: Contract Status
     type: enum
     required: true
     enum_values:

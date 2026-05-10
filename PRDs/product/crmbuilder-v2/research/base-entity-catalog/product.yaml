@@ -127,7 +127,7 @@ systems:
 # Attributes
 # =============================================================================
 attributes:
-  - name: name
+  - name: productName
     display_name: Product Name
     type: string
     required: true
@@ -240,8 +240,8 @@ attributes:
         api_name: Family
       bloomerang:
         status: absent
-  - name: type
-    display_name: Type
+  - name: productType
+    display_name: Product Type
     type: enum
     required: false
     enum_values:

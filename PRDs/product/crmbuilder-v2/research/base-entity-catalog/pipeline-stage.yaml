@@ -144,7 +144,7 @@ systems:
 # Attributes
 # =============================================================================
 attributes:
-  - name: name
+  - name: stageName
     display_name: Stage Name
     type: string
     required: true

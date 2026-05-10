@@ -90,7 +90,7 @@ systems:
     docs_url: https://bloomerang.com/api/rest-api-v1/
 
 attributes:
-  - name: name
+  - name: householdName
     display_name: Household Name
     type: string
     required: true

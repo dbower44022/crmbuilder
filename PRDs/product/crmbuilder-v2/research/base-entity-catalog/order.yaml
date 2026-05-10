@@ -260,8 +260,8 @@ attributes:
         api_name: Quote
       bloomerang:
         status: absent
-  - name: status
-    display_name: Status
+  - name: orderStatus
+    display_name: Order Status
     type: enum
     required: true
     enum_values:

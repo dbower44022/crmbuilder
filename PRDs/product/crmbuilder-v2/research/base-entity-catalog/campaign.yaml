@@ -139,7 +139,7 @@ systems:
 # Attributes
 # =============================================================================
 attributes:
-  - name: name
+  - name: campaignName
     display_name: Campaign Name
     type: string
     required: true
@@ -171,7 +171,7 @@ attributes:
       bloomerang:
         status: standard
         api_name: Name
-  - name: type
+  - name: campaignType
     display_name: Campaign Type
     type: enum
     required: false
@@ -210,8 +210,8 @@ attributes:
         api_name: Type
       bloomerang:
         status: custom
-  - name: status
-    display_name: Status
+  - name: campaignStatus
+    display_name: Campaign Status
     type: enum
     required: true
     enum_values:

@@ -138,7 +138,7 @@ systems:
 # =============================================================================
 attributes:
   - name: subject
-    display_name: Subject
+    display_name: Case Subject
     type: string
     required: true
     max_length: 255
@@ -196,8 +196,8 @@ attributes:
         api_name: CaseNumber
       bloomerang:
         status: absent
-  - name: status
-    display_name: Status
+  - name: caseStatus
+    display_name: Case Status
     type: enum
     required: true
     enum_values:
@@ -310,8 +310,8 @@ attributes:
       - source
       - channel
       - how reported
-  - name: type
-    display_name: Type
+  - name: caseType
+    display_name: Case Type
     type: enum
     required: false
     description: >

@@ -297,7 +297,7 @@ attributes:
       bloomerang:
         status: custom
   - name: role
-    display_name: Role
+    display_name: User Role
     type: reference
     required: false
     reference_target: tag
@@ -372,7 +372,7 @@ attributes:
       - active
       - enabled
       - login enabled
-  - name: type
+  - name: userType
     display_name: User Type
     type: enum
     required: true

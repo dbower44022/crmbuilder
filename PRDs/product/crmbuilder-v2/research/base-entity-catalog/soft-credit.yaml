@@ -166,8 +166,8 @@ attributes:
         api_name: npo02__Organization__c
       bloomerang:
         status: custom
-  - name: amount
-    display_name: Amount
+  - name: creditAmount
+    display_name: Credit Amount
     type: currency
     required: false
     description: Soft-credit amount (may be full amount of donation or a percentage).
@@ -193,7 +193,7 @@ attributes:
     common_synonyms:
       - credit amount
       - soft credit value
-  - name: type
+  - name: creditType
     display_name: Soft Credit Type
     type: enum
     required: false

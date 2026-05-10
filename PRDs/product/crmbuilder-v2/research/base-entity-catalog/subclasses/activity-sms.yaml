@@ -153,7 +153,7 @@ attributes:
       bloomerang:
         status: custom
   - name: body
-    display_name: Body
+    display_name: SMS Body
     type: text
     required: true
     description: Message content.

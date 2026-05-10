@@ -89,7 +89,7 @@ systems:
     docs_url: https://bloomerang.com/api/rest-api-v1/
 
 attributes:
-  - name: name
+  - name: documentName
     display_name: Document Name
     type: string
     required: true
@@ -299,8 +299,8 @@ attributes:
       bloomerang:
         status: standard
         api_name: CreatedBy
-  - name: status
-    display_name: Status
+  - name: documentStatus
+    display_name: Document Status
     type: enum
     required: false
     enum_values:

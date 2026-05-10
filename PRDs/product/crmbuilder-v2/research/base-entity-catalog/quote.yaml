@@ -134,7 +134,7 @@ systems:
 # Attributes
 # =============================================================================
 attributes:
-  - name: name
+  - name: quoteName
     display_name: Quote Name
     type: string
     required: true
@@ -285,8 +285,8 @@ attributes:
         api_name: ContactId
       bloomerang:
         status: absent
-  - name: status
-    display_name: Status
+  - name: quoteStatus
+    display_name: Quote Status
     type: enum
     required: true
     enum_values:

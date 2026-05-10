@@ -91,7 +91,7 @@ systems:
     docs_url: https://bloomerang.com/api/rest-api-v1/
 
 attributes:
-  - name: type
+  - name: constituentType
     display_name: Constituent Type
     type: enum
     required: true

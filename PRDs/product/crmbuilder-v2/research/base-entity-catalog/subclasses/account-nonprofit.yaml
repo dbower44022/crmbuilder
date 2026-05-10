@@ -12,7 +12,7 @@ entry_kind: subclass
 # =============================================================================
 parent_entity: account
 discriminator:
-  attribute: type
+  attribute: accountType
   value: Nonprofit Organization
 
 name: Nonprofit Organization

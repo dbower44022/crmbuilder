@@ -181,7 +181,7 @@ attributes:
         status: standard
         api_name: ProjectId
   - name: role
-    display_name: Role
+    display_name: Volunteer Role
     type: enum
     required: false
     description: Role or function the volunteer performed.
@@ -201,8 +201,8 @@ attributes:
         status: custom
       bloomerang:
         status: custom
-  - name: status
-    display_name: Status
+  - name: volunteerStatus
+    display_name: Volunteer Status
     type: enum
     required: false
     enum_values:
