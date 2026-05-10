@@ -529,6 +529,14 @@ class ListDetailPanel(QWidget):
     def _on_fetch_success(self, result: list[dict[str, Any]]) -> None:
         if not self._sender_is_current_refresh():
             return
+        # Capture the currently-selected identifier before replacing the
+        # model. This protects two paths: (1) cross-panel navigation,
+        # where ``_on_navigate_requested`` selects the target row
+        # synchronously while the sidebar's refresh is still in flight,
+        # and (2) any incidental refresh that races with a click.
+        # Without this, ``set_records`` + ``_show_empty_detail`` would
+        # blow the user's selection away on every refresh.
+        prior_selected_id = self._currently_selected_identifier()
         raw = list(result) if isinstance(result, list) else []
         self._records = self._post_process_records(raw)
         self._model.set_records(self._records)
@@ -541,18 +549,17 @@ class ListDetailPanel(QWidget):
                     col_idx, QHeaderView.ResizeMode.Stretch
                 )
         self._status_label.setText(f"{len(self._records)} records")
-        # Reset the detail pane to the empty placeholder until the user
-        # selects a row.
-        self._show_empty_detail()
-        # If a navigation request asked us to select a specific row,
-        # apply it now.
+        # Decide which row to select after the refresh:
+        #   1. An explicit pending identifier (from cross-panel navigation
+        #      that arrived after the refresh started).
+        #   2. The prior selection if its row still exists.
+        #   3. No selection — show the empty detail placeholder.
         pending = self._pending_select_identifier
-        if pending is not None:
-            self._pending_select_identifier = None
-            for row, record in enumerate(self._records):
-                if record.get("identifier") == pending:
-                    self._select_row(row)
-                    break
+        self._pending_select_identifier = None
+        desired = pending if pending is not None else prior_selected_id
+        if desired is not None and self._select_by_identifier(desired):
+            return
+        self._show_empty_detail()
 
     def _on_fetch_error(self, exc: Exception) -> None:
         if not self._sender_is_current_refresh():
@@ -676,6 +683,31 @@ class ListDetailPanel(QWidget):
         index = self._model.index(row, 0)
         self._table.setCurrentIndex(index)
         self._table.scrollTo(index)
+
+    def _currently_selected_identifier(self) -> str | None:
+        """Return the identifier of the currently-selected master row, if any.
+
+        Used by ``_on_fetch_success`` to preserve the user's selection
+        across refreshes when the row still exists in the new dataset.
+        Default reads ``self._records`` by row index; subclasses with a
+        different master widget shape (e.g., the Topics tree panel) may
+        override.
+        """
+        master = getattr(self, "_master_view", None)
+        if master is None:
+            return None
+        sel_model = master.selectionModel()
+        if sel_model is None:
+            return None
+        index = sel_model.currentIndex()
+        if not index.isValid():
+            return None
+        row = index.row()
+        if 0 <= row < len(self._records):
+            ident = self._records[row].get("identifier")
+            if isinstance(ident, str):
+                return ident
+        return None
 
     def _sender_is_current_refresh(self) -> bool:
         sender = self.sender()

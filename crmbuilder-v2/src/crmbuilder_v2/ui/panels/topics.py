@@ -275,15 +275,21 @@ class TopicsPanel(ListDetailPanel):
     def _on_fetch_success(self, result: list[dict[str, Any]]) -> None:
         if not self._sender_is_current_refresh():
             return
+        # Capture the prior selection so refreshes preserve it when the
+        # identifier still exists post-refresh. See the matching
+        # ListDetailPanel._on_fetch_success comment for the cross-panel
+        # navigation race this guards against.
+        prior_selected_id = self._currently_selected_identifier()
         raw = list(result) if isinstance(result, list) else []
         self._records = self._post_process_records(raw)
         self._populate_tree(self._records)
         self._status_label.setText(f"{len(self._records)} topics")
-        self._show_empty_detail()
         pending = self._pending_select_identifier
-        if pending is not None:
-            self._pending_select_identifier = None
-            self._select_by_identifier(pending)
+        self._pending_select_identifier = None
+        desired = pending if pending is not None else prior_selected_id
+        if desired is not None and self._select_by_identifier(desired):
+            return
+        self._show_empty_detail()
 
     def _populate_tree(self, topics: list[dict[str, Any]]) -> None:
         self._tree_model.clear()
@@ -412,6 +418,25 @@ class TopicsPanel(ListDetailPanel):
             ident = self._records[row].get("identifier")
             if ident:
                 self._select_by_identifier(ident)
+
+    def _currently_selected_identifier(self) -> str | None:
+        """Read the selected item's identifier via the tree's identifier role.
+
+        Overrides the base's row-index lookup because the tree model is
+        a ``QStandardItemModel`` whose nested rows don't address records
+        uniquely by ``self._records[row]``.
+        """
+        sel_model = self._master_view.selectionModel()
+        if sel_model is None:
+            return None
+        index = sel_model.currentIndex()
+        if not index.isValid():
+            return None
+        item = self._tree_model.itemFromIndex(index)
+        if item is None:
+            return None
+        ident = item.data(_IDENTIFIER_ROLE)
+        return ident if isinstance(ident, str) else None
 
     # ------------------------------------------------------------------
     # Helpers
