@@ -1,13 +1,57 @@
 [
   {
     "created_at": "2026-05-09T15:26:22.897413",
-    "description": "Full styling design pass per DEC-024 deferred from v0.1 (per DEC-024), v0.2 (per DEC-026), and v0.3 (per DEC-037). The pass establishes a coherent visual language for the v2 desktop application: typography hierarchy, accent colors beyond the navy stub (#1F3864), error/warning/info states, button hierarchy, dialog framing, table row spacing, and accessibility considerations. Target release: v0.5 or whatever release follows v0.4 unless other priorities reorder. The next planning conversation should engage this planning item explicitly when scoping the next release. If three deferrals were not enough, this planning item is the lever that prevents a fourth from being silent.",
+    "description": "Full styling design pass per DEC-024, deferred FOUR TIMES: v0.1→v0.2 (DEC-024), v0.2→v0.3 (DEC-026), v0.3→future (DEC-037), v0.4→v0.5+ with CBM-redo-friction trigger (DEC-042). The pass establishes a coherent visual language for the v2 desktop application: typography hierarchy, accent colors beyond the navy stub (#1F3864), error/warning/info states, button hierarchy, dialog framing, table row spacing, and accessibility considerations. **Trigger mechanism (per DEC-042):** if CBM redo Phase 1 — running against the four new methodology entity panels delivered in v0.4 (domain, entity, process, crm_candidate) — surfaces visual friction on any of those panels, PI-001 gets pulled to v0.5 ahead of any other v0.5 candidate, regardless of v0.5 planning's other priorities. 'Visual friction' is intentionally fuzzy: Doug's judgment as the consultant running the redo determines whether something he sees while working bugs him enough to count. If CBM redo runs smoothly visually, PI-001 may continue to defer — that's evidence too.",
     "id": 1,
     "identifier": "PI-001",
     "item_type": "pending_work",
     "resolution_reference": null,
     "status": "Open",
     "title": "Full styling design pass per DEC-024",
-    "updated_at": "2026-05-09T15:26:22.897416"
+    "updated_at": "2026-05-11T14:51:10.152094"
+  },
+  {
+    "created_at": "2026-05-11T14:51:10.184105",
+    "description": "DEC-043 resolved the SES-010 identifier-asymmetry friction via option (B) — ``GET /<entity>/next-identifier`` helpers for all twelve prefixed entity types. Option (C) — making ``identifier`` optional in POST bodies with server-side auto-assignment on omission — is the cleaner end state but was deferred from v0.4 because it changes existing endpoint contracts (gray-area under the kickoff's 'doesn't alter v0.3's storage shape' rule) and deserves its own design pass. Open design questions: (1) how to disambiguate client-omitted identifier (auto-assign) from client-specified-empty-string identifier (validation error)? (2) does this apply to versioned entity types like charter and status, whose identifiers are version numbers? (3) does the MCP server need any change beyond what the API change implies? Target release: v0.5 or later, depending on scope competition.",
+    "id": 2,
+    "identifier": "PI-002",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Make `identifier` optional in POST bodies (SES-010 option C)",
+    "updated_at": "2026-05-11T14:51:10.184108"
+  },
+  {
+    "created_at": "2026-05-11T14:51:10.213028",
+    "description": "DEC-039 deferred persona from v0.4's minimum-viable inventory because evolved Phase 1's interview guide v0.2 explicitly excludes persona elicitation in Phase 1 — persona context comes from pre-engagement reading of operational role definitions, used as consultant background rather than captured as records. Phase 2 or 3 of the evolved methodology may surface persona records (actors performing processes, role-based access boundaries). The persona entity type design should follow the workstream pattern (one Claude.ai conversation produces the schema spec, design-only, separate from build). Target release: v0.5+, conditional on CBM redo Phase 2 or 3 surfacing need.",
+    "id": 3,
+    "identifier": "PI-003",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Persona entity type for v0.5+ (deferred from v0.4 minimum-viable inventory)",
+    "updated_at": "2026-05-11T14:51:10.213031"
+  },
+  {
+    "created_at": "2026-05-11T14:51:10.242097",
+    "description": "DEC-039 deferred fields, requirements, manual-config items, and test specs from v0.4's minimum-viable inventory. These are Phase 3+ entity types in the evolved methodology (Iteration Build and Deploy through Engagement Closure and Adoption). Each will need its own schema-design conversation following the workstream pattern established in v0.4. Field is the most urgent of the four because entity (shipped thin in v0.4) gains real utility only when fields can attach. Likely v0.5 ships field; later releases ship the rest. Target release: v0.5+ for field; v0.6+ for the rest, conditional on CBM redo progression and v2 patterns established in earlier releases.",
+    "id": 4,
+    "identifier": "PI-004",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Additional methodology entity types for v0.5+: field, requirement, manual_config, test_spec",
+    "updated_at": "2026-05-11T14:51:10.242099"
+  },
+  {
+    "created_at": "2026-05-11T14:51:10.271856",
+    "description": "DEC-039 ships process in v0.4 with a thin Phase-1-only schema: identifier, name, brief description, priority classification, domain reference, process-to-process connections. Phase 3 of the evolved methodology (Iteration Build and Deploy) produces full Process Documents with steps, actors (personas), entity-field touches, triggers, outcomes, edge cases. Growing process's schema to host this content is v0.5+ work that depends on field (PI-004) and persona (PI-003) existing as records. Likely a migration story rather than re-design (thin schema designed with growth in mind), but the migration scope is non-trivial. Target release: v0.5+ after persona and field land, conditional on CBM redo reaching Phase 3.",
+    "id": 5,
+    "identifier": "PI-005",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Process schema growth beyond Phase 1 thin shape (full process definition)",
+    "updated_at": "2026-05-11T14:51:10.271859"
   }
 ]
