@@ -1,5 +1,7 @@
 # v2 UI v0.4 — Planning Kickoff Prompt
 
+> **SUPERSEDED 05-11-26** by `methodology-schema-workstream-plan.md`. This kickoff described a v0.4 frame that was redirected during planning (SES-011, DEC-038 and DEC-041): v0.4's primary frame became methodology entity schema design, requiring a multi-conversation schema-design workstream rather than the single PRD + plan + slice prompts this kickoff anticipated. See `methodology-schema-workstream-plan.md` for the new direction, and the four per-entity kickoffs at `schema-design-kickoff-{domain,entity,process,crm_candidate}.md`. Retained for history and to keep SES-010's `artifacts_produced` reference valid.
+
 **Last Updated:** 05-10-26 00:30
 **Purpose:** Seed prompt for a new Claude.ai conversation that plans v0.4 of the v2 desktop UI.
 **Predecessor:** v0.3 shipped 05-09-26 via the five-prompt v2-ui-v0.3 series (slices A through E).
