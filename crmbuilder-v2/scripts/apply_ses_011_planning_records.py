@@ -549,13 +549,20 @@ NEW_PIS = [
 
 # SES-011 must exist (Doug wrote it through the New Session dialog at conversation
 # close) before these references can be authored.
+#
+# Field-name convention: v0.3 introduced the naming alignment where `relationship`
+# is API/UI canonical and `relationship_kind` is the DB column (single translation
+# point at `_row_dict`). Same pattern for the source/target fields: API uses the
+# short forms (source_type, source_id, target_type, target_id); DB uses the long
+# forms (source_entity_type, source_identifier, target_entity_type, target_identifier).
+# Always use the short API-canonical forms in POST bodies.
 REFERENCES = [
     {
-        "source_entity_type": "decision",
-        "source_identifier": dec["identifier"],
-        "target_entity_type": "session",
-        "target_identifier": SESSION_ID,
-        "relationship_kind": "decided_in",
+        "source_type": "decision",
+        "source_id": dec["identifier"],
+        "target_type": "session",
+        "target_id": SESSION_ID,
+        "relationship": "decided_in",
     }
     for dec in DECISIONS
 ]
@@ -633,7 +640,7 @@ def main() -> int:
     for ref in REFERENCES:
         status, payload = _request("POST", "/references", ref)
         ok &= _log(
-            f"POST /references  {ref['source_identifier']} decided_in {SESSION_ID}",
+            f"POST /references  {ref['source_id']} decided_in {SESSION_ID}",
             status,
             payload,
         )
