@@ -142,6 +142,8 @@ def _check_api_reachable() -> bool:
 
 
 def main() -> int:
+    global BASE
+
     parser = argparse.ArgumentParser(
         description="Apply a close-out JSON payload to the v2 API.",
     )
@@ -157,7 +159,6 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    global BASE
     BASE = args.base
 
     if not args.payload_path.exists():
