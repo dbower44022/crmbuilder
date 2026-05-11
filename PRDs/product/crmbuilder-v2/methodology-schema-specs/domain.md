@@ -1,6 +1,6 @@
 # Methodology Entity Schema Spec — `domain`
 
-**Last Updated:** 05-11-26 23:00
+**Last Updated:** 05-11-26 23:30
 **Status:** Draft v1.0 — produced by schema-design conversation
 **Position in workstream:** First of four methodology-entity schema specs (`domain` → `entity` → `process` → `crm_candidate`)
 **Predecessor conversation:** SES-011 (workstream-establishing planning conversation)
@@ -342,14 +342,14 @@ Categorized per the spec guide section 3.8 convention. Each entry is one paragra
 
 #### 3.9.1 Decisions cited by this spec
 
-The following decisions are authored at this conversation's close via direct API. Final DEC-NNN numbers are assigned at write time (after SES-011's pending decisions land). The decisions are listed here by topic; this section will be updated with concrete identifiers when the records are written.
+The following six decisions are authored by `crmbuilder-v2/scripts/apply_ses_012_records.py` at conversation close. Each is linked to SES-012 via a `decided_in` reference.
 
-- **DEC-NNN — `domain` identifier prefix and format.** Adopts `DOM` with the soft-3-letter posture for downstream methodology entity prefixes (see section 3.1).
-- **DEC-NNN — `domain` field inventory and validation.** Two content fields (`domain_purpose`, `domain_description`), optional `domain_notes`, no storage-level length caps, case-insensitive `domain_name` uniqueness within the engagement (see sections 3.2 and 3.2 validation rules).
-- **DEC-NNN — Parent-prefix field-naming convention for methodology entities.** Cross-spec rule applying to all four methodology entities in the workstream. Forward-only for methodology; governance-entity retrofit tracked as PI-006. Spec guide section 6 amendment queued for v0.4-build-planning (see section 1 and section 3.2).
-- **DEC-NNN — `domain` status lifecycle and rejection-via-soft-delete posture.** Three values (`candidate`, `confirmed`, `deferred`), one-way propose-verify gate, rejection handled by soft-delete rather than a `rejected` status value, no `archived` status (see section 3.4).
-- **DEC-NNN — `domain` relationship posture and cross-spec relationship-kind naming.** No outgoing relationships in v0.4. Inbound relationship kinds declared by source-side specs (`entity`, `process`). `{source}_{verb}_{target}` relationship-kind naming pattern established for methodology vocab (see section 3.3).
-- **DEC-NNN — `domain` API surface and UI defaults.** Standard endpoint set with no deviations, server-side status-transition validation, default `ListDetailPanel` UI in a new Methodology sidebar group, `domain_notes` collapsed by default in the detail pane (see sections 3.5, 3.6, 3.7).
+- **DEC-044 — `domain` identifier prefix and format.** Adopts `DOM` with the soft-3-letter posture for downstream methodology entity prefixes (see section 3.1).
+- **DEC-045 — `domain` field inventory and validation under minimum-viable v0.4 scope.** Two content fields (`domain_purpose`, `domain_description`), optional `domain_notes`, no storage-level length caps, case-insensitive `domain_name` uniqueness within the engagement (see section 3.2).
+- **DEC-046 — Parent-prefix field-naming convention for methodology entities.** Cross-spec rule applying to all four methodology entities in the workstream. Forward-only for methodology; governance-entity retrofit tracked as PI-006. Spec guide section 6 amendment queued for v0.4-build-planning (see section 1 and section 3.2).
+- **DEC-047 — `domain` status lifecycle, propose-verify gate, and rejection-via-soft-delete posture.** Three values (`candidate`, `confirmed`, `deferred`), one-way propose-verify gate, rejection handled by soft-delete rather than a `rejected` status value, no `archived` status (see section 3.4).
+- **DEC-048 — `domain` relationship posture and `{source}_{verb}_{target}` relationship-kind naming convention.** No outgoing relationships in v0.4. Inbound relationship kinds declared by source-side specs (`entity`, `process`). Cross-spec naming pattern established for methodology vocab (see section 3.3).
+- **DEC-049 — `domain` API surface, UI defaults, and acceptance criteria for v0.4.** Standard endpoint set with no deviations, server-side status-transition validation, default `ListDetailPanel` UI in a new Methodology sidebar group, `domain_notes` collapsed by default in the detail pane, 14 testable acceptance criteria (see sections 3.5, 3.6, 3.7).
 
 #### 3.9.2 External references
 
