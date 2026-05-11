@@ -1,6 +1,6 @@
 # Methodology Entity Schema Spec — `domain`
 
-**Last Updated:** 05-11-26 23:30
+**Last Updated:** 05-11-26 23:45
 **Status:** Draft v1.0 — produced by schema-design conversation
 **Position in workstream:** First of four methodology-entity schema specs (`domain` → `entity` → `process` → `crm_candidate`)
 **Predecessor conversation:** SES-011 (workstream-establishing planning conversation)
@@ -342,7 +342,7 @@ Categorized per the spec guide section 3.8 convention. Each entry is one paragra
 
 #### 3.9.1 Decisions cited by this spec
 
-The following six decisions are authored by `crmbuilder-v2/scripts/apply_ses_012_records.py` at conversation close. Each is linked to SES-012 via a `decided_in` reference.
+The following six decisions are authored by running `crmbuilder-v2/scripts/apply_close_out.py` against `PRDs/product/crmbuilder-v2/close-out-payloads/ses_012.json` at conversation close. Each is linked to SES-012 via a `decided_in` reference recorded in the same payload.
 
 - **DEC-044 — `domain` identifier prefix and format.** Adopts `DOM` with the soft-3-letter posture for downstream methodology entity prefixes (see section 3.1).
 - **DEC-045 — `domain` field inventory and validation under minimum-viable v0.4 scope.** Two content fields (`domain_purpose`, `domain_description`), optional `domain_notes`, no storage-level length caps, case-insensitive `domain_name` uniqueness within the engagement (see section 3.2).
