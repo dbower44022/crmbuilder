@@ -108,5 +108,16 @@
     "status": "Open",
     "title": "Entity-schema v0.5+ extensions — variants and base-type/kind classification",
     "updated_at": "2026-05-12T01:23:41.201250"
+  },
+  {
+    "created_at": "2026-05-12T08:06:18.541641",
+    "description": "DEC-057 adopted process_classification (mission_critical / supporting / deferred / unclassified) as the methodology priority classification per Principle 3. During the conversation the user observed that this is a classification, not a conventional scalar priority, and the methodology's three buckets don't answer the implementation-ranking question — 'of the mission-critical processes, which do we build first?'. A separate scalar implementation-priority field (working name process_priority, values Critical / High / Medium / Low or 1-5 or similar) is deferred to v0.5+. The deferral reasoning: Phase 1 does not formally produce per-process implementation priority — that information emerges from Phase 2 Slice Planning, which v0.4 schema does not yet host as content. When Phase 2 (Slice Planning) iteration content lands in v0.5+, the scalar priority field is part of that work, scoped per-iteration rather than global to the process record (the same process might have different scalar priorities in different iterations). Implementation when this PI lands: (a) add process_priority field with chosen value space; (b) decide whether the field is global on the process record or per-iteration via a join table to a future Iteration entity; (c) UI: master-pane column showing classification + priority paired (e.g., 'mission_critical / High'); (d) priority-transition validation if any (probably free movement per Principle 7). Prioritization signal: CBM redo Phase 1 will reveal whether consultants want implementation-priority ranking at Phase 1 cadence (probably no — Phase 1 outputs classification, not implementation order). Real signal comes from Phase 2 when slice planning content needs to host iteration-membership decisions.",
+    "id": 11,
+    "identifier": "PI-011",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Future scalar implementation-priority field on process for ranking within classification buckets",
+    "updated_at": "2026-05-12T08:06:18.541645"
   }
 ]

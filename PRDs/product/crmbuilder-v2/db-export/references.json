@@ -475,5 +475,50 @@
     "source_type": "decision",
     "target_id": "SES-013",
     "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-12T08:06:18.584588",
+    "id": 54,
+    "relationship_kind": "decided_in",
+    "source_id": "DEC-055",
+    "source_type": "decision",
+    "target_id": "SES-014",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-12T08:06:18.616782",
+    "id": 55,
+    "relationship_kind": "decided_in",
+    "source_id": "DEC-056",
+    "source_type": "decision",
+    "target_id": "SES-014",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-12T08:06:18.650175",
+    "id": 56,
+    "relationship_kind": "decided_in",
+    "source_id": "DEC-057",
+    "source_type": "decision",
+    "target_id": "SES-014",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-12T08:06:18.683253",
+    "id": 57,
+    "relationship_kind": "decided_in",
+    "source_id": "DEC-058",
+    "source_type": "decision",
+    "target_id": "SES-014",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-12T08:06:18.716406",
+    "id": 58,
+    "relationship_kind": "decided_in",
+    "source_id": "DEC-059",
+    "source_type": "decision",
+    "target_id": "SES-014",
+    "target_type": "session"
   }
 ]
