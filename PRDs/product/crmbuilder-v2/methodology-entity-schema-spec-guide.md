@@ -1,6 +1,6 @@
 # Methodology Entity Schema Specification — Methodology Guide
 
-**Last Updated:** 05-11-26 16:00
+**Last Updated:** 05-12-26 10:30
 **Status:** Active — template for the four schema-design conversations in the methodology-entity-schema-design workstream.
 **Companion document:** `methodology-schema-workstream-plan.md`
 
@@ -11,12 +11,15 @@
 | Version | Date | Author | Summary |
 |---------|------|--------|---------|
 | 1.0 | 05-11-26 16:00 | Doug Bower / Claude (SES-011) | Initial guide. Produced alongside the workstream plan that redirected v0.4 to methodology entity schema design. |
+| 1.1 | 05-12-26 10:30 | Doug Bower / Claude (SES-016) | Section 6 amendment per DEC-065. Scope-note paragraph at section head; three table-row updates (status field name, relationship-kind naming, field naming) flagged "methodology only" with parent-prefix and source-first conventions established by SES-012 captured; closing-paragraph addendum acknowledging the three documented cross-spec deviations accepted by the v0.4-build-planning conversation as well-justified. |
 
 ---
 
 ## Change Log
 
 **Version 1.0 (05-11-26 16:00):** Initial creation. Defines what a complete methodology-entity schema spec contains, how a schema-design conversation runs, what decisions and session records the conversation produces, and what consistency conventions apply across all four schemas. Section 3.6 (UI considerations) uses the template-with-deviation-by-justification pattern: a default panel layout that any schema may diverge from with explicit rationale in its spec.
+
+**Version 1.1 (05-12-26 10:30):** Section 6 amendment per DEC-065 from the v0.4-build-planning conversation (SES-016). The methodology-entity-schema-design workstream established two new conventions through SES-012 (`domain` spec) that were then applied across SES-013/014/015 (`entity`, `process`, `crm_candidate`): the parent-prefix field-naming convention (DEC-046) and the source-first relationship-kind-naming convention (DEC-048). The cross-spec consistency check performed at the head of the v0.4-build-planning conversation confirmed these conventions hold across all four specs, accepted three documented deviations as well-justified, and amended section 6 to capture the conventions explicitly. Section 6 is now scoped forward-only to methodology entity types; v2's existing governance entity types retain their pre-workstream conventions until and unless the **PI-006** retrofit lands.
 
 ---
 
@@ -256,22 +259,24 @@ If a schema-design conversation surfaces a need for fundamental change (e.g., "t
 
 ## 6. Cross-spec consistency requirements
 
+**Scope note (added at v0.4 build planning per DEC-065).** The conventions in this section apply to the four methodology entity types in the methodology-entity-schema-design workstream (`domain`, `entity`, `process`, `crm_candidate`) and to methodology entity types introduced in v0.5+. They do NOT apply retroactively to v2's existing governance entity types (`decision`, `session`, `risk`, `planning_item`, `topic`, `reference`, `charter`, `status`); governance entities retain their pre-workstream conventions until and unless **PI-006** retrofit lands. Rows marked "(methodology only)" below carry this forward-only scope explicitly.
+
 Conventions that all four schemas share, validated at the consistency check before v0.4-build planning:
 
 | Convention | Value |
 |------------|-------|
 | Identifier prefix style | 3–5 uppercase letters, no digits, no underscores |
 | Identifier format | `{PREFIX}-NNN`, zero-padded to 3 digits |
-| Status field name | `status` (not `state`, `lifecycle_status`, etc.) |
+| Status field name (methodology only) | `{parent}_status` per parent-prefix convention (DEC-046). E.g., `domain_status`, `entity_status`, `crm_candidate_status`. Governance entities retain `status` until PI-006. |
 | Status values | lowercase `snake_case` |
 | Default starter status | named explicitly in each spec; typically `candidate` for evolving methodology entities |
-| Relationship-kind naming | `verb_phrase` style (e.g., `process_belongs_to_domain`, not `process_domain_membership`) |
-| Field naming | `snake_case`, singular nouns for scalar fields, plural nouns for collection/JSON fields |
+| Relationship-kind naming (methodology only) | For new vocab entries involving methodology entities, `{source}_{verb}_{target}` source-first pattern per DEC-048. E.g., `entity_scopes_to_domain`, `process_hands_off_to_process`. Governance vocab (`is_about`, `references`, `decided_in`, `supersedes`, `affects`, `covers`, `blocks`) retains its pre-workstream naming. |
+| Field naming (methodology only) | `snake_case`, with all fields including identifier and timestamps prefixed with the parent entity name per DEC-046. E.g., `domain_identifier`, `domain_name`, `domain_created_at`. Singular nouns for scalar fields; plural for collection/JSON fields. Governance entities retain their pre-workstream conventions until PI-006. |
 | Timestamp inheritance | Inherit base `created_at`, `updated_at`, `deleted_at` without redeclaring |
 | Soft-delete behavior | Default (filtered from list endpoints, restorable via `/restore` endpoint) |
 | Identifier auto-assignment | Default (server-side on POST omission, helper at `GET /{plural}/next-identifier`) |
 
-A spec that deviates from any of these must explicitly call out the deviation and justify it in the relevant section.
+A spec that deviates from any of these must explicitly call out the deviation and justify it in the relevant section. The methodology workstream produced three documented deviations across the four specs (cited by DEC-055, DEC-056, DEC-062), which the v0.4-build-planning conversation's cross-spec consistency check accepted as well-justified.
 
 ---
 
