@@ -53,5 +53,38 @@
     "status": "Open",
     "title": "Process schema growth beyond Phase 1 thin shape (full process definition)",
     "updated_at": "2026-05-11T14:51:10.271859"
+  },
+  {
+    "created_at": "2026-05-11T18:50:11.689468",
+    "description": "DEC-046 establishes the parent-prefix field-naming convention for methodology entities forward-only; governance entities (DEC, SES, RSK, PI, TOP, REF, CHR, STA) retain bare field names (status, title, name, description, etc.) until this retrofit lands. Retrofit scope: Alembic migrations renaming columns on eight existing tables; access-layer method updates across crmbuilder-v2/src/crmbuilder_v2/access/; REST API serialization updates; MCP tool input/output updates; UI dialog updates (every QLineEdit, QComboBox, and table model column bound to a renamed field); DB-export JSON snapshot regeneration with rewriting of committed snapshots in git history; backward-compat considerations for any external scripts hitting the REST API or MCP. Substantial migration. The v0.4-build-planning conversation decides whether to pull this retrofit into v0.4 scope (significant additional work) or defer to v0.5+. The methodology workstream's specs ship with the new convention regardless of when this retrofit lands.",
+    "id": 6,
+    "identifier": "PI-006",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Retrofit governance entities to parent-prefix field-naming convention",
+    "updated_at": "2026-05-11T18:50:11.689471"
+  },
+  {
+    "created_at": "2026-05-11T18:50:11.720984",
+    "description": "The existing CBM methodology uses 2-letter domain codes (MN for Mentoring, MR for Mentor Recruitment, CR for Client Recruiting, FU for Fundraising) as prefixes for process and entity identifiers (MN-INTAKE, MR-RECRUIT, etc.). The Phase 1 evolved-methodology interview guide section 7.2 says the Domain Inventory includes 'name in client's language and a structural code' but does not specify whether downstream process/entity codes continue to use mnemonic prefixes in the evolved methodology. DEC-045 defers domain_short_code from the v0.4 minimum-viable shape pending CBM-redo signal. If real-engagement Phase 3 work confirms that mnemonic prefixes still pull weight for human-readable process/entity identifier construction, a v0.5 schema migration adds domain_short_code (str, 2-4 uppercase letters, unique within engagement); the process and entity schemas adopt it for human-readable identifier prefixes alongside their numeric identifiers. If the evolved methodology converges on sequential identifiers without mnemonic prefixes, this PI closes as not-needed.",
+    "id": 7,
+    "identifier": "PI-007",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "domain.short_code field for mnemonic references and downstream identifier prefixes",
+    "updated_at": "2026-05-11T18:50:11.720988"
+  },
+  {
+    "created_at": "2026-05-11T18:50:11.753076",
+    "description": "Surfaced by SES-012 close-out friction. The current pattern requires Doug to either (a) copy-paste session content into the v0.3 desktop New Session dialog and run a per-conversation apply script for decisions/PIs/references, or (b) run a generic apply_close_out.py script that processes a JSON payload file (mid-SES-012 mitigation). Both still require a manual command after each schema-design conversation. The architectural fix: build an inbox folder watcher into the v0.3 desktop application. The app monitors a known directory (e.g., crmbuilder-v2/inbox/ or PRDs/product/crmbuilder-v2/close-out-payloads/), detects new JSON payload files, prompts the user to review (showing a summary of what would be written), and on confirmation imports all records via the existing access layer. Processed files move to inbox/processed/ for traceability. Idempotent on re-run (HTTP 409 = already present, skip). Implementation scope: file-watch infrastructure (already exists for db-export refresh — possibly reusable), payload-schema validation, summary-and-confirm modal, error reporting per record. The v0.4-build-planning conversation decides whether to pull this into v0.4 scope (eliminates close-out friction for all four workstream conversations) or defer to v0.5+. If deferred, the apply_close_out.py script remains the close-out pattern.",
+    "id": 8,
+    "identifier": "PI-008",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Inbox folder watcher in v0.3 desktop app for close-out JSON payloads",
+    "updated_at": "2026-05-11T18:50:11.753079"
   }
 ]
