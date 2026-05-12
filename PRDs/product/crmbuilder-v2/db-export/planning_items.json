@@ -86,5 +86,27 @@
     "status": "Open",
     "title": "Inbox folder watcher in v0.3 desktop app for close-out JSON payloads",
     "updated_at": "2026-05-11T18:50:11.753079"
+  },
+  {
+    "created_at": "2026-05-12T01:23:41.168761",
+    "description": "DEC-054 defers a Domains column on the master pane of the Entities panel to v0.5+, jointly enabled by PI-007 (domain.short_code field). The column renders affiliated domains as comma-separated short codes (e.g., 'MN, MR, FU') once short codes exist; without them, DOM-NNN identifiers don't tell a consultant anything at a glance and the column's UX value is lost. Implementation scope when both PI-007 and PI-009 land together: (a) access-layer batched-join query (list_entities_with_affiliations() or equivalent) returning each entity's affiliated-domain short codes alongside its scalar fields without N+1 queries; (b) ListDetailPanel view-model update to surface the new column; (c) column-width and sorting behavior decisions (sort by what? probably alphabetical-by-short-code-list with secondary sort by entity_name). Prioritization signal: CBM redo will reveal whether the absence of the column in v0.4 is high-friction (do consultants frequently click into the detail pane to check affiliations? do they request a list view grouped by domain?). If high-friction, PI-009 + PI-007 move up in v0.5 priority; if low-friction, they stay queued.",
+    "id": 9,
+    "identifier": "PI-009",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Master-pane Domains column on the Entities panel (paired with PI-007 short codes)",
+    "updated_at": "2026-05-12T01:23:41.168765"
+  },
+  {
+    "created_at": "2026-05-12T01:23:41.201246",
+    "description": "DEC-051 and DEC-053 jointly defer two entity-schema growth areas to v0.5+: (a) entity variants — the Mentor Contact / Client Contact pattern from CBM history where two related-but-distinct entities share a base type but carry different fields and role semantics; (b) entity base-type / kind classification — person / organization / event / transaction-style categorization that informs CRM-engine selection and field-shape defaults. Both are intentionally absent from v0.4: variants because Phase 1 doesn't produce them and v0.4 has no fields to vary across them; base-type/kind because it's Phase 3 territory tied to CRM-engine specifics that v0.4's thin shape stays neutral about. Tracked separately from PI-004 (which groups field/requirement/manual_config/test_spec as new methodology entity types) because PI-010 is entity-schema growth — extending the existing entity type — not introducing new entity types. Variant mechanism TBD: candidates include self-referential FK (entity_parent_identifier), references-entity edge (entity_variant_of_entity), or a separate variant entity type sitting between base entity and field. Mechanism choice is a v0.5+ design conversation. Workaround in v0.4: variants are distinguished by suffixing entity_name ('Contact — Mentor', 'Contact — Client'); CBM redo will reveal how much friction the workaround creates and inform mechanism design. Base-type/kind classification: candidate v0.5+ shape is an enum field (entity_kind: person | organization | event | transaction | other) on the entity table, with validation that informs Phase 3 field-shape defaults and Phase 5 CRM-evaluation scoring.",
+    "id": 10,
+    "identifier": "PI-010",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Entity-schema v0.5+ extensions — variants and base-type/kind classification",
+    "updated_at": "2026-05-12T01:23:41.201250"
   }
 ]
