@@ -1,0 +1,87 @@
+catalog_id: account
+catalog_version: "0.1"
+last_updated: "05-08-26 04:30"
+tier: 1
+entry_kind: universal
+name: Account
+display_name: Account
+purpose: >
+  Test fixture for the catalog loader. Reduced version of the real
+  account.yaml.
+business_context: >
+  Test fixture. The loader must round-trip multi-line folded prose.
+data_model_role: anchor
+typically_required: true
+common_synonyms:
+  - Company
+  - Organization
+systems:
+  - system: salesforce
+    name: Account
+    api_name: Account
+    is_standard: true
+    notes: Standard object.
+    docs_url: https://example.com/sf
+  - system: hubspot
+    name: Company
+    api_name: companies
+    is_standard: true
+  - system: civicrm
+    name: Organization
+    api_name: Contact
+    is_standard: true
+attributes:
+  - name: accountName
+    display_name: Account Name
+    type: string
+    required: true
+    max_length: 255
+    description: Primary identifier.
+    usage: Search, dedupe, display.
+    presence:
+      salesforce:
+        status: standard
+        api_name: Name
+      hubspot:
+        status: standard
+        api_name: name
+      civicrm:
+        status: standard
+        api_name: organization_name
+  - name: accountType
+    display_name: Account Type
+    type: enum
+    required: false
+    enum_values:
+      - Customer
+      - Prospect
+      - Nonprofit Organization
+    description: Classification.
+    usage: Segmentation.
+    presence:
+      salesforce:
+        status: standard
+        api_name: Type
+      hubspot:
+        status: standard
+        api_name: type
+      civicrm:
+        status: standard
+        api_name: contact_sub_type
+    common_synonyms:
+      - classification
+      - category
+relationships:
+  - target: contact
+    cardinality: one-to-many
+    role: parent
+    description: An account has many contacts.
+    presence:
+      salesforce: standard
+      hubspot: standard
+      civicrm: standard
+sources:
+  - title: Salesforce Account
+    url: https://example.com/sf/account
+  - title: HubSpot Companies
+    url: https://example.com/hs/companies

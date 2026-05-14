@@ -1,0 +1,44 @@
+catalog_id: donation-major-gift
+catalog_version: "0.1"
+last_updated: "05-09-26 14:55"
+tier: 4
+entry_kind: subclass
+parent_entity: donation
+discriminator:
+  attribute: donationType
+  value: Major Gift
+name: Major Gift (Donation subclass)
+display_name: Major Gift
+purpose: >
+  Test fixture for the donation-major-gift subclass — exercises the
+  discriminator FK after the v0.10 fix.
+business_context: >
+  Test fixture.
+data_model_role: event
+typically_required: false
+common_synonyms: []
+systems:
+  - system: salesforce
+    name: Opportunity (Major Gift Record Type)
+    api_name: Opportunity
+    is_standard: true
+    mechanism: record_type
+attributes:
+  - name: cultivationStage
+    display_name: Cultivation Stage
+    type: enum
+    required: false
+    enum_values:
+      - Identification
+      - Qualification
+      - Cultivation
+      - Solicitation
+      - Stewardship
+    description: Donor cultivation pipeline stage.
+    usage: Major-gift program management.
+    presence:
+      salesforce:
+        status: custom
+sources:
+  - title: NPSP Major Gifts
+    url: https://example.com/npsp/major-gifts

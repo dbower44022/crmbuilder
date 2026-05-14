@@ -1,0 +1,37 @@
+catalog_id: account-nonprofit
+catalog_version: "0.1"
+last_updated: "05-08-26 04:30"
+tier: 1
+entry_kind: subclass
+parent_entity: account
+discriminator:
+  attribute: accountType
+  value: Nonprofit Organization
+name: Nonprofit Organization
+display_name: Nonprofit Organization
+purpose: >
+  Test fixture for the account-nonprofit subclass.
+business_context: >
+  Test fixture.
+data_model_role: anchor
+typically_required: false
+common_synonyms: []
+systems:
+  - system: salesforce
+    name: Account (Nonprofit Record Type)
+    api_name: Account
+    is_standard: true
+    mechanism: record_type
+attributes:
+  - name: ein
+    display_name: EIN
+    type: string
+    required: false
+    description: Employer Identification Number.
+    usage: Tax compliance.
+    presence:
+      salesforce:
+        status: custom
+sources:
+  - title: NPSP Account
+    url: https://example.com/npsp/account

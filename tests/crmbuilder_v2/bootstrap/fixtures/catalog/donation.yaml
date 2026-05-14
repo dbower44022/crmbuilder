@@ -1,0 +1,40 @@
+catalog_id: donation
+catalog_version: "0.1"
+last_updated: "05-09-26 14:55"
+tier: 4
+entry_kind: universal
+name: Donation
+display_name: Donation
+purpose: >
+  Test fixture for donation. Carries the donationType discriminator
+  attribute referenced by the donation-major-gift subclass.
+business_context: >
+  Test fixture.
+data_model_role: event
+typically_required: false
+common_synonyms:
+  - Gift
+  - Contribution
+systems:
+  - system: civicrm
+    name: Contribution
+    api_name: Contribution
+    is_standard: true
+attributes:
+  - name: donationType
+    display_name: Donation Type
+    type: enum
+    required: false
+    enum_values:
+      - Donation
+      - Major Gift
+      - In-Kind Gift
+    description: Classification.
+    usage: Reporting / fundraising motion selection.
+    presence:
+      civicrm:
+        status: standard
+        api_name: financial_type_id
+sources:
+  - title: CiviCRM Contribution
+    url: https://example.com/civicrm/contribution

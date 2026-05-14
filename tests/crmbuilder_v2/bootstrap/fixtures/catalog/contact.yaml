@@ -1,0 +1,34 @@
+catalog_id: contact
+catalog_version: "0.1"
+last_updated: "05-08-26 04:30"
+tier: 1
+entry_kind: universal
+name: Contact
+display_name: Contact
+purpose: >
+  Test fixture for the contact entity.
+business_context: >
+  Test fixture.
+data_model_role: anchor
+typically_required: true
+common_synonyms:
+  - Person
+systems:
+  - system: salesforce
+    name: Contact
+    api_name: Contact
+    is_standard: true
+attributes:
+  - name: firstName
+    display_name: First Name
+    type: string
+    required: false
+    description: First name.
+    usage: Display.
+    presence:
+      salesforce:
+        status: standard
+        api_name: FirstName
+sources:
+  - title: Salesforce Contact
+    url: https://example.com/sf/contact
