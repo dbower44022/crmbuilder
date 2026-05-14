@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -142,6 +142,154 @@ class ReferenceDeleteIn(_Base):
     target_type: str
     target_id: str
     relationship: str
+
+
+# ---------- Catalog: shared sub-row write shapes ----------
+
+
+class CatalogSystemIn(_Base):
+    """One ``catalog_entity_system`` row in an entity create/update payload."""
+
+    system: str
+    name: str
+    api_name: str | None = None
+    is_standard: str  # "true" / "false" / "partial"
+    mechanism: str | None = None
+    notes: str | None = None
+    docs_url: str | None = None
+
+
+class CatalogSourceIn(_Base):
+    title: str
+    url: str
+
+
+class CatalogPresenceIn(_Base):
+    system: str
+    status: str  # "standard" / "custom" / "absent"
+    api_name: str | None = None
+
+
+class CatalogRelationshipIn(_Base):
+    target: str  # catalog_id of target entity
+    cardinality: str  # "one-to-one" / "one-to-many" / "many-to-one" / "many-to-many"
+    role: str  # "parent" / "child" / "peer"
+    description: str = ""
+    presence: list[CatalogPresenceIn] = Field(default_factory=list)
+
+
+class CatalogAttributeIn(_Base):
+    """One attribute embedded in a CatalogEntityCreateIn payload, or the body
+    for POST /catalog/entities/{cid}/attributes."""
+
+    name: str
+    display_name: str
+    type: str
+    required: bool = False
+    max_length: int | None = None
+    reference_target: str | None = None
+    description: str = ""
+    usage: str = ""
+    notes: str | None = None
+    common_synonyms: list[str] = Field(default_factory=list)
+    enum_values: list[str] = Field(default_factory=list)
+    presence: list[CatalogPresenceIn] = Field(default_factory=list)
+
+
+# ---------- Catalog: entity-level write shapes ----------
+
+
+class CatalogEntityCreateIn(_Base):
+    """POST /catalog/entities body — full nested payload."""
+
+    catalog_id: str
+    name: str
+    display_name: str
+    tier: int
+    entry_kind: Literal["universal", "subclass"]
+    parent_entity: str | None = None  # catalog_id of parent (subclasses only)
+    discriminator_attribute: str | None = None
+    discriminator_value: str | None = None
+    purpose: str = ""
+    business_context: str = ""
+    data_model_role: str
+    typically_required: bool = False
+    common_synonyms: list[str] = Field(default_factory=list)
+    systems: list[CatalogSystemIn] = Field(default_factory=list)
+    sources: list[CatalogSourceIn] = Field(default_factory=list)
+    attributes: list[CatalogAttributeIn] = Field(default_factory=list)
+    relationships: list[CatalogRelationshipIn] = Field(default_factory=list)
+
+
+class CatalogEntityUpdateIn(CatalogEntityCreateIn):
+    """PUT /catalog/entities/{catalog_id} body — same shape as Create.
+
+    Full nested replace: child collections are wholly replaced by what
+    the caller sends. To keep an existing child unchanged, the caller
+    must send it back. To delete a child, omit it from the payload.
+    """
+
+
+class CatalogEntityPatchIn(_Base):
+    """PATCH /catalog/entities/{catalog_id} body — entity-level fields only.
+
+    Nested child collections (attributes, systems, sources, relationships,
+    synonyms) cannot be modified via PATCH; use PUT or the per-attribute
+    sub-endpoints for those.
+    """
+
+    name: str | None = None
+    display_name: str | None = None
+    tier: int | None = None
+    entry_kind: str | None = None
+    parent_entity: str | None = None
+    discriminator_attribute: str | None = None
+    discriminator_value: str | None = None
+    purpose: str | None = None
+    business_context: str | None = None
+    data_model_role: str | None = None
+    typically_required: bool | None = None
+
+
+class CatalogAttributeCreateIn(CatalogAttributeIn):
+    """POST /catalog/entities/{cid}/attributes body. Same shape as
+    CatalogAttributeIn, kept as a distinct name so the API docs label
+    it clearly as the entity-attribute-create body."""
+
+
+class CatalogAttributeUpdateIn(CatalogAttributeIn):
+    """PUT /catalog/entities/{cid}/attributes/{name} body — full replace."""
+
+
+class CatalogAttributePatchIn(_Base):
+    """PATCH body — partial update; nested child collections (enum_values,
+    synonyms, presence) cannot be modified via PATCH."""
+
+    display_name: str | None = None
+    type: str | None = None
+    required: bool | None = None
+    max_length: int | None = None
+    reference_target: str | None = None
+    description: str | None = None
+    usage: str | None = None
+    notes: str | None = None
+
+
+# ---------- Catalog: gap check body ----------
+
+
+class CatalogGapCheckIn(_Base):
+    """POST /catalog/gap-check body.
+
+    Given a draft entity (``based_on_catalog_id``) and the attribute
+    names already present in the draft, return the catalog attributes
+    that are "standard" in N+ surveyed systems but absent from the
+    draft.
+    """
+
+    based_on_catalog_id: str
+    draft_attribute_names: list[str]
+    min_systems: int = Field(default=5, ge=1, le=7)
 
 
 # ---------- Envelope (response model used by /docs only) ----------
