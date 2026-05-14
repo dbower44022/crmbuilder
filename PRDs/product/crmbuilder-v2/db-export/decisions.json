@@ -1022,5 +1022,53 @@
     "supersedes_id": null,
     "title": "crm_candidate API surface, UI defaults, singleton-selected enforcement, and acceptance criteria for v0.4",
     "updated_at": "2026-05-12T09:18:17.141722"
+  },
+  {
+    "alternatives_considered": "(a) Follow the PRD literally with UUID PKs on catalog tables only - rejected: introduces a second PK idiom, complicates the change_log/refs/export machinery that assumes integer ids, and the methodology FK affordance does not actually require it. (b) Migrate the entire v2 stack to UUID PKs - rejected: far out of scope for catalog ingestion.",
+    "consequences": "Catalog rows are addressed externally by catalog_id (entities) and catalog_id.attribute_name (attributes), never by integer PK - the JSON exports and REST/MCP surfaces already exclude internal ids. When the methodology entity schema lands, its primary_catalog_entity_id FK targets catalog_entity.id (INTEGER). If a future productization step needs globally-unique opaque ids, a uuid column can be added without disturbing the PK.",
+    "context": "catalog-ingestion-PRD-v0.1.md section 4 specifies a UUID primary key on every catalog table, and section 3 lists 'UUID primary keys' as an integration affordance for the future methodology entity schema. The existing v2 storage system (charter, status, decisions, sessions, risks, planning_items, topics, refs, change_log) uses INTEGER autoincrement primary keys with a separate stable string 'identifier' column. The catalog-ingestion implementation plan section 3 explicitly instructs: 'if V2's actual layout differs, mirror the actual convention.'",
+    "created_at": "2026-05-14T04:47:02.127590",
+    "decision": "All 10 catalog tables use INTEGER autoincrement primary keys. catalog_entity carries the stable string identifier in its existing 'catalog_id' column (UNIQUE NOT NULL); catalog_attribute is addressed by (catalog_entity_id, name). The universal references table's target_id (already TEXT/String(64)) addresses catalog rows by catalog_id for entities and by '{catalog_id}.{name}' for attributes.",
+    "decision_date": "05-14-26",
+    "id": 66,
+    "identifier": "DEC-065",
+    "rationale": "Consistency with the entire existing v2 storage stack outweighs literal adherence to the PRD's UUID spec. The PRD's stated affordance is a STABLE identifier that the methodology schema can FK to and that the universal-references vocabulary can target - the catalog_id text column provides exactly that, independent of PK type. A future methodology_entity table can carry a primary_catalog_entity_id FK to catalog_entity.id (INTEGER) just as cleanly as to a UUID. Mixing UUID PKs into a stack that is otherwise uniformly INTEGER would have created two ID idioms in one database for no functional gain.",
+    "status": "Active",
+    "superseded_by_id": null,
+    "supersedes_id": null,
+    "title": "Catalog tables use v2's INTEGER PK + catalog_id-TEXT convention, not the PRD's UUID-PK spec",
+    "updated_at": "2026-05-14T04:47:02.127593"
+  },
+  {
+    "alternatives_considered": "(a) Build the plan's storage/ subtree - rejected: would have orphaned the catalog code in a layout no other v2 subsystem uses. (b) Add response Pydantic models with FastAPI response_model= enforcement - rejected: no other v2 router does this; the PRD's response contract is documented in the access-layer read docstrings instead. (c) Keep catalog access as a single flat module like the other repositories - rejected: too large; the read/write/exports split is genuinely clearer.",
+    "consequences": "A reader familiar with any existing v2 entity (decisions, sessions, etc.) finds the catalog code in the expected places. The access/repositories/catalog/ package sets a precedent for future large subsystems (notably the methodology entity schema) to use a package rather than a flat module. If v2 later adopts response models wholesale, catalog will need a follow-up pass to add them.",
+    "context": "The catalog-ingestion implementation plan section 3 assumed a 'storage/' subtree (crmbuilder_v2/storage/models/, storage/access/, storage/schemas/) and section 4 inventoried ~17 Pydantic models including a Read/Create/Update/Patch family with response models. V2's actual layout is flat: access/models.py (single file), access/repositories/<entity>.py, api/routers/, api/schemas.py (single file), mcp_server/tools.py. V2's existing routers return Envelope-wrapped plain dicts; there are no response Pydantic models anywhere in v2, and request models use the '*In' suffix.",
+    "created_at": "2026-05-14T04:47:02.129159",
+    "decision": "Catalog code mirrors v2's actual conventions: catalog models appended to access/models.py; access layer is a new access/repositories/catalog/ package (read.py / write.py / exports.py / __init__.py) - the only structural evolution, justified by catalog being materially larger than any single existing repository; api/routers/catalog.py; catalog schemas appended to api/schemas.py with the '*In' suffix; MCP tools appended to mcp_server/tools.py. Response shapes stay as plain dicts wrapped in the existing Envelope - no response Pydantic models. The catalog data migration and loader live under bootstrap/ (catalog_loader.py) since that is where v2 keeps migration-time content code; Alembic revisions live in the repo-level crmbuilder-v2/migrations/versions/.",
+    "decision_date": "05-14-26",
+    "id": 67,
+    "identifier": "DEC-066",
+    "rationale": "The implementation plan explicitly authorised mirroring the actual convention where it differs from the plan's assumptions. A single consistent idiom across the v2 codebase is worth more than matching a plan written before the storage system's final shape was observed. The access/repositories/catalog/ package is the one deliberate departure from 'one flat module per entity' - catalog ships ~3,400 lines of access code, far past the point where a single module stays readable.",
+    "status": "Active",
+    "superseded_by_id": null,
+    "supersedes_id": null,
+    "title": "Catalog code mirrors v2's actual flat module layout; Pydantic models are request-only with dict responses",
+    "updated_at": "2026-05-14T04:47:02.129160"
+  },
+  {
+    "alternatives_considered": "(a) Emit full nested before/after blobs - rejected for v0.1: large rows, awkward diffs, premature. (b) Emit a shallow entity-scalar-only diff - rejected: misleading, since most catalog edits touch nested data the shallow diff wouldn't show. (c) Build a catalog-aware structured audit format - deferred: better tackled alongside the methodology entity schema, which has the same nested-write shape and the same audit need.",
+    "consequences": "Catalog edits are auditable via git history of the db-export/catalog/entities/*.json files, not via the change_log table. A future workstream - most naturally the methodology entity schema build, which shares the nested-write problem - can design a structured audit format and retrofit catalog emit() calls. ENTITY_TYPES and the CHECK constraint already admit the catalog types, so that retrofit needs no further migration.",
+    "context": "Every existing v2 mutating repository call invokes change_log.emit() with a flat {before, after} dict pair. Catalog entities are deeply nested (an entity carries attributes, each with enum_values / synonyms / presence cells, plus entity-level systems / sources / synonyms / relationships / relationship presence). The change_log.entity_type CHECK constraint and the emit() guard both validate against ENTITY_TYPES.",
+    "created_at": "2026-05-14T04:47:02.129753",
+    "decision": "Catalog write methods (create/update/patch/delete on entities and attributes) do NOT emit change_log entries at v0.1. catalog_entity and catalog_attribute were still added to ENTITY_TYPES and to the change_log.entity_type CHECK constraint (migration 0005) so the door is open, but no emit() calls are wired into catalog write.py.",
+    "decision_date": "05-14-26",
+    "id": 68,
+    "identifier": "DEC-067",
+    "rationale": "The existing emit() before/after contract is built for flat records. Snapshotting a full nested catalog entity into a single JSON blob on every write is possible but the resulting change_log rows would be large and awkward to diff, and the pattern wasn't designed for it. The per-entity JSON exports (DEC-008) already give a git-tracked, diffable history of every catalog change - that covers the practical audit need for v0.1.",
+    "status": "Active",
+    "superseded_by_id": null,
+    "supersedes_id": null,
+    "title": "Catalog writes do not emit change_log entries at v0.1",
+    "updated_at": "2026-05-14T04:47:02.129754"
   }
 ]

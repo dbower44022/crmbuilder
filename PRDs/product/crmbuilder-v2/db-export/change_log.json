@@ -5115,5 +5115,317 @@
     "id": 188,
     "operation": "update",
     "timestamp": "2026-05-14T03:55:52.202750"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "(a) Follow the PRD literally with UUID PKs on catalog tables only - rejected: introduces a second PK idiom, complicates the change_log/refs/export machinery that assumes integer ids, and the methodology FK affordance does not actually require it. (b) Migrate the entire v2 stack to UUID PKs - rejected: far out of scope for catalog ingestion.",
+      "consequences": "Catalog rows are addressed externally by catalog_id (entities) and catalog_id.attribute_name (attributes), never by integer PK - the JSON exports and REST/MCP surfaces already exclude internal ids. When the methodology entity schema lands, its primary_catalog_entity_id FK targets catalog_entity.id (INTEGER). If a future productization step needs globally-unique opaque ids, a uuid column can be added without disturbing the PK.",
+      "context": "catalog-ingestion-PRD-v0.1.md section 4 specifies a UUID primary key on every catalog table, and section 3 lists 'UUID primary keys' as an integration affordance for the future methodology entity schema. The existing v2 storage system (charter, status, decisions, sessions, risks, planning_items, topics, refs, change_log) uses INTEGER autoincrement primary keys with a separate stable string 'identifier' column. The catalog-ingestion implementation plan section 3 explicitly instructs: 'if V2's actual layout differs, mirror the actual convention.'",
+      "created_at": "2026-05-14T04:47:02.127590+00:00",
+      "decision": "All 10 catalog tables use INTEGER autoincrement primary keys. catalog_entity carries the stable string identifier in its existing 'catalog_id' column (UNIQUE NOT NULL); catalog_attribute is addressed by (catalog_entity_id, name). The universal references table's target_id (already TEXT/String(64)) addresses catalog rows by catalog_id for entities and by '{catalog_id}.{name}' for attributes.",
+      "decision_date": "05-14-26",
+      "id": 66,
+      "identifier": "DEC-065",
+      "rationale": "Consistency with the entire existing v2 storage stack outweighs literal adherence to the PRD's UUID spec. The PRD's stated affordance is a STABLE identifier that the methodology schema can FK to and that the universal-references vocabulary can target - the catalog_id text column provides exactly that, independent of PK type. A future methodology_entity table can carry a primary_catalog_entity_id FK to catalog_entity.id (INTEGER) just as cleanly as to a UUID. Mixing UUID PKs into a stack that is otherwise uniformly INTEGER would have created two ID idioms in one database for no functional gain.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Catalog tables use v2's INTEGER PK + catalog_id-TEXT convention, not the PRD's UUID-PK spec",
+      "updated_at": "2026-05-14T04:47:02.127593+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-065",
+    "entity_type": "decision",
+    "id": 189,
+    "operation": "insert",
+    "timestamp": "2026-05-14T04:47:02.128510"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "(a) Build the plan's storage/ subtree - rejected: would have orphaned the catalog code in a layout no other v2 subsystem uses. (b) Add response Pydantic models with FastAPI response_model= enforcement - rejected: no other v2 router does this; the PRD's response contract is documented in the access-layer read docstrings instead. (c) Keep catalog access as a single flat module like the other repositories - rejected: too large; the read/write/exports split is genuinely clearer.",
+      "consequences": "A reader familiar with any existing v2 entity (decisions, sessions, etc.) finds the catalog code in the expected places. The access/repositories/catalog/ package sets a precedent for future large subsystems (notably the methodology entity schema) to use a package rather than a flat module. If v2 later adopts response models wholesale, catalog will need a follow-up pass to add them.",
+      "context": "The catalog-ingestion implementation plan section 3 assumed a 'storage/' subtree (crmbuilder_v2/storage/models/, storage/access/, storage/schemas/) and section 4 inventoried ~17 Pydantic models including a Read/Create/Update/Patch family with response models. V2's actual layout is flat: access/models.py (single file), access/repositories/<entity>.py, api/routers/, api/schemas.py (single file), mcp_server/tools.py. V2's existing routers return Envelope-wrapped plain dicts; there are no response Pydantic models anywhere in v2, and request models use the '*In' suffix.",
+      "created_at": "2026-05-14T04:47:02.129159+00:00",
+      "decision": "Catalog code mirrors v2's actual conventions: catalog models appended to access/models.py; access layer is a new access/repositories/catalog/ package (read.py / write.py / exports.py / __init__.py) - the only structural evolution, justified by catalog being materially larger than any single existing repository; api/routers/catalog.py; catalog schemas appended to api/schemas.py with the '*In' suffix; MCP tools appended to mcp_server/tools.py. Response shapes stay as plain dicts wrapped in the existing Envelope - no response Pydantic models. The catalog data migration and loader live under bootstrap/ (catalog_loader.py) since that is where v2 keeps migration-time content code; Alembic revisions live in the repo-level crmbuilder-v2/migrations/versions/.",
+      "decision_date": "05-14-26",
+      "id": 67,
+      "identifier": "DEC-066",
+      "rationale": "The implementation plan explicitly authorised mirroring the actual convention where it differs from the plan's assumptions. A single consistent idiom across the v2 codebase is worth more than matching a plan written before the storage system's final shape was observed. The access/repositories/catalog/ package is the one deliberate departure from 'one flat module per entity' - catalog ships ~3,400 lines of access code, far past the point where a single module stays readable.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Catalog code mirrors v2's actual flat module layout; Pydantic models are request-only with dict responses",
+      "updated_at": "2026-05-14T04:47:02.129160+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-066",
+    "entity_type": "decision",
+    "id": 190,
+    "operation": "insert",
+    "timestamp": "2026-05-14T04:47:02.129406"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "(a) Emit full nested before/after blobs - rejected for v0.1: large rows, awkward diffs, premature. (b) Emit a shallow entity-scalar-only diff - rejected: misleading, since most catalog edits touch nested data the shallow diff wouldn't show. (c) Build a catalog-aware structured audit format - deferred: better tackled alongside the methodology entity schema, which has the same nested-write shape and the same audit need.",
+      "consequences": "Catalog edits are auditable via git history of the db-export/catalog/entities/*.json files, not via the change_log table. A future workstream - most naturally the methodology entity schema build, which shares the nested-write problem - can design a structured audit format and retrofit catalog emit() calls. ENTITY_TYPES and the CHECK constraint already admit the catalog types, so that retrofit needs no further migration.",
+      "context": "Every existing v2 mutating repository call invokes change_log.emit() with a flat {before, after} dict pair. Catalog entities are deeply nested (an entity carries attributes, each with enum_values / synonyms / presence cells, plus entity-level systems / sources / synonyms / relationships / relationship presence). The change_log.entity_type CHECK constraint and the emit() guard both validate against ENTITY_TYPES.",
+      "created_at": "2026-05-14T04:47:02.129753+00:00",
+      "decision": "Catalog write methods (create/update/patch/delete on entities and attributes) do NOT emit change_log entries at v0.1. catalog_entity and catalog_attribute were still added to ENTITY_TYPES and to the change_log.entity_type CHECK constraint (migration 0005) so the door is open, but no emit() calls are wired into catalog write.py.",
+      "decision_date": "05-14-26",
+      "id": 68,
+      "identifier": "DEC-067",
+      "rationale": "The existing emit() before/after contract is built for flat records. Snapshotting a full nested catalog entity into a single JSON blob on every write is possible but the resulting change_log rows would be large and awkward to diff, and the pattern wasn't designed for it. The per-entity JSON exports (DEC-008) already give a git-tracked, diffable history of every catalog change - that covers the practical audit need for v0.1.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Catalog writes do not emit change_log entries at v0.1",
+      "updated_at": "2026-05-14T04:47:02.129754+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-067",
+    "entity_type": "decision",
+    "id": 191,
+    "operation": "insert",
+    "timestamp": "2026-05-14T04:47:02.129950"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "8 commits (e223e5c, 2cd1835, eb02943, 0f81b80, bc483bd, 743cefe, 77878fe, 68675fa). New source: access/repositories/catalog/ package (__init__/read/write/exports), api/routers/catalog.py, bootstrap/catalog_loader.py, Alembic 0003/0004/0005. Modified: access/models.py (+10 model classes), access/vocab.py (catalog vocabularies + ENTITY_TYPES expansion), api/schemas.py (catalog *In models), api/main.py (router registration), mcp_server/tools.py (4 catalog tools). New tests (~131): test_catalog_schema, test_catalog_loader, test_catalog_seed_migration, test_catalog_schemas, test_catalog_routes, test_catalog_write_routes, test_catalog_tools, test_catalog_exports, test_catalog_references. Decommissioned: 42 catalog YAMLs + base-entity-catalog-research.md + entity-system-map.yaml (recoverable via git history). Data: v2.db at Alembic head 0005 with 5,530 catalog rows; db-export/catalog/entities/ has 42 git-tracked JSON renders. New decisions: DEC-065 (INTEGER PK convention), DEC-066 (flat module layout + request-only Pydantic), DEC-067 (no change_log emission for catalog writes).",
+      "conversation_reference": "Claude Code session executing CLAUDE-CODE-PROMPT-v2-C-catalog-ingestion.md",
+      "created_at": "2026-05-14T04:47:32.797836+00:00",
+      "id": 16,
+      "identifier": "SES-016",
+      "in_flight_at_end": "None blocking. Known follow-ons, all explicitly deferred by the PRD/plan, not deferred by this build: (1) catalog editing UI - REST endpoints exist, the v2 web UI that consumes them is a separate workstream parallel to the existing decisions/planning-items UIs; (2) write-side MCP tools - read-only at v0.1 per PRD section 2; (3) fresh-install seed workflow - once the YAMLs are decommissioned, a fresh 'alembic upgrade head' fails revision 0004 with a clear 'catalog directory not found' error; productization needs a packaged seed dump (PRD section 9); (4) catalog-aware change_log audit format - see DEC-067; natural to tackle with the methodology entity schema build which shares the nested-write shape. The methodology entity schema build is the next workstream and can now proceed against a populated catalog.",
+      "session_date": "05-14-26",
+      "status": "Complete",
+      "summary": "Executed the v2-C catalog ingestion build per catalog-ingestion-PRD-v0.1.md (v0.2) and catalog-ingestion-implementation-plan.md (v0.1). Eight commits A-H landed in sequence. The 42-entry base entity catalog (~5,530 rows) now lives in the v2 database as authoritative data; the YAML source files are decommissioned. Commit A: 10 catalog tables (SQLAlchemy models + Alembic 0003 + catalog vocabularies + 18 schema tests). Commit B: three-pass loader at bootstrap/catalog_loader.py + 13 unit tests against fixture YAMLs. Commit C: Alembic 0004 data migration + git rm of the 42 catalog YAMLs, base-entity-catalog-research.md, and entity-system-map.yaml + integration test (auto-skips once YAMLs are gone). Commit D: catalog Pydantic request schemas. Commit E: access/repositories/catalog/read.py (list/get/get_attribute/search/cross_system_map/gap_check) + 6 REST read endpoints + 27 tests. Commit F: write.py (8 entity+attribute write methods, soft-delete, nested-payload replacement) + 8 REST write endpoints + 29 tests. Commit G: 4 read-only MCP tools + 12 tests. Commit H: per-entity JSON exports under db-export/catalog/entities/ (42 files), export hook fired from all write methods with a suppression() context manager, bulk regenerate; universal references integration - catalog_entity/catalog_attribute added to ENTITY_TYPES + Alembic 0005 extends the refs and change_log CHECK constraints + inbound_references surfaced on entity/attribute detail responses + 17 tests. All 11 PRD acceptance criteria pass; all 7 build-validation-gate steps pass. Full v2 suite: 741 passed, 1 skipped (the seed-migration integration test, which auto-skips because the YAMLs are decommissioned - expected per PRD section 9).",
+      "title": "v2-C catalog ingestion build — 42-entry base entity catalog into the v2 database",
+      "topics_covered": "Catalog schema (10 tables), three-pass loader, Alembic data migration, YAML decommissioning, Pydantic request schemas, access-layer read/write, REST endpoints, MCP tools, per-entity JSON exports, universal references integration"
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-016",
+    "entity_type": "session",
+    "id": 192,
+    "operation": "insert",
+    "timestamp": "2026-05-14T04:47:32.799001"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-14T04:47:32.800560+00:00",
+      "id": 64,
+      "relationship": "decided_in",
+      "source_id": "DEC-065",
+      "source_type": "decision",
+      "target_id": "SES-016",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-065 -[decided_in]-> session:SES-016",
+    "entity_type": "reference",
+    "id": 193,
+    "operation": "insert",
+    "timestamp": "2026-05-14T04:47:32.801016"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-14T04:47:32.801430+00:00",
+      "id": 65,
+      "relationship": "decided_in",
+      "source_id": "DEC-066",
+      "source_type": "decision",
+      "target_id": "SES-016",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-066 -[decided_in]-> session:SES-016",
+    "entity_type": "reference",
+    "id": 194,
+    "operation": "insert",
+    "timestamp": "2026-05-14T04:47:32.801742"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-14T04:47:32.802027+00:00",
+      "id": 66,
+      "relationship": "decided_in",
+      "source_id": "DEC-067",
+      "source_type": "decision",
+      "target_id": "SES-016",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-067 -[decided_in]-> session:SES-016",
+    "entity_type": "reference",
+    "id": 195,
+    "operation": "insert",
+    "timestamp": "2026-05-14T04:47:32.802195"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-14T04:47:55.122543+00:00",
+      "id": 12,
+      "is_current": true,
+      "payload": {
+        "active_work": "Catalog ingestion v0.1 COMPLETE (SES-016, 05-14-26). The 42-entry base entity catalog (~5,530 rows) is now authoritative in the v2 database; the YAML source files are decommissioned. The methodology entity schema-design workstream (SES-011 through SES-015) can now proceed to its build phase against a populated catalog. PI-001 (full styling design pass per DEC-024) remains the forcing-function tracker for the deferred styling work.",
+        "blockers": "None.",
+        "live_inventory": {
+          "in_database": [
+            "67 decisions (DEC-001 through DEC-067)",
+            "16 sessions (SES-001 through SES-016)",
+            "2 charter versions (latest is_current)",
+            "11 status versions (this one becomes the new current)",
+            "66 references",
+            "12 planning_items (PI-001 through PI-012)",
+            "42 catalog entities + 415 catalog attributes (base entity catalog, landed by SES-016 — catalog_* tables, ~5,530 rows total)"
+          ],
+          "still_markdown": [
+            "PRDs/product/crmbuilder-v2/storage-system-PRD-v0.1.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/storage-system-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/prompts/*.md (Claude Code prompt files)",
+            "PRDs/product/crmbuilder-v2/ui-PRD-v0.1.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/ui-PRD-v0.2.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/ui-PRD-v0.3.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/ui-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/ui-v0.2-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/ui-v0.3-implementation-plan.md"
+          ],
+          "v1_unchanged": [
+            "espo_impl/ — CRMBuilder PySide6 application code",
+            "automation/ — server management layer",
+            "PRDs/process/ — methodology guides",
+            "PRDs/product/CRMBuilder-PRD.md, app-*.md, crmbuilder-automation-PRD/ — v1 product specs",
+            "ClevelandBusinessMentoring/ — CBM client repo"
+          ]
+        },
+        "metadata": {
+          "Last Updated": "05-14-26",
+          "Status": "Active"
+        },
+        "pending": {
+          "build_after_v0_2": [
+            "Step 0 follow-on — methodology entity schema (personas, entities, fields, processes, requirements, manual-config items, test specifications)",
+            "Renderers — Word, YAML, test cases generated from the database (DEC-008)",
+            "Application integration — CRMBuilder PySide6 reads/writes against the v2 database",
+            "MN domain migration as proving ground (per DEC-010)",
+            "Test infrastructure first deliverable (CRUD layer)",
+            "Subsequent: MR, CR, FU migration; integration / process / UI test layers; methodology guide evolution"
+          ],
+          "planning_paused_until_ui_complete": [
+            "Planning dimension #6 — division of labor",
+            "Planning dimension #7 — risk register",
+            "Planning dimension #8 — exit criteria",
+            "Project-structure split decision (Claude Project, repository) — deferred to end of planning per DEC-012"
+          ],
+          "ui_v0_4_candidates": [
+            "Full styling design pass per DEC-024 / DEC-037 — tracked by PI-001, deferred three times now",
+            "Reference filtering by relationship type on detail-pane sections",
+            "JSON diff view for Charter/Status versioned-replace",
+            "Methodology entity panels (gated on schema design)",
+            "Global search across entities",
+            "Keyboard shortcuts beyond Qt defaults (Ctrl-N for new, etc.)",
+            "Export visible panel to CSV/JSON",
+            "Bulk operations (multi-row select + delete, multi-row update)",
+            "Reimplementation of v1 saved-views / duplicate-checks / workflow managers if their no-public-REST-API constraint is resolved"
+          ]
+        },
+        "phase": "v0.3 complete",
+        "reading_order_for_new_sessions": "Tier 1: read crmbuilder/CLAUDE.md.\nTier 2 (MCP-connected): call get_current_status, get_current_charter, list_recent_sessions(limit=3), then get_decision or list_decisions_for_session as needed.\nTier 2 (file-fallback): read JSON snapshots under PRDs/product/crmbuilder-v2/db-export/ — status.json, charter.json, sessions.json, decisions.json, references.json.\nTier 3 (on-demand): targeted MCP/API queries during conversation.",
+        "title": "CRMBuilder v2 — Status",
+        "version_label": "1.0"
+      },
+      "version": 12
+    },
+    "before_payload": {
+      "created_at": "2026-05-14T03:55:52.201644",
+      "id": 11,
+      "is_current": true,
+      "payload": {
+        "active_work": "Catalog ingestion v0.1 build in progress (see catalog-ingestion-PRD-v0.1.md). Brings the 42-entry base entity catalog (~5,700 rows) into V2's database as authoritative data; decommissions the YAML files at PRDs/product/crmbuilder-v2/research/base-entity-catalog/. v0.4 methodology entity schema-design workstream paused on the build side until this lands; PI-001 (full styling design pass per DEC-024) remains the forcing-function tracker for the deferred styling work.",
+        "blockers": "None.",
+        "live_inventory": {
+          "in_database": [
+            "64 decisions (DEC-001 through DEC-064)",
+            "15 sessions (SES-001 through SES-015)",
+            "2 charter versions (latest is_current)",
+            "10 status versions (this one becomes the new current)",
+            "63 references",
+            "12 planning_items (PI-001 through PI-012)"
+          ],
+          "still_markdown": [
+            "PRDs/product/crmbuilder-v2/storage-system-PRD-v0.1.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/storage-system-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/prompts/*.md (Claude Code prompt files)",
+            "PRDs/product/crmbuilder-v2/ui-PRD-v0.1.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/ui-PRD-v0.2.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/ui-PRD-v0.3.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/ui-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/ui-v0.2-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/ui-v0.3-implementation-plan.md"
+          ],
+          "v1_unchanged": [
+            "espo_impl/ — CRMBuilder PySide6 application code",
+            "automation/ — server management layer",
+            "PRDs/process/ — methodology guides",
+            "PRDs/product/CRMBuilder-PRD.md, app-*.md, crmbuilder-automation-PRD/ — v1 product specs",
+            "ClevelandBusinessMentoring/ — CBM client repo"
+          ]
+        },
+        "metadata": {
+          "Last Updated": "05-13-26",
+          "Status": "Active"
+        },
+        "pending": {
+          "build_after_v0_2": [
+            "Step 0 follow-on — methodology entity schema (personas, entities, fields, processes, requirements, manual-config items, test specifications)",
+            "Renderers — Word, YAML, test cases generated from the database (DEC-008)",
+            "Application integration — CRMBuilder PySide6 reads/writes against the v2 database",
+            "MN domain migration as proving ground (per DEC-010)",
+            "Test infrastructure first deliverable (CRUD layer)",
+            "Subsequent: MR, CR, FU migration; integration / process / UI test layers; methodology guide evolution"
+          ],
+          "planning_paused_until_ui_complete": [
+            "Planning dimension #6 — division of labor",
+            "Planning dimension #7 — risk register",
+            "Planning dimension #8 — exit criteria",
+            "Project-structure split decision (Claude Project, repository) — deferred to end of planning per DEC-012"
+          ],
+          "ui_v0_4_candidates": [
+            "Full styling design pass per DEC-024 / DEC-037 — tracked by PI-001, deferred three times now",
+            "Reference filtering by relationship type on detail-pane sections",
+            "JSON diff view for Charter/Status versioned-replace",
+            "Methodology entity panels (gated on schema design)",
+            "Global search across entities",
+            "Keyboard shortcuts beyond Qt defaults (Ctrl-N for new, etc.)",
+            "Export visible panel to CSV/JSON",
+            "Bulk operations (multi-row select + delete, multi-row update)",
+            "Reimplementation of v1 saved-views / duplicate-checks / workflow managers if their no-public-REST-API constraint is resolved"
+          ]
+        },
+        "phase": "v0.3 complete",
+        "reading_order_for_new_sessions": "Tier 1: read crmbuilder/CLAUDE.md.\nTier 2 (MCP-connected): call get_current_status, get_current_charter, list_recent_sessions(limit=3), then get_decision or list_decisions_for_session as needed.\nTier 2 (file-fallback): read JSON snapshots under PRDs/product/crmbuilder-v2/db-export/ — status.json, charter.json, sessions.json, decisions.json, references.json.\nTier 3 (on-demand): targeted MCP/API queries during conversation.",
+        "title": "CRMBuilder v2 — Status",
+        "version_label": "1.0"
+      },
+      "version": 11
+    },
+    "entity_identifier": "status",
+    "entity_type": "status",
+    "id": 196,
+    "operation": "update",
+    "timestamp": "2026-05-14T04:47:55.123390"
   }
 ]
