@@ -39,6 +39,24 @@ DOMAIN_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "deferred": frozenset({"confirmed"}),
 }
 
+# Methodology entity `entity` lifecycle (UI v0.4 slice C, DEC-052).
+# Mirrors ``domain``'s three-status propose-verify lifecycle exactly
+# per ``entity.md`` section 3.4 — entities, like domains, are surfaced
+# by the consultant and verified by the client.
+ENTITY_STATUSES: frozenset[str] = frozenset(
+    {"candidate", "confirmed", "deferred"}
+)
+
+# Valid status successors per ``entity.md`` section 3.4.1. Same one-way
+# propose-verify gate as ``domain``: once out of ``candidate`` a record
+# never regresses to it; ``confirmed`` and ``deferred`` move freely
+# between each other.
+ENTITY_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "candidate": frozenset({"confirmed", "deferred"}),
+    "confirmed": frozenset({"deferred"}),
+    "deferred": frozenset({"confirmed"}),
+}
+
 REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
     {
         "is_about",

@@ -42,6 +42,7 @@ from crmbuilder_v2.access.vocab import (
     CHANGE_LOG_OPERATIONS,
     DECISION_STATUSES,
     DOMAIN_STATUSES,
+    ENTITY_STATUSES,
     ENTITY_TYPES,
     PLANNING_ITEM_STATUSES,
     PLANNING_ITEM_TYPES,
@@ -287,6 +288,57 @@ class Domain(Base):
         ),
         Index("ix_domains_domain_status", "domain_status"),
         Index("ix_domains_domain_deleted_at", "domain_deleted_at"),
+    )
+
+
+class Entity(Base):
+    """Methodology entity — one CRM-modeled noun the client uses.
+
+    Second of the four methodology entity types (UI v0.4 slice C). Per
+    ``entity.md`` the schema follows the parent-prefix field-naming
+    convention: every column is prefixed ``entity_``. The primary key
+    is the prefixed-string identifier ``entity_identifier`` (format
+    ``ENT-NNN``) — there is no integer surrogate ``id`` column. Domain
+    affiliations are NOT FK columns here; they live in the ``refs``
+    table as ``entity_scopes_to_domain`` references.
+    """
+
+    __tablename__ = "entities"
+
+    entity_identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    entity_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    entity_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    entity_description: Mapped[str] = mapped_column(Text, nullable=False)
+    entity_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    entity_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    entity_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    entity_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^ENT-\d{3}$`` expressed as a SQLite GLOB pattern — GLOB
+        # anchors the whole string, so this admits exactly ``ENT-`` plus
+        # three digits.
+        CheckConstraint(
+            "entity_identifier GLOB 'ENT-[0-9][0-9][0-9]'",
+            name="ck_entity_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("entity_status", ENTITY_STATUSES),
+            name="ck_entity_status",
+        ),
+        Index("ix_entities_entity_status", "entity_status"),
+        Index("ix_entities_entity_deleted_at", "entity_deleted_at"),
     )
 
 

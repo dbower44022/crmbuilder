@@ -168,6 +168,50 @@ class DomainPatchIn(_Base):
     domain_status: str | None = None
 
 
+# ---------- Entities (methodology entity, UI v0.4 slice C) ----------
+
+
+class EntityCreateIn(_Base):
+    """POST /entities body. ``entity_identifier`` is server-assigned when
+    omitted; ``entity_status`` defaults to ``candidate`` server-side.
+
+    Domain affiliations are NOT inlined here — per ``entity.md`` section
+    3.5.4 they attach via separate ``POST /references`` calls with the
+    ``entity_scopes_to_domain`` relationship kind."""
+
+    entity_name: str
+    entity_description: str
+    entity_notes: str | None = None
+    entity_status: str | None = None
+    entity_identifier: str | None = None
+
+
+class EntityReplaceIn(_Base):
+    """PUT /entities/{identifier} body — full record replace.
+
+    ``entity_identifier`` is optional; when present it must match the
+    path identifier (mismatch → 422)."""
+
+    entity_identifier: str | None = None
+    entity_name: str
+    entity_description: str
+    entity_notes: str | None = None
+    entity_status: str
+
+
+class EntityPatchIn(_Base):
+    """PATCH /entities/{identifier} body — partial update.
+
+    Routers consume this with ``model_dump(exclude_unset=True)`` so an
+    explicit ``entity_notes: null`` (clear the field) is distinguished
+    from an omitted ``entity_notes`` (leave unchanged)."""
+
+    entity_name: str | None = None
+    entity_description: str | None = None
+    entity_notes: str | None = None
+    entity_status: str | None = None
+
+
 # ---------- References ----------
 
 

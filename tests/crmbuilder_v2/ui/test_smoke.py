@@ -29,8 +29,10 @@ EXPECTED_ENTRIES = (
     "Planning Items",
     "Topics",
     "References",
-    # Methodology group — first entry landed in UI v0.4 slice B.
+    # Methodology group — Domains landed in UI v0.4 slice B,
+    # Entities in slice C.
     "Domains",
+    "Entities",
 )
 
 

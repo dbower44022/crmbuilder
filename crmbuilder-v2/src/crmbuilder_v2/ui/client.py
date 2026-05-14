@@ -655,6 +655,141 @@ class StorageClient:
         )
 
     # ------------------------------------------------------------------
+    # Entities (methodology entity — UI v0.4 slice C)
+    # ------------------------------------------------------------------
+
+    def list_entities(
+        self, *, include_deleted: bool = False
+    ) -> list[dict[str, Any]]:
+        """Return all entities as a list of dicts.
+
+        Shape matches ``crmbuilder_v2/api/routers/entities.py``. With
+        ``include_deleted=True`` soft-deleted entities are included;
+        otherwise the API filters them out.
+        """
+        path = "/entities"
+        if include_deleted:
+            path = "/entities?include_deleted=true"
+        result = self._request("GET", path)
+        if not isinstance(result, list):
+            return []
+        return result
+
+    def get_entity(self, identifier: str) -> dict[str, Any]:
+        """Return a single entity by identifier (e.g. ``"ENT-001"``).
+
+        Raises ``NotFoundError`` if the entity does not exist (or is
+        soft-deleted — the API 404s soft-deleted rows by default).
+        """
+        result = self._request("GET", f"/entities/{identifier}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for get_entity",
+            )
+        return result
+
+    def create_entity(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /entities. Returns the created record dict.
+
+        The body uses the parent-prefixed field names (``entity_name``,
+        ``entity_description``, optional ``entity_notes`` /
+        ``entity_status``). ``entity_identifier`` is server-assigned
+        when omitted. Domain affiliations are NOT inlined — attach them
+        afterwards via ``create_reference`` with the
+        ``entity_scopes_to_domain`` kind. Raises ``RequestShapeError``
+        on 422 (identifier-format / name-uniqueness / status-enum),
+        ``ConflictError`` on 409 (explicit-identifier collision).
+        """
+        result = self._request("POST", "/entities", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for create_entity",
+            )
+        return result
+
+    def update_entity(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PUT /entities/{identifier} — full record replace.
+
+        The body is the full record; ``entity_identifier`` in the body
+        must match the path. Raises ``NotFoundError`` on 404,
+        ``RequestShapeError`` on 422 (identifier mismatch, validation,
+        or invalid status transition).
+        """
+        result = self._request(
+            "PUT", f"/entities/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for update_entity",
+            )
+        return result
+
+    def patch_entity(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PATCH /entities/{identifier} — partial update.
+
+        Body should contain only the changed fields. Raises
+        ``NotFoundError`` on 404, ``RequestShapeError`` on 422
+        (validation or invalid status transition).
+        """
+        result = self._request(
+            "PATCH", f"/entities/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for patch_entity",
+            )
+        return result
+
+    def delete_entity(self, identifier: str) -> Any:
+        """DELETE /entities/{identifier}. Soft-deletes; idempotent.
+
+        Returns the API's response data. Raises ``NotFoundError`` on
+        404. Outbound ``entity_scopes_to_domain`` references persist
+        per ``entity.md`` section 3.4.6.
+        """
+        return self._request("DELETE", f"/entities/{identifier}")
+
+    def restore_entity(self, identifier: str) -> dict[str, Any]:
+        """POST /entities/{identifier}/restore. Clears the soft-delete.
+
+        Raises ``NotFoundError`` on 404, ``RequestShapeError`` on 422
+        (the record is not soft-deleted).
+        """
+        result = self._request(
+            "POST", f"/entities/{identifier}/restore"
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for restore_entity",
+            )
+        return result
+
+    def next_entity_identifier(self) -> str:
+        """GET /entities/next-identifier. Returns the next ``ENT-NNN``."""
+        result = self._request("GET", "/entities/next-identifier")
+        if isinstance(result, dict) and isinstance(result.get("next"), str):
+            return result["next"]
+        raise ServerError(
+            status_code=200,
+            errors=[],
+            message="Expected {'next': str} body for next_entity_identifier",
+        )
+
+    # ------------------------------------------------------------------
     # References (full list)
     # ------------------------------------------------------------------
 

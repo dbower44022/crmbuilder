@@ -36,6 +36,7 @@ from crmbuilder_v2.access.models import (
     Charter,
     Decision,
     Domain,
+    Entity,
     PlanningItem,
     Reference,
     Risk,
@@ -56,6 +57,7 @@ _EXPORT_TABLES: list[tuple[str, type]] = [
     ("planning_items", PlanningItem),
     ("topics", Topic),
     ("domains", Domain),
+    ("entities", Entity),
     ("references", Reference),
     ("change_log", ChangeLog),
 ]
