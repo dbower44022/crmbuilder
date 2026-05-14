@@ -1,0 +1,615 @@
+{
+  "attributes": [
+    {
+      "common_synonyms": [],
+      "description": "The contact (individual) in the affiliation.",
+      "display_name": "Contact",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "contact",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "api_name": "RelationContactId",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "contact_id_a",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "contact_id",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "ContactId",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "npe5__Contact__c",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "contact",
+      "required": true,
+      "type": "reference",
+      "usage": "One side of the junction. Drives \"show me everyone affiliated with this organization\" queries."
+    },
+    {
+      "common_synonyms": [],
+      "description": "The organization in the affiliation.",
+      "display_name": "Account / Organization",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "account",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "api_name": "AccountId",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "contact_id_b",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "company_id",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "AccountId",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "npe5__Organization__c",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "account",
+      "required": true,
+      "type": "reference",
+      "usage": "Other side of the junction."
+    },
+    {
+      "common_synonyms": [],
+      "description": "The role or function the contact has at the organization.",
+      "display_name": "Affiliation Role",
+      "enum_values": [
+        "Employee",
+        "Executive",
+        "Board Member",
+        "Advisory Council",
+        "Volunteer",
+        "Alumnus",
+        "Donor",
+        "Other"
+      ],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "role",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "api_name": "Type",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "relationship_type_id",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Roles",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "npe5__Role__c",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "enum",
+      "usage": "Drives role-based reporting (all board members across funder organizations) and cultivation strategy (board members are major-gift prospects; volunteers are stewardship priorities)."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Whether the affiliation is active or historical.",
+      "display_name": "Affiliation Status",
+      "enum_values": [
+        "Current",
+        "Former"
+      ],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "affiliationStatus",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "api_name": "Status",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "is_active",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "IsActive",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "npe5__Status__c",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "enum",
+      "usage": "Distinguishes \"still works there\" from \"used to work there.\" Critical for accurate communications — sending an event invitation addressed to a current employer when the contact left 2 years ago is embarrassing."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Date the affiliation began.",
+      "display_name": "Start Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "startDate",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "start_date",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "StartDate",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "npe5__StartDate__c",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "date",
+      "usage": "Anchors tenure reporting and historical context. Often unknown for legacy affiliations imported from older systems."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Date the affiliation ended (null if still current).",
+      "display_name": "End Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "endDate",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "end_date",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "EndDate",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "npe5__EndDate__c",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "date",
+      "usage": "Drives auto-deactivation workflows (when endDate is set, status auto-flips to Former)."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Flag indicating this is the contact's primary affiliation.",
+      "display_name": "Primary Affiliation",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "isPrimary",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "is_primary",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "IsActive",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "npe5__Primary__c",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "boolean",
+      "usage": "Drives the auto-population of Contact's primary Account field. Only one primary affiliation per contact (system-enforced in NPSP)."
+    },
+    {
+      "common_synonyms": [],
+      "description": "System timestamp.",
+      "display_name": "Created Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "createdAt",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": "created_at",
+          "status": "standard",
+          "system": "attio"
+        },
+        {
+          "api_name": "CreatedDate",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "created_date",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "createdAt",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "createdate",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "CreatedDate",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "CreatedDate",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "datetime",
+      "usage": "Audit field."
+    }
+  ],
+  "business_context": "Affiliation records solve a common nonprofit modeling problem: a single individual is often associated with multiple organizations simultaneously. They might be a Contact whose primary Account is their Household, while also being a board member at a foundation, a senior executive at a corporate partner, an alumnus of an affiliated school, and a former employee of a current major-gift donor. Each of these is a meaningful relationship that drives different cultivation strategies, but Salesforce's standard one-to-one Account-to-Contact model can only hold one. Affiliation records add a many-to-many junction. Modeling varies: NPSP has Affiliation as a custom object (npe5__Affiliation__c) with start/end dates, role, status, and primary-flag; CiviCRM uses Relationship records (with relationship_type_id values like Employee Of, Board Member Of, Volunteer For); Bloomerang has Relationships with similar role types. The B2B systems handle this poorly — Salesforce vanilla has AccountContactRelation but it's underused; HubSpot's primary-and-secondary company associations help but aren't role-aware. When interviewing clients, surface \"Affiliation\" by asking how they track contacts who have multiple meaningful organizational connections, and whether those connections need start/end dates and role classifications.",
+  "catalog_id": "affiliation",
+  "common_synonyms": [
+    "Association",
+    "Organizational Relationship",
+    "Connection",
+    "Employment"
+  ],
+  "data_model_role": "junction",
+  "discriminator_attribute": null,
+  "discriminator_value": null,
+  "display_name": "Affiliation",
+  "entry_kind": "universal",
+  "inbound_references": [],
+  "is_deleted": false,
+  "name": "Affiliation",
+  "parent_catalog_id": null,
+  "purpose": "A relationship link between a Contact and an Organization Account that captures role, dates, and significance — distinct from the Contact's primary Account. Used to track multiple concurrent associations (employer, board membership, volunteer organization, alumni status, affiliated foundation) without disrupting the primary Contact-Account relationship.",
+  "relationships": [
+    {
+      "cardinality": "many-to-one",
+      "description": "An affiliation links to one contact.",
+      "presence": [
+        {
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "standard",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "child",
+      "target": "contact",
+      "target_name": "Contact"
+    },
+    {
+      "cardinality": "many-to-one",
+      "description": "An affiliation links to one organization account.",
+      "presence": [
+        {
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "standard",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "child",
+      "target": "account",
+      "target_name": "Account"
+    }
+  ],
+  "sources": [
+    {
+      "title": "Salesforce Object Reference: AccountContactRelation",
+      "url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_accountcontactrelation.htm"
+    },
+    {
+      "title": "Salesforce NPSP: Data Model Gallery",
+      "url": "https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html"
+    },
+    {
+      "title": "CiviCRM: Relationships user guide",
+      "url": "https://docs.civicrm.org/user/en/latest/organising-your-data/relationships/"
+    },
+    {
+      "title": "HubSpot: Associate records",
+      "url": "https://knowledge.hubspot.com/contacts/associate-records"
+    },
+    {
+      "title": "Bloomerang REST API: Relationship endpoint",
+      "url": "https://bloomerang.com/api/rest-api-v1/"
+    }
+  ],
+  "systems": [
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://attio.com/help/reference/managing-your-data/attributes/create-manage-attributes",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "Custom relationship attribute",
+      "notes": "Attio supports custom relationship attributes between People and Companies but no standard Affiliation entity with role and date metadata.",
+      "system": "attio"
+    },
+    {
+      "api_name": "Relationship",
+      "docs_url": "https://bloomerang.com/api/rest-api-v1/",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Relationship",
+      "notes": "Bloomerang has Relationships between Constituents with type discriminators (Family, Employer, Board Member, Volunteer Coordinator, etc.). Constituent-to-Constituent rather than Contact-to-Account specifically.",
+      "system": "bloomerang"
+    },
+    {
+      "api_name": "Relationship",
+      "docs_url": "https://docs.civicrm.org/user/en/latest/organising-your-data/relationships/",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Relationship (with type=Employee Of / Board Member Of / etc.)",
+      "notes": "First-class Relationship entity with relationship_type_id discriminator. Built-in types include Employee Of, Employer Of, Spouse Of, Child Of, Parent Of, Volunteer For, Board Member Of. Custom types can be added.",
+      "system": "civicrm"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://docs.espocrm.com/",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(custom or via custom relationship)",
+      "notes": "EspoCRM has no standard Affiliation entity. Custom build-out required for nonprofit deployments.",
+      "system": "espocrm"
+    },
+    {
+      "api_name": "companies (associations)",
+      "docs_url": "https://knowledge.hubspot.com/contacts/associate-records",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Company Association (primary + secondary)",
+      "notes": "HubSpot allows multiple Company associations per Contact, with one designated as primary. Less role-aware than Affiliation-style models — associations are typed but don't carry rich start/end/role metadata.",
+      "system": "hubspot"
+    },
+    {
+      "api_name": "AccountContactRelation",
+      "docs_url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_accountcontactrelation.htm",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "AccountContactRelation",
+      "notes": "Salesforce's standard junction for multiple Account-Contact links. Underused in B2B; primary use case is allowing one Contact to be associated with multiple Accounts. Has IsActive, StartDate, EndDate, Roles fields.",
+      "system": "salesforce"
+    },
+    {
+      "api_name": "npe5__Affiliation__c",
+      "docs_url": "https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Affiliation (npe5__Affiliation__c)",
+      "notes": "NPSP custom object specifically for tracking Contact-to-Organization-Account affiliations. Includes Role, Status (Current / Former), StartDate, EndDate, Primary flag (only one Primary Affiliation per Contact). Auto-generates from Contact's AccountId by default.",
+      "system": "salesforce_npsp"
+    }
+  ],
+  "tier": 4,
+  "typically_required": false
+}

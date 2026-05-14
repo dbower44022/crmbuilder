@@ -46,6 +46,14 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         "risk",
         "planning_item",
         "topic",
+        # Catalog ingestion v0.1 (DEC: catalog rows as universal-reference
+        # targets). Catalog rows do not naturally source references — the
+        # catalog's own inter-entity relationships live in catalog_relationship
+        # — but the CHECK constraint is symmetric; downstream methodology
+        # workstreams will source references at ``catalog_entity`` /
+        # ``catalog_attribute`` targets.
+        "catalog_entity",
+        "catalog_attribute",
     }
 )
 

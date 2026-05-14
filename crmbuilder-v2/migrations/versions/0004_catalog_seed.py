@@ -26,6 +26,7 @@ from typing import Sequence, Union
 from alembic import op
 from sqlalchemy.orm import Session
 
+from crmbuilder_v2.access.repositories.catalog import suppression as suppress_catalog_exports
 from crmbuilder_v2.bootstrap.catalog_loader import load_catalog
 
 revision: str = "0004_catalog_seed"
@@ -39,8 +40,13 @@ def upgrade() -> None:
     bind = op.get_bind()
     session = Session(bind=bind)
     try:
-        report = load_catalog(session, yaml_dir, suppress_exports=True)
-        session.flush()
+        # The loader writes through the ORM directly (not the access layer),
+        # so its suppress_exports flag is currently a no-op. The
+        # ``suppress_catalog_exports`` context manager protects against any
+        # future loader rewrite that switches to access-layer writes.
+        with suppress_catalog_exports():
+            report = load_catalog(session, yaml_dir, suppress_exports=True)
+            session.flush()
     finally:
         session.close()
 

@@ -1,0 +1,601 @@
+{
+  "attributes": [
+    {
+      "common_synonyms": [
+        "sender",
+        "from"
+      ],
+      "description": "Sender's email address.",
+      "display_name": "From",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "fromAddress",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": "from_address",
+          "status": "standard",
+          "system": "attio"
+        },
+        {
+          "api_name": "FromAddress",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "from",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_email_from_email",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "FromAddress",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "FromAddress",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "email",
+      "usage": "Anchors sender identification. For sent emails, the user's address; for received, the contact's. Drives email-thread reconciliation."
+    },
+    {
+      "common_synonyms": [
+        "recipients",
+        "to",
+        "sent to"
+      ],
+      "description": "Comma-separated recipient email addresses.",
+      "display_name": "To",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "toAddresses",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": "to_addresses",
+          "status": "standard",
+          "system": "attio"
+        },
+        {
+          "api_name": "ToAddresses",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "to",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_email_to_email",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "ToAddress",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "ToAddress",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "text",
+      "usage": "Drives recipient identification. Multiple recipients common; first recipient typically used for primary contact-association."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Comma-separated CC recipient email addresses.",
+      "display_name": "CC",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "ccAddresses",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": "cc_addresses",
+          "status": "standard",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "cc",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_email_cc_email",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "CcAddress",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "CcAddress",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "text",
+      "usage": "Identifies copied stakeholders. Useful for relationship-mapping (who's looped in on conversations with this contact)."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Comma-separated BCC recipient email addresses.",
+      "display_name": "BCC",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "bccAddresses",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": "bcc_addresses",
+          "status": "standard",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "bcc",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_email_bcc_email",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "BccAddress",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "BccAddress",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "text",
+      "usage": "Captures hidden recipients. The CRM's catch-all alias is often BCCed for auto-logging."
+    },
+    {
+      "common_synonyms": [
+        "body",
+        "content",
+        "message",
+        "email content"
+      ],
+      "description": "Rich-text HTML body of the email.",
+      "display_name": "Body (HTML)",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "bodyHtml",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": "body_html",
+          "status": "standard",
+          "system": "attio"
+        },
+        {
+          "api_name": "BodyHtml",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "body",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_email_html",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "HtmlBody",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "HtmlBody",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "richtext",
+      "usage": "The actual email content as rendered. Drives full-text search and content review. Storage size can be substantial for long email threads."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Plaintext fallback body of the email.",
+      "display_name": "Body (Plaintext)",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "bodyText",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "api_name": "BodyText",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "bodyPlain",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "TextBody",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "TextBody",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "text",
+      "usage": "Used for searching, plaintext-only display, and as a fallback when HTML rendering is suppressed."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Whether the email was sent by the org, received, or saved as draft.",
+      "display_name": "Direction",
+      "enum_values": [
+        "Sent",
+        "Received",
+        "Draft"
+      ],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "direction",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": "direction",
+          "status": "standard",
+          "system": "attio"
+        },
+        {
+          "api_name": "Direction",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "isReplied",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_email_direction",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Incoming",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Incoming",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "enum",
+      "usage": "Distinguishes outbound from inbound. Drives \"my sent\" filtering and incoming-email routing."
+    },
+    {
+      "common_synonyms": [],
+      "description": "RFC-822 Message-ID header for the email.",
+      "display_name": "Message-ID",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "messageId",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": "message_id",
+          "status": "standard",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "messageId",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_email_message_id",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "MessageIdentifier",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "MessageIdentifier",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "string",
+      "usage": "Used for thread reconciliation across systems and to dedupe email logging when multiple recipients each BCC the CRM."
+    },
+    {
+      "common_synonyms": [],
+      "description": "RFC-822 In-Reply-To header pointing at the message this email replies to.",
+      "display_name": "In-Reply-To",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "inReplyTo",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": "in_reply_to",
+          "status": "standard",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "replied",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "inreplyto",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "InReplyTo",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "InReplyTo",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "string",
+      "usage": "Drives email-threading. Lets the CRM display conversation threads rather than scattered individual emails."
+    }
+  ],
+  "business_context": "Email-message records hold the actual content and routing metadata of every email that touches the CRM. They differ from generic Activity entries in that they carry email-specific structured data: From / To / CC / BCC addresses, the HTML and plaintext body, RFC-822 Message-ID for thread reconciliation, In-Reply-To references, and a direction flag (Sent / Received). Modeling varies: Salesforce has EmailMessage as a separate object distinct from Task; HubSpot has Email as an Engagement subtype; EspoCRM has Email as its own first-class entity (with rich threading support); CiviCRM has Activity records with activity_type_id=Email and additional Email Activity Type fields; Bloomerang has Interaction subtype=Email; Attio syncs emails from Gmail / Outlook via OAuth and surfaces them on Person and Company timelines without a separate first-class Email entity. Email-to-record auto-association (BCC the CRM's catch-all address; the email is logged against any contact/account whose email matches a recipient) is the most common automation tied to email records. When interviewing clients, surface \"Email\" by asking how they currently log email correspondence with contacts: do they manually log it, do they BCC a catch-all CRM address, do they use an integrated mail client (Gmail / Outlook plugin), or does they rely on a marketing-platform integration?",
+  "catalog_id": "activity-email",
+  "common_synonyms": [
+    "Email",
+    "Email Message",
+    "Mail",
+    "Sent Email",
+    "Logged Email"
+  ],
+  "data_model_role": "log",
+  "discriminator_attribute": "activityType",
+  "discriminator_value": "Email",
+  "display_name": "Email Message",
+  "entry_kind": "subclass",
+  "inbound_references": [],
+  "is_deleted": false,
+  "name": "Email (Activity subclass)",
+  "parent_catalog_id": "activity",
+  "purpose": "An email message sent or received as part of a relationship — either outbound (sent from a user via the CRM or an integrated mail client) or inbound (logged via email-to-record auto-association). A subclass of Activity that adds channel-specific email metadata: addresses, body, message-id, direction.",
+  "relationships": [],
+  "sources": [
+    {
+      "title": "Salesforce Object Reference: EmailMessage",
+      "url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_emailmessage.htm"
+    },
+    {
+      "title": "HubSpot Engagements: Email",
+      "url": "https://developers.hubspot.com/docs/reference/api/crm/engagements/email"
+    },
+    {
+      "title": "EspoCRM: Email entity definition",
+      "url": "https://github.com/espocrm/espocrm/blob/master/application/Espo/Resources/metadata/entityDefs/Email.json"
+    },
+    {
+      "title": "CiviCRM: Email user guide",
+      "url": "https://docs.civicrm.org/user/en/latest/email/"
+    },
+    {
+      "title": "Attio: Add record activities",
+      "url": "https://attio.com/help/reference/managing-your-data/records/add-record-activities"
+    },
+    {
+      "title": "Bloomerang REST API: Interaction endpoint",
+      "url": "https://bloomerang.com/api/rest-api-v1/"
+    }
+  ],
+  "systems": [
+    {
+      "api_name": "emails",
+      "docs_url": "https://attio.com/help/reference/managing-your-data/records/add-record-activities",
+      "is_standard": "true",
+      "mechanism": "separate_object",
+      "name": "(synced via Gmail / Outlook OAuth)",
+      "notes": "Attio syncs email correspondence via OAuth integrations and surfaces it on People / Company timelines. Limited per-email API surface compared to dedicated email entities.",
+      "system": "attio"
+    },
+    {
+      "api_name": "Interaction",
+      "docs_url": "https://bloomerang.com/api/rest-api-v1/",
+      "is_standard": "true",
+      "mechanism": "type_discriminator",
+      "name": "Interaction (subtype=Email)",
+      "notes": "Bloomerang's Interaction entity has Email as one of its types. Includes Subject, Description, Date, From, To.",
+      "system": "bloomerang"
+    },
+    {
+      "api_name": "Activity",
+      "docs_url": "https://docs.civicrm.org/user/en/latest/email/",
+      "is_standard": "true",
+      "mechanism": "type_discriminator",
+      "name": "Activity (activity_type=Email)",
+      "notes": "CiviCRM treats Email as an Activity type. Email-specific fields are added to the Activity record (subject, details, source contact). Less rich than purpose-built email entities.",
+      "system": "civicrm"
+    },
+    {
+      "api_name": "Email",
+      "docs_url": "https://github.com/espocrm/espocrm/blob/master/application/Espo/Resources/metadata/entityDefs/Email.json",
+      "is_standard": "true",
+      "mechanism": "separate_object",
+      "name": "Email",
+      "notes": "First-class Email entity with rich threading (parent / repliedTo / replies links). Includes name (subject), from, to, cc, bcc, body, isHtml, messageId, status (Draft / Sending / Sent / Archived).",
+      "system": "espocrm"
+    },
+    {
+      "api_name": "emails",
+      "docs_url": "https://developers.hubspot.com/docs/reference/api/crm/engagements/email",
+      "is_standard": "true",
+      "mechanism": "type_discriminator",
+      "name": "Email (Engagement subtype)",
+      "notes": "HubSpot models Email as an Engagement type with subject, body, direction (INCOMING / FORWARDED / SENT), and email metadata.",
+      "system": "hubspot"
+    },
+    {
+      "api_name": "EmailMessage",
+      "docs_url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_emailmessage.htm",
+      "is_standard": "true",
+      "mechanism": "separate_object",
+      "name": "EmailMessage",
+      "notes": "Salesforce has EmailMessage as a first-class object distinct from Task. Captures FromAddress, ToAddress, CcAddress, BccAddress, Subject, TextBody, HtmlBody, MessageDate, Status, Incoming. Linked to Cases, Contacts, and other entities via EmailMessageRelation.",
+      "system": "salesforce"
+    },
+    {
+      "api_name": "EmailMessage",
+      "docs_url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_emailmessage.htm",
+      "is_standard": "true",
+      "mechanism": "separate_object",
+      "name": "EmailMessage",
+      "notes": "Same as Salesforce. Donor-facing email correspondence is typically logged via EmailMessage with relationship to the Contact and the parent Opportunity (donation).",
+      "system": "salesforce_npsp"
+    }
+  ],
+  "tier": 5,
+  "typically_required": false
+}

@@ -1,0 +1,661 @@
+{
+  "attributes": [
+    {
+      "common_synonyms": [],
+      "description": "Short title or headline for the note.",
+      "display_name": "Title",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": 255,
+      "name": "title",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "api_name": "Subject",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "subject",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "name",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Title",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Title",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "string",
+      "usage": "Optional in some systems (HubSpot Notes have only a body; Attio shows the first line of the note as the title automatically). Required in others (Salesforce ContentNote requires a Title field). Drives list-view display when notes are listed in bulk."
+    },
+    {
+      "common_synonyms": [
+        "content",
+        "text",
+        "note text",
+        "note content"
+      ],
+      "description": "The actual content of the note. Rich text in most systems.",
+      "display_name": "Note Content",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "body",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": "content",
+          "status": "standard",
+          "system": "attio"
+        },
+        {
+          "api_name": "Description",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "note",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "post",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_note_body",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Content",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Content",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "richtext",
+      "usage": "The substance of the note. Most modern systems support rich-text formatting (bold, italic, lists, links, @mentions). Length limits vary widely: HubSpot supports 65k chars, Salesforce ContentNote stores in the Content framework with effectively no practical limit. Bloomerang Notes are plain text with a Description field."
+    },
+    {
+      "common_synonyms": [
+        "related to",
+        "related record"
+      ],
+      "description": "Polymorphic reference to the record this note is attached to.",
+      "display_name": "Related To",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "parent",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": "parent",
+          "status": "standard",
+          "system": "attio"
+        },
+        {
+          "api_name": "Parent",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "parent",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "parentId",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "parent",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "LinkedEntityId",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "LinkedEntityId",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "account",
+      "required": true,
+      "type": "reference",
+      "usage": "A note must be attached to something (Account, Contact, Opportunity, Case, etc.). Polymorphic linkage. CiviCRM uses entity_table + entity_id pair; Salesforce uses ContentDocumentLink junction records; EspoCRM uses parent (linkParent) field; Bloomerang attaches Notes to Constituents via AccountId."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Visibility level of the note.",
+      "display_name": "Privacy",
+      "enum_values": [
+        "Public",
+        "Private",
+        "Confidential"
+      ],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "privacy",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "privacy",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "enum",
+      "usage": "\"Public\" means visible to all users with access to the parent record; \"Private\" typically means visible only to the author; \"Confidential\" may restrict to a privileged role. CiviCRM ships with this enum built-in. Salesforce and Attio control privacy through sharing rules on the underlying object rather than a per-note privacy flag."
+    },
+    {
+      "common_synonyms": [
+        "author",
+        "created by",
+        "note author"
+      ],
+      "description": "The user who created the note.",
+      "display_name": "Owner / Author",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "assignedUser",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": "created_by",
+          "status": "standard",
+          "system": "attio"
+        },
+        {
+          "api_name": "CreatedBy",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "contact_id",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "createdById",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hubspot_owner_id",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "OwnerId",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "OwnerId",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "user",
+      "required": true,
+      "type": "reference",
+      "usage": "Audit field tracking who wrote the note. Drives \"my notes\" filtering, attribution in displays (\"Note by Sarah - 2 days ago\"), and edit permissions (some systems only allow the author to edit/delete)."
+    },
+    {
+      "common_synonyms": [],
+      "description": "System-generated timestamp of when the note was created.",
+      "display_name": "Created Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "createdAt",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": "created_at",
+          "status": "standard",
+          "system": "attio"
+        },
+        {
+          "api_name": "CreatedDate",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "created_date",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "createdAt",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "createdate",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "CreatedDate",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "CreatedDate",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "datetime",
+      "usage": "Drives chronological ordering in record activity feeds (newest notes first, typically). Read-only and system-managed."
+    },
+    {
+      "common_synonyms": [],
+      "description": "System-generated timestamp of when the note was last edited.",
+      "display_name": "Last Modified Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "lastModifiedAt",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": "updated_at",
+          "status": "standard",
+          "system": "attio"
+        },
+        {
+          "api_name": "LastModified",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "modified_date",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "modifiedAt",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_lastmodifieddate",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "LastModifiedDate",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "LastModifiedDate",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "datetime",
+      "usage": "Drives \"edited\" indicators in UI when a note has been modified after creation. Some systems also track edit history with diff details."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Files attached to the note (PDFs, images, documents).",
+      "display_name": "Attachments",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "attachments",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": "attachments",
+          "status": "standard",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "attachmentsIds",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "attachments",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "ContentDocumentId",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "ContentDocumentId",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "attachment",
+      "required": false,
+      "type": "multireference",
+      "usage": "Lets users attach supporting material directly to a note. In Salesforce ContentNote, attachments are first-class via the Files framework. EspoCRM Notes have an attachments link-multiple field. HubSpot Notes support file attachments via the Engagements API. Less universally supported than the body field."
+    }
+  ],
+  "business_context": "Note records are the CRM's catch-all for human-readable context that doesn't belong on a structured field. Where Activities track interactions (calls, meetings, tasks) with a clear time-and-action shape, Notes are more freeform and timeless — a paragraph of context about a customer's preferences, a meeting summary that doesn't warrant logging as a Meeting activity, an internal observation about a donor's giving history, an account strategy note, a reminder that doesn't need a due date. Different systems blur the line between Note and Activity differently: HubSpot treats Notes as a type of Engagement (i.e., an Activity subtype). Bloomerang separates Notes from Interactions cleanly. Salesforce has both ContentNote (the modern unified content note) and an older Note object now mostly superseded. EspoCRM has both standalone Note records and Stream messages (which act note-like). When interviewing clients, surface \"Note\" by asking whether they want to capture freeform context that doesn't have a clear next-action or scheduled-date dimension, and whether such context should be visible to the whole team or restricted to specific roles. Privacy on Notes matters: in many systems Notes can be marked \"Private\" so only the author can see them.",
+  "catalog_id": "note",
+  "common_synonyms": [
+    "Comment",
+    "Memo",
+    "Annotation",
+    "Internal Note",
+    "Stream Post"
+  ],
+  "data_model_role": "log",
+  "discriminator_attribute": null,
+  "discriminator_value": null,
+  "display_name": "Note",
+  "entry_kind": "universal",
+  "inbound_references": [],
+  "is_deleted": false,
+  "name": "Note",
+  "parent_catalog_id": null,
+  "purpose": "An informal text record attached to another record (Account, Contact, Opportunity, Case, etc.) for capturing context, observations, decisions, and reference information that doesn't fit a structured field.",
+  "relationships": [
+    {
+      "cardinality": "many-to-one",
+      "description": "A note is typically attached to an account.",
+      "presence": [
+        {
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "status": "standard",
+          "system": "attio"
+        },
+        {
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "custom",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "child",
+      "target": "account",
+      "target_name": "Account"
+    },
+    {
+      "cardinality": "many-to-one",
+      "description": "A note is typically attached to a contact.",
+      "presence": [
+        {
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "status": "standard",
+          "system": "attio"
+        },
+        {
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "standard",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "child",
+      "target": "contact",
+      "target_name": "Contact"
+    },
+    {
+      "cardinality": "many-to-one",
+      "description": "A note is authored by a user.",
+      "presence": [
+        {
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "status": "standard",
+          "system": "attio"
+        },
+        {
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "standard",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "child",
+      "target": "user",
+      "target_name": "User"
+    }
+  ],
+  "sources": [
+    {
+      "title": "Salesforce Object Reference: ContentNote",
+      "url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contentnote.htm"
+    },
+    {
+      "title": "HubSpot Engagements: Notes",
+      "url": "https://developers.hubspot.com/docs/reference/api/crm/engagements/notes"
+    },
+    {
+      "title": "Attio: Notes documentation",
+      "url": "https://docs.attio.com/docs/notes"
+    },
+    {
+      "title": "EspoCRM: Note entity definition",
+      "url": "https://github.com/espocrm/espocrm/blob/master/application/Espo/Resources/metadata/entityDefs/Note.json"
+    },
+    {
+      "title": "CiviCRM: Notes user guide",
+      "url": "https://docs.civicrm.org/user/en/latest/contributions/notes/"
+    },
+    {
+      "title": "Bloomerang REST API documentation: Note endpoint",
+      "url": "https://bloomerang.com/api/rest-api-v1/"
+    }
+  ],
+  "systems": [
+    {
+      "api_name": "notes",
+      "docs_url": "https://docs.attio.com/docs/notes",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Note",
+      "notes": "Attio has a first-class Notes feature attached to records. Supports rich text, mentions of users (@mentions), and threading. Notes are surfaced in the activity feed for the parent record.",
+      "system": "attio"
+    },
+    {
+      "api_name": "Note",
+      "docs_url": "https://bloomerang.com/api/rest-api-v1/",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Note",
+      "notes": "Bloomerang has a first-class Note entity, distinct from Interaction. Notes capture freeform observations about a Constituent without requiring an interaction type or date. Often used for cultivation strategy, biographical context, and internal observations.",
+      "system": "bloomerang"
+    },
+    {
+      "api_name": "Note",
+      "docs_url": "https://docs.civicrm.org/user/en/latest/contributions/notes/",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Note",
+      "notes": "CiviCRM has a separate Note entity that attaches to Contacts and other records via entity_table + entity_id polymorphic reference. Notes are private by default (visible only to staff). Supports a privacy enum with values like Public, Private, Confidential.",
+      "system": "civicrm"
+    },
+    {
+      "api_name": "Note",
+      "docs_url": "https://github.com/espocrm/espocrm/blob/master/application/Espo/Resources/metadata/entityDefs/Note.json",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Note",
+      "notes": "EspoCRM has a Note entity used primarily as Stream posts (each followable record has a Stream where Notes are posted). The Stream acts as the activity feed; Notes are the entries. Supports text content, attachments, and parent record linkage.",
+      "system": "espocrm"
+    },
+    {
+      "api_name": "notes",
+      "docs_url": "https://developers.hubspot.com/docs/reference/api/crm/engagements/notes",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Note (Engagement)",
+      "notes": "HubSpot models Notes as an Engagement type rather than a separate entity. Notes have a body field (rich text) and standard ownership/ timestamp metadata. Associated to records via the Associations API.",
+      "system": "hubspot"
+    },
+    {
+      "api_name": "ContentNote",
+      "docs_url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contentnote.htm",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "ContentNote (modern) / Note (legacy)",
+      "notes": "Salesforce has migrated from the legacy Note object to ContentNote, which uses the Content (Files) framework for richer storage and attachment capability. Both still coexist. Notes attach to records via ContentDocumentLink junction records.",
+      "system": "salesforce"
+    },
+    {
+      "api_name": "ContentNote",
+      "docs_url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contentnote.htm",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "ContentNote",
+      "notes": "Same as Salesforce. NPSP doesn't add specific Note customizations but Notes are commonly used for donor cultivation strategy and meeting summaries that don't warrant a Task or Event.",
+      "system": "salesforce_npsp"
+    }
+  ],
+  "tier": 1,
+  "typically_required": true
+}

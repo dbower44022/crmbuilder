@@ -1,0 +1,932 @@
+{
+  "attributes": [
+    {
+      "common_synonyms": [],
+      "description": "Short summary of the case.",
+      "display_name": "Case Subject",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": 255,
+      "name": "subject",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "subject",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "name",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "subject",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Subject",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Subject",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "string",
+      "usage": "Drives list-view legibility and search. Often auto-populated from email subject when the case originates via email-to-case."
+    },
+    {
+      "common_synonyms": [],
+      "description": "System-generated sequence identifier for the case.",
+      "display_name": "Case Number / Ticket Number",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "caseNumber",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "case_id",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "number",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_ticket_id",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "CaseNumber",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "CaseNumber",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "autonumber",
+      "usage": "Customer-facing identifier used in support-portal URLs, email-thread tracking, and SLA reporting. Required and read-only."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Lifecycle state of the case.",
+      "display_name": "Case Status",
+      "enum_values": [
+        "New",
+        "Open",
+        "In Progress",
+        "On Hold (Customer)",
+        "On Hold (Internal)",
+        "Resolved",
+        "Closed"
+      ],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "caseStatus",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "status_id",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "status",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_pipeline_stage",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Status",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Status",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "enum",
+      "usage": "Drives \"open cases\" filtering, SLA-clock pause/resume logic (some statuses pause the SLA clock), and reopening workflows. Heavily customized per organization's support process."
+    },
+    {
+      "common_synonyms": [
+        "severity",
+        "urgency"
+      ],
+      "description": "Severity classification of the case.",
+      "display_name": "Priority",
+      "enum_values": [
+        "Low",
+        "Medium",
+        "High",
+        "Critical"
+      ],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "priority",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "priority",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_ticket_priority",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Priority",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Priority",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "enum",
+      "usage": "Drives SLA selection, queue prioritization, and escalation rules. Often set automatically based on customer tier or case type, with manual override. Critical-priority cases often page on-call staff."
+    },
+    {
+      "common_synonyms": [
+        "source",
+        "channel",
+        "how reported"
+      ],
+      "description": "Channel through which the case was opened.",
+      "display_name": "Origin",
+      "enum_values": [
+        "Email",
+        "Web",
+        "Phone",
+        "Chat",
+        "Social Media",
+        "Internal"
+      ],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "origin",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "source_type",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Origin",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Origin",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "enum",
+      "usage": "Drives source-attribution reporting (which channels generate the most cases, which channels have the highest resolution rates) and automatic-routing rules."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Classification of the case (typically what kind of issue it is).",
+      "display_name": "Case Type",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "caseType",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "type",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "type",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Type",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Type",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "enum",
+      "usage": "Configurable per organization. Common values: Question, Problem, Feature Request, Bug Report, Account Issue, Billing Inquiry. Drives routing rules and reporting."
+    },
+    {
+      "common_synonyms": [],
+      "description": "The customer account associated with the case.",
+      "display_name": "Account",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "account",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "account",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "accountId",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "company_id",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "AccountId",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "AccountId",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "account",
+      "required": false,
+      "type": "reference",
+      "usage": "Anchors case to customer record for context during resolution (account history, entitlements, billing status). Auto-derived from contact in Salesforce when contact is set."
+    },
+    {
+      "common_synonyms": [],
+      "description": "The contact who reported or is affected by the case.",
+      "display_name": "Contact",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "contact",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "contact_id",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "contactId",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "contact_id",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "ContactId",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "ContactId",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "contact",
+      "required": false,
+      "type": "reference",
+      "usage": "Anchors customer-facing communication. Drives email-thread addressing, satisfaction-survey routing, and contact-history views."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Detailed description of the case (the customer's problem statement).",
+      "display_name": "Description",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "description",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "details",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "description",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "content",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Description",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Description",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "text",
+      "usage": "Often auto-populated from incoming email body or web form submission. The substantive content of the case before resolution activity is logged."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Description of how the case was resolved.",
+      "display_name": "Resolution",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "resolution",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Resolution",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Resolution",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "text",
+      "usage": "Captured at close. Drives knowledge-base seeding (resolutions can be promoted to Knowledge Articles for reuse) and post-resolution audit. Required for close in some configurations."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Date and time the case was closed.",
+      "display_name": "Closed Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "closedDate",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "closed_date",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "closedDate",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "closed_date",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "ClosedDate",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "ClosedDate",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "datetime",
+      "usage": "Drives time-to-resolution reporting (closed - created = duration). Auto-set when status transitions to Closed in most systems."
+    },
+    {
+      "common_synonyms": [],
+      "description": "The user (agent) responsible for resolving the case.",
+      "display_name": "Owner",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "assignedUser",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "manager_id",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "assignedUserId",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hubspot_owner_id",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "OwnerId",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "OwnerId",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "user",
+      "required": true,
+      "type": "reference",
+      "usage": "Drives \"my cases\" filtering, agent workload reports, and routing rules. Often set by automatic-assignment rules based on case type, priority, and queue."
+    },
+    {
+      "common_synonyms": [],
+      "description": "System-generated timestamp of case creation.",
+      "display_name": "Created Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "createdAt",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "created_date",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "createdAt",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "createdate",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "CreatedDate",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "CreatedDate",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "datetime",
+      "usage": "Anchors SLA-clock calculations. Drives time-to-resolution metrics and case-volume reporting by time period."
+    }
+  ],
+  "business_context": "Case records are the customer-service equivalent of Opportunity — each case represents one issue that's actively being worked toward resolution, with a status, an owner, a priority, an SLA, and a resolution narrative. Cases typically intake through multiple channels (email-to-case, web-to- case forms, phone, chat, social media) and route to the appropriate agent or team based on routing rules. The Case-vs-Opportunity split is conceptually clean: Opportunity tracks \"deal in pursuit\" (potential revenue), Case tracks \"issue in resolution\" (potential cost or risk to retention). HubSpot uses \"Ticket\" rather than \"Case\" but the model is identical. CiviCRM has Case as a general-purpose work-tracking entity (used for any multi-step workflow with a stakeholder, not just customer service — also used for grant-cycle tracking, advocacy campaigns, beneficiary case management). EspoCRM has Case as a standard CRM-module entity. Bloomerang and Attio have no native Case concept. When interviewing clients, surface \"Case\" by asking what kind of work needs to be tracked from intake through resolution: support tickets, benefit-eligibility reviews, grant applications, advocacy campaigns, multi-stakeholder coordination on individual problems. Different from Activity (single-touchpoint logging) and Opportunity (revenue-generating pursuit) — Case captures problem-solving work spanning multiple touchpoints over time. SLA tracking, escalation rules, and customer-portal visibility are the most-customized aspects in customer-service deployments.",
+  "catalog_id": "case",
+  "common_synonyms": [
+    "Ticket",
+    "Issue",
+    "Service Request",
+    "Support Ticket",
+    "Incident"
+  ],
+  "data_model_role": "anchor",
+  "discriminator_attribute": null,
+  "discriminator_value": null,
+  "display_name": "Case",
+  "entry_kind": "universal",
+  "inbound_references": [],
+  "is_deleted": false,
+  "name": "Case",
+  "parent_catalog_id": null,
+  "purpose": "A customer-service issue, question, complaint, or request that the organization is tracking from intake to resolution. The anchor entity for customer-service workflows in CRMs that include service capabilities.",
+  "relationships": [
+    {
+      "cardinality": "many-to-one",
+      "description": "A case is typically associated with one customer account.",
+      "presence": [
+        {
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "absent",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "child",
+      "target": "account",
+      "target_name": "Account"
+    },
+    {
+      "cardinality": "many-to-one",
+      "description": "A case is associated with the contact who reported or is affected by the issue.",
+      "presence": [
+        {
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "absent",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "child",
+      "target": "contact",
+      "target_name": "Contact"
+    },
+    {
+      "cardinality": "one-to-many",
+      "description": "A case has many activities (calls, emails, internal tasks) logged.",
+      "presence": [
+        {
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "absent",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "parent",
+      "target": "activity",
+      "target_name": "Activity"
+    }
+  ],
+  "sources": [
+    {
+      "title": "Salesforce Object Reference: Case",
+      "url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_case.htm"
+    },
+    {
+      "title": "HubSpot CRM API: Tickets",
+      "url": "https://developers.hubspot.com/docs/api-reference/crm-tickets-v3/guide"
+    },
+    {
+      "title": "EspoCRM: Case entity definition",
+      "url": "https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Case.json"
+    },
+    {
+      "title": "CiviCRM: Case management user guide",
+      "url": "https://docs.civicrm.org/user/en/latest/case-management/"
+    },
+    {
+      "title": "Attio: Custom objects (no native Case)",
+      "url": "https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects"
+    },
+    {
+      "title": "Bloomerang REST API documentation (no native Case)",
+      "url": "https://bloomerang.com/api/rest-api-v1/"
+    }
+  ],
+  "systems": [
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "Custom object (no standard Case)",
+      "notes": "Attio has no native Case / Ticket entity. Customers needing customer- service tracking create a custom object. Attio's flexibility supports this but it's not the platform's strong use case.",
+      "system": "attio"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://bloomerang.com/api/rest-api-v1/",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no Case concept)",
+      "notes": "Bloomerang has no native Case / Ticket entity. Donor-services issues are typically tracked as Interactions or Notes rather than structured cases.",
+      "system": "bloomerang"
+    },
+    {
+      "api_name": "Case",
+      "docs_url": "https://docs.civicrm.org/user/en/latest/case-management/",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Case (general-purpose)",
+      "notes": "CiviCRM Case is broader than customer-service — used for any multi-step workflow involving a contact: legal aid casework, grant cycles, advocacy campaigns, beneficiary services, support tickets. Case Types are configurable templates that define expected activities, roles, and timelines. The Case Roles concept (each role filled by a Contact) makes cases inherently multi-stakeholder.",
+      "system": "civicrm"
+    },
+    {
+      "api_name": "Case",
+      "docs_url": "https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Crm/Resources/metadata/entityDefs/Case.json",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Case",
+      "notes": "Standard CRM-module entity. Includes name, status (enum: New, Assigned, Pending, Closed, Rejected, Duplicate), priority, type, account, contact, contacts (link-multiple for participants), assignedUser, description.",
+      "system": "espocrm"
+    },
+    {
+      "api_name": "tickets",
+      "docs_url": "https://developers.hubspot.com/docs/api-reference/crm-tickets-v3/guide",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Ticket",
+      "notes": "HubSpot uses \"Ticket\" rather than \"Case\" but the data model is identical. Ships with pipelines (multiple ticket pipelines supported with separate stages), email-to-ticket, web forms, and Service Hub features (knowledge base, customer portal, SLA tracking).",
+      "system": "hubspot"
+    },
+    {
+      "api_name": "Case",
+      "docs_url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_case.htm",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Case",
+      "notes": "Foundational standard object for Service Cloud. Includes built-in fields for Subject, Description, Status, Priority, Origin (intake channel), Type, Reason, AccountId, ContactId, OwnerId, IsEscalated, ClosedDate. Ships with email-to-case, web-to-case, omnichannel routing, and entitlement (SLA) frameworks.",
+      "system": "salesforce"
+    },
+    {
+      "api_name": "Case",
+      "docs_url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_case.htm",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Case",
+      "notes": "Same as Salesforce. NPSP doesn't add Case customizations specifically but nonprofits often use Cases for: beneficiary services, advocacy casework, grant-application tracking when no separate Grant module is in use. Less common than Cases-for-customer-support B2B usage.",
+      "system": "salesforce_npsp"
+    }
+  ],
+  "tier": 3,
+  "typically_required": false
+}

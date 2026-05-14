@@ -1,0 +1,990 @@
+{
+  "attributes": [
+    {
+      "common_synonyms": [],
+      "description": "System-generated sequence identifier for the order.",
+      "display_name": "Order Number",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "orderNumber",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "orderNumber",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "OrderNumber",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "OrderNumber",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "autonumber",
+      "usage": "Customer-facing identifier (\"Order #SO-2026-1234\"). Drives shipping labels, invoice generation, and ERP cross-referencing."
+    },
+    {
+      "common_synonyms": [],
+      "description": "The customer placing the order.",
+      "display_name": "Account",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "account",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "account",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Account",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Account",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "account",
+      "required": true,
+      "type": "reference",
+      "usage": "Drives bill-to defaults, credit checks, and sales-rep ownership."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Primary contact at the customer for this order.",
+      "display_name": "Contact",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "contact",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "contact",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Contact",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Contact",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "contact",
+      "required": false,
+      "type": "reference",
+      "usage": "Drives order-confirmation email recipient, support escalation routing for order issues."
+    },
+    {
+      "common_synonyms": [],
+      "description": "The sales opportunity that produced this order (if applicable).",
+      "display_name": "Opportunity",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "opportunity",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "opportunity",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Opportunity",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Opportunity",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "opportunity",
+      "required": false,
+      "type": "reference",
+      "usage": "Anchors order to its sales pursuit. Used in commission calculations and rep attribution."
+    },
+    {
+      "common_synonyms": [],
+      "description": "The quote that was accepted to produce this order.",
+      "display_name": "Quote",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "quote",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "quote",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Quote",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Quote",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "quote",
+      "required": false,
+      "type": "reference",
+      "usage": "Lineage anchor — proves which version of pricing the customer accepted."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Lifecycle state of the order.",
+      "display_name": "Order Status",
+      "enum_values": [
+        "Draft",
+        "Pending",
+        "Confirmed",
+        "Activated",
+        "In Production",
+        "Shipped",
+        "Delivered",
+        "Completed",
+        "Canceled"
+      ],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "orderStatus",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "status",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Status",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Status",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "enum",
+      "usage": "Drives fulfillment workflows. Status transitions trigger shipping-label generation, billing events, and customer notifications."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Date the order was placed.",
+      "display_name": "Order Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "orderDate",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "orderDate",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "OrderDate",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "OrderDate",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "date",
+      "usage": "Anchors fulfillment SLAs, revenue recognition, and reporting."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Date the order's terms become effective.",
+      "display_name": "Effective Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "effectiveDate",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "EffectiveDate",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "EffectiveDate",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "date",
+      "usage": "Distinct from order date when there's a delay between confirmation and effectivity (subscription start dates, contract effective dates)."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Sum of line item totals before discounts and tax.",
+      "display_name": "Subtotal",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "subtotal",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "subtotal",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Subtotal",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Subtotal",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "currency",
+      "usage": "Auto-calculated from order items."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Total order value.",
+      "display_name": "Grand Total",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "grandTotal",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "grandTotal",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "GrandTotal",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "GrandTotal",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "currency",
+      "usage": "Headline value of the order. Drives revenue-recognition, commission calculation, and dashboard metrics."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Address invoices for this order will be sent to.",
+      "display_name": "Billing Address",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "billingAddress",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "billingAddress",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "BillingAddress",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "BillingAddress",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "address",
+      "usage": "Captured per-order to allow per-order billing variation."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Address products will ship to.",
+      "display_name": "Shipping Address",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "shippingAddress",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "shippingAddress",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "ShippingAddress",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "ShippingAddress",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "address",
+      "usage": "Drives label-generation and shipping-rate calculation. Often different from billing address for multi-location customers."
+    },
+    {
+      "common_synonyms": [],
+      "description": "The user who owns the order.",
+      "display_name": "Owner",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "assignedUser",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "assignedUser",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "AssignedUser",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "AssignedUser",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "user",
+      "required": true,
+      "type": "reference",
+      "usage": "Drives commission attribution and \"my orders\" filtering."
+    },
+    {
+      "common_synonyms": [],
+      "description": "System-generated timestamp.",
+      "display_name": "Created Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "createdAt",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "createdAt",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "CreatedDate",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "CreatedDate",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "datetime",
+      "usage": "Audit field."
+    }
+  ],
+  "business_context": "Order records mark the transition from \"potential sale\" to \"committed sale.\" Once a customer accepts a quote (or places a direct order), an Order record captures the confirmed details: what they're buying, in what quantities, at what price, shipping where, billing where, with what terms. Orders drive fulfillment workflows (ship the goods, deliver the service, provision the subscription) and billing workflows (generate the invoice, schedule recurring billing). Salesforce introduced the Order object in Spring '14 to fill this gap between Opportunity and Invoice. Many older deployments don't use Orders — they go directly from won Opportunity to invoicing in their ERP. EspoCRM has Sales Order (with Sales Order Item line items). HubSpot has Quotes + Line Items rather than a separate Order entity. Attio has no native Order. CiviCRM has no Order — Contributions cover the donation case directly. Nonprofit deployments rarely use Orders. When interviewing clients, surface \"Order\" by asking whether they need to track confirmed-sale fulfillment separately from quoting and from invoicing. Many B2B deployments skip the Order layer; pure-services orgs almost always do; product-shipping orgs almost always need it.",
+  "catalog_id": "order",
+  "common_synonyms": [
+    "Sales Order",
+    "Purchase Order (when the org is the seller)",
+    "Confirmed Order"
+  ],
+  "data_model_role": "anchor",
+  "discriminator_attribute": null,
+  "discriminator_value": null,
+  "display_name": "Order",
+  "entry_kind": "universal",
+  "inbound_references": [],
+  "is_deleted": false,
+  "name": "Order",
+  "parent_catalog_id": null,
+  "purpose": "A confirmed agreement to purchase goods or services. Sits between Quote (proposal) and Invoice (billing document) in the commerce flow. Has line items, customer, fulfillment status, and ship-to/bill-to addresses.",
+  "relationships": [
+    {
+      "cardinality": "many-to-one",
+      "description": "An order belongs to one account.",
+      "presence": [
+        {
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "absent",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "child",
+      "target": "account",
+      "target_name": "Account"
+    },
+    {
+      "cardinality": "many-to-one",
+      "description": "An order may derive from one quote.",
+      "presence": [
+        {
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "absent",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "child",
+      "target": "quote",
+      "target_name": "Quote"
+    },
+    {
+      "cardinality": "many-to-one",
+      "description": "An order may derive from one opportunity.",
+      "presence": [
+        {
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "absent",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "child",
+      "target": "opportunity",
+      "target_name": "Opportunity"
+    },
+    {
+      "cardinality": "one-to-many",
+      "description": "An order can have one or more invoices generated from it.",
+      "presence": [
+        {
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "absent",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "parent",
+      "target": "invoice",
+      "target_name": "Invoice"
+    }
+  ],
+  "sources": [
+    {
+      "title": "Salesforce Object Reference: Order",
+      "url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_order.htm"
+    },
+    {
+      "title": "EspoCRM: Sales module documentation",
+      "url": "https://docs.espocrm.com/"
+    },
+    {
+      "title": "HubSpot Quotes (Order-equivalent)",
+      "url": "https://developers.hubspot.com/docs/reference/api/crm/objects/quotes"
+    }
+  ],
+  "systems": [
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no native Order; use custom object)",
+      "notes": "Attio has no native Order entity.",
+      "system": "attio"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://bloomerang.com/api/rest-api-v1/",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no Order concept)",
+      "notes": "Bloomerang has no Order entity.",
+      "system": "bloomerang"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://docs.civicrm.org/",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no Order concept)",
+      "notes": "CiviCRM has no Order entity. Contribution serves the donation use case; Event Registration covers paid event signups. Sales-style ordering would require custom entities.",
+      "system": "civicrm"
+    },
+    {
+      "api_name": "SalesOrder",
+      "docs_url": "https://docs.espocrm.com/",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Sales Order",
+      "notes": "Standard entity in Sales Pack module. Includes name (auto-numbered), number, status (Draft / Pending / Confirmed / Delivered / Completed / Canceled), date, account, billing/shipping addresses, assigned user, sales order items.",
+      "system": "espocrm"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://developers.hubspot.com/docs/reference/api/crm/objects/quotes",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no native Order; Quote + Line Items typically used)",
+      "notes": "HubSpot doesn't have a separate Order entity. Accepted Quotes function as orders; line items track what was sold. ERP integrations typically pull line items from Won Deals to populate orders in the ERP system.",
+      "system": "hubspot"
+    },
+    {
+      "api_name": "Order",
+      "docs_url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_order.htm",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Order",
+      "notes": "Standard object introduced in Spring '14. Includes Account, Contract (optional), EffectiveDate, EndDate, Status, OrderNumber, OrderReferenceNumber, billing/shipping addresses, Pricebook2 (the price list used). OrderItem records are line items. Orders can derive from Quotes via the QuoteId field.",
+      "system": "salesforce"
+    },
+    {
+      "api_name": "Order",
+      "docs_url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_order.htm",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Order",
+      "notes": "Same as Salesforce. Rare in nonprofit deployments — appears occasionally for nonprofit publishing operations or paid-training programs.",
+      "system": "salesforce_npsp"
+    }
+  ],
+  "tier": 3,
+  "typically_required": false
+}

@@ -1,0 +1,806 @@
+{
+  "attributes": [
+    {
+      "common_synonyms": [],
+      "description": "Display name of the grant.",
+      "display_name": "Grant Name",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": 255,
+      "name": "grantName",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "rationale",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Name",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "string",
+      "usage": "Identifies the specific grant in lists, reports, and reporting deadlines."
+    },
+    {
+      "common_synonyms": [
+        "requested amount",
+        "ask amount",
+        "proposal amount"
+      ],
+      "description": "Amount applied for in the grant proposal.",
+      "display_name": "Amount Requested",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "amountRequested",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "amount_requested",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "currency",
+      "usage": "Distinct from amount awarded. Drives award-rate reporting (awards / requests ratio per funder)."
+    },
+    {
+      "common_synonyms": [
+        "awarded",
+        "granted amount",
+        "awarded amount"
+      ],
+      "description": "Amount actually granted.",
+      "display_name": "Amount Awarded",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "amountAwarded",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "amount_granted",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Amount",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "currency",
+      "usage": "Drives revenue reporting and compares to amountRequested for funder-relations analysis."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Current stage of the grant lifecycle.",
+      "display_name": "Grant Status",
+      "enum_values": [
+        "Researching",
+        "In Application",
+        "Submitted",
+        "Under Review",
+        "Awarded",
+        "Declined",
+        "Reporting Period",
+        "Closed"
+      ],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "grantStatus",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "status_id",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "StageName",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "enum",
+      "usage": "Drives grant-pipeline reporting. Also gates automation — submit-due reminders before Submitted, reporting-due reminders during Reporting Period."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Date the proposal was submitted.",
+      "display_name": "Application Submitted Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "applicationDate",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "application_received_date",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "date",
+      "usage": "Drives time-to-decision reporting (decision date minus submission date)."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Date the funder made the award/decline decision.",
+      "display_name": "Decision Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "decisionDate",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "decision_date",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "date",
+      "usage": "Anchor for award-pipeline reporting and the start of the reporting period if awarded."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Start of the funded period during which grant funds may be spent.",
+      "display_name": "Performance Period Start",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "performancePeriodStart",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "date",
+      "usage": "Defines the window for grant-eligible expenses. Critical for compliance."
+    },
+    {
+      "common_synonyms": [],
+      "description": "End of the funded period.",
+      "display_name": "Performance Period End",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "performancePeriodEnd",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "date",
+      "usage": "Drives spend-down deadlines and sets the date by which final reports must be submitted."
+    },
+    {
+      "common_synonyms": [],
+      "description": "The foundation, government agency, or corporate funder providing the grant.",
+      "display_name": "Funder (Account)",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "account",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "contact_id",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "AccountId",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "account",
+      "required": true,
+      "type": "reference",
+      "usage": "Anchors the grant to its funder for funder-relationship history."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Which program or initiative the grant supports.",
+      "display_name": "Program Area",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "programArea",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "enum",
+      "usage": "Drives restricted-funds tracking and program-impact reporting."
+    },
+    {
+      "common_synonyms": [],
+      "description": "System timestamp of grant record creation.",
+      "display_name": "Created Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "createdAt",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": "CreatedDate",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "created_date",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "CreatedDate",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "datetime",
+      "usage": "Drives grant-prospecting cohort reporting."
+    }
+  ],
+  "business_context": "Grant records track institutional funding awards — the structured, formalized cousin of individual donations. Where a Donation is typically a single-event gift, a Grant is a multi-stage relationship with a funder: writing the proposal, submission, review period, award decision, award letter signing, payment installments, periodic progress reports, outcomes reporting, and closeout. Each stage may have its own deadlines and stakeholders. Restricted-use is the defining characteristic — grant funds typically must be spent on specific programs, with reporting requirements that document compliance. NPSP has a Grant Record Type on Opportunity (and a Grant Deadline / Deliverable concept for tracking reporting deadlines). CiviCRM has a Grants extension. Bloomerang doesn't have first-class grants but accommodates them via Transaction with grant-specific custom fields and Funds. When interviewing clients, surface \"Grant\" by asking whether they receive funding from foundations or government bodies, whether they need to track proposal-to-award workflows separately from donations, and whether they have grant reporting / compliance requirements that need deadline tracking.",
+  "catalog_id": "grant",
+  "common_synonyms": [
+    "Foundation Grant",
+    "Government Grant",
+    "Corporate Grant",
+    "Sponsorship",
+    "Award"
+  ],
+  "data_model_role": "event",
+  "discriminator_attribute": null,
+  "discriminator_value": null,
+  "display_name": "Grant",
+  "entry_kind": "universal",
+  "inbound_references": [],
+  "is_deleted": false,
+  "name": "Grant",
+  "parent_catalog_id": null,
+  "purpose": "A funded award from a foundation, government agency, or corporate funder, with specific use restrictions, reporting requirements, and a defined performance period. Distinct from individual Donations because Grants involve formal applications, restricted use of funds, and multi-stage workflows (proposal, review, award, payment, reporting, closeout).",
+  "relationships": [
+    {
+      "cardinality": "many-to-one",
+      "description": "A grant is awarded by one funder organization.",
+      "presence": [
+        {
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "custom",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "child",
+      "target": "account",
+      "target_name": "Account"
+    },
+    {
+      "cardinality": "many-to-one",
+      "description": "A grant typically has a primary program officer or funder contact.",
+      "presence": [
+        {
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "custom",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "child",
+      "target": "contact",
+      "target_name": "Contact"
+    },
+    {
+      "cardinality": "one-to-many",
+      "description": "A grant generates one or more payment installments.",
+      "presence": [
+        {
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "custom",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "parent",
+      "target": "donation",
+      "target_name": "Donation"
+    }
+  ],
+  "sources": [
+    {
+      "title": "CiviCRM: Grants user guide",
+      "url": "https://docs.civicrm.org/user/en/latest/grants/"
+    },
+    {
+      "title": "Salesforce NPSP: Data Model Gallery",
+      "url": "https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html"
+    },
+    {
+      "title": "Bloomerang REST API: Transaction endpoint (used for grant tracking via custom fields)",
+      "url": "https://bloomerang.com/api/rest-api-v1/"
+    }
+  ],
+  "systems": [
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(custom object)",
+      "notes": "Attio has no Grant entity.",
+      "system": "attio"
+    },
+    {
+      "api_name": "Transaction",
+      "docs_url": "https://bloomerang.com/api/rest-api-v1/",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "Transaction with Grant fund",
+      "notes": "Bloomerang doesn't have a first-class Grant entity. Grants are typically tracked as Transactions assigned to grant-specific Funds, with custom fields for grant lifecycle (proposal date, award date, reporting due dates).",
+      "system": "bloomerang"
+    },
+    {
+      "api_name": "Grant",
+      "docs_url": "https://docs.civicrm.org/user/en/latest/grants/",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Grant",
+      "notes": "First-class entity via CiviGrant extension. Includes amount_total, amount_requested, amount_granted, application_received_date, decision_date, money_transfer_date, grant_report_received, status_id (Submitted / Granted / Approved for Payment / Rejected / Awaiting Information), grant_type_id, contact_id (the grantee).",
+      "system": "civicrm"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://docs.espocrm.com/",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no Grant entity)",
+      "notes": "EspoCRM has no Grant entity.",
+      "system": "espocrm"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://developers.hubspot.com/docs/api-reference/crm-deals-v3/guide",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(custom required)",
+      "notes": "HubSpot has no Grant entity.",
+      "system": "hubspot"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_opportunity.htm",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no Grant entity in vanilla)",
+      "notes": "Vanilla Salesforce has no Grant entity.",
+      "system": "salesforce"
+    },
+    {
+      "api_name": "Opportunity",
+      "docs_url": "https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Opportunity (Grant Record Type)",
+      "notes": "NPSP ships a Grant Record Type on Opportunity. NPSP also has the Grant Deadline concept (Deliverable in newer NPSP) for tracking reporting milestones. Used heavily by foundations, government agencies, and corporate-grant-receiving nonprofits.",
+      "system": "salesforce_npsp"
+    }
+  ],
+  "tier": 4,
+  "typically_required": false
+}

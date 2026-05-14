@@ -1,0 +1,963 @@
+{
+  "attributes": [
+    {
+      "common_synonyms": [],
+      "description": "System-generated unique identifier for the contract.",
+      "display_name": "Contract Number",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "contractNumber",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "number",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_contract_number",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "ContractNumber",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "ContractNumber",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "autonumber",
+      "usage": "Customer-facing identifier. Salesforce auto-numbers; EspoCRM uses sequential numbers."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Display name of the contract.",
+      "display_name": "Contract Name",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": 255,
+      "name": "contractName",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "name",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_contract_name",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "ContractName",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "ContractName",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "string",
+      "usage": "Often follows naming conventions like \"Acme - Annual MSA - 2026\". Drives list-view legibility."
+    },
+    {
+      "common_synonyms": [],
+      "description": "The counterparty account on the contract.",
+      "display_name": "Account",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "account",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "accountId",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_company_id",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "AccountId",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "AccountId",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "account",
+      "required": true,
+      "type": "reference",
+      "usage": "Anchors the contract to the customer / partner / vendor account. Drives \"show me all active contracts for this account\" views."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Current state in the contract lifecycle.",
+      "display_name": "Contract Status",
+      "enum_values": [
+        "Draft",
+        "In Review",
+        "In Approval Process",
+        "Sent for Signature",
+        "Active",
+        "Expired",
+        "Renewed",
+        "Terminated"
+      ],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "contractStatus",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "status",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_contract_status",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Status",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Status",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "enum",
+      "usage": "Drives lifecycle workflow. Status transitions trigger automation (signed → activate; expiring soon → renewal-opportunity creation; terminated → churn-tracking)."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Effective date the contract begins.",
+      "display_name": "Start Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "startDate",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "dateStart",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_start_date",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "StartDate",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "StartDate",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "date",
+      "usage": "Anchors contract-term reporting and active-contract filtering."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Date the contract expires (calculated from StartDate + Term, or explicitly set).",
+      "display_name": "End Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "endDate",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "dateEnd",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_end_date",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "EndDate",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "EndDate",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "date",
+      "usage": "Drives expiring-soon reports, renewal-pipeline generation, and end-of-life reminders. Salesforce auto-calculates from StartDate + ContractTerm."
+    },
+    {
+      "common_synonyms": [
+        "contract length",
+        "term length",
+        "duration"
+      ],
+      "description": "Length of the contract in months.",
+      "display_name": "Term (months)",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "term",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "term",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_contract_term",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "ContractTerm",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "ContractTerm",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "integer",
+      "usage": "Drives end-date calculation and renewal-cadence logic. 12, 24, and 36 are most common contract terms."
+    },
+    {
+      "common_synonyms": [
+        "total value",
+        "TCV",
+        "total contract value"
+      ],
+      "description": "Total monetary value of the contract over its full term.",
+      "display_name": "Contract Value",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "contractValue",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "amount",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_contract_value",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "TotalContractValue",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "TotalContractValue",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "currency",
+      "usage": "Drives revenue-recognition reporting, account-tier classification, and renewal-opportunity sizing."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Date the contract was fully executed (all parties signed).",
+      "display_name": "Signed Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "signedDate",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "dateSigned",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_signed_date",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "ActivatedDate",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "ActivatedDate",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "date",
+      "usage": "Anchors compliance reporting and time-to-close metrics (sent-for-signature → signed duration)."
+    },
+    {
+      "common_synonyms": [
+        "auto-renewal",
+        "auto renew",
+        "evergreen"
+      ],
+      "description": "Whether the contract auto-renews at the end of the current term.",
+      "display_name": "Auto-Renew",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "autoRenew",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_auto_renew",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "boolean",
+      "usage": "Drives renewal-vs-churn workflows. Auto-renew contracts may need cancellation-prevention outreach; non-auto-renew contracts trigger renewal opportunities."
+    },
+    {
+      "common_synonyms": [],
+      "description": "User responsible for the contract.",
+      "display_name": "Owner",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "assignedUser",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "assignedUserId",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hubspot_owner_id",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "OwnerId",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "OwnerId",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "user",
+      "required": true,
+      "type": "reference",
+      "usage": "Drives \"my contracts\" filtering and renewal-responsibility routing. Typically the account owner."
+    },
+    {
+      "common_synonyms": [],
+      "description": "The opportunity this contract closed from.",
+      "display_name": "Originating Opportunity",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "opportunity",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_deal_id",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "opportunity",
+      "required": false,
+      "type": "reference",
+      "usage": "Links signed contracts back to the deals they came from. Drives contract-from-pipeline analytics."
+    },
+    {
+      "common_synonyms": [],
+      "description": "System timestamp.",
+      "display_name": "Created Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "createdAt",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "createdAt",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "createdate",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "CreatedDate",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "CreatedDate",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "datetime",
+      "usage": "Audit field."
+    }
+  ],
+  "business_context": "Contract records hold the legal-relationship layer of CRM data. Each contract has parties (the org and one or more counterparties), an effective date, a term length, an end date, a renewal disposition (auto-renewal vs manual), and signed signature artifacts. Contracts drive several distinct workflows: pre-signature (negotiation, redlining, approval routing); signature (e-sign integration with DocuSign, Adobe Sign, HelloSign); active-contract management (renewal-reminder cadence, anniversary milestones); and expiration / termination (renewal opportunities, churn signals). Modeling varies: Salesforce has Contract as a standard object that links to Account with ContractStatus, StartDate, ContractTerm (months), EndDate, ActivatedDate, OwnerExpirationNotice. HubSpot added Contracts as an Enterprise feature. EspoCRM has Contract in the Sales Pack module. Attio doesn't have a standard Contract entity. CiviCRM and Bloomerang don't have it natively — nonprofits typically use Documents for signed grant agreements and pledges. Contracts often have line items (specific services / products being contracted) similar to Quote line items. When interviewing clients, surface \"Contract\" by asking whether they need to track signed agreements with structured terms (effective dates, renewal logic, parties) separately from generic document attachments.",
+  "catalog_id": "contract",
+  "common_synonyms": [
+    "Agreement",
+    "Signed Agreement",
+    "Service Contract",
+    "Master Services Agreement",
+    "Subscription Contract"
+  ],
+  "data_model_role": "anchor",
+  "discriminator_attribute": null,
+  "discriminator_value": null,
+  "display_name": "Contract",
+  "entry_kind": "universal",
+  "inbound_references": [],
+  "is_deleted": false,
+  "name": "Contract",
+  "parent_catalog_id": null,
+  "purpose": "A signed agreement between the organization and a customer, partner, vendor, or grantor that has its own lifecycle: drafted, in review, signed, active, renewable, expiring, terminated. Distinct from Quote (a pre-signature pricing proposal) and from Document (a generic file attachment) — Contract carries terms, dates, parties, and signature metadata as structured data.",
+  "relationships": [
+    {
+      "cardinality": "many-to-one",
+      "description": "A contract belongs to one account (the counterparty).",
+      "presence": [
+        {
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "absent",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "child",
+      "target": "account",
+      "target_name": "Account"
+    },
+    {
+      "cardinality": "many-to-one",
+      "description": "A contract may originate from a closed-won opportunity.",
+      "presence": [
+        {
+          "status": "custom",
+          "system": "salesforce"
+        },
+        {
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "status": "custom",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "absent",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "child",
+      "target": "opportunity",
+      "target_name": "Opportunity"
+    },
+    {
+      "cardinality": "one-to-many",
+      "description": "A contract has signed-document files attached.",
+      "presence": [
+        {
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "absent",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "parent",
+      "target": "document",
+      "target_name": "Document"
+    },
+    {
+      "cardinality": "many-to-one",
+      "description": "A contract is owned by a user.",
+      "presence": [
+        {
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "absent",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "child",
+      "target": "user",
+      "target_name": "User"
+    }
+  ],
+  "sources": [
+    {
+      "title": "Salesforce Object Reference: Contract",
+      "url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contract.htm"
+    },
+    {
+      "title": "HubSpot: Use the contract object",
+      "url": "https://knowledge.hubspot.com/contracts/use-the-contract-object"
+    },
+    {
+      "title": "EspoCRM: Contract entity definition (Sales Pack)",
+      "url": "https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Sales/Resources/metadata/entityDefs/Contract.json"
+    },
+    {
+      "title": "Attio: Custom objects (Contract requires custom)",
+      "url": "https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects"
+    },
+    {
+      "title": "CiviCRM (no native Contract)",
+      "url": "https://docs.civicrm.org/user/en/latest/"
+    },
+    {
+      "title": "Bloomerang REST API documentation (no native Contract)",
+      "url": "https://bloomerang.com/api/rest-api-v1/"
+    }
+  ],
+  "systems": [
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(custom object required)",
+      "notes": "Attio has no standard Contract entity. Customers create custom Contract objects when needed.",
+      "system": "attio"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://bloomerang.com/api/rest-api-v1/",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no native Contract)",
+      "notes": "Bloomerang has no Contract entity. Signed pledges and agreements attached as Documents to Constituents.",
+      "system": "bloomerang"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://docs.civicrm.org/user/en/latest/",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no native Contract — Document used for signed agreements)",
+      "notes": "CiviCRM has no Contract entity. Signed grant agreements and donor pledges typically attached as Documents to the Contact or Contribution.",
+      "system": "civicrm"
+    },
+    {
+      "api_name": "Contract",
+      "docs_url": "https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Sales/Resources/metadata/entityDefs/Contract.json",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Contract",
+      "notes": "Available in the Sales Pack module. Includes name, account, status (Draft / Sent / Signed / Active / Closed / Cancelled), dateStart, dateEnd, value, description.",
+      "system": "espocrm"
+    },
+    {
+      "api_name": "contracts",
+      "docs_url": "https://knowledge.hubspot.com/contracts/use-the-contract-object",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Contracts (Enterprise)",
+      "notes": "HubSpot added Contracts as a CRM object available in Enterprise tiers. Includes contract terms, renewal tracking, and integration with HubSpot's e-sign workflows.",
+      "system": "hubspot"
+    },
+    {
+      "api_name": "Contract",
+      "docs_url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contract.htm",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Contract",
+      "notes": "Foundational standard object. Includes ContractNumber, AccountId, Status (Draft / In Approval Process / Activated / Terminated / Expired), StartDate, ContractTerm (months), EndDate, ActivatedDate, OwnerExpirationNotice, BillingAddress, ShippingAddress, OwnerId.",
+      "system": "salesforce"
+    },
+    {
+      "api_name": "Contract",
+      "docs_url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contract.htm",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Contract",
+      "notes": "Same as Salesforce. Used for signed grant agreements, pledge agreements, sponsorship contracts, and corporate-partnership agreements.",
+      "system": "salesforce_npsp"
+    }
+  ],
+  "tier": 5,
+  "typically_required": false
+}

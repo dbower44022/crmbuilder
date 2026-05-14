@@ -29,6 +29,7 @@ from crmbuilder_v2.access.models import (
     CatalogRelationship,
     CatalogRelationshipPresence,
     CatalogSource,
+    Reference,
 )
 from crmbuilder_v2.access.vocab import CATALOG_SYSTEMS
 
@@ -509,6 +510,10 @@ def _entity_full(session: Session, row: CatalogEntity) -> dict:
             }
         )
 
+    inbound = _inbound_references(
+        session, target_type="catalog_entity", target_id=row.catalog_id
+    )
+
     full = {
         **summary,
         "discriminator_attribute": row.discriminator_attribute,
@@ -521,12 +526,25 @@ def _entity_full(session: Session, row: CatalogEntity) -> dict:
         "sources": sources,
         "attributes": attributes,
         "relationships": relationships,
+        "inbound_references": inbound,
     }
     return full
 
 
 def _attribute_full(session: Session, attr: CatalogAttribute) -> dict:
     """Full attribute dict with enum_values, synonyms, presence."""
+    # Resolve parent entity for the attribute identifier ``{catalog_id}.{name}``.
+    parent = session.get(CatalogEntity, attr.catalog_entity_id)
+    parent_catalog_id = parent.catalog_id if parent else None
+    inbound = (
+        _inbound_references(
+            session,
+            target_type="catalog_attribute",
+            target_id=f"{parent_catalog_id}.{attr.name}",
+        )
+        if parent_catalog_id
+        else []
+    )
     enum_values = list(
         session.scalars(
             select(CatalogAttributeEnumValue.value)
@@ -568,7 +586,38 @@ def _attribute_full(session: Session, attr: CatalogAttribute) -> dict:
         "common_synonyms": synonyms,
         "enum_values": enum_values,
         "presence": presence,
+        "inbound_references": inbound,
     }
+
+
+def _inbound_references(
+    session: Session, *, target_type: str, target_id: str
+) -> list[dict]:
+    """Return cross-entity references that target the given catalog row.
+
+    Catalog rows do not source references; this surfaces the inbound
+    direction (e.g. a decision that references a catalog entity, a
+    planning item that ``is_about`` an attribute) on the catalog
+    detail responses.
+    """
+    rows = session.scalars(
+        select(Reference)
+        .where(
+            (Reference.target_type == target_type)
+            & (Reference.target_id == target_id)
+        )
+        .order_by(
+            Reference.source_type, Reference.source_id, Reference.relationship_kind
+        )
+    ).all()
+    return [
+        {
+            "source_type": r.source_type,
+            "source_id": r.source_id,
+            "relationship": r.relationship_kind,
+        }
+        for r in rows
+    ]
 
 
 def _match_rank(q: str, *fields: str | None) -> int | None:

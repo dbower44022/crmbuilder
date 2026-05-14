@@ -1,0 +1,543 @@
+{
+  "attributes": [
+    {
+      "common_synonyms": [],
+      "description": "Federal Employer Identification Number assigned by the IRS to the organization (US-specific). Format: XX-XXXXXXX.",
+      "display_name": "EIN",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": 10,
+      "name": "ein",
+      "notes": "US-specific. International equivalents (Canadian Business Number, UK Company Number, EU VAT ID, etc.) should be considered as related but separate attributes if international reach matters.",
+      "presence": [
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "api_name": "Ein",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Ein",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "string",
+      "usage": "Serves as the permanent federal ID for businesses, separating business finances from personal assets and ensuring proper tax administration. Commonly used in vendor-onboarding workflows, 1099 reporting, grant compliance verification, and donor-acknowledgment letters where the organization is a foundation or business sponsor. Presence on an account record typically signals that the organization is a US legal entity rather than an individual or informal group. Often validated against the IRS Tax-Exempt Organization Search (formerly Pub 78) to confirm tax-exempt status before issuing receipts or processing grants. Bloomerang ships this as a standard Tax ID field on Organization-type Constituents; NPSP also has it as a standard element of the Organization model. Other systems require it as a custom attribute."
+    },
+    {
+      "common_synonyms": [],
+      "description": "IRS classification of the organization's tax-exempt status under US tax code (or international equivalent).",
+      "display_name": "Tax-Exempt Status",
+      "enum_values": [
+        "501(c)(3) Public Charity",
+        "501(c)(3) Private Foundation",
+        "501(c)(3) Private Operating Foundation",
+        "501(c)(4) Social Welfare",
+        "501(c)(6) Business League",
+        "501(c)(7) Social Club",
+        "501(c)(19) Veterans Org",
+        "Other Tax-Exempt",
+        "Pending Application",
+        "Not Tax-Exempt"
+      ],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "taxExemptStatus",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "enum",
+      "usage": "Drives donor acknowledgment letter templates because deductibility language differs by classification (gifts to 501(c)(3) Public Charities are tax-deductible; gifts to 501(c)(4) Social Welfare organizations generally are not). Drives grant-eligibility filtering (some funders only support Public Charities, not Private Foundations). Drives certain board reporting requirements. Bloomerang has Constituent custom fields for this in many deployments. NPSP typically tracks this via a custom Account field. Most systems require this as a custom attribute."
+    },
+    {
+      "common_synonyms": [],
+      "description": "National Taxonomy of Exempt Entities classification code (e.g., \"B30\" for Educational Institutions, Vocational/Technical Schools).",
+      "display_name": "NTEE Code",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": 10,
+      "name": "nteeCode",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "string",
+      "usage": "Standardized sector classification used by funders, charity watchdogs (Charity Navigator, GuideStar/Candid), and government databases (IRS Form 990 reporting). Critical for grant-matching automation, sector benchmarking, and certain compliance reports. Codes follow the NTEE-CC (Core Codes) two-digit major group plus letter subcategory format. Not natively supported in any of the seven surveyed systems — universally a custom attribute."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Month and day on which the organization's fiscal year ends.",
+      "display_name": "Fiscal Year End",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "fiscalYearEnd",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "date",
+      "usage": "Aligns donor reporting, grant cycles, and acknowledgment letters with the organization's actual fiscal calendar — which often differs from the calendar year. Many nonprofits have fiscal years ending 6/30 (academic-aligned), 9/30 (federal-aligned), or 12/31 (calendar). Drives year-end giving statements and 990 cycle awareness in relationship-management automation."
+    },
+    {
+      "common_synonyms": [],
+      "description": "The organization's stated mission or purpose.",
+      "display_name": "Mission Statement",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "missionStatement",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "text",
+      "usage": "Useful for cultivation prep, alignment-checking when considering partnerships or grants, and contextual review of the relationship. Often pulled from the organization's website, IRS Form 990, or Candid/GuideStar profile. Not driven by automation in most deployments — primarily a reference field for staff context."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Year the organization was founded.",
+      "display_name": "Year Founded",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "yearFounded",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": "year_founded",
+          "status": "standard",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "integer",
+      "usage": "Useful for organization-vintage reporting and for understanding whether a partner is established or recently formed. Often correlates with grant-making capacity and operational maturity. In Attio this attribute exists as a \"Foundation date\" on Companies (enriched for for-profit companies; less reliable for nonprofits)."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Date the IRS issued the determination letter granting tax-exempt status.",
+      "display_name": "IRS Ruling Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "irsRulingDate",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "date",
+      "usage": "Important for grant compliance — many funders require evidence that tax-exempt status has been in place for a minimum duration (often 2-5 years). Surfaces in due-diligence workflows. Pulled from the IRS determination letter or Pub 78 / IRS TEOS database."
+    }
+  ],
+  "business_context": "Nonprofit Organization records are a subset of Account records distinguished by their tax-exempt legal status. They drive grant-eligibility checks, donor-acknowledgment letter generation, public 990 cross-references, and partnership relationships in CRMs that serve mission-driven sectors. The subclass matters because reporting, tax handling, communication cadence, and stewardship strategies often differ from for-profit accounts: a nonprofit account record might need fields for EIN (federal tax ID), tax-exempt classification (501(c)(3) Public Charity vs Private Foundation vs 501(c)(6), etc.), NTEE code (sector classification), fiscal year end (often differs from calendar year), and grant-relationship tracking. Nonprofit accounts are also typically stewarded differently — relationship cadence is annual rather than quarterly, communication is grant-cycle driven rather than fiscal-quarter driven. When interviewing clients, surface \"Nonprofit Organization\" specifically (rather than just \"Account\") when the client tracks foundations, grant-makers, partner agencies, community organizations, or other tax-exempt entities. If they need to generate IRS-compliant donor acknowledgment letters, manage grant applications and reports, or report giving by NTEE code, this subclass is required.",
+  "catalog_id": "account-nonprofit",
+  "common_synonyms": [
+    "501(c)(3) Organization",
+    "Tax-Exempt Organization",
+    "Foundation",
+    "Nonprofit",
+    "Charity",
+    "NGO"
+  ],
+  "data_model_role": "anchor",
+  "discriminator_attribute": "accountType",
+  "discriminator_value": "Nonprofit Organization",
+  "display_name": "Nonprofit Organization",
+  "entry_kind": "subclass",
+  "inbound_references": [],
+  "is_deleted": false,
+  "name": "Nonprofit Organization",
+  "parent_catalog_id": "account",
+  "purpose": "An Account that operates under tax-exempt status (typically 501(c)(3) in the US, or international equivalents) and tracks distinct compliance, governance, and giving-history attributes that for-profit accounts do not. A subclass of Account.",
+  "relationships": [
+    {
+      "cardinality": "one-to-many",
+      "description": "A nonprofit organization typically has staff contacts, board members, and program officers tracked as Contact records associated to the Nonprofit Organization Account.",
+      "presence": [
+        {
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "status": "standard",
+          "system": "attio"
+        },
+        {
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "custom",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "parent",
+      "target": "contact",
+      "target_name": "Contact"
+    }
+  ],
+  "sources": [
+    {
+      "title": "Salesforce: Record Types overview",
+      "url": "https://help.salesforce.com/s/articleView?id=sf.customize_recordtype.htm"
+    },
+    {
+      "title": "Salesforce NPSP: Organize Your Data Effectively",
+      "url": "https://trailhead.salesforce.com/content/learn/modules/nonprofit-success-pack-basics/organize-your-data-with-npsp"
+    },
+    {
+      "title": "HubSpot: Properties API for custom fields",
+      "url": "https://developers.hubspot.com/docs/api-reference/crm-properties-v3/guide"
+    },
+    {
+      "title": "Attio: Create and manage custom objects",
+      "url": "https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects"
+    },
+    {
+      "title": "EspoCRM: Entity Manager (custom fields and enum extensions)",
+      "url": "https://docs.espocrm.com/administration/entity-manager/"
+    },
+    {
+      "title": "CiviCRM: Contact types and subtypes",
+      "url": "https://docs.civicrm.org/user/en/latest/organising-your-data/contact-types/"
+    },
+    {
+      "title": "Bloomerang REST API documentation: Constituent endpoint",
+      "url": "https://bloomerang.com/api/rest-api-v1/"
+    },
+    {
+      "title": "IRS Tax-Exempt Organization Search (TEOS) — for EIN and tax-exempt status verification",
+      "url": "https://apps.irs.gov/app/eos/"
+    },
+    {
+      "title": "NTEE Classification System — National Center for Charitable Statistics",
+      "url": "https://nccs.urban.org/project/national-taxonomy-exempt-entities-ntee-codes"
+    }
+  ],
+  "systems": [
+    {
+      "api_name": "either custom 'nonprofit' object or companies",
+      "docs_url": "https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects",
+      "is_standard": "false",
+      "mechanism": "separate_object",
+      "name": "Either custom Nonprofit object, or Type attribute on Company",
+      "notes": "Attio's flexible-schema design supports two valid approaches: (1) add a Type attribute and EIN/Tax-Exempt custom attributes to the standard Company object; (2) create a separate Nonprofit custom object and link it to or instead-of Company. Approach (1) is simpler; approach (2) gives stronger isolation when nonprofit records have very different shape from for-profit records.",
+      "system": "attio"
+    },
+    {
+      "api_name": "Constituent",
+      "docs_url": "https://bloomerang.com/api/rest-api-v1/",
+      "is_standard": "false",
+      "mechanism": "type_discriminator",
+      "name": "Organization Constituent with Industry/Type combination",
+      "notes": "Bloomerang's Constituent.Type=Organization handles the organization-vs-individual split natively. Within Organization-type constituents, nonprofit-specific fields (Tax ID, Tax-Exempt Status) are partial — Tax ID is a standard field on Organization Constituents, but NTEE Code, Fiscal Year End, and Tax-Exempt Status are typically added as Custom Fields. No separate \"Nonprofit\" subclass; a Constituent's nonprofit-ness is inferred from a custom Industry or Type tag.",
+      "system": "bloomerang"
+    },
+    {
+      "api_name": "Contact (contact_type=Organization, contact_sub_type=...)",
+      "docs_url": "https://docs.civicrm.org/user/en/latest/organising-your-data/contact-types/",
+      "is_standard": "false",
+      "mechanism": "contact_subtype",
+      "name": "Custom subtype of Organization (e.g., Foundation, Charitable Org)",
+      "notes": "CiviCRM's native subtype mechanism — admin creates a subtype of Organization (e.g., \"Foundation,\" \"Charitable Organization\") with its own custom field group containing EIN, Tax-Exempt Status, NTEE Code, etc. Subtype-specific fields automatically appear/hide based on the contact's contact_sub_type. This is the cleanest subclass mechanism among the seven systems — purpose-built for this pattern.",
+      "system": "civicrm"
+    },
+    {
+      "api_name": "Account",
+      "docs_url": "https://docs.espocrm.com/administration/entity-manager/",
+      "is_standard": "false",
+      "mechanism": "type_discriminator",
+      "name": "Account with type=Nonprofit (custom enum value)",
+      "notes": "EspoCRM's standard Account.type enum ships with Customer / Investor / Partner / Reseller. Nonprofit deployments add a \"Nonprofit\" enum value via Entity Manager. EIN, Tax-Exempt Status, NTEE Code are added as custom fields. Conditional visibility (visibleWhen) on those custom fields can be used to show them only when type=Nonprofit.",
+      "system": "espocrm"
+    },
+    {
+      "api_name": "companies",
+      "docs_url": "https://developers.hubspot.com/docs/api-reference/crm-properties-v3/guide",
+      "is_standard": "false",
+      "mechanism": "custom_property",
+      "name": "Company with custom Type property",
+      "notes": "HubSpot has no Record Type concept. Nonprofit subclass is implemented as custom Properties on Company: \"Organization Type\" (multi-select) and additional EIN, Tax Exempt Status, NTEE Code properties. Nonprofit-specific fields are visible to all Company records but only populated for nonprofits in practice.",
+      "system": "hubspot"
+    },
+    {
+      "api_name": "Account",
+      "docs_url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_account.htm",
+      "is_standard": "false",
+      "mechanism": "record_type",
+      "name": "Nonprofit Account (Account with custom Record Type and Type field)",
+      "notes": "Standard Salesforce does not ship a Nonprofit Record Type on Account. Customers add a custom Record Type (commonly \"Nonprofit\") and use the standard Type picklist or a custom field to flag tax-exempt status. The Record Type drives page layout (showing EIN and tax-exempt fields only on Nonprofit-typed accounts).",
+      "system": "salesforce"
+    },
+    {
+      "api_name": "Account",
+      "docs_url": "https://trailhead.salesforce.com/content/learn/modules/nonprofit-success-pack-basics/organize-your-data-with-npsp",
+      "is_standard": "partial",
+      "mechanism": "record_type",
+      "name": "Organization Account Record Type (with custom nonprofit fields)",
+      "notes": "NPSP ships an Organization Account Record Type which is the natural home for nonprofit organization records. NPSP itself doesn't ship EIN or Tax-Exempt Status fields on Account, so customers add these as custom fields on the Organization Record Type's page layout. NTEE Code is sometimes added by Trailblazer Community packages.",
+      "system": "salesforce_npsp"
+    }
+  ],
+  "tier": 1,
+  "typically_required": false
+}

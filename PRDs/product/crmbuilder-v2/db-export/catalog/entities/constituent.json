@@ -1,0 +1,543 @@
+{
+  "attributes": [
+    {
+      "common_synonyms": [],
+      "description": "Discriminator that selects which attribute subset applies.",
+      "display_name": "Constituent Type",
+      "enum_values": [
+        "Individual",
+        "Organization",
+        "Household"
+      ],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "constituentType",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": "Type",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "contact_type",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "enum",
+      "usage": "Drives form rendering, validation rules, and reporting filters. The most fundamental attribute on Constituent records."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Display name shown in lists and reports.",
+      "display_name": "Full Name / Display Name",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": 255,
+      "name": "fullName",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": "FullName",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "display_name",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "string",
+      "usage": "For Individual, computed from FirstName + LastName; for Organization, the org name; for Household, family name. Bloomerang stores explicitly; CiviCRM uses display_name."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Primary email address.",
+      "display_name": "Primary Email",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "emailAddress",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": "PrimaryEmail",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "email",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "email",
+      "usage": "Universal communication anchor. May have multiple email records depending on system."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Primary phone number.",
+      "display_name": "Primary Phone",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "phone",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": "PrimaryPhone",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "phone",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "phone",
+      "usage": "Communication anchor. May have multiple phone records."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Primary mailing address.",
+      "display_name": "Primary Address",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "address",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": "PrimaryAddress",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "street_address",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "address",
+      "usage": "Anchors mail campaigns and direct-mail acknowledgments."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Bloomerang-specific calculated metric of donor engagement and giving health.",
+      "display_name": "Generosity Score",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "generosityScore",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": "GenerosityScore",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "integer",
+      "usage": "A 0-1000 calculated score combining recency, frequency, monetary value, and engagement. Drives at-a-glance donor segmentation and lapsed-donor identification. Unique to Bloomerang."
+    },
+    {
+      "common_synonyms": [],
+      "description": "System timestamp.",
+      "display_name": "Created Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "createdAt",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": "CreatedDate",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "created_date",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "datetime",
+      "usage": "Audit field."
+    }
+  ],
+  "business_context": "Constituent records reflect a deliberate modeling choice in nonprofit CRMs: rather than splitting Person (Contact) from Organization (Account) the way B2B CRMs do, treat both as variants of a single Constituent entity with a Type discriminator (Individual / Organization). The argument for this approach is that nonprofits track giving from both individuals and organizations using the same fundraising workflows and reporting — the differences are smaller than B2B sales relationships (where the Person and Organization roles are more distinct). Bloomerang is the strongest example of this pattern — its primary entity is Constituent, with Type=Individual or Type=Organization gating which attributes apply (FirstName/LastName for Individual; FullName for Organization). CiviCRM partially follows this pattern (Contact entity with subtypes Individual / Household / Organization) but retains a somewhat richer per-subtype structure. Salesforce NPSP, EspoCRM, and the B2B systems keep Contact and Account separate and don't have a Constituent entity. The presence of this catalog entry is mostly documentary — it captures the unified-entity pattern so V2 understands it when ingesting client modeling, and so cross-system mapping can translate cleanly between unified and split models. When interviewing clients on a Bloomerang or CiviCRM deployment, \"Constituent\" maps to the catalog entries Contact, Account, and Household combined; on NPSP/Salesforce/EspoCRM it doesn't exist as such.",
+  "catalog_id": "constituent",
+  "common_synonyms": [
+    "Person+Organization",
+    "Donor",
+    "Profile",
+    "Stakeholder"
+  ],
+  "data_model_role": "anchor",
+  "discriminator_attribute": null,
+  "discriminator_value": null,
+  "display_name": "Constituent",
+  "entry_kind": "universal",
+  "inbound_references": [],
+  "is_deleted": false,
+  "name": "Constituent",
+  "parent_catalog_id": null,
+  "purpose": "In nonprofit CRMs that unify the Person and Organization concepts under a single primary entity, the Constituent is the universal donor / member / volunteer record. Distinct from the Contact + Account split used by B2B CRMs. Captured as its own catalog entry to document this alternative modeling pattern.",
+  "relationships": [
+    {
+      "cardinality": "one-to-many",
+      "description": "A constituent makes many donations.",
+      "presence": [
+        {
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "status": "absent",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "standard",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "parent",
+      "target": "donation",
+      "target_name": "Donation"
+    },
+    {
+      "cardinality": "many-to-many",
+      "description": "Constituents have relationships to other constituents (family, employer, board membership).",
+      "presence": [
+        {
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "status": "absent",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "standard",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "peer",
+      "target": "constituent",
+      "target_name": "Constituent"
+    }
+  ],
+  "sources": [
+    {
+      "title": "Bloomerang REST API: Constituent endpoint",
+      "url": "https://bloomerang.com/api/rest-api-v1/"
+    },
+    {
+      "title": "CiviCRM: Contacts user guide",
+      "url": "https://docs.civicrm.org/user/en/latest/organising-your-data/contacts/"
+    }
+  ],
+  "systems": [
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://attio.com/help/reference/managing-your-data/objects/manage-standard-objects",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no native Constituent — split Person / Company)",
+      "notes": "Attio uses Person + Company.",
+      "system": "attio"
+    },
+    {
+      "api_name": "Constituent",
+      "docs_url": "https://bloomerang.com/api/rest-api-v1/",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Constituent",
+      "notes": "Bloomerang's primary entity. Type=Individual or Type=Organization gates which attributes apply. Constituents have shared attributes (Generosity Score, lifetime giving, communication preferences) plus type-specific attributes (FirstName/LastName for Individual; FullName for Organization).",
+      "system": "bloomerang"
+    },
+    {
+      "api_name": "Contact",
+      "docs_url": "https://docs.civicrm.org/user/en/latest/organising-your-data/contacts/",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Contact (with contact_type = Individual / Household / Organization)",
+      "notes": "CiviCRM unifies under Contact entity with three contact_type values. Closest to Constituent pattern but retains type-specific schema differences.",
+      "system": "civicrm"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://docs.espocrm.com/",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no native Constituent — split Contact / Account)",
+      "notes": "EspoCRM uses split Contact + Account.",
+      "system": "espocrm"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://developers.hubspot.com/docs/reference/api/crm/objects/contacts",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no native Constituent — split Contact / Company)",
+      "notes": "HubSpot uses Contact + Company.",
+      "system": "hubspot"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_contact.htm",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no native Constituent — split Contact / Account)",
+      "notes": "Salesforce uses a split Contact + Account model. No Constituent concept.",
+      "system": "salesforce"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no native Constituent — split Contact / Account)",
+      "notes": "NPSP uses Salesforce's split Contact + Account model.",
+      "system": "salesforce_npsp"
+    }
+  ],
+  "tier": 4,
+  "typically_required": false
+}

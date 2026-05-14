@@ -1,0 +1,605 @@
+{
+  "attributes": [
+    {
+      "common_synonyms": [],
+      "description": "The individual who volunteered.",
+      "display_name": "Volunteer (Contact)",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "contact",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": "AccountId",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "contact",
+      "required": true,
+      "type": "reference",
+      "usage": "Anchors hours to the volunteer's record. Drives lifetime-volunteer-hours rollups and recognition milestones."
+    },
+    {
+      "common_synonyms": [
+        "time",
+        "service hours",
+        "volunteer time"
+      ],
+      "description": "Number of hours volunteered (typically supports decimals for partial hours).",
+      "display_name": "Hours",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "hours",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": "Hours",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "decimal",
+      "usage": "The headline number. Aggregates across volunteers, programs, and time periods for impact reporting and grant applications."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Date the volunteer service was performed.",
+      "display_name": "Service Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "serviceDate",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": "Date",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "date",
+      "usage": "Drives time-period reporting (this month, this quarter, this year). Distinct from createdAt (record-creation time)."
+    },
+    {
+      "common_synonyms": [],
+      "description": "The project, program, or event the hours were contributed to.",
+      "display_name": "Project / Program",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "project",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": "ProjectId",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "campaign",
+      "required": false,
+      "type": "reference",
+      "usage": "Drives program-impact reports (X hours of volunteer time delivered Y program). V4S models this as Volunteer Job; Bloomerang uses Project; CiviCRM uses Project."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Role or function the volunteer performed.",
+      "display_name": "Volunteer Role",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "role",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "enum",
+      "usage": "Categorizes hours by role type (Tutor, Driver, Event Setup, Phone Bank, etc). Drives skill-based-volunteer-pool reporting."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Lifecycle state of the volunteer assignment.",
+      "display_name": "Volunteer Status",
+      "enum_values": [
+        "Pledged",
+        "Confirmed",
+        "Completed",
+        "Cancelled",
+        "No Show"
+      ],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "volunteerStatus",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "enum",
+      "usage": "Distinguishes scheduled (Pledged) from completed. Drives no-show reporting and reliability metrics."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Free-form notes on what was done.",
+      "display_name": "Description",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "description",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": "Note",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "text",
+      "usage": "Captures specifics of the service for context — useful for performance reviews and personalized acknowledgments."
+    },
+    {
+      "common_synonyms": [],
+      "description": "System timestamp of record creation.",
+      "display_name": "Created Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "createdAt",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": "CreatedDate",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "datetime",
+      "usage": "Distinct from serviceDate. Drives data-entry-velocity reporting."
+    }
+  ],
+  "business_context": "Volunteer Hour records track the unpaid labor that powers most nonprofits. They drive volunteer-recognition workflows (milestones for 100, 500, 1000 lifetime hours), grant-application reporting (many funders require evidence of volunteer engagement), tax documentation (the IRS doesn't allow valuation of volunteer time as a charitable deduction, but in-kind professional services can be tracked separately), and program-impact reporting (X volunteers contributed Y hours to deliver Z programs). Modeling varies considerably: NPSP has a Volunteer Hours object via the Volunteers for Salesforce extension (V4S — a separately-installed managed package); CiviCRM has a CiviVolunteer extension; Bloomerang has Volunteer hours as a built-in Interaction subtype with hours and project tracking; standard Salesforce, HubSpot, Attio, and EspoCRM have no native concept and require custom build-out. Hours are typically logged against a Project / Program / Event / Activity, with a contact (the volunteer), a date, hours count, and optional descriptive notes. When interviewing clients, surface \"Volunteer Hour\" by asking whether they engage volunteers, whether they need to track contributed hours for reporting or recognition, and whether volunteer hours roll up into program impact metrics.",
+  "catalog_id": "volunteer-hour",
+  "common_synonyms": [
+    "Volunteer Time",
+    "Service Hour",
+    "Pro Bono Hour",
+    "Contribution of Service"
+  ],
+  "data_model_role": "event",
+  "discriminator_attribute": null,
+  "discriminator_value": null,
+  "display_name": "Volunteer Hour",
+  "entry_kind": "universal",
+  "inbound_references": [],
+  "is_deleted": false,
+  "name": "Volunteer Hour",
+  "parent_catalog_id": null,
+  "purpose": "A logged record of volunteer time contributed by an individual to the organization or to a specific event, program, or cause. Captures who volunteered, when, for how many hours, and against what activity.",
+  "relationships": [
+    {
+      "cardinality": "many-to-one",
+      "description": "A volunteer-hour record belongs to one volunteer.",
+      "presence": [
+        {
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "status": "custom",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "standard",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "child",
+      "target": "contact",
+      "target_name": "Contact"
+    },
+    {
+      "cardinality": "many-to-one",
+      "description": "A volunteer-hour record may be associated with a project, program, or event.",
+      "presence": [
+        {
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "status": "custom",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "standard",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "child",
+      "target": "campaign",
+      "target_name": "Campaign"
+    }
+  ],
+  "sources": [
+    {
+      "title": "Volunteers for Salesforce (V4S) managed package",
+      "url": "https://github.com/SalesforceFoundation/Volunteers-for-Salesforce"
+    },
+    {
+      "title": "CiviVolunteer extension documentation",
+      "url": "https://docs.civicrm.org/volunteer/en/latest/"
+    },
+    {
+      "title": "Bloomerang REST API documentation",
+      "url": "https://bloomerang.com/api/rest-api-v1/"
+    }
+  ],
+  "systems": [
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(custom object)",
+      "notes": "Attio has no Volunteer Hour entity.",
+      "system": "attio"
+    },
+    {
+      "api_name": "Interaction",
+      "docs_url": "https://bloomerang.com/api/rest-api-v1/",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Volunteer Interaction (Interaction subtype)",
+      "notes": "Bloomerang treats volunteer hours as an Interaction subtype with Hours and Project tracking. Built-in to the Constituent timeline.",
+      "system": "bloomerang"
+    },
+    {
+      "api_name": "VolunteerAssignment",
+      "docs_url": "https://docs.civicrm.org/volunteer/en/latest/",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "Volunteer Assignment (CiviVolunteer extension)",
+      "notes": "Available via the CiviVolunteer extension. Tracks volunteer assignments with hours, role, project, and assignment status.",
+      "system": "civicrm"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://docs.espocrm.com/",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no Volunteer Hour entity)",
+      "notes": "EspoCRM has no Volunteer Hour entity.",
+      "system": "espocrm"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://developers.hubspot.com/docs/api-reference/crm-deals-v3/guide",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(custom required)",
+      "notes": "HubSpot has no Volunteer Hour entity.",
+      "system": "hubspot"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://help.salesforce.com/s/articleView?id=000384741&type=1",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no native — V4S extension required)",
+      "notes": "Vanilla Salesforce has no Volunteer Hour entity. The Volunteers for Salesforce (V4S) managed package adds Volunteer Hours, Jobs, and Shifts.",
+      "system": "salesforce"
+    },
+    {
+      "api_name": "GW_Volunteers__Volunteer_Hours__c",
+      "docs_url": "https://github.com/SalesforceFoundation/Volunteers-for-Salesforce",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "Volunteer Hours (V4S managed package)",
+      "notes": "Available via the Volunteers for Salesforce (V4S) managed package, separate from NPSP itself. Tracks Hours, related Job, related Shift, related Contact, and Status.",
+      "system": "salesforce_npsp"
+    }
+  ],
+  "tier": 4,
+  "typically_required": false
+}

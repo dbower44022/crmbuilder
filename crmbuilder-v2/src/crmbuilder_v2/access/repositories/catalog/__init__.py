@@ -8,7 +8,7 @@ sub-module the function lives in.
 
 from __future__ import annotations
 
-from crmbuilder_v2.access.repositories.catalog import read, write
+from crmbuilder_v2.access.repositories.catalog import exports, read, write
 
 # read
 list_entities = read.list_entities
@@ -28,6 +28,11 @@ update_attribute = write.update_attribute
 patch_attribute = write.patch_attribute
 delete_attribute = write.delete_attribute
 
+# exports
+export_entity = exports.export_entity
+regenerate_all_catalog_exports = exports.regenerate_all_catalog_exports
+suppression = exports.suppression
+
 __all__ = [
     "list_entities",
     "get_entity",
@@ -43,4 +48,7 @@ __all__ = [
     "update_attribute",
     "patch_attribute",
     "delete_attribute",
+    "export_entity",
+    "regenerate_all_catalog_exports",
+    "suppression",
 ]

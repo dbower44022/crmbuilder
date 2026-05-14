@@ -1,0 +1,752 @@
+{
+  "attributes": [
+    {
+      "common_synonyms": [],
+      "description": "Display name of the engagement.",
+      "display_name": "Engagement Name",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": 255,
+      "name": "engagementName",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "subject",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Name",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "string",
+      "usage": "Identifies the engagement in lists. For mentoring contexts, often follows a pattern like \"Smith-Jones Mentoring 2026\"; for cultivation tracks, often \"Acme Foundation Major Gift Cultivation.\""
+    },
+    {
+      "common_synonyms": [],
+      "description": "Category of engagement.",
+      "display_name": "Engagement Type",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "engagementType",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "case_type_id",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "npe5__Engagement_Plan_Template__c",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "enum",
+      "usage": "Distinguishes Mentoring / Cultivation / Case Management / Advocacy / Coaching / etc. Drives different lifecycle stage sets and reporting."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Lifecycle state of the engagement.",
+      "display_name": "Engagement Status",
+      "enum_values": [
+        "Planning",
+        "Active",
+        "Paused",
+        "Completed",
+        "Cancelled"
+      ],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "engagementStatus",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "status_id",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "npe5__Status__c",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "enum",
+      "usage": "Drives \"active engagements\" filtering and dashboards. Status transitions trigger workflow automation (engagement-completion surveys, case-closeout reporting)."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Date the engagement began.",
+      "display_name": "Start Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "startDate",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "start_date",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "npe5__StartDate__c",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "date",
+      "usage": "Anchors duration calculations and reporting cohorts (engagements started this quarter)."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Date the engagement ended (or expected end date for active engagements).",
+      "display_name": "End Date (Actual or Expected)",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "endDate",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "end_date",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "npe5__EndDate__c",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "date",
+      "usage": "Drives expected-completion reporting and planning for capacity (how many engagements ending this quarter)."
+    },
+    {
+      "common_synonyms": [
+        "mentee",
+        "subject",
+        "client",
+        "beneficiary"
+      ],
+      "description": "The primary subject contact of the engagement (e.g., the mentee in a mentor-mentee engagement; the donor in a cultivation track).",
+      "display_name": "Primary Contact",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "primaryContact",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "contact_id",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "npe5__Contact__c",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "contact",
+      "required": true,
+      "type": "reference",
+      "usage": "Anchors the engagement to the contact whose journey it tracks. Drives \"show me everything for this contact\" views."
+    },
+    {
+      "common_synonyms": [
+        "mentor",
+        "partner",
+        "cultivation officer"
+      ],
+      "description": "The other party in a paired engagement (e.g., the mentor in a mentor-mentee pairing; the cultivation officer in a donor cultivation track).",
+      "display_name": "Secondary Contact / Partner",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "secondaryContact",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "subject_id",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "npe5__Secondary_Contact__c",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "contact",
+      "required": false,
+      "type": "reference",
+      "usage": "For paired engagements (mentoring), models the other half of the dyad. For cultivation tracks, models the relationship-management officer."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Staff member responsible for the engagement.",
+      "display_name": "Assigned Staff",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "assignedUser",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "manager_contact_id",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "OwnerId",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "user",
+      "required": false,
+      "type": "reference",
+      "usage": "Drives staff workload reporting and case-load management. Distinct from secondaryContact when the staff member is a User rather than a Contact."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Free-form description of engagement goals and context.",
+      "display_name": "Description",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "description",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "details",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Description",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "text",
+      "usage": "Captures the why and the goals. Useful for new staff joining mid-engagement or for periodic engagement-review meetings."
+    },
+    {
+      "common_synonyms": [],
+      "description": "System timestamp.",
+      "display_name": "Created Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "createdAt",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "created_date",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "CreatedDate",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "datetime",
+      "usage": "Audit field. Distinct from startDate."
+    }
+  ],
+  "business_context": "Engagement records hold the structure of relationships that span multiple interactions over time. They differ from Activity (which captures a single call, meeting, or task) and from Case (which is more problem-oriented with a defined resolution): Engagement is about a sustained relationship that has goals, stages, and outcomes. The CBM pilot client uses Engagement as the central entity for mentor-mentee relationships, where a single engagement spans months of touchpoints across mentoring sessions, check-ins, and program milestones. Salesforce NPSP has the Engagement Plan / Engagement Plan Task / Engagement Plan Template trio, used for structured donor-cultivation tracks. CiviCRM has Cases that can serve a similar long-running role (Case management for human-services contexts). Bloomerang doesn't have a first-class Engagement entity — relationships are tracked via Interactions accumulated against a Constituent. The B2B systems generally don't have a long-running engagement concept beyond Opportunity (which is revenue-focused). When interviewing clients, surface \"Engagement\" by asking whether they need to track relationships that span many interactions over months or years (mentor-mentee, donor-cultivation, beneficiary-services, advocacy-coalition), and whether those relationships have their own lifecycle stages (recruited, matched, active, completed, paused).",
+  "catalog_id": "engagement",
+  "common_synonyms": [
+    "Relationship",
+    "Mentoring Engagement",
+    "Cultivation Track",
+    "Engagement Plan",
+    "Care Plan"
+  ],
+  "data_model_role": "anchor",
+  "discriminator_attribute": null,
+  "discriminator_value": null,
+  "display_name": "Engagement",
+  "entry_kind": "universal",
+  "inbound_references": [],
+  "is_deleted": false,
+  "name": "Engagement",
+  "parent_catalog_id": null,
+  "purpose": "A long-running, multi-touchpoint relationship tracked between a contact (or constituents) and the organization or another contact. Distinct from Activity (single touchpoint) — Engagement is the longitudinal arc that activities accumulate inside. Used in mentoring programs, cultivation pipelines, case management, advocacy relationships, and any context where the relationship itself has lifecycle and outcomes.",
+  "relationships": [
+    {
+      "cardinality": "many-to-many",
+      "description": "An engagement involves one or more contacts (subject and partner).",
+      "presence": [
+        {
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "absent",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "peer",
+      "target": "contact",
+      "target_name": "Contact"
+    },
+    {
+      "cardinality": "one-to-many",
+      "description": "An engagement accumulates many activities (sessions, check-ins, meetings) over its lifecycle.",
+      "presence": [
+        {
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "absent",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "parent",
+      "target": "activity",
+      "target_name": "Activity"
+    },
+    {
+      "cardinality": "many-to-one",
+      "description": "An engagement is assigned to a staff user.",
+      "presence": [
+        {
+          "status": "absent",
+          "system": "salesforce"
+        },
+        {
+          "status": "absent",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "absent",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "child",
+      "target": "user",
+      "target_name": "User"
+    }
+  ],
+  "sources": [
+    {
+      "title": "Salesforce NPSP: Data Model Gallery (Engagement Plan, Engagement Plan Task, Engagement Plan Template)",
+      "url": "https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html"
+    },
+    {
+      "title": "CiviCRM: Case management user guide",
+      "url": "https://docs.civicrm.org/user/en/latest/case-management/"
+    },
+    {
+      "title": "Bloomerang REST API: Interaction endpoint (used for engagement tracking)",
+      "url": "https://bloomerang.com/api/rest-api-v1/"
+    }
+  ],
+  "systems": [
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(custom object)",
+      "notes": "Attio has no native Engagement entity. Custom object required.",
+      "system": "attio"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://bloomerang.com/api/rest-api-v1/",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no first-class Engagement; tracked via Interactions)",
+      "notes": "Bloomerang has no first-class long-running Engagement entity. Long-running relationships are tracked via accumulated Interactions on a Constituent's timeline. Custom Fields on Constituent can capture engagement stage.",
+      "system": "bloomerang"
+    },
+    {
+      "api_name": "Case",
+      "docs_url": "https://docs.civicrm.org/user/en/latest/case-management/",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Case (used for case management with longitudinal arcs)",
+      "notes": "CiviCRM Case serves the long-running engagement role for case-management contexts (legal aid, human services, advocacy coalitions). Has Case Roles, expected Activities, and Milestones.",
+      "system": "civicrm"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://docs.espocrm.com/",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no Engagement entity)",
+      "notes": "EspoCRM has no Engagement entity.",
+      "system": "espocrm"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://developers.hubspot.com/docs/api-reference/crm-engagements",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no native long-running Engagement; HubSpot 'Engagement' is single-touchpoint)",
+      "notes": "HubSpot's Engagement entity is a single-touchpoint Activity (call, email, meeting, note). HubSpot has no long-running engagement concept analogous to NPSP Engagement Plan or CBM-style mentor engagement.",
+      "system": "hubspot"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_account.htm",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no native — custom required)",
+      "notes": "Vanilla Salesforce has no Engagement concept. Custom build-out via custom object required.",
+      "system": "salesforce"
+    },
+    {
+      "api_name": "npe5__Engagement_Plan__c, npe5__Engagement_Plan_Task__c",
+      "docs_url": "https://developer.salesforce.com/docs/platform/data-models/guide/nonprofit-success-pack.html",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Engagement Plan / Engagement Plan Task / Engagement Plan Template",
+      "notes": "NPSP's structured cultivation framework. Engagement Plan Templates define reusable cultivation tracks (e.g., \"Major Gift Cultivation - 12 month\"); Engagement Plans are instantiated per donor; Engagement Plan Tasks are the steps. Tracks completion of structured donor-cultivation touchpoints over time.",
+      "system": "salesforce_npsp"
+    }
+  ],
+  "tier": 4,
+  "typically_required": false
+}

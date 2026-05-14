@@ -1,0 +1,1119 @@
+{
+  "attributes": [
+    {
+      "common_synonyms": [],
+      "description": "Display name of the quote.",
+      "display_name": "Quote Name",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": 255,
+      "name": "quoteName",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "name",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_title",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Name",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Name",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "string",
+      "usage": "Used in lists and customer-facing documents. Often follows a template (\"Acme - Annual Subscription - v2\") and can include the quote number for clarity."
+    },
+    {
+      "common_synonyms": [],
+      "description": "System-generated sequence number for the quote.",
+      "display_name": "Quote Number",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "quoteNumber",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "number",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_quote_number",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "QuoteNumber",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "QuoteNumber",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "autonumber",
+      "usage": "Customer-facing identifier (\"Quote #Q-2026-1234\"). Used in customer communications, signed documents, and accounting cross-references. Salesforce uses Quote.QuoteNumber (auto-numbered); EspoCRM uses number (auto-incremented)."
+    },
+    {
+      "common_synonyms": [],
+      "description": "The opportunity this quote is associated with.",
+      "display_name": "Opportunity",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "opportunity",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "opportunityId",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_deal_id",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "OpportunityId",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "OpportunityId",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "opportunity",
+      "required": true,
+      "type": "reference",
+      "usage": "Anchors the quote to its parent deal. Required in most B2B systems — every quote needs an opportunity. Salesforce supports many quotes per opportunity with one designated as \"primary\" (synced)."
+    },
+    {
+      "common_synonyms": [],
+      "description": "The customer this quote is being prepared for.",
+      "display_name": "Account",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "account",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "accountId",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "account",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "AccountId",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "AccountId",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "account",
+      "required": true,
+      "type": "reference",
+      "usage": "Drives customer-facing document fields (bill-to address, contact info, customer name on the document). Typically auto-populated from the opportunity's account."
+    },
+    {
+      "common_synonyms": [],
+      "description": "The primary contact at the customer who will review this quote.",
+      "display_name": "Contact",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "contact",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "contactId",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_associated_contact_ids",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "ContactId",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "ContactId",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "contact",
+      "required": false,
+      "type": "reference",
+      "usage": "Drives customer-facing greeting, email-send recipient, and e-signature workflow routing. Critical for quote-acceptance automation — quotes get sent to a specific contact, not a generic account address."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Lifecycle state of the quote.",
+      "display_name": "Quote Status",
+      "enum_values": [
+        "Draft",
+        "Needs Review",
+        "In Review",
+        "Approved",
+        "Presented",
+        "Accepted",
+        "Rejected",
+        "Expired"
+      ],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "quoteStatus",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "status",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_status",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Status",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Status",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "enum",
+      "usage": "Drives the approval and customer-facing workflow. Internal-facing stages (Draft → In Review → Approved) gate visibility before the quote is sent. Customer-facing stages (Presented → Accepted / Rejected) track post-send response. Expired is set automatically when validUntil passes without acceptance."
+    },
+    {
+      "common_synonyms": [
+        "expiration date",
+        "expires",
+        "expiry",
+        "good through"
+      ],
+      "description": "Date after which the quote is no longer valid.",
+      "display_name": "Valid Until / Expiration Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "validUntil",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "expirationDate",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_expiration_date",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "ExpirationDate",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "ExpirationDate",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "date",
+      "usage": "Drives auto-expiration workflows and customer-facing urgency (\"This quote expires on March 15\"). Common values are 30, 60, or 90 days from creation. Often configured as a default offset rather than entered manually per quote."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Sum of line item totals before discounts and tax.",
+      "display_name": "Subtotal",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "subtotal",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "preDiscountedAmount",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_subtotal",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Subtotal",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Subtotal",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "currency",
+      "usage": "Auto-calculated from line items in most systems. Drives discount calculation (discount applied to subtotal) and tax calculation (tax rate applied to subtotal minus discount)."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Total discount amount applied to the quote.",
+      "display_name": "Discount",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "discount",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "discount",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_discount_total",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Discount",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Discount",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "currency",
+      "usage": "Either entered as a fixed amount or calculated from a percentage. Drives margin-impact reports and approval rules (some orgs require manager approval for discounts above a threshold)."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Tax amount applied to the quote.",
+      "display_name": "Tax",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "tax",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "taxAmount",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_tax_total",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Tax",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Tax",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "currency",
+      "usage": "Auto-calculated from tax rate × (subtotal - discount) in most systems. Tax-rate sourcing varies — some integrate with Avalara or similar tax-calculation services; some use simple fixed rates per account."
+    },
+    {
+      "common_synonyms": [
+        "total",
+        "final total",
+        "all-in",
+        "total amount"
+      ],
+      "description": "Final total amount of the quote (subtotal - discount + tax).",
+      "display_name": "Grand Total",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "grandTotal",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "grandTotalAmount",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_total_amount",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "GrandTotal",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "GrandTotal",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "currency",
+      "usage": "The headline number on the customer-facing quote document. Drives \"synced quote\" amount that flows back to the parent Opportunity. Auto-calculated in most systems."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Address where the customer will receive billing for this quote if accepted.",
+      "display_name": "Billing Address",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "billingAddress",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "billingAddress",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "BillingAddress",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "BillingAddress",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "address",
+      "usage": "Captured at the quote level (rather than just account level) because multi-location customers may quote different sites. Auto-populated from the account but editable per-quote."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Address where products will ship if the quote is accepted.",
+      "display_name": "Shipping Address",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "shippingAddress",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "shippingAddress",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "ShippingAddress",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "ShippingAddress",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "address",
+      "usage": "Distinct from billing address when products ship to a different site than where invoices go. Often the same; users override when different."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Free-form text shown on the customer-facing quote document.",
+      "display_name": "Description",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "description",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "description",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_terms",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Description",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Description",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "text",
+      "usage": "Cover-letter style copy that introduces the quote, summarizes the proposed solution, or includes terms-and-conditions language. Distinct from line item descriptions which describe specific products or services."
+    },
+    {
+      "common_synonyms": [],
+      "description": "The user responsible for the quote (typically the sales rep on the parent opportunity).",
+      "display_name": "Owner",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "assignedUser",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "assignedUserId",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hubspot_owner_id",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "OwnerId",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "OwnerId",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "user",
+      "required": true,
+      "type": "reference",
+      "usage": "Drives \"my quotes\" filtering and approval routing. Quote ownership typically follows opportunity ownership."
+    },
+    {
+      "common_synonyms": [],
+      "description": "System-generated timestamp of when the quote was created.",
+      "display_name": "Created Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "createdAt",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "createdAt",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "createdate",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "CreatedDate",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "CreatedDate",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "datetime",
+      "usage": "Drives valid-until calculation when valid-until is set as an offset. Used in quote-velocity reports (time from quote creation to acceptance)."
+    }
+  ],
+  "business_context": "Quote records hold the formal pricing proposals that get sent to customers for sign-off. They sit between Opportunity (the deal in pursuit) and Order (the executed purchase). One Opportunity often has multiple Quotes — a Bronze / Silver / Gold tier presentation, or a proposal-with-and-without-add-ons comparison, or revised pricing after negotiation. The \"primary\" or \"synced\" Quote is the one whose pricing drives the Opportunity's Amount. Quotes carry their own line items (Quote Line Items in Salesforce, separate from Opportunity Line Items), customer-facing identifiers (Quote Number), expiration dates (after which the quote is invalid), terms and conditions, and approval status. In subscription / SaaS sales motions, Quotes capture subscription term, start date, billing frequency, and ramp pricing — the Salesforce CPQ product extends standard Quotes significantly to handle these. In nonprofit deployments Quotes are rare; they appear when nonprofits sell products (event tickets, merchandise, services) but most fundraising motions don't use Quotes. When interviewing clients, surface \"Quote\" by asking whether they need to generate formal pricing documents to send to customers, whether multiple pricing variations are quoted per opportunity, and whether quotes need approval workflows. If yes to any of these, the target backend's Quote support matters; if no, this entity is not needed.",
+  "catalog_id": "quote",
+  "common_synonyms": [
+    "Proposal",
+    "Estimate",
+    "Bid"
+  ],
+  "data_model_role": "document",
+  "discriminator_attribute": null,
+  "discriminator_value": null,
+  "display_name": "Quote",
+  "entry_kind": "universal",
+  "inbound_references": [],
+  "is_deleted": false,
+  "name": "Quote",
+  "parent_catalog_id": null,
+  "purpose": "A formal proposal showing prices for products and services offered to a prospect. Generated against an Opportunity (or Deal) and sent to the customer for review and acceptance. Contains line items, pricing, discounts, terms, and validity dates.",
+  "relationships": [
+    {
+      "cardinality": "many-to-one",
+      "description": "A quote belongs to one opportunity; an opportunity may have many quotes.",
+      "presence": [
+        {
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "absent",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "child",
+      "target": "opportunity",
+      "target_name": "Opportunity"
+    },
+    {
+      "cardinality": "many-to-one",
+      "description": "A quote is prepared for one account.",
+      "presence": [
+        {
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "absent",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "child",
+      "target": "account",
+      "target_name": "Account"
+    },
+    {
+      "cardinality": "many-to-one",
+      "description": "A quote is prepared for / sent to a specific contact.",
+      "presence": [
+        {
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "absent",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "child",
+      "target": "contact",
+      "target_name": "Contact"
+    },
+    {
+      "cardinality": "many-to-one",
+      "description": "A quote is owned by a user (the sales rep).",
+      "presence": [
+        {
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "absent",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "child",
+      "target": "user",
+      "target_name": "User"
+    }
+  ],
+  "sources": [
+    {
+      "title": "Salesforce Object Reference: Quote",
+      "url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_quote.htm"
+    },
+    {
+      "title": "Salesforce Field Reference Guide: Quote",
+      "url": "https://developer.salesforce.com/docs/atlas.en-us.sfFieldRef.meta/sfFieldRef/salesforce_field_reference_Quote.htm"
+    },
+    {
+      "title": "HubSpot CRM API: Quotes",
+      "url": "https://developers.hubspot.com/docs/reference/api/crm/objects/quotes"
+    },
+    {
+      "title": "Attio: Custom objects (Quote requires custom object)",
+      "url": "https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects"
+    },
+    {
+      "title": "EspoCRM: Quote entity definition (Sales Pack module)",
+      "url": "https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Sales/Resources/metadata/entityDefs/Quote.json"
+    },
+    {
+      "title": "CiviCRM (Quote not natively supported)",
+      "url": "https://docs.civicrm.org/user/en/latest/"
+    },
+    {
+      "title": "Bloomerang REST API documentation (Quote not supported)",
+      "url": "https://bloomerang.com/api/rest-api-v1/"
+    }
+  ],
+  "systems": [
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "Custom object (no standard Quote)",
+      "notes": "Attio has no standard Quote entity. Customers who need quoting typically create a custom object linked to Deals. Attio's flexible-schema design supports this but requires manual setup.",
+      "system": "attio"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://bloomerang.com/api/rest-api-v1/",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no Quote concept)",
+      "notes": "MAJOR ABSENCE. Bloomerang has no Quote entity. Donation pledges and transactions are handled directly without a quoting step.",
+      "system": "bloomerang"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://docs.civicrm.org/user/en/latest/",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no Quote concept)",
+      "notes": "MAJOR ABSENCE. CiviCRM has no Quote entity. Pricing/quoting capabilities exist via Price Sets attached to events or contributions but those serve different purposes (registration pricing, multi-product donation forms) rather than formal sales proposals.",
+      "system": "civicrm"
+    },
+    {
+      "api_name": "Quote",
+      "docs_url": "https://github.com/espocrm/espocrm/blob/master/application/Espo/Modules/Sales/Resources/metadata/entityDefs/Quote.json",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Quote",
+      "notes": "Standard entity in the Sales Pack module. Includes quote number, account, opportunity, status, valid-until date, addresses, line items (via separate QuoteItem entity), totals (subtotal, discount, tax, grand total). Status enum includes Draft / Presented / Accepted / Rejected / Expired.",
+      "system": "espocrm"
+    },
+    {
+      "api_name": "quotes",
+      "docs_url": "https://developers.hubspot.com/docs/reference/api/crm/objects/quotes",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Quote",
+      "notes": "Standard CRM object. HubSpot Quotes auto-generate from Deals with associated line items. Includes quote-template selection, e-signature integration (DocuSign / native HubSpot Sign), and customer-facing web preview links. Quote pricing flows back into the Deal amount when the Quote is accepted.",
+      "system": "hubspot"
+    },
+    {
+      "api_name": "Quote",
+      "docs_url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_quote.htm",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Quote",
+      "notes": "Standard object available in API version 18.0+. Each Quote belongs to one Opportunity. Quote Line Items mirror Opportunity Line Items. The \"Sync\" flag designates which Quote drives the Opportunity's Amount. Salesforce CPQ extends standard Quotes for complex subscription pricing, configurable products, and approval workflows.",
+      "system": "salesforce"
+    },
+    {
+      "api_name": "Quote",
+      "docs_url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_quote.htm",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Quote",
+      "notes": "Same as Salesforce. Rarely used in nonprofit deployments — appears occasionally for nonprofits that sell products (publications, event packages, training services). Most NPSP deployments don't use the Quote object.",
+      "system": "salesforce_npsp"
+    }
+  ],
+  "tier": 2,
+  "typically_required": false
+}

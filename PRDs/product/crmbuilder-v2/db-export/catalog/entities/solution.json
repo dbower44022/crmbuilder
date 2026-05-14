@@ -1,0 +1,750 @@
+{
+  "attributes": [
+    {
+      "common_synonyms": [],
+      "description": "Headline of the article (the question or topic being addressed).",
+      "display_name": "Title",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": 255,
+      "name": "title",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "title",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "title",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Title",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Title",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "string",
+      "usage": "Drives search relevance and self-service portal navigation. Should be question-formatted (\"How do I reset my password?\") for best search performance."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Article content (the answer or explanation).",
+      "display_name": "Body / Content",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "body",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "body",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "body",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Body",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Body",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "richtext",
+      "usage": "The substantive content. Modern systems support rich text, images, embedded video, and code blocks. Legacy Salesforce Solutions used plain text only."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Publication status of the article.",
+      "display_name": "Article Status",
+      "enum_values": [
+        "Draft",
+        "In Review",
+        "Published",
+        "Archived"
+      ],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "articleStatus",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "status",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "status",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Status",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Status",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "enum",
+      "usage": "Drives visibility — only Published articles appear in customer- facing portals and agent search results. Draft and In Review states gate authoring quality."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Language code for the article content (e.g., en_US, fr_FR).",
+      "display_name": "Language",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "language",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "language",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "language",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Language",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Language",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "enum",
+      "usage": "Drives multi-language knowledge bases — same article translated across multiple language versions. Modern Salesforce Knowledge is built around language variants of the same article."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Category or topic the article belongs to.",
+      "display_name": "Category",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "category",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "category",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "category",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Category",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Category",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "tag",
+      "required": false,
+      "type": "reference",
+      "usage": "Drives navigation in self-service portals (browse-by-category) and filtering in agent search. Salesforce uses Data Categories (hierarchical); HubSpot uses Topic; EspoCRM uses Categories (linkMultiple)."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Search keywords (often comma-separated) to improve article findability.",
+      "display_name": "Keywords",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "keywords",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Keywords",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Keywords",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "text",
+      "usage": "Drives search relevance for terms that don't appear directly in title or body. For example, an article about \"password reset\" might include keywords \"lost password, can't log in, login problem, forgot password.\""
+    },
+    {
+      "common_synonyms": [],
+      "description": "Number of times the article has been viewed.",
+      "display_name": "View Count",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "viewCount",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "viewcount",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "ViewCount",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "ViewCount",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "integer",
+      "usage": "Drives \"popular articles\" ranking and identification of high-value content. Auto-incremented on view in self-service portals. Salesforce Knowledge tracks this; legacy Solutions don't."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Number of users who marked the article as helpful.",
+      "display_name": "Helpful Count",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "helpfulCount",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "helpfulcount",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "HelpfulCount",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "HelpfulCount",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "integer",
+      "usage": "Customer satisfaction signal on individual articles. Drives content-quality reporting (which articles need rewriting, which ones are reliably effective)."
+    },
+    {
+      "common_synonyms": [],
+      "description": "The user who authored or owns the article.",
+      "display_name": "Author / Owner",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "assignedUser",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "assignedUser",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "assigneduser",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "AssignedUser",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "AssignedUser",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": "user",
+      "required": false,
+      "type": "reference",
+      "usage": "Author attribution and content-ownership tracking. Drives review workflows when articles need updating."
+    },
+    {
+      "common_synonyms": [],
+      "description": "System-generated timestamp of article creation.",
+      "display_name": "Created Date",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "createdAt",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "api_name": "createdAt",
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "createdate",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "CreatedDate",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "CreatedDate",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "datetime",
+      "usage": "Drives content-aging reports (articles older than X months without updates are flagged for review)."
+    }
+  ],
+  "business_context": "Solution / Knowledge Article records hold the institutional memory of customer-service organizations: the documented answers to \"how do I do X\" and \"what do I do when Y happens.\" The original Salesforce Solution object was simple — title, content, status, categories — and got superseded by a more capable Knowledge Article framework starting around 2014. Most modern Salesforce deployments use Knowledge rather than Solutions, but the Solution object still exists for legacy compatibility. Knowledge bases serve two audiences: internal agents (who reference articles to answer cases faster) and end customers (who self-serve via customer portals to deflect cases entirely). The case-deflection ROI is significant — published knowledge bases routinely deflect 20-40% of inbound case volume in mature deployments. When interviewing clients, surface \"Solution / Knowledge\" by asking whether they need to capture reusable answers to repeated customer questions, whether those answers should be searchable by agents, and whether they should be public-facing for customer self-service. Less universally available than Cases — Knowledge is a separately-licensed feature in many systems. Across the seven surveyed systems: Salesforce ships Solution (legacy) and Knowledge (modern); HubSpot has Knowledge Base (separate from CRM data model); EspoCRM has Knowledge Base; CiviCRM has no native concept; Attio has no native concept; NPSP follows Salesforce; Bloomerang has no concept.",
+  "catalog_id": "solution",
+  "common_synonyms": [
+    "Knowledge Article",
+    "FAQ Entry",
+    "Help Article",
+    "KB Article",
+    "Knowledge Base Entry"
+  ],
+  "data_model_role": "document",
+  "discriminator_attribute": null,
+  "discriminator_value": null,
+  "display_name": "Solution",
+  "entry_kind": "universal",
+  "inbound_references": [],
+  "is_deleted": false,
+  "name": "Solution",
+  "parent_catalog_id": null,
+  "purpose": "A reusable knowledge article describing how to resolve a particular kind of customer issue. Originally a Salesforce-specific entity (now largely superseded by Knowledge); broadly maps to \"Knowledge Article\" or \"Knowledge Base Entry\" in modern terminology.",
+  "relationships": [
+    {
+      "cardinality": "many-to-many",
+      "description": "Articles can be attached to cases (showing which articles helped resolve which issues). Modeled via CaseSolution junction in Salesforce, CaseArticle in modern Knowledge.",
+      "presence": [
+        {
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "absent",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "peer",
+      "target": "case",
+      "target_name": "Case"
+    },
+    {
+      "cardinality": "many-to-many",
+      "description": "Articles are categorized by tags / topics for navigation and search.",
+      "presence": [
+        {
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "absent",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "peer",
+      "target": "tag",
+      "target_name": "Tag"
+    },
+    {
+      "cardinality": "many-to-one",
+      "description": "An article has an author (user).",
+      "presence": [
+        {
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "status": "absent",
+          "system": "attio"
+        },
+        {
+          "status": "standard",
+          "system": "espocrm"
+        },
+        {
+          "status": "absent",
+          "system": "civicrm"
+        },
+        {
+          "status": "standard",
+          "system": "salesforce_npsp"
+        },
+        {
+          "status": "absent",
+          "system": "bloomerang"
+        }
+      ],
+      "role": "child",
+      "target": "user",
+      "target_name": "User"
+    }
+  ],
+  "sources": [
+    {
+      "title": "Salesforce Object Reference: Solution (legacy)",
+      "url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_solution.htm"
+    },
+    {
+      "title": "Salesforce Knowledge introduction (modern replacement)",
+      "url": "https://www.salesforceben.com/introduction-salesforce-knowledge/"
+    },
+    {
+      "title": "HubSpot: Knowledge Base articles",
+      "url": "https://knowledge.hubspot.com/knowledge-base/create-and-manage-knowledge-base-articles"
+    },
+    {
+      "title": "EspoCRM: Knowledge Base",
+      "url": "https://docs.espocrm.com/user-guide/knowledge-base/"
+    },
+    {
+      "title": "Salesforce: Improve Case Management with Knowledge",
+      "url": "https://trailhead.salesforce.com/content/learn/projects/set-up-salesforce-knowledge/manage-cases-using-articles"
+    }
+  ],
+  "systems": [
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://attio.com/help",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no native Knowledge concept)",
+      "notes": "Attio has no native knowledge-base entity. Customers needing knowledge management typically integrate with external tools (Notion, Confluence, Slab) rather than building inside Attio.",
+      "system": "attio"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://bloomerang.com/api/rest-api-v1/",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no Knowledge concept)",
+      "notes": "Bloomerang has no native knowledge-base entity.",
+      "system": "bloomerang"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://docs.civicrm.org/",
+      "is_standard": "false",
+      "mechanism": null,
+      "name": "(no native Knowledge concept)",
+      "notes": "CiviCRM has no native knowledge-base entity. Knowledge is typically managed in the host CMS (Drupal, Joomla, WordPress) where CiviCRM runs.",
+      "system": "civicrm"
+    },
+    {
+      "api_name": "KnowledgeBaseArticle",
+      "docs_url": "https://docs.espocrm.com/user-guide/knowledge-base/",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Knowledge Base Article",
+      "notes": "Standard entity. Includes name, body (rich text), status (Draft / In Review / Published / Archived), language, attachments, categories. Articles can be linked to Cases.",
+      "system": "espocrm"
+    },
+    {
+      "api_name": "knowledge base (separate product, not in main CRM API)",
+      "docs_url": "https://knowledge.hubspot.com/knowledge-base/create-and-manage-knowledge-base-articles",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Knowledge Base Article",
+      "notes": "HubSpot Knowledge Base is a separately-managed feature in Service Hub. Articles have title, body (rich text), category, search keywords, and visibility controls. Not exposed as a first-class CRM object via the main CRM API.",
+      "system": "hubspot"
+    },
+    {
+      "api_name": "Solution, KnowledgeArticleVersion",
+      "docs_url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_solution.htm",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Solution (legacy) / KnowledgeArticle (modern)",
+      "notes": "Solution is the original (legacy) knowledge object — simple Title/Status/Description model. Knowledge is the modern replacement, built on a richer data model (KnowledgeArticleVersion + Article Type structures) with versioning, multi-language support, data categories, and Communication Channel mappings. New deployments should use Knowledge; Solution exists for backward compatibility.",
+      "system": "salesforce"
+    },
+    {
+      "api_name": "Solution, KnowledgeArticleVersion",
+      "docs_url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_solution.htm",
+      "is_standard": "true",
+      "mechanism": null,
+      "name": "Solution (legacy) / KnowledgeArticle (modern)",
+      "notes": "Same as Salesforce. Rare in nonprofit deployments since most nonprofits don't have customer-service-style knowledge needs at the volume that justifies Knowledge.",
+      "system": "salesforce_npsp"
+    }
+  ],
+  "tier": 3,
+  "typically_required": false
+}

@@ -1,0 +1,496 @@
+{
+  "attributes": [
+    {
+      "common_synonyms": [],
+      "description": "Phone number the message was sent from.",
+      "display_name": "From Number",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "fromNumber",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "phone_id",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_communication_channel",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "FromMessagingChannel",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "FromMessagingChannel",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "phone",
+      "usage": "For sent messages, the org's outbound number (often a Twilio-provisioned number); for received, the contact's number."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Phone number the message was sent to.",
+      "display_name": "To Number",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "toNumber",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "phone_id",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_communication_recipient",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "EndUser",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "EndUser",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "phone",
+      "usage": "For sent messages, the contact's mobile; for received, the org's number. Must match a contact's mobile to auto-associate."
+    },
+    {
+      "common_synonyms": [
+        "message",
+        "text",
+        "message body",
+        "sms text"
+      ],
+      "description": "Message content.",
+      "display_name": "SMS Body",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "body",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "api_name": "Body",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "details",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_communication_body",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Content",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Content",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "text",
+      "usage": "The actual text. Subject to platform character limits (160 for single-segment SMS; 1600+ for concatenated; longer for messaging apps)."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Whether the message was outbound or inbound.",
+      "display_name": "Direction",
+      "enum_values": [
+        "Sent",
+        "Received"
+      ],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "direction",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "api_name": "Direction",
+          "status": "standard",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "direction",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_communication_direction",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "IsInbound",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "IsInbound",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": true,
+      "type": "enum",
+      "usage": "Drives reporting (sent-message volume per rep) and inbound-routing rules."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Messaging platform used.",
+      "display_name": "Platform",
+      "enum_values": [
+        "SMS",
+        "WhatsApp",
+        "iMessage",
+        "Signal",
+        "Other"
+      ],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "platform",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_communication_channel_type",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "enum",
+      "usage": "Distinguishes SMS from over-the-top messaging apps. Drives platform-specific compliance and integration logic."
+    },
+    {
+      "common_synonyms": [
+        "delivery state",
+        "send status"
+      ],
+      "description": "Delivery state reported by the messaging provider.",
+      "display_name": "Delivery Status",
+      "enum_values": [
+        "Queued",
+        "Sent",
+        "Delivered",
+        "Failed",
+        "Undeliverable"
+      ],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "deliveryStatus",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "delivery_status",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_communication_delivery_status",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "Status",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "Status",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "enum",
+      "usage": "Drives retry workflows, undeliverable-cleanup automation (auto-flag bad numbers), and compliance reporting."
+    },
+    {
+      "common_synonyms": [],
+      "description": "Unique identifier from the messaging provider (Twilio SID, etc.).",
+      "display_name": "Provider Message ID",
+      "enum_values": [],
+      "inbound_references": [],
+      "is_deleted": false,
+      "max_length": null,
+      "name": "messageId",
+      "notes": null,
+      "presence": [
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "attio"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "bloomerang"
+        },
+        {
+          "api_name": "message_id",
+          "status": "standard",
+          "system": "civicrm"
+        },
+        {
+          "api_name": null,
+          "status": "custom",
+          "system": "espocrm"
+        },
+        {
+          "api_name": "hs_communication_message_id",
+          "status": "standard",
+          "system": "hubspot"
+        },
+        {
+          "api_name": "MessageIdentifier",
+          "status": "standard",
+          "system": "salesforce"
+        },
+        {
+          "api_name": "MessageIdentifier",
+          "status": "standard",
+          "system": "salesforce_npsp"
+        }
+      ],
+      "reference_target": null,
+      "required": false,
+      "type": "string",
+      "usage": "Used for delivery-status webhooks, dedup, and correlation between provider logs and CRM records."
+    }
+  ],
+  "business_context": "SMS records capture text-message touchpoints — a channel that has grown rapidly in CRM workflows for appointment reminders, payment confirmations, donor stewardship outreach, two-factor authentication flows, and increasingly for sales / fundraising conversations. Compared to email, text messages are short (typically 160-1600 characters), have higher open rates (95%+ within minutes), and require explicit opt-in consent under TCPA in the US. Consent management is the most distinctive operational concern: sending a text to a contact who hasn't opted in carries legal liability. Modeling varies: HubSpot has Communication as a generic Engagement type that includes SMS (Communication subtypes include SMS, WhatsApp, LinkedIn); Bloomerang has Interaction subtype=Text Message; Salesforce has limited native SMS — Marketing Cloud's MobileConnect handles bulk SMS via separate data model, while Service Cloud's Messaging covers conversational SMS; EspoCRM and CiviCRM lack native SMS entities. Twilio integrations drive most SMS implementations across systems. When interviewing clients, surface \"SMS\" by asking whether they need to track text- message communication, whether they have TCPA-compliant opt-in workflows, and whether SMS interactions need to be threaded with other channels in a unified contact timeline.",
+  "catalog_id": "activity-sms",
+  "common_synonyms": [
+    "Text Message",
+    "Text",
+    "SMS Message",
+    "WhatsApp Message",
+    "Messaging"
+  ],
+  "data_model_role": "log",
+  "discriminator_attribute": "activityType",
+  "discriminator_value": "SMS",
+  "display_name": "SMS / Text Message",
+  "entry_kind": "subclass",
+  "inbound_references": [],
+  "is_deleted": false,
+  "name": "SMS (Activity subclass)",
+  "parent_catalog_id": "activity",
+  "purpose": "A text message (SMS or messaging-app message) sent or received as part of a relationship. A subclass of Activity that adds messaging-specific delta attributes: from / to phone numbers, body text, direction, delivery status, optional message-platform identifier (SMS, WhatsApp, iMessage, Signal).",
+  "relationships": [],
+  "sources": [
+    {
+      "title": "Salesforce Object Reference: MessagingSession",
+      "url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_messagingsession.htm"
+    },
+    {
+      "title": "HubSpot Engagements: Communications (SMS / WhatsApp / LinkedIn)",
+      "url": "https://developers.hubspot.com/docs/reference/api/crm/engagements/communications"
+    },
+    {
+      "title": "CiviCRM: SMS user guide",
+      "url": "https://docs.civicrm.org/user/en/latest/sms/"
+    },
+    {
+      "title": "Bloomerang REST API documentation",
+      "url": "https://bloomerang.com/api/rest-api-v1/"
+    }
+  ],
+  "systems": [
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://attio.com/help/reference/managing-your-data/objects/create-and-manage-custom-objects",
+      "is_standard": "false",
+      "mechanism": "separate_object",
+      "name": "(custom — typically via Twilio integration)",
+      "notes": "Attio doesn't have a native SMS entity. Implementations typically log SMS via custom object linked to People, populated by Twilio integration.",
+      "system": "attio"
+    },
+    {
+      "api_name": "Interaction",
+      "docs_url": "https://bloomerang.com/api/rest-api-v1/",
+      "is_standard": "true",
+      "mechanism": "type_discriminator",
+      "name": "Interaction (subtype=Text Message)",
+      "notes": "Bloomerang Interaction with Text Message type. Bloomerang has SMS / texting features integrated for donor cultivation.",
+      "system": "bloomerang"
+    },
+    {
+      "api_name": "Activity",
+      "docs_url": "https://docs.civicrm.org/user/en/latest/sms/",
+      "is_standard": "true",
+      "mechanism": "type_discriminator",
+      "name": "Activity (activity_type=SMS)",
+      "notes": "CiviCRM ships SMS as one of the Activity types. Built-in SMS providers (Twilio, ClickATell) integrate directly. Includes consent-tracking via Mobile communication preferences on Contact.",
+      "system": "civicrm"
+    },
+    {
+      "api_name": "not_applicable",
+      "docs_url": "https://docs.espocrm.com/",
+      "is_standard": "false",
+      "mechanism": "type_discriminator",
+      "name": "(no native SMS)",
+      "notes": "EspoCRM has no native SMS entity. Custom build-out required.",
+      "system": "espocrm"
+    },
+    {
+      "api_name": "communications",
+      "docs_url": "https://developers.hubspot.com/docs/reference/api/crm/engagements/communications",
+      "is_standard": "true",
+      "mechanism": "type_discriminator",
+      "name": "Communication (Engagement subtype)",
+      "notes": "HubSpot Communication engagement covers SMS, WhatsApp, LinkedIn messaging via subtypes. Includes channel, body, direction.",
+      "system": "hubspot"
+    },
+    {
+      "api_name": "MessagingSession",
+      "docs_url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_messagingsession.htm",
+      "is_standard": "false",
+      "mechanism": "type_discriminator",
+      "name": "MessagingSession (Service Cloud) or Marketing Cloud MobileConnect",
+      "notes": "Salesforce splits SMS across products. Service Cloud Messaging covers conversational SMS via MessagingSession and MessagingEnduser. Marketing Cloud MobileConnect handles bulk-marketing SMS via separate data model. No unified SMS entity in core Sales Cloud.",
+      "system": "salesforce"
+    },
+    {
+      "api_name": "MessagingSession",
+      "docs_url": "https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_messagingsession.htm",
+      "is_standard": "false",
+      "mechanism": "type_discriminator",
+      "name": "MessagingSession (Service Cloud)",
+      "notes": "NPSP has no SMS-specific additions. Nonprofit deployments typically use Service Cloud Messaging or Marketing Cloud MobileConnect.",
+      "system": "salesforce_npsp"
+    }
+  ],
+  "tier": 5,
+  "typically_required": false
+}
