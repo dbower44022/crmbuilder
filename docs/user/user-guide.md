@@ -1,7 +1,7 @@
 # CRM Builder — User Guide
 
-**Version:** 5.1
-**Last Updated:** 05-02-26 18:15
+**Version:** 5.2
+**Last Updated:** 05-13-26
 
 ---
 
@@ -1195,6 +1195,76 @@ Passwords are never included in log files.
 
 ---
 
+## Installing EspoCRM Extensions
+
+The **Extensions** sidebar entry on the Deployment tab installs (and
+re-installs) EspoCRM extension packs against an already-deployed
+self-hosted instance. The flow runs the same four-phase pattern as
+Upgrade — pre-check, backup, install, verify — and reuses the same
+SSH connection details captured during deploy.
+
+Two tabs:
+
+- **Install** lists the extensions currently installed on the selected
+  instance and exposes an **Install Extension…** button.
+- **Licenses** manages purchased license keys for paid extensions
+  (e.g. EspoCRM Advanced Pack). Keys are stored in the OS keyring,
+  not the database.
+
+### License Slot Model
+
+Paid extension licenses typically allow a small fixed number of
+deployments. The Licenses tab captures vendor caps (default: 1
+production + 2 non-production) and counts current installs against
+the cap. The Install dialog shows live slot consumption before the
+install runs:
+
+```
+License: Advanced Pack
+Production: 1/1 — CBM-PROD
+Non-production: 1/2 — CBM-STAGE
+This install will consume one new slot.
+```
+
+Re-installs on an instance that already holds a slot do not consume a
+new slot. If a fresh install would exceed the cap, the Run button is
+disabled and the slot panel names the instances currently filling the
+pool.
+
+### Re-installs
+
+CRM Builder supports installing and re-installing the same extension.
+Uninstall is intentionally not offered — to free a license slot,
+uninstall through EspoCRM's own **Administration → Extensions** panel
+on the target instance.
+
+When you re-pick a zip that matches an existing install, the dialog
+relabels the Run button accordingly:
+
+- `Re-install (same version 3.12.1)` — same version on the same
+  instance (asks for confirmation)
+- `Replace v3.12.0 → v3.12.1` — a newer build
+
+### Operator-Side Key Entry
+
+CRM Builder records that the extension is installed and stores the
+license key in the OS keyring, but does **not** yet push the key
+into the extension's own configuration inside EspoCRM. After install,
+log in once and enter the key through the extension's admin page
+(e.g. Administration → Advanced Pack → Manage License).
+
+Free extensions like Google Integration do not need a Licenses row at
+all — the Install dialog will say `No license registered for this
+extension. Install will proceed unlicensed.` and proceed without slot
+enforcement.
+
+The full step-by-step walkthrough — prerequisites, registering a
+license, every field in the Add License dialog, troubleshooting —
+lives in the **EspoCRM Server Deployment Guide**
+(`docs/user-deployment.md`) under *Installing Extensions*.
+
+---
+
 ## Troubleshooting
 
 ### HTTP 403 on all operations
@@ -1294,6 +1364,7 @@ then edit the instance in CRM Builder and enter the new API key.
 
 | Version | Date | Changes |
 |---|---|---|
+| 5.2 | 05-13-26 | Added the "Installing EspoCRM Extensions" section summarizing the new Extensions sidebar entry — license slot model (1 production + 2 non-production by default), install vs. re-install button labels, operator-side key entry inside EspoCRM, and the free-vs-paid distinction. Detailed walkthrough lives in the EspoCRM Server Deployment Guide. |
 | 5.1 | 05-02-26 18:15 | Added a "Deployment Record (Self-Hosted Instances)" subsection under Managing Instances → Project Folder, cross-referencing the EspoCRM Server Deployment Guide for the full feature documentation. |
 | 5.0 | April 2026 | Added CRM Audit feature (auditing existing instances, instance roles, migration workflow) |
 | 4.1 | April 2026 | Added Recovery Tools section (Reset Admin Credentials, Full Database Reset) and related troubleshooting entries |
