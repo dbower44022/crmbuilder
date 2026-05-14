@@ -139,6 +139,15 @@ class InstancePicker(QWidget):
         else:
             self.instance_changed.emit(None)
 
+    def refresh_badge(self) -> None:
+        """Re-read version state for the current selection and re-render.
+
+        Call after an operation (upgrade, recovery) that may have mutated
+        ``InstanceDeployConfig.current_espocrm_version`` — the badge
+        wouldn't otherwise know to update until the user reselects.
+        """
+        self._refresh_version_badge(self.selected_instance)
+
     def _refresh_version_badge(self, instance: InstanceRow | None) -> None:
         """Update the EspoCRM version badge for the selected instance.
 
