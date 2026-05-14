@@ -96,20 +96,60 @@ def get_current_version(
 ) -> str | None:
     """Read the EspoCRM version from inside the running container.
 
+    EspoCRM 8.x stores the version in system-managed
+    ``data/config-internal.php``; 7.x kept it in user-editable
+    ``data/config.php``. We probe both, then fall back to
+    ``composer.json`` which always carries the package version.
+
     :param ssh: Connected SSH client.
     :param log: Optional ``(message, level)`` callback.
     :returns: Version string (e.g., ``"8.4.0"``) or None if not detectable.
     """
+    php_candidates = ("data/config-internal.php", "data/config.php")
+    for config_file in php_candidates:
+        cmd = (
+            f"docker compose -f {COMPOSE_FILE} exec -T espocrm "
+            f"grep -hoE \"'version'[[:space:]]*=>[[:space:]]*'[^']+'\" "
+            f"{config_file} 2>/dev/null || true"
+        )
+        _, output = run_remote(ssh, cmd, log)
+        version = _extract_version(output, quote="'")
+        if version is not None:
+            if log:
+                log(f"Version found in {config_file}: {version}", "info")
+            return version
+
     cmd = (
         f"docker compose -f {COMPOSE_FILE} exec -T espocrm "
-        "grep -oE \"'version'\\s*=>\\s*'[^']+'\" data/config.php "
-        "| head -1 | sed -E \"s/.*'([^']+)'\\$/\\1/\""
+        "grep -hoE '\"version\"[[:space:]]*:[[:space:]]*\"[^\"]+\"' "
+        "composer.json 2>/dev/null || true"
     )
-    exit_code, output = run_remote(ssh, cmd, log)
-    if exit_code != 0:
+    _, output = run_remote(ssh, cmd, log)
+    version = _extract_version(output, quote='"')
+    if version is not None:
+        if log:
+            log(f"Version found in composer.json: {version}", "info")
+        return version
+
+    if log:
+        log(
+            "No version key found in data/config-internal.php, "
+            "data/config.php, or composer.json",
+            "warning",
+        )
+    return None
+
+
+def _extract_version(output: str, *, quote: str) -> str | None:
+    """Pull a semver out of a grep match line like ``'version' => '8.4.0'``."""
+    text = output.strip()
+    if not text:
         return None
-    text = output.strip().splitlines()[-1].strip() if output.strip() else ""
-    parsed = parse_version(text)
+    last = text.splitlines()[-1].strip()
+    match = re.search(rf"{re.escape(quote)}([^{re.escape(quote)}]+){re.escape(quote)}\s*$", last)
+    if not match:
+        return None
+    parsed = parse_version(match.group(1))
     if parsed is None:
         return None
     return f"{parsed[0]}.{parsed[1]}.{parsed[2]}"
@@ -168,7 +208,8 @@ def phase1_pre_upgrade_checks(
     current = get_current_version(ssh, log)
     if current is None:
         return False, (
-            "Could not read current EspoCRM version from data/config.php. "
+            "Could not read current EspoCRM version from "
+            "data/config-internal.php, data/config.php, or composer.json. "
             "The container may not be fully initialised."
         )
     config.current_espocrm_version = current
@@ -375,9 +416,10 @@ def phase4_verify_upgrade(
 
     run_check(
         "Version reads back",
-        f"docker compose -f {COMPOSE_FILE} exec -T espocrm "
-        "grep -oE \"'version'\\s*=>\\s*'[^']+'\" data/config.php | head -1",
-        lambda ec, out: ec == 0 and "version" in out.lower(),
+        f"docker compose -f {COMPOSE_FILE} exec -T espocrm sh -c "
+        "\"grep -hoE \\\"'version'[[:space:]]*=>[[:space:]]*'[^']+'\\\" "
+        "data/config-internal.php data/config.php 2>/dev/null | head -1\"",
+        lambda ec, out: "version" in out.lower(),
     )
 
     overall = all(r["passed"] for r in results)
