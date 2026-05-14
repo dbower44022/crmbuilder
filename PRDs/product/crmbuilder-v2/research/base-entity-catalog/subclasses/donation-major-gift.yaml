@@ -6,7 +6,7 @@ entry_kind: subclass
 
 parent_entity: donation
 discriminator:
-  attribute: type
+  attribute: donationType
   value: Major Gift
 
 name: Major Gift (Donation subclass)

@@ -1,13 +1,14 @@
 # CRMBuilder v2 — Catalog Ingestion PRD
 
-**Version:** 0.1 (draft)
-**Last Updated:** 05-09-26 14:30
-**Status:** Draft — pending approval
+**Version:** 0.2 (approved)
+**Last Updated:** 05-09-26 14:55
+**Status:** Approved for implementation
 
 ## Change Log
 
 | Version | Date | Description |
 |---------|------|-------------|
+| 0.2 | 05-09-26 | PRD approved by owner. Pre-existing `donation-major-gift` discriminator bug (referenced in v0.1 section 10) was resolved in catalog v0.10 — a `donationType` attribute was added to `donation.yaml` and the discriminator now references it correctly. Catalog row counts adjusted (+1 attribute → 415 total; +7 presence cells; +6 enum_value rows; +4 synonym rows). Section 10's pre-existing-issue note revised to "RESOLVED." No other content changes. |
 | 0.1 | 05-09-26 | Initial draft. Specifies the catalog database schema (9 tables), one-time Alembic data migration with two-pass loader, REST API + MCP tool surface, universal references integration, and JSON export hook behavior. Companion implementation plan to follow once this PRD is approved. |
 
 ---
@@ -542,8 +543,8 @@ These are questions the companion implementation plan must answer; they don't ch
 - Naming conventions for Pydantic models (`CatalogEntity` vs `CatalogEntityRead` vs other patterns V2 uses)
 - Test fixture strategy for catalog ingestion tests (in-memory SQLite? Test database? Shared with other V2 tests?)
 
-### Pre-existing catalog issue not addressed by this PRD
+### Pre-existing catalog issue (RESOLVED in catalog v0.10)
 
-The `donation-major-gift` subclass YAML has a discriminator referencing `parent.type`, but `donation.yaml` has no `type` attribute. This is a latent bug in the catalog content surfaced during the v0.9 naming rationalization. The fix requires adding a `donationType` attribute to `donation.yaml` with cross-system mapping. This is out of scope for catalog ingestion — fixed in a separate follow-up commit before ingestion runs. The ingestion loader should handle the broken discriminator gracefully (validation step flags it but doesn't block migration), or the catalog fix lands first.
+The `donation-major-gift` subclass YAML originally had a discriminator referencing `parent.type`, but `donation.yaml` had no `type` attribute. This was a latent bug surfaced during the v0.9 naming rationalization. **Resolved in catalog v0.10** (commit before this PRD goes into implementation): a `donationType` attribute was added to `donation.yaml` with enum values (Donation, Major Gift, In-Kind Gift, Stock Gift, Tribute Gift, Matching Gift) and cross-system mapping (CiviCRM `financial_type_id`, NPSP `RecordTypeId`, others custom or absent). The `donation-major-gift` discriminator now references `donationType`. Catalog row counts updated: 415 attributes (was 414); other tallies adjust by a small delta.
 
 ---
