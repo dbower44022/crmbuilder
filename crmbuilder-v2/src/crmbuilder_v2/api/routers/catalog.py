@@ -9,9 +9,17 @@ from __future__ import annotations
 from fastapi import APIRouter, Query
 
 from crmbuilder_v2.access.repositories import catalog
-from crmbuilder_v2.api.deps import readonly_session
+from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
-from crmbuilder_v2.api.schemas import CatalogGapCheckIn
+from crmbuilder_v2.api.schemas import (
+    CatalogAttributeCreateIn,
+    CatalogAttributePatchIn,
+    CatalogAttributeUpdateIn,
+    CatalogEntityCreateIn,
+    CatalogEntityPatchIn,
+    CatalogEntityUpdateIn,
+    CatalogGapCheckIn,
+)
 
 router = APIRouter(prefix="/catalog", tags=["catalog"])
 
@@ -105,3 +113,69 @@ def gap_check(body: CatalogGapCheckIn):
                 min_systems=body.min_systems,
             )
         )
+
+
+# ---------- write: entity ----------
+
+
+@router.post("/entities", status_code=201)
+def create_entity(body: CatalogEntityCreateIn):
+    with writable_session() as s:
+        return ok(catalog.create_entity(s, payload=body.model_dump()))
+
+
+@router.put("/entities/{catalog_id}")
+def update_entity(catalog_id: str, body: CatalogEntityUpdateIn):
+    with writable_session() as s:
+        return ok(
+            catalog.update_entity(s, catalog_id, payload=body.model_dump())
+        )
+
+
+@router.patch("/entities/{catalog_id}")
+def patch_entity(catalog_id: str, body: CatalogEntityPatchIn):
+    with writable_session() as s:
+        fields = {k: v for k, v in body.model_dump().items() if v is not None}
+        return ok(catalog.patch_entity(s, catalog_id, **fields))
+
+
+@router.delete("/entities/{catalog_id}")
+def delete_entity(catalog_id: str):
+    with writable_session() as s:
+        return ok(catalog.delete_entity(s, catalog_id))
+
+
+# ---------- write: attribute ----------
+
+
+@router.post(
+    "/entities/{catalog_id}/attributes", status_code=201
+)
+def create_attribute(catalog_id: str, body: CatalogAttributeCreateIn):
+    with writable_session() as s:
+        return ok(catalog.create_attribute(s, catalog_id, payload=body.model_dump()))
+
+
+@router.put("/entities/{catalog_id}/attributes/{name}")
+def update_attribute(
+    catalog_id: str, name: str, body: CatalogAttributeUpdateIn
+):
+    with writable_session() as s:
+        return ok(
+            catalog.update_attribute(s, catalog_id, name, payload=body.model_dump())
+        )
+
+
+@router.patch("/entities/{catalog_id}/attributes/{name}")
+def patch_attribute(
+    catalog_id: str, name: str, body: CatalogAttributePatchIn
+):
+    with writable_session() as s:
+        fields = {k: v for k, v in body.model_dump().items() if v is not None}
+        return ok(catalog.patch_attribute(s, catalog_id, name, **fields))
+
+
+@router.delete("/entities/{catalog_id}/attributes/{name}")
+def delete_attribute(catalog_id: str, name: str):
+    with writable_session() as s:
+        return ok(catalog.delete_attribute(s, catalog_id, name))
