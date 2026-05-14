@@ -1,6 +1,6 @@
 # CRM Builder — User Guide
 
-**Version:** 5.2
+**Version:** 5.3
 **Last Updated:** 05-13-26
 
 ---
@@ -1197,71 +1197,264 @@ Passwords are never included in log files.
 
 ## Installing EspoCRM Extensions
 
-The **Extensions** sidebar entry on the Deployment tab installs (and
-re-installs) EspoCRM extension packs against an already-deployed
-self-hosted instance. The flow runs the same four-phase pattern as
-Upgrade — pre-check, backup, install, verify — and reuses the same
-SSH connection details captured during deploy.
+CRM Builder installs paid and free EspoCRM extension packs against an
+already-deployed self-hosted instance. The flow runs the same
+four-phase pattern as Upgrade — pre-check, backup, install, verify —
+and reuses the same SSH connection details captured during deploy. A
+failed install always leaves you with a fresh backup to roll back to.
 
-Two tabs:
+This section walks through every step in the application. Server-side
+details (what runs over SSH, what the log shows, rollback commands)
+live in the **EspoCRM Server Deployment Guide**
+(`docs/user-deployment.md`) under *Installing Extensions*.
 
-- **Install** lists the extensions currently installed on the selected
-  instance and exposes an **Install Extension…** button.
-- **Licenses** manages purchased license keys for paid extensions
-  (e.g. EspoCRM Advanced Pack). Keys are stored in the OS keyring,
-  not the database.
+### Where to Find It
 
-### License Slot Model
-
-Paid extension licenses typically allow a small fixed number of
-deployments. The Licenses tab captures vendor caps (default: 1
-production + 2 non-production) and counts current installs against
-the cap. The Install dialog shows live slot consumption before the
-install runs:
+Open the **Deployment** tab. The sidebar now has seven entries:
 
 ```
-License: Advanced Pack
-Production: 1/1 — CBM-PROD
-Non-production: 1/2 — CBM-STAGE
-This install will consume one new slot.
+Instances
+Deploy
+Configure
+Extensions      ← here
+Run History
+Audit
+Output
 ```
 
-Re-installs on an instance that already holds a slot do not consume a
-new slot. If a fresh install would exceed the cap, the Run button is
-disabled and the slot panel names the instances currently filling the
-pool.
+Click **Extensions**. The panel has two tabs:
 
-### Re-installs
+- **Install** — currently-installed extensions for the selected
+  instance, and an **Install Extension…** button.
+- **Licenses** — purchased license keys for paid extensions. Keys
+  are stored in the OS keyring (macOS Keychain / Linux Secret Service /
+  Windows Credential Manager), never in the database.
 
-CRM Builder supports installing and re-installing the same extension.
-Uninstall is intentionally not offered — to free a license slot,
-uninstall through EspoCRM's own **Administration → Extensions** panel
-on the target instance.
+The panel needs an active client and a selected instance. If you see
+*"No CRM instances available"* or *"Select an instance from the picker
+above"*, fix that before continuing.
+
+### Before You Start
+
+| Item | Notes |
+|------|-------|
+| Extension `.zip` file | EspoCRM extensions ship as zips with `manifest.json` at the root. Keep them somewhere you can find — `~/Projects/<Client>/ExtensionFiles/` is a tidy convention. |
+| License key | Only for paid extensions (Advanced Pack, Sales Pack, etc.). Have it ready to paste from your password manager. |
+| Deployed self-hosted instance | The Deploy wizard must have run successfully. Cloud-hosted instances cannot install extensions through this flow. |
+| Working SSH credentials | The Deploy wizard wrote them; if the SSH key has rotated since, edit them via the connection dialog on the Deploy entry first. |
+
+### Step 1 — Register a License (Paid Extensions Only)
+
+Free extensions skip this step. The Install dialog will just say
+*"No license registered for this extension. Install will proceed
+unlicensed."* and run.
+
+For each paid extension you plan to install, register the license
+once. The Install dialog reads from this row to enforce vendor slot
+caps.
+
+1. On the Deployment tab, click **Extensions**, then the **Licenses**
+   tab.
+2. Click **Add License…**. A modal opens with six fields plus a
+   notes box.
+3. Fill the fields:
+
+| Field | Required | What to enter |
+|-------|----------|---------------|
+| Extension name | Yes | The exact name from the extension's `manifest.json` file (case-sensitive). For EspoCRM Advanced Pack the value is `Advanced Pack`. Typos here mean the install dialog later won't find this license. |
+| Purchaser label | No | Free-form text to disambiguate multiple licenses for the same extension. Usually blank. |
+| License key | Yes | The vendor's key string. Click **Show** to verify it pasted correctly. Stored in your OS keyring. |
+| Max production slots | Yes | Number of production deployments this license allows. EspoCRM Advanced Pack allows 1 — accept the default. |
+| Max non-production slots | Yes | Number of staging + test deployments. Advanced Pack allows 2 — accept the default. |
+| Notes | No | Anything — renewal date, vendor email, PO number. |
+
+4. Click **Save**. The row appears in the Licenses table with slot
+   counts at `0/1` and `0/2`.
+
+To **edit a license later**, double-click the row or select it and
+click **Edit Selected…**. The Extension name field is locked once
+saved (it's the join key). Changing the license key writes the new
+value to the keyring and deletes the old keyring entry — existing
+install rows continue to point at the same license row, so the next
+license check on the server picks up the new key automatically.
+
+CRM Builder does **not** offer a Delete License action; licenses are
+forever (or until you go in via the SQLite database). This is
+deliberate.
+
+### Step 2 — Pick the Target Instance
+
+Look at the instance picker at the top of the Deployment tab and
+confirm:
+
+- The right instance is selected (the panel header at the top of the
+  Extensions tab shows it: `<name>` (`<code>`) — `<environment>`).
+- Its environment value (`production`, `staging`, or `test`) is what
+  you intended. The slot pool the install consumes depends on this.
+
+If you need a different instance, change it now via the picker. The
+Extensions panel refreshes immediately.
+
+### Step 3 — Launch the Install Dialog
+
+1. Switch to the **Install** tab (it's the default sub-tab).
+2. Click **Install Extension…**. A file picker opens (filtered to
+   `*.zip`).
+3. Choose the extension's `.zip`. Click **Open**.
+4. The Install dialog opens. It shows five things from top to bottom:
+
+   - **Extension** — name and version parsed from the zip's manifest,
+     plus the author and the local file path.
+   - **License + slot usage** — for paid extensions, the live count
+     against the registered license. For free extensions, the text
+     *"No license registered for this extension. Install will proceed
+     unlicensed."*
+   - **Four phase status cards** — Pre-check, Backup, Install,
+     Verification. All grey ● *Not Started* initially.
+   - **The Run button** — its label adapts to state (see table below).
+   - **A streaming log panel** — dark background, monospaced, with
+     Copy and Save buttons in the header.
+
+The Run button's label tells you what will happen:
+
+| Scenario | Button label |
+|----------|--------------|
+| First time on this instance | `Install` |
+| Same version already installed | `Re-install (same version X.Y.Z)` — asks for confirmation |
+| Different version installed | `Replace vA.B.C → vX.Y.Z` |
+| License slot pool at cap | `Install (blocked by license)` — disabled |
+
+### Step 4 — Run the Install
+
+Click the Run button. The Close button stays available but starting
+the install isn't reversible mid-flight — let it finish, then react
+to the outcome.
+
+The four phase cards advance: grey ● (Not Started) → blue ● (Running)
+→ green ● (Completed). On failure, the failing card turns red ● and
+shows an error message below the status label.
+
+Expected timing:
+
+| Phase | Duration | What it does |
+|-------|----------|--------------|
+| 1 — Pre-check | < 1 s | Confirms the EspoCRM container is reachable. |
+| 2 — Backup | 20 s – 90 s | Database dump + data-volume tarball, written to the server. |
+| 3 — Install | 30 s – 2 min | Uploads the zip and runs the EspoCRM CLI install command. |
+| 4 — Verification | 1 – 5 s | HTTPS smoke check plus container liveness. |
+
+The Log panel streams the SSH transcript live. If you need to share
+it (with support, with a colleague, etc.), the **Copy Log** and
+**Save Log to File** buttons in the log header capture the full
+text.
+
+On success the log ends with:
+
+```
+Advanced Pack v3.12.1 installed successfully.
+Extension install complete.
+```
+
+Click **Close** to return to the Install tab. The "Currently
+installed extensions" table refreshes with the new row, and the
+Licenses tab's slot counts update.
+
+### Step 5 — Enter the License Key in EspoCRM (Paid Extensions Only)
+
+CRM Builder records the install and stores the license key in your
+OS keyring, but **does not** yet push the key into the extension's
+own configuration inside EspoCRM. For each paid extension, one manual
+step remains:
+
+1. In a browser, open the CRM (`https://<your-domain>/`) and log in
+   as admin.
+2. Navigate to the extension's license page. Common destinations:
+   - **Advanced Pack** → Administration → Advanced Pack → Manage
+     License
+   - **Sales Pack** → Administration → Sales Pack → Manage License
+3. Paste the same license key you registered in CRM Builder's
+   Licenses tab. Click **Save**.
+
+The extension may run in trial mode for a short period if the key
+isn't entered immediately, but most paid features will start failing
+quickly without it.
+
+Free extensions skip this step entirely. Most still need some
+configuration — for example, Google Integration needs Google API
+OAuth credentials configured under **Administration → Google
+Integration → Google API** before it does anything.
+
+### Worked Example — Installing Advanced Pack on Three Instances
+
+A typical paid-extension rollout uses all three license slots (1 prod
++ 2 non-prod). Run the install three times, one per instance:
+
+1. **Production first.**
+   - Pick `CBM Production` in the picker.
+   - **Extensions → Install → Install Extension…** → pick the zip.
+   - Slot panel shows `Production: 0/1`. Click **Install**. Wait ~2
+     min for the four phases.
+   - Log into the live CRM, enter the license key on the Advanced
+     Pack page.
+2. **Staging next.**
+   - Switch the picker to `CBM Staging`.
+   - Same flow. Slot panel now shows `Production: 1/1 — CBM-PROD` and
+     `Non-production: 0/2`. Click **Install**.
+   - Log into the staging CRM, enter the same key.
+3. **Test / Dev last.**
+   - Switch the picker to `CBM Test`.
+   - Slot panel shows `Production: 1/1 — CBM-PROD` and
+     `Non-production: 1/2 — CBM-STAGE`. Click **Install** — this
+     consumes the second non-production slot.
+   - Log into the test CRM, enter the same key.
+
+After all three, the Licenses tab shows `1/1` and `2/2`. A fourth
+install attempt would show `Install (blocked by license)` with the
+slot panel naming the three instances holding slots.
+
+### Re-installing and Replacing
+
+CRM Builder supports re-installing the same extension. **Uninstall
+is intentionally not offered** — to free a license slot, use
+EspoCRM's own **Administration → Extensions** panel on the target
+instance.
 
 When you re-pick a zip that matches an existing install, the dialog
-relabels the Run button accordingly:
+relabels the Run button:
 
-- `Re-install (same version 3.12.1)` — same version on the same
-  instance (asks for confirmation)
-- `Replace v3.12.0 → v3.12.1` — a newer build
+- `Re-install (same version 3.12.1)` — same version already present.
+  The dialog asks for confirmation before running.
+- `Replace v3.12.0 → v3.12.1` — newer build. No extra confirmation;
+  the EspoCRM CLI handles the uninstall + reinstall in a single call.
 
-### Operator-Side Key Entry
+Slot counts don't change on re-install or replace — the install row
+on the target instance already holds the slot, so swapping the
+version doesn't consume another one.
 
-CRM Builder records that the extension is installed and stores the
-license key in the OS keyring, but does **not** yet push the key
-into the extension's own configuration inside EspoCRM. After install,
-log in once and enter the key through the extension's admin page
-(e.g. Administration → Advanced Pack → Manage License).
+For paid extensions, the license key entered in the CRM admin panel
+**persists across replace** — you do not need to re-enter it.
 
-Free extensions like Google Integration do not need a Licenses row at
-all — the Install dialog will say `No license registered for this
-extension. Install will proceed unlicensed.` and proceed without slot
-enforcement.
+### If Something Goes Wrong
 
-The full step-by-step walkthrough — prerequisites, registering a
-license, every field in the Add License dialog, troubleshooting —
-lives in the **EspoCRM Server Deployment Guide**
-(`docs/user-deployment.md`) under *Installing Extensions*.
+The Install dialog stays open after a failure with the failed phase
+red and the error message inline. The log panel has the full
+transcript.
+
+Common situations:
+
+| What you see | What to do |
+|--------------|------------|
+| `No license registered for this extension. Install will proceed unlicensed.` for a paid extension | Your License row's Extension name doesn't match the zip's manifest. Edit the row (Licenses tab → double-click) and correct the name. |
+| `Production slot full` or `Non-production slots full` | The slot pool is at cap. Uninstall on one of the named instances through EspoCRM's own Administration → Extensions panel, then retry. |
+| `SFTP upload failed` | SSH credentials likely changed since deploy. Go to Deploy → **Edit Connection** and update them. |
+| `extension is not compatible with this EspoCRM version` | The zip needs a newer or older EspoCRM. Run **Upgrade EspoCRM** first or get a matching build from the vendor. |
+| Phase 4 verification fails after Phase 3 succeeds | The install succeeded but broke something. Inspect the server logs (`docker compose logs espocrm` on the host) and roll back to the Phase 2 backup if needed. |
+
+Server-side details, sample log output for each phase, three worked
+examples (first paid install, version replacement, free extension),
+and the manual rollback procedure are in the **EspoCRM Server
+Deployment Guide** (`docs/user-deployment.md`) → *Installing
+Extensions*.
 
 ---
 
@@ -1364,6 +1557,7 @@ then edit the instance in CRM Builder and enter the new API key.
 
 | Version | Date | Changes |
 |---|---|---|
+| 5.3 | 05-13-26 | Expanded the "Installing EspoCRM Extensions" section into a full step-by-step walkthrough: where the Extensions sidebar entry lives, before-you-start checklist, the five steps from "register a license" through "enter the license key in EspoCRM", a worked example covering a typical three-instance Advanced Pack rollout, re-install/replace semantics, and a troubleshooting table. Server-side mechanics remain cross-referenced to the Deployment Guide. |
 | 5.2 | 05-13-26 | Added the "Installing EspoCRM Extensions" section summarizing the new Extensions sidebar entry — license slot model (1 production + 2 non-production by default), install vs. re-install button labels, operator-side key entry inside EspoCRM, and the free-vs-paid distinction. Detailed walkthrough lives in the EspoCRM Server Deployment Guide. |
 | 5.1 | 05-02-26 18:15 | Added a "Deployment Record (Self-Hosted Instances)" subsection under Managing Instances → Project Folder, cross-referencing the EspoCRM Server Deployment Guide for the full feature documentation. |
 | 5.0 | April 2026 | Added CRM Audit feature (auditing existing instances, instance roles, migration workflow) |
