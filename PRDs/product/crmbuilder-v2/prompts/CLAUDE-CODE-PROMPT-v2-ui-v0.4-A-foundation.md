@@ -1,6 +1,6 @@
 # CLAUDE-CODE-PROMPT-v2-ui-v0.4-A-foundation
 
-**Last Updated:** 05-12-26 10:30
+**Last Updated:** 05-14-26 14:00
 **Series:** v2-ui-v0.4
 **Slice:** A (1 of 6)
 **Status:** Ready to execute
@@ -24,11 +24,11 @@ Slice A lays the foundation infrastructure that the four entity-panel slices (B�
 
 5. **`GET /<entity>/next-identifier` helper retrofit to the eight existing prefixed-identifier governance entity types** per DEC-043: decisions, sessions, risks, planning_items, topics, references, charter, status. Charter and status use versioned-identifier semantics.
 
-6. **Spec guide section 6 amendment** per DEC-065. Surgical edit applying the approved diff at `PRDs/product/crmbuilder-v2/methodology-entity-schema-spec-guide.md`.
+6. **Spec guide section 6 amendment** per DEC-068 (renumbered from anticipatory DEC-065). Surgical edit applying the approved diff at `PRDs/product/crmbuilder-v2/methodology-entity-schema-spec-guide.md`. **The amendment text is already present in the spec guide as of v1.1** — slice A verifies it is in place and references the renumbered DEC-068 throughout; no further textual change to the spec guide should be required.
 
 After this slice, the foundation is in place. Slice B builds the Domains panel; slices C, D, E build Entities, Processes, CRM Candidates respectively; slice F is closeout. This slice does NOT add any entity-table migration, any entity panel, any per-entity dialog, the README release note, or the `__version__` bump — those land in their own slices.
 
-This slice does NOT write planning records (SES-016, DEC-065 through DEC-070) to the database. Per the session-record-at-close pattern established after SES-008, those are authored by Doug through the desktop New Session dialog at the v0.4-build-planning conversation's actual close, not inside a Claude Code slice.
+This slice does NOT write planning records (SES-017, SES-018, DEC-068 through DEC-074, PI-013, PI-014, PI-015) to the database. (Originally drafted referring to SES-016 and DEC-065 through DEC-070; renumbered at v0.4 PRD approval on 05-14-26 because the catalog ingestion build consumed those IDs.) Per the session-record-at-close pattern established after SES-008, those are authored by Doug through the desktop New Session dialog at the v0.4 build's closeout, not inside a Claude Code slice.
 
 ## Project context
 
@@ -367,12 +367,12 @@ Doug pushes. Do NOT push.
 - Do NOT create any new entity-table migrations (those land in slices B–E).
 - Do NOT add any methodology entity panels (those land in slices B–E).
 - Do NOT add any methodology entity dialogs (those land in slices B–E).
-- Do NOT write SES-016 or any DEC-NNN records to the database. Per the session-record-at-close pattern, those are authored by Doug through the desktop dialog at conversation close.
+- Do NOT write any session or decision records (SES-017, SES-018, DEC-068 through DEC-074, PI-013/014/015). Per the session-record-at-close pattern, those are authored by Doug through the desktop dialog at conversation close.
 - Do NOT bump `__version__` to `0.4.0` (that lands in slice F).
 - Do NOT add the README v0.4 release note (that lands in slice F).
 - Do NOT modify any existing entity type's schema, access-layer methods, REST endpoints, or UI behavior — slice A is strictly additive (the helper-endpoint retrofit is the one addition to existing entity types, and it adds a new endpoint without touching existing endpoints).
 - Do NOT introduce new dialogs or new dialog framework features. v0.3's `EntityCrudDialog`, `EntityCrudDeleteDialog`, and `ReferenceCreateDialog` are reused unchanged.
-- Do NOT change v0.3's governance-entity field naming. Governance entities retain `identifier`, `created_at`, etc. without parent-prefix until PI-006 retrofit lands (deferred to v0.5+ per DEC-070).
+- Do NOT change v0.3's governance-entity field naming. Governance entities retain `identifier`, `created_at`, etc. without parent-prefix until PI-006 retrofit lands (deferred to v0.5+ per DEC-073).
 
 ## If slice A bloats
 

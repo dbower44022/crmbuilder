@@ -266,7 +266,7 @@ Doug pushes. Do NOT push.
 - Do NOT register relationship-kind values involving `domain` from the source side (none exist in v0.4; inbound from entity and process are registered in slices C and D).
 - Do NOT modify the spec guide — slice A handled the section 6 amendment.
 - Do NOT bump `__version__` or update the README — those land in slice F.
-- Do NOT write SES-016 or any DEC-NNN records — Doug authors those at conversation close through the desktop dialog.
+- Do NOT write any session, decision, or planning-item records — see `ui-PRD-v0.4.md` section 11 for the canonical list (SES-017, SES-018, DEC-068 through DEC-074, PI-013/014/015). Doug authors those at v0.4 closeout through the desktop dialog.
 - Do NOT add a master-pane Domains column or any cross-domain rendering — `domain` has no outgoing references in v0.4.
 - Do NOT introduce any storage architecture changes beyond the additive ones called for above.
 

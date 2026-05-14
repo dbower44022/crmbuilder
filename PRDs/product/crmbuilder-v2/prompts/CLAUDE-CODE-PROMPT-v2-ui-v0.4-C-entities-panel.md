@@ -228,7 +228,7 @@ Doug pushes. Do NOT push.
 - Do NOT introduce variant relationships (Mentor Contact / Client Contact pattern). Deferred to v0.5+ per PI-010.
 - Do NOT cascade `entity_status` changes when an affiliated `domain_status` changes, or vice versa. The two lifecycles are independent per spec 3.4.3.
 - Do NOT modify the v0.3 `ReferenceCreateDialog`. It handles the new vocab kind automatically via slice A's `vocab.py` extensions.
-- Do NOT write SES-016 or any DEC-NNN records.
+- Do NOT write any session, decision, or planning-item records — see `ui-PRD-v0.4.md` section 11 for the canonical list (SES-017, SES-018, DEC-068 through DEC-074, PI-013/014/015). Doug authors those at v0.4 closeout through the desktop dialog.
 - Do NOT bump `__version__` or update the README.
 
 ---

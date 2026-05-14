@@ -1,15 +1,16 @@
 # CRMBuilder v2 — User Interface PRD
 
-**Version:** 0.4 (draft)
-**Last Updated:** 05-12-26 10:30
-**Status:** Draft — pending approval
+**Version:** 0.4
+**Last Updated:** 05-14-26 14:00
+**Status:** Approved
 **Predecessor:** `ui-PRD-v0.3.md` (shipped per SES-009)
 
 ## Change Log
 
 | Version | Date | Description |
 |---------|------|-------------|
-| 0.4 | 05-12-26 | Fourth iteration of the v2 desktop UI. Ships four new methodology-entity panels (Domains, Entities, Processes, CRM Candidates) under a new Methodology sidebar group, completing the storage and UI surface needed for v2 to host Phase 1 methodology content for the upcoming CBM redo. Foundation infrastructure introduces the four entity types into `ENTITY_TYPES`, two new relationship kinds (`entity_scopes_to_domain`, `process_hands_off_to_process`) into `REFERENCE_RELATIONSHIPS`, and the corresponding `refs` CHECK-constraint extensions. The SES-010 identifier-asymmetry friction is resolved by retrofitting `GET /<entity>/next-identifier` helper endpoints to the eight existing prefixed-identifier governance entity types per DEC-043; the four new methodology entity types ship their helpers from the start. The methodology-entity-schema-spec guide section 6 is amended to capture the parent-prefix field-naming and source-first relationship-kind-naming conventions established by SES-012 and applied across SES-013/014/015. Captures six architectural decisions (DEC-065 through DEC-070) for recording in the v2 database after PRD approval. |
+| 0.4 | 05-12-26 | Fourth iteration of the v2 desktop UI. Ships four new methodology-entity panels (Domains, Entities, Processes, CRM Candidates) under a new Methodology sidebar group, completing the storage and UI surface needed for v2 to host Phase 1 methodology content for the upcoming CBM redo. Foundation infrastructure introduces the four entity types into `ENTITY_TYPES`, two new relationship kinds (`entity_scopes_to_domain`, `process_hands_off_to_process`) into `REFERENCE_RELATIONSHIPS`, and the corresponding `refs` CHECK-constraint extensions. The SES-010 identifier-asymmetry friction is resolved by retrofitting `GET /<entity>/next-identifier` helper endpoints to the eight existing prefixed-identifier governance entity types per DEC-043; the four new methodology entity types ship their helpers from the start. The methodology-entity-schema-spec guide section 6 is amended to capture the parent-prefix field-naming and source-first relationship-kind-naming conventions established by SES-012 and applied across SES-013/014/015. Captures six architectural decisions for recording in the v2 database after PRD approval (numbering settled at approval — see 05-14-26 entry). |
+| 0.4 | 05-14-26 | Approval pass after reconciliation conversation. Status transitions from "Draft — pending approval" to "Approved." Anticipated SES-016 and DEC-065 through DEC-070 numbering renumbered to SES-017 and DEC-068 through DEC-073 because the catalog ingestion build (executed 05-14-26) consumed SES-016 and DEC-065/066/067 during the gap between v0.4-build-planning conversation and approval. Three new planning items added to Section 2 Out of Scope (PI-013 Cross-Domain Service representation; PI-014 Catalog FK integration for methodology entities; PI-015 Methodology entity renderers) — surfaced by the reconciliation conversation as previously-untracked v0.5+ work. No content changes to schema specs or slice deliverables; v0.4 build prompts unblocked. |
 
 ---
 
@@ -49,12 +50,14 @@ Existing decisions still in force from prior releases:
 
 Forthcoming decisions (to be recorded after this PRD is approved, see Section 11):
 
-- **DEC-065** — Cross-spec consistency check accepted with three documented deviations as well-justified; spec guide section 6 amended to reflect parent-prefix field naming and source-first relationship-kind-naming conventions established by SES-012.
-- **DEC-066** — v0.4 slice breakdown: hybrid six-slice structure (foundation, four entity panels, closeout) mirroring v0.3's shape.
-- **DEC-067** — Coordinated create-then-attach reference-attachment flow for entity affiliations and process handoffs (Option A over create-with-attach Option B).
-- **DEC-068** — Slice A scope including the SES-010 `GET /<entity>/next-identifier` retrofit folded into foundation rather than split into a separate slice.
-- **DEC-069** — `crm_candidate` master-pane sort: simple identifier-ascending in v0.4 (Option A); status-then-identifier (Option B) reserved as v0.5+ candidate gated on CBM-redo signal.
-- **DEC-070** — PI-006 (governance-entity parent-prefix retrofit) and PI-008 (inbox folder watcher for close-out payloads) both deferred to v0.5+ outside v0.4 scope.
+- **DEC-068** — Cross-spec consistency check accepted with three documented deviations as well-justified; spec guide section 6 amended to reflect parent-prefix field naming and source-first relationship-kind-naming conventions established by SES-012.
+- **DEC-069** — v0.4 slice breakdown: hybrid six-slice structure (foundation, four entity panels, closeout) mirroring v0.3's shape.
+- **DEC-070** — Coordinated create-then-attach reference-attachment flow for entity affiliations and process handoffs (Option A over create-with-attach Option B).
+- **DEC-071** — Slice A scope including the SES-010 `GET /<entity>/next-identifier` retrofit folded into foundation rather than split into a separate slice.
+- **DEC-072** — `crm_candidate` master-pane sort: simple identifier-ascending in v0.4 (Option A); status-then-identifier (Option B) reserved as v0.5+ candidate gated on CBM-redo signal.
+- **DEC-073** — PI-006 (governance-entity parent-prefix retrofit) and PI-008 (inbox folder watcher for close-out payloads) both deferred to v0.5+ outside v0.4 scope.
+
+**Renumbering note.** The draft of this PRD anticipated DEC-065 through DEC-070 for the six decisions above. The catalog ingestion build (SES-016, executed 05-14-26) consumed DEC-065/066/067 between the v0.4-build-planning conversation and PRD approval, so the six decisions shift to DEC-068 through DEC-073. The renumbering is bookkeeping; no content change.
 
 ---
 
@@ -73,15 +76,15 @@ The following are required deliverables for v0.4.
    - Single Alembic migration extending three CHECK constraints on the `refs` table: `refs.source_type` and `refs.target_type` admit the four new entity-type values; `refs.relationship_kind` admits the two new vocabulary values.
    - The new Methodology sidebar group container (entries populate in subsequent slices).
    - `GET /<entity>/next-identifier` helper endpoints retrofitted to the eight existing prefixed-identifier governance entity types: `/decisions`, `/sessions`, `/risks`, `/planning_items`, `/topics`, `/references`, `/charter`, `/status`. Charter and status use version-numbered identifiers and the helper follows their access-layer increment pattern. Roughly ten lines per endpoint, mechanical.
-   - Spec guide section 6 amendment per DEC-065, committed to `methodology-entity-schema-spec-guide.md`.
+   - Spec guide section 6 amendment per DEC-068 (renumbered from anticipatory DEC-065), committed to `methodology-entity-schema-spec-guide.md`.
 
 3. **Domains panel — see Section 4.3 and `domain.md`.** Full CRUD on the `domain` entity type per `methodology-schema-specs/domain.md`. Master pane with columns Identifier / Name / Status / Updated; detail pane with identifier (read-only), name, purpose, description, notes (collapsed), status, `ReferencesSection`. Create/edit/delete dialogs as `EntityCrudDialog` and `EntityCrudDeleteDialog` subclasses. Status lifecycle and propose-verify gate enforced server-side. All eight standard endpoints (list, get, create, full replace, partial update, soft-delete, restore, next-identifier). 14 acceptance criteria from `domain.md` section 3.7.
 
-4. **Entities panel — see Section 4.4 and `entity.md`.** Full CRUD on the `entity` entity type per `methodology-schema-specs/entity.md`. Master pane with columns Identifier / Name / Status / Updated (no Domains column in v0.4; deferred to v0.5+ paired with PI-007); detail pane includes `ReferencesSection` rendering outgoing `entity_scopes_to_domain` affiliations. Create-then-attach flow per DEC-067: domain affiliations attach from the detail pane after entity creation, not from within the New dialog. 16 acceptance criteria from `entity.md` section 3.7.
+4. **Entities panel — see Section 4.4 and `entity.md`.** Full CRUD on the `entity` entity type per `methodology-schema-specs/entity.md`. Master pane with columns Identifier / Name / Status / Updated (no Domains column in v0.4; deferred to v0.5+ paired with PI-007); detail pane includes `ReferencesSection` rendering outgoing `entity_scopes_to_domain` affiliations. Create-then-attach flow per DEC-070: domain affiliations attach from the detail pane after entity creation, not from within the New dialog. 16 acceptance criteria from `entity.md` section 3.7.
 
-5. **Processes panel — see Section 4.5 and `process.md`.** Full CRUD on the `process` entity type per `methodology-schema-specs/process.md`. Master pane with columns Identifier / Name / Classification / Updated (no Domain column in v0.4; deferred per same posture as Entities). Detail pane includes the required `process_domain_identifier` FK combo (backed by `GET /domains`) and `ReferencesSection` rendering bidirectional `process_hands_off_to_process` references in separate "Hands off to" and "Receives from" sub-sections. `process_classification` carries the methodology's Principle 3 priority taxonomy (unclassified / mission_critical / supporting / deferred); no `status` field per the spec's deviation. Create-then-attach flow per DEC-067 for handoffs; the domain FK is a required scalar field in the create dialog because the record cannot be created without it. 15 acceptance criteria from `process.md` section 3.7.
+5. **Processes panel — see Section 4.5 and `process.md`.** Full CRUD on the `process` entity type per `methodology-schema-specs/process.md`. Master pane with columns Identifier / Name / Classification / Updated (no Domain column in v0.4; deferred per same posture as Entities). Detail pane includes the required `process_domain_identifier` FK combo (backed by `GET /domains`) and `ReferencesSection` rendering bidirectional `process_hands_off_to_process` references in separate "Hands off to" and "Receives from" sub-sections. `process_classification` carries the methodology's Principle 3 priority taxonomy (unclassified / mission_critical / supporting / deferred); no `status` field per the spec's deviation. Create-then-attach flow per DEC-070 for handoffs; the domain FK is a required scalar field in the create dialog because the record cannot be created without it. 15 acceptance criteria from `process.md` section 3.7.
 
-6. **CRM Candidates panel — see Section 4.6 and `crm_candidate.md`.** Full CRUD on the `crm_candidate` entity type per `methodology-schema-specs/crm_candidate.md`. Master pane with columns Identifier / Name / Status / Updated, default sort identifier-ascending per DEC-069. Detail pane shows `ReferencesSection` rendering inbound governance-entity citations only (no outgoing relationships in v0.4). Four-status enum with three terminal states; singleton-`selected` constraint enforced at the access layer on POST, PATCH/PUT, and restore; delete dialog includes a clarifying note distinguishing the soft-delete-for-authoring-error path from the transition-to-`removed` path for legitimate mid-engagement drops. 12 acceptance criteria from `crm_candidate.md` section 3.7.
+6. **CRM Candidates panel — see Section 4.6 and `crm_candidate.md`.** Full CRUD on the `crm_candidate` entity type per `methodology-schema-specs/crm_candidate.md`. Master pane with columns Identifier / Name / Status / Updated, default sort identifier-ascending per DEC-072. Detail pane shows `ReferencesSection` rendering inbound governance-entity citations only (no outgoing relationships in v0.4). Four-status enum with three terminal states; singleton-`selected` constraint enforced at the access layer on POST, PATCH/PUT, and restore; delete dialog includes a clarifying note distinguishing the soft-delete-for-authoring-error path from the transition-to-`removed` path for legitimate mid-engagement drops. 12 acceptance criteria from `crm_candidate.md` section 3.7.
 
 7. **About-dialog version bump and README release note.** `__version__` in `crmbuilder-v2/src/crmbuilder_v2/__init__.py` set to `"0.4.0"`. README at `crmbuilder-v2/README.md` gets a v0.4 release note matching v0.3's format.
 
@@ -100,6 +103,9 @@ The following are explicitly deferred to v0.5+ or later.
 - **Entity-schema v0.5+ extensions (variants, base-type/kind).** PI-010.
 - **Future scalar implementation-priority field on `process`.** PI-011.
 - **`crm_candidate` structured-metadata enums (vendor URL, hosting type, license type, price tier).** PI-012.
+- **Cross-Domain Service representation.** PI-013. The original methodology named Cross-Domain Service (Notes, Email, Calendar, Surveys) as a methodology entity type consumed across domains. The evolved methodology has not yet resolved whether Cross-Domain Service remains a distinct entity type, is subsumed into `process` once `process_kind` lands in v0.5+, or is dropped. Surfaced as untracked during the 05-14-26 reconciliation; placeholder PI pending CBM-redo signal.
+- **Catalog FK integration for methodology entities.** PI-014. The catalog ingestion PRD's section 3.3 sketched a hybrid pattern (`primary_catalog_entity_id` FK on methodology entities + DEC-006 universal references for weak ties). The four v0.4 schemas don't implement it because their thin shape doesn't carry the field-level entity definitions that would need it; when PI-004's `field` lands, the catalog FK question must be answered (integer FK to `catalog_entity.id` vs text FK to `catalog_entity.catalog_id` per the catalog DEC-065; FK on `entity` vs on `field`; weak-tie interaction). Surfaced as untracked during the 05-14-26 reconciliation.
+- **Methodology entity renderers.** PI-015. DEC-008 prescribes renders, not authored copies. v0.4 ships the storage and UI surface for methodology content but zero renderer work. .docx generation for Domain Inventory and Phase 1 Prioritized Backbone documents, YAML generation for the v1 deployment engine, and JSON exports for git-diff are all v0.5+ candidates. Likely a sizable workstream on its own. Surfaced as untracked during the 05-14-26 reconciliation.
 - **Option (C) of SES-010 resolution: optional identifier in POST bodies with server-side auto-assignment on omission.** PI-002. v0.4 ships option (B) — the `GET /<entity>/next-identifier` helpers — and PI-002 tracks the ergonomic upgrade for later.
 - **Three NOT_SUPPORTED v1 reimplementation workstreams** (saved views, duplicate-check rules, workflow managers). v1 application work, not v2.
 - **Global search, exports, bulk operations, drag-to-reparent on Topics, optimistic concurrency control.** Out of v0.4 scope, same posture as v0.3.
@@ -155,7 +161,7 @@ Section 2 "In Scope" item 2 lists the foundation deliverables. Slice A's Claude 
 
 - **The eight retrofitted `GET /<entity>/next-identifier` helpers** mirror the pattern already established for v0.3 governance entities' implicit identifier-assignment paths. Each returns `{"next": "<PREFIX>-<NNN>"}`. Charter and status helpers follow their versioned-identifier semantics rather than literal next-integer.
 
-- **The spec guide section 6 amendment** commits the diff per DEC-065: scope-note paragraph at section head; three table rows updated to flag methodology-only scope for status field name, relationship-kind naming, and field naming; one sentence appended to the closing paragraph acknowledging the three documented cross-spec deviations.
+- **The spec guide section 6 amendment** commits the diff per DEC-068: scope-note paragraph at section head; three table rows updated to flag methodology-only scope for status field name, relationship-kind naming, and field naming; one sentence appended to the closing paragraph acknowledging the three documented cross-spec deviations.
 
 ### 4.3 Domains panel
 
@@ -173,7 +179,7 @@ Implements `methodology-schema-specs/entity.md` end-to-end. Integration points b
 
 - Panel registered at Methodology sidebar position #2.
 - The slice that builds this panel (Slice C) is the first end-to-end exercise of the `entity_scopes_to_domain` vocabulary kind registered in Slice A. The cascading vocab dialog (v0.3's `ReferenceCreateDialog`) correctly enumerates the new kind for the `(entity, domain)` source-target pair because `RELATIONSHIP_RULES` recomputed at module load.
-- Create-then-attach flow per DEC-067: the New Entity dialog does not include a multi-select for domain affiliations. After the entity record is created, the user adds affiliations from the detail pane's `ReferencesSection` "Add reference" affordance, which opens the cascading vocab dialog with the source pre-populated to the just-created entity.
+- Create-then-attach flow per DEC-070: the New Entity dialog does not include a multi-select for domain affiliations. After the entity record is created, the user adds affiliations from the detail pane's `ReferencesSection` "Add reference" affordance, which opens the cascading vocab dialog with the source pre-populated to the just-created entity.
 - Detail pane renders outgoing `entity_scopes_to_domain` references plus any inbound references (none registered in v0.4; the widget is present for v0.5+ future kinds).
 
 ### 4.5 Processes panel
@@ -183,7 +189,7 @@ Implements `methodology-schema-specs/process.md` end-to-end. Integration points 
 - Panel registered at Methodology sidebar position #3.
 - Master pane column #3 is `process_classification` (not `process_status`; the spec deviates on status per DEC-056). Display values render as-is from the enum.
 - Create dialog includes a required FK combo for `process_domain_identifier` backed by `GET /domains` enumerating live records only. The record cannot be submitted without a domain selection. Default selection is the first live domain alphabetically or the user's last-selected domain if a per-session memory exists.
-- Create-then-attach flow per DEC-067: process-to-process handoffs attach from the detail pane after process creation. The cascading vocab dialog enumerates `process_hands_off_to_process` for the `(process, process)` source-target pair.
+- Create-then-attach flow per DEC-070: process-to-process handoffs attach from the detail pane after process creation. The cascading vocab dialog enumerates `process_hands_off_to_process` for the `(process, process)` source-target pair.
 - Detail pane `ReferencesSection` widget renders two distinct sub-sections: "Hands off to" (this process is the source) and "Receives from" (this process is the target). Both render `process_hands_off_to_process` edges in their respective directions.
 - Domain re-affiliation permitted via PATCH/PUT; the spec's section 3.5.4 describes the UI surface for this (warning + restore-or-re-affiliate offer if affiliated domain is soft-deleted; the v0.4 build implements the warning as inline text on the detail pane, with no separate dialog).
 
@@ -192,7 +198,7 @@ Implements `methodology-schema-specs/process.md` end-to-end. Integration points 
 Implements `methodology-schema-specs/crm_candidate.md` end-to-end. Integration points beyond what the spec covers:
 
 - Panel registered at Methodology sidebar position #4.
-- Master pane columns Identifier / Name / Status / Updated; default sort by identifier ascending per DEC-069. Terminal-state records (`selected`, `declined`, `removed`) interleave with `active` by identifier in v0.4; status-then-identifier ordering reserved as a v0.5+ candidate.
+- Master pane columns Identifier / Name / Status / Updated; default sort by identifier ascending per DEC-072. Terminal-state records (`selected`, `declined`, `removed`) interleave with `active` by identifier in v0.4; status-then-identifier ordering reserved as a v0.5+ candidate.
 - Status combo on detail pane and edit dialog restricts available choices to valid successors of the current status per the spec's 3.4.1 table. Terminal-state records show only the current value in their combo (effectively read-only post-transition).
 - Singleton-`selected` enforcement surfaces inline on the dialog when a user attempts an action that violates the constraint. The 422 error envelope's `existing` field names the already-selected record; the dialog's inline error text reads "CRM-NNN is already selected — change its status first."
 - Delete dialog includes a clarifying note distinguishing the two paths. Proposed wording (slice E refines as needed):
@@ -200,7 +206,7 @@ Implements `methodology-schema-specs/crm_candidate.md` end-to-end. Integration p
 
 ### 4.7 Coordinated create-then-attach reference-attachment flow
 
-Per DEC-067, both the Entities panel (Slice C) and the Processes panel (Slice D) implement reference-attachment as a two-stage operation: (a) the New dialog creates the record only, with fields covering only scalar attributes (including required FK fields like `process_domain_identifier`, which are scalars not references); (b) after the record exists, the user attaches references from the detail pane via the existing "Add reference" affordance that opens v0.3's cascading vocab dialog.
+Per DEC-070, both the Entities panel (Slice C) and the Processes panel (Slice D) implement reference-attachment as a two-stage operation: (a) the New dialog creates the record only, with fields covering only scalar attributes (including required FK fields like `process_domain_identifier`, which are scalars not references); (b) after the record exists, the user attaches references from the detail pane via the existing "Add reference" affordance that opens v0.3's cascading vocab dialog.
 
 The cascading vocab dialog's existing source-pre-population path (v0.3 slice C) supports the new vocab kinds without modification because `RELATIONSHIP_RULES` recomputes from `_kinds_for_pair` and `ENTITY_TYPES` at module load. No new dialog code is needed for the two new vocab kinds; the foundation work in Slice A makes them available everywhere the dialog renders.
 
@@ -321,7 +327,7 @@ All methodology-entity fields including identifier and timestamps are prefixed w
 | The cascading vocab dialog renders incorrectly for new pairs because of an ENTITY_TYPES vs RELATIONSHIP_RULES mismatch | Low | High | Slice C is the first slice that exercises the new vocab kind through the UI; the slice's smoke test opens the dialog with `(entity, domain)` source-target combination and asserts `entity_scopes_to_domain` appears in the kind combo. Slice D does the equivalent for `(process, process)`. |
 | Concurrent identifier-assignment race on the new entity types produces duplicate identifiers | Low | High | Each of slices B–E carries a concurrent-insert test per its acceptance criterion #7 (or #8 for process). The test fails the slice if duplicates occur. The mechanism (row-level locking, optimistic retry) is implementation-level and follows v0.3's existing pattern; no new mechanism invented. |
 | Singleton-`selected` enforcement on `crm_candidate` allows a race where two concurrent POSTs both attempt to insert `selected` and both succeed because the check runs before either inserts | Low | High | Slice E carries an explicit concurrent-POST test for two `selected` insertions. The mechanism is the same access-layer transaction pattern v3 uses for case-insensitive uniqueness; locking happens at the table level. |
-| The create-then-attach flow generates more gestures than CBM-redo Phase 1 work can comfortably tolerate | Medium | Low | DEC-067 explicitly notes create-with-attach is a clean v0.5 upgrade if CBM redo surfaces friction. The deferral is intentional; the daily-driver test happens in real use. |
+| The create-then-attach flow generates more gestures than CBM-redo Phase 1 work can comfortably tolerate | Medium | Low | DEC-070 explicitly notes create-with-attach is a clean v0.5 upgrade if CBM redo surfaces friction. The deferral is intentional; the daily-driver test happens in real use. |
 | Domain re-affiliation on `process` records (PATCH `process_domain_identifier`) breaks existing handoff renderings | Low | Medium | `process.md` section 3.5.4 permits re-affiliation; the detail pane re-renders on file-watch refresh. Slice D's tests cover the re-affiliation case explicitly. |
 | The spec guide section 6 amendment lands but a downstream reader misses the methodology-only scope note and applies the conventions retroactively to governance entities | Low | Low | The scope-note paragraph is at the section head; the three updated rows carry "(methodology only)" labels. PI-006 tracks the eventual governance retrofit; if a reader confuses the two, the cross-references in the closing-paragraph addendum point to the deviation rationale. |
 
@@ -343,22 +349,29 @@ All methodology-entity fields including identifier and timestamps are prefixed w
 
 ## 11. Decisions to Be Recorded
 
-Per DEC-014 (every v2 conversation produces a session record) and DEC-025 (conversation_reference convention + seed-prompt-in-topics_covered), the v0.4-build-planning conversation that produced this PRD is captured in the v2 database at the conversation's actual close.
+Per DEC-014 (every v2 conversation produces a session record) and DEC-025 (conversation_reference convention + seed-prompt-in-topics_covered), the v0.4-build-planning conversation that produced this PRD plus the 05-14-26 reconciliation/approval conversation that finalized it are captured in the v2 database at this PRD's closeout.
 
-Records to write at conversation close:
+**Renumbering note.** The draft of this PRD anticipated SES-016 for the v0.4-build-planning conversation and DEC-065 through DEC-070 for its decisions. The catalog ingestion build (executed 05-14-26) consumed SES-016 and DEC-065/066/067 before this PRD reached approval. The records below use the renumbered identifiers. The renumbering is bookkeeping; no content change to the decisions themselves.
 
-- **SES-016** — UI v0.4 build planning. Status: Complete. `conversation_reference`: descriptive text per DEC-025 (`"Claude.ai planning conversation that produced ui-PRD-v0.4.md, ui-v0.4-implementation-plan.md, the CLAUDE-CODE-PROMPT-v2-ui-v0.4 slice series, and the methodology-entity-schema-spec-guide section 6 amendment under PRDs/product/crmbuilder-v2/. No transcript preserved per DEC-025."`). `topics_covered` opens with the verbatim seed prompt rendered as `Seed prompt: "<kickoff content>"`, followed by a structured summary of the cross-spec consistency check outcome and the six architectural decisions resolved.
-- **DEC-065** — Cross-spec consistency check accepted with three documented deviations as well-justified; spec guide section 6 amended per the workstream-established parent-prefix and source-first conventions.
-- **DEC-066** — v0.4 slice breakdown: hybrid six-slice structure (foundation + four entity panels + closeout).
-- **DEC-067** — Coordinated create-then-attach reference-attachment flow (Option A) for entity affiliations and process handoffs.
-- **DEC-068** — Slice A scope including the SES-010 next-identifier helper retrofit folded into foundation.
-- **DEC-069** — `crm_candidate` master-pane sort: simple identifier-ascending in v0.4; status-then-identifier reserved as v0.5+ candidate.
-- **DEC-070** — PI-006 and PI-008 both deferred to v0.5+ outside v0.4 scope.
-- **References** — `decided_in` from SES-016 to each of DEC-065 through DEC-070.
+Records to write at PRD closeout:
 
-A status update reflecting that UI v0.4 is now in build (slice A in progress, phase `"v0.4 in build"`, version label incremented from `1.0` to whatever the closeout sequence produces) is also appropriate at the same time.
+- **SES-017** — UI v0.4 build planning. Status: Complete. `conversation_reference`: descriptive text per DEC-025 (`"Claude.ai planning conversation that produced ui-PRD-v0.4.md (draft), ui-v0.4-implementation-plan.md, the CLAUDE-CODE-PROMPT-v2-ui-v0.4 slice series, and the methodology-entity-schema-spec-guide section 6 amendment under PRDs/product/crmbuilder-v2/. Finalized 05-14-26 in a separate reconciliation conversation. No transcript preserved per DEC-025."`). `topics_covered` opens with the verbatim seed prompt rendered as `Seed prompt: "<kickoff content>"`, followed by a structured summary of the cross-spec consistency check outcome and the six architectural decisions resolved.
+- **SES-018** — v0.4 PRD reconciliation and approval. Status: Complete. `conversation_reference`: descriptive text per DEC-025 (`"Claude.ai reconciliation conversation on 05-14-26 that detected the methodology-entity-schema-planning-prompt was stale relative to repo state, surveyed the in-flight v0.4 work, and approved ui-PRD-v0.4.md with renumbering deltas. Produced edits to ui-PRD-v0.4.md, ui-v0.4-implementation-plan.md, and methodology-entity-schema-spec-guide.md."`). `topics_covered` opens with the verbatim seed prompt; followed by reconciliation findings (workstream state, ID-collision analysis, three untracked-PI surfaces).
+- **DEC-068** — Cross-spec consistency check accepted with three documented deviations as well-justified; spec guide section 6 amended per the workstream-established parent-prefix and source-first conventions.
+- **DEC-069** — v0.4 slice breakdown: hybrid six-slice structure (foundation + four entity panels + closeout).
+- **DEC-070** — Coordinated create-then-attach reference-attachment flow (Option A) for entity affiliations and process handoffs.
+- **DEC-071** — Slice A scope including the SES-010 next-identifier helper retrofit folded into foundation.
+- **DEC-072** — `crm_candidate` master-pane sort: simple identifier-ascending in v0.4; status-then-identifier reserved as v0.5+ candidate.
+- **DEC-073** — PI-006 and PI-008 both deferred to v0.5+ outside v0.4 scope.
+- **DEC-074** — v0.4 PRD approval. Records the SES-018 outcome: PRD status transition from "Draft — pending approval" to "Approved" after reconciliation; SES/DEC renumbering applied; three new PIs (PI-013, PI-014, PI-015) authored; v0.4 build prompts unblocked. Links to SES-018 via `decided_in`.
+- **PI-013** — Cross-Domain Service representation. Description per Section 2 Out of Scope.
+- **PI-014** — Catalog FK integration for methodology entities. Description per Section 2 Out of Scope.
+- **PI-015** — Methodology entity renderers. Description per Section 2 Out of Scope.
+- **References** — `decided_in` from SES-017 to each of DEC-068 through DEC-073; `decided_in` from SES-018 to DEC-074; `is_about` from SES-018 to each of PI-013, PI-014, PI-015 (the reconciliation conversation surfaced them).
 
-The PI sizing decisions in DEC-070 do not author new PIs because PI-006 and PI-008 already exist in the database from prior workstream conversations; DEC-070 records the deferral choice and links to the existing PIs.
+A status update reflecting that UI v0.4 is now in build (phase `"v0.4 in build"`, version label incremented from `1.0` to whatever the closeout sequence produces) is also appropriate at the same time.
+
+The PI sizing decisions in DEC-073 do not author new PIs because PI-006 and PI-008 already exist in the database from prior workstream conversations; DEC-073 records the deferral choice and links to the existing PIs. The three PIs authored at this closeout (PI-013, PI-014, PI-015) are net-new; they were surfaced as untracked during the 05-14-26 reconciliation conversation.
 
 ---
 
