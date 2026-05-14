@@ -1,11 +1,19 @@
 # CRMBuilder v2 — UI v0.4 Implementation Plan
 
 **Version:** 0.1
-**Last Updated:** 05-12-26 10:30
-**Status:** Draft — pending approval
+**Last Updated:** 05-14-26 14:00
+**Status:** Approved
 **Companion PRD:** `ui-PRD-v0.4.md`
 **Predecessor plan:** `ui-v0.3-implementation-plan.md` (shipped per SES-009)
 **Executing prompt series:** `prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.4-{A..F}-*.md`
+
+---
+
+## Change Log
+
+**Version 0.1 (05-12-26 10:30):** Initial draft. Six-slice breakdown for v0.4 build: foundation, four entity panels (Domains, Entities, Processes, CRM Candidates), closeout. Migration ordering enforced through slice dependency chain.
+
+**Version 0.1 (05-14-26 14:00):** Status transitions from "Draft — pending approval" to "Approved" alongside PRD v0.4 approval. Section 8 (Closeout Discipline) renumbered to reflect SES-016 → SES-017 collision-resolution (catalog ingestion build consumed SES-016 on 05-14-26) and the corresponding DEC renumbering from DEC-065 → DEC-068 through DEC-073, plus a new DEC-074 for the approval and a new SES-018 for the reconciliation conversation. Three new planning items (PI-013, PI-014, PI-015) added to the closeout records list per the PRD's matching addition.
 
 ---
 
@@ -292,8 +300,8 @@ Each slice lands as one commit (or a small handful) prefixed `v2:` per the v2 co
 - Alembic migration `0NNN_v0_4_create_entities_table.py`: creates the `entities` table per `entity.md` section 3.2 — eight columns with constraints (identifier format `^ENT-\d{3}$`, name case-insensitive uniqueness, status enum). Forward and backward reversible.
 - `access/entity.py`: repository with the eight standard methods. Validation per spec section 3.5: identifier format, name uniqueness, status enum, status-transition validation per the 3.4.1 propose-verify gate (mirrors domain's pattern), soft-delete semantics including non-cascading `entity_scopes_to_domain` references per spec 3.4.6. Status independence from affiliation status per spec 3.4.3.
 - `api/routers/entities.py`: eight standard endpoints per spec section 3.5. Decomposed reference handling: no inline-affiliation convenience endpoints; affiliations attach via the existing `POST /references` route.
-- `ui/panels/entities.py`: `ListDetailPanel` subclass registered at Methodology sidebar position #2. Master pane columns Identifier / Name / Status / Updated (no Domains column in v0.4 per spec 3.6.2 and DEC-069's structural parallel). Right-click context menu standard. Detail pane: identifier (read-only), name, description, notes (collapsed), status combo, `ReferencesSection` widget rendering outgoing `entity_scopes_to_domain` affiliations plus any inbound kinds (none in v0.4; widget is present for v0.5+ future kinds).
-- `ui/dialogs/entity_crud.py`: `EntityCrudDialog` and `EntityCrudDeleteDialog` subclasses. Per DEC-067 create-then-attach flow: no domain multi-select in the New dialog; affiliations attach from the detail pane after creation via the existing v0.3 `ReferenceCreateDialog`.
+- `ui/panels/entities.py`: `ListDetailPanel` subclass registered at Methodology sidebar position #2. Master pane columns Identifier / Name / Status / Updated (no Domains column in v0.4 per spec 3.6.2 and DEC-072's structural parallel). Right-click context menu standard. Detail pane: identifier (read-only), name, description, notes (collapsed), status combo, `ReferencesSection` widget rendering outgoing `entity_scopes_to_domain` affiliations plus any inbound kinds (none in v0.4; widget is present for v0.5+ future kinds).
+- `ui/dialogs/entity_crud.py`: `EntityCrudDialog` and `EntityCrudDeleteDialog` subclasses. Per DEC-070 create-then-attach flow: no domain multi-select in the New dialog; affiliations attach from the detail pane after creation via the existing v0.3 `ReferenceCreateDialog`.
 - `ui/client.py` extensions: eight new methods for Entities.
 - Tests: `tests/crmbuilder_v2/access/test_entity.py`, `tests/crmbuilder_v2/api/test_entities_api.py`, `tests/crmbuilder_v2/ui/test_entities_panel.py`. Cover all 16 acceptance criteria from `entity.md` section 3.7. Key slice-specific tests:
   - Acceptance #14: `entity_scopes_to_domain` registered, `_kinds_for_pair((entity, domain))` correct, POST `/references` with `(entity, domain)` and an unsupported kind returns 422, direct DB insert into `refs` with an unknown kind rejected.
@@ -318,7 +326,7 @@ Each slice lands as one commit (or a small handful) prefixed `v2:` per the v2 co
 - `access/process.py`: repository with the eight standard methods. Validation per spec sections 3.5.3, 3.5.4: identifier format, name uniqueness (engagement-global, case-insensitive), classification enum, classification-transition validation per spec 3.4.2 (one-way out of `unclassified`; free movement among the three classified values), domain-FK existence validation against live `domain` records, soft-delete semantics including non-cascading handoff references.
 - `api/routers/processes.py`: eight standard endpoints per spec section 3.5. Classification-transition errors return `{"error": "invalid_classification_transition", "from": ..., "to": ...}`. Domain-FK errors return `{"error": "invalid_domain_reference", "domain_identifier": ...}`. Decomposed handoff handling: no inline-handoff convenience endpoints.
 - `ui/panels/processes.py`: `ListDetailPanel` subclass registered at Methodology sidebar position #3. Master pane columns Identifier / Name / Classification / Updated (no Domain column in v0.4). Detail pane: identifier (read-only), name, domain combo backed by `GET /domains` listing live records only, purpose, classification combo with the four enum values, classification-rationale with dynamic placeholder per classification, notes (collapsed), `ReferencesSection` widget with separate "Hands off to" and "Receives from" sub-sections rendering `process_hands_off_to_process` edges in each direction.
-- `ui/dialogs/process_crud.py`: `EntityCrudDialog` and `EntityCrudDeleteDialog` subclasses. Per DEC-067 create-then-attach flow for handoffs; domain FK combo is a required scalar field IN the create dialog (record cannot be submitted without it). Default selection follows spec 3.6.4 (first live domain alphabetically, or per-session memory if implemented per Open Question 3 of the PRD).
+- `ui/dialogs/process_crud.py`: `EntityCrudDialog` and `EntityCrudDeleteDialog` subclasses. Per DEC-070 create-then-attach flow for handoffs; domain FK combo is a required scalar field IN the create dialog (record cannot be submitted without it). Default selection follows spec 3.6.4 (first live domain alphabetically, or per-session memory if implemented per Open Question 3 of the PRD).
 - `ui/client.py` extensions: eight new methods for Processes.
 - Tests: standard set covering all 15 acceptance criteria from `process.md` section 3.7. Key slice-specific tests:
   - Acceptance #4: classification enum + transition validation including the one-way-out-of-unclassified rule.
@@ -343,7 +351,7 @@ Each slice lands as one commit (or a small handful) prefixed `v2:` per the v2 co
 - Alembic migration `0NNN_v0_4_create_crm_candidates_table.py`: creates the `crm_candidates` table per `crm_candidate.md` section 3.2 — eight columns with constraints (identifier format `^CRM-\d{3}$`, name case-insensitive uniqueness, four-value `crm_candidate_status` enum). Forward and backward reversible.
 - `access/crm_candidate.py`: repository with the eight standard methods. Validation per spec sections 3.5.3, 3.5.4: identifier format, name uniqueness, status enum, status-transition validation per spec 3.4.1 (no successors from terminal states), singleton-`selected` enforcement on POST, PATCH/PUT, and POST `/restore` per spec 3.5.4.
 - `api/routers/crm_candidates.py`: eight standard endpoints per spec section 3.5. Status-transition errors return `{"error": "invalid_status_transition", "from": ..., "to": ...}`. Singleton-`selected` violations return `{"error": "selected_candidate_already_exists", "existing": "<CRM-NNN>"}`.
-- `ui/panels/crm_candidates.py`: `ListDetailPanel` subclass registered at Methodology sidebar position #4. Master pane columns Identifier / Name / Status / Updated, default sort by Identifier ascending per DEC-069. Detail pane: identifier (read-only), name, fit-reason, notes (collapsed), status combo (restricted to valid successors of current status), `ReferencesSection` widget rendering inbound governance-entity citations only.
+- `ui/panels/crm_candidates.py`: `ListDetailPanel` subclass registered at Methodology sidebar position #4. Master pane columns Identifier / Name / Status / Updated, default sort by Identifier ascending per DEC-072. Detail pane: identifier (read-only), name, fit-reason, notes (collapsed), status combo (restricted to valid successors of current status), `ReferencesSection` widget rendering inbound governance-entity citations only.
 - `ui/dialogs/crm_candidate_crud.py`: `EntityCrudDialog` and `EntityCrudDeleteDialog` subclasses. Status combo offers all four enum values in create dialog (subject to singleton-`selected` check). Delete dialog includes the clarifying note distinguishing soft-delete-for-authoring-error from transition-to-removed per PRD section 4.6 (wording revisable during slice execution per PRD Open Question 2).
 - `ui/client.py` extensions: eight new methods for CRM Candidates.
 - Tests: standard set covering all 12 acceptance criteria from `crm_candidate.md` section 3.7. Key slice-specific tests:
@@ -358,7 +366,7 @@ Each slice lands as one commit (or a small handful) prefixed `v2:` per the v2 co
 - All 12 acceptance criteria from `crm_candidate.md` section 3.7 pass.
 - Slice A, B, C, D tests continue to pass.
 
-**Out of slice:** structured metadata fields (deferred to v0.5+ per PI-012); master-pane status-then-identifier sort (Option B reserved as v0.5+ candidate per DEC-069).
+**Out of slice:** structured metadata fields (deferred to v0.5+ per PI-012); master-pane status-then-identifier sort (Option B reserved as v0.5+ candidate per DEC-072).
 
 ---
 
@@ -428,10 +436,12 @@ Slice F sets `__version__` to `"0.4.0"`. No other file carries the version.
 
 After Slice F passes, the operator (Doug) writes:
 
-- The session record for the v0.4-build-planning conversation (SES-016) through the v0.3 desktop New Session dialog per DEC-029. The kickoff prompt is captured verbatim in `topics_covered`; the conversation summary follows the seed prompt.
+- The session record for the v0.4-build-planning conversation (SES-017) through the v0.3 desktop New Session dialog per DEC-029. The kickoff prompt is captured verbatim in `topics_covered`; the conversation summary follows the seed prompt. **Renumbering note:** the draft anticipated SES-016 for this record; SES-016 was consumed by the catalog ingestion build executed 05-14-26, so this record claims SES-017 instead.
+- The session record for the 05-14-26 reconciliation/approval conversation (SES-018) through the same dialog. Same convention.
 - The status-entity versioned-replace update from "v0.3 complete" to "v0.4 complete" through the v0.3 desktop versioned-replace dialog.
 - Each session record for any Claude Code execution conversation that contributed to v0.4 build, written at the close of that conversation through the desktop dialog.
-- The six DEC-NNN records (DEC-065 through DEC-070) authored via direct API per the PRD's section 11.
+- The seven DEC-NNN records (DEC-068 through DEC-074) authored via direct API per the PRD's section 11. **Renumbering note:** the draft anticipated DEC-065 through DEC-070; renumbered to DEC-068 through DEC-073 (the original six v0.4-build-planning decisions) plus DEC-074 (the 05-14-26 approval decision).
+- Three new planning items (PI-013 Cross-Domain Service representation; PI-014 Catalog FK integration for methodology entities; PI-015 Methodology entity renderers) authored via direct API per the PRD's section 11.
 
 None of the above are produced inside Claude Code slices; all are operator-authored after the slice work completes.
 

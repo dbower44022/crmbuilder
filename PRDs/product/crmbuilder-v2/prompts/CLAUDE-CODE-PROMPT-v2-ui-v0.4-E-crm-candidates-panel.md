@@ -233,7 +233,7 @@ Doug pushes. Do NOT push.
 - Do NOT permit two live records to both carry `crm_candidate_status='selected'`. The singleton check fires on all three write operations.
 - Do NOT remove the singleton check from POST `/restore`. A soft-deleted `selected` record cannot be restored if another `selected` record is now live.
 - Do NOT omit the clarifying note on the delete dialog. The note is required per PRD section 4.6; revise the wording if it reads awkwardly but don't drop it.
-- Do NOT write SES-016 or any DEC-NNN records.
+- Do NOT write any session, decision, or planning-item records — see `ui-PRD-v0.4.md` section 11 for the canonical list (SES-017, SES-018, DEC-068 through DEC-074, PI-013/014/015). Doug authors those at v0.4 closeout through the desktop dialog.
 - Do NOT bump `__version__` or update the README — those land in slice F.
 
 ---

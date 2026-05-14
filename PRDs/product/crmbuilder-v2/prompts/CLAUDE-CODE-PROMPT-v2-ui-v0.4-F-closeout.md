@@ -1,6 +1,6 @@
 # CLAUDE-CODE-PROMPT-v2-ui-v0.4-F-closeout
 
-**Last Updated:** 05-12-26 10:30
+**Last Updated:** 05-14-26 14:00
 **Series:** v2-ui-v0.4
 **Slice:** F (6 of 6)
 **Status:** Ready to execute
@@ -17,7 +17,7 @@ This is the sixth and final slice of v0.4. Slice F is mechanical closeout — no
 3. **Final regression test pass.** `uv run pytest tests/crmbuilder_v2/ -v` returns green across the cumulative suite (v0.3 tests + all new v0.4 tests from slices A–E).
 4. **Final integration smoke verification.** Open the desktop app and confirm the Methodology sidebar group renders all four entries; each panel is operable; the About dialog shows `0.4.0`.
 
-After this slice, v0.4 is shipped. Doug authors closing artifacts (SES-016 session record, six DEC-NNN records for the planning conversation's architectural decisions, status-entity update from "v0.3 complete" to "v0.4 complete") through the desktop UI per the session-record-at-close pattern.
+After this slice, v0.4 is shipped. Doug authors closing artifacts (SES-017 session record for v0.4-build-planning, SES-018 session record for the 05-14-26 reconciliation/approval conversation, DEC-068 through DEC-074, three new planning items PI-013/014/015, status-entity update from "v0.3 complete" to "v0.4 complete") through the desktop UI per the session-record-at-close pattern. See `ui-PRD-v0.4.md` section 11 for the canonical list — the numbering was renumbered at PRD approval on 05-14-26 because the catalog ingestion build consumed SES-016 and DEC-065/066/067 between v0.4 planning and approval.
 
 ## Project context
 
@@ -150,16 +150,19 @@ This prompt ends with the commit. The remaining closing work is operator-authore
 
 1. **Doug pushes** the slice F commit to origin.
 2. **Doug writes session records** through the desktop New Session dialog at the close of each Claude Code execution conversation that contributed to v0.4 build (one per slice, six total for v0.4 build conversations). Each session record uses DEC-025 conventions: `conversation_reference` is descriptive text, `topics_covered` opens with the verbatim seed prompt.
-3. **Doug writes SES-016** — the session record for the v0.4-build-planning conversation that produced this PRD, plan, and the six slice prompts. SES-016 uses the same DEC-025 conventions. `conversation_reference`: descriptive text per the PRD's section 11. `topics_covered`: opens with the verbatim kickoff prompt followed by a structured summary of the cross-spec consistency check outcome and the six architectural decisions.
-4. **Doug writes DEC-065 through DEC-070** — the six architectural decision records from the v0.4-build-planning conversation. Verbatim body text per the planning conversation's record. Each decision authored via direct API or MCP.
-5. **Doug writes six `decided_in` references** from SES-016 to each of DEC-065 through DEC-070.
-6. **Doug updates the status entity** from "v0.3 complete" to "v0.4 complete" through the desktop versioned-replace dialog. Version number incremented per the existing pattern.
+3. **Doug writes SES-017** — the session record for the v0.4-build-planning conversation that produced this PRD, plan, and the six slice prompts. (Originally anticipated as SES-016; renumbered at 05-14-26 PRD approval.) `conversation_reference`: descriptive text per the PRD's section 11. `topics_covered`: opens with the verbatim kickoff prompt followed by a structured summary of the cross-spec consistency check outcome and the six architectural decisions.
+4. **Doug writes SES-018** — the session record for the 05-14-26 reconciliation/approval conversation. `conversation_reference` and `topics_covered` per the PRD's section 11.
+5. **Doug writes DEC-068 through DEC-073** — the six architectural decision records from the v0.4-build-planning conversation (originally drafted as DEC-065 through DEC-070; renumbered at 05-14-26 PRD approval). Verbatim body text per the planning conversation's record. Each decision authored via direct API or MCP.
+6. **Doug writes DEC-074** — the v0.4 PRD approval decision, capturing the SES-018 reconciliation outcome.
+7. **Doug writes three planning items PI-013, PI-014, PI-015** — Cross-Domain Service representation, Catalog FK integration for methodology entities, Methodology entity renderers. Each carries the description from `ui-PRD-v0.4.md` section 2 Out of Scope.
+8. **Doug writes the `decided_in` references** — from SES-017 to each of DEC-068 through DEC-073; from SES-018 to DEC-074. Plus `is_about` references from SES-018 to each of PI-013, PI-014, PI-015 (the reconciliation conversation surfaced them).
+9. **Doug updates the status entity** from "v0.3 complete" to "v0.4 complete" through the desktop versioned-replace dialog. Version number incremented per the existing pattern.
 
 None of these are Claude Code work; all are operator-authored after this slice's commit.
 
 ## What NOT to do
 
-- Do NOT write SES-016 or any DEC-NNN records. Operator-authored per the session-record-at-close pattern.
+- Do NOT write any session or decision records (SES-017, SES-018, DEC-068 through DEC-074, PI-013/014/015). Operator-authored per the session-record-at-close pattern.
 - Do NOT update the status entity. Operator-authored through the versioned-replace dialog.
 - Do NOT bump version anywhere other than `crmbuilder-v2/src/crmbuilder_v2/__init__.py`. The v2 convention has a single source of truth.
 - Do NOT add new tests. Slice F is no-feature; the cumulative test pass is the gate.

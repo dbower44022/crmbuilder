@@ -257,7 +257,7 @@ Doug pushes. Do NOT push.
 - Do NOT add a master-pane Domain column. Deferred per PI-007 / PI-009.
 - Do NOT add fields beyond the section-3.2 column inventory (no steps, actors, fields-touched, triggers, outcomes, cycle time, frequency, volume, sub-process hierarchy). Deferred to v0.5+ per PI-005.
 - Do NOT introduce a separate scalar implementation-priority field alongside classification. Deferred per PI-011.
-- Do NOT write SES-016 or any DEC-NNN records.
+- Do NOT write any session, decision, or planning-item records — see `ui-PRD-v0.4.md` section 11 for the canonical list (SES-017, SES-018, DEC-068 through DEC-074, PI-013/014/015). Doug authors those at v0.4 closeout through the desktop dialog.
 - Do NOT bump `__version__` or update the README.
 
 ---
