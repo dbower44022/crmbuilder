@@ -479,3 +479,79 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
         return await _unwrap(
             await http.get(f"/references/touching/{entity_type}/{entity_id}")
         )
+
+    # ---------- Base entity catalog ----------
+
+    @server.tool()
+    async def catalog_search(
+        query: str,
+        limit: int = 10,
+        include_attributes: bool = True,
+        include_synonyms: bool = True,
+    ) -> Any:
+        """Search the base entity catalog (42 entries, 415 attributes) by text.
+
+        Matches against entity names, attribute names, and synonyms. Returns
+        a ranked list of hits with brief context for each. Use this when the
+        user describes a concept ("donation", "company hierarchy", "support
+        case") and you want to surface the catalog entries that match.
+        """
+        params = {
+            "q": query,
+            "limit": limit,
+            "include_attributes": str(include_attributes).lower(),
+            "include_synonyms": str(include_synonyms).lower(),
+        }
+        return await _unwrap(await http.get("/catalog/search", params=params))
+
+    @server.tool()
+    async def catalog_get_entity(catalog_id: str) -> Any:
+        """Return one catalog entity with all nested data (systems, attributes,
+        relationships, sources, synonyms).
+
+        Use this once you have a catalog_id (e.g. from catalog_search) to
+        pull the full entity definition — useful for reference-library
+        operations during methodology entity drafting.
+        """
+        return await _unwrap(await http.get(f"/catalog/entities/{catalog_id}"))
+
+    @server.tool()
+    async def catalog_get_cross_system_map(
+        catalog_id: str,
+        target_system: str | None = None,
+    ) -> Any:
+        """Cross-system mapping for one catalog entity.
+
+        Returns the entity-level name/api_name plus per-attribute name/api_name/
+        status (standard|custom|absent) for either all 7 surveyed systems
+        (``target_system=None``) or a single specified system. Useful at
+        deployment-configuration time to translate domain entity references
+        into the target CRM's native naming.
+        """
+        path = f"/catalog/cross-system-map/{catalog_id}"
+        if target_system:
+            return await _unwrap(
+                await http.get(path, params={"system": target_system})
+            )
+        return await _unwrap(await http.get(path))
+
+    @server.tool()
+    async def catalog_gap_check(
+        based_on_catalog_id: str,
+        draft_attribute_names: list[str],
+        min_systems: int = 5,
+    ) -> Any:
+        """Surface catalog attributes the draft is missing.
+
+        Compares a draft entity's attribute list against a base catalog
+        entity and returns the catalog attributes that are ``standard`` in
+        ``min_systems`` or more surveyed systems but NOT in the draft. Use
+        during Entity PRD drafting to prompt the operator about commonly-
+        present attributes they may have overlooked.
+        """
+        body = {
+            "based_on_catalog_id": based_on_catalog_id,
+            "draft_attribute_names": draft_attribute_names,
+            "min_systems": min_systems,
+        }
+        return await _unwrap(await http.post("/catalog/gap-check", json=body))
