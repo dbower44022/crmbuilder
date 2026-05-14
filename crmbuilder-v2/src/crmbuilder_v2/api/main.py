@@ -8,6 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from crmbuilder_v2.access.exceptions import AccessLayerError
 from crmbuilder_v2.api.errors import access_layer_handler, request_validation_handler
 from crmbuilder_v2.api.routers import (
+    catalog,
     charter,
     decisions,
     health,
@@ -46,6 +47,7 @@ def create_app() -> FastAPI:
     app.include_router(topics.router)
     app.include_router(references.router)
     app.include_router(orientation.router)
+    app.include_router(catalog.router)
 
     @app.get("/", tags=["meta"], include_in_schema=False)
     def root():
