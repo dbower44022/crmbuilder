@@ -238,6 +238,43 @@ attributes:
       bloomerang:
         status: standard
         api_name: IsRefunded
+  - name: donationType
+    display_name: Donation Type
+    type: enum
+    required: false
+    enum_values:
+      - Donation
+      - Major Gift
+      - In-Kind Gift
+      - Stock Gift
+      - Tribute Gift
+      - Matching Gift
+    description: Categorization of the donation. Distinguishes standard donations from major gifts, in-kind, stock, tribute, and matching gifts.
+    usage: Drives different acknowledgment workflows, recognition tiers, and reporting. In NPSP this maps to Opportunity Record Type. In CiviCRM this maps to financial_type_id. Bloomerang uses 
+      Transaction-level type designation. Vanilla Salesforce/HubSpot/EspoCRM require custom field configuration. Used as the subclass discriminator for donation-major-gift and any future donation 
+      subclasses.
+    presence:
+      salesforce:
+        status: custom
+      hubspot:
+        status: custom
+      attio:
+        status: absent
+      espocrm:
+        status: absent
+      civicrm:
+        status: standard
+        api_name: financial_type_id
+      salesforce_npsp:
+        status: standard
+        api_name: RecordTypeId
+      bloomerang:
+        status: custom
+    common_synonyms:
+      - gift type
+      - donation category
+      - gift category
+      - donation kind
   - name: paymentMethod
     display_name: Payment Method
     type: enum
