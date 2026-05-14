@@ -27,6 +27,7 @@ from automation.ui.deployment.deploy_entry import DeployEntry
 from automation.ui.deployment.deployment_logic import (
     load_instances,
 )
+from automation.ui.deployment.extensions_entry import ExtensionsEntry
 from automation.ui.deployment.instance_picker import InstancePicker
 from automation.ui.deployment.instances_entry import InstancesEntry
 from automation.ui.deployment.output_entry import OutputEntry
@@ -36,15 +37,19 @@ from automation.ui.deployment.run_history_entry import RunHistoryEntry
 logger = logging.getLogger(__name__)
 
 # Sidebar entry names
-_ENTRIES = ["Instances", "Deploy", "Configure", "Run History", "Audit", "Output"]
+_ENTRIES = [
+    "Instances", "Deploy", "Configure", "Extensions",
+    "Run History", "Audit", "Output",
+]
 
 # Content stack indices
 _IDX_INSTANCES = 0
 _IDX_DEPLOY = 1
 _IDX_CONFIGURE = 2
-_IDX_RUN_HISTORY = 3
-_IDX_AUDIT = 4
-_IDX_OUTPUT = 5
+_IDX_EXTENSIONS = 3
+_IDX_RUN_HISTORY = 4
+_IDX_AUDIT = 5
+_IDX_OUTPUT = 6
 
 # Entries that show the phase status banner (§14.12.2)
 _BANNER_ENTRIES = {"Deploy", "Configure"}
@@ -135,14 +140,17 @@ class DeploymentWindow(QWidget):
         self._configure_entry = ConfigureEntry()
         self._stack.addWidget(self._configure_entry)  # 2
 
+        self._extensions_entry = ExtensionsEntry()
+        self._stack.addWidget(self._extensions_entry)  # 3
+
         self._run_history_entry = RunHistoryEntry()
-        self._stack.addWidget(self._run_history_entry)  # 3
+        self._stack.addWidget(self._run_history_entry)  # 4
 
         self._audit_entry = AuditEntry()
-        self._stack.addWidget(self._audit_entry)  # 4
+        self._stack.addWidget(self._audit_entry)  # 5
 
         self._output_entry = OutputEntry()
-        self._stack.addWidget(self._output_entry)  # 5
+        self._stack.addWidget(self._output_entry)  # 6
 
         # Give configure and audit entries a reference to the output entry
         self._configure_entry.set_output_entry(self._output_entry)
@@ -260,6 +268,11 @@ class DeploymentWindow(QWidget):
             self._configure_entry.refresh(
                 self._conn, instance, self._project_folder, has_instances
             )
+        elif index == _IDX_EXTENSIONS:
+            self._extensions_entry.refresh(
+                self._conn, instance, self._client_db_path(),
+                has_instances,
+            )
         elif index == _IDX_RUN_HISTORY:
             self._run_history_entry.refresh(
                 self._conn, instance, self._project_folder, has_instances
@@ -270,6 +283,16 @@ class DeploymentWindow(QWidget):
             )
         elif index == _IDX_OUTPUT:
             self._output_entry.refresh(self._conn, instance, has_instances)
+
+    def _client_db_path(self) -> str | None:
+        """Read the file path of the active per-client SQLite connection."""
+        if self._conn is None:
+            return None
+        try:
+            row = self._conn.execute("PRAGMA database_list").fetchone()
+            return row[2] if row else None
+        except Exception:
+            return None
 
     # ------------------------------------------------------------------
     # Cleanup
