@@ -141,6 +141,91 @@ CHANGE_LOG_ACTORS: frozenset[str] = frozenset(
 )
 
 
+# Base entity catalog vocabularies (catalog-ingestion-PRD-v0.1.md section 4).
+#
+# The seven systems surveyed in the catalog. Catalog rows in
+# ``catalog_entity_system``, ``catalog_attribute_presence``, and
+# ``catalog_relationship_presence`` carry a ``system`` column constrained
+# to this set.
+
+CATALOG_SYSTEMS: frozenset[str] = frozenset(
+    {
+        "salesforce",
+        "hubspot",
+        "attio",
+        "espocrm",
+        "civicrm",
+        "salesforce_npsp",
+        "bloomerang",
+    }
+)
+
+CATALOG_ENTRY_KINDS: frozenset[str] = frozenset({"universal", "subclass"})
+
+CATALOG_DATA_MODEL_ROLES: frozenset[str] = frozenset(
+    {"anchor", "event", "classifier", "junction", "log", "document"}
+)
+
+# Attribute-type vocabulary documented in
+# ``research/base-entity-catalog/README.md`` (section "attributes[] schema").
+# Wider than what the v0.10 dataset actually uses; admitting the full
+# documented set keeps future authored entries unblocked.
+CATALOG_ATTRIBUTE_TYPES: frozenset[str] = frozenset(
+    {
+        "string",
+        "text",
+        "richtext",
+        "integer",
+        "decimal",
+        "currency",
+        "boolean",
+        "date",
+        "datetime",
+        "time",
+        "enum",
+        "multienum",
+        "reference",
+        "multireference",
+        "email",
+        "phone",
+        "url",
+        "address",
+        "attachment",
+        "autonumber",
+        "formula",
+    }
+)
+
+# ``is_standard`` on ``catalog_entity_system`` is stored as TEXT (not BOOLEAN)
+# because the catalog admits a ``partial`` value for the edge case where an
+# entity is partly built-in and partly custom in a system.
+CATALOG_IS_STANDARD_VALUES: frozenset[str] = frozenset({"true", "false", "partial"})
+
+# Subclass-realisation mechanisms on ``catalog_entity_system`` (subclasses
+# only — universals leave this NULL). Vocabulary per PRD section 4.3.
+CATALOG_MECHANISMS: frozenset[str] = frozenset(
+    {
+        "record_type",
+        "contact_subtype",
+        "type_discriminator",
+        "custom_property",
+        "separate_object",
+        "entity_inheritance",
+    }
+)
+
+# Per-system presence on attributes and relationships.
+CATALOG_PRESENCE_STATUSES: frozenset[str] = frozenset(
+    {"standard", "custom", "absent"}
+)
+
+CATALOG_RELATIONSHIP_CARDINALITIES: frozenset[str] = frozenset(
+    {"one-to-one", "one-to-many", "many-to-one", "many-to-many"}
+)
+
+CATALOG_RELATIONSHIP_ROLES: frozenset[str] = frozenset({"parent", "child", "peer"})
+
+
 def _check_in(name: str, allowed: frozenset[str]) -> str:
     """Build a SQLite CHECK constraint expression for an enumerated column."""
     quoted = ", ".join(f"'{v}'" for v in sorted(allowed))

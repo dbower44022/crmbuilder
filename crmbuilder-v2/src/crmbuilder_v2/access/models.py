@@ -29,6 +29,15 @@ from sqlalchemy.orm import (
 )
 
 from crmbuilder_v2.access.vocab import (
+    CATALOG_ATTRIBUTE_TYPES,
+    CATALOG_DATA_MODEL_ROLES,
+    CATALOG_ENTRY_KINDS,
+    CATALOG_IS_STANDARD_VALUES,
+    CATALOG_MECHANISMS,
+    CATALOG_PRESENCE_STATUSES,
+    CATALOG_RELATIONSHIP_CARDINALITIES,
+    CATALOG_RELATIONSHIP_ROLES,
+    CATALOG_SYSTEMS,
     CHANGE_LOG_ACTORS,
     CHANGE_LOG_OPERATIONS,
     DECISION_STATUSES,
@@ -266,6 +275,303 @@ class Reference(Base):
         ),
         Index("ix_refs_source", "source_type", "source_id"),
         Index("ix_refs_target", "target_type", "target_id"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Base entity catalog (catalog-ingestion-PRD-v0.1.md section 4).
+#
+# Ten tables holding the structured reference data for V2's three runtime
+# use cases (reference library, cross-system mapper, gap checker). Catalog
+# rows use V2's standard ``id INTEGER PK + identifier TEXT UNIQUE`` shape
+# rather than UUID PKs; the stable string identifier on entities is
+# ``catalog_id`` (e.g. ``"account"``, ``"donation-major-gift"``) and
+# attributes are addressed by their parent ``catalog_id`` plus their
+# ``name`` column.
+# ---------------------------------------------------------------------------
+
+
+class CatalogEntity(Base):
+    __tablename__ = "catalog_entity"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    catalog_id: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    tier: Mapped[int] = mapped_column(Integer, nullable=False)
+    entry_kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    parent_entity_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("catalog_entity.id"), nullable=True
+    )
+    discriminator_attribute: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    discriminator_value: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    purpose: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    business_context: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    data_model_role: Mapped[str] = mapped_column(String(32), nullable=False)
+    typically_required: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    parent: Mapped[CatalogEntity | None] = relationship(
+        "CatalogEntity", remote_side="CatalogEntity.id", foreign_keys=[parent_entity_id]
+    )
+
+    __table_args__ = (
+        CheckConstraint("tier BETWEEN 1 AND 5", name="ck_catalog_entity_tier"),
+        CheckConstraint(
+            _check_in("entry_kind", CATALOG_ENTRY_KINDS),
+            name="ck_catalog_entity_entry_kind",
+        ),
+        CheckConstraint(
+            _check_in("data_model_role", CATALOG_DATA_MODEL_ROLES),
+            name="ck_catalog_entity_data_model_role",
+        ),
+        Index("ix_catalog_entity_catalog_id", "catalog_id"),
+        Index("ix_catalog_entity_tier_kind", "tier", "entry_kind"),
+        Index("ix_catalog_entity_parent", "parent_entity_id"),
+        Index("ix_catalog_entity_is_deleted", "is_deleted"),
+    )
+
+
+class CatalogEntitySynonym(Base):
+    __tablename__ = "catalog_entity_synonym"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    catalog_entity_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("catalog_entity.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    synonym: Mapped[str] = mapped_column(String(255), nullable=False)
+    order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    __table_args__ = (
+        Index("ix_catalog_entity_synonym_entity", "catalog_entity_id"),
+        Index("ix_catalog_entity_synonym_text", "synonym"),
+    )
+
+
+class CatalogEntitySystem(Base):
+    __tablename__ = "catalog_entity_system"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    catalog_entity_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("catalog_entity.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    system: Mapped[str] = mapped_column(String(32), nullable=False)
+    system_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    api_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_standard: Mapped[str] = mapped_column(String(16), nullable=False)
+    mechanism: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    docs_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (
+        CheckConstraint(
+            _check_in("system", CATALOG_SYSTEMS), name="ck_catalog_entity_system_system"
+        ),
+        CheckConstraint(
+            _check_in("is_standard", CATALOG_IS_STANDARD_VALUES),
+            name="ck_catalog_entity_system_is_standard",
+        ),
+        CheckConstraint(
+            "mechanism IS NULL OR " + _check_in("mechanism", CATALOG_MECHANISMS),
+            name="ck_catalog_entity_system_mechanism",
+        ),
+        UniqueConstraint(
+            "catalog_entity_id", "system", name="uq_catalog_entity_system"
+        ),
+        Index("ix_catalog_entity_system_entity", "catalog_entity_id"),
+    )
+
+
+class CatalogSource(Base):
+    __tablename__ = "catalog_source"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    catalog_entity_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("catalog_entity.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    __table_args__ = (Index("ix_catalog_source_entity", "catalog_entity_id"),)
+
+
+class CatalogAttribute(Base):
+    __tablename__ = "catalog_attribute"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    catalog_entity_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("catalog_entity.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    display_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    type: Mapped[str] = mapped_column(String(32), nullable=False)
+    required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    max_length: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    reference_target: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    usage: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _check_in("type", CATALOG_ATTRIBUTE_TYPES), name="ck_catalog_attribute_type"
+        ),
+        UniqueConstraint("catalog_entity_id", "name", name="uq_catalog_attribute_entity_name"),
+        Index("ix_catalog_attribute_entity", "catalog_entity_id"),
+        Index("ix_catalog_attribute_name", "name"),
+        Index("ix_catalog_attribute_is_deleted", "is_deleted"),
+    )
+
+
+class CatalogAttributeEnumValue(Base):
+    __tablename__ = "catalog_attribute_enum_value"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    catalog_attribute_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("catalog_attribute.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    value: Mapped[str] = mapped_column(String(255), nullable=False)
+    order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    __table_args__ = (
+        Index("ix_catalog_attribute_enum_value_attr", "catalog_attribute_id"),
+    )
+
+
+class CatalogAttributeSynonym(Base):
+    __tablename__ = "catalog_attribute_synonym"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    catalog_attribute_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("catalog_attribute.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    synonym: Mapped[str] = mapped_column(String(255), nullable=False)
+    order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    __table_args__ = (
+        Index("ix_catalog_attribute_synonym_attr", "catalog_attribute_id"),
+        Index("ix_catalog_attribute_synonym_text", "synonym"),
+    )
+
+
+class CatalogAttributePresence(Base):
+    __tablename__ = "catalog_attribute_presence"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    catalog_attribute_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("catalog_attribute.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    system: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    api_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint(
+            _check_in("system", CATALOG_SYSTEMS), name="ck_catalog_attribute_presence_system"
+        ),
+        CheckConstraint(
+            _check_in("status", CATALOG_PRESENCE_STATUSES),
+            name="ck_catalog_attribute_presence_status",
+        ),
+        UniqueConstraint(
+            "catalog_attribute_id", "system", name="uq_catalog_attribute_presence"
+        ),
+        Index("ix_catalog_attribute_presence_attr", "catalog_attribute_id"),
+    )
+
+
+class CatalogRelationship(Base):
+    __tablename__ = "catalog_relationship"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    source_entity_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("catalog_entity.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    target_entity_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("catalog_entity.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    cardinality: Mapped[str] = mapped_column(String(32), nullable=False)
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+    __table_args__ = (
+        CheckConstraint(
+            _check_in("cardinality", CATALOG_RELATIONSHIP_CARDINALITIES),
+            name="ck_catalog_relationship_cardinality",
+        ),
+        CheckConstraint(
+            _check_in("role", CATALOG_RELATIONSHIP_ROLES),
+            name="ck_catalog_relationship_role",
+        ),
+        Index("ix_catalog_relationship_source", "source_entity_id"),
+        Index("ix_catalog_relationship_target", "target_entity_id"),
+    )
+
+
+class CatalogRelationshipPresence(Base):
+    __tablename__ = "catalog_relationship_presence"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    catalog_relationship_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("catalog_relationship.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    system: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+
+    __table_args__ = (
+        CheckConstraint(
+            _check_in("system", CATALOG_SYSTEMS),
+            name="ck_catalog_relationship_presence_system",
+        ),
+        CheckConstraint(
+            _check_in("status", CATALOG_PRESENCE_STATUSES),
+            name="ck_catalog_relationship_presence_status",
+        ),
+        UniqueConstraint(
+            "catalog_relationship_id",
+            "system",
+            name="uq_catalog_relationship_presence",
+        ),
+        Index(
+            "ix_catalog_relationship_presence_rel", "catalog_relationship_id"
+        ),
     )
 
 
