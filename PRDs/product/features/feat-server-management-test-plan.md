@@ -53,11 +53,11 @@ Pre-condition: a self-hosted instance with `InstanceDeployConfig` (from §1).
 |---|---|---|
 | ☐ | Select the deployed instance from the Active Instance picker | A version badge appears under the dropdown ("EspoCRM X.Y.Z — up to date" *or* "→ A.B.C available") |
 | ☐ | Wait ~5 seconds for `VersionCheckWorker` to refresh | Badge text matches reality (compare to https://www.espocrm.com/downloads/) |
-| ☐ | If "up to date": SSH to the Droplet and **manually downgrade** by editing `data/config.php` to a lower version (`docker compose exec espocrm sed -i ...`); reselect the instance | Badge flips to "→ A.B.C available" |
+| ☐ | If "up to date": SSH to the Droplet and **manually downgrade** by editing `data/state.php` to a lower version (`docker compose exec espocrm sed -i ...`); reselect the instance. The detector probes `state.php` first, then `config-internal.php`, `Application.php`, and finally legacy `config.php` | Badge flips to "→ A.B.C available" |
 | ☐ | Click **Deploy** sidebar → **Upgrade EspoCRM** button | Modal opens; phase cards visible; "Run Upgrade" enabled |
 | ☐ | Click **Run Upgrade** | Phase 1: pre-flight checks pass; logs stream into the dialog |
 | ☐ | Watch Phase 2: backup | `/var/backups/espocrm/<timestamp>/db.sql.gz` and `data.tar.gz` appear; SSH and `ls -la /var/backups/espocrm/` confirms |
-| ☐ | Watch Phase 3: upgrade | `php command.php upgrade -y` runs to completion; new version reads back |
+| ☐ | Watch Phase 3: upgrade | Pre-upgrade chown of `/var/www/html` to `www-data:www-data` runs first; then `php command.php upgrade -y` runs to completion; new version reads back. Note: EspoCRM's CLI upgrades one minor/patch step per invocation — the routine deliberately doesn't loop to the latest |
 | ☐ | Watch Phase 4: verification | All four checks PASS |
 | ☐ | Close the dialog; check the picker badge | Badge updates to "up to date" with new version |
 | ☐ | Re-open the SQLite DB | `current_espocrm_version`, `last_upgrade_at`, `last_backup_paths` are populated |
@@ -67,7 +67,9 @@ refreshes; DB state matches what happened on the server.
 
 **Failure modes to watch:**
 - Backup fails because `/var/backups/espocrm` lacks permissions → `mkdir -p` should handle, but check
-- `release-info.json` shape may have changed; if `latest_espocrm_version` is empty after the worker runs, the loop in `get_latest_version()` needs a new key (currently tries `version`, `stable`, `latest`)
+- `get_latest_version()` calls GitHub's `api.github.com/repos/espocrm/espocrm/releases/latest` and reads `tag_name`. If GitHub rate-limits the IP (60 req/hour unauthenticated), the worker falls back to the stored `latest_espocrm_version` — symptom is a stale "up to date" badge despite a newer release being out
+- Phase 3's pre-upgrade chown needs root inside the espocrm container; if the container's root user is locked down, the chown step aborts before any destructive action
+- Version detection probes `data/state.php` → `data/config-internal.php` → `application/Espo/Core/Application.php` → `data/config.php`; if all miss, Phase 1 dumps a directory listing to the log so the actual file layout is visible
 - `mariadb-dump` may not exist if the image switched to plain `mysqldump` — check the espocrm-db container
 
 ---

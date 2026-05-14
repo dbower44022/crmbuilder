@@ -139,6 +139,10 @@ class UpgradeDialog(QDialog):
         self.db_path = db_path
         self.instance_name = instance_name
         self._worker = None
+        # Set to True by on_upgrade_finished when a Phase 4 verification
+        # passes. Caller (DeployEntry) reads this after exec() returns
+        # to decide whether to notify upstream of a successful upgrade.
+        self.upgrade_succeeded: bool = False
 
         self.setWindowTitle(f"Upgrade EspoCRM — {instance_name}")
         self.setModal(True)
@@ -350,6 +354,7 @@ class UpgradeDialog(QDialog):
         self._run_btn.setEnabled(True)
         self._refresh_version_display()
         if success:
+            self.upgrade_succeeded = True
             self.append_log("Upgrade completed successfully.", "info")
         else:
             self.append_log("Upgrade failed.", "error")

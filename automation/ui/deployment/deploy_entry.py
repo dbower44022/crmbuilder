@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -52,6 +52,11 @@ class DeployEntry(QWidget):
 
     :param parent: Parent widget.
     """
+
+    # Fires after the Upgrade EspoCRM dialog closes with Phase 4 passing.
+    # Parent (DeploymentWindow) uses this to refresh the picker badge so
+    # it doesn't keep saying "→ X.Y.Z available" after an upgrade lands.
+    upgrade_completed = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -343,9 +348,12 @@ class DeployEntry(QWidget):
 
         from automation.ui.deployment.upgrade_dialog import UpgradeDialog
 
-        UpgradeDialog(
+        dialog = UpgradeDialog(
             config, db_path, self._instance.name, parent=self,
-        ).exec()
+        )
+        dialog.exec()
+        if dialog.upgrade_succeeded:
+            self.upgrade_completed.emit()
 
     def _db_path(self) -> str | None:
         """Read the file path of the active per-client SQLite connection."""

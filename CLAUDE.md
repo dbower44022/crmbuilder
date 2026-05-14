@@ -195,10 +195,33 @@ same SSH connection and credentials, persisted in the
   hidden, not disabled.
 - **Upgrade flow.** Four phases: pre-flight checks, backup
   (mariadb-dump + tar of data volume to `/var/backups/espocrm/{ts}/`,
-  retention 3), `php command.php upgrade -y` inside the container,
-  verify. Major-version jumps (7.x → 8.x) trigger a confirmation
-  modal before the worker starts. Never re-run `install.sh --clean` to
-  upgrade — that wipes data.
+  retention 3), Phase 3 (pre-upgrade `chown -R www-data:www-data
+  /var/www/html` then `php command.php upgrade -y` inside the
+  container), verify. The chown is required because Docker COPY ran
+  as root during image build, so `application/` and `client/` are
+  root-owned and the upgrader (which runs as www-data to keep PHP-FPM
+  cache reads working) can't overwrite them. Major-version jumps (7.x
+  → 8.x) trigger a confirmation modal before the worker starts. EspoCRM's
+  CLI upgrades one minor/patch step at a time, so 9.3.4 → 9.3.6
+  requires two invocations — the routine deliberately doesn't loop;
+  operators may want to lag the absolute latest. Never re-run
+  `install.sh --clean` to upgrade — that wipes data.
+- **Version detection.** `get_current_version()` in `upgrade_ssh.py`
+  probes `data/state.php` → `data/config-internal.php` →
+  `application/Espo/Core/Application.php` → `data/config.php` (in that
+  order — modern EspoCRM 8.x first, legacy 7.x last). Each file is
+  `cat`'d through SSH and parsed in Python (not via in-container
+  `grep`), and the contents are deliberately kept out of the UI log
+  callback because `data/config.php` contains DB credentials. On
+  total miss, Phase 1 dumps the container's `data/` directory listing
+  to help diagnose unexpected layouts.
+- **Latest-version detection.** `get_latest_version()` reads
+  `tag_name` from
+  `https://api.github.com/repos/espocrm/espocrm/releases/latest`. The
+  older `espocrm.com/downloads/release-info.json` URL was retired and
+  now serves a 404 HTML page. GitHub's unauthenticated API rate-limits
+  at 60 req/hour per IP; on failure the worker falls back to the
+  stored `latest_espocrm_version`.
 - **Recovery flow.** Admin reset issues a SQL UPDATE inside
   `espocrm-db`; full reset tears down containers/volumes, removes
   `/var/www/espocrm`, and re-runs install + post-install + verify.

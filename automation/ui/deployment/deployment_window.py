@@ -135,6 +135,7 @@ class DeploymentWindow(QWidget):
         self._stack.addWidget(self._instances_entry)  # 0
 
         self._deploy_entry = DeployEntry()
+        self._deploy_entry.upgrade_completed.connect(self._picker.refresh_badge)
         self._stack.addWidget(self._deploy_entry)  # 1
 
         self._configure_entry = ConfigureEntry()
