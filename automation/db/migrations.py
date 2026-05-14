@@ -25,6 +25,8 @@ from pathlib import Path
 from automation.db.client_schema import (
     CONFIGURATION_RUN_TABLE,
     DEPLOYMENT_RUN_TABLE,
+    EXTENSION_INSTALL_TABLE,
+    EXTENSION_LICENSE_TABLE,
     INSTANCE_DEFAULT_INDEX,
     INSTANCE_DEPLOY_CONFIG_TABLE,
     INSTANCE_TABLE,
@@ -670,6 +672,38 @@ def _client_v12(conn: sqlite3.Connection) -> None:
         )
 
 
+def _client_v13(conn: sqlite3.Connection) -> None:
+    """Add ExtensionLicense and ExtensionInstall tables.
+
+    Tracks purchased extension licenses (with vendor slot limits like
+    Advanced Pack's 1-prod + 2-non-prod cap) and per-instance install
+    records. License keys themselves live in the OS keyring; the
+    ``license_key_ref`` column stores opaque keyring references.
+
+    Idempotent via CREATE TABLE IF NOT EXISTS. Skips silently if the
+    Instance table does not yet exist (a fresh database created via
+    _client_v1 already includes both tables).
+    """
+    tables = {
+        row[0]
+        for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )
+    }
+    if "Instance" not in tables:
+        return
+    conn.execute(
+        EXTENSION_LICENSE_TABLE.replace(
+            "CREATE TABLE ", "CREATE TABLE IF NOT EXISTS "
+        )
+    )
+    conn.execute(
+        EXTENSION_INSTALL_TABLE.replace(
+            "CREATE TABLE ", "CREATE TABLE IF NOT EXISTS "
+        )
+    )
+
+
 CLIENT_MIGRATIONS: list[tuple[int, Migration]] = [
     (1, _client_v1),
     (2, _client_v2),
@@ -683,6 +717,7 @@ CLIENT_MIGRATIONS: list[tuple[int, Migration]] = [
     (10, _client_v10),
     (11, _client_v11),
     (12, _client_v12),
+    (13, _client_v13),
 ]
 
 

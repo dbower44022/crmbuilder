@@ -631,6 +631,54 @@ CREATE TABLE InstanceDeployConfig (
 );
 """
 
+# ExtensionLicense — purchased license keys for paid EspoCRM extensions.
+# Added by migration _client_v13. One row per purchased license; an org
+# typically buys one license per extension and reuses it across the slots
+# the vendor allows. ``license_key_ref`` is an opaque keyring reference
+# (the plaintext key lives in the OS keyring via automation/core/secrets.py).
+# ``max_production`` / ``max_nonproduction`` capture vendor slot limits
+# (Advanced Pack today: 1 prod + 2 non-prod). Free extensions that need
+# no license tracking simply have no row here.
+EXTENSION_LICENSE_TABLE = """
+CREATE TABLE ExtensionLicense (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    extension_name TEXT NOT NULL,
+    license_key_ref TEXT NOT NULL,
+    purchaser_label TEXT,
+    max_production INTEGER NOT NULL DEFAULT 1,
+    max_nonproduction INTEGER NOT NULL DEFAULT 2,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (extension_name, purchaser_label)
+);
+"""
+
+# ExtensionInstall — record of which extensions are installed on which
+# instances. Added by migration _client_v13. One row per
+# (instance, extension_name); re-installs UPDATE rather than INSERT so
+# slot counts stay accurate. ``license_id`` is NULL for free extensions
+# (e.g., Google Integration) and FK to ExtensionLicense for paid ones.
+# Slot enforcement joins this table to Instance and groups by
+# Instance.environment ('production' vs 'test'/'staging').
+EXTENSION_INSTALL_TABLE = """
+CREATE TABLE ExtensionInstall (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    instance_id INTEGER NOT NULL,
+    extension_name TEXT NOT NULL,
+    extension_version TEXT NOT NULL,
+    license_id INTEGER,
+    installed_at TIMESTAMP NOT NULL,
+    last_verified_at TIMESTAMP,
+    source_zip_path TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (instance_id, extension_name),
+    FOREIGN KEY (instance_id) REFERENCES Instance(id) ON DELETE CASCADE,
+    FOREIGN KEY (license_id) REFERENCES ExtensionLicense(id) ON DELETE SET NULL
+);
+"""
+
 # ConfigurationRun — audit trail for YAML configuration runs.
 # Records each time a YAML program file is run (or checked) against an
 # instance, including the file's content_version and a SHA-256 hash of the
@@ -703,6 +751,9 @@ ALL_CLIENT_TABLES = [
     DEPLOYMENT_RUN_TABLE,
     # Server management layer (feat-server-management.md, _client_v9)
     INSTANCE_DEPLOY_CONFIG_TABLE,
+    # Extension management layer (_client_v13)
+    EXTENSION_LICENSE_TABLE,
+    EXTENSION_INSTALL_TABLE,
 ]
 
 
