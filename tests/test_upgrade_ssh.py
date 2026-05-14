@@ -142,22 +142,31 @@ def test_phase1_fails_when_version_unreadable():
     log = MagicMock()
     with patch(
         "automation.core.deployment.upgrade_ssh.run_remote",
-        side_effect=[(0, "espocrm Up\n"), (1, "")],
+        side_effect=[
+            (0, "espocrm Up\n"),
+            (1, ""),  # data/state.php — not present
+            (1, ""),  # data/config-internal.php — not present
+            (1, ""),  # application/Espo/Core/Application.php — not present
+            (1, ""),  # data/config.php — not present
+            (0, "diagnostic dump"),
+        ],
     ):
         ok, error = phase1_pre_upgrade_checks(ssh, config, log)
     assert ok is False
     assert "current EspoCRM version" in error
 
 
-def test_phase1_succeeds_and_records_version():
+def test_phase1_succeeds_via_state_php():
+    """state.php is the first probe in EspoCRM 8.x."""
     ssh = MagicMock()
     config = _make_config()
     log = MagicMock()
+    state_php = "<?php return ['version' => '8.4.0', 'cryptKey' => 'x'];"
     with patch(
         "automation.core.deployment.upgrade_ssh.run_remote",
         side_effect=[
             (0, "espocrm Up\n"),
-            (0, "8.4.0\n"),
+            (0, state_php),
             (0, "5000\n"),
         ],
     ):
@@ -165,6 +174,75 @@ def test_phase1_succeeds_and_records_version():
     assert ok is True
     assert error == ""
     assert config.current_espocrm_version == "8.4.0"
+
+
+def test_phase1_falls_back_to_config_internal():
+    """If state.php has no version key, config-internal.php is tried."""
+    ssh = MagicMock()
+    config = _make_config()
+    log = MagicMock()
+    with patch(
+        "automation.core.deployment.upgrade_ssh.run_remote",
+        side_effect=[
+            (0, "espocrm Up\n"),
+            (0, "<?php return ['cryptKey' => 'x'];"),  # no version key
+            (0, "<?php return ['version' => '8.4.0'];"),
+            (0, "5000\n"),
+        ],
+    ):
+        ok, error = phase1_pre_upgrade_checks(ssh, config, log)
+    assert ok is True
+    assert config.current_espocrm_version == "8.4.0"
+
+
+def test_phase1_falls_back_to_application_php():
+    """When neither state.php nor config-internal.php yield a version,
+    the VERSION class constant in Application.php is the next source."""
+    ssh = MagicMock()
+    config = _make_config()
+    log = MagicMock()
+    app_php = (
+        "<?php namespace Espo\\Core;\n"
+        "class Application {\n"
+        "    public const string VERSION = '8.4.0';\n"
+        "}\n"
+    )
+    with patch(
+        "automation.core.deployment.upgrade_ssh.run_remote",
+        side_effect=[
+            (0, "espocrm Up\n"),
+            (0, "<?php return [];"),  # state.php no match
+            (0, "<?php return [];"),  # config-internal.php no match
+            (0, app_php),
+            (0, "5000\n"),
+        ],
+    ):
+        ok, error = phase1_pre_upgrade_checks(ssh, config, log)
+    assert ok is True
+    assert config.current_espocrm_version == "8.4.0"
+
+
+def test_phase1_falls_back_to_config_php():
+    """If none of the modern sources match, the legacy 7.x config.php is
+    consulted last."""
+    ssh = MagicMock()
+    config = _make_config()
+    log = MagicMock()
+    legacy_config = "<?php return ['version' => '7.5.12'];"
+    with patch(
+        "automation.core.deployment.upgrade_ssh.run_remote",
+        side_effect=[
+            (0, "espocrm Up\n"),
+            (1, ""),  # state.php missing (pre-8.x)
+            (1, ""),  # config-internal.php missing (pre-8.x)
+            (0, "<?php class X {}"),  # Application.php no const match
+            (0, legacy_config),
+            (0, "5000\n"),
+        ],
+    ):
+        ok, error = phase1_pre_upgrade_checks(ssh, config, log)
+    assert ok is True
+    assert config.current_espocrm_version == "7.5.12"
 
 
 def test_phase1_fails_on_low_disk_space():
@@ -175,7 +253,7 @@ def test_phase1_fails_on_low_disk_space():
         "automation.core.deployment.upgrade_ssh.run_remote",
         side_effect=[
             (0, "espocrm Up\n"),
-            (0, "8.4.0\n"),
+            (0, "<?php return ['version' => '8.4.0'];"),
             (0, "500\n"),
         ],
     ):
@@ -267,9 +345,10 @@ def test_phase3_succeeds_and_updates_version():
     with patch(
         "automation.core.deployment.upgrade_ssh.run_remote",
         side_effect=[
+            (0, ""),  # chown source tree
             (0, "Upgrade complete"),
             (0, "Cache cleared"),
-            (0, "8.5.1\n"),
+            (0, "<?php return ['version' => '8.5.1'];"),  # state.php
         ],
     ):
         ok, error = phase3_run_upgrade(ssh, config, log)
@@ -279,17 +358,107 @@ def test_phase3_succeeds_and_updates_version():
     assert config.last_upgrade_at is not None
 
 
-def test_phase3_fails_on_no_upgrade_available():
+def test_phase3_fails_on_no_upgrade_available_nonzero_exit():
     ssh = MagicMock()
     config = _make_config(current_espocrm_version="8.4.0")
     log = MagicMock()
     with patch(
         "automation.core.deployment.upgrade_ssh.run_remote",
-        return_value=(1, "EspoCRM is up to date"),
+        side_effect=[
+            (0, ""),  # chown
+            (1, "EspoCRM is up to date"),
+        ],
     ):
         ok, error = phase3_run_upgrade(ssh, config, log)
     assert ok is False
     assert "no upgrade" in error.lower()
+
+
+def test_phase3_fails_on_no_upgrade_available_zero_exit():
+    """The CLI sometimes prints 'up to date' and exits 0 — the routine
+    must catch this and report 'no upgrade applied' rather than treating
+    it as a successful upgrade."""
+    ssh = MagicMock()
+    config = _make_config(current_espocrm_version="9.3.4")
+    log = MagicMock()
+    with patch(
+        "automation.core.deployment.upgrade_ssh.run_remote",
+        side_effect=[
+            (0, ""),  # chown
+            (0, "EspoCRM 9.3.4 - up to date"),
+        ],
+    ):
+        ok, error = phase3_run_upgrade(ssh, config, log)
+    assert ok is False
+    assert "no upgrade is available" in error.lower()
+    # Version must not be mutated, last_upgrade_at must not be set.
+    assert config.current_espocrm_version == "9.3.4"
+    assert config.last_upgrade_at is None
+
+
+def test_phase3_fails_when_version_unchanged_after_apparent_success():
+    """If the upgrade command exits cleanly with no 'up to date' signal
+    but the post-upgrade version equals the pre-upgrade version, the
+    upgrade was a no-op and must be flagged."""
+    ssh = MagicMock()
+    config = _make_config(current_espocrm_version="9.3.4")
+    log = MagicMock()
+    with patch(
+        "automation.core.deployment.upgrade_ssh.run_remote",
+        side_effect=[
+            (0, ""),  # chown
+            (0, "Running upgrade...\nDone."),
+            (0, "Cache cleared"),
+            (0, "<?php return ['version' => '9.3.4'];"),  # state.php
+        ],
+    ):
+        ok, error = phase3_run_upgrade(ssh, config, log)
+    assert ok is False
+    assert "9.3.4" in error
+    assert config.last_upgrade_at is None
+
+
+def test_phase3_fails_when_post_upgrade_version_unreadable():
+    """If we can't read back the version after the upgrade command
+    completes, the run must fail loudly rather than silently succeed."""
+    ssh = MagicMock()
+    config = _make_config(current_espocrm_version="9.3.4")
+    log = MagicMock()
+    with patch(
+        "automation.core.deployment.upgrade_ssh.run_remote",
+        side_effect=[
+            (0, ""),  # chown
+            (0, "Running upgrade...\nDone."),
+            (0, "Cache cleared"),
+            # state.php, config-internal, Application.php, config.php
+            # — all return missing/unmatched
+            (1, ""),
+            (1, ""),
+            (1, ""),
+            (1, ""),
+            (0, "diagnostic dump"),
+        ],
+    ):
+        ok, error = phase3_run_upgrade(ssh, config, log)
+    assert ok is False
+    assert "new version could not be read" in error.lower()
+    assert config.last_upgrade_at is None
+
+
+def test_phase3_fails_when_chown_fails():
+    """If the pre-upgrade chown can't run (e.g., container lost root),
+    the upgrade must abort before doing anything destructive."""
+    ssh = MagicMock()
+    config = _make_config(current_espocrm_version="9.3.4")
+    log = MagicMock()
+    with patch(
+        "automation.core.deployment.upgrade_ssh.run_remote",
+        return_value=(1, "chown: cannot access ..."),
+    ):
+        ok, error = phase3_run_upgrade(ssh, config, log)
+    assert ok is False
+    assert "ownership" in error.lower()
+    assert config.last_upgrade_at is None
 
 
 # ── Phase 4: Verification ────────────────────────────────────────────
@@ -305,7 +474,7 @@ def test_phase4_all_checks_pass():
             (0, "espocrm Up"),
             (0, "HTTP/2 200"),
             (0, "<html>EspoCRM</html>"),
-            (0, "'version' => '8.5.1'"),
+            (0, "<?php return ['version' => '8.5.1'];"),  # state.php
         ],
     ):
         overall, results = phase4_verify_upgrade(ssh, config, log)

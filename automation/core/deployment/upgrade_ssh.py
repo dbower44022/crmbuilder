@@ -32,7 +32,7 @@ COMPOSE_FILE = "/var/www/espocrm/docker-compose.yml"
 COMPOSE_DIR = "/var/www/espocrm"
 BACKUP_ROOT = "/var/backups/espocrm"
 BACKUP_RETENTION = 3
-RELEASE_INFO_URL = "https://www.espocrm.com/downloads/release-info.json"
+RELEASE_INFO_URL = "https://api.github.com/repos/espocrm/espocrm/releases/latest"
 
 # Log callback type matches ssh_deploy.py: (message, level)
 LogCallback = Callable[[str, str], None]
@@ -90,93 +90,112 @@ def mask_secrets(command: str, secret_values: list[str]) -> str:
 # ── Version detection ─────────────────────────────────────────────────
 
 
+_PHP_KEY_PATTERN = (
+    r"['\"](?:version|currentVersion)['\"]"
+    r"\s*=>\s*"
+    r"['\"](\d+\.\d+\.\d+)['\"]"
+)
+_PHP_CONST_PATTERN = r"\bVERSION\b[^=\n]*=\s*['\"](\d+\.\d+\.\d+)['\"]"
+
+
 def get_current_version(
     ssh: paramiko.SSHClient,
     log: LogCallback | None = None,
 ) -> str | None:
     """Read the EspoCRM version from inside the running container.
 
-    EspoCRM 8.x stores the version in system-managed
-    ``data/config-internal.php``; 7.x kept it in user-editable
-    ``data/config.php``. We probe both, then fall back to
-    ``composer.json`` which always carries the package version.
+    Probes the files where the version may live, in order of authority:
+
+    1. ``data/state.php`` — per-install state (EspoCRM 8.x+).
+    2. ``data/config-internal.php`` — system-managed config (EspoCRM 8.x+).
+    3. ``application/Espo/Core/Application.php`` — the ``VERSION`` class
+       constant.
+    4. ``data/config.php`` — user-editable config (EspoCRM 7.x and older).
+
+    Each file is ``cat``'d through the SSH channel and parsed in Python.
+    The file contents are deliberately NOT routed through the UI log
+    callback (``data/config.php`` contains DB credentials).
+
+    On total failure, dumps a container directory listing to the log so
+    the operator can see what is actually in the image.
 
     :param ssh: Connected SSH client.
     :param log: Optional ``(message, level)`` callback.
     :returns: Version string (e.g., ``"8.4.0"``) or None if not detectable.
     """
-    php_candidates = ("data/config-internal.php", "data/config.php")
-    for config_file in php_candidates:
+    probes = [
+        ("data/state.php", _PHP_KEY_PATTERN),
+        ("data/config-internal.php", _PHP_KEY_PATTERN),
+        ("application/Espo/Core/Application.php", _PHP_CONST_PATTERN),
+        ("data/config.php", _PHP_KEY_PATTERN),
+    ]
+    for path, pattern in probes:
         cmd = (
             f"docker compose -f {COMPOSE_FILE} exec -T espocrm "
-            f"grep -hoE \"'version'[[:space:]]*=>[[:space:]]*'[^']+'\" "
-            f"{config_file} 2>/dev/null || true"
+            f"cat {path}"
         )
-        _, output = run_remote(ssh, cmd, log)
-        version = _extract_version(output, quote="'")
-        if version is not None:
+        # No log callback — contents may include credentials.
+        exit_code, output = run_remote(ssh, cmd)
+        if exit_code != 0:
             if log:
-                log(f"Version found in {config_file}: {version}", "info")
+                log(f"{path}: not present in container", "info")
+            continue
+        match = re.search(pattern, output)
+        if match:
+            parsed = parse_version(match.group(1))
+            if parsed is None:
+                continue
+            version = f"{parsed[0]}.{parsed[1]}.{parsed[2]}"
+            if log:
+                log(f"Version found in {path}: {version}", "info")
             return version
-
-    cmd = (
-        f"docker compose -f {COMPOSE_FILE} exec -T espocrm "
-        "grep -hoE '\"version\"[[:space:]]*:[[:space:]]*\"[^\"]+\"' "
-        "composer.json 2>/dev/null || true"
-    )
-    _, output = run_remote(ssh, cmd, log)
-    version = _extract_version(output, quote='"')
-    if version is not None:
         if log:
-            log(f"Version found in composer.json: {version}", "info")
-        return version
+            log(f"{path}: present but no version pattern matched", "info")
 
     if log:
         log(
-            "No version key found in data/config-internal.php, "
-            "data/config.php, or composer.json",
+            "Version not found in known files — dumping container layout:",
             "warning",
         )
+        diag_cmd = (
+            f"docker compose -f {COMPOSE_FILE} exec -T espocrm sh -c "
+            "'pwd; echo ---data---; ls -la data/ 2>&1 | head -25; "
+            "echo ---application/Espo/Core---; "
+            "ls -la application/Espo/Core/Application.php 2>&1'"
+        )
+        run_remote(ssh, diag_cmd, log)
     return None
 
 
-def _extract_version(output: str, *, quote: str) -> str | None:
-    """Pull a semver out of a grep match line like ``'version' => '8.4.0'``."""
-    text = output.strip()
-    if not text:
-        return None
-    last = text.splitlines()[-1].strip()
-    match = re.search(rf"{re.escape(quote)}([^{re.escape(quote)}]+){re.escape(quote)}\s*$", last)
-    if not match:
-        return None
-    parsed = parse_version(match.group(1))
-    if parsed is None:
-        return None
-    return f"{parsed[0]}.{parsed[1]}.{parsed[2]}"
-
-
 def get_latest_version(timeout: int = 10) -> str | None:
-    """Fetch the latest stable EspoCRM version from the official release feed.
+    """Fetch the latest stable EspoCRM version from GitHub's releases API.
+
+    EspoCRM publishes every release as a GitHub tag, and ``releases/latest``
+    deliberately excludes prereleases, so its ``tag_name`` is the canonical
+    latest stable. The older ``espocrm.com/downloads/release-info.json``
+    endpoint was retired and now serves a 404 HTML page.
 
     :param timeout: HTTP timeout in seconds.
     :returns: Latest version string or None on failure.
     """
+    request = urllib.request.Request(
+        RELEASE_INFO_URL,
+        headers={"Accept": "application/vnd.github+json"},
+    )
     try:
-        with urllib.request.urlopen(
-            RELEASE_INFO_URL, timeout=timeout
-        ) as resp:
+        with urllib.request.urlopen(request, timeout=timeout) as resp:
             data = json.loads(resp.read().decode("utf-8"))
     except (urllib.error.URLError, json.JSONDecodeError, TimeoutError) as exc:
         logger.warning("Failed to fetch latest EspoCRM version: %s", exc)
         return None
 
-    for key in ("version", "stable", "latest"):
-        value = data.get(key) if isinstance(data, dict) else None
-        if value:
-            parsed = parse_version(str(value))
-            if parsed:
-                return f"{parsed[0]}.{parsed[1]}.{parsed[2]}"
-    return None
+    tag = data.get("tag_name") if isinstance(data, dict) else None
+    if not tag:
+        return None
+    parsed = parse_version(str(tag))
+    if not parsed:
+        return None
+    return f"{parsed[0]}.{parsed[1]}.{parsed[2]}"
 
 
 # ── Phase 1: Pre-upgrade checks ───────────────────────────────────────
@@ -208,9 +227,10 @@ def phase1_pre_upgrade_checks(
     current = get_current_version(ssh, log)
     if current is None:
         return False, (
-            "Could not read current EspoCRM version from "
-            "data/config-internal.php, data/config.php, or composer.json. "
-            "The container may not be fully initialised."
+            "Could not read current EspoCRM version from data/state.php, "
+            "data/config-internal.php, Application.php, or data/config.php. "
+            "See the diagnostic dump above for what is actually in the "
+            "container."
         )
     config.current_espocrm_version = current
     log(f"Current version: {current}", "info")
@@ -323,6 +343,28 @@ def prune_old_backups(
 # ── Phase 3: Run upgrade ──────────────────────────────────────────────
 
 
+_NO_UPGRADE_PHRASES = (
+    "no upgrade",
+    "up to date",
+    "up-to-date",
+    "already on the latest",
+    "nothing to upgrade",
+    "no new version",
+)
+
+
+def _output_says_no_upgrade(output: str) -> bool:
+    """Return True if the upgrader's output indicates no upgrade was applied.
+
+    EspoCRM's CLI sometimes reports "up to date" with exit code 0 — its
+    own check disagrees with the external release feed we pre-flighted
+    against. Treating that as success would leave the run log claiming a
+    successful upgrade when nothing actually changed.
+    """
+    out_lower = output.lower()
+    return any(phrase in out_lower for phrase in _NO_UPGRADE_PHRASES)
+
+
 def phase3_run_upgrade(
     ssh: paramiko.SSHClient,
     config: InstanceDeployConfig,
@@ -335,16 +377,40 @@ def phase3_run_upgrade(
 
     :returns: (success, error_message).
     """
+    # The EspoCRM source tree (``application/``, ``client/``, etc.) is
+    # baked into the image and root-owned, since Docker COPY runs as
+    # root. The upgrader runs as www-data so cache writes don't strand
+    # PHP-FPM with unreadable files — but that means www-data cannot
+    # overwrite the source tree without help. chown it first.
+    log("Ensuring source tree is writable by www-data...", "info")
+    chown_cmd = (
+        f"docker compose -f {COMPOSE_FILE} exec -T -u root espocrm "
+        "chown -R www-data:www-data /var/www/html"
+    )
+    chown_exit, chown_output = run_remote(ssh, chown_cmd, log)
+    if chown_exit != 0:
+        return False, (
+            "Could not adjust source-tree ownership inside the container "
+            f"(exit {chown_exit}). Upgrade aborted before any changes."
+        )
+
     log("Running EspoCRM upgrade...", "info")
     upgrade_cmd = (
         f"docker compose -f {COMPOSE_FILE} exec -T -u www-data "
         "espocrm php command.php upgrade -y"
     )
     exit_code, output = run_remote(ssh, upgrade_cmd, log, get_pty=True)
+
+    if _output_says_no_upgrade(output):
+        return False, (
+            "EspoCRM's in-container upgrader reports no upgrade is "
+            "available. The public release feed may be ahead of the "
+            "auto-upgrade channel — wait a day or two, or apply the "
+            "newer version manually."
+        )
+
     if exit_code != 0:
         out_lower = output.lower()
-        if "no upgrade" in out_lower or "up to date" in out_lower:
-            return False, "EspoCRM reports no upgrade is available"
         if "permission" in out_lower:
             return False, (
                 "Upgrade failed with a permission error. Check that the "
@@ -360,10 +426,21 @@ def phase3_run_upgrade(
     run_remote(ssh, cache_cmd, log)
 
     new_version = get_current_version(ssh, log)
-    if new_version:
-        config.current_espocrm_version = new_version
-        log(f"Upgrade applied. New version: {new_version}", "info")
+    if new_version is None:
+        return False, (
+            "Upgrade command completed but the new version could not be "
+            "read back. Investigate the container state before retrying."
+        )
+    previous = config.current_espocrm_version
+    if previous and new_version == previous:
+        return False, (
+            f"Upgrade command completed but the version is still "
+            f"{new_version}. The upgrader appears to have run without "
+            "applying a change."
+        )
+    config.current_espocrm_version = new_version
     config.last_upgrade_at = datetime.now(UTC).isoformat()
+    log(f"Upgrade applied. New version: {new_version}", "info")
     return True, ""
 
 
@@ -414,13 +491,18 @@ def phase4_verify_upgrade(
         lambda ec, out: "espocrm" in out.lower(),
     )
 
-    run_check(
-        "Version reads back",
-        f"docker compose -f {COMPOSE_FILE} exec -T espocrm sh -c "
-        "\"grep -hoE \\\"'version'[[:space:]]*=>[[:space:]]*'[^']+'\\\" "
-        "data/config-internal.php data/config.php 2>/dev/null | head -1\"",
-        lambda ec, out: "version" in out.lower(),
+    log("Verifying: Version reads back", "info")
+    version_read = get_current_version(ssh, log)
+    version_passed = version_read is not None
+    log(
+        f"  {'PASS' if version_passed else 'FAIL'}: Version reads back",
+        "info" if version_passed else "error",
     )
+    results.append({
+        "check": "Version reads back",
+        "passed": version_passed,
+        "detail": "" if version_passed else "could not detect version",
+    })
 
     overall = all(r["passed"] for r in results)
     return overall, results
