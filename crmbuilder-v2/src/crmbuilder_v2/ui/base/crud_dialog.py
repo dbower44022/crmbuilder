@@ -63,6 +63,7 @@ from crmbuilder_v2.ui.dialogs.error import ErrorDialog
 from crmbuilder_v2.ui.exceptions import (
     ConflictError,
     NotFoundError,
+    RequestShapeError,
     StorageClientError,
     StorageConnectionError,
     ValidationError,
@@ -966,7 +967,10 @@ class EntityCrudDialog(QDialog):
                 parent=self,
             ).exec()
             return
-        if isinstance(exc, ValidationError):
+        if isinstance(exc, (ValidationError, RequestShapeError)):
+            # 400 ValidationError and 422 RequestShapeError carry the
+            # same per-field error shape; surface mapped fields inline,
+            # route the rest to the generic dialog.
             field_errors = exc.field_errors()
             unmapped: list[tuple[str, str]] = []
             for f_key, message in field_errors.items():

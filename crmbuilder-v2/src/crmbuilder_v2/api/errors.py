@@ -8,21 +8,22 @@ from fastapi.responses import JSONResponse
 
 from crmbuilder_v2.access.exceptions import (
     AccessLayerError,
-    ConflictError,
-    NotFoundError,
+    StatusTransitionError,
     ValidationError,
 )
 from crmbuilder_v2.api.envelope import err
 
 
 def _status_for(exc: AccessLayerError) -> int:
-    if isinstance(exc, NotFoundError):
-        return 404
-    if isinstance(exc, ConflictError):
-        return 409
-    if isinstance(exc, ValidationError):
-        return 400
-    return 500
+    """HTTP status for an access-layer exception.
+
+    Every :class:`AccessLayerError` subclass carries an ``http_status``
+    class attribute (404 for not-found, 409 for conflict, 400 for
+    validation, 422 for the methodology-entity ``Unprocessable`` /
+    ``StatusTransition`` variants, 500 for the bare base). Honouring it
+    directly keeps this mapping single-sourced.
+    """
+    return exc.http_status
 
 
 def access_layer_handler(_request: Request, exc: AccessLayerError) -> JSONResponse:
@@ -34,6 +35,27 @@ def access_layer_handler(_request: Request, exc: AccessLayerError) -> JSONRespon
     else:
         body = err([exc.to_dict()])
     return JSONResponse(status_code=status, content=body)
+
+
+def status_transition_handler(
+    _request: Request, exc: StatusTransitionError
+) -> JSONResponse:
+    """Render a disallowed status transition.
+
+    Uses the dedicated body shape from ``domain.md`` section 3.5.3 —
+    ``{"error": "invalid_status_transition", "from": ..., "to": ...}`` —
+    rather than the standard ``{data, meta, errors}`` envelope. Registered
+    as a more-specific handler than :func:`access_layer_handler`, so
+    Starlette routes ``StatusTransitionError`` here by exact class match.
+    """
+    return JSONResponse(
+        status_code=exc.http_status,
+        content={
+            "error": "invalid_status_transition",
+            "from": exc.from_status,
+            "to": exc.to_status,
+        },
+    )
 
 
 def request_validation_handler(

@@ -125,6 +125,49 @@ class TopicUpdateIn(_Base):
     parent_topic: str | None = None
 
 
+# ---------- Domains (methodology entity, UI v0.4 slice B) ----------
+
+
+class DomainCreateIn(_Base):
+    """POST /domains body. ``domain_identifier`` is server-assigned when
+    omitted; ``domain_status`` defaults to ``candidate`` server-side."""
+
+    domain_name: str
+    domain_purpose: str
+    domain_description: str
+    domain_notes: str | None = None
+    domain_status: str | None = None
+    domain_identifier: str | None = None
+
+
+class DomainReplaceIn(_Base):
+    """PUT /domains/{identifier} body — full record replace.
+
+    ``domain_identifier`` is optional; when present it must match the
+    path identifier (mismatch → 422)."""
+
+    domain_identifier: str | None = None
+    domain_name: str
+    domain_purpose: str
+    domain_description: str
+    domain_notes: str | None = None
+    domain_status: str
+
+
+class DomainPatchIn(_Base):
+    """PATCH /domains/{identifier} body — partial update.
+
+    Routers consume this with ``model_dump(exclude_unset=True)`` so an
+    explicit ``domain_notes: null`` (clear the field) is distinguished
+    from an omitted ``domain_notes`` (leave unchanged)."""
+
+    domain_name: str | None = None
+    domain_purpose: str | None = None
+    domain_description: str | None = None
+    domain_notes: str | None = None
+    domain_status: str | None = None
+
+
 # ---------- References ----------
 
 

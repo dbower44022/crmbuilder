@@ -28,13 +28,14 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access.models import (
     ChangeLog,
     Charter,
     Decision,
+    Domain,
     PlanningItem,
     Reference,
     Risk,
@@ -54,6 +55,7 @@ _EXPORT_TABLES: list[tuple[str, type]] = [
     ("risks", Risk),
     ("planning_items", PlanningItem),
     ("topics", Topic),
+    ("domains", Domain),
     ("references", Reference),
     ("change_log", ChangeLog),
 ]
@@ -76,16 +78,18 @@ def build_snapshot(session: Session) -> dict[str, list[dict]]:
     """Read the current (post-flush) state of every exported table."""
     snapshot: dict[str, list[dict]] = {}
     for filename, model in _EXPORT_TABLES:
-        # Stable ordering: by id (insertion order) for non-identifier tables;
-        # by identifier for entity tables. Fall back to id if identifier
-        # column is missing.
+        # Stable ordering: by ``identifier`` for governance entity tables
+        # (tie-broken by ``id``); by ``version`` for the versioned
+        # singletons. Methodology entity tables (UI v0.4) use a
+        # prefixed-string primary key named ``{type}_identifier`` and
+        # carry no integer ``id`` column — order by their primary key.
         if hasattr(model, "identifier"):
-            order_col = model.identifier
+            order_cols = [model.identifier, model.id]
         elif hasattr(model, "version"):
-            order_col = model.version
+            order_cols = [model.version, model.id]
         else:
-            order_col = model.id
-        rows = session.scalars(select(model).order_by(order_col, model.id)).all()
+            order_cols = list(inspect(model).primary_key)
+        rows = session.scalars(select(model).order_by(*order_cols)).all()
         snapshot[filename] = [_row_to_dict(r) for r in rows]
     return snapshot
 

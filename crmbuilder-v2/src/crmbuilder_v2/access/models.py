@@ -41,6 +41,7 @@ from crmbuilder_v2.access.vocab import (
     CHANGE_LOG_ACTORS,
     CHANGE_LOG_OPERATIONS,
     DECISION_STATUSES,
+    DOMAIN_STATUSES,
     ENTITY_TYPES,
     PLANNING_ITEM_STATUSES,
     PLANNING_ITEM_TYPES,
@@ -236,6 +237,56 @@ class Topic(Base):
 
     parent: Mapped[Topic | None] = relationship(
         "Topic", remote_side="Topic.id", foreign_keys=[parent_topic_id]
+    )
+
+
+class Domain(Base):
+    """Methodology entity — one Phase 1 Domain Inventory member.
+
+    First of the four methodology entity types (UI v0.4). Per
+    ``domain.md`` the schema follows the parent-prefix field-naming
+    convention: every column is prefixed ``domain_``. The primary key
+    is the prefixed-string identifier ``domain_identifier`` (format
+    ``DOM-NNN``) — there is no integer surrogate ``id`` column.
+    """
+
+    __tablename__ = "domains"
+
+    domain_identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    domain_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    domain_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    domain_purpose: Mapped[str] = mapped_column(Text, nullable=False)
+    domain_description: Mapped[str] = mapped_column(Text, nullable=False)
+    domain_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    domain_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    domain_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    domain_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^DOM-\d{3}$`` expressed as a SQLite GLOB pattern — GLOB
+        # anchors the whole string, so this admits exactly ``DOM-`` plus
+        # three digits.
+        CheckConstraint(
+            "domain_identifier GLOB 'DOM-[0-9][0-9][0-9]'",
+            name="ck_domain_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("domain_status", DOMAIN_STATUSES),
+            name="ck_domain_status",
+        ),
+        Index("ix_domains_domain_status", "domain_status"),
+        Index("ix_domains_domain_deleted_at", "domain_deleted_at"),
     )
 
 

@@ -23,6 +23,22 @@ PLANNING_ITEM_TYPES: frozenset[str] = frozenset(
 )
 PLANNING_ITEM_STATUSES: frozenset[str] = frozenset({"Open", "Resolved", "Deferred"})
 
+# Methodology entity `domain` lifecycle (UI v0.4 slice B, DEC-047).
+# Three-status propose-verify lifecycle per ``domain.md`` section 3.4.
+DOMAIN_STATUSES: frozenset[str] = frozenset(
+    {"candidate", "confirmed", "deferred"}
+)
+
+# Valid status successors per ``domain.md`` section 3.4.1. A transition
+# is valid when the target equals the current value (a no-op) or appears
+# in the current value's successor set. The one-way propose-verify gate
+# means no value lists ``candidate`` as a successor.
+DOMAIN_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "candidate": frozenset({"confirmed", "deferred"}),
+    "confirmed": frozenset({"deferred"}),
+    "deferred": frozenset({"confirmed"}),
+}
+
 REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
     {
         "is_about",

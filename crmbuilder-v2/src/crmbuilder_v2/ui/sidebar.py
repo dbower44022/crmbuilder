@@ -15,6 +15,8 @@ header item renders above each section. The "Governance" group holds
 the eight v0.3 entity panels; the "Methodology" group is introduced
 empty in slice A and is populated by slices B–E. ``SIDEBAR_ENTRIES``
 remains the flat tuple of selectable entry labels in display order.
+
+Slice B adds the first Methodology entry, "Domains", at position #1.
 """
 
 from __future__ import annotations
@@ -24,8 +26,9 @@ from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QListWidget, QListWidgetItem
 
 # Ordered sidebar sections: (group title, ordered entry labels). The
-# Methodology group is intentionally empty in v0.4 slice A; entries
-# populate in slices B–E.
+# Methodology group gained its first entry — "Domains" — in v0.4
+# slice B; "Entities", "Processes", and "CRM Candidates" follow in
+# slices C–E.
 SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
         "Governance",
@@ -40,7 +43,7 @@ SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "References",
         ),
     ),
-    ("Methodology", ()),
+    ("Methodology", ("Domains",)),
 )
 
 # Flat tuple of selectable entry labels in display order, derived from

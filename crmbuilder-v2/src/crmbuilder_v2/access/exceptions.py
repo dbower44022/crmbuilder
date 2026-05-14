@@ -45,6 +45,41 @@ class ValidationError(AccessLayerError):
         }
 
 
+class UnprocessableError(ValidationError):
+    """Validation failure that maps to HTTP 422 rather than 400.
+
+    Used by the methodology entity types (UI v0.4) for input-validation
+    failures the spec assigns to 422: identifier-format violations,
+    case-insensitive name-uniqueness collisions, status-enum
+    violations, PUT identifier/path mismatches, and restore-on-a-live
+    record. ``isinstance(exc, ValidationError)`` still holds, so the
+    API error handler renders it with the same per-field envelope as a
+    400; only the HTTP status differs.
+    """
+
+    http_status = 422
+
+
+class StatusTransitionError(AccessLayerError):
+    """A status change that the entity's lifecycle map disallows.
+
+    Carries the offending ``from``/``to`` pair. The API layer renders
+    this as HTTP 422 with the dedicated body shape
+    ``{"error": "invalid_status_transition", "from": ..., "to": ...}``
+    (``domain.md`` section 3.5.3) — not the standard v2 envelope.
+    """
+
+    http_status = 422
+    code = "invalid_status_transition"
+
+    def __init__(self, from_status: str, to_status: str):
+        self.from_status = from_status
+        self.to_status = to_status
+        super().__init__(
+            f"invalid status transition: {from_status!r} -> {to_status!r}"
+        )
+
+
 class NotFoundError(AccessLayerError):
     """Requested entity does not exist."""
 

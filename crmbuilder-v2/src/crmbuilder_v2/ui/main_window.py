@@ -36,6 +36,7 @@ from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.crash_banner import CrashBanner
 from crmbuilder_v2.ui.panels.charter import CharterPanel
 from crmbuilder_v2.ui.panels.decisions import DecisionsPanel
+from crmbuilder_v2.ui.panels.domains import DomainsPanel
 from crmbuilder_v2.ui.panels.planning_items import PlanningItemsPanel
 from crmbuilder_v2.ui.panels.references import ReferencesPanel
 from crmbuilder_v2.ui.panels.risks import RisksPanel
@@ -65,6 +66,10 @@ ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
     "planning_item": "Planning Items",
     "topic": "Topics",
     "reference": "References",
+    # Methodology entities (UI v0.4). Domains lands in slice B; the
+    # file-watch router uses this map to refresh the panel on external
+    # ``domains.json`` rewrites.
+    "domain": "Domains",
 }
 
 
@@ -113,6 +118,8 @@ class MainWindow(QMainWindow):
                 page = TopicsPanel(self._client)
             elif entry == "References":
                 page = ReferencesPanel(self._client)
+            elif entry == "Domains":
+                page = DomainsPanel(self._client)
             else:
                 placeholder = QLabel(
                     f"Panel for {entry} — not yet implemented."

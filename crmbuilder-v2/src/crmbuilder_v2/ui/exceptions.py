@@ -63,7 +63,15 @@ class ServerError(StorageClientError):
 
 
 class RequestShapeError(StorageClientError):
-    """422 — FastAPI request-validation error (programmer error in the client)."""
+    """422 — request-shape / unprocessable-entity response.
+
+    Covers two distinct 422 sources: FastAPI's own request-validation
+    rejections (programmer error in the client — dotted ``body.x``
+    field paths), and the access layer's ``UnprocessableError`` for the
+    methodology entity types (genuine input-validation failures with
+    bare field names — identifier format, name uniqueness, status
+    enum). :meth:`field_errors` lets dialogs surface the latter inline.
+    """
 
     def __init__(
         self,
@@ -72,6 +80,24 @@ class RequestShapeError(StorageClientError):
     ):
         super().__init__(message)
         self.errors = errors
+
+    def field_errors(self) -> dict[str, str]:
+        """Return ``{field_name: first_message}`` for inline-on-field display.
+
+        Errors without a ``field`` key are omitted; only the first
+        message per field is kept. FastAPI request-validation errors
+        carry dotted ``body.x`` paths that won't match a dialog field
+        key (so they fall through to a generic error dialog); access
+        layer ``UnprocessableError`` fields are bare and map cleanly.
+        """
+        out: dict[str, str] = {}
+        for err in self.errors:
+            field = err.get("field")
+            if not field:
+                continue
+            if field not in out:
+                out[field] = err.get("message", "")
+        return out
 
 
 class NotFoundError(StorageClientError):
