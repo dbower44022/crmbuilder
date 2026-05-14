@@ -22,6 +22,18 @@ def list_all():
         return ok(references.list_all(s))
 
 
+@router.get("/next-identifier")
+def next_identifier():
+    """Return the next reference primary-key ``id`` (DEC-043).
+
+    References are tuple-identified and carry no prefixed identifier;
+    this returns the next autoincrement ``id`` for API-surface
+    consistency with the prefixed-identifier governance entity types.
+    """
+    with readonly_session() as s:
+        return ok({"next": references.compute_next_identifier(s)})
+
+
 @router.post("", status_code=201)
 def create(body: ReferenceCreateIn):
     with writable_session() as s:

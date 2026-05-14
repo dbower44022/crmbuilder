@@ -2,10 +2,39 @@
 
 from __future__ import annotations
 
+import re
+from collections.abc import Iterable
 from datetime import date, datetime
 from typing import Any
 
 from crmbuilder_v2.access.exceptions import FieldError, ValidationError
+
+_PREFIXED_IDENTIFIER_RE = re.compile(r"^(?P<prefix>[A-Z]+)-(?P<num>\d+)$")
+
+
+def next_prefixed_identifier(
+    identifiers: Iterable[str | None], prefix: str
+) -> str:
+    """Compute the next ``PREFIX-NNN`` identifier from existing ones.
+
+    Scans ``identifiers`` for values matching ``{prefix}-{digits}``,
+    takes the highest numeric suffix, increments it, and zero-pads to
+    three digits. Values that don't match the prefix pattern (or are
+    ``None``/empty) are ignored. An empty or all-non-matching input
+    yields ``{prefix}-001``.
+
+    Callers should pass *all* rows including soft-deleted ones so that
+    a deleted record's identifier is never reused.
+    """
+    highest = 0
+    for ident in identifiers:
+        if not ident:
+            continue
+        match = _PREFIXED_IDENTIFIER_RE.match(ident)
+        if match is None or match.group("prefix") != prefix:
+            continue
+        highest = max(highest, int(match.group("num")))
+    return f"{prefix}-{highest + 1:03d}"
 
 
 def to_dict(row) -> dict:

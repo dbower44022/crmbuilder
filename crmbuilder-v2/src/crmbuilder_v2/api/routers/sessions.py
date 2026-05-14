@@ -18,6 +18,13 @@ def list_all(limit: int | None = Query(default=None, ge=1, le=1000)):
         return ok(sessions.list_all(s, limit=limit))
 
 
+@router.get("/next-identifier")
+def next_identifier():
+    """Return the next available ``SES-NNN`` identifier (DEC-043)."""
+    with readonly_session() as s:
+        return ok({"next": sessions.compute_next_identifier(s)})
+
+
 @router.get("/{identifier}")
 def get(identifier: str):
     with readonly_session() as s:

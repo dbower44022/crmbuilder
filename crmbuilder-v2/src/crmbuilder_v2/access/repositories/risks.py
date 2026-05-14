@@ -5,7 +5,12 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from crmbuilder_v2.access._helpers import require_in, require_string, to_dict
+from crmbuilder_v2.access._helpers import (
+    next_prefixed_identifier,
+    require_in,
+    require_string,
+    to_dict,
+)
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
@@ -21,6 +26,13 @@ from crmbuilder_v2.access.vocab import (
 )
 
 _ENTITY_TYPE = "risk"
+_IDENTIFIER_PREFIX = "RSK"
+
+
+def compute_next_identifier(session: Session) -> str:
+    """Return the next available ``RSK-NNN`` identifier."""
+    identifiers = session.scalars(select(Risk.identifier)).all()
+    return next_prefixed_identifier(identifiers, _IDENTIFIER_PREFIX)
 
 _UPDATABLE_FIELDS = frozenset(
     {"title", "description", "probability", "impact", "response_plan", "status"}

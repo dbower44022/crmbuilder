@@ -24,6 +24,18 @@ def list_versions():
         return ok(status_repo.list_versions(s))
 
 
+@router.get("/next-identifier")
+def next_identifier():
+    """Return the next status version number (DEC-043).
+
+    Status uses versioned-identifier semantics, so the "next
+    identifier" is the integer version a new ``PUT /status`` would
+    assign.
+    """
+    with readonly_session() as s:
+        return ok({"next": status_repo.compute_next_version(s)})
+
+
 @router.get("/versions/{version}")
 def get_version(version: int):
     with readonly_session() as s:

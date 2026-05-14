@@ -20,6 +20,19 @@ _ENTITY_TYPE = "status"
 _SINGLETON_ID = "status"
 
 
+def compute_next_version(session: Session) -> int:
+    """Return the version number a new :func:`replace` would assign.
+
+    Mirrors :func:`replace`'s ``next_version`` logic: one past the
+    current version, or 1 when no status document exists yet. Status
+    uses versioned-identifier semantics rather than a prefixed
+    ``STA-NNN`` string, so the "next identifier" is the next integer
+    version.
+    """
+    current = session.scalar(select(Status).where(Status.is_current.is_(True)))
+    return (current.version + 1) if current else 1
+
+
 def get_current(session: Session) -> dict:
     row = session.scalar(select(Status).where(Status.is_current.is_(True)))
     if row is None:

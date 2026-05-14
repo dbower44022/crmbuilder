@@ -11,7 +11,12 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from crmbuilder_v2.access._helpers import require_in, require_string, to_dict
+from crmbuilder_v2.access._helpers import (
+    next_prefixed_identifier,
+    require_in,
+    require_string,
+    to_dict,
+)
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
@@ -23,6 +28,17 @@ from crmbuilder_v2.access.models import Decision
 from crmbuilder_v2.access.vocab import DECISION_STATUSES
 
 _ENTITY_TYPE = "decision"
+_IDENTIFIER_PREFIX = "DEC"
+
+
+def compute_next_identifier(session: Session) -> str:
+    """Return the next available ``DEC-NNN`` identifier.
+
+    Scans every decision row including soft-deleted ones (status
+    ``Deleted``) so a retired identifier is never reused.
+    """
+    identifiers = session.scalars(select(Decision.identifier)).all()
+    return next_prefixed_identifier(identifiers, _IDENTIFIER_PREFIX)
 
 _UPDATABLE_FIELDS = frozenset(
     {

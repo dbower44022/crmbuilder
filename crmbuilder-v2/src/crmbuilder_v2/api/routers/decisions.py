@@ -18,6 +18,13 @@ def list_all(include_deleted: bool = False):
         return ok(decisions.list_all(s, include_deleted=include_deleted))
 
 
+@router.get("/next-identifier")
+def next_identifier():
+    """Return the next available ``DEC-NNN`` identifier (DEC-043)."""
+    with readonly_session() as s:
+        return ok({"next": decisions.compute_next_identifier(s)})
+
+
 @router.get("/{identifier}")
 def get(identifier: str):
     with readonly_session() as s:

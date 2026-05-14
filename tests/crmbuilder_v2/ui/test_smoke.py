@@ -41,9 +41,15 @@ def test_main_window_constructs(qapp, qtbot, lifecycle_stub, client_stub):
     qtbot.addWidget(window)
 
     sidebar = window._sidebar
-    assert sidebar.count() == len(EXPECTED_ENTRIES)
-    for row, expected in enumerate(EXPECTED_ENTRIES):
-        assert sidebar.item(row).text() == expected
+    # The sidebar is grouped (UI v0.4 slice A): every selectable entry
+    # plus a non-selectable header per group. The eight governance
+    # entries all render; the "GOVERNANCE" and "METHODOLOGY" group
+    # headers render too.
+    rendered = [sidebar.item(r).text() for r in range(sidebar.count())]
+    for expected in EXPECTED_ENTRIES:
+        assert expected in rendered
+    assert "GOVERNANCE" in rendered
+    assert "METHODOLOGY" in rendered
 
     assert window._stack.count() == len(EXPECTED_ENTRIES)
     assert sidebar.currentItem().text() == "Decisions"

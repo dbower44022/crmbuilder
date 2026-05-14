@@ -20,6 +20,18 @@ _ENTITY_TYPE = "charter"
 _SINGLETON_ID = "charter"  # used as the change-log entity_identifier
 
 
+def compute_next_version(session: Session) -> int:
+    """Return the version number a new :func:`replace` would assign.
+
+    Mirrors :func:`replace`'s ``next_version`` logic: one past the
+    current version, or 1 when no charter exists yet. Charter uses
+    versioned-identifier semantics rather than a prefixed ``CHR-NNN``
+    string, so the "next identifier" is the next integer version.
+    """
+    current = session.scalar(select(Charter).where(Charter.is_current.is_(True)))
+    return (current.version + 1) if current else 1
+
+
 def get_current(session: Session) -> dict:
     row = session.scalar(select(Charter).where(Charter.is_current.is_(True)))
     if row is None:

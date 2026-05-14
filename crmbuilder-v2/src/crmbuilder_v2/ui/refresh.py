@@ -8,7 +8,12 @@ on every panel act as a fallback.
 
 Multi-write bursts within ``DEBOUNCE_MS`` coalesce to a single emission
 per entity type. ``change_log.json`` and tempfile names are filtered
-out — only the eight known entity-snapshot filenames produce signals.
+out — only the known entity-snapshot filenames produce signals.
+
+UI v0.4 slice A extends the filename map with the four methodology
+entity types (``domain``, ``entity``, ``process``, ``crm_candidate``);
+their panels land in slices B–E and connect to ``data_changed`` for
+the matching entity-type string.
 """
 
 from __future__ import annotations
@@ -34,6 +39,12 @@ _FILENAME_TO_ENTITY_TYPE: dict[str, str] = {
     "planning_items.json": "planning_item",
     "topics.json": "topic",
     "references.json": "reference",
+    # Methodology entity types (UI v0.4 slice A). Panels land in
+    # slices B–E and connect to ``data_changed`` for these strings.
+    "domains.json": "domain",
+    "entities.json": "entity",
+    "processes.json": "process",
+    "crm_candidates.json": "crm_candidate",
 }
 
 
@@ -49,7 +60,8 @@ class RefreshService(QObject):
 
     * ``data_changed(str)`` — entity_type whose snapshot was rewritten.
                               One of: charter, status, decision, session,
-                              risk, planning_item, topic, reference.
+                              risk, planning_item, topic, reference,
+                              domain, entity, process, crm_candidate.
     * ``watch_failed(str)``  — emitted if ``QFileSystemWatcher`` cannot
                                watch the directory. Argument carries a
                                diagnostic message.

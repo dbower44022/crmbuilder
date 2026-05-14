@@ -18,6 +18,13 @@ def list_all():
         return ok(risks.list_all(s))
 
 
+@router.get("/next-identifier")
+def next_identifier():
+    """Return the next available ``RSK-NNN`` identifier (DEC-043)."""
+    with readonly_session() as s:
+        return ok({"next": risks.compute_next_identifier(s)})
+
+
 @router.get("/{identifier}")
 def get(identifier: str):
     with readonly_session() as s:

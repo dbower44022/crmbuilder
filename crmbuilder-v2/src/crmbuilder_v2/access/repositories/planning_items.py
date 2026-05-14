@@ -5,7 +5,12 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from crmbuilder_v2.access._helpers import require_in, require_string, to_dict
+from crmbuilder_v2.access._helpers import (
+    next_prefixed_identifier,
+    require_in,
+    require_string,
+    to_dict,
+)
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
@@ -17,6 +22,13 @@ from crmbuilder_v2.access.models import PlanningItem
 from crmbuilder_v2.access.vocab import PLANNING_ITEM_STATUSES, PLANNING_ITEM_TYPES
 
 _ENTITY_TYPE = "planning_item"
+_IDENTIFIER_PREFIX = "PI"
+
+
+def compute_next_identifier(session: Session) -> str:
+    """Return the next available ``PI-NNN`` identifier."""
+    identifiers = session.scalars(select(PlanningItem.identifier)).all()
+    return next_prefixed_identifier(identifiers, _IDENTIFIER_PREFIX)
 
 _UPDATABLE_FIELDS = frozenset(
     {"title", "item_type", "description", "status", "resolution_reference"}

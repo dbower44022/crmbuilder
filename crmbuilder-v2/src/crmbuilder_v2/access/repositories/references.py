@@ -10,7 +10,7 @@ References cannot be updated — to "change" one, delete and recreate.
 
 from __future__ import annotations
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access._helpers import require_in, require_string, to_dict
@@ -23,6 +23,19 @@ from crmbuilder_v2.access.models import Reference
 from crmbuilder_v2.access.vocab import ENTITY_TYPES, REFERENCE_RELATIONSHIPS
 
 _ENTITY_TYPE = "reference"
+
+
+def compute_next_identifier(session: Session) -> int:
+    """Return the next reference primary-key ``id``.
+
+    References are tuple-identified and carry no prefixed identifier;
+    their addressable identity is the integer ``id`` primary key (see
+    :func:`get`, :func:`delete_by_id`). For API-surface consistency
+    with the other prefixed-identifier governance entity types
+    (DEC-043), this returns the next autoincrement id.
+    """
+    highest = session.scalar(select(func.max(Reference.id)))
+    return (highest or 0) + 1
 
 
 def _row_dict(row: Reference) -> dict:

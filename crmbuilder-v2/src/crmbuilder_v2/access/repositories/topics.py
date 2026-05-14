@@ -5,7 +5,11 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from crmbuilder_v2.access._helpers import require_string, to_dict
+from crmbuilder_v2.access._helpers import (
+    next_prefixed_identifier,
+    require_string,
+    to_dict,
+)
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
@@ -16,6 +20,13 @@ from crmbuilder_v2.access.exceptions import (
 from crmbuilder_v2.access.models import Topic
 
 _ENTITY_TYPE = "topic"
+_IDENTIFIER_PREFIX = "TOP"
+
+
+def compute_next_identifier(session: Session) -> str:
+    """Return the next available ``TOP-NNN`` identifier."""
+    identifiers = session.scalars(select(Topic.identifier)).all()
+    return next_prefixed_identifier(identifiers, _IDENTIFIER_PREFIX)
 
 # Direct column updates; ``parent_topic`` is handled separately via its own kwarg.
 _UPDATABLE_FIELDS = frozenset({"name", "description"})

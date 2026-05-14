@@ -150,8 +150,7 @@ class MainWindow(QMainWindow):
 
         self._build_menu_bar()
 
-        default_row = list(SIDEBAR_ENTRIES).index(_DEFAULT_ENTRY)
-        self._sidebar.setCurrentRow(default_row)
+        self._sidebar.select_entry(_DEFAULT_ENTRY)
 
         watched_dir = snapshot_dir if snapshot_dir is not None else get_settings().export_dir
         self._refresh_service = RefreshService(watched_dir, self)
@@ -260,12 +259,10 @@ class MainWindow(QMainWindow):
         # Switch the sidebar selection so it visually matches the swap;
         # this also routes through ``_on_sidebar_selected`` which sets
         # the stack page.
-        try:
-            row = list(SIDEBAR_ENTRIES).index(label)
-        except ValueError:
+        if label not in SIDEBAR_ENTRIES:
             _log.warning("Sidebar entry %s missing from SIDEBAR_ENTRIES", label)
             return
-        self._sidebar.setCurrentRow(row)
+        self._sidebar.select_entry(label)
         if isinstance(target, ListDetailPanel):
             target.select_record_by_identifier(identifier)
 

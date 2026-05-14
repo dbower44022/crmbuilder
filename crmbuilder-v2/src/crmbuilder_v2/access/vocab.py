@@ -32,6 +32,9 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         "covers",
         "blocks",
         "references",
+        # v0.4 additions (methodology entities, UI v0.4 slice A).
+        "entity_scopes_to_domain",
+        "process_hands_off_to_process",
     }
 )
 
@@ -54,6 +57,13 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         # ``catalog_attribute`` targets.
         "catalog_entity",
         "catalog_attribute",
+        # Methodology entities (UI v0.4 slice A). The four new entity
+        # types under the Methodology sidebar group: domain, entity,
+        # process, crm_candidate.
+        "domain",
+        "entity",
+        "process",
+        "crm_candidate",
     }
 )
 
@@ -70,6 +80,11 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
     * ``affects`` — source must be a risk.
     * ``covers`` — source must be charter or status.
     * ``blocks`` — source must be a risk or planning_item.
+    * ``entity_scopes_to_domain`` — source must be an entity, target must
+      be a domain (v0.4, DEC-053).
+    * ``process_hands_off_to_process`` — source and target must both be
+      processes (v0.4, DEC-058; directional, source=producer,
+      target=consumer).
 
     The ruleset is permissive by design: every pair has at least the
     two generic kinds, so the dialog never produces an empty kind list
@@ -89,6 +104,11 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         kinds.add("blocks")
     if source_type in ("charter", "status"):
         kinds.add("covers")
+    # v0.4 additions per DEC-053 and DEC-058:
+    if source_type == "entity" and target_type == "domain":
+        kinds.add("entity_scopes_to_domain")
+    if source_type == "process" and target_type == "process":
+        kinds.add("process_hands_off_to_process")
     return frozenset(kinds)
 
 
