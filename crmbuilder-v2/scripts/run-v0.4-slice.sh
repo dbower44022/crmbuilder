@@ -36,7 +36,7 @@ SLICE="${1:-}"
 if [[ -z "$SLICE" ]]; then
   cat >&2 <<EOF
 Usage: $0 <slice-letter>
-  slice-letter: A | B | C | D | E | F
+  slice-letter: A | B | C | D | E | F | G
 
 Slices:
   A — foundation (vocab, refs CHECK migration, sidebar group, retrofits)
@@ -45,6 +45,7 @@ Slices:
   D — processes-panel
   E — crm-candidates-panel
   F — closeout (version bump, README, regression pass, smoke)
+  G — closeout records authoring (post-F: SES/DEC/PI/ref/status writes from drafts file)
 EOF
   exit 64
 fi
@@ -56,8 +57,9 @@ case "$SLICE" in
   D|d) SLICE="D"; NAME="processes-panel" ;;
   E|e) SLICE="E"; NAME="crm-candidates-panel" ;;
   F|f) SLICE="F"; NAME="closeout" ;;
+  G|g) SLICE="G"; NAME="closeout-records-authoring" ;;
   *)
-    echo "Error: unknown slice '$SLICE'. Must be one of: A, B, C, D, E, F." >&2
+    echo "Error: unknown slice '$SLICE'. Must be one of: A, B, C, D, E, F, G." >&2
     exit 64
     ;;
 esac
