@@ -130,5 +130,49 @@
     "status": "Open",
     "title": "crm_candidate structured-metadata enums (vendor_url, hosting_type, license_type, price_tier) for v0.5+",
     "updated_at": "2026-05-12T09:18:17.189277"
+  },
+  {
+    "created_at": "2026-05-15T15:45:06.158014",
+    "description": "Target version: v0.5+.\n\nThe original methodology named Cross-Domain Service (Notes, Email, Calendar, Surveys) as a methodology entity type consumed across domains. The evolved methodology has not yet resolved whether Cross-Domain Service remains a distinct entity type, is subsumed into `process` once `process_kind` lands in v0.5+, or is dropped. The v0.4 schema workstream did not address the question and the original methodology-entity-schema-planning-prompt did not flag the gap. Resolution waits on CBM-redo signal: if Phase 1 surfaces work that the evolved methodology treats as cross-domain in nature, evaluate whether `process` with a future `process_kind` field is the right home, or whether a separate `cross_domain_service` entity type is warranted. Decision gate: at the first CBM-redo Phase 1 conversation that touches Notes / Email / Calendar / Surveys content. Surfaced by the 05-14-26 reconciliation conversation (SES-018).",
+    "id": 13,
+    "identifier": "PI-013",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Cross-Domain Service representation",
+    "updated_at": "2026-05-15T15:45:06.158016"
+  },
+  {
+    "created_at": "2026-05-15T15:45:06.159041",
+    "description": "Target version: v0.5+.\n\nThe catalog ingestion PRD's section 3.3 sketched a hybrid integration pattern: methodology entities carry an optional `primary_catalog_entity_id` FK plus DEC-006 universal references for weak ties. The four v0.4 methodology schemas (`domain`, `entity`, `process`, `crm_candidate`) do not implement the FK because their MVS thin shape doesn't carry the field-level entity definitions that would need it. When PI-004's `field` entity type lands in v0.5+, the catalog FK question must be settled: (a) integer FK to `catalog_entity.id` vs text FK to `catalog_entity.catalog_id` per the catalog DEC-065 stable-identifier convention; (b) FK on `entity` vs on `field`; (c) how universal-references weak ties interact with the FK semantics. Scope: tied to PI-004 prerequisite; design conversation opens when PI-004's design conversation does, not independently. Surfaced by the 05-14-26 reconciliation conversation (SES-018).",
+    "id": 14,
+    "identifier": "PI-014",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Catalog FK integration for methodology entities",
+    "updated_at": "2026-05-15T15:45:06.159042"
+  },
+  {
+    "created_at": "2026-05-15T15:45:06.159660",
+    "description": "Target version: v0.5+ or later.\n\nDEC-008 prescribes that v2 produces renders, not authored copies — Word documents, deployment YAML, and JSON exports are all generated from the database, not maintained alongside it. v0.4 ships the storage and UI surface for the four MVS methodology entity types but zero renderer work. Three render targets are forecast: (a) .docx generation for Domain Inventory and Phase 1 Prioritized Backbone documents (per evolved-methodology Phase 1 outputs); (b) YAML generation for the v1 deployment engine (current YAML lives in client repositories as hand-authored files); (c) per-entity JSON exports for git-diff via the existing DEC-008 hook (these may already exist mechanically through the storage layer's standard export pattern — verify before scoping). Likely a sizable workstream on its own; opening it before v0.4 ships is premature. A separate planning conversation should follow either v0.4 closeout or first CBM-redo iteration, whichever comes first. Surfaced by the 05-14-26 reconciliation conversation (SES-018).",
+    "id": 15,
+    "identifier": "PI-015",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Methodology entity renderers",
+    "updated_at": "2026-05-15T15:45:06.159661"
+  },
+  {
+    "created_at": "2026-05-15T15:45:06.160192",
+    "description": "Target version: v0.5+.\n\nThe live `/references` router does not enforce per-pair `RELATIONSHIP_RULES` because doing so would break v0.3 regression tests that use cross-pair references like `session → decision / decided_in`. Per-pair vocab compliance is currently enforced only at the cascading `ReferenceCreateDialog`, which means the desktop UI is safe but the REST surface is not. If the API is consumed only by the desktop UI (which routes through the dialog), the gap is theoretical. If MCP tools or any external script POSTs directly to `/references` with arbitrary kinds, a non-vocab `kind` could land in the database. Resolution: tighten router-level validation while preserving v0.3 cross-pair governance reference behavior — likely by enforcing per-pair `RELATIONSHIP_RULES` only for pairs where rules exist, leaving pairs with no rules (current v0.3 pattern) unconstrained. Surfaced by SES-021 (v0.4 slice C entities panel build) when implementing criterion 14's \"POST /references with (entity, domain) and an unsupported kind returns 422\" test, which was satisfied at the schema-rejection level rather than at the router-vocab level.",
+    "id": 16,
+    "identifier": "PI-016",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Router-level per-pair vocabulary enforcement on `/references`",
+    "updated_at": "2026-05-15T15:45:06.160193"
   }
 ]
