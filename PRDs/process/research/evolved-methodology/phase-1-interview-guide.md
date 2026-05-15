@@ -5,8 +5,8 @@
 **Document type:** Active design work for an evolved methodology (research / not adopted)
 **Repository:** `crmbuilder`
 **Path:** `PRDs/process/research/evolved-methodology/phase-1-interview-guide.md`
-**Last Updated:** 04-30-26 23:45
-**Version:** 0.2 (revised after CBM redo and pattern library specification)
+**Last Updated:** 05-15-26 19:20
+**Version:** 0.3 (attached to the new conduct framework)
 
 ---
 
@@ -24,6 +24,7 @@ This guide is **provisional**. It has not been used in a real engagement; the fi
 |---------|------|--------|---------|
 | 0.1 | 04-30-26 16:10 | Doug Bower / Claude | Initial draft of the Phase 1 interview guide for Mission and Backbone Identification. Two-session structure with optional third, pattern-library-aware, structured guide with worked examples for hard moments. |
 | 0.2 | 04-30-26 23:45 | Doug Bower / Claude | Revised after CBM redo experiment and pattern library specification. Three substantive revisions: §2 pre-engagement reading scope expanded to include operational role definitions; §3 and §5 Tier 2 inference discipline tightened to require positive support in in-bounds material rather than pattern-matched plausibility; §8 pattern library handling rewritten to reflect the actual library mechanics from the spec. Several smaller clarifications elsewhere. |
+| 0.3 | 05-15-26 19:20 | Doug Bower / Claude | Attached to the new conduct framework. Added §1A "How to Conduct This Phase" that points to `conduct/charter.md`, `conduct/kickoff.md`, and `conduct/question-library.md`, names the eight library entries most relevant to Phase 1, and retains five phase-specific conduct items (two-session structure as the conduct unit; pattern library consultation as Layer 1 reading; positive-support discipline now generalized to Charter §11.6.b; confident-proposal as dominant decision pattern; §9 failure modes complement Charter §11). Added forward reference to Charter §11.6.b and Question Library Entry 5.5 at §3.2.1. No restructure of the existing §2–§12 — the guide's workflow-integrated conduct material remains in place. |
 
 ---
 
@@ -40,6 +41,8 @@ This guide is **provisional**. It has not been used in a real engagement; the fi
 - **§8 (Pattern library handling) rewritten** to reflect actual library mechanics from the now-existing `pattern-library-specification.md`. The v0.1 §8 referenced the library as a future artifact with concrete handling for "no library entry" mode and aspirational handling for "library entry exists" mode. With the spec and first entry (`pattern-library-entry-nonprofit-mentoring.md`) now committed, §8 has been replaced with concrete consultation steps from spec §4.1 and §4.2, the Section A/B/C content treatment, and the library-backed-vs-judgment-only framing distinction from spec §4.3.
 
 Smaller clarifications elsewhere: §1.4 (reading order) updated to reference the pattern library specification as required reading; §2.2 (consult the pattern library) expanded with concrete steps; §11 (connection to Phase 2) lightly updated; §12 (gaps) updated to remove items now covered.
+
+**Version 0.3 (05-15-26 19:20):** Attached to the conduct framework established in `PRDs/process/conduct/` (Charter, Kickoff Protocol, Question Library). Added §1A "How to Conduct This Phase" between §1 and §2. The section follows the same pattern used in current-methodology guides: references to the three foundational conduct files plus five phase-specific items genuinely unique to Phase 1. The five items are: (A) the two-session structure is the conduct unit, not individual sessions; (B) pattern library consultation belongs in Kickoff Layer 1; (C) the "inferences require positive support" rule is now generalized to Charter §11.6.b, with the Phase-1-specific operationalization in §3.2.1 retained and forward-referenced; (D) confident proposals (Question Library Entry 6.3) are the dominant decision pattern per Principle 4 of the evolved methodology; (E) §9 failure modes are phase-specific anti-patterns complementing Charter §11. Added forward reference at top of §3.2.1 pointing to Charter §11.6.b and Question Library Entry 5.5. No restructure of §2–§12 — the workflow-integrated conduct material remains in place because the guide's structure (worked examples embedded in workflow rather than concentrated in a "Critical Rules" section) is intentional and works.
 
 ---
 
@@ -71,6 +74,43 @@ The primary reader is the CRM Builder consultant who will run the sessions. Reas
 Read the guide end-to-end before Session 1, even if Session 1 is far off. The Between-Sessions Work section in particular determines what notes to take during Session 1. Going in without knowing what the next session needs makes Session 1 less efficient.
 
 Also read `pattern-library-specification.md` before running this guide for any engagement. The pattern library mechanics shape pre-engagement reading (§2.2 of this guide) and between-sessions consultant work (§4 of this guide). Without familiarity with the spec, the guide's library references will not be actionable.
+
+---
+
+## 1A. How to Conduct This Phase
+
+**Standard conduct:** Follow `conduct/charter.md` — global conduct rules for any stakeholder-facing AI-led session. The Charter governs communication style, question discipline, listening and probing, confirmation cadence, identifier discipline, scope-change protocol, and anti-patterns. It applies to this phase as it does to every other.
+
+**Pre-session priming:** Follow `conduct/kickoff.md`, particularly §7.2 which covers the evolved methodology's phases. Phase 1's two-session structure means:
+
+- **Session 1** is Variant B (first session with the client). Run all three Kickoff layers fully.
+- **Session 2** is Variant C (follow-up) with a specific wrinkle: the AI has done substantive between-sessions drafting per §4 of this guide and is presenting drafts for verification. Layer 2 frames it as "I've prepared drafts based on Session 1; let me walk you through them," not generic continuation. Layer 3 confirms time and asks whether anything has changed since Session 1; do not repeat full Layer 3.
+- **Optional Session 3** (§6) is also Variant C. Same handling as Session 2.
+
+**Question patterns:** Consult `conduct/question-library.md` when composing substantive questions. Particularly relevant for this phase:
+
+- **Entry 1.1** (Eliciting a persona from the work, not the org chart) — for Session 1 Part C process surfacing
+- **Entry 1.2** (Disambiguating multi-role situations) — same
+- **Entry 1.3** (Eliciting an operational mission from an aspirational one) — for Session 1 Part A; this entry is the primary library reference for the operational-mission translation move
+- **Entry 4.1** (Eliciting cross-domain handoffs) — for backbone connections in Session 2 Part B
+- **Entry 5.1** (Handling "I don't know") — for Tier 3 gap capture per §3 and §5
+- **Entry 5.2** (Recognizing and surfacing a guess) — for distinguishing stakeholder guesses from confirmed answers
+- **Entry 5.5** (Surfacing inferences for verification — the "positive support" check) — operationalizes the §3.2.1 discipline below as a question pattern
+- **Entry 6.3** (Making a confident proposal with grounded reasoning) — for Session 2's backbone walkthrough and CRM candidate review; this entry is the primary library reference for the "CRM Builder proposes, client verifies" dynamic
+
+### Phase-Specific Conduct
+
+The five rules below are unique to Phase 1 or are applied here in a phase-specific way. They are in addition to — not instead of — the Charter.
+
+**A. The two-session structure is the conduct unit, not individual sessions.** Conduct rules and pacing are calibrated across Session 1 + between-sessions work + Session 2 (and optionally Session 3) as a single unit. Layer 3 calibration in Session 1 sets the tone for the whole unit; do not redo it in Session 2.
+
+**B. Pattern library consultation is part of Layer 1.** Per Kickoff §7.2, the AI consults `pattern-library-specification.md` and the relevant org-type entry (if one exists) before composing any Layer 2 framing. Without library familiarity, the AI cannot distinguish library-tested patterns from generic pattern-matching during Sessions 1 and 2.
+
+**C. Inferences require positive support (§3.2.1 cross-cutting discipline).** This rule was first surfaced in this guide and is now generalized in **Charter §11.6.b**. The Charter version applies to all interviews; the §3.2.1 application below remains as the Phase-1-specific operationalization. When in doubt about an inference, consult Charter §11.6.b for the test and Question Library Entry 5.5 for the question pattern.
+
+**D. Confident proposals are the dominant decision pattern.** Per Principle 4 of the evolved methodology, this phase produces four artifacts that are largely AI-proposed and client-verified rather than client-elicited. Use Question Library Entry 6.3 (Making a confident proposal with grounded reasoning) rather than open-ended questions for the Mission Statement draft, the Domain Inventory, the Prioritized Backbone, and the Initial CRM Candidate Set.
+
+**E. Failure modes from §9 are phase-specific anti-patterns.** §9 (Failure Modes) below lists seven failure modes specific to Phase 1 — these complement Charter §11's general anti-patterns rather than replacing them. Both apply.
 
 ---
 
@@ -143,6 +183,8 @@ Session 1 has four parts:
 A typical session runs 90–120 minutes. Going significantly over is a signal that one of the parts is fighting back; see §9 (Failure Modes).
 
 ### 3.2.1 Cross-cutting discipline — inferences require positive support
+
+> **Forward reference:** This discipline is now generalized as **Charter §11.6.b** ("inferences require positive support"). The Charter version applies to all stakeholder-facing interviews. **Question Library Entry 5.5** ("Surfacing inferences for verification — the positive-support check") provides the question pattern to use when the AI catches itself reasoning by pattern-match. The Phase-1-specific operationalization below remains in this guide because Phase 1 is the highest-inference-density phase in the methodology.
 
 Across all four parts of Session 1, the consultant maintains a discipline about how to handle inferences from what the client says.
 
