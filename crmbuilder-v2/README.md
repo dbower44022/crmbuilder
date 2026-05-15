@@ -526,7 +526,51 @@ In addition to the v0.1 surface, v0.2 added:
   deleted rows render with strikethrough and the detail pane shows
   Restore + Edit (no Delete); Restore PATCHes status back to Active.
 
-### v0.3 (current — closes the testability gap)
+### v0.4 (current — methodology entity types complete)
+
+In addition to the v0.1 + v0.2 + v0.3 surface, v0.4 adds:
+
+- A new **Methodology** sidebar group, rendered below Governance, with
+  four panel entries shipped in workstream order: **Domains**,
+  **Entities**, **Processes**, **CRM Candidates**. The eight v0.3
+  governance entry types continue to render under the **Governance**
+  group.
+- Full create / edit / soft-delete / restore for the four new
+  methodology entity types: `domain` (DOM-NNN), `entity` (ENT-NNN),
+  `process` (PROC-NNN), `crm_candidate` (CRM-NNN). Each panel mirrors
+  the v0.3 master/detail / Show-deleted toggle / context-menu shape.
+- Two new reference relationship kinds added to the v2 vocab:
+  `entity_scopes_to_domain` (entity → domain affiliation) and
+  `process_hands_off_to_process` (directional handoff between
+  processes). Both registered in `vocab.py` and admitted by the `refs`
+  table's CHECK constraints. The cascading
+  `ReferenceCreateDialog` filters to valid kinds per source/target
+  pair; the methodology specs' field-naming and source-first
+  relationship-kind conventions are captured in the
+  `methodology-entity-schema-spec-guide.md` v1.1 amendment (Section 6).
+- **Process classification lifecycle** implements the methodology's
+  Principle 3 priority taxonomy: `unclassified` →
+  `mission_critical` / `supporting` / `deferred`, with one-way exit
+  from `unclassified`. The Processes detail pane carries an inline
+  stale-FK re-affiliation warning when the affiliated `domain` is
+  archived/deleted.
+- **CRM Candidate lifecycle** implements engagement-scoped candidate
+  evolution: `active` → `selected` (singleton-enforced across POST,
+  PATCH, PUT, and restore) / `declined` / `removed`. Inline conflict
+  messaging names which record currently holds `selected`.
+- The `ReferencesSection` widget now supports optional
+  `inbound_label` / `outbound_label` overrides so the Processes panel
+  renders bidirectional handoffs as **Hands off to** / **Receives
+  from** sub-sections — first directional reference rendering in v2.
+- `GET /<entity>/next-identifier` helper endpoints retrofitted to all
+  eight existing v0.3 governance entity types per the SES-010
+  identifier-asymmetry resolution. Identifier auto-assignment is
+  collision-safe (SAVEPOINT-retry) across concurrent POSTs.
+
+PRD: `PRDs/product/crmbuilder-v2/ui-PRD-v0.4.md`
+Implementation plan: `PRDs/product/crmbuilder-v2/ui-v0.4-implementation-plan.md`
+
+### v0.3 (closes the testability gap)
 
 In addition to the v0.1 + v0.2 surface, v0.3 adds:
 

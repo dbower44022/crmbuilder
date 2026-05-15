@@ -30,10 +30,11 @@ EXPECTED_ENTRIES = (
     "Topics",
     "References",
     # Methodology group — Domains landed in UI v0.4 slice B,
-    # Entities in slice C, Processes in slice D.
+    # Entities in slice C, Processes in slice D, CRM Candidates in slice E.
     "Domains",
     "Entities",
     "Processes",
+    "CRM Candidates",
 )
 
 
