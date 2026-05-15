@@ -57,6 +57,27 @@ ENTITY_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "deferred": frozenset({"confirmed"}),
 }
 
+# Methodology entity `crm_candidate` lifecycle (UI v0.4 slice E, DEC-062).
+# Four-status lifecycle per ``crm_candidate.md`` section 3.4. ``active``
+# is the starter status; ``selected``, ``declined``, ``removed`` are
+# terminal — no successors permitted from any of them. The singleton-
+# ``selected`` constraint (at most one live record may hold ``selected``
+# per spec 3.4.3) is enforced separately at the access layer on POST,
+# PATCH/PUT, and POST ``/restore``.
+CRM_CANDIDATE_STATUSES: frozenset[str] = frozenset(
+    {"active", "selected", "declined", "removed"}
+)
+
+# Valid status successors per ``crm_candidate.md`` section 3.4.1. The
+# three terminal states (``selected``, ``declined``, ``removed``) list
+# the empty set — no transitions out of a terminal state are permitted.
+CRM_CANDIDATE_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "active": frozenset({"selected", "declined", "removed"}),
+    "selected": frozenset(),
+    "declined": frozenset(),
+    "removed": frozenset(),
+}
+
 # Methodology entity `process` classification (UI v0.4 slice D, DEC-057).
 # Per ``process.md`` section 3.4, `process` has no `status` field — the
 # four-value `process_classification` enum carries the Principle 3

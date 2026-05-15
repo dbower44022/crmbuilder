@@ -10,6 +10,7 @@ from crmbuilder_v2.access.exceptions import (
     AccessLayerError,
     ClassificationTransitionError,
     InvalidDomainReferenceError,
+    SelectedCandidateConflictError,
     StatusTransitionError,
     ValidationError,
 )
@@ -99,6 +100,27 @@ def invalid_domain_reference_handler(
         content={
             "error": "invalid_domain_reference",
             "domain_identifier": exc.domain_identifier,
+        },
+    )
+
+
+def selected_candidate_conflict_handler(
+    _request: Request, exc: SelectedCandidateConflictError
+) -> JSONResponse:
+    """Render a singleton-``selected`` violation on ``crm_candidate``.
+
+    Uses the dedicated body shape from ``crm_candidate.md`` section
+    3.4.3 — ``{"error": "selected_candidate_already_exists",
+    "existing": "CRM-NNN"}`` — rather than the standard
+    ``{data, meta, errors}`` envelope. Registered as a more-specific
+    handler than :func:`access_layer_handler` so Starlette routes
+    ``SelectedCandidateConflictError`` here by exact class match.
+    """
+    return JSONResponse(
+        status_code=exc.http_status,
+        content={
+            "error": "selected_candidate_already_exists",
+            "existing": exc.existing_identifier,
         },
     )
 

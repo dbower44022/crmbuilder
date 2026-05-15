@@ -40,6 +40,7 @@ from crmbuilder_v2.access.vocab import (
     CATALOG_SYSTEMS,
     CHANGE_LOG_ACTORS,
     CHANGE_LOG_OPERATIONS,
+    CRM_CANDIDATE_STATUSES,
     DECISION_STATUSES,
     DOMAIN_STATUSES,
     ENTITY_STATUSES,
@@ -411,6 +412,67 @@ class Process(Base):
             "process_domain_identifier",
         ),
         Index("ix_processes_process_deleted_at", "process_deleted_at"),
+    )
+
+
+class CrmCandidate(Base):
+    """Methodology entity — one Phase 1 Initial CRM Candidate Set member.
+
+    Fourth and final of the four methodology entity types (UI v0.4
+    slice E). Per ``crm_candidate.md`` the schema follows the
+    parent-prefix field-naming convention: every column is prefixed
+    ``crm_candidate_``. The primary key is the prefixed-string
+    identifier ``crm_candidate_identifier`` (format ``CRM-NNN``) —
+    there is no integer surrogate ``id`` column. The four-status
+    enum (``active`` / ``selected`` / ``declined`` / ``removed``)
+    has three terminal states; the singleton-``selected`` constraint
+    per spec section 3.4.3 is enforced exclusively at the access layer.
+    """
+
+    __tablename__ = "crm_candidates"
+
+    crm_candidate_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    crm_candidate_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    crm_candidate_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="active"
+    )
+    crm_candidate_fit_reason: Mapped[str] = mapped_column(Text, nullable=False)
+    crm_candidate_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    crm_candidate_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    crm_candidate_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    crm_candidate_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^CRM-\d{3}$`` expressed as a SQLite GLOB pattern — GLOB
+        # anchors the whole string, so this admits exactly ``CRM-`` plus
+        # three digits.
+        CheckConstraint(
+            "crm_candidate_identifier GLOB 'CRM-[0-9][0-9][0-9]'",
+            name="ck_crm_candidate_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("crm_candidate_status", CRM_CANDIDATE_STATUSES),
+            name="ck_crm_candidate_status",
+        ),
+        Index(
+            "ix_crm_candidates_crm_candidate_status",
+            "crm_candidate_status",
+        ),
+        Index(
+            "ix_crm_candidates_crm_candidate_deleted_at",
+            "crm_candidate_deleted_at",
+        ),
     )
 
 

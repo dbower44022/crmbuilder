@@ -930,6 +930,148 @@ class StorageClient:
         )
 
     # ------------------------------------------------------------------
+    # CRM Candidates (methodology entity — UI v0.4 slice E)
+    # ------------------------------------------------------------------
+
+    def list_crm_candidates(
+        self, *, include_deleted: bool = False
+    ) -> list[dict[str, Any]]:
+        """Return all crm_candidates as a list of dicts.
+
+        Shape matches ``crmbuilder_v2/api/routers/crm_candidates.py``.
+        With ``include_deleted=True`` soft-deleted records are
+        included; otherwise the API filters them out.
+        """
+        path = "/crm_candidates"
+        if include_deleted:
+            path = "/crm_candidates?include_deleted=true"
+        result = self._request("GET", path)
+        if not isinstance(result, list):
+            return []
+        return result
+
+    def get_crm_candidate(self, identifier: str) -> dict[str, Any]:
+        """Return a single crm_candidate by identifier (e.g. ``"CRM-001"``).
+
+        Raises ``NotFoundError`` if the record does not exist (or is
+        soft-deleted — the API 404s soft-deleted rows by default).
+        """
+        result = self._request("GET", f"/crm_candidates/{identifier}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for get_crm_candidate",
+            )
+        return result
+
+    def create_crm_candidate(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /crm_candidates. Returns the created record dict.
+
+        The body uses the parent-prefixed field names
+        (``crm_candidate_name``, ``crm_candidate_fit_reason``, optional
+        ``crm_candidate_notes`` / ``crm_candidate_status``).
+        ``crm_candidate_identifier`` is server-assigned when omitted.
+        Raises ``RequestShapeError`` on 422 (identifier-format,
+        name-uniqueness, status-enum, invalid status transition, or
+        singleton-``selected`` conflict), ``ConflictError`` on 409
+        (explicit-identifier collision).
+        """
+        result = self._request(
+            "POST", "/crm_candidates", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for create_crm_candidate",
+            )
+        return result
+
+    def update_crm_candidate(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PUT /crm_candidates/{identifier} — full record replace.
+
+        The body is the full record; ``crm_candidate_identifier`` in
+        the body must match the path. Raises ``NotFoundError`` on 404,
+        ``RequestShapeError`` on 422 (identifier mismatch, validation,
+        invalid status transition, or singleton-``selected`` conflict).
+        """
+        result = self._request(
+            "PUT", f"/crm_candidates/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for update_crm_candidate",
+            )
+        return result
+
+    def patch_crm_candidate(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PATCH /crm_candidates/{identifier} — partial update.
+
+        Body should contain only the changed fields. Raises
+        ``NotFoundError`` on 404, ``RequestShapeError`` on 422
+        (validation, invalid status transition, or singleton-
+        ``selected`` conflict).
+        """
+        result = self._request(
+            "PATCH", f"/crm_candidates/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for patch_crm_candidate",
+            )
+        return result
+
+    def delete_crm_candidate(self, identifier: str) -> Any:
+        """DELETE /crm_candidates/{identifier}. Soft-deletes; idempotent.
+
+        Returns the API's response data. Raises ``NotFoundError`` on
+        404. Soft-deleting a ``selected`` record frees the singleton
+        slot for a different record per spec section 3.4.3.
+        """
+        return self._request("DELETE", f"/crm_candidates/{identifier}")
+
+    def restore_crm_candidate(self, identifier: str) -> dict[str, Any]:
+        """POST /crm_candidates/{identifier}/restore. Clears the soft-delete.
+
+        Raises ``NotFoundError`` on 404, ``RequestShapeError`` on 422
+        (the record is not soft-deleted, or restoring a ``selected``
+        record would violate the singleton-``selected`` constraint).
+        """
+        result = self._request(
+            "POST", f"/crm_candidates/{identifier}/restore"
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for restore_crm_candidate",
+            )
+        return result
+
+    def next_crm_candidate_identifier(self) -> str:
+        """GET /crm_candidates/next-identifier. Returns the next ``CRM-NNN``."""
+        result = self._request("GET", "/crm_candidates/next-identifier")
+        if isinstance(result, dict) and isinstance(result.get("next"), str):
+            return result["next"]
+        raise ServerError(
+            status_code=200,
+            errors=[],
+            message=(
+                "Expected {'next': str} body for "
+                "next_crm_candidate_identifier"
+            ),
+        )
+
+    # ------------------------------------------------------------------
     # References (full list)
     # ------------------------------------------------------------------
 

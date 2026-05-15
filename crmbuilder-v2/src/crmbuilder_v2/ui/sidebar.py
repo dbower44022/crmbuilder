@@ -29,8 +29,7 @@ from PySide6.QtWidgets import QListWidget, QListWidgetItem
 
 # Ordered sidebar sections: (group title, ordered entry labels). The
 # Methodology group gained "Domains" in v0.4 slice B, "Entities" in
-# slice C, and "Processes" in slice D; "CRM Candidates" follows in
-# slice E.
+# slice C, "Processes" in slice D, and "CRM Candidates" in slice E.
 SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
         "Governance",
@@ -45,7 +44,10 @@ SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "References",
         ),
     ),
-    ("Methodology", ("Domains", "Entities", "Processes")),
+    (
+        "Methodology",
+        ("Domains", "Entities", "Processes", "CRM Candidates"),
+    ),
 )
 
 # Flat tuple of selectable entry labels in display order, derived from

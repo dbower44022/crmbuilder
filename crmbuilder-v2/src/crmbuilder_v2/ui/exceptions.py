@@ -65,21 +65,30 @@ class ServerError(StorageClientError):
 class RequestShapeError(StorageClientError):
     """422 — request-shape / unprocessable-entity response.
 
-    Covers two distinct 422 sources: FastAPI's own request-validation
+    Covers three 422 sources: FastAPI's own request-validation
     rejections (programmer error in the client — dotted ``body.x``
-    field paths), and the access layer's ``UnprocessableError`` for the
+    field paths), the access layer's ``UnprocessableError`` for the
     methodology entity types (genuine input-validation failures with
     bare field names — identifier format, name uniqueness, status
-    enum). :meth:`field_errors` lets dialogs surface the latter inline.
+    enum), and the dedicated-body access-layer errors (status-
+    transition, classification-transition, invalid-domain-reference,
+    singleton-``selected`` conflict). :meth:`field_errors` lets
+    dialogs surface envelope errors inline; :attr:`dedicated_error`
+    carries the dedicated-body payload (e.g.
+    ``{"error": "selected_candidate_already_exists",
+    "existing": "CRM-NNN"}``) for dialogs that want to route specific
+    error codes inline rather than to a generic dialog.
     """
 
     def __init__(
         self,
         errors: list[dict[str, Any]],
         message: str,
+        dedicated_error: dict[str, Any] | None = None,
     ):
         super().__init__(message)
         self.errors = errors
+        self.dedicated_error = dedicated_error
 
     def field_errors(self) -> dict[str, str]:
         """Return ``{field_name: first_message}`` for inline-on-field display.
@@ -169,6 +178,30 @@ def _parse_envelope_errors(resp: httpx.Response) -> list[dict[str, Any]]:
     return [e for e in errors if isinstance(e, dict)]
 
 
+def _parse_dedicated_error(resp: httpx.Response) -> dict[str, Any] | None:
+    """Return a dedicated-body error payload, or ``None`` if not present.
+
+    Dedicated-body 422 responses (status-transition, classification-
+    transition, invalid-domain-reference, singleton-``selected``
+    conflict) emit a top-level ``error`` key alongside type-specific
+    fields, not the standard ``{data, meta, errors}`` envelope. When a
+    response body carries an ``error`` string at the top level and no
+    ``errors`` array, treat it as a dedicated body and return it
+    verbatim so dialogs can route specific codes inline.
+    """
+    try:
+        body = resp.json()
+    except (json.JSONDecodeError, ValueError):
+        return None
+    if not isinstance(body, dict):
+        return None
+    if isinstance(body.get("errors"), list):
+        return None
+    if not isinstance(body.get("error"), str):
+        return None
+    return body
+
+
 def _first_message(errors: list[dict[str, Any]], fallback: str) -> str:
     for err in errors:
         msg = err.get("message")
@@ -202,9 +235,14 @@ def from_response(resp: httpx.Response) -> StorageClientError:
             message=_first_message(errors, "Conflict"),
         )
     if status == 422:
+        dedicated = _parse_dedicated_error(resp)
+        message = _first_message(errors, "Request validation error")
+        if dedicated is not None and not errors:
+            message = str(dedicated.get("error") or message)
         return RequestShapeError(
             errors=errors,
-            message=_first_message(errors, "Request validation error"),
+            message=message,
+            dedicated_error=dedicated,
         )
     if 500 <= status < 600:
         return ServerError(

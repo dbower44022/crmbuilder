@@ -34,6 +34,7 @@ from sqlalchemy.orm import Session
 from crmbuilder_v2.access.models import (
     ChangeLog,
     Charter,
+    CrmCandidate,
     Decision,
     Domain,
     Entity,
@@ -60,6 +61,7 @@ _EXPORT_TABLES: list[tuple[str, type]] = [
     ("domains", Domain),
     ("entities", Entity),
     ("processes", Process),
+    ("crm_candidates", CrmCandidate),
     ("references", Reference),
     ("change_log", ChangeLog),
 ]

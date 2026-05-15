@@ -124,6 +124,29 @@ class InvalidDomainReferenceError(AccessLayerError):
         )
 
 
+class SelectedCandidateConflictError(AccessLayerError):
+    """A second live ``crm_candidate`` record cannot hold ``selected``.
+
+    Raised by the ``crm_candidate`` repository on POST, PATCH/PUT, or
+    POST ``/restore`` operations that would result in two live (non
+    soft-deleted) records holding ``crm_candidate_status = 'selected'``.
+    Carries the identifier of the already-selected record. The API
+    layer renders this as HTTP 422 with the dedicated body shape
+    ``{"error": "selected_candidate_already_exists", "existing": "CRM-NNN"}``
+    (``crm_candidate.md`` section 3.4.3) — not the standard v2 envelope.
+    """
+
+    http_status = 422
+    code = "selected_candidate_already_exists"
+
+    def __init__(self, existing_identifier: str):
+        self.existing_identifier = existing_identifier
+        super().__init__(
+            "another crm_candidate is already selected: "
+            f"{existing_identifier!r}"
+        )
+
+
 class NotFoundError(AccessLayerError):
     """Requested entity does not exist."""
 

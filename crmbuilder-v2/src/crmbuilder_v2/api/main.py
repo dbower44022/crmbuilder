@@ -9,6 +9,7 @@ from crmbuilder_v2.access.exceptions import (
     AccessLayerError,
     ClassificationTransitionError,
     InvalidDomainReferenceError,
+    SelectedCandidateConflictError,
     StatusTransitionError,
 )
 from crmbuilder_v2.api.errors import (
@@ -16,11 +17,13 @@ from crmbuilder_v2.api.errors import (
     classification_transition_handler,
     invalid_domain_reference_handler,
     request_validation_handler,
+    selected_candidate_conflict_handler,
     status_transition_handler,
 )
 from crmbuilder_v2.api.routers import (
     catalog,
     charter,
+    crm_candidates,
     decisions,
     domains,
     entities,
@@ -61,6 +64,10 @@ def create_app() -> FastAPI:
     app.add_exception_handler(
         InvalidDomainReferenceError, invalid_domain_reference_handler
     )
+    app.add_exception_handler(
+        SelectedCandidateConflictError,
+        selected_candidate_conflict_handler,
+    )
     app.add_exception_handler(AccessLayerError, access_layer_handler)
     app.add_exception_handler(RequestValidationError, request_validation_handler)
 
@@ -75,6 +82,7 @@ def create_app() -> FastAPI:
     app.include_router(domains.router)
     app.include_router(entities.router)
     app.include_router(processes.router)
+    app.include_router(crm_candidates.router)
     app.include_router(references.router)
     app.include_router(orientation.router)
     app.include_router(catalog.router)

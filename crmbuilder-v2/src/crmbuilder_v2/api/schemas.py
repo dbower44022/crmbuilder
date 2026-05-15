@@ -264,6 +264,52 @@ class ProcessPatchIn(_Base):
     process_notes: str | None = None
 
 
+# ---------- CRM Candidates (methodology entity, UI v0.4 slice E) ----------
+
+
+class CrmCandidateCreateIn(_Base):
+    """POST /crm_candidates body. ``crm_candidate_identifier`` is
+    server-assigned when omitted; ``crm_candidate_status`` defaults to
+    ``active`` server-side. The singleton-``selected`` check fires on
+    submit when the body specifies ``crm_candidate_status='selected'``
+    per ``crm_candidate.md`` section 3.5.4."""
+
+    crm_candidate_name: str
+    crm_candidate_fit_reason: str
+    crm_candidate_notes: str | None = None
+    crm_candidate_status: str | None = None
+    crm_candidate_identifier: str | None = None
+
+
+class CrmCandidateReplaceIn(_Base):
+    """PUT /crm_candidates/{identifier} body — full record replace.
+
+    ``crm_candidate_identifier`` is optional; when present it must
+    match the path identifier (mismatch → 422). Transitioning the
+    record's status into ``selected`` triggers the singleton check."""
+
+    crm_candidate_identifier: str | None = None
+    crm_candidate_name: str
+    crm_candidate_fit_reason: str
+    crm_candidate_notes: str | None = None
+    crm_candidate_status: str
+
+
+class CrmCandidatePatchIn(_Base):
+    """PATCH /crm_candidates/{identifier} body — partial update.
+
+    Routers consume this with ``model_dump(exclude_unset=True)`` so an
+    explicit ``crm_candidate_notes: null`` (clear the field) is
+    distinguished from an omitted ``crm_candidate_notes`` (leave
+    unchanged). Transitioning ``crm_candidate_status`` into ``selected``
+    triggers the singleton check."""
+
+    crm_candidate_name: str | None = None
+    crm_candidate_fit_reason: str | None = None
+    crm_candidate_notes: str | None = None
+    crm_candidate_status: str | None = None
+
+
 # ---------- References ----------
 
 
