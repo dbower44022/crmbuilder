@@ -212,6 +212,58 @@ class EntityPatchIn(_Base):
     entity_status: str | None = None
 
 
+# ---------- Processes (methodology entity, UI v0.4 slice D) ----------
+
+
+class ProcessCreateIn(_Base):
+    """POST /processes body. ``process_identifier`` is server-assigned
+    when omitted; ``process_classification`` defaults to ``unclassified``
+    server-side. ``process_domain_identifier`` is a required scalar FK
+    validated against live ``domain`` records.
+
+    Handoffs are NOT inlined here — per ``process.md`` section 3.5.5
+    they attach via separate ``POST /references`` calls with the
+    ``process_hands_off_to_process`` relationship kind."""
+
+    process_name: str
+    process_domain_identifier: str
+    process_purpose: str
+    process_classification: str | None = None
+    process_classification_rationale: str | None = None
+    process_notes: str | None = None
+    process_identifier: str | None = None
+
+
+class ProcessReplaceIn(_Base):
+    """PUT /processes/{identifier} body — full record replace.
+
+    ``process_identifier`` is optional; when present it must match the
+    path identifier (mismatch → 422)."""
+
+    process_identifier: str | None = None
+    process_name: str
+    process_domain_identifier: str
+    process_purpose: str
+    process_classification: str
+    process_classification_rationale: str | None = None
+    process_notes: str | None = None
+
+
+class ProcessPatchIn(_Base):
+    """PATCH /processes/{identifier} body — partial update.
+
+    Routers consume this with ``model_dump(exclude_unset=True)`` so an
+    explicit ``process_notes: null`` (clear the field) is distinguished
+    from an omitted ``process_notes`` (leave unchanged)."""
+
+    process_name: str | None = None
+    process_domain_identifier: str | None = None
+    process_purpose: str | None = None
+    process_classification: str | None = None
+    process_classification_rationale: str | None = None
+    process_notes: str | None = None
+
+
 # ---------- References ----------
 
 

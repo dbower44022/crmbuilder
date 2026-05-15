@@ -790,6 +790,146 @@ class StorageClient:
         )
 
     # ------------------------------------------------------------------
+    # Processes (methodology entity — UI v0.4 slice D)
+    # ------------------------------------------------------------------
+
+    def list_processes(
+        self, *, include_deleted: bool = False
+    ) -> list[dict[str, Any]]:
+        """Return all processes as a list of dicts.
+
+        Shape matches ``crmbuilder_v2/api/routers/processes.py``. With
+        ``include_deleted=True`` soft-deleted processes are included;
+        otherwise the API filters them out.
+        """
+        path = "/processes"
+        if include_deleted:
+            path = "/processes?include_deleted=true"
+        result = self._request("GET", path)
+        if not isinstance(result, list):
+            return []
+        return result
+
+    def get_process(self, identifier: str) -> dict[str, Any]:
+        """Return a single process by identifier (e.g. ``"PROC-001"``).
+
+        Raises ``NotFoundError`` if the process does not exist (or is
+        soft-deleted — the API 404s soft-deleted rows by default).
+        """
+        result = self._request("GET", f"/processes/{identifier}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for get_process",
+            )
+        return result
+
+    def create_process(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /processes. Returns the created record dict.
+
+        The body uses the parent-prefixed field names
+        (``process_name``, ``process_domain_identifier``,
+        ``process_purpose``, optional ``process_classification`` /
+        ``process_classification_rationale`` / ``process_notes``).
+        ``process_identifier`` is server-assigned when omitted.
+        ``process_domain_identifier`` is a required FK validated against
+        live domains. Handoffs are NOT inlined — attach them afterwards
+        via ``create_reference`` with the ``process_hands_off_to_process``
+        kind. Raises ``RequestShapeError`` on 422 (identifier-format,
+        name-uniqueness, classification-enum, classification-transition,
+        or invalid-domain-reference), ``ConflictError`` on 409
+        (explicit-identifier collision).
+        """
+        result = self._request("POST", "/processes", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for create_process",
+            )
+        return result
+
+    def update_process(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PUT /processes/{identifier} — full record replace.
+
+        The body is the full record; ``process_identifier`` in the body
+        must match the path. Raises ``NotFoundError`` on 404,
+        ``RequestShapeError`` on 422 (identifier mismatch, validation,
+        invalid classification transition, or invalid domain reference).
+        """
+        result = self._request(
+            "PUT", f"/processes/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for update_process",
+            )
+        return result
+
+    def patch_process(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PATCH /processes/{identifier} — partial update.
+
+        Body should contain only the changed fields. Raises
+        ``NotFoundError`` on 404, ``RequestShapeError`` on 422
+        (validation, invalid classification transition, or invalid
+        domain reference).
+        """
+        result = self._request(
+            "PATCH", f"/processes/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for patch_process",
+            )
+        return result
+
+    def delete_process(self, identifier: str) -> Any:
+        """DELETE /processes/{identifier}. Soft-deletes; idempotent.
+
+        Returns the API's response data. Raises ``NotFoundError`` on
+        404. Inbound and outbound ``process_hands_off_to_process``
+        references persist per ``process.md`` section 3.4.5.
+        """
+        return self._request("DELETE", f"/processes/{identifier}")
+
+    def restore_process(self, identifier: str) -> dict[str, Any]:
+        """POST /processes/{identifier}/restore. Clears the soft-delete.
+
+        Raises ``NotFoundError`` on 404, ``RequestShapeError`` on 422
+        (the record is not soft-deleted).
+        """
+        result = self._request(
+            "POST", f"/processes/{identifier}/restore"
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for restore_process",
+            )
+        return result
+
+    def next_process_identifier(self) -> str:
+        """GET /processes/next-identifier. Returns the next ``PROC-NNN``."""
+        result = self._request("GET", "/processes/next-identifier")
+        if isinstance(result, dict) and isinstance(result.get("next"), str):
+            return result["next"]
+        raise ServerError(
+            status_code=200,
+            errors=[],
+            message="Expected {'next': str} body for next_process_identifier",
+        )
+
+    # ------------------------------------------------------------------
     # References (full list)
     # ------------------------------------------------------------------
 

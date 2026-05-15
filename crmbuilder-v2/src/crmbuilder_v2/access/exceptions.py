@@ -80,6 +80,50 @@ class StatusTransitionError(AccessLayerError):
         )
 
 
+class ClassificationTransitionError(AccessLayerError):
+    """A classification change that the lifecycle map disallows.
+
+    The ``process`` equivalent of :class:`StatusTransitionError` —
+    ``process`` has no status field, so its lifecycle gate lives on
+    ``process_classification`` instead. Carries the offending
+    ``from``/``to`` pair. The API layer renders this as HTTP 422 with
+    the dedicated body shape
+    ``{"error": "invalid_classification_transition", "from": ..., "to": ...}``
+    (``process.md`` section 3.5.3) — not the standard v2 envelope.
+    """
+
+    http_status = 422
+    code = "invalid_classification_transition"
+
+    def __init__(self, from_classification: str, to_classification: str):
+        self.from_classification = from_classification
+        self.to_classification = to_classification
+        super().__init__(
+            "invalid classification transition: "
+            f"{from_classification!r} -> {to_classification!r}"
+        )
+
+
+class InvalidDomainReferenceError(AccessLayerError):
+    """A ``process_domain_identifier`` FK that does not resolve to a live domain.
+
+    Raised by the ``process`` repository when a create or update
+    references a ``DOM-NNN`` that does not exist or is soft-deleted. The
+    API layer renders this as HTTP 422 with the dedicated body shape
+    ``{"error": "invalid_domain_reference", "domain_identifier": ...}``
+    (``process.md`` section 3.5.4) — not the standard v2 envelope.
+    """
+
+    http_status = 422
+    code = "invalid_domain_reference"
+
+    def __init__(self, domain_identifier: str):
+        self.domain_identifier = domain_identifier
+        super().__init__(
+            f"invalid domain reference: {domain_identifier!r}"
+        )
+
+
 class NotFoundError(AccessLayerError):
     """Requested entity does not exist."""
 

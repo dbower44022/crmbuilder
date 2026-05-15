@@ -57,6 +57,28 @@ ENTITY_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "deferred": frozenset({"confirmed"}),
 }
 
+# Methodology entity `process` classification (UI v0.4 slice D, DEC-057).
+# Per ``process.md`` section 3.4, `process` has no `status` field — the
+# four-value `process_classification` enum carries the Principle 3
+# priority taxonomy in its place.
+PROCESS_CLASSIFICATIONS: frozenset[str] = frozenset(
+    {"unclassified", "mission_critical", "supporting", "deferred"}
+)
+
+# Valid classification successors per ``process.md`` section 3.4.2. A
+# transition is valid when the target equals the current value (a
+# no-op) or appears in the current value's successor set. The one-way
+# ``unclassified`` gate means no value lists ``unclassified`` as a
+# successor; the three classified values move freely among themselves.
+PROCESS_CLASSIFICATION_TRANSITIONS: dict[str, frozenset[str]] = {
+    "unclassified": frozenset(
+        {"mission_critical", "supporting", "deferred"}
+    ),
+    "mission_critical": frozenset({"supporting", "deferred"}),
+    "supporting": frozenset({"mission_critical", "deferred"}),
+    "deferred": frozenset({"mission_critical", "supporting"}),
+}
+
 REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
     {
         "is_about",

@@ -17,7 +17,8 @@ empty in slice A and is populated by slices B–E. ``SIDEBAR_ENTRIES``
 remains the flat tuple of selectable entry labels in display order.
 
 Slice B adds the first Methodology entry, "Domains", at position #1.
-Slice C adds the second, "Entities", at position #2.
+Slice C adds the second, "Entities", at position #2. Slice D adds the
+third, "Processes", at position #3.
 """
 
 from __future__ import annotations
@@ -27,9 +28,9 @@ from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import QListWidget, QListWidgetItem
 
 # Ordered sidebar sections: (group title, ordered entry labels). The
-# Methodology group gained its first entry — "Domains" — in v0.4
-# slice B and its second — "Entities" — in slice C; "Processes" and
-# "CRM Candidates" follow in slices D–E.
+# Methodology group gained "Domains" in v0.4 slice B, "Entities" in
+# slice C, and "Processes" in slice D; "CRM Candidates" follows in
+# slice E.
 SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
         "Governance",
@@ -44,7 +45,7 @@ SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "References",
         ),
     ),
-    ("Methodology", ("Domains", "Entities")),
+    ("Methodology", ("Domains", "Entities", "Processes")),
 )
 
 # Flat tuple of selectable entry labels in display order, derived from

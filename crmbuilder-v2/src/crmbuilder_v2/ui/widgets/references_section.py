@@ -19,6 +19,13 @@ relationship types from the rendered output. The DecisionsPanel passes
 is already shown as a top-level Supersedes/Superseded By field on the
 detail pane.
 
+Constructor parameters ``inbound_label`` and ``outbound_label`` rename
+the two direction sub-headings. They default to ``"Inbound"`` /
+``"Outbound"`` (every v0.2/v0.3 caller's behavior is unchanged); the
+v0.4 Processes panel passes ``"Receives from"`` / ``"Hands off to"`` so
+the directional ``process_hands_off_to_process`` edges read in the
+methodology's own language.
+
 Added in v2-ui-v0.2-A per DEC-031. v0.3 slice C extends with an
 ``Add reference`` button (visible when a ``StorageClient`` is supplied)
 and a per-row right-click context menu offering ``Delete reference``
@@ -72,6 +79,8 @@ class ReferencesSection(QWidget):
         *,
         exclude_relationships: set[str] | None = None,
         client: StorageClient | None = None,
+        inbound_label: str = "Inbound",
+        outbound_label: str = "Outbound",
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -79,6 +88,8 @@ class ReferencesSection(QWidget):
         self._identifier = identifier
         self._exclude = set(exclude_relationships or set())
         self._client = client
+        self._inbound_label = inbound_label
+        self._outbound_label = outbound_label
         self._build(references_payload or {})
 
     # ------------------------------------------------------------------
@@ -107,7 +118,9 @@ class ReferencesSection(QWidget):
             return
 
         layout.addSpacing(4)
-        layout.addWidget(self._sub_heading(f"Inbound ({inbound_count})"))
+        layout.addWidget(
+            self._sub_heading(f"{self._inbound_label} ({inbound_count})")
+        )
         if inbound_count == 0:
             layout.addWidget(self._dim_label("(none)"))
         else:
@@ -122,7 +135,9 @@ class ReferencesSection(QWidget):
                     )
 
         layout.addSpacing(4)
-        layout.addWidget(self._sub_heading(f"Outbound ({outbound_count})"))
+        layout.addWidget(
+            self._sub_heading(f"{self._outbound_label} ({outbound_count})")
+        )
         if outbound_count == 0:
             layout.addWidget(self._dim_label("(none)"))
         else:

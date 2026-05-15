@@ -46,6 +46,7 @@ from crmbuilder_v2.access.vocab import (
     ENTITY_TYPES,
     PLANNING_ITEM_STATUSES,
     PLANNING_ITEM_TYPES,
+    PROCESS_CLASSIFICATIONS,
     REFERENCE_RELATIONSHIPS,
     RISK_IMPACTS,
     RISK_PROBABILITIES,
@@ -339,6 +340,77 @@ class Entity(Base):
         ),
         Index("ix_entities_entity_status", "entity_status"),
         Index("ix_entities_entity_deleted_at", "entity_deleted_at"),
+    )
+
+
+class Process(Base):
+    """Methodology entity — one Phase 1 Prioritized Backbone member.
+
+    Third of the four methodology entity types (UI v0.4 slice D). Per
+    ``process.md`` the schema follows the parent-prefix field-naming
+    convention: every column is prefixed ``process_``. The primary key
+    is the prefixed-string identifier ``process_identifier`` (format
+    ``PROC-NNN``) — there is no integer surrogate ``id`` column.
+
+    Two structural deviations from ``domain`` / ``entity``: there is no
+    ``process_status`` field (the four-value ``process_classification``
+    enum carries the lifecycle per DEC-056), and ``process`` carries a
+    direct scalar FK column ``process_domain_identifier`` (each process
+    belongs to exactly one domain — FK existence is validated at the
+    access layer, not via a SQL FOREIGN KEY constraint, matching v2's
+    soft-FK convention). Process-to-process handoffs live in the
+    ``refs`` table as ``process_hands_off_to_process`` references.
+    """
+
+    __tablename__ = "processes"
+
+    process_identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    process_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    process_domain_identifier: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    process_purpose: Mapped[str] = mapped_column(Text, nullable=False)
+    process_classification: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="unclassified"
+    )
+    process_classification_rationale: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    process_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    process_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    process_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    process_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^PROC-\d{3}$`` and ``^DOM-\d{3}$`` expressed as SQLite GLOB
+        # patterns — GLOB anchors the whole string.
+        CheckConstraint(
+            "process_identifier GLOB 'PROC-[0-9][0-9][0-9]'",
+            name="ck_process_identifier_format",
+        ),
+        CheckConstraint(
+            "process_domain_identifier GLOB 'DOM-[0-9][0-9][0-9]'",
+            name="ck_process_domain_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("process_classification", PROCESS_CLASSIFICATIONS),
+            name="ck_process_classification",
+        ),
+        Index("ix_processes_process_classification", "process_classification"),
+        Index(
+            "ix_processes_process_domain_identifier",
+            "process_domain_identifier",
+        ),
+        Index("ix_processes_process_deleted_at", "process_deleted_at"),
     )
 
 

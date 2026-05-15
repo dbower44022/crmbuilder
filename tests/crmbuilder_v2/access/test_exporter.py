@@ -20,9 +20,10 @@ def test_bootstrap_creates_all_export_files(v2_env, export_dir: Path):
         "planning_items.json",
         "topics.json",
         # Methodology entity snapshots — domains landed in UI v0.4
-        # slice B, entities in slice C.
+        # slice B, entities in slice C, processes in slice D.
         "domains.json",
         "entities.json",
+        "processes.json",
         "references.json",
         "change_log.json",
     }

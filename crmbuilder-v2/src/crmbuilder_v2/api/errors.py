@@ -8,6 +8,8 @@ from fastapi.responses import JSONResponse
 
 from crmbuilder_v2.access.exceptions import (
     AccessLayerError,
+    ClassificationTransitionError,
+    InvalidDomainReferenceError,
     StatusTransitionError,
     ValidationError,
 )
@@ -54,6 +56,49 @@ def status_transition_handler(
             "error": "invalid_status_transition",
             "from": exc.from_status,
             "to": exc.to_status,
+        },
+    )
+
+
+def classification_transition_handler(
+    _request: Request, exc: ClassificationTransitionError
+) -> JSONResponse:
+    """Render a disallowed ``process_classification`` transition.
+
+    Uses the dedicated body shape from ``process.md`` section 3.5.3 —
+    ``{"error": "invalid_classification_transition", "from": ..., "to": ...}``
+    — rather than the standard ``{data, meta, errors}`` envelope.
+    Registered as a more-specific handler than
+    :func:`access_layer_handler` so Starlette routes
+    ``ClassificationTransitionError`` here by exact class match.
+    """
+    return JSONResponse(
+        status_code=exc.http_status,
+        content={
+            "error": "invalid_classification_transition",
+            "from": exc.from_classification,
+            "to": exc.to_classification,
+        },
+    )
+
+
+def invalid_domain_reference_handler(
+    _request: Request, exc: InvalidDomainReferenceError
+) -> JSONResponse:
+    """Render a ``process_domain_identifier`` FK that does not resolve.
+
+    Uses the dedicated body shape from ``process.md`` section 3.5.4 —
+    ``{"error": "invalid_domain_reference", "domain_identifier": ...}`` —
+    rather than the standard ``{data, meta, errors}`` envelope.
+    Registered as a more-specific handler than
+    :func:`access_layer_handler` so Starlette routes
+    ``InvalidDomainReferenceError`` here by exact class match.
+    """
+    return JSONResponse(
+        status_code=exc.http_status,
+        content={
+            "error": "invalid_domain_reference",
+            "domain_identifier": exc.domain_identifier,
         },
     )
 
