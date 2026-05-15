@@ -236,6 +236,26 @@ class ConfigureProgressDialog(QDialog):
                 validation_failures.append((f, errors))
                 continue
 
+            # Surface deferred-condition warnings raised by the validator
+            # for requiredWhen/visibleWhen references that don't resolve
+            # in the current batch. The condition was dropped from the
+            # field's payload; a later re-run will apply it.
+            if program.condition_warnings:
+                self._append_log("")
+                self._append_log(
+                    f"=== {f.name}: DEFERRED DYNAMIC LOGIC "
+                    f"({len(program.condition_warnings)} warning(s)) ===",
+                    "warning",
+                )
+                for w in program.condition_warnings:
+                    self._append_log(f"  - {w}", "warning")
+                self._append_log(
+                    "  Re-run the YAML after the referenced field(s) "
+                    "are created to apply the deferred conditions.",
+                    "warning",
+                )
+                self._append_log("")
+
             self._pending.append((f, program))
             self._total_ops += _count_operations(program)
 

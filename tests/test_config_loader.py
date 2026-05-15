@@ -1726,10 +1726,16 @@ def test_validate_program_without_context_uses_single_file_fallback(
     assert errors == [], f"Expected no errors but got: {errors}"
 
 
-def test_validate_program_without_context_still_catches_real_typos(
+def test_validate_program_without_context_surfaces_typo_as_warning(
     loader, tmp_path,
 ):
-    """Single-file fallback does not mask references to unknown fields."""
+    """Unresolved field references — including typos — surface as
+    deferred-condition warnings rather than hard errors. This is the
+    explicit tradeoff for letting circular references resolve over
+    multiple runs: an unresolved name might be a typo, or it might be
+    a forward reference to a field the author plans to add. The
+    operator reviews the warning log to catch typos.
+    """
     path = _write(tmp_path, "typo.yaml", """\
         version: "1.1"
         description: "Has a typo"
@@ -1753,15 +1759,20 @@ def test_validate_program_without_context_still_catches_real_typos(
     """)
     program = loader.load_program(path)
     errors = loader.validate_program(program)
-    assert any("contctType" in e for e in errors), (
-        f"Expected typo error but got: {errors}"
-    )
+    assert errors == [], f"Expected no errors but got: {errors}"
+    assert any(
+        "contctType" in w and "deferred" in w
+        for w in program.condition_warnings
+    ), f"Expected deferral warning but got: {program.condition_warnings}"
 
 
-def test_validate_program_with_context_still_catches_real_typos(
+def test_validate_program_with_context_surfaces_typo_as_warning(
     loader, tmp_path,
 ):
-    """Cross-file context does not cover typos."""
+    """Same as the single-file case but with a multi-file batch:
+    unresolved references in a sibling YAML surface as warnings, not
+    errors.
+    """
     from espo_impl.core.models import ProgramContext
 
     cr = _write(tmp_path, "CR-Account.yaml", """\
@@ -1796,9 +1807,11 @@ def test_validate_program_with_context_still_catches_real_typos(
     p_mn = loader.load_program(mn)
     context = ProgramContext.from_programs([p_cr, p_mn])
     errors = loader.validate_program_with_context(p_mn, context)
-    assert any("acountType" in e for e in errors), (
-        f"Expected typo error but got: {errors}"
-    )
+    assert errors == [], f"Expected no errors but got: {errors}"
+    assert any(
+        "acountType" in w and "deferred" in w
+        for w in p_mn.condition_warnings
+    ), f"Expected deferral warning but got: {p_mn.condition_warnings}"
 
 
 # --- Native-field resolution tests (validator awareness of EspoCRM

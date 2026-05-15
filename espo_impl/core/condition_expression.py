@@ -190,6 +190,43 @@ def validate_condition(
     return errors
 
 
+def collect_unknown_fields(
+    parsed: ConditionNode,
+    known_field_names: set[str],
+) -> set[str]:
+    """Return the set of leaf field references not in ``known_field_names``.
+
+    Used by callers that want to distinguish "references a not-yet-created
+    field" from structural errors (bad operator, missing value, etc.). When
+    the only issues with a condition are unknown field references, the
+    caller can choose to defer applying the condition rather than rejecting
+    the whole program file.
+
+    :param parsed: Root of the parsed AST.
+    :param known_field_names: Field names known to exist (entity-local
+        union, native fields, cross-batch fields).
+    :returns: Set of field names referenced by the condition but not in
+        ``known_field_names``. Empty set means every reference resolves.
+    """
+    unknowns: set[str] = set()
+    _collect_unknown(parsed, known_field_names, unknowns)
+    return unknowns
+
+
+def _collect_unknown(
+    node: ConditionNode,
+    known: set[str],
+    unknowns: set[str],
+) -> None:
+    """Recursively collect unknown field references."""
+    if isinstance(node, LeafClause):
+        if node.field not in known:
+            unknowns.add(node.field)
+    elif isinstance(node, (AllNode, AnyNode)):
+        for child in node.children:
+            _collect_unknown(child, known, unknowns)
+
+
 def _validate_node(
     node: ConditionNode,
     entity_fields: set[str],

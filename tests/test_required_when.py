@@ -131,7 +131,12 @@ def test_validate_mutual_exclusion_required_and_required_when(loader, tmp_path):
 
 
 def test_validate_unknown_field_in_required_when(loader, tmp_path):
-    """Unknown field in requiredWhen produces validation error."""
+    """Unknown field in requiredWhen is deferred, not an error.
+
+    The validator drops the parsed condition from the field def so the
+    deploy payload omits dynamicLogicRequired, and records a soft
+    warning on ``program.condition_warnings``.
+    """
     content = dedent("""\
         version: "1.1"
         description: "Test"
@@ -148,7 +153,13 @@ def test_validate_unknown_field_in_required_when(loader, tmp_path):
     path.write_text(content)
     program = loader.load_program(path)
     errors = loader.validate_program(program)
-    assert any("ghostField" in e and "requiredWhen" in e for e in errors)
+    assert not any("ghostField" in e for e in errors), errors
+    assert any(
+        "ghostField" in w and "requiredWhen" in w and "deferred" in w
+        for w in program.condition_warnings
+    )
+    email_field = program.entities[0].fields[0]
+    assert email_field.required_when is None
 
 
 def test_validate_valid_required_when(loader, tmp_path):

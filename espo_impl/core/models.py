@@ -565,6 +565,12 @@ class ProgramFile:
     :param entities: List of entity definitions.
     :param source_path: Path to the source YAML file.
     :param relationships: List of relationship definitions.
+    :param condition_warnings: Soft warnings raised during validation
+        for ``requiredWhen`` / ``visibleWhen`` conditions that
+        reference fields not yet present in the deployment batch.
+        The referenced condition is dropped from the field's payload
+        for this run; a re-run after the referenced field has been
+        created will apply the condition.
     """
 
     version: str
@@ -574,6 +580,7 @@ class ProgramFile:
     content_version: str = "1.0.0"
     relationships: list[RelationshipDefinition] = field(default_factory=list)
     deprecation_warnings: list[str] = field(default_factory=list)
+    condition_warnings: list[str] = field(default_factory=list)
 
     @property
     def has_delete_operations(self) -> bool:

@@ -8,7 +8,11 @@ from typing import Any
 
 import yaml
 
-from espo_impl.core.condition_expression import parse_condition, validate_condition
+from espo_impl.core.condition_expression import (
+    collect_unknown_fields,
+    parse_condition,
+    validate_condition,
+)
 from espo_impl.core.formula_parser import extract_field_refs, parse_arithmetic
 from espo_impl.core.models import (
     SUPPORTED_ENTITY_TYPES,
@@ -258,6 +262,11 @@ class ConfigLoader:
         if getattr(self, "_active_context", None) is None:
             self._active_context = ProgramContext.from_programs([program])
             owns_context = True
+        # Fresh deferred-condition warnings for this validation pass —
+        # _validate_field_conditions and _validate_layout populate
+        # program.condition_warnings via self._active_program.
+        program.condition_warnings.clear()
+        self._active_program = program
         try:
             errors: list[str] = []
 
@@ -290,6 +299,7 @@ class ConfigLoader:
 
             return errors
         finally:
+            self._active_program = None
             if owns_context:
                 self._active_context = None
 
@@ -681,7 +691,10 @@ class ConfigLoader:
                     f"'dynamicLogicVisible' on the same panel"
                 )
 
-            # Panel-level visibleWhen condition validation
+            # Panel-level visibleWhen condition validation. Unknown
+            # field references are deferred (cleared + warning) so the
+            # rest of the layout still applies; structural errors are
+            # hard rejects. Same semantics as field-level conditions.
             if panel.visible_when_raw is not None:
                 if panel.visible_when is None:
                     try:
@@ -691,13 +704,33 @@ class ConfigLoader:
                             f"{panel_prefix}.visibleWhen: {exc}"
                         )
                 else:
-                    vw_errors = validate_condition(
+                    unknown_refs = collect_unknown_fields(
                         panel.visible_when, field_names
                     )
-                    for err in vw_errors:
+                    padded_names = field_names | unknown_refs
+                    structural_errors = validate_condition(
+                        panel.visible_when, padded_names
+                    )
+                    for err in structural_errors:
                         errors.append(
                             f"{panel_prefix}.visibleWhen: {err}"
                         )
+
+                    if unknown_refs and not structural_errors:
+                        panel.visible_when = None
+                        missing = ", ".join(sorted(unknown_refs))
+                        warning = (
+                            f"{panel_prefix}.visibleWhen: referenced "
+                            f"field(s) {missing} not yet defined — "
+                            f"dynamic logic deferred. Re-run after the "
+                            f"field(s) have been created to apply the "
+                            f"condition."
+                        )
+                        active = getattr(self, "_active_program", None)
+                        if active is not None:
+                            active.condition_warnings.append(warning)
+                        else:
+                            logger.warning(warning)
 
             if panel.tabs:
                 for tab in panel.tabs:
@@ -932,6 +965,15 @@ class ConfigLoader:
         Checks condition-expression validity and field references
         against the entity's field set.
 
+        Field references that point at fields not yet present in the
+        deployment batch are downgraded from hard errors to deferred-
+        condition warnings: the parsed condition is cleared on the
+        field def (so the API payload omits it), and a warning is
+        recorded on the active program. Re-running the YAML once the
+        referenced field has been created applies the condition
+        normally. Structural errors (bad operator, missing value,
+        etc.) remain hard errors.
+
         :param entity: Entity definition to validate.
         :returns: List of error messages.
         """
@@ -945,39 +987,92 @@ class ConfigLoader:
         for field_def in entity.fields:
             prefix = f"{entity.name}.{field_def.name or '(unnamed)'}"
 
-            # requiredWhen condition validation
             if field_def.required_when_raw is not None:
-                if field_def.required_when is None:
-                    try:
-                        parse_condition(field_def.required_when_raw)
-                    except ValueError as exc:
-                        errors.append(
-                            f"{prefix}.requiredWhen: {exc}"
-                        )
-                else:
-                    rw_errors = validate_condition(
-                        field_def.required_when, field_names
-                    )
-                    for err in rw_errors:
-                        errors.append(f"{prefix}.requiredWhen: {err}")
+                self._validate_condition_block(
+                    field_def, "required_when", field_names, prefix, errors,
+                )
 
-            # visibleWhen condition validation
             if field_def.visible_when_raw is not None:
-                if field_def.visible_when is None:
-                    try:
-                        parse_condition(field_def.visible_when_raw)
-                    except ValueError as exc:
-                        errors.append(
-                            f"{prefix}.visibleWhen: {exc}"
-                        )
-                else:
-                    vw_errors = validate_condition(
-                        field_def.visible_when, field_names
-                    )
-                    for err in vw_errors:
-                        errors.append(f"{prefix}.visibleWhen: {err}")
+                self._validate_condition_block(
+                    field_def, "visible_when", field_names, prefix, errors,
+                )
 
         return errors
+
+    def _validate_condition_block(
+        self,
+        field_def: FieldDefinition,
+        attr: str,
+        field_names: set[str],
+        prefix: str,
+        errors: list[str],
+    ) -> None:
+        """Validate one ``requiredWhen``/``visibleWhen`` block on a field.
+
+        Splits errors into structural (bad operator/value/shape) and
+        reference (field name not in the known set). Structural errors
+        are appended to ``errors`` as before; reference-only failures
+        are deferred: the parsed condition is cleared on the field def
+        and a soft warning is appended to ``self._active_program``.
+
+        :param field_def: Field definition under validation.
+        :param attr: Either ``"required_when"`` or ``"visible_when"``.
+        :param field_names: Union of locally-known field names.
+        :param prefix: Log prefix ``"{Entity}.{field}"``.
+        :param errors: Hard-error accumulator (mutated in place).
+        """
+        raw = getattr(field_def, f"{attr}_raw")
+        parsed = getattr(field_def, attr)
+        spec_name = "requiredWhen" if attr == "required_when" else "visibleWhen"
+
+        if parsed is None:
+            # Parse failed at load time — re-attempt to surface the error.
+            try:
+                parse_condition(raw)
+            except ValueError as exc:
+                errors.append(f"{prefix}.{spec_name}: {exc}")
+            return
+
+        unknown_refs = collect_unknown_fields(parsed, field_names)
+        padded_names = field_names | unknown_refs
+        structural_errors = validate_condition(parsed, padded_names)
+
+        for err in structural_errors:
+            errors.append(f"{prefix}.{spec_name}: {err}")
+
+        if unknown_refs and not structural_errors:
+            self._defer_condition(field_def, attr, spec_name, prefix, unknown_refs)
+
+    def _defer_condition(
+        self,
+        field_def: FieldDefinition,
+        attr: str,
+        spec_name: str,
+        prefix: str,
+        unknown_refs: set[str],
+    ) -> None:
+        """Defer one condition by clearing it and recording a warning.
+
+        :param field_def: Field whose condition is being deferred.
+        :param attr: Either ``"required_when"`` or ``"visible_when"``.
+        :param spec_name: Display name (``"requiredWhen"`` or
+            ``"visibleWhen"``) for the warning text.
+        :param prefix: Log prefix ``"{Entity}.{field}"``.
+        :param unknown_refs: Field names referenced by the condition
+            that are not declared anywhere in the batch.
+        """
+        setattr(field_def, attr, None)
+        missing = ", ".join(sorted(unknown_refs))
+        warning = (
+            f"{prefix}.{spec_name}: referenced field(s) {missing} not yet "
+            f"defined — dynamic logic deferred. Re-run after the field(s) "
+            f"have been created to apply the condition."
+        )
+        active = getattr(self, "_active_program", None)
+        if active is not None:
+            active.condition_warnings.append(warning)
+        else:
+            logger.warning(warning)
 
     def _validate_formula_fields(
         self, entity: EntityDefinition
