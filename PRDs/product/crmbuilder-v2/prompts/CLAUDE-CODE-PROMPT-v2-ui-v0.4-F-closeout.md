@@ -1,6 +1,6 @@
 # CLAUDE-CODE-PROMPT-v2-ui-v0.4-F-closeout
 
-**Last Updated:** 05-14-26 14:00
+**Last Updated:** 05-15-26 09:00
 **Series:** v2-ui-v0.4
 **Slice:** F (6 of 6)
 **Status:** Ready to execute
@@ -10,14 +10,15 @@
 
 ## Purpose
 
-This is the sixth and final slice of v0.4. Slice F is mechanical closeout — no new feature work, no new tests, no schema changes. Four deliverables:
+This is the sixth and final slice of v0.4. Slice F is mechanical closeout — no new feature work, no new tests, no schema changes. Five deliverables:
 
 1. **Version bump.** `__version__` in `crmbuilder-v2/src/crmbuilder_v2/__init__.py` set to `"0.4.0"`.
 2. **README release note.** A v0.4 entry in `crmbuilder-v2/README.md` matching v0.3's format.
-3. **Final regression test pass.** `uv run pytest tests/crmbuilder_v2/ -v` returns green across the cumulative suite (v0.3 tests + all new v0.4 tests from slices A–E).
+3. **Final regression test pass.** `uv run pytest tests/crmbuilder_v2/ -v` returns green across the cumulative suite (v0.3 tests + all new v0.4 tests from slices A–E). If the full-suite run hangs from orphaned subprocesses, clean them up first (`pkill -f pytest`) so the gate produces clean signal.
 4. **Final integration smoke verification.** Open the desktop app and confirm the Methodology sidebar group renders all four entries; each panel is operable; the About dialog shows `0.4.0`.
+5. **Append slice F's own session record draft to the v0.4 closeout drafts file.** Append a new section to `PRDs/product/crmbuilder-v2/v0.4-closeout-session-record-drafts.md` titled "SES-024 — v0.4 slice F closeout build" — same shape as the existing SES-019 through SES-023 drafts (identifier, title, session_date, status, conversation_reference, summary, topics_covered, artifacts_produced, in_flight_at_end). The summary names what this slice did (version bump, README, regression pass, smoke); the artifacts_produced names this slice's commit hash and the modified files; the in_flight_at_end is "None — v0.4 build complete; operator-authored closeout records (SES-017 through SES-024 plus DEC-068 through DEC-074 plus PI-013/014/015 plus status update) are ready to author per the drafts file." This step exists because per-slice session-record authoring was not previously inlined in the slice prompts; Doug surfaced the gap during the 05-14-26 reconciliation conversation continuation. The drafts file is the durable handoff to Doug; he pastes from it into the desktop dialogs at conversation close.
 
-After this slice, v0.4 is shipped. Doug authors closing artifacts (SES-017 session record for v0.4-build-planning, SES-018 session record for the 05-14-26 reconciliation/approval conversation, DEC-068 through DEC-074, three new planning items PI-013/014/015, status-entity update from "v0.3 complete" to "v0.4 complete") through the desktop UI per the session-record-at-close pattern. See `ui-PRD-v0.4.md` section 11 for the canonical list — the numbering was renumbered at PRD approval on 05-14-26 because the catalog ingestion build consumed SES-016 and DEC-065/066/067 between v0.4 planning and approval.
+After this slice, v0.4 is shipped. Doug authors the closing artifacts (SES-017 through SES-024 session records, DEC-068 through DEC-074, three new planning items PI-013/014/015, status-entity update from "v0.3 complete" to "v0.4 complete") through the desktop UI per the session-record-at-close pattern. The drafts file at `PRDs/product/crmbuilder-v2/v0.4-closeout-session-record-drafts.md` carries ready-to-paste content for every record; see `ui-PRD-v0.4.md` section 11 for the canonical list — the numbering was renumbered at PRD approval on 05-14-26 because the catalog ingestion build consumed SES-016 and DEC-065/066/067 between v0.4 planning and approval.
 
 ## Project context
 
@@ -51,6 +52,7 @@ Before producing any code, read:
 3. `PRDs/product/crmbuilder-v2/ui-v0.4-implementation-plan.md` section 4 Step F.
 4. `crmbuilder-v2/README.md` — read the existing v0.3 release-note entry; the v0.4 entry matches that format.
 5. `crmbuilder-v2/src/crmbuilder_v2/__init__.py` — confirm the current `__version__` value and where it sits in the file.
+6. `PRDs/product/crmbuilder-v2/v0.4-closeout-session-record-drafts.md` — read the existing SES-019 through SES-023 sections; the SES-024 section produced in Step 5 follows the same shape.
 
 ## Step 1 — Version bump
 
@@ -112,7 +114,25 @@ Open the desktop application: `uv run crmbuilder-v2`. Verify the following manua
 
 If any verification step fails, stop and report. Slice F does not attempt to fix the failure; the responsible upstream slice does.
 
-## Step 5 — Cumulative acceptance check
+## Step 5 — Append slice F's session record draft
+
+Per the 05-14-26 reconciliation conversation continuation (after slices A–E shipped without per-slice session records being captured), the v0.4 closeout records authoring drafts file at `PRDs/product/crmbuilder-v2/v0.4-closeout-session-record-drafts.md` carries ready-to-paste content for every SES/DEC/PI record Doug must author at v0.4 closeout. SES-019 through SES-023 (slices A through E) were drafted retroactively in that file. Slice F's own session record (SES-024) is produced inline by this step, so it joins the drafts in the same file.
+
+Append a new section to `v0.4-closeout-session-record-drafts.md` with the same shape as SES-019 through SES-023. Place it after the SES-023 section and before the "Section 2 — Decision records" header. The new section should have:
+
+- **identifier:** SES-024
+- **title:** v0.4 slice F — closeout
+- **session_date:** today's actual date in MM-DD-YY format (the date Slice F's Claude Code conversation runs)
+- **status:** Complete
+- **conversation_reference:** "Claude Code execution conversation executing `PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.4-F-closeout.md` via the `run-v0.4-slice.sh F` launcher. No transcript preserved per DEC-025."
+- **summary:** A paragraph naming the five concrete actions of slice F (version bump to 0.4.0, README v0.4 release note, full-suite regression pass with cleanup of orphaned pytest subprocesses if any, integration smoke confirming Methodology sidebar group renders all four entries and About dialog shows 0.4.0, this session record draft appended). Identify which acceptance criteria from PRD §6 pass (F1–F5 and the cumulative roll-up). If anything unexpected surfaced during the slice and needed a judgment call, name it.
+- **topics_covered:** Comma-separated topic list: "version bump to 0.4.0, README v0.4 release note, full-suite regression pass, integration smoke verification, Methodology sidebar group end-to-end verification, About dialog version verification, session record draft append, v0.4 build complete."
+- **artifacts_produced:** Commit hash for the slice F commit, plus the two modified files (`crmbuilder-v2/src/crmbuilder_v2/__init__.py` and `crmbuilder-v2/README.md`) and the appended-to drafts file.
+- **in_flight_at_end:** "None — v0.4 build complete. Operator-authored closeout records (SES-017 through SES-024 plus DEC-068 through DEC-074 plus PI-013/014/015 plus status update from v0.3 complete to v0.4 complete) are ready to author per `v0.4-closeout-session-record-drafts.md`."
+
+The append is a normal file modification: read the drafts file, locate the boundary between SES-023's section and "Section 2 — Decision records", insert SES-024 as a sibling section, write the file back. Confirm the boundary is preserved (Section 2 header still present, no SES-023 content displaced).
+
+## Step 6 — Cumulative acceptance check
 
 PRD section 6 enumerates the cumulative acceptance criteria:
 
@@ -123,7 +143,7 @@ PRD section 6 enumerates the cumulative acceptance criteria:
 - CRM Candidate (12 criteria from `crm_candidate.md` section 3.7)
 - Slice F (F1–F5): closeout
 
-Confirm all criteria pass. The test suite green from Step 3 covers most; the manual smoke from Step 4 covers F4 (sidebar group renders + each panel operable end-to-end). F1 (version), F2 (README), F3 (test pass) are immediate after Steps 1–3. F5 (cumulative roll-up) is the sum of the prior verifications.
+Confirm all criteria pass. The test suite green from Step 3 covers most; the manual smoke from Step 4 covers F4 (sidebar group renders + each panel operable end-to-end). F1 (version), F2 (README), F3 (test pass) are immediate after Steps 1–3. The cumulative roll-up is the sum of the prior verifications. F5 (session record draft appended) is verified by confirming SES-024 appears in the drafts file after Step 5 completes.
 
 ## Acceptance verification
 
@@ -131,6 +151,7 @@ Confirm all criteria pass. The test suite green from Step 3 covers most; the man
 2. **About dialog shows 0.4.0.** Manually confirmed in Step 4.
 3. **README has v0.4 release note.** Diff includes the entry.
 4. **Methodology sidebar group has all four entries operable.** Manually confirmed in Step 4.
+5. **SES-024 draft appended to closeout drafts file.** Diff includes the new section between SES-023 and Section 2's header.
 
 If any check fails, stop and report.
 
@@ -138,27 +159,25 @@ If any check fails, stop and report.
 
 ```bash
 git add crmbuilder-v2/src/crmbuilder_v2/__init__.py \
-        crmbuilder-v2/README.md
-git commit -m "v2: v0.4 slice F — closeout (version 0.4.0, README release note)"
+        crmbuilder-v2/README.md \
+        PRDs/product/crmbuilder-v2/v0.4-closeout-session-record-drafts.md
+git commit -m "v2: v0.4 slice F — closeout (version 0.4.0, README release note, SES-024 draft appended)"
 ```
 
 Doug pushes. Do NOT push.
 
 ## After commit — what Doug does next
 
-This prompt ends with the commit. The remaining closing work is operator-authored, not Claude Code work:
+This prompt ends with the commit. The remaining closing work is operator-authored, not Claude Code work. **All session record, decision record, and planning item content for the eight SES records, seven DEC records, and three (or four with PI-016) PI records is pre-drafted in `PRDs/product/crmbuilder-v2/v0.4-closeout-session-record-drafts.md`** — Doug pastes from there into the desktop dialogs.
 
 1. **Doug pushes** the slice F commit to origin.
-2. **Doug writes session records** through the desktop New Session dialog at the close of each Claude Code execution conversation that contributed to v0.4 build (one per slice, six total for v0.4 build conversations). Each session record uses DEC-025 conventions: `conversation_reference` is descriptive text, `topics_covered` opens with the verbatim seed prompt.
-3. **Doug writes SES-017** — the session record for the v0.4-build-planning conversation that produced this PRD, plan, and the six slice prompts. (Originally anticipated as SES-016; renumbered at 05-14-26 PRD approval.) `conversation_reference`: descriptive text per the PRD's section 11. `topics_covered`: opens with the verbatim kickoff prompt followed by a structured summary of the cross-spec consistency check outcome and the six architectural decisions.
-4. **Doug writes SES-018** — the session record for the 05-14-26 reconciliation/approval conversation. `conversation_reference` and `topics_covered` per the PRD's section 11.
-5. **Doug writes DEC-068 through DEC-073** — the six architectural decision records from the v0.4-build-planning conversation (originally drafted as DEC-065 through DEC-070; renumbered at 05-14-26 PRD approval). Verbatim body text per the planning conversation's record. Each decision authored via direct API or MCP.
-6. **Doug writes DEC-074** — the v0.4 PRD approval decision, capturing the SES-018 reconciliation outcome.
-7. **Doug writes three planning items PI-013, PI-014, PI-015** — Cross-Domain Service representation, Catalog FK integration for methodology entities, Methodology entity renderers. Each carries the description from `ui-PRD-v0.4.md` section 2 Out of Scope.
-8. **Doug writes the `decided_in` references** — from SES-017 to each of DEC-068 through DEC-073; from SES-018 to DEC-074. Plus `is_about` references from SES-018 to each of PI-013, PI-014, PI-015 (the reconciliation conversation surfaced them).
-9. **Doug updates the status entity** from "v0.3 complete" to "v0.4 complete" through the desktop versioned-replace dialog. Version number incremented per the existing pattern.
+2. **Doug authors SES-017 through SES-024** — eight session records — through the desktop New Session dialog. Each draft in the closeout drafts file has the field values ready to paste. SES-017 is the v0.4-build-planning conversation; SES-018 is the 05-14-26 reconciliation/approval conversation; SES-019 through SES-023 are slices A through E; SES-024 is this slice (drafted by Claude Code in Step 5 above and appended to the same drafts file).
+3. **Doug authors DEC-068 through DEC-074** — seven decision records — via direct API or MCP. Each draft in the closeout drafts file Section 2 has the title, decision, context, rationale, alternatives_considered, and consequences ready to paste. If your v0.4-build-planning working notes have richer text for any field, prefer that text; the sketches in the drafts file are a baseline floor.
+4. **Doug authors PI-013, PI-014, PI-015 (and recommended PI-016)** — three or four planning items — via direct API or the desktop new-PI flow. Each draft in the closeout drafts file Section 3 has the title, status, target_version, and description ready to paste. PI-016 (router-level vocab enforcement on `/references`) is recommended based on the SES-021 finding but optional — author if you want to track it now, defer if you'd rather wait for CBM-redo signal.
+5. **Doug authors the references** — `decided_in` from each DEC to its source SES, plus `is_about` from SES-018 to each new PI (and from SES-021 to PI-016 if authored). The drafts file Section 4 enumerates the canonical set. Implementation-references linking each slice's SES to the DECs it implements are optional per the same section.
+6. **Doug updates the status entity** from "v0.3 complete" to "v0.4 complete" through the desktop versioned-replace dialog. Version number incremented per the existing pattern.
 
-None of these are Claude Code work; all are operator-authored after this slice's commit.
+None of these are Claude Code work; all are operator-authored after this slice's commit. After Step 6 lands, v0.4 is shipped and the next workstream is open (recommended candidate per SES-018 reconciliation: paper-test the four MVS schemas against CBM domain content before either expanding methodology entity types or opening renderers PI-015).
 
 ## What NOT to do
 
