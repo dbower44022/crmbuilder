@@ -1,14 +1,14 @@
 [
   {
     "created_at": "2026-05-09T15:26:22.897413",
-    "description": "Full styling design pass per DEC-024, deferred FOUR TIMES: v0.1→v0.2 (DEC-024), v0.2→v0.3 (DEC-026), v0.3→future (DEC-037), v0.4→v0.5+ with CBM-redo-friction trigger (DEC-042). The pass establishes a coherent visual language for the v2 desktop application: typography hierarchy, accent colors beyond the navy stub (#1F3864), error/warning/info states, button hierarchy, dialog framing, table row spacing, and accessibility considerations. **Trigger mechanism (per DEC-042):** if CBM redo Phase 1 — running against the four new methodology entity panels delivered in v0.4 (domain, entity, process, crm_candidate) — surfaces visual friction on any of those panels, PI-001 gets pulled to v0.5 ahead of any other v0.5 candidate, regardless of v0.5 planning's other priorities. 'Visual friction' is intentionally fuzzy: Doug's judgment as the consultant running the redo determines whether something he sees while working bugs him enough to count. If CBM redo runs smoothly visually, PI-001 may continue to defer — that's evidence too.",
+    "description": "Full styling design pass per DEC-024. Originally deferred four times (DEC-024 → DEC-026 → DEC-037 → DEC-042) on the CBM-redo-friction trigger principle. **Reopened as a parallel workstream by DEC-076 (05-16-26)** because the trigger condition (CBM-redo Phase 1 surfacing visual friction on the four v0.4 methodology panels) cannot fire in v0.5's timeframe — CBM redo waits on v0.5 (DEC-075) plus the paper-test (DEC-077) plus Phase 1 itself, and the four-deferral pattern with progressively-elaborate trigger conditions that never fire has become an anti-pattern. The pass establishes a coherent visual language for the v2 desktop application: design tokens (palette with semantic naming, typography scale, spacing scale, radius/border/elevation tokens, density target), visual decisions for major component classes (panels, sidebar, buttons, form controls, dialogs, tables), and implementation across all governance and methodology panels. **Workstream structure (per `PRDs/product/crmbuilder-v2/styling-workstream-plan.md`):** two conversations — Conversation 1 produces the design pass document at `PRDs/product/crmbuilder-v2/styling-design-pass.md`; Conversation 2 produces the styling PRD, implementation plan, and slice build prompts. Strawman five build slices follow (foundation; governance panel retrofit; methodology panel retrofit; dialog and form-control polish; closeout). **Boundary discipline with v0.5 (per DEC-076):** styling owns the visual layer (QSS, design tokens, panel chrome, sidebar visuals, About dialog, hover/focus/disabled states); v0.5 owns the data/routing layer (config, ActiveEngagementContext, alembic, API routing, engagement entity). One coupling point: v0.5's engagement panel inherits whatever tokens are current at slice land time; either order ships fine. **Version-bundling question** (v0.5 vs. v0.6) deferred to the styling workstream's Conversation 2.",
     "id": 1,
     "identifier": "PI-001",
     "item_type": "pending_work",
     "resolution_reference": null,
     "status": "Open",
     "title": "Full styling design pass per DEC-024",
-    "updated_at": "2026-05-11T14:51:10.152094"
+    "updated_at": "2026-05-16T05:28:44.964964"
   },
   {
     "created_at": "2026-05-11T14:51:10.184105",

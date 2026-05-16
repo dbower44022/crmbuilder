@@ -691,5 +691,32 @@
     "source_type": "session",
     "target_id": "PI-016",
     "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-16T05:28:38.596256",
+    "id": 78,
+    "relationship_kind": "decided_in",
+    "source_id": "DEC-075",
+    "source_type": "decision",
+    "target_id": "SES-025",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-16T05:28:38.631736",
+    "id": 79,
+    "relationship_kind": "decided_in",
+    "source_id": "DEC-076",
+    "source_type": "decision",
+    "target_id": "SES-025",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-16T05:28:38.671228",
+    "id": 80,
+    "relationship_kind": "decided_in",
+    "source_id": "DEC-077",
+    "source_type": "decision",
+    "target_id": "SES-025",
+    "target_type": "session"
   }
 ]
