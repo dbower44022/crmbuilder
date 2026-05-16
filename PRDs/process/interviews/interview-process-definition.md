@@ -1,7 +1,7 @@
 # CRM Builder — Process Definition Interview Guide
 
-**Version:** 2.6
-**Last Updated:** 04-20-26
+**Version:** 2.7
+**Last Updated:** 05-16-26 04:25
 **Purpose:** AI interviewer guide for Phase 2 — Process Definition
 **Governing Process:** PRDs/process/CRM-Builder-Document-Production-Process.docx
 **See also:** `guide-carry-forward-updates.md` — used when this interview discovers that a previously-completed process document needs to change (see "Handling Discovered Updates to Prior Documents" below).
@@ -56,7 +56,7 @@ their respective standards.
 | 5 | Process Completion | How the process ends — normal completion, alternative end states, early termination, and post-completion handoffs. |
 | 6 | System Requirements | What the CRM must do to support this process. Stated as "The system must..." with unique identifiers. |
 | 7 | Process Data | Fields this process references or uses to support its work. Grouped by entity with full field-level detail. |
-| 8 | Data Collected | Fields this process creates or updates (new data). Grouped by entity with full field-level detail. |
+| 8 | Data Collected | Fields this process creates or updates (new data). Opens with two consolidated sub-sections: **Entity Relationships Established** (every structural relationship created by this process in a single table) and **Fields Touched From Other Process Documents** (externally-owned fields written to by this process). Followed by per-entity field tables with full field-level detail. |
 | 9 | Open Issues | Unresolved questions, TBD items, and research tasks identified during the interview. Each with a unique identifier. |
 | 10 | Interview Transcript | Condensed record of all interview questions, answers, and decisions from the session. |
 
@@ -625,6 +625,17 @@ verify consistency:
 Resolve the conflict before proceeding. If resolution affects
 a prior document, note it as an update needed.
 
+**Distinction between reference and write.** This step covers
+*reading* fields defined by prior documents. When this process
+additionally *writes to* such a field (for example, MN-INTAKE
+writes to the CR-MARKETING-owned `prospectStatus` field on
+Contact during application processing), capture the write as a
+system requirement in Section 6 and add the field to the Fields
+Touched From Other Process Documents sub-section that opens
+Section 8 of the produced document (see Section 8.0). Reads stay
+in Section 7 proper; writes are surfaced in the Section 8 opening
+table for traceability to their canonical definition.
+
 ### 7.5 Assign Identifiers
 
 Each data item gets an identifier:
@@ -652,6 +663,83 @@ this process makes.
 
 This section is grouped by entity. Each field must meet the
 field-level detail standard.
+
+### 8.0 Required Opening Sub-Sections in the Produced Document
+
+Section 8 of the produced process document **must open with two
+consolidated sub-sections before the per-entity field tables.** These
+sub-sections surface structural context that the per-entity tables
+depend on but that would otherwise be invisible at a glance.
+
+These are document-output requirements, not interview activities.
+The AI compiles the content for both sub-sections from material
+collected throughout the interview (per Sections 8.5 and 7.4 below)
+and presents them at the opening of Section 8 in the final document.
+
+**Sub-section 1: Entity Relationships Established.** A single
+consolidated table enumerating every structural relationship created
+by this process. Required columns:
+
+| Relationship | Related Entities | Link Type | PRD Reference | Established At |
+
+- **Relationship.** Human-readable name in business terms (e.g.,
+  "Primary Engagement Contact → Engagement", "Engagement Contacts
+  → Engagement"). For relationships with a semantic role, use a
+  parenthetical to disambiguate.
+- **Related Entities.** The two endpoints of the relationship in
+  `Entity1 ↔ Entity2` form (use `↔` for many-to-many, `→` for
+  directional).
+- **Link Type.** `manyToOne`, `oneToMany`, `manyToMany`, or
+  annotated variants such as `manyToOne (native Contact-to-Account)`
+  for native platform relationships.
+- **PRD Reference.** Where the relationship's field is canonically
+  defined. If defined in this process document, cite the DAT
+  identifier (e.g., `MN-INTAKE-DAT-024`). If owned by another
+  document, cite that document's identifier (e.g.,
+  `MN-MATCH-DAT-021` or `Engagement Entity PRD`).
+- **Established At.** The workflow step or system requirement that
+  creates the link (e.g., `Workflow Step 2`, `MN-INTAKE-REQ-007`,
+  or both separated by a semicolon when both apply).
+
+**Sub-section 2: Fields Touched From Other Process Documents.** A
+single consolidated table listing every externally-owned field that
+this process writes to. Required columns:
+
+| Field Name | Owning Entity | Canonical Reference | Populated By |
+
+- **Field Name.** The field name as it appears in its canonical
+  definition (e.g., `prospectStatus`, `Engagement Contacts`).
+- **Owning Entity.** The entity the field lives on (e.g.,
+  `Contact`, `Engagement`).
+- **Canonical Reference.** The document or sub-domain that owns
+  the field definition (e.g., `CR-MARKETING Sub-Domain Overview
+  v1.0; Contact Entity PRD`).
+- **Populated By.** The REQ identifier in this process document
+  that causes the field to be written (e.g.,
+  `MN-INTAKE-REQ-012`).
+
+These two tables consolidate cross-document and structural
+references that would otherwise be scattered across narrative
+prose, workflow steps, and individual field descriptions. They
+make the process document self-describing at the structural level.
+
+**Source for the tables.** The Entity Relationships Established
+table is compiled from the relationships discovered during the
+interview (Section 8.5 below). The Fields Touched From Other
+Process Documents table is compiled from the field consistency
+checks against prior documents (Section 7.4) plus any cross-
+document field writes discovered during the workflow walkthrough.
+
+**Precedent.** This convention was introduced in MN-INTAKE v2.6
+(05-16-26, `dbower44022/ClevelandBusinessMentoring` commit
+`2c82d5b`), which produced a 5-row Entity Relationships Established
+table and a 4-row Fields Touched From Other Process Documents
+table for the Client Intake process. The convention is the
+process-document analog of the Section 4 Entity Relationships
+sub-section canonicalized at the Domain Product Requirements
+Document level by methodology-guide v1.6
+(`guide-domain-reconciliation.md`) on the same day. Future process
+documents follow this pattern.
 
 ### 8.1 Opening
 
@@ -734,6 +822,14 @@ described in business terms.
 Describe relationships in business language. Implementation
 details (how the relationship is stored, link types, field
 names) are handled in Phase 5.
+
+**Output consolidation.** Every relationship captured here is
+collected into the Entity Relationships Established sub-section
+that opens Section 8 of the produced document (see Section 8.0).
+The conversational capture during this step is the source; the
+consolidated table is the output rendering. The AI should not
+mention the consolidated table during the interview — it is a
+post-interview compilation step.
 
 ### 8.6 Fields Discovered During Workflow Discussion
 
@@ -1014,7 +1110,7 @@ verify it meets the required standard:
 5. Process Completion — all end states, handoffs, and early termination? ✓/✗
 6. System Requirements — identifiers assigned? ✓/✗
 7. Process Data — field-level detail for every supporting field? ✓/✗
-8. Data Collected — field-level detail for every field? ✓/✗
+8. Data Collected — Entity Relationships Established and Fields Touched From Other Process Documents tables present at the opening? Field-level detail for every field? ✓/✗
 9. Open Issues — all TBDs captured with identifiers? ✓/✗
 10. Interview Transcript — topic-organized Q/A with inline Decision callouts? ✓/✗
 
@@ -1039,7 +1135,7 @@ If any section is incomplete:
 > - System Requirements: [N] requirements ([first ID] through
 >   [last ID])
 > - Process Data: [N] supporting fields across [N] entities
-> - Data Collected: [N] new fields across [N] entities
+> - Data Collected: [N] new fields across [N] entities; [N] relationships established; [N] externally-owned fields touched
 > - Open Issues: [N] ([first ID] through [last ID])
 > - TBD items: [N]
 > - Carry-forward request drafts prepared (separate artifacts): [N]
@@ -1206,6 +1302,7 @@ redirect:
 
 | Version | Date | Changes |
 |---|---|---|
+| 2.7 | 05-16-26 04:25 | Added two required Section 8 opening sub-sections for the produced process document: **Entity Relationships Established** (consolidated table of every structural relationship the process creates, columns Relationship \| Related Entities \| Link Type \| PRD Reference \| Established At) and **Fields Touched From Other Process Documents** (consolidated table of externally-owned fields the process writes to, columns Field Name \| Owning Entity \| Canonical Reference \| Populated By). Specification authored as a new Section 8.0 "Required Opening Sub-Sections in the Produced Document" preceding the existing 8.1 Opening. Section 7.4 (Check Against Prior Process Documents) extended with a distinction between reference and write — writes to externally-owned fields populate the new Section 8.0 second table; reads stay in Section 7. Section 8.5 (Relationships Created) extended with an output-consolidation note pointing to Section 8.0. Section 8 row in the "What the Process Document Must Contain" table updated to describe the new opening structure. Precedent: MN-INTAKE v2.6 (`dbower44022/ClevelandBusinessMentoring` commit `2c82d5b`, 05-16-26) produced the 5-row Entity Relationships Established and 4-row Fields Touched From Other Process Documents tables for the Client Intake process. Process-document analog of the Domain Product Requirements Document Entity Relationships sub-section canonicalized at the Domain level by methodology-guide v1.6 (`guide-domain-reconciliation.md`) on the same day. Scope limited to Section 8; Section 7 retains its existing structure (a parallel "Relationships Referenced" opening sub-section for read-only relationships in Section 7 is a possible future extension but is intentionally out of scope for v2.7). Retroactive propagation to existing process documents in MN, MR, CR, and FU is intentionally out of scope — adoption is opportunistic at each document's next revision opportunity rather than via a dedicated bulk-propagation prompt, to avoid version churn across 20+ documents. Companion UPDATE-PROMPT retained at `PRDs/process/interviews/UPDATE-PROMPT-Process-Definition-Guide-Entity-Relationships.md`. |
 | 2.6 | 04-20-26 | Eliminated "Updates to Prior Documents" as a process-document section. Process documents now have ten sections (was eleven). Interview Transcript renumbered from Section 11 to Section 10, with its subsection numbers corrected from the pre-existing 9.1–9.4 mislabeling to 10.1–10.4. Replaced the old Section 10 guidance with a new "Handling Discovered Updates to Prior Documents" process-conduct block: when the interview surfaces a need to update a prior document, the AI drafts a standalone **carry-forward request** (per `guide-carry-forward-updates.md` Gate 1 template) as a second session output artifact, saved by the administrator under `{implementation}/PRDs/{domain_code}/carry-forward/` and executed as a separate carry-forward session. Updated checklist, summary template, completeness check, and Document Production guidance to reflect the ten-section structure and the separate carry-forward-draft output. Addresses the approval-churn findings from the CBM MR pilot (PILOT-FINDINGS Finding 6 and related): the dual-record problem (Section 10 entries + standalone session prompts) and the open-loop problem (Section 10 entries that rotted without being applied) are both resolved by making the carry-forward request the single authoritative record. |
 | 2.5 | 04-16-26 | Added sub-domain support throughout. Updated Input to include Domain Overview and Sub-Domain Overview documents. Updated Output path with sub-domain directory variant. Expanded Context Review from 3 to 4 steps, adding Domain/Sub-Domain Overview reading and cross-sub-domain awareness for shared entities. Updated Confirm the Process to reference sub-domain context. Updated State the Context from Prior Work for sub-domain scoping. Updated Document Production commit path with sub-domain variant. Expanded State Next Step with sub-domain-aware completion logic (sub-domain complete, next sub-domain, domain complete). |
 | 2.4 | 03-31-26 | Added section numbering guidance to Document Production: all eleven sections use numbered headings consistently in the Word document output (e.g., "9. Open Issues", "10. Updates to Prior Documents", "11. Interview Transcript"). |
