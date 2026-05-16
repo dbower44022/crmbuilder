@@ -174,5 +174,16 @@
     "status": "Open",
     "title": "Router-level per-pair vocabulary enforcement on `/references`",
     "updated_at": "2026-05-15T15:45:06.160193"
+  },
+  {
+    "created_at": "2026-05-16T16:12:11.357135",
+    "description": "Anchored by DEC-081. v0.5 ships one API and MCP subprocess per engagement (Option A); multi-tenant single-process server (Option B) is the target architecture for v2's production phase. The migration lands when v2 transitions from prototype (v0.x releases) to production (v1.0). Trigger is a planned transition, not a friction signal (avoiding the PI-001 anti-pattern of friction triggers that never fire).\n\nScope of the migration when it lands:\n\n1. Refactor every REST endpoint to accept engagement context. Two viable mechanisms: a request header (X-Engagement: ENG-NNN) or a path-prefix (/v1/engagements/ENG-NNN/sessions, etc.). The mechanism is settled when the workstream opens; both options have precedent in similar systems.\n\n2. Refactor the access-layer connection model to hold per-engagement connections. Options include: a connection pool keyed by engagement_identifier opened lazily on first use; eager pool warming at startup; or per-request connection acquire/release with engagement-context binding. The pool strategy is settled by the workstream.\n\n3. Refactor tests for engagement-context fixtures. Every test that today asserts behavior against a single DB needs to express which engagement it operates against. v0.4's test suite is the regression net.\n\n4. Reshape the MCP server to mirror the multi-tenant API. MCP tools either gain an engagement-context input argument or a per-tool engagement selector. Specific shape is settled by the workstream.\n\n5. Remove the kill-relaunch dance from the desktop's engagement-switch path. The desktop's ActiveEngagementContext continues to exist but switching becomes a fast in-process operation rather than a process-lifecycle dance. The 'Switching engagement...' UX indicator becomes vestigial or is removed.\n\n6. Consider adding an activate API endpoint (POST /engagements/{identifier}/activate) at this time. The endpoint becomes possible once the API server can switch engagements without restarting; whether to expose it depends on the workstream's posture on cross-engagement scripting use cases.\n\nDependencies and ordering: PI-017's workstream is sequenced after v0.5 ships and after enough real-use signal has accumulated (CBM Phase 1 underway or completed; possibly additional client engagements in flight) to validate that the prototype-to-production transition is the right moment. The exact timing is determined at the production-readiness workstream's opening kickoff conversation, not pre-committed here.\n\nNote: this PI is not the same as the deferred 'cross-engagement reporting' or 'engagement-level access control' workstreams. Those are separate v0.6+ candidates. PI-017 is strictly the infrastructure migration; cross-engagement features become technically feasible after PI-017 ships but are out of PI-017's scope.",
+    "id": 17,
+    "identifier": "PI-017",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Migrate API and MCP servers to multi-tenant model",
+    "updated_at": "2026-05-16T16:12:11.357138"
   }
 ]
