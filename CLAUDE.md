@@ -40,10 +40,20 @@ CRMBuilder v2 is the next major iteration of CRMBuilder. It rebuilds the methodo
 
 When a session engages v2 work — by the conversation referencing v2, or the user explicitly engaging it — Claude follows this tiered orientation:
 
-- **Tier 1 (universal, every session):** Read this CLAUDE.md (already done by reading this section).
+- **Tier 1 (universal, every session):** Read this CLAUDE.md (already done by reading this section). If the session will involve any stakeholder-facing interview, also read `PRDs/process/conduct/charter.md`, `PRDs/process/conduct/kickoff.md`, and `PRDs/process/conduct/question-library.md` — these are the global conduct rules for any AI-led requirements interview, methodology-agnostic.
 - **Tier 2 (v2 engagement, MCP-connected sessions):** Call `get_current_status`, `get_current_charter`, `list_recent_sessions(limit=3)`, then `get_decision(<id>)` or `list_decisions_for_session(<id>)` as referenced. Tools are exposed by the local `crmbuilder-v2` MCP server (run `crmbuilder-v2-api &` and `crmbuilder-v2-mcp` from the repo).
 - **Tier 2 (file-fallback when MCP is not connected):** Read the JSON snapshots under `PRDs/product/crmbuilder-v2/db-export/` directly — `status.json`, `charter.json`, `sessions.json`, `decisions.json`, `references.json`. Same content as the MCP returns; just static.
 - **Tier 3 (on-demand):** Targeted queries during conversation as topics arise.
+
+**Conduct framework for stakeholder-facing interviews** (per session 2f47c20, 05-15-26):
+
+The three documents in `PRDs/process/conduct/` govern how the AI conducts any stakeholder-facing requirements session, regardless of which methodology the session executes (current 13-phase Document Production Process or evolved 5-phase methodology).
+
+- **`charter.md`** — global conduct rules. Eleven sections covering the AI's role, communication style, question discipline, listening and probing, confirmation cadence, when not to ask, scope-change protocol, transcript capture, identifier discipline, and anti-patterns including §11.6.b "inferences require positive support" — the most important rule.
+- **`kickoff.md`** — pre-session priming protocol. Three layers (internal checklist, framing to stakeholder, calibrating stakeholder). Four session-type variants (administrator-as-proxy, first-time SME, follow-up, multi-stakeholder). Phase-specific notes for both methodologies.
+- **`question-library.md`** — eighteen annotated good/bad question patterns across six categories. Phase guides cite specific entries by number.
+
+These documents are methodology-agnostic and are the authoritative source for conduct rules. Phase guides (e.g., `phase-1-interview-guide.md` §1A) defer to them and retain only phase-specific items. When in doubt about how to ask a question, structure a session, or handle a difficult conversational moment, consult these three files before improvising.
 
 **Reference relationship vocabulary lives in `crmbuilder-v2/src/crmbuilder_v2/access/vocab.py`.** The set of valid kinds is `REFERENCE_RELATIONSHIPS`; the `(source_type, target_type) → frozenset[kinds]` constraint mapping (`RELATIONSHIP_RULES`) is precomputed at module load by `_kinds_for_pair` from seven semantic rules. The UI's references-create dialog drives its cascading filters from `RELATIONSHIP_RULES` directly, so vocab compliance is strict end-to-end. **Adding a new relationship kind requires updating both** — `REFERENCE_RELATIONSHIPS` for the kind's existence, and `_kinds_for_pair` for its source/target constraints. (The `refs.relationship_kind` CHECK constraint also needs an Alembic migration.)
 

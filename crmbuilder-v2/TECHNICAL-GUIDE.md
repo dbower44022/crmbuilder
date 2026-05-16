@@ -59,6 +59,8 @@ point.
 | MCP server | `crmbuilder_v2.mcp_server` | Tool definitions, REST proxying |
 | UI | `crmbuilder_v2.ui` | Windows, panels, dialogs, file-watch refresh, threading |
 
+**Conduct framework (out-of-process).** v2 stores methodology artifacts produced by stakeholder-facing interviews. The conduct of those interviews is governed by `PRDs/process/conduct/` in the parent crmbuilder repo — `charter.md`, `kickoff.md`, and `question-library.md`. These files are methodology-agnostic and operate upstream of v2's storage; v2 does not enforce or implement conduct rules. See USER-GUIDE.md "Conduct framework for stakeholder-facing interviews" for the operational view.
+
 ---
 
 ## Access layer

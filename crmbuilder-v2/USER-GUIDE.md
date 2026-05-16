@@ -35,6 +35,73 @@ artifacts that become deployable YAML one day live here.
 
 ---
 
+## Conduct framework for stakeholder-facing interviews
+
+v2 stores methodology artifacts. The *conduct* of the interviews that
+produce those artifacts is governed separately, by three files at
+`PRDs/process/conduct/` in the parent crmbuilder repo. Anyone running a
+stakeholder-facing methodology session against v2 — whether under the
+current 13-phase Document Production Process or the evolved 5-phase
+methodology — operates under these rules.
+
+The three files are methodology-agnostic. They do not know how many
+phases there are, what the deliverables look like, or whether the
+deliverable is a Word document or a database row. They govern the
+human-AI interaction during the interview.
+
+- **`conduct/charter.md`** — global conduct rules. Eleven sections
+  covering the AI's role as a skilled business analyst (not system
+  designer), plain-language communication, question discipline (one
+  at a time, open before closed), listening and probing, confirmation
+  cadence, when not to ask, scope-change protocol, transcript capture,
+  identifier discipline (the human-readable name precedes the
+  identifier in parentheses, every time), and anti-patterns. **The
+  most important rule** is §11.6.b "inferences require positive
+  support" — pattern-matching against generic operations for similar
+  organizations does not qualify as positive support for an inference.
+  Either get positive support from what the stakeholder said or surface
+  the inference as an explicit question.
+- **`conduct/kickoff.md`** — pre-session priming protocol. Three
+  layers (internal pre-session checklist, framing to the stakeholder,
+  calibrating the stakeholder) and four session-type variants
+  (administrator-as-proxy, first-time SME, follow-up, multi-stakeholder).
+  Phase-specific notes for both methodologies. Layer 3 (calibrating
+  the stakeholder) is the part most directly aimed at making
+  interviews less painful for the person providing information.
+- **`conduct/question-library.md`** — eighteen annotated good/bad
+  question patterns across six categories: people and roles, work,
+  information, boundaries, handling difficulty, decisions and
+  confirmation. Phase guides cite specific entries by number.
+
+### When to consult them
+
+- **Before any stakeholder-facing session.** Read the charter end-to-end
+  once per session unless it's already in context; consult kickoff for
+  the relevant phase notes; load the relevant question library entries.
+- **During a session.** When composing a substantive question, when
+  unsure how to handle a difficult moment (a guess, a contradiction
+  with upstream, fatigue), or when about to draw a conclusion that
+  goes beyond what the stakeholder directly said.
+- **When authoring a new phase guide.** The phase guide includes a
+  brief "How to Conduct This Phase" section that references the three
+  conduct files and retains only items genuinely unique to that
+  phase. `phase-1-interview-guide.md` §1A is the canonical example.
+
+### How they relate to v2
+
+The conduct framework operates *upstream* of v2's storage. The AI
+applies the conduct rules during the interview; the outcomes of the
+interview (Mission Statement, Domain Inventory, processes, CRM
+candidates, decisions, etc.) land in v2's storage. v2's panels,
+schemas, and APIs do not enforce or implement conduct rules — they
+just store what the conducted interview produced.
+
+This separation is intentional. The conduct framework can evolve
+without v2 schema changes, and v2 can evolve without rewriting the
+conduct framework.
+
+---
+
 ## Getting started
 
 ### First run

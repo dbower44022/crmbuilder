@@ -21,12 +21,15 @@ This outline is the *skeleton* of the evolved methodology. It is intended to be 
 | Version | Date | Author | Summary |
 |---------|------|--------|---------|
 | 0.1 | 04-30-26 15:25 | Doug Bower / Claude | Initial draft of the medium phase outline plus principles section. |
+| 0.2 | 05-15-26 22:30 | Doug Bower / Claude | Added "Phase guide pattern — required conduct framework integration" subsection at end of §3. Mandates that all phase guides (current Phase 1, future Phases 2–5) include a brief "How to Conduct This Phase" section near the front of the guide, referencing `PRDs/process/conduct/charter.md`, `kickoff.md`, and `question-library.md`, plus a Phase-Specific Conduct subsection retaining only items genuinely unique to that phase. Hard requirement; parallel to the existing methodology's authoring-standards compliance requirement. Per phase-1-interview-guide.md §1A as the canonical example. |
 
 ---
 
 ## Change Log
 
 **Version 0.1 (04-30-26 15:25):** Initial creation. Establishes the medium-outline target: name, purpose paragraph, named outputs, named inputs, and phase-to-phase connection note for each phase, plus a principles section that the entire evolved methodology must satisfy. The outline currently proposes five phases. Phase mechanics (participants, cadence, lock/unlock decisions) are intentionally deferred to per-phase design.
+
+**Version 0.2 (05-15-26 22:30):** Added required-pattern subsection at the end of §3 mandating that all phase guides include a "How to Conduct This Phase" section that references the three conduct framework files (`PRDs/process/conduct/charter.md`, `kickoff.md`, `question-library.md`). The pattern is established by `phase-1-interview-guide.md` §1A and applies to all future Phase 2–5 guides. The mandate exists for two reasons: to prevent conduct rules from drifting across phase guides (single source of truth in `conduct/`), and to ensure the AI loading a phase guide automatically loads the conduct framework via cross-reference rather than relying on the AI to know to read it. The conduct framework itself was committed at `2f47c20` on the same date.
 
 ---
 
@@ -183,6 +186,21 @@ The phases are described below.
 **Connection to nothing else.** Phase 5 is terminal. The engagement is complete after it.
 
 **Why this phase exists.** The iteration loop alone never terminates without an explicit closure phase. Phase 5 also handles the platform-specific work (handover materials, final verification) that doesn't make sense to do across all candidates — it only makes sense to produce these artifacts once the client has chosen one CRM.
+
+---
+
+### Phase guide pattern — required conduct framework integration
+
+Every phase guide written under this methodology — current Phase 1 and all future Phases 2–5 — must include a brief "How to Conduct This Phase" section near the front of the guide (after the purpose/scope material, before any substantive workflow content). The section follows the pattern established in `phase-1-interview-guide.md` §1A:
+
+- Reference `PRDs/process/conduct/charter.md` for global conduct rules.
+- Reference `PRDs/process/conduct/kickoff.md` for the pre-session priming protocol (with a note on which session-type variants apply for this phase).
+- Reference `PRDs/process/conduct/question-library.md` and name the specific library entries most relevant to this phase by number, with a one-line context for each.
+- Include a "Phase-Specific Conduct" subsection listing only items genuinely unique to this phase or applied here in a phase-specific way. Items that belong in the Charter — communication style, scope-change protocol, identifier discipline, the positive-support discipline — must not be duplicated in the phase guide.
+
+This is a hard requirement, parallel to how the existing methodology requires `authoring-standards.md` compliance. A phase guide that does not reference the conduct framework explicitly is not complete and should not be promoted from research status.
+
+The pattern exists for two reasons. First, it prevents conduct rules from drifting across phase guides as the methodology evolves — single source of truth in `conduct/`, phase-specific application in the guide. Second, it ensures the AI loading a phase guide automatically loads the conduct framework via cross-reference, without depending on the AI to know to read it.
 
 ---
 
