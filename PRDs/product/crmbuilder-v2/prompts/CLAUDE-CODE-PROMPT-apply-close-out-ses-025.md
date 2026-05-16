@@ -83,19 +83,19 @@ If the actual snapshot state is different (more advanced — e.g., SES-025 alrea
 
    ```bash
    # Decisions
-   curl -s http://127.0.0.1:8765/decisions | python3 -c "import sys, json; d=json.load(sys.stdin); print('Latest DEC:', sorted([r['identifier'] for r in d])[-1] if d else 'none')"
+   curl -s http://127.0.0.1:8765/decisions | python3 -c "import sys, json; d=json.load(sys.stdin)['data']; print('Latest DEC:', sorted([r['identifier'] for r in d])[-1] if d else 'none')"
 
    # Planning items
-   curl -s http://127.0.0.1:8765/planning-items | python3 -c "import sys, json; d=json.load(sys.stdin); print('Latest PI:', sorted([r['identifier'] for r in d])[-1] if d else 'none')"
+   curl -s http://127.0.0.1:8765/planning-items | python3 -c "import sys, json; d=json.load(sys.stdin)['data']; print('Latest PI:', sorted([r['identifier'] for r in d])[-1] if d else 'none')"
 
    # Sessions
-   curl -s http://127.0.0.1:8765/sessions | python3 -c "import sys, json; d=json.load(sys.stdin); print('Latest SES:', sorted([r['identifier'] for r in d])[-1] if d else 'none')"
+   curl -s http://127.0.0.1:8765/sessions | python3 -c "import sys, json; d=json.load(sys.stdin)['data']; print('Latest SES:', sorted([r['identifier'] for r in d])[-1] if d else 'none')"
 
    # PI-001 description SHA256 (pre-patch fingerprint)
-   curl -s http://127.0.0.1:8765/planning-items/PI-001 | python3 -c "import sys, json, hashlib; d=json.load(sys.stdin); print('PI-001 desc SHA pre:', hashlib.sha256(d['description'].encode()).hexdigest()[:12])"
+   curl -s http://127.0.0.1:8765/planning-items/PI-001 | python3 -c "import sys, json, hashlib; d=json.load(sys.stdin)['data']; print('PI-001 desc SHA pre:', hashlib.sha256(d['description'].encode()).hexdigest()[:12])"
    ```
 
-   Expected pre-state: `DEC-074`, `PI-016`, `SES-024`, and a PI-001 description hash that does NOT match the post-patch hash captured at Step 3. Report the four values back so the post-apply step has a clear baseline.
+   Expected pre-state: `DEC-074`, `PI-016`, `SES-024`, and a PI-001 description hash that does NOT match the post-patch hash captured at Workflow Step 3. Report the four values back so the post-apply step has a clear baseline.
 
 ---
 
@@ -145,10 +145,10 @@ done
 curl -sf http://127.0.0.1:8765/sessions/SES-025 >/dev/null && echo "SES-025 OK" || echo "SES-025 MISSING"
 
 # PI-001 post-patch fingerprint
-curl -s http://127.0.0.1:8765/planning-items/PI-001 | python3 -c "import sys, json, hashlib; d=json.load(sys.stdin); print('PI-001 desc SHA post:', hashlib.sha256(d['description'].encode()).hexdigest()[:12])"
+curl -s http://127.0.0.1:8765/planning-items/PI-001 | python3 -c "import sys, json, hashlib; d=json.load(sys.stdin)['data']; print('PI-001 desc SHA post:', hashlib.sha256(d['description'].encode()).hexdigest()[:12])"
 
 # References count delta
-curl -s http://127.0.0.1:8765/references | python3 -c "import sys, json; refs=json.load(sys.stdin); print('Refs total:', len(refs)); print('DEC-075→SES-025:', any(r['source_id']=='DEC-075' and r['target_id']=='SES-025' for r in refs)); print('DEC-076→SES-025:', any(r['source_id']=='DEC-076' and r['target_id']=='SES-025' for r in refs)); print('DEC-077→SES-025:', any(r['source_id']=='DEC-077' and r['target_id']=='SES-025' for r in refs))"
+curl -s http://127.0.0.1:8765/references | python3 -c "import sys, json; refs=json.load(sys.stdin)['data']; print('Refs total:', len(refs)); print('DEC-075→SES-025:', any(r['source_id']=='DEC-075' and r['target_id']=='SES-025' for r in refs)); print('DEC-076→SES-025:', any(r['source_id']=='DEC-076' and r['target_id']=='SES-025' for r in refs)); print('DEC-077→SES-025:', any(r['source_id']=='DEC-077' and r['target_id']=='SES-025' for r in refs))"
 ```
 
 All decision and session checks should report `OK`. The PI-001 post-patch SHA should DIFFER from the pre-patch SHA captured at pre-flight Step 7. All three reference-existence checks should report `True`. Refs total should be 77 + 3 = 80 (or higher if intervening writes have landed; report any anomaly).
