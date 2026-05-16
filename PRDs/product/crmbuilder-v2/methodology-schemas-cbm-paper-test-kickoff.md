@@ -1,5 +1,21 @@
 # Methodology Schemas — CBM Content Paper-Test Kickoff
 
+> ## Status: Deferred (as of 05-16-26 14:00)
+>
+> **This kickoff does not run next.** It runs after v0.5 (engagement management) ships and a CBM engagement has been created in v2.
+>
+> **Why deferred.** This kickoff was authored on 05-15-26 11:00 against the assumption that there was one v2 instance available to test against. v0.4 closeout subsequently surfaced that running the paper-test against the v2-build dogfood instance would mix CBM domain content into the same SQLite file that hosts the v2-build's own governance — exactly the kind of co-mingling that loses lineage. The v0.5-orientation conversation (05-16-26) committed v2 to building proper multi-engagement support (a new `engagement` entity type plus routing infrastructure) before any CBM content lands. See `PRDs/product/crmbuilder-v2/v0.5-engagement-management-workstream-plan.md`.
+>
+> **Predecessor work required before this kickoff runs.**
+>
+> 1. v0.5 ships. (Engagement management + multi-engagement routing.)
+> 2. A CBM engagement record is created in v2 against the freshly-shipped `engagement` entity type, with its own SQLite database file.
+> 3. This kickoff is lightly edited at run time to reflect that v0.5 has shipped and the paper-test runs against the CBM engagement specifically (not against the v2-build dogfood instance).
+>
+> **Scope and method are unchanged.** Everything below the rule remains the paper-test's intended frame; only the timing changes.
+
+---
+
 **Last Updated:** 05-15-26 11:00
 **Purpose:** Seed prompt for a new Claude.ai conversation that validates the four MVS methodology entity schemas (`domain`, `entity`, `process`, `crm_candidate` — shipped in v0.4) against existing Cleveland Business Mentoring (CBM) domain content, producing a findings report and a single decision about whether CBM redo Phase 1 ships on v0.4 as-is or whether schema amendments are required first.
 **Predecessor:** v0.4 ship — SES-024 (slice F closeout) + SES-025 (slice G records authoring, if numbered after this kickoff). See `PRDs/product/crmbuilder-v2/ui-PRD-v0.4.md` for what's in production; see `PRDs/product/crmbuilder-v2/methodology-schema-workstream-plan.md` for the workstream context.
