@@ -526,7 +526,77 @@ In addition to the v0.1 surface, v0.2 added:
   deleted rows render with strikethrough and the detail pane shows
   Restore + Edit (no Delete); Restore PATCHes status back to Active.
 
-### v0.4 (current — methodology entity types complete)
+### v0.5 (current — engagement management)
+
+CRMBuilder v2 v0.5 closes the engagement-routing gap. v0.4's methodology
+tables and v2's governance tables both lived in a single SQLite file at
+`crmbuilder-v2/data/v2.db`, which mixed the v2 build's own dogfood content
+with whatever methodology pilot was using v2 as system of record. v0.5
+operationalises DEC-039's "one v2 instance per engagement, separate
+SQLite, separate API port" finding into a designed feature: a bootstrap
+meta DB at `crmbuilder-v2/data/engagements.db` hosting an engagements
+registry table; per-engagement DB files at
+`crmbuilder-v2/data/engagements/{engagement_code}.db`; an
+`ActiveEngagementContext` desktop singleton; a two-database API server;
+a 12-step kill-and-relaunch activation sequence; and a one-shot dogfood
+migration that rehouses the existing `v2.db` into
+`crmbuilder-v2/data/engagements/CRMBUILDER.db` with backup-first
+verify-row-counts delete-original discipline.
+
+- **Engagement entity type.** Single new methodology entity (`engagement`)
+  with ten fields (`engagement_identifier`, `engagement_code`,
+  `engagement_name`, `engagement_purpose`, `engagement_status`,
+  `engagement_last_opened_at`, `engagement_export_dir`, plus audit
+  timestamps). Code regex `^[A-Z][A-Z0-9]{1,9}$` mirrors v1's
+  `Client.code` constraint. Status lifecycle `active`/`paused`/`archived`
+  with free transitions.
+- **Multi-engagement routing infrastructure.** Meta DB with its own
+  Alembic chain; per-engagement DBs with the existing v0.4 chain applied
+  lazily at engagement-open; two-database API server (meta DB for
+  `/engagements/*`, active engagement DB for everything else); cross-
+  restart active-state persistence via
+  `crmbuilder-v2/data/current_engagement.json`.
+- **Dogfood migration.** One-shot explicit migration at first launch.
+  Backup `v2.db` to `v2.db.pre-v0.5-backup`; create meta DB; insert
+  `CRMBUILDER` engagement row; copy `v2.db` to
+  `engagements/CRMBUILDER.db`; verify all row counts match; delete
+  original. Three install scenarios handled (existing v2 install,
+  fresh install, rerun after successful migration). Idempotent on rerun.
+- **Engagements sidebar group and management panel.** New "Engagements"
+  sidebar group above Governance with one entry. Management panel
+  (master/detail) lists engagements with sortable columns (Identifier,
+  Code, Name, Status, Last Opened); right-click context menu; standard
+  CRUD dialogs.
+- **Top-strip switching affordance.** Always-visible top-strip above
+  sidebar entries shows the active engagement's name + code with a
+  chevron-down caret. Clicking opens the picker dropdown.
+- **Picker dropdown.** Live engagements ordered by last-opened descending;
+  paused and archived sorted to bottom in muted color; active engagement
+  marked with a check icon; footer "Manage engagements…" item opens
+  the management panel.
+- **Single-gesture engagement creation.** New Engagement dialog runs
+  POST + DB file creation + activation in one user click. Three-label
+  progress indicator. Graceful inline failure recovery for activation
+  failures with "Try switching now" / "Stay in <previous>" affordances.
+- **12-step activation sequence.** Reachability check, pre-flight
+  Alembic, kill API, kill MCP, write `current_engagement.json`, update
+  in-memory context, launch new API, launch new MCP, PATCH
+  `engagement_last_opened_at` via new API (deferred from the original
+  spec's step 7 to after the new API is up per the question-6
+  amendment), emit signal, UI restore.
+- **Forbid active-engagement soft-delete.** Delete dialog refuses with
+  inline redirect to switch first; edge-case wording for last-engagement
+  install case.
+- **User Process Guide v0.2 deferred to v0.6.** The current Engagement
+  Playbook at `PRDs/process/v2-user-process-guide.md` v0.1 describes the
+  data layer as a single `v2.db` file, which is outdated after v0.5
+  ships. A v0.2 update folding in the multi-engagement routing model is
+  scheduled for v0.6.
+
+PRD: `PRDs/product/crmbuilder-v2/ui-PRD-v0.5.md`
+Implementation plan: `PRDs/product/crmbuilder-v2/ui-v0.5-implementation-plan.md`
+
+### v0.4 (methodology entity types complete)
 
 In addition to the v0.1 + v0.2 + v0.3 surface, v0.4 adds:
 

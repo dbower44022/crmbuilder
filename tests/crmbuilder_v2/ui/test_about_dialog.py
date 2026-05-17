@@ -88,8 +88,8 @@ def test_version_falls_back_to_unknown_when_dunder_missing(
     assert "unknown" in rows["Version"].lower()
 
 
-def test_version_displays_0_4_0(qtbot, monkeypatch):
-    """v0.4 closeout: package version is 0.4.0."""
+def test_version_displays_0_5_0(qtbot, monkeypatch):
+    """v0.5 closeout: package version is 0.5.0."""
     def _raise(_name):
         raise PackageNotFoundError("not installed")
 
@@ -97,7 +97,7 @@ def test_version_displays_0_4_0(qtbot, monkeypatch):
     dialog = AboutDialog()
     qtbot.addWidget(dialog)
     rows = _form_rows(dialog)
-    assert rows["Version"] == "0.4.0"
+    assert rows["Version"] == "0.5.0"
 
 
 def test_paths_are_strings_from_settings(qtbot):
