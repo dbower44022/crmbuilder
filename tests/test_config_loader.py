@@ -167,6 +167,63 @@ def test_validate_field_link_type_emits_specific_message(loader, tmp_path):
     assert matches, f"Expected link-specific message, got: {errors!r}"
 
 
+def test_validate_field_name_must_start_lowercase(loader, tmp_path):
+    """A field whose name starts with an uppercase letter is rejected
+    with a message that points the operator at the camelCase requirement.
+
+    EspoCRM's /Admin/fieldManager endpoint returns HTTP 500 with no body
+    when the name leads with an uppercase letter, so the validator
+    catches this before the request goes out.
+    """
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Mentor:
+            fields:
+              - name: MentorStatus
+                type: enum
+                label: "Mentor Status"
+                options:
+                  - "Candidate"
+                  - "Approved"
+    """)
+    path = tmp_path / "uppercase_field.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any(
+        "'MentorStatus'" in e and "camelCase" in e and "lowercase" in e
+        for e in errors
+    ), f"Expected camelCase rejection, got: {errors!r}"
+
+
+def test_validate_field_name_lowercase_passes(loader, tmp_path):
+    """A field whose name starts with a lowercase letter passes the
+    name-format check (the engine c-prefixes it server-side)."""
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Mentor:
+            fields:
+              - name: mentorStatus
+                type: enum
+                label: "Mentor Status"
+                options:
+                  - "Candidate"
+                  - "Approved"
+    """)
+    path = tmp_path / "lowercase_field.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert not any(
+        "camelCase" in e and "mentorStatus" in e
+        for e in errors
+    )
+
+
 def test_validate_field_other_unsupported_type_emits_generic_message(
     loader, tmp_path,
 ):

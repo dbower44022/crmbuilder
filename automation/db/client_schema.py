@@ -692,7 +692,7 @@ CREATE TABLE ConfigurationRun (
     file_version TEXT,
     file_hash TEXT,
     operation TEXT NOT NULL CHECK (operation IN ('run', 'verify', 'audit')),
-    outcome TEXT NOT NULL CHECK (outcome IN ('success', 'error')),
+    outcome TEXT NOT NULL CHECK (outcome IN ('success', 'partial', 'error', 'cancelled')),
     error_message TEXT,
     log_output TEXT,
     started_at TIMESTAMP NOT NULL,

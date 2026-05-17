@@ -71,6 +71,10 @@ VALID_LAYOUT_TYPES: set[str] = {"detail", "edit", "list"}
 
 VALID_LINK_TYPES: set[str] = {"oneToMany", "manyToOne", "manyToMany"}
 
+# EspoCRM /Admin/fieldManager requires camelCase field names starting with
+# a lowercase ASCII letter. The server c-prefixes custom fields automatically.
+_FIELD_NAME_PATTERN = re.compile(r"^[a-z][a-zA-Z0-9]*$")
+
 
 class ConfigLoader:
     """Loads and validates YAML program files."""
@@ -769,6 +773,15 @@ class ConfigLoader:
 
         if not field_def.name:
             errors.append(f"{prefix}: missing required property 'name'")
+        elif not _FIELD_NAME_PATTERN.match(field_def.name):
+            errors.append(
+                f"{prefix}: field name '{field_def.name}' must be camelCase "
+                f"starting with a lowercase letter (a-z) followed by letters "
+                f"or digits. EspoCRM's /Admin/fieldManager endpoint returns "
+                f"HTTP 500 with no body when a name starts with an uppercase "
+                f"letter; the engine c-prefixes custom fields automatically "
+                f"(e.g. 'mentorStatus' becomes 'cMentorStatus' on the server)."
+            )
         if not field_def.type:
             errors.append(f"{prefix}: missing required property 'type'")
         elif field_def.type == "link":
