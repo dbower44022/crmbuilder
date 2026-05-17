@@ -1,8 +1,8 @@
 # CRMBuilder v2 — UI v0.6 Implementation Plan
 
 **Version:** 0.1
-**Last Updated:** 05-16-26 17:30
-**Status:** Draft — pending approval
+**Last Updated:** 05-16-26 17:45
+**Status:** Approved
 **Companion PRD:** `ui-PRD-v0.6.md`
 **Predecessor plan:** `ui-v0.5-implementation-plan.md` (engagement management; ships first per DEC-095)
 **Executing prompt series:** `prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-{A..F}-*.md`
@@ -12,6 +12,8 @@
 ## Change Log
 
 **Version 0.1 (05-16-26 17:30):** Initial draft. Six-slice breakdown for v0.6 build: foundation + About, sidebar + master-pane delegate, panel retrofits + ReferencesSection, dialogs + form controls, status surfaces + crash banner, closeout. Per DEC-096 reconciled against workstream plan §5.3 strawman. Strictly sequential dependency chain — no parallelism within v0.6.
+
+**Version 0.1 (05-16-26 17:45):** Pre-flight corrections during slice A prompt-drafting. Status transitions from "Draft — pending approval" to "Approved." Same three corrections applied as ui-PRD-v0.6.md's parallel 17:45 entry: (1) `tokens.py` references throughout document corrected to `styling.py` — the v0.1-shipped module is rewritten in place rather than replaced by a new module; (2) About dialog file path corrected from `ui/dialogs/about.py` to `ui/about_dialog.py`; (3) `crud_delete_dialog.py` references removed — `EntityCrudDeleteDialog` shares `ui/base/crud_dialog.py` with `EntityCrudDialog`. Plus §3 directory tree gains a third dialog base I missed (`ui/base/versioned_replace_dialog.py`) and `ui/splash.py` (one consumer of legacy constants that must update). Slice A deliverables list rewritten to reflect the corrected file inventory. No content changes to slice structure or acceptance criteria.
 
 ---
 
@@ -91,7 +93,7 @@ v0.3's cascading-vocab `ReferenceCreateDialog` is reused unchanged in functional
 
 Slice A's prompt establishes how tokens are consumed by widgets. The working assumption (slice A's prompt may revise) is hybrid:
 
-- **Project-level QSS stylesheet** applied once at app startup, generated from `tokens.py` values. Handles app-wide chrome: default font family, default text color, base background colors, default `QPushButton` / `QLineEdit` / `QComboBox` treatment.
+- **Project-level QSS stylesheet** applied once at app startup, generated from `styling.py` token values. Handles app-wide chrome: default font family, default text color, base background colors, default `QPushButton` / `QLineEdit` / `QComboBox` treatment.
 - **Per-widget `setStyleSheet`** for widget-specific cases where the project-level stylesheet would be too broad or wouldn't disambiguate (e.g., the destructive button category needs explicit per-button class application; the sidebar's selected-state visuals can't be expressed in project-level QSS reliably).
 - **Custom paint via `QStyledItemDelegate` subclasses** for cases where neither QSS approach works (the master-pane delegate's left accent bar; sidebar selected-state).
 
@@ -119,9 +121,9 @@ Filename convention: `{surface-name}.png` (e.g., `about-dialog.png`, `sidebar.pn
 
 ### 2.15 New for v0.6 — WCAG contrast check
 
-Slice F adds `tests/crmbuilder_v2/ui/test_token_contrast.py` exercising the WCAG AA contrast check per design pass A9 against every text-on-background combination listed in §4.4 of the design pass. The test uses the `wcag-contrast-ratio` Python library (or equivalent — slice F's prompt picks the specific library) to compute contrast ratios from the codified `tokens.py` hex values.
+Slice F adds `tests/crmbuilder_v2/ui/test_token_contrast.py` exercising the WCAG AA contrast check per design pass A9 against every text-on-background combination listed in §4.4 of the design pass. The test uses the `wcag-contrast-ratio` Python library (or equivalent — slice F's prompt picks the specific library) to compute contrast ratios from the codified `styling.py` hex values.
 
-The check is a build gate per DEC-097. Failures are not tolerated; if any combination fails, a token-value adjustment lands in `tokens.py` and slice F re-runs.
+The check is a build gate per DEC-097. Failures are not tolerated; if any combination fails, a token-value adjustment lands in `styling.py` and slice F re-runs.
 
 ---
 
@@ -134,9 +136,12 @@ crmbuilder-v2/
 └── src/crmbuilder_v2/
     └── ui/
         ├── app.py                              # MODIFIED (slice A) — startup loads bundled fonts; main window applies project-level QSS
-        ├── tokens.py                           # NEW (slice A) — theme-keyed token dict + accessor
+        ├── styling.py                          # RESTRUCTURED (slice A) — replaces the v0.1 minimal-QSS-stub contents with the theme-keyed token dict + t() accessor + build_app_stylesheet() + apply_stylesheet(app) entry point. Filename retained for back-compat (DEC-024's stub is what this module was tracking; PI-001 discharges it in place).
         ├── icons.py                            # NEW (slice A) — Lucide loader with runtime color tinting
         ├── elevation.py                        # NEW (slice A) — QGraphicsDropShadowEffect helper
+        ├── about_dialog.py                     # RESTRUCTURED (slice A) — wordmark + tagline + vertical metadata list per DEC-094 and design pass §2.8; per-dialog backdrop+elevation hooks (standalone QDialog subclass, not in dialogs/)
+        ├── crash_banner.py                     # RESTRUCTURED (slice E) — fold into design system
+        ├── splash.py                           # MODIFIED (slice A) — call-site updates from legacy ACCENT_COLOR / DEFAULT_FONT_FAMILY constants to t("color.accent.default") / t("font.family.default")
         ├── sidebar.py                          # MODIFIED (slice B) — visual treatment + selected-state custom rendering
         ├── assets/                             # NEW (slice A)
         │   ├── fonts/
@@ -165,8 +170,8 @@ crmbuilder-v2/
         │   └── references_section.py           # RESTRUCTURED (slice C) — sub-sectioned plain-list rendering
         ├── base/
         │   ├── list_detail_panel.py            # MODIFIED (slices A, C) — token-consuming chrome; label-above form support
-        │   ├── crud_dialog.py                  # MODIFIED (slices A, D) — token-consuming chrome; context strip; button-category application
-        │   └── crud_delete_dialog.py           # MODIFIED (slices A, D) — token-consuming chrome; delete-confirm treatment
+        │   ├── crud_dialog.py                  # MODIFIED (slices A, D) — token-consuming chrome; elevation + backdrop hooks; both EntityCrudDialog and EntityCrudDeleteDialog live in this file (no separate crud_delete_dialog.py); context strip + button-category application in slice D
+        │   └── versioned_replace_dialog.py     # MODIFIED (slices A, D) — token-consuming chrome; elevation + backdrop hooks (covers Charter + Status replace dialogs); button-category application in slice D
         ├── panels/
         │   ├── sessions.py                     # MODIFIED (slice C) — token absorption + label-above form
         │   ├── decisions.py                    # MODIFIED (slice C)
@@ -182,10 +187,10 @@ crmbuilder-v2/
         │   ├── crm_candidates.py               # MODIFIED (slice C)
         │   └── engagement.py                   # MODIFIED (slice C) — if v0.5 has shipped by slice C land time per DEC-095
         ├── dialogs/
-        │   ├── about.py                        # RESTRUCTURED (slice A) — wordmark + tagline + vertical metadata list
-        │   ├── error.py                        # MODIFIED (slice E) — header retoken with circle-x icon + danger-text
-        │   └── (existing CRUD dialogs)         # MODIFIED (slice D) — context strip + button-category application
-        └── crash_banner.py                     # RESTRUCTURED (slice E) — fold into design system
+        │   ├── error.py                        # MODIFIED (slices A, E) — token-consuming chrome + elevation/backdrop hooks (standalone QDialog); header retoken with circle-x icon + danger-text in slice E
+        │   ├── reference_delete.py             # MODIFIED (slice A) — elevation + backdrop hooks (standalone QDialog subclass, does not inherit from EntityCrudDeleteDialog)
+        │   └── (other dialogs)                 # MODIFIED (slice D) — context strip + button-category application via the crud_dialog and versioned_replace_dialog bases; no per-file edit needed for any subclass of those bases (decision_create/edit/delete, planning_item_*, risk_*, topic_*, session_create, domain_crud, entity_crud, process_crud, crm_candidate_crud, charter_replace, status_replace, reference_create — all inherit hooks via base)
+        └── (no separate crud_delete_dialog.py — both CRUD bases live in crud_dialog.py)
 
 crmbuilder-v2/
 ├── README.md                                   # MODIFIED (slice F) — v0.6 release-note entry
@@ -236,19 +241,25 @@ Each slice lands as one commit (or a small handful, plus an operator-authored sc
 
 **Deliverables:**
 
-- `ui/tokens.py` exposing the theme-keyed token dict per DEC-088 and design pass §1, with every token value codified.
-- `ui/assets/fonts/` populated with Inter Variable, JetBrains Mono Variable, and `OFL.txt`. `ui/app.py` modified to load both at startup via `QFontDatabase.addApplicationFont()` before the main window opens, with fall-back to system defaults if loading fails (no app-blocking).
-- `ui/assets/icons/lucide/` populated with the initial wave (14 icons per PRD §2 item 3) plus `LICENSE.txt`. `ui/icons.py` providing `lucide(name, size, color_token) -> QIcon` with runtime SVG color tinting via the token system.
-- `ui/elevation.py` providing a helper that applies `QGraphicsDropShadowEffect` per `shadow.dialog` to any `QDialog` instance.
-- `ui/widgets/modal_backdrop.py` providing the `ModalBackdropOverlay` widget. Parented to the main window; painted when any modal is open; faded in over ~150ms per `overlay.modal_backdrop`.
-- `ui/base/crud_dialog.py` and `crud_delete_dialog.py` extended to call `elevation.apply_dialog_shadow(self)` in their constructors and to show/hide the backdrop overlay on open/close.
+- `ui/styling.py` **rewritten in place** — the v0.1 minimal-QSS-stub contents are replaced end-to-end. New content: the `TOKENS: dict[str, dict[str, str]]` dict with the `"light"` theme key codifying every value from design pass §1; the `t(key, theme="light") -> str` accessor; the `build_app_stylesheet(tokens) -> str` function; the `apply_stylesheet(app)` entry point preserved. Legacy constants (`ACCENT_COLOR`, `ACCENT_HOVER`, `ERROR_TEXT_COLOR`, `DEFAULT_FONT_FAMILY`, `DEFAULT_FONT_POINT_SIZE`) removed. Module docstring rewritten to state its new purpose and reference DEC-024 / DEC-076 / PI-001.
+- `ui/splash.py` updated: legacy `ACCENT_COLOR` and `DEFAULT_FONT_FAMILY` imports replaced with `t` from `styling`; call sites use `t("color.accent.default")` and `t("font.family.default")`.
+- `ui/assets/fonts/` populated with Inter Variable (`Inter-VariableFont_opsz,wght.ttf` from `rsms/inter` GitHub releases) and JetBrains Mono Variable (`JetBrainsMono-VariableFont_wght.ttf` from `JetBrains/JetBrainsMono` GitHub releases), plus `OFL.txt` license file. `ui/app.py` modified to load both at startup via `QFontDatabase.addApplicationFont()` before the main window opens, with fall-back to system defaults if loading fails (no app-blocking).
+- `ui/assets/icons/lucide/` populated with the initial wave (14 icons per PRD §2 item 3) plus `LICENSE.txt`. `ui/icons.py` providing `lucide(name, size=16, color_token="color.neutral.700") -> QIcon` with runtime SVG color tinting via the token system. Module-level `(name, size, color_token)` cache; no invalidation (SVG files don't change at runtime).
+- `ui/elevation.py` providing `apply_dialog_shadow(dialog: QDialog) -> None` that applies `QGraphicsDropShadowEffect` per `shadow.dialog` to the dialog instance.
+- `ui/widgets/modal_backdrop.py` providing the `ModalBackdropOverlay` widget plus module-level `attach(dialog)` / `detach(dialog)` functions. Internal `_active_dialogs: set[QDialog]` toggles visibility. Parented to `QMainWindow.centralWidget()`. Fade-in via `QPropertyAnimation` on `windowOpacity` (or `QGraphicsOpacityEffect` if `windowOpacity` doesn't render correctly on overlay widgets — slice A prompt picks).
+- Per-dialog elevation + backdrop hooks added to **five files** total (covers every `QDialog` subclass in the v2 codebase via base classes plus three standalone subclasses):
+  - `ui/base/crud_dialog.py` — covers both `EntityCrudDialog` and `EntityCrudDeleteDialog` (single file containing both bases) and every dialog subclass.
+  - `ui/base/versioned_replace_dialog.py` — covers `CharterReplaceDialog` and `StatusReplaceDialog`.
+  - `ui/about_dialog.py` — standalone `QDialog` subclass at `ui/` top level.
+  - `ui/dialogs/error.py` — standalone `QDialog` subclass.
+  - `ui/dialogs/reference_delete.py` — standalone `QDialog` subclass (does not inherit from `EntityCrudDeleteDialog`).
 - `ui/base/list_detail_panel.py` extended with token-consuming chrome — panel content background, outer padding, splitter handle treatment per design pass §2.2 — applied via project-level QSS plus class-name hooks.
-- Project-level QSS stylesheet generation: a small helper produces the app-startup stylesheet from `tokens.py` values, applied via `QApplication.setStyleSheet()` at app startup.
-- `ui/dialogs/about.py` restructured per design pass §2.8 and DEC-094 — wordmark, tagline, two-line-per-row vertical metadata list with mono paths, single right-aligned "Close" button. Minimum width preserved at 440px.
+- Project-level QSS stylesheet generation in `ui/styling.py`: the `build_app_stylesheet(tokens)` function produces the QSS string from the token dict. Applied via `QApplication.setStyleSheet(build_app_stylesheet(TOKENS["light"]))` at app startup in `ui/app.py` right after font loading.
+- `ui/about_dialog.py` restructured per design pass §2.8 and DEC-094 — wordmark "CRMBuilder v2" in heading-2 semibold, tagline "Declarative CRM deployment and methodology authoring" in small caption, two-line-per-row vertical metadata list with mono-font path values, single right-aligned "Close" button. Minimum width preserved at 440px. (At `ui/about_dialog.py`, NOT `ui/dialogs/about.py` — there is no `about.py` in `dialogs/`.)
 
 **Acceptance gates:**
 
-- AC A1 (`tokens.py` exists and exposes theme-keyed values)
+- AC A1 (`styling.py` rewritten in place; exposes theme-keyed values via the `TOKENS` dict)
 - AC A2 (fonts load at startup; default font is Inter at body size)
 - AC A3 (Lucide loader returns correctly-tinted icons for at least three colors)
 - AC A4 (modal elevation applies to every `QDialog` subclass without per-dialog modification)

@@ -1,8 +1,8 @@
 # CRMBuilder v2 — User Interface PRD
 
 **Version:** 0.6
-**Last Updated:** 05-16-26 17:30
-**Status:** Draft — pending approval
+**Last Updated:** 05-16-26 17:45
+**Status:** Approved
 **Predecessor:** `ui-PRD-v0.5.md` (engagement management; ships first per DEC-095)
 **Design input:** `styling-design-pass.md` (v0.1, Conversation 1 output per SES-027)
 
@@ -11,6 +11,7 @@
 | Version | Date | Description |
 | --- | --- | --- |
 | 0.6 | 05-16-26 17:30 | Initial draft from Styling Conversation 2 (build planning). v0.6 is the first v2 release whose primary frame is visual rather than structural — it discharges PI-001 (full styling design pass per DEC-024) after four prior deferrals and the workstream reopening in DEC-076. v0.6 ships in parallel with v0.5 (engagement management); the two workstreams couple only at v0.5's new engagement panel, which v0.6 retrofits alongside the existing twelve panels. Source content for visual decisions is `styling-design-pass.md` (this PRD cites rather than restates §1 tokens and §2 component visual decisions). Captures three architectural decisions taken in this conversation for recording at PRD approval: version-bundling resolved as v0.6 separate from v0.5 (DEC-095), six-slice structure A–F (DEC-096), per-slice screenshot + closeout WCAG check acceptance pattern (DEC-097). |
+| 0.6 | 05-16-26 17:45 | Pre-flight corrections during slice A prompt-drafting. Status transitions from "Draft — pending approval" to "Approved." Three factual corrections: (1) the v0.1-shipped `styling.py` module already exists at `ui/styling.py` (DEC-024's minimal QSS stub that PI-001 has been tracking) and is rewritten in place rather than replaced by a new `tokens.py` — preserves the existing `apply_stylesheet(app)` entry point and matches the user-preferences guidance to minimize churn on existing files; (2) About dialog lives at `ui/about_dialog.py` at the `ui/` top level, NOT `ui/dialogs/about.py` — there is no `about.py` in `dialogs/`; (3) `EntityCrudDeleteDialog` shares `ui/base/crud_dialog.py` with `EntityCrudDialog` (single file containing both bases) — there is no separate `crud_delete_dialog.py`. Per-dialog modal-backdrop hook count corrected from "6 files" (earlier Decision turn) to "3 base classes + 3 standalone subclasses = 6 file edits with corrected identities" — the bases are `crud_dialog.py`, `versioned_replace_dialog.py` (third base I missed: covers Charter + Status replace dialogs), and standalone subclasses are `about_dialog.py`, `dialogs/error.py`, `dialogs/reference_delete.py`. No content changes to scope, slice structure, or acceptance criteria. |
 
 ---
 
@@ -55,7 +56,7 @@ Forthcoming decisions (to be recorded after this PRD is approved, see Section 11
 
 - **DEC-095** — Version bundling for the styling work: ship as separate v0.6 release rather than bundled into v0.5. Independence of the two workstreams is load-bearing; bundling permanently blurs the project's release-version navigation index.
 - **DEC-096** — Slice structure for v0.6: six slices (Foundation + About, Sidebar + master-pane delegate, Panel retrofits + ReferencesSection, Dialogs + form controls, Status + crash banner, Closeout). Reconciliation differences from the workstream plan §5.3 strawman documented in §7 of this PRD.
-- **DEC-097** — Slice acceptance pattern: per-slice after-state screenshot committed to `PRDs/product/crmbuilder-v2/styling-screenshots/slice-{X}/`, plus eyeball verification against the design pass. Automated WCAG AA contrast check against codified `tokens.py` values runs once at slice F closeout per design-pass A9.
+- **DEC-097** — Slice acceptance pattern: per-slice after-state screenshot committed to `PRDs/product/crmbuilder-v2/styling-screenshots/slice-{X}/`, plus eyeball verification against the design pass. Automated WCAG AA contrast check against codified `styling.py` values runs once at slice F closeout per design-pass A9.
 
 ---
 
@@ -65,17 +66,17 @@ Forthcoming decisions (to be recorded after this PRD is approved, see Section 11
 
 The following are required deliverables for v0.6.
 
-1. **Design tokens module.** New `crmbuilder-v2/src/crmbuilder_v2/ui/tokens.py` exposing the theme-keyed token system specified in `styling-design-pass.md` §1. Every token from the design pass is codified with the exact hex / px / pt values that document specifies: density-derived sizes (28px list rows, 28px form fields, 88px minimum button width, 16px panel chrome padding, 12px inter-pane spacing, 20/12/16px dialog margins); 9-step cool-gray neutral scale plus accent and status colors; Inter Variable + JetBrains Mono Variable font tokens; size/weight/line-height scales; radius and border tokens; elevation tokens for modals.
+1. **Design tokens module.** `crmbuilder-v2/src/crmbuilder_v2/ui/styling.py` rewritten in place — the v0.1 minimal-QSS-stub contents replaced end-to-end with the theme-keyed token system specified in `styling-design-pass.md` §1. The existing `apply_stylesheet(app)` entry point preserved (consumers in `app.py` unchanged). Every token from the design pass is codified with the exact hex / px / pt values that document specifies: density-derived sizes (28px list rows, 28px form fields, 88px minimum button width, 16px panel chrome padding, 12px inter-pane spacing, 20/12/16px dialog margins); 9-step cool-gray neutral scale plus accent and status colors; Inter Variable + JetBrains Mono Variable font tokens; size/weight/line-height scales; radius and border tokens; elevation tokens for modals. Legacy constants (`ACCENT_COLOR`, `ACCENT_HOVER`, `ERROR_TEXT_COLOR`, `DEFAULT_FONT_FAMILY`, `DEFAULT_FONT_POINT_SIZE`) removed; the one remaining consumer (`splash.py`) updates its imports to use the new accessor.
 
 2. **Font asset bundling.** Inter Variable and JetBrains Mono Variable committed to `crmbuilder-v2/src/crmbuilder_v2/ui/assets/fonts/`. Total binary cost ~530 KB. Both OFL-licensed; license files committed alongside. Loaded at app startup via `QFontDatabase.addApplicationFont()` per DEC-090.
 
 3. **Icon asset bundling and loader.** Lucide SVGs at `crmbuilder-v2/src/crmbuilder_v2/ui/assets/icons/lucide/{kebab-case-name}.svg` for the initial wave needed by v0.6 surfaces. Initial wave: `pencil`, `trash-2`, `rotate-ccw`, `external-link`, `copy`, `plus`, `x`, `chevron-right`, `chevron-down`, `chevron-up`, `circle-alert`, `circle-x`, `check`, `asterisk`. License file (ISC) committed. Loader helper at `crmbuilder-v2/src/crmbuilder_v2/ui/icons.py` wraps `QSvgRenderer` to produce a `QIcon` at requested size with runtime color tinting via the token system per DEC-092.
 
-4. **Base widget hooks for token consumption.** Existing base widgets (`ListDetailPanel`, `EntityCrudDialog`, `EntityCrudDeleteDialog`, `ReferencesSection`) gain hooks for tokens — either via a project-level QSS stylesheet applied at app startup, or via per-widget `setStyleSheet` blocks reading from `tokens.py`. Mechanism choice per slice A's implementation prompt; criterion is that every existing v0.5 widget renders against the new token system after slice A merges, without changing structural behavior.
+4. **Base widget hooks for token consumption.** Existing base widgets (`ListDetailPanel`, `EntityCrudDialog`, `EntityCrudDeleteDialog`, `ReferencesSection`) gain hooks for tokens — either via a project-level QSS stylesheet applied at app startup, or via per-widget `setStyleSheet` blocks reading from `styling.py`. Mechanism choice per slice A's implementation prompt; criterion is that every existing v0.5 widget renders against the new token system after slice A merges, without changing structural behavior.
 
 5. **Modal elevation infrastructure.** `crmbuilder-v2/src/crmbuilder_v2/ui/elevation.py` providing a helper that applies `QGraphicsDropShadowEffect` per the `shadow.dialog` token to a given `QDialog` instance. Plus a `ModalBackdropOverlay` widget at `crmbuilder-v2/src/crmbuilder_v2/ui/widgets/modal_backdrop.py` that paints a full-window overlay at `overlay.modal_backdrop` (`color.neutral.900` 8% alpha) when any modal is open. Both wired into the dialog base classes so every existing `QDialog` subclass picks up the treatment without per-dialog modification.
 
-6. **About dialog re-skin.** Existing `crmbuilder-v2/src/crmbuilder_v2/ui/dialogs/about.py` restructured per design pass §2.8 and DEC-094: wordmark + tagline header block (replaces the current minimal title), metadata table restructured from `QFormLayout` to vertical two-line-per-row list with mono-font path values, single secondary "Close" button right-aligned. Minimum width preserved at 440px. Acts as the canary surface that exercises the full token system end-to-end before any panel work.
+6. **About dialog re-skin.** Existing `crmbuilder-v2/src/crmbuilder_v2/ui/about_dialog.py` restructured per design pass §2.8 and DEC-094: wordmark + tagline header block (replaces the current minimal title), metadata table restructured from `QFormLayout` to vertical two-line-per-row list with mono-font path values, single secondary "Close" button right-aligned. Minimum width preserved at 440px. Acts as the canary surface that exercises the full token system end-to-end before any panel work.
 
 7. **Sidebar visual treatment.** Custom item rendering on the existing `QListWidget`-based sidebar implementing design pass §2.1: 220px-wide container with `color.neutral.100` background and right-edge 1px hairline border; non-selectable group headers in `font.size.caption` `font.weight.semibold` with `+0.04em` letter-spacing; 32px entry height with `font.size.body`; selected-state 3px left accent bar plus `color.accent.subtle` background plus `color.neutral.900` medium-weight text per DEC-093; hover state without accent bar; stale-indicator dot color flipped from legacy `#1F3864` to `color.accent.default`. Implementation either via custom `QListWidget` subclass or via a `QListWidget` item delegate — slice B's choice.
 
@@ -113,7 +114,7 @@ The following are explicitly deferred.
 
 - **Brand mark.** The About dialog ships with wordmark + tagline; no custom logo is authored in v0.6. Brand-mark authoring is a separate subjective design problem unsuitable for remote conversation resolution per DEC-094.
 
-- **Stylesheet introspection or automated pixel measurement.** No build-time check verifies that QSS values match `tokens.py` values; correctness is established by eyeball plus the WCAG contrast check. A future PI may add automated checks if drift becomes a problem.
+- **Stylesheet introspection or automated pixel measurement.** No build-time check verifies that QSS values match `styling.py` values; correctness is established by eyeball plus the WCAG contrast check. A future PI may add automated checks if drift becomes a problem.
 
 - **Reference-relationship vocabulary changes, schema migrations, new entity types, API endpoint changes.** v0.6 is visual-only. Any storage- or routing-layer work is out of scope.
 
@@ -161,7 +162,7 @@ Unchanged from prior releases. No new environment variables, no config file addi
 
 ### 4.1 Token system
 
-Design pass §1. Codified in `tokens.py` with the exact values that document specifies. Consumers read via `tokens.get(key)` or equivalent accessor; theme-keying is structural per DEC-088. Slice A delivers the token module end-to-end; subsequent slices consume from it without modifying it.
+Design pass §1. Codified in `styling.py` with the exact values that document specifies. Consumers read via `tokens.get(key)` or equivalent accessor; theme-keying is structural per DEC-088. Slice A delivers the token module end-to-end; subsequent slices consume from it without modifying it.
 
 ### 4.2 Font and icon assets
 
@@ -209,7 +210,7 @@ Slice F adds a v0.6 release-note entry to `crmbuilder-v2/README.md` matching v0.
 
 ### 5.3 Test target
 
-`uv run pytest tests/crmbuilder_v2/ -v` continues as the test target. v0.5's test suite remains green; v0.6 adds one new test module (`tests/crmbuilder_v2/ui/test_token_contrast.py`) that exercises the WCAG AA contrast check per DEC-097 against the codified `tokens.py` values. No tests added for visual surfaces themselves — visual verification is screenshot-based per DEC-097.
+`uv run pytest tests/crmbuilder_v2/ -v` continues as the test target. v0.5's test suite remains green; v0.6 adds one new test module (`tests/crmbuilder_v2/ui/test_token_contrast.py`) that exercises the WCAG AA contrast check per DEC-097 against the codified `styling.py` values. No tests added for visual surfaces themselves — visual verification is screenshot-based per DEC-097.
 
 ### 5.4 Status update
 
@@ -227,7 +228,7 @@ Cumulative acceptance criteria for v0.6 = foundation criteria (slice A) + visual
 
 ### Slice A — Foundation + About dialog
 
-A1. `crmbuilder-v2/src/crmbuilder_v2/ui/tokens.py` exists and exposes every token category specified in design pass §1 via the theme-keyed dict structure per DEC-088. A consumer reading `TOKENS["light"]["color.accent.default"]` returns `"#1F5FBF"`.
+A1. `crmbuilder-v2/src/crmbuilder_v2/ui/styling.py` exists and exposes every token category specified in design pass §1 via the theme-keyed dict structure per DEC-088. A consumer reading `TOKENS["light"]["color.accent.default"]` returns `"#1F5FBF"`.
 
 A2. Inter Variable and JetBrains Mono Variable load at app startup via `QFontDatabase.addApplicationFont()`. The font registry returns both family names; the application's default font is Inter at `font.size.body` (14px).
 
@@ -359,7 +360,7 @@ Slices A through E must not change any v0.5 functional behavior. The v0.5 test s
 
 ### Constraint: token consumption is one-way
 
-`tokens.py` is read-only after slice A merges. Subsequent slices consume from it; they do not modify it. Any token-value adjustment surfaced during slice B–E execution lands as a token-only change isolated to a single commit, with affected slices rebased if mid-flight. This keeps token authority concentrated in one place.
+`styling.py` is read-only after slice A merges. Subsequent slices consume from it; they do not modify it. Any token-value adjustment surfaced during slice B–E execution lands as a token-only change isolated to a single commit, with affected slices rebased if mid-flight. This keeps token authority concentrated in one place.
 
 ### Constraint: structural changes confined to enumerated surfaces
 
@@ -383,9 +384,9 @@ Per DEC-097, after-state screenshots are git-tracked at `PRDs/product/crmbuilder
 | QSS rules fail to apply uniformly across Qt versions (the Qt-supplied QSS engine has known inconsistencies, especially around `QGraphicsDropShadowEffect` rendering on `QDialog`) | Medium | Medium | Modal elevation is the riskiest surface. Slice A acceptance criterion A4 requires verifying drop shadow renders on a `QDialog` instance; if it fails, the slice prompt re-investigates. Workstream plan §3.2 already accepts cross-platform variability — Linux/macOS only. |
 | The shared master-pane delegate (slice B) breaks an existing panel's per-panel column rendering | Low | High | Every panel's master pane has the same `QTableView`-based shape per v0.4's `ListDetailPanel` factory pattern. Slice B's prompt verifies each panel renders correctly post-registration. If a panel has custom column rendering that conflicts, the delegate's `paint()` falls through to `super().paint()` for non-overridden cases. |
 | Label-above form layout (slice C) makes some panel's detail pane render awkwardly because a field's content is naturally wide (e.g., a long description box plus a narrow status combo on the same row) | Medium | Low | Label-above means every field claims full row width. Existing detail-pane form builders use `QFormLayout` which already mostly renders one-field-per-row; the layout change is mostly mechanical. Slice C's acceptance criterion C2 catches any awkward case via eyeball verification on screenshots. |
-| WCAG AA contrast check (slice F) fails for the warning-amber on white at caption size | Medium | Low | Design pass §4.4 (A9) already flags this as borderline at 12px caption size. If the check fails, the warning token darkens slightly (e.g., from `#B0731A` to `#9D6517`) in `tokens.py`; the change is isolated to the token module and rebases trivially. |
+| WCAG AA contrast check (slice F) fails for the warning-amber on white at caption size | Medium | Low | Design pass §4.4 (A9) already flags this as borderline at 12px caption size. If the check fails, the warning token darkens slightly (e.g., from `#B0731A` to `#9D6517`) in `styling.py`; the change is isolated to the token module and rebases trivially. |
 | Screenshot capture (per DEC-097) becomes burdensome and Doug accumulates partial coverage across slices | Low | Low | Each visual slice's acceptance criterion lists the exact screenshot filenames expected. Slice F's roll-up criterion (F6) gates on cumulative coverage. If screenshot capture proves friction-laden, the pattern is revisable at v0.7+ work without affecting v0.6's substance. |
-| `QGraphicsDropShadowEffect` applied uniformly to every `QDialog` causes noticeable rendering lag on opening dialogs on lower-end hardware | Low | Low | Doug's hardware is a 3× 4K workstation; lag is unlikely. If lag surfaces, the elevation token's blur radius can be reduced from 16px to 8px in `tokens.py`; isolated change. |
+| `QGraphicsDropShadowEffect` applied uniformly to every `QDialog` causes noticeable rendering lag on opening dialogs on lower-end hardware | Low | Low | Doug's hardware is a 3× 4K workstation; lag is unlikely. If lag surfaces, the elevation token's blur radius can be reduced from 16px to 8px in `styling.py`; isolated change. |
 | The new Lucide icons render at the wrong size or with the wrong stroke weight when color-tinted via the runtime helper | Low | Medium | Slice A acceptance criterion A3 verifies the loader produces visibly correct results for at least three colors. If tinting fails for some icons (e.g., icons with multiple paths and inline fills), the affected icons are re-exported without inline fills. |
 | v0.5 engagement panel ships with a structural shape that doesn't accommodate the master-pane delegate cleanly (e.g., a custom view widget instead of `QTableView`) | Low | Medium | Per workstream plan §4, v0.5's engagement panel inherits from v0.4's `ListDetailPanel` pattern. If v0.5 deviates, slice C's prompt handles the engagement panel as a separate per-surface case rather than the omnibus retrofit; the workstream plan §4 already anticipates this. |
 
@@ -419,7 +420,7 @@ Records to write at PRD closeout:
 
 - **DEC-096** — Slice structure for v0.6: six slices A–F. A = Foundation + About; B = Sidebar + master-pane delegate; C = Panel retrofits + ReferencesSection; D = Dialogs + form controls; E = Status + crash banner; F = Closeout. Context: workstream plan §5.3 had a five-slice strawman that buried the master-pane delegate and split governance/methodology retrofits artificially. Decision rationale: pulling the delegate to its own slice avoids artificial coupling; collapsing governance/methodology retrofits avoids redundant review; promoting status surfaces to their own slice separates two distinct concerns. Alternatives: stay close to strawman (rejected on artificial-coupling and redundant-review grounds).
 
-- **DEC-097** — Slice acceptance pattern: per-slice after-state screenshot committed to `PRDs/product/crmbuilder-v2/styling-screenshots/slice-{X}/` plus eyeball verification against the design pass; automated WCAG AA contrast check against codified `tokens.py` values at slice F closeout. Context: visual work has different acceptance signals than functional work; needed a pattern. Decision rationale: screenshots become project history and release-note material; eyeball is the appropriate primary signal for a solo developer with the right aesthetic eye; WCAG check is the one automated commitment per design pass A9. Alternatives: automated pixel-measurement (rejected as overkill at this scale); eyeball-only without screenshots (rejected on history-loss grounds).
+- **DEC-097** — Slice acceptance pattern: per-slice after-state screenshot committed to `PRDs/product/crmbuilder-v2/styling-screenshots/slice-{X}/` plus eyeball verification against the design pass; automated WCAG AA contrast check against codified `styling.py` values at slice F closeout. Context: visual work has different acceptance signals than functional work; needed a pattern. Decision rationale: screenshots become project history and release-note material; eyeball is the appropriate primary signal for a solo developer with the right aesthetic eye; WCAG check is the one automated commitment per design pass A9. Alternatives: automated pixel-measurement (rejected as overkill at this scale); eyeball-only without screenshots (rejected on history-loss grounds).
 
 - **References** — `decided_in` from SES-028 to each of DEC-095, DEC-096, DEC-097. `is_about` from SES-028 to PI-001 (the styling pass parent planning item).
 
