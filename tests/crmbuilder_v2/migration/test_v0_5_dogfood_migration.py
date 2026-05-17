@@ -68,6 +68,16 @@ def v0_4_workspace(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv(
         "CRMBUILDER_V2_EXPORT_DIR", str(tmp_path / "exports")
     )
+
+    # Redirect meta_export_dir so the migration's snapshot lands in
+    # the temp workspace, not the real PRDs/db-export/meta/ tree.
+    from crmbuilder_v2.access import meta_exporter
+
+    test_meta_export = tmp_path / "test-meta-export"
+    monkeypatch.setattr(
+        meta_exporter, "meta_export_dir", lambda: test_meta_export
+    )
+
     reset_settings_cache()
     reset_engine_cache()
     reset_meta_engine_cache()

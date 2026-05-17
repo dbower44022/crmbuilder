@@ -310,6 +310,57 @@ class CrmCandidatePatchIn(_Base):
     crm_candidate_status: str | None = None
 
 
+# ---------- Engagements (methodology entity, UI v0.5 slice B) ----------
+
+
+class EngagementCreateIn(_Base):
+    """POST /engagements body. ``engagement_identifier`` is server-assigned
+    when omitted; ``engagement_status`` defaults to ``active`` server-side.
+    ``engagement_export_dir`` is optional and validated as an existing
+    writable absolute directory when provided."""
+
+    engagement_code: str
+    engagement_name: str
+    engagement_purpose: str
+    engagement_status: str | None = None
+    engagement_export_dir: str | None = None
+    engagement_identifier: str | None = None
+
+
+class EngagementReplaceIn(_Base):
+    """PUT /engagements/{identifier} body — full record replace.
+
+    ``engagement_identifier`` is optional; when present it must match
+    the path (mismatch → 422). ``engagement_code`` is immutable: any
+    value other than the current row's ``engagement_code`` raises 422
+    with ``immutable_field``."""
+
+    engagement_identifier: str | None = None
+    engagement_code: str | None = None
+    engagement_name: str
+    engagement_purpose: str
+    engagement_status: str
+    engagement_export_dir: str | None = None
+
+
+class EngagementPatchIn(_Base):
+    """PATCH /engagements/{identifier} body — partial update.
+
+    Routers consume this with ``model_dump(exclude_unset=True)`` so an
+    explicit ``engagement_export_dir: null`` (clear the field) is
+    distinguished from an omitted ``engagement_export_dir`` (leave
+    unchanged). ``engagement_code`` is rejected if present and
+    different from the current row."""
+
+    engagement_name: str | None = None
+    engagement_purpose: str | None = None
+    engagement_status: str | None = None
+    engagement_export_dir: str | None = None
+    engagement_last_opened_at: str | None = None
+    # Accepted but rejected by the repository if it differs from current.
+    engagement_code: str | None = None
+
+
 # ---------- References ----------
 
 

@@ -1,19 +1,29 @@
-"""Engagement-registry endpoints (v0.5 slice A — healthcheck only).
+"""Engagement-registry REST endpoints (v0.5 slice B).
 
-Slice A wires the two-database API so the meta-DB pool is exercised
-via ``/engagements/healthcheck``. Slice B adds the full eight-endpoint
-CRUD surface and removes the healthcheck (or keeps it alongside,
-depending on slice B's choice). The healthcheck is the
-minimum-viable endpoint to verify the meta-DB connection is alive.
+Eight standard endpoints per ``methodology-schema-specs/engagement.md``
+§3.5.1 plus a slice-A-compatible healthcheck. All endpoints route to
+the meta DB via the ``meta_session`` dependency.
+
+The router preserves the slice-A ``/engagements/healthcheck`` URL so
+external monitors that started watching it under slice A do not break;
+the canonical liveness probe is still ``/health``.
 """
 
 from __future__ import annotations
 
-from fastapi import APIRouter
-from sqlalchemy import text
+from typing import Any
 
+from fastapi import APIRouter
+
+from crmbuilder_v2.access import engagement as engagement_repo
+from crmbuilder_v2.access.exceptions import NotFoundError
 from crmbuilder_v2.api.deps import meta_session
 from crmbuilder_v2.api.envelope import ok
+from crmbuilder_v2.api.schemas import (
+    EngagementCreateIn,
+    EngagementPatchIn,
+    EngagementReplaceIn,
+)
 
 router = APIRouter(prefix="/engagements", tags=["engagements"])
 
@@ -22,7 +32,96 @@ router = APIRouter(prefix="/engagements", tags=["engagements"])
 def healthcheck() -> dict:
     """Verify the meta-DB connection is alive; return engagement count."""
     with meta_session() as s:
-        count = s.execute(
-            text("SELECT COUNT(*) FROM engagements")
-        ).scalar_one()
-    return ok({"status": "ok", "engagement_count": int(count)})
+        engagements = engagement_repo.list_engagements(
+            s, include_deleted=True
+        )
+    return ok({"status": "ok", "engagement_count": len(engagements)})
+
+
+@router.get("")
+def list_all(include_deleted: bool = False):
+    """List engagements (default excludes soft-deleted)."""
+    with meta_session() as s:
+        engagements = engagement_repo.list_engagements(
+            s, include_deleted=include_deleted
+        )
+    return ok([e.to_dict() for e in engagements])
+
+
+@router.get("/next-identifier")
+def next_identifier():
+    """Return the next available ``ENG-NNN`` identifier."""
+    with meta_session() as s:
+        return ok({"next": engagement_repo.next_engagement_identifier(s)})
+
+
+@router.get("/{identifier}")
+def get(identifier: str):
+    """Single engagement fetch (includes soft-deleted records)."""
+    with meta_session() as s:
+        engagement = engagement_repo.get_engagement(s, identifier)
+        if engagement is None:
+            raise NotFoundError("engagement", identifier)
+        return ok(engagement.to_dict())
+
+
+@router.post("", status_code=201)
+def create(body: EngagementCreateIn):
+    with meta_session() as s:
+        engagement = engagement_repo.create_engagement(
+            s,
+            engagement_code=body.engagement_code,
+            engagement_name=body.engagement_name,
+            engagement_purpose=body.engagement_purpose,
+            engagement_status=(
+                body.engagement_status
+                if body.engagement_status is not None
+                else "active"
+            ),
+            engagement_export_dir=body.engagement_export_dir,
+            engagement_identifier=body.engagement_identifier,
+        )
+    return ok(engagement.to_dict())
+
+
+@router.put("/{identifier}")
+def replace(identifier: str, body: EngagementReplaceIn):
+    with meta_session() as s:
+        engagement = engagement_repo.update_engagement(
+            s,
+            identifier,
+            engagement_identifier=body.engagement_identifier,
+            engagement_code=body.engagement_code,
+            engagement_name=body.engagement_name,
+            engagement_purpose=body.engagement_purpose,
+            engagement_status=body.engagement_status,
+            engagement_export_dir=body.engagement_export_dir,
+        )
+    return ok(engagement.to_dict())
+
+
+@router.patch("/{identifier}")
+def patch(identifier: str, body: EngagementPatchIn):
+    """Partial update. ``exclude_unset`` distinguishes omitted from null."""
+    provided: dict[str, Any] = body.model_dump(exclude_unset=True)
+    with meta_session() as s:
+        engagement = engagement_repo.patch_engagement(
+            s, identifier, **provided
+        )
+    return ok(engagement.to_dict())
+
+
+@router.delete("/{identifier}")
+def delete(identifier: str):
+    """Soft-delete; idempotent."""
+    with meta_session() as s:
+        engagement = engagement_repo.delete_engagement(s, identifier)
+    return ok(engagement.to_dict())
+
+
+@router.post("/{identifier}/restore")
+def restore(identifier: str):
+    """Clear soft-delete; 422 if not soft-deleted."""
+    with meta_session() as s:
+        engagement = engagement_repo.restore_engagement(s, identifier)
+    return ok(engagement.to_dict())

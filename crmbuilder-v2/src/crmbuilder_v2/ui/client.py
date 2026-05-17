@@ -1072,6 +1072,128 @@ class StorageClient:
         )
 
     # ------------------------------------------------------------------
+    # Engagements (meta DB; UI v0.5 slice B)
+    # ------------------------------------------------------------------
+
+    def list_engagements(
+        self, *, include_deleted: bool = False
+    ) -> list[dict[str, Any]]:
+        """GET /engagements. List engagements (default excludes soft-deleted)."""
+        path = "/engagements"
+        if include_deleted:
+            path = "/engagements?include_deleted=true"
+        result = self._request("GET", path)
+        if not isinstance(result, list):
+            return []
+        return result
+
+    def get_engagement(self, identifier: str) -> dict[str, Any]:
+        """GET /engagements/{identifier}.
+
+        Raises ``NotFoundError`` if the engagement does not exist.
+        Includes soft-deleted records (the engagement endpoint
+        returns deleted engagements directly).
+        """
+        result = self._request("GET", f"/engagements/{identifier}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for get_engagement",
+            )
+        return result
+
+    def create_engagement(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /engagements. Returns the created engagement record.
+
+        Body uses the parent-prefixed field names
+        (``engagement_code``, ``engagement_name``, ``engagement_purpose``,
+        optional ``engagement_status`` / ``engagement_export_dir`` /
+        ``engagement_identifier``). Raises ``RequestShapeError`` on 422
+        (code/name/format validation), ``ConflictError`` on 409
+        (explicit-identifier collision).
+        """
+        result = self._request("POST", "/engagements", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for create_engagement",
+            )
+        return result
+
+    def update_engagement(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PUT /engagements/{identifier} — full record replace."""
+        result = self._request(
+            "PUT", f"/engagements/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for update_engagement",
+            )
+        return result
+
+    def patch_engagement(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PATCH /engagements/{identifier} — partial update."""
+        result = self._request(
+            "PATCH", f"/engagements/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for patch_engagement",
+            )
+        return result
+
+    def delete_engagement(self, identifier: str) -> dict[str, Any]:
+        """DELETE /engagements/{identifier}. Soft-delete; idempotent."""
+        result = self._request("DELETE", f"/engagements/{identifier}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for delete_engagement",
+            )
+        return result
+
+    def restore_engagement(self, identifier: str) -> dict[str, Any]:
+        """POST /engagements/{identifier}/restore. Clears soft-delete.
+
+        Raises ``RequestShapeError`` on 422 when the engagement is not
+        soft-deleted.
+        """
+        result = self._request(
+            "POST", f"/engagements/{identifier}/restore"
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for restore_engagement",
+            )
+        return result
+
+    def next_engagement_identifier(self) -> str:
+        """GET /engagements/next-identifier. Returns the next ``ENG-NNN``."""
+        result = self._request("GET", "/engagements/next-identifier")
+        if isinstance(result, dict) and isinstance(result.get("next"), str):
+            return result["next"]
+        raise ServerError(
+            status_code=200,
+            errors=[],
+            message=(
+                "Expected {'next': str} body for next_engagement_identifier"
+            ),
+        )
+
+    # ------------------------------------------------------------------
     # References (full list)
     # ------------------------------------------------------------------
 

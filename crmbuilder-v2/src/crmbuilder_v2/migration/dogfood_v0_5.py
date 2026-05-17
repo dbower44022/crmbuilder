@@ -221,21 +221,20 @@ def _atomic_write_json(path: Path, payload: dict | list[dict]) -> None:
         raise
 
 
-def _meta_export_dir() -> Path:
-    """Where to land ``engagements.json`` snapshot for the meta DB."""
-    return _dogfood_export_dir() / "meta"
-
-
 def _refresh_meta_snapshot() -> None:
     """Best-effort regeneration of ``db-export/meta/engagements.json``.
 
-    Logs but does not raise on failure — the meta-DB snapshot hook
-    proper lands in slice B; slice A just seeds the file so the v0.5
-    export tree is complete after migration.
+    Slice B's ``access/meta_exporter.write_engagements_snapshot`` is
+    the canonical write path. Logged but not raised on failure to
+    preserve the migration's success — the snapshot can be regenerated
+    on the next engagement write.
     """
     try:
-        out_dir = _meta_export_dir()
-        out_dir.mkdir(parents=True, exist_ok=True)
+        from crmbuilder_v2.access.engagement_models import Engagement
+        from crmbuilder_v2.access.meta_exporter import (
+            write_engagements_snapshot,
+        )
+
         factory = get_meta_session_factory()
         session = factory()
         try:
@@ -244,41 +243,9 @@ def _refresh_meta_snapshot() -> None:
                 .order_by(EngagementRow.engagement_identifier)
                 .all()
             )
-            payload = [
-                {
-                    "engagement_identifier": r.engagement_identifier,
-                    "engagement_code": r.engagement_code,
-                    "engagement_name": r.engagement_name,
-                    "engagement_purpose": r.engagement_purpose,
-                    "engagement_status": r.engagement_status,
-                    "engagement_last_opened_at": (
-                        r.engagement_last_opened_at.isoformat()
-                        if r.engagement_last_opened_at
-                        else None
-                    ),
-                    "engagement_export_dir": r.engagement_export_dir,
-                    "engagement_created_at": (
-                        r.engagement_created_at.isoformat()
-                        if r.engagement_created_at
-                        else None
-                    ),
-                    "engagement_updated_at": (
-                        r.engagement_updated_at.isoformat()
-                        if r.engagement_updated_at
-                        else None
-                    ),
-                    "engagement_deleted_at": (
-                        r.engagement_deleted_at.isoformat()
-                        if r.engagement_deleted_at
-                        else None
-                    ),
-                }
-                for r in rows
-            ]
+            write_engagements_snapshot([Engagement.from_row(r) for r in rows])
         finally:
             session.close()
-        snapshot_path = out_dir / "engagements.json"
-        _atomic_write_json(snapshot_path, payload)
     except Exception:
         _log.exception("meta snapshot refresh failed (non-fatal)")
 
