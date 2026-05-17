@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
+from sqlalchemy.exc import OperationalError
 
 from crmbuilder_v2.access.exceptions import (
     AccessLayerError,
@@ -12,6 +13,7 @@ from crmbuilder_v2.access.exceptions import (
     SelectedCandidateConflictError,
     StatusTransitionError,
 )
+from crmbuilder_v2.access.meta_db import bootstrap_meta_db, init_meta_db_pool
 from crmbuilder_v2.api.errors import (
     access_layer_handler,
     classification_transition_handler,
@@ -20,7 +22,6 @@ from crmbuilder_v2.api.errors import (
     selected_candidate_conflict_handler,
     status_transition_handler,
 )
-from crmbuilder_v2.access.meta_db import init_meta_db_pool
 from crmbuilder_v2.api.routers import (
     catalog,
     charter,
@@ -84,6 +85,22 @@ def create_app() -> FastAPI:
         # Surface the failure but do not prevent app construction; the
         # meta DB may be created later (e.g., dogfood migration runs
         # at first launch from the desktop side).
+        pass
+    # v0.5 slice A follow-up: ensure the meta-DB file exists with the
+    # current ``MetaBase`` schema before any request routes against it.
+    # Belt-and-braces with ``run_meta_migrations()`` above: Alembic
+    # applies the chain on a present-or-newly-created file, and this
+    # ``create_all()`` covers the fresh-install case where Alembic
+    # silently fails or the file is materialised lazily by the engine.
+    # ``create_all(checkfirst=True)`` is not atomic on SQLite, so the
+    # narrow ``OperationalError`` catch absorbs the benign "table
+    # engagements already exists" raised when concurrent ``create_app``
+    # calls (the per-thread ``TestClient`` fixtures in the concurrent
+    # POST tests, eight at a time) race past each other's ``has_table``
+    # check — the loser observes a schema the winner just created.
+    try:
+        bootstrap_meta_db()
+    except OperationalError:
         pass
     init_meta_db_pool()
 

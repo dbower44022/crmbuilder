@@ -21,9 +21,17 @@ import os
 import sys
 from pathlib import Path
 
-from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtWidgets import (
+    QApplication,
+    QMessageBox,
+    QProgressDialog,
+)
 
 from crmbuilder_v2.config import get_settings
+from crmbuilder_v2.migration.dogfood_v0_5 import (
+    needs_migration,
+    run_dogfood_migration,
+)
 from crmbuilder_v2.ui.active_engagement_context import ActiveEngagementContext
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.main_window import MainWindow
@@ -37,6 +45,7 @@ _LOG_FILE = _LOG_DIR / "ui.log"
 _LOG_MAX_BYTES = 10 * 1024 * 1024  # 10MB
 _LOG_BACKUPS = 3
 _SPAWN_FAILED_EXIT_CODE = 1
+_MIGRATION_FAILED_EXIT_CODE = 1
 
 
 def build_application(argv: list[str] | None = None) -> QApplication:
@@ -89,6 +98,70 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     return parser.parse_args(argv[1:])
 
 
+def _run_dogfood_migration_if_needed(log: logging.Logger) -> bool:
+    """Run the v0.5 dogfood migration if the engine is on a v0.4 state.
+
+    Returns ``True`` if no migration was needed or the migration
+    succeeded; ``False`` if the migration failed (caller exits the
+    process). Wraps the synchronous migration call in an indeterminate
+    :class:`QProgressDialog` per PRD §5.4 so the user sees an
+    "Upgrading to v0.5: migrating engagement..." indicator. No cancel
+    affordance: the migration is atomic and must complete or fail.
+    """
+    if not needs_migration():
+        return True
+
+    log.info("v0.5 dogfood migration required; starting")
+    progress = QProgressDialog(
+        "Upgrading to v0.5: migrating engagement...",
+        None,
+        0,
+        0,
+        None,
+    )
+    progress.setWindowTitle("CRMBuilder v2 — Upgrading")
+    progress.setMinimumDuration(0)
+    progress.setCancelButton(None)
+    progress.show()
+    QApplication.processEvents()
+
+    try:
+        result = run_dogfood_migration()
+    finally:
+        progress.close()
+
+    if not result.success:
+        failed_step = (
+            result.steps_completed[-1]
+            if result.steps_completed
+            else "pre-flight"
+        )
+        log.error(
+            "v0.5 dogfood migration failed at step %s: %s",
+            failed_step,
+            result.error,
+        )
+        box = QMessageBox(None)
+        box.setIcon(QMessageBox.Icon.Critical)
+        box.setWindowTitle("Migration failed")
+        box.setText(
+            f"v0.5 migration failed at step: {failed_step}\n\n"
+            f"Error: {result.error}\n\n"
+            "Your v0.4 data is preserved at "
+            "crmbuilder-v2/data/v2.db.pre-v0.5-backup. "
+            "Please revert to the prior v2 release and contact support."
+        )
+        box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        box.exec()
+        return False
+
+    log.info(
+        "v0.5 dogfood migration completed (%d steps)",
+        len(result.steps_completed),
+    )
+    return True
+
+
 def _show_spawn_failure_dialog(
     parent: MainWindow | None, stderr_text: str
 ) -> None:
@@ -119,6 +192,14 @@ def main(argv: list[str] | None = None) -> int:
         log.debug("QT_QPA_PLATFORM=%s", os.environ["QT_QPA_PLATFORM"])
 
     app = build_application(argv)
+
+    # v0.5 slice A follow-up: if the engine boots from a v0.4-state
+    # ``v2.db`` (no meta DB yet), run the one-shot dogfood migration
+    # before the splash and lifecycle start. Hard-fail UX per PRD §5.4:
+    # on migration failure show a critical dialog naming the recovery
+    # path and exit non-zero — the app must not continue half-migrated.
+    if not _run_dogfood_migration_if_needed(log):
+        return _MIGRATION_FAILED_EXIT_CODE
 
     splash = Splash()
     splash.show()
