@@ -133,8 +133,17 @@ def main(argv: list[str] | None = None) -> int:
     # synthesised stub so panels can read identifier/code immediately.
     active_engagement = ActiveEngagementContext()
     active_engagement.load_from_disk()
+    # v0.5 slice D: build the subprocess managers bundle from the
+    # lifecycle so the engagement-switching activation worker can drive
+    # kill/relaunch through the same lifecycle the rest of the UI uses.
+    from crmbuilder_v2.ui.activation_worker import build_lifecycle_managers
+
+    managers = build_lifecycle_managers(lifecycle)
     window = MainWindow(
-        lifecycle=lifecycle, client=client, active_context=active_engagement
+        lifecycle=lifecycle,
+        client=client,
+        active_context=active_engagement,
+        managers=managers,
     )
     window.active_engagement = active_engagement
 

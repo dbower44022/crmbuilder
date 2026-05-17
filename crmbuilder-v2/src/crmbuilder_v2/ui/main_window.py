@@ -92,6 +92,7 @@ class MainWindow(QMainWindow):
         client: StorageClient,
         snapshot_dir: Path | None = None,
         active_context=None,
+        managers=None,
     ):
         super().__init__()
         self.setWindowTitle("CRMBuilder v2")
@@ -100,7 +101,10 @@ class MainWindow(QMainWindow):
         self._lifecycle = lifecycle
         self._client = client
         self._active_context = active_context
+        self._managers = managers
         self._sidebar = Sidebar()
+        self._top_strip = None
+        self._picker = None
         self._stack = QStackedWidget()
         self._crash_banner = CrashBanner()
         self._pages_by_entry: dict[str, int] = {}
@@ -140,7 +144,9 @@ class MainWindow(QMainWindow):
                 page = CrmCandidatesPanel(self._client)
             elif entry == "Engagements":
                 page = EngagementsPanel(
-                    self._client, active_context=self._active_context
+                    self._client,
+                    active_context=self._active_context,
+                    managers=self._managers,
                 )
             else:
                 placeholder = QLabel(
@@ -161,7 +167,26 @@ class MainWindow(QMainWindow):
         content_layout = QHBoxLayout(content_widget)
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(0)
-        content_layout.addWidget(self._sidebar)
+        # v0.5 slice D: the top-strip is the first child of the sidebar
+        # column when an active_context is provided; the sidebar list
+        # follows below it.
+        if self._active_context is not None:
+            from crmbuilder_v2.ui.widgets.engagement_top_strip import (
+                EngagementTopStrip,
+            )
+
+            sidebar_col = QWidget()
+            sidebar_layout = QVBoxLayout(sidebar_col)
+            sidebar_layout.setContentsMargins(0, 0, 0, 0)
+            sidebar_layout.setSpacing(0)
+            self._top_strip = EngagementTopStrip(self._active_context)
+            self._top_strip.clicked.connect(self._on_top_strip_clicked)
+            sidebar_layout.addWidget(self._top_strip)
+            sidebar_layout.addWidget(self._sidebar, stretch=1)
+            sidebar_col.setFixedWidth(self._sidebar.width())
+            content_layout.addWidget(sidebar_col)
+        else:
+            content_layout.addWidget(self._sidebar)
         content_layout.addWidget(self._stack, stretch=1)
         self._content_widget = content_widget
 
@@ -321,3 +346,109 @@ class MainWindow(QMainWindow):
 
     def _on_about_triggered(self) -> None:
         AboutDialog(parent=self).exec()
+
+    # ------------------------------------------------------------------
+    # v0.5 slice D — engagement picker + activation orchestration
+    # ------------------------------------------------------------------
+
+    def _on_top_strip_clicked(self) -> None:
+        """Open the engagement picker below the top-strip."""
+        from crmbuilder_v2.ui.widgets.engagement_picker import EngagementPicker
+
+        try:
+            engagements = self._client.list_engagements()
+        except Exception:
+            _log.exception("Failed to list engagements for picker")
+            engagements = []
+        active_id = (
+            self._active_context.engagement_identifier()
+            if self._active_context is not None
+            else None
+        )
+        picker = EngagementPicker(engagements, active_id, parent=self)
+        picker.activation_requested.connect(self._on_picker_activation_requested)
+        picker.manage_requested.connect(self._on_picker_manage_requested)
+        if self._top_strip is not None:
+            picker.show_below(self._top_strip)
+        else:
+            picker.show()
+        self._picker = picker
+
+    def _on_picker_activation_requested(self, identifier: str) -> None:
+        """Picker row clicked: kick off the activation worker."""
+        if self._active_context is None or self._managers is None:
+            _log.warning(
+                "Picker requested activation but no managers wired; ignoring"
+            )
+            return
+        try:
+            payload = self._client.get_engagement(identifier)
+        except Exception:
+            _log.exception("Failed to fetch engagement %s for activation", identifier)
+            return
+        from crmbuilder_v2.access.engagement_models import (
+            Engagement,
+            EngagementStatus,
+        )
+        from datetime import UTC, datetime
+
+        def _maybe_dt(v):
+            if v is None:
+                return None
+            if isinstance(v, datetime):
+                return v
+            try:
+                dt = datetime.fromisoformat(str(v))
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=UTC)
+                return dt
+            except ValueError:
+                return None
+
+        target = Engagement(
+            engagement_identifier=payload["engagement_identifier"],
+            engagement_code=payload["engagement_code"],
+            engagement_name=payload.get("engagement_name") or "",
+            engagement_purpose=payload.get("engagement_purpose") or "",
+            engagement_status=EngagementStatus(
+                payload.get("engagement_status") or "active"
+            ),
+            engagement_last_opened_at=_maybe_dt(
+                payload.get("engagement_last_opened_at")
+            ),
+            engagement_export_dir=payload.get("engagement_export_dir"),
+            engagement_created_at=_maybe_dt(payload.get("engagement_created_at"))
+            or datetime.now(UTC),
+            engagement_updated_at=_maybe_dt(payload.get("engagement_updated_at"))
+            or datetime.now(UTC),
+            engagement_deleted_at=_maybe_dt(payload.get("engagement_deleted_at")),
+        )
+        previous = self._active_context.engagement()
+        from crmbuilder_v2.ui.activation_worker import (
+            ActivationWorker,
+            run_activation_in_thread,
+        )
+        from crmbuilder_v2.ui.widgets.activation_overlay import ActivationOverlay
+
+        worker = ActivationWorker(
+            target_engagement=target,
+            previous_engagement=previous,
+            client=self._client,
+            active_context=self._active_context,
+            managers=self._managers,
+        )
+        overlay = ActivationOverlay(target, previous, worker, parent=self)
+        overlay.setFixedSize(self.size())
+        overlay.move(0, 0)
+        overlay.retry_requested.connect(
+            lambda i=identifier: self._on_picker_activation_requested(i)
+        )
+        overlay.stay_requested.connect(overlay.close)
+        overlay.show()
+        self._activation_overlay = overlay
+        self._activation_thread = run_activation_in_thread(worker, parent=self)
+        self._activation_worker = worker
+
+    def _on_picker_manage_requested(self) -> None:
+        """Picker footer clicked: navigate to the Engagements panel."""
+        self._sidebar.select_entry("Engagements")

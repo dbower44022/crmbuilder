@@ -178,17 +178,48 @@ class EngagementDeleteDialog(EntityCrudDeleteDialog):
     # ------------------------------------------------------------------
 
     def _default_switch_handler(self) -> None:
-        # Slice D rewires this to open the picker dropdown.
+        # Slice D rewires this to open the engagement picker on the
+        # main window. Slice C-only callers see a stdout trace as a
+        # diagnostic hint; the production main window swaps the handler
+        # in via :meth:`set_switch_handler`.
         print(_SLICE_D_TODO_SWITCH)
+        main_window = _find_main_window(self)
+        if main_window is not None and hasattr(
+            main_window, "_on_top_strip_clicked"
+        ):
+            self.reject()
+            main_window._on_top_strip_clicked()
 
     def _default_create_handler(self) -> None:
-        # Slice D rewires this to open the single-gesture NewEngagementDialog.
-        # Slice C opens the meta-only EngagementCreateDialog directly.
-        from crmbuilder_v2.ui.dialogs.engagement_crud import (
-            EngagementCreateDialog,
+        # Slice D rewires this to open the single-gesture
+        # NewEngagementDialog. When the slice D infrastructure is
+        # available on the parent (managers + active_context wired into
+        # the panel), use it; otherwise fall back to the slice-C meta-
+        # only EngagementCreateDialog.
+        print(_SLICE_D_TODO_CREATE)
+        main_window = _find_main_window(self)
+        managers = (
+            getattr(main_window, "_managers", None) if main_window is not None else None
         )
+        active_ctx = (
+            getattr(main_window, "_active_context", None)
+            if main_window is not None
+            else None
+        )
+        if managers is not None and active_ctx is not None:
+            from crmbuilder_v2.ui.dialogs.new_engagement_dialog import (
+                NewEngagementDialog,
+            )
 
-        dialog = EngagementCreateDialog(self._client, self)
+            dialog = NewEngagementDialog(
+                self._client, active_ctx, managers, self
+            )
+        else:
+            from crmbuilder_v2.ui.dialogs.engagement_crud import (
+                EngagementCreateDialog,
+            )
+
+            dialog = EngagementCreateDialog(self._client, self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             # Closing the parent delete dialog lets the panel refresh;
             # the active engagement remains, and the user can re-attempt
@@ -212,3 +243,23 @@ class EngagementDeleteDialog(EntityCrudDeleteDialog):
     def set_create_handler(self, handler) -> None:
         """Hook for slice D to replace the create-button behaviour."""
         self._on_create_clicked = handler
+
+
+def _find_main_window(widget: QWidget):
+    """Walk up the parent chain looking for the application's MainWindow.
+
+    Returns ``None`` if no MainWindow ancestor is found (test dialogs
+    constructed without a window parent fall back to slice-C
+    placeholder behavior).
+    """
+    parent = widget.parentWidget()
+    while parent is not None:
+        if parent.metaObject().className() == "MainWindow":
+            return parent
+        # Some Qt builds report the qualified class name; do a lenient
+        # check too.
+        cls_name = type(parent).__name__
+        if cls_name == "MainWindow":
+            return parent
+        parent = parent.parentWidget()
+    return None
