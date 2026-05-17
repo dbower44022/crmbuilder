@@ -1,0 +1,14 @@
+[
+  {
+    "engagement_code": "CRMBUILDER",
+    "engagement_created_at": "2026-05-17T17:49:38.303796",
+    "engagement_deleted_at": null,
+    "engagement_export_dir": "/home/doug/Dropbox/Projects/crmbuilder/PRDs/product/crmbuilder-v2/db-export",
+    "engagement_identifier": "ENG-001",
+    "engagement_last_opened_at": null,
+    "engagement_name": "CRMBuilder v2",
+    "engagement_purpose": "Dogfood instance hosting the v2 build's own governance content (sessions, decisions, planning items, methodology catalog).",
+    "engagement_status": "active",
+    "engagement_updated_at": "2026-05-17T17:49:38.303796"
+  }
+]
