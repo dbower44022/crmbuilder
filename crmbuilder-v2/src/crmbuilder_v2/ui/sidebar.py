@@ -19,6 +19,9 @@ remains the flat tuple of selectable entry labels in display order.
 Slice B adds the first Methodology entry, "Domains", at position #1.
 Slice C adds the second, "Entities", at position #2. Slice D adds the
 third, "Processes", at position #3.
+
+UI v0.5 slice A adds an empty "Engagements" group above Governance.
+The single entry is populated by v0.5 slice C.
 """
 
 from __future__ import annotations
@@ -31,6 +34,9 @@ from PySide6.QtWidgets import QListWidget, QListWidgetItem
 # Methodology group gained "Domains" in v0.4 slice B, "Entities" in
 # slice C, "Processes" in slice D, and "CRM Candidates" in slice E.
 SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    # v0.5 slice A: empty Engagements group container above Governance.
+    # Slice C populates with the single "Engagements" entry.
+    ("Engagements", ()),
     (
         "Governance",
         (

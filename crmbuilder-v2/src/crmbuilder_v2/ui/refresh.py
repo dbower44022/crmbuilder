@@ -14,6 +14,11 @@ UI v0.4 slice A extends the filename map with the four methodology
 entity types (``domain``, ``entity``, ``process``, ``crm_candidate``);
 their panels land in slices B–E and connect to ``data_changed`` for
 the matching entity-type string.
+
+UI v0.5 slice A adds ``meta/engagements.json`` to the watch list. The
+file lives one level deeper than the per-engagement snapshots; the
+engagement panel (v0.5 slice C) subscribes to ``data_changed`` for the
+``engagement`` entity-type string.
 """
 
 from __future__ import annotations
@@ -45,6 +50,14 @@ _FILENAME_TO_ENTITY_TYPE: dict[str, str] = {
     "entities.json": "entity",
     "processes.json": "process",
     "crm_candidates.json": "crm_candidate",
+}
+
+# v0.5 slice A: file-watch entries that live one level below the
+# top-level export_dir (e.g., ``db-export/meta/engagements.json``).
+# The engagement panel (v0.5 slice C) subscribes to ``data_changed``
+# for the ``engagement`` entity-type string.
+_SUBDIR_FILENAME_TO_ENTITY_TYPE: dict[tuple[str, str], str] = {
+    ("meta", "engagements.json"): "engagement",
 }
 
 

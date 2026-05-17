@@ -44,4 +44,12 @@ PRDs/generated/
 
 *.db
 
+# v0.5 multi-engagement: per-engagement DBs and active-state files
+# (`*.db` above already gitignores engagements.db and the dogfood backup
+# and the per-engagement files; these lines document the v0.5 paths.)
+crmbuilder-v2/data/engagements.db
+crmbuilder-v2/data/engagements/
+crmbuilder-v2/data/current_engagement.json
+crmbuilder-v2/data/v2.db.pre-v0.5-backup
+
 *.lock

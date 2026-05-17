@@ -19,6 +19,31 @@ def run_api() -> None:
 
     from crmbuilder_v2.api.main import create_app
     from crmbuilder_v2.config import get_settings
+    from crmbuilder_v2.migration.dogfood_v0_5 import (
+        needs_migration,
+        run_dogfood_migration,
+    )
+
+    # v0.5 slice A: detect the migration-needed state and run the
+    # one-shot dogfood migration before the API starts serving
+    # requests. Idempotent on rerun; fresh-install is a no-op.
+    if needs_migration():
+        import logging
+
+        _log = logging.getLogger("crmbuilder_v2.cli")
+        _log.info("v0.5 dogfood migration: triggering")
+        result = run_dogfood_migration()
+        if not result.success:
+            _log.error(
+                "v0.5 dogfood migration failed: %s "
+                "(backup preserved at v2.db.pre-v0.5-backup); aborting",
+                result.error,
+            )
+            raise SystemExit(1)
+        _log.info(
+            "v0.5 dogfood migration: completed steps=%s",
+            ",".join(result.steps_completed),
+        )
 
     settings = get_settings()
     uvicorn.run(create_app(), host=settings.api_host, port=settings.api_port)

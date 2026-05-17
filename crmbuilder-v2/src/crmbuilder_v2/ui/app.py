@@ -24,6 +24,7 @@ from pathlib import Path
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 from crmbuilder_v2.config import get_settings
+from crmbuilder_v2.ui.active_engagement_context import ActiveEngagementContext
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.main_window import MainWindow
 from crmbuilder_v2.ui.server_lifecycle import ServerLifecycle
@@ -126,7 +127,14 @@ def main(argv: list[str] | None = None) -> int:
     settings = get_settings()
     lifecycle = ServerLifecycle(base_url=settings.api_base_url)
     client = StorageClient(base_url=settings.api_base_url)
+    # v0.5 slice A: ActiveEngagementContext loads from
+    # ``current_engagement.json`` after the QApplication is built.
+    # Slice D wires a resolver against the meta DB; slice A uses the
+    # synthesised stub so panels can read identifier/code immediately.
+    active_engagement = ActiveEngagementContext()
+    active_engagement.load_from_disk()
     window = MainWindow(lifecycle=lifecycle, client=client)
+    window.active_engagement = active_engagement
 
     def on_ready() -> None:
         if not window.isVisible():

@@ -20,12 +20,14 @@ from crmbuilder_v2.api.errors import (
     selected_candidate_conflict_handler,
     status_transition_handler,
 )
+from crmbuilder_v2.access.meta_db import init_meta_db_pool
 from crmbuilder_v2.api.routers import (
     catalog,
     charter,
     crm_candidates,
     decisions,
     domains,
+    engagements,
     entities,
     health,
     orientation,
@@ -37,6 +39,7 @@ from crmbuilder_v2.api.routers import (
     status,
     topics,
 )
+from crmbuilder_v2.migration.meta_alembic import run_meta_migrations
 
 
 def create_app() -> FastAPI:
@@ -71,7 +74,21 @@ def create_app() -> FastAPI:
     app.add_exception_handler(AccessLayerError, access_layer_handler)
     app.add_exception_handler(RequestValidationError, request_validation_handler)
 
+    # v0.5 slice A: apply meta-DB Alembic chain (idempotent; no-op if
+    # already at head) and initialise the meta-DB connection pool
+    # alongside the per-engagement pool. The two pools are independent;
+    # routing is by FastAPI dependency.
+    try:
+        run_meta_migrations()
+    except Exception:  # pragma: no cover - logged inside helper
+        # Surface the failure but do not prevent app construction; the
+        # meta DB may be created later (e.g., dogfood migration runs
+        # at first launch from the desktop side).
+        pass
+    init_meta_db_pool()
+
     app.include_router(health.router)
+    app.include_router(engagements.router)
     app.include_router(charter.router)
     app.include_router(status.router)
     app.include_router(decisions.router)
