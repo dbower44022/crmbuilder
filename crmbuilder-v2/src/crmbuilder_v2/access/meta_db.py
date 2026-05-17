@@ -26,17 +26,39 @@ _meta_session_factory: sessionmaker[Session] | None = None
 _meta_engine_url: str | None = None
 
 
+def data_dir() -> Path:
+    """Return the canonical ``data/`` directory regardless of ``db_path`` shape.
+
+    ``Settings.db_path`` can point at two different files depending on
+    when the engine was launched:
+
+    * ``data/v2.db`` — the original layout and the only shape seen
+      pre-slice-D and inside the test fixtures.
+    * ``data/engagements/{code}.db`` — the post-activation shape the
+      activation worker (and v0.5 slice D follow-up wiring in
+      ``ui/app.py``) sets ``CRMBUILDER_V2_DB_PATH`` to so the API binds
+      at the active engagement's DB on spawn.
+
+    The meta DB and per-engagement DB-file lookups must resolve to the
+    same canonical ``data/`` directory in both cases. A naive
+    ``db_path.parent`` returns ``data/`` in the first case but
+    ``data/engagements/`` in the second; this helper papers over the
+    difference.
+    """
+    s = get_settings()
+    parent = s.db_path.parent
+    if parent.name == "engagements":
+        return parent.parent
+    return parent
+
+
 def meta_db_path() -> Path:
     """Return the absolute path to the meta DB file.
 
-    Fixed relative to the engine repo root, derived from the existing
-    per-engagement ``Settings.db_path`` so test overrides apply: the
-    meta DB always lives in the same ``data/`` directory as the
-    per-engagement DB. Tests that override ``CRMBUILDER_V2_DB_PATH``
-    transparently relocate the meta DB too.
+    Always at ``<data_dir>/engagements.db`` regardless of which
+    per-engagement DB ``Settings.db_path`` currently points at.
     """
-    s = get_settings()
-    return s.db_path.parent / "engagements.db"
+    return data_dir() / "engagements.db"
 
 
 def meta_db_url() -> str:

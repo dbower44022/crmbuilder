@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sqlite3
 from pathlib import Path
 
@@ -41,7 +42,11 @@ from crmbuilder_v2.access.meta_db import (
 from crmbuilder_v2.api.main import create_app
 from crmbuilder_v2.config import reset_settings_cache
 from crmbuilder_v2.migration.lazy_migration import engagement_db_path
-from crmbuilder_v2.ui.app import _run_dogfood_migration_if_needed
+from crmbuilder_v2.ui.active_engagement_context import ActiveEngagementContext
+from crmbuilder_v2.ui.app import (
+    _route_api_at_active_engagement,
+    _run_dogfood_migration_if_needed,
+)
 
 
 @pytest.fixture
@@ -179,3 +184,62 @@ def test_desktop_launcher_is_noop_when_already_migrated(
         "re-running the launcher helper must not insert a second row"
     )
     assert engagement_db_path("CRMBUILDER").stat().st_size == snapshot_size
+
+
+def test_route_api_at_active_engagement_sets_env(
+    qapp, v0_4_state_workspace: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``_route_api_at_active_engagement`` must point CRMBUILDER_V2_DB_PATH
+    at the active engagement's per-engagement DB so a fresh API spawn
+    inherits the correct path.
+
+    Regression for the slice D gap where an externally-running API (or
+    a UI-spawned API at first launch with no prior activation) reads
+    from the default ``data/v2.db`` and 500s every per-engagement query
+    because that file is either absent or lazy-created empty.
+    """
+    data = v0_4_state_workspace
+    log = logging.getLogger("test.launcher_wiring.route")
+
+    assert _run_dogfood_migration_if_needed(log) is True
+
+    active = ActiveEngagementContext()
+    active.load_from_disk()
+    assert active.engagement_code() == "CRMBUILDER"
+
+    _route_api_at_active_engagement(active, log)
+
+    expected = data / "engagements" / "CRMBUILDER.db"
+    assert os.environ["CRMBUILDER_V2_DB_PATH"] == str(expected)
+
+    # Settings cache reset means subsequent get_settings sees the new
+    # value, and the canonical data dir still resolves correctly.
+    from crmbuilder_v2.access.meta_db import data_dir, meta_db_path
+    from crmbuilder_v2.config import get_settings
+
+    assert get_settings().db_path == expected
+    assert data_dir() == data
+    assert meta_db_path() == data / "engagements.db"
+
+
+def test_route_api_at_active_engagement_noop_without_active(
+    qapp, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """No-op when ``current_engagement.json`` resolves to no engagement.
+
+    Fresh-install case: no active engagement yet, the env var must be
+    left alone so the empty meta DB stays canonically resolvable.
+    """
+    monkeypatch.delenv("CRMBUILDER_V2_DB_PATH", raising=False)
+    reset_settings_cache()
+    reset_engine_cache()
+    reset_meta_engine_cache()
+
+    active = ActiveEngagementContext()
+    # No load_from_disk; engagement stays None.
+
+    _route_api_at_active_engagement(
+        active, logging.getLogger("test.launcher_wiring.route.noop")
+    )
+
+    assert "CRMBUILDER_V2_DB_PATH" not in os.environ

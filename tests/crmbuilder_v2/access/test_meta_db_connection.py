@@ -2,17 +2,23 @@
 
 from __future__ import annotations
 
-from sqlalchemy import text
+from pathlib import Path
 
+import pytest
 from crmbuilder_v2.access import db as engagement_db
+from crmbuilder_v2.access.db import reset_engine_cache
 from crmbuilder_v2.access.meta_db import (
     bootstrap_meta_db,
+    data_dir,
     get_meta_session_factory,
     init_meta_db_pool,
     meta_db_path,
     reset_meta_engine_cache,
 )
 from crmbuilder_v2.access.meta_models import EngagementRow
+from crmbuilder_v2.config import reset_settings_cache
+from crmbuilder_v2.migration.lazy_migration import engagement_db_path
+from sqlalchemy import text
 
 
 def _seed_meta_schema_and_row(identifier: str = "ENG-001"):
@@ -82,3 +88,42 @@ def test_pool_teardown_reset(v2_env):
     init_meta_db_pool()
     bootstrap_meta_db()
     assert meta_db_path().exists()
+
+
+@pytest.mark.parametrize(
+    "db_path_template",
+    [
+        "{root}/data/v2.db",
+        "{root}/data/engagements/CRMBUILDER.db",
+    ],
+)
+def test_data_dir_normalises_both_layouts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    db_path_template: str,
+) -> None:
+    """``data_dir`` must collapse v2.db and per-engagement db_path to ``data/``.
+
+    Regression: prior to the v0.5 slice D follow-up,
+    ``meta_db_path`` and ``engagement_db_path`` used ``db_path.parent``
+    directly, which produces a wrong nested path when ``db_path`` is
+    the activation-worker shape ``data/engagements/{code}.db``. The
+    activation worker has been setting ``CRMBUILDER_V2_DB_PATH`` to
+    that shape since slice D landed, so a real spawned API would route
+    the meta DB to ``data/engagements/engagements.db`` (wrong) and
+    ``engagement_db_path("X")`` to ``data/engagements/engagements/X.db``
+    (also wrong). The slice E end-to-end test masks this by stubbing
+    the launch with no-ops.
+    """
+    db_path = Path(db_path_template.format(root=tmp_path))
+    monkeypatch.setenv("CRMBUILDER_V2_DB_PATH", str(db_path))
+    reset_settings_cache()
+    reset_engine_cache()
+    reset_meta_engine_cache()
+
+    assert data_dir() == tmp_path / "data"
+    assert meta_db_path() == tmp_path / "data" / "engagements.db"
+    assert (
+        engagement_db_path("CRMBUILDER")
+        == tmp_path / "data" / "engagements" / "CRMBUILDER.db"
+    )

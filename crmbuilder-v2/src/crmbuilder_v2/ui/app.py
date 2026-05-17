@@ -27,11 +27,13 @@ from PySide6.QtWidgets import (
     QProgressDialog,
 )
 
-from crmbuilder_v2.config import get_settings
+from crmbuilder_v2.access.db import reset_engine_cache
+from crmbuilder_v2.config import get_settings, reset_settings_cache
 from crmbuilder_v2.migration.dogfood_v0_5 import (
     needs_migration,
     run_dogfood_migration,
 )
+from crmbuilder_v2.migration.lazy_migration import engagement_db_path
 from crmbuilder_v2.ui.active_engagement_context import ActiveEngagementContext
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.main_window import MainWindow
@@ -96,6 +98,35 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         help="Enable DEBUG-level logging.",
     )
     return parser.parse_args(argv[1:])
+
+
+def _route_api_at_active_engagement(
+    active: ActiveEngagementContext, log: logging.Logger
+) -> None:
+    """Point ``CRMBUILDER_V2_DB_PATH`` at the active engagement's DB.
+
+    No-op when ``current_engagement.json`` did not resolve to an
+    engagement (fresh install with no prior CRMBUILDER row, or empty
+    after a deactivation flow). The env var feeds ``Settings.db_path``,
+    which the spawned API process reads at startup and which
+    ``meta_db_path`` / ``engagement_db_path`` normalise back to the
+    canonical ``data/`` dir via :func:`crmbuilder_v2.access.meta_db.data_dir`.
+    """
+    code = active.engagement_code()
+    if not code:
+        log.debug(
+            "no active engagement on load; leaving CRMBUILDER_V2_DB_PATH unset"
+        )
+        return
+    db_path = engagement_db_path(code)
+    os.environ["CRMBUILDER_V2_DB_PATH"] = str(db_path)
+    reset_settings_cache()
+    reset_engine_cache()
+    log.info(
+        "routing API at engagement %s (CRMBUILDER_V2_DB_PATH=%s)",
+        code,
+        db_path,
+    )
 
 
 def _run_dogfood_migration_if_needed(log: logging.Logger) -> bool:
@@ -214,6 +245,17 @@ def main(argv: list[str] | None = None) -> int:
     # synthesised stub so panels can read identifier/code immediately.
     active_engagement = ActiveEngagementContext()
     active_engagement.load_from_disk()
+    # v0.5 slice D follow-up: route the API spawn at the active
+    # engagement's per-engagement DB before lifecycle.start(). The
+    # activation worker handles env-var injection on every subsequent
+    # engagement switch (activation_worker.build_lifecycle_managers
+    # ._launch_api); on first launch there is no activation, so we set
+    # it here. ``load_from_disk`` runs first because
+    # ``current_engagement.json`` lives next to ``v2.db`` and we read
+    # it before mutating the path. Settings + engine caches are reset
+    # so any get_settings() in this process picks up the new value;
+    # the QProcess spawn in ServerLifecycle inherits the env directly.
+    _route_api_at_active_engagement(active_engagement, log)
     # v0.5 slice D: build the subprocess managers bundle from the
     # lifecycle so the engagement-switching activation worker can drive
     # kill/relaunch through the same lifecycle the rest of the UI uses.

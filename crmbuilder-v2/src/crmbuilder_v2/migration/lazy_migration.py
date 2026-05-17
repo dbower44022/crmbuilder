@@ -28,7 +28,7 @@ from pathlib import Path
 from alembic import command
 from alembic.config import Config
 
-from crmbuilder_v2.config import get_settings, reset_settings_cache
+from crmbuilder_v2.config import reset_settings_cache
 
 
 class MigrationError(RuntimeError):
@@ -41,9 +41,15 @@ def _engagement_alembic_dir() -> Path:
 
 
 def engagement_db_path(engagement_code: str) -> Path:
-    """Return the absolute path to ``engagements/{code}.db``."""
-    s = get_settings()
-    return s.db_path.parent / "engagements" / f"{engagement_code}.db"
+    """Return the absolute path to ``engagements/{code}.db``.
+
+    Derived from :func:`crmbuilder_v2.access.meta_db.data_dir` so a
+    post-activation ``Settings.db_path`` (which sits one level deeper
+    under ``engagements/``) still resolves siblings correctly.
+    """
+    from crmbuilder_v2.access.meta_db import data_dir
+
+    return data_dir() / "engagements" / f"{engagement_code}.db"
 
 
 def make_engagement_alembic_config(engagement_code: str) -> Config:
