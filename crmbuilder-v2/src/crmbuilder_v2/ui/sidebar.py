@@ -36,7 +36,7 @@ from PySide6.QtWidgets import QListWidget, QListWidgetItem
 SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # v0.5 slice A: empty Engagements group container above Governance.
     # Slice C populates with the single "Engagements" entry.
-    ("Engagements", ()),
+    ("Engagements", ("Engagements",)),
     (
         "Governance",
         (

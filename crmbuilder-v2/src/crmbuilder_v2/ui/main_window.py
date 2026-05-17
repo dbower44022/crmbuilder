@@ -38,6 +38,7 @@ from crmbuilder_v2.ui.panels.charter import CharterPanel
 from crmbuilder_v2.ui.panels.crm_candidates import CrmCandidatesPanel
 from crmbuilder_v2.ui.panels.decisions import DecisionsPanel
 from crmbuilder_v2.ui.panels.domains import DomainsPanel
+from crmbuilder_v2.ui.panels.engagements import EngagementsPanel
 from crmbuilder_v2.ui.panels.entities import EntitiesPanel
 from crmbuilder_v2.ui.panels.planning_items import PlanningItemsPanel
 from crmbuilder_v2.ui.panels.processes import ProcessesPanel
@@ -77,6 +78,8 @@ ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
     "entity": "Entities",
     "process": "Processes",
     "crm_candidate": "CRM Candidates",
+    # v0.5 slice C: meta-DB engagement registry.
+    "engagement": "Engagements",
 }
 
 
@@ -88,6 +91,7 @@ class MainWindow(QMainWindow):
         lifecycle: ServerLifecycle,
         client: StorageClient,
         snapshot_dir: Path | None = None,
+        active_context=None,
     ):
         super().__init__()
         self.setWindowTitle("CRMBuilder v2")
@@ -95,6 +99,7 @@ class MainWindow(QMainWindow):
 
         self._lifecycle = lifecycle
         self._client = client
+        self._active_context = active_context
         self._sidebar = Sidebar()
         self._stack = QStackedWidget()
         self._crash_banner = CrashBanner()
@@ -133,6 +138,10 @@ class MainWindow(QMainWindow):
                 page = ProcessesPanel(self._client)
             elif entry == "CRM Candidates":
                 page = CrmCandidatesPanel(self._client)
+            elif entry == "Engagements":
+                page = EngagementsPanel(
+                    self._client, active_context=self._active_context
+                )
             else:
                 placeholder = QLabel(
                     f"Panel for {entry} — not yet implemented."

@@ -133,7 +133,9 @@ def main(argv: list[str] | None = None) -> int:
     # synthesised stub so panels can read identifier/code immediately.
     active_engagement = ActiveEngagementContext()
     active_engagement.load_from_disk()
-    window = MainWindow(lifecycle=lifecycle, client=client)
+    window = MainWindow(
+        lifecycle=lifecycle, client=client, active_context=active_engagement
+    )
     window.active_engagement = active_engagement
 
     def on_ready() -> None:

@@ -69,6 +69,7 @@ def client_stub(qapp) -> StorageClient:
             "/references",
             "/charter/versions",
             "/status/versions",
+            "/engagements",
         ):
             return httpx.Response(
                 200, json={"data": [], "meta": {}, "errors": None}

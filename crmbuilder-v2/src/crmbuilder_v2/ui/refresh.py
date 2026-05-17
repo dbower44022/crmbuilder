@@ -107,6 +107,12 @@ class RefreshService(QObject):
         manual Refresh button on each panel remains the user's
         fallback. Calling ``start()`` again after a previous call is
         a no-op.
+
+        v0.5 slice C also watches each registered subdirectory in
+        :data:`_SUBDIR_FILENAME_TO_ENTITY_TYPE` (currently just
+        ``meta/`` for the engagement registry snapshot). Each subdir
+        watch is independent — failure to watch one does not block the
+        others.
         """
         if self._watcher is not None:
             return
@@ -123,6 +129,20 @@ class RefreshService(QObject):
                 f"Could not watch directory: {path_str}"
             )
             return
+
+        # v0.5 slice C: also watch any registered subdirectories. The
+        # meta DB snapshot lives one level deeper than the top-level
+        # entity snapshots, so the top-level QFileSystemWatcher does
+        # not see it. Best-effort: subdir watches that fail just don't
+        # emit (the manual Refresh button remains the fallback).
+        for (subdir_name, _filename) in _SUBDIR_FILENAME_TO_ENTITY_TYPE:
+            subdir_path = self._snapshot_dir / subdir_name
+            subdir_str = str(subdir_path)
+            watcher.addPath(subdir_str)
+            if subdir_str not in watcher.directories():
+                _log.debug(
+                    "QFileSystemWatcher could not watch subdir %s", subdir_str
+                )
 
         watcher.directoryChanged.connect(self._on_directory_changed)
         self._watcher = watcher
@@ -158,19 +178,29 @@ class RefreshService(QObject):
     def _on_directory_changed(self, path: str) -> None:
         _log.debug("directoryChanged fired for %s", path)
         new_mtimes = self._snapshot_mtimes()
+        # Filenames in ``new_mtimes`` are either bare (top-level) or
+        # ``subdir/filename`` for subdir entries. The mapping check uses
+        # whichever form was stored in ``_FILENAME_TO_ENTITY_TYPE`` or
+        # the matching ``_SUBDIR_*`` entry.
         for filename, mtime in new_mtimes.items():
             previous = self._mtimes.get(filename)
             if previous is not None and mtime == previous:
                 # Mtime unchanged — skip; storage system always rewrites.
                 continue
             entity_type = _FILENAME_TO_ENTITY_TYPE.get(filename)
+            file_path = self._snapshot_dir / filename
+            if entity_type is None and "/" in filename:
+                subdir_name, _, base = filename.partition("/")
+                entity_type = _SUBDIR_FILENAME_TO_ENTITY_TYPE.get(
+                    (subdir_name, base)
+                )
             if entity_type is None:
                 continue
             # Mtime advanced; check whether content actually changed.
             # The storage system rewrites all eight snapshots on every
             # commit, so seven of every eight events are no-op rewrites
             # with byte-identical content. Hash-gate to suppress them.
-            new_hash = self._hash_file(self._snapshot_dir / filename)
+            new_hash = self._hash_file(file_path)
             old_hash = self._content_hashes.get(filename)
             if new_hash and new_hash == old_hash:
                 continue
@@ -189,16 +219,17 @@ class RefreshService(QObject):
             self.data_changed.emit(entity_type)
 
     def _snapshot_mtimes(self) -> dict[str, float]:
-        """Return current mtimes for known entity-snapshot filenames.
+        """Return current mtimes for known entity-snapshot files.
 
-        Files that don't exist are simply absent from the map. Files
-        we don't recognize (tempfiles, ``change_log.json``) are ignored.
+        Top-level entries are keyed by bare filename. Subdir entries are
+        keyed by ``subdir/filename``. Files we don't recognize
+        (tempfiles, ``change_log.json``) are ignored.
         """
         result: dict[str, float] = {}
         try:
             entries = list(self._snapshot_dir.iterdir())
         except (FileNotFoundError, NotADirectoryError, PermissionError):
-            return result
+            entries = []
         for entry in entries:
             name = entry.name
             if name not in _FILENAME_TO_ENTITY_TYPE:
@@ -206,6 +237,13 @@ class RefreshService(QObject):
             try:
                 result[name] = entry.stat().st_mtime
             except OSError:
+                continue
+        # Slice C: capture subdir snapshot mtimes too.
+        for (subdir_name, filename) in _SUBDIR_FILENAME_TO_ENTITY_TYPE:
+            path = self._snapshot_dir / subdir_name / filename
+            try:
+                result[f"{subdir_name}/{filename}"] = path.stat().st_mtime
+            except (FileNotFoundError, NotADirectoryError, PermissionError, OSError):
                 continue
         return result
 
@@ -219,6 +257,14 @@ class RefreshService(QObject):
             digest = self._hash_file(path)
             if digest:
                 result[filename] = digest
+        # Slice C: subdir snapshots use ``subdir/filename`` as the key.
+        for (subdir_name, filename) in _SUBDIR_FILENAME_TO_ENTITY_TYPE:
+            path = self._snapshot_dir / subdir_name / filename
+            if not path.exists():
+                continue
+            digest = self._hash_file(path)
+            if digest:
+                result[f"{subdir_name}/{filename}"] = digest
         return result
 
     @staticmethod

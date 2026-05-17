@@ -21,6 +21,9 @@ from crmbuilder_v2.ui.sidebar import SIDEBAR_ENTRIES, Sidebar
 from crmbuilder_v2.ui.splash import Splash
 
 EXPECTED_ENTRIES = (
+    # Engagements group — populated in UI v0.5 slice C with a single
+    # entry, on top of the empty group slice A introduced.
+    "Engagements",
     "Charter",
     "Status",
     "Decisions",
@@ -54,6 +57,7 @@ def test_main_window_constructs(qapp, qtbot, lifecycle_stub, client_stub):
     rendered = [sidebar.item(r).text() for r in range(sidebar.count())]
     for expected in EXPECTED_ENTRIES:
         assert expected in rendered
+    assert "ENGAGEMENTS" in rendered
     assert "GOVERNANCE" in rendered
     assert "METHODOLOGY" in rendered
 
