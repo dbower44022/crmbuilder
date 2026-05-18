@@ -136,7 +136,7 @@ curl -s http://127.0.0.1:8765/references | python3 -c "
 import sys, json
 refs = json.load(sys.stdin)['data']
 for dec in ['DEC-098','DEC-099','DEC-100','DEC-101','DEC-102','DEC-103','DEC-104']:
-    found = any(r['source_id']==dec and r['target_id']=='SES-029' and r['relationship_kind']=='decided_in' for r in refs)
+    found = any(r['source_id']==dec and r['target_id']=='SES-029' and r['relationship']=='decided_in' for r in refs)
     print(f'{dec}->SES-029 decided_in:', found)
 print('Refs total:', len(refs))
 "
