@@ -7579,5 +7579,135 @@
     "id": 287,
     "operation": "insert",
     "timestamp": "2026-05-17T03:55:17.210772"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "Two commits to origin/main:\n\n(1) a4c8b35 — v2: v0.5 slice A follow-up — wire launcher gaps. Modified crmbuilder-v2/src/crmbuilder_v2/api/main.py (added bootstrap_meta_db() at API startup wrapped in OperationalError catch for the concurrent-create_app() race); crmbuilder-v2/src/crmbuilder_v2/ui/app.py (new _run_dogfood_migration_if_needed helper invoked between build_application and splash, QProgressDialog wrapping the synchronous migration, hard-fail UX on error with critical dialog naming the .pre-v0.5-backup recovery path and exit code 1). Added tests/crmbuilder_v2/integration/test_launcher_wiring.py (three regression tests). 281 lines insertions, 2 deletions across 3 files.\n\n(2) 3467764 — v2: v0.5 slice D follow-up — route API at active engagement on UI launch + fix latent data-dir derivation. Modified crmbuilder-v2/src/crmbuilder_v2/access/meta_db.py (new public data_dir() helper; meta_db_path delegates to it); crmbuilder-v2/src/crmbuilder_v2/migration/lazy_migration.py (engagement_db_path uses data_dir; removed unused get_settings import); crmbuilder-v2/src/crmbuilder_v2/ui/app.py (new _route_api_at_active_engagement helper invoked after active_engagement.load_from_disk and before lifecycle.start, sets CRMBUILDER_V2_DB_PATH and resets settings + engine caches when an engagement is active). Added test_data_dir_normalises_both_layouts (parametrized v2.db vs engagements/CRMBUILDER.db) to tests/crmbuilder_v2/access/test_meta_db_connection.py and test_route_api_at_active_engagement_sets_env + test_route_api_at_active_engagement_noop_without_active to test_launcher_wiring.py. 193 lines insertions, 14 deletions across 5 files.\n\nFull v2 suite at session end: 1236 passed, 1 skipped (was 1229 + 1 at session start; +7 net: 4 launcher-wiring tests + 2 parametrized data_dir tests + 1 absorbed race delta). Lint clean across all touched files.\n\nOperator workaround applied: killed and restarted the externally-running API with CRMBUILDER_V2_DB_PATH=crmbuilder-v2/data/engagements/CRMBUILDER.db. Confirmed /decisions, /charter/versions, /engagements all return 200 with correct rows. Operator confirmed UI working.\n\nNo PRD changes; no decisions or planning items written; no schema migrations; no version bump (defect fixes against v0.5).",
+      "conversation_reference": "Claude Code conversation opened against the prompt at PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.5-A-followup-launcher-wiring.md. Scope expanded mid-conversation when the post-fix UI smoke surfaced a separate slice D defect (HTTP 500s on /decisions and /charter/versions). Operator chose 'investigate first, commit separately later' for the slice D issue; that became commit two in the same Claude Code session. Two commits pushed to origin/main at conversation close. No transcript preserved per DEC-025.",
+      "created_at": "2026-05-18T02:33:24.779183+00:00",
+      "id": 29,
+      "identifier": "SES-030",
+      "in_flight_at_end": "The PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-apply-v0.5-build-execution-closeout.md prompt remains pending. Its plan assigned SES-030..SES-035 to the six v0.5 build-execution conversations (slices A-E plus launcher-wiring follow-up); this session claims SES-030 ahead of that pass and folds in the slice D follow-up as scope expansion within the same Claude Code conversation. When Doug runs the closeout, its dynamic identifier assignment will compute max+1 (SES-031 after this record) and renumber its planned writes accordingly; the launcher-wiring follow-up's coverage moves from the closeout's planned SES-035 to this SES-030 (which additionally covers the slice D follow-up the closeout's plan did not anticipate). The closeout prompt also includes the status entity update from 'v0.4 complete' to 'v0.5 complete'; that work remains unaffected by this record and still belongs to the closeout pass.\n\nFollow-on technical work not yet scheduled: per-request engagement routing per DEC-080's committed multi-tenant migration trajectory remains the eventual proper fix for the per-process db_path coupling. The data_dir() shim makes the current one-process-per-engagement model robust; the longer-term shift would let one API process serve multiple engagements without env-var dancing or kill+relaunch.",
+      "session_date": "05-17-26",
+      "status": "Complete",
+      "summary": "Two-commit Claude Code session. Commit one (a4c8b35) executed the slice A launcher-wiring prompt as written: bootstrap_meta_db() at API startup, dogfood-migration trigger at desktop startup with QProgressDialog and hard-fail UX, three regression tests. Discovered a SQLite race during full-suite run (create_all(checkfirst=True) not atomic against eight parallel test-client TestClients) and absorbed it with a narrow OperationalError catch at the call site, preserving slice A's helper untouched per the prompt's 'do not modify slice A helpers' guardrail. Manual smoke surfaced a second defect: per-engagement endpoints 500 against Doug's running API. Diagnosed as a slice D gap — initial UI launch never sets CRMBUILDER_V2_DB_PATH because activation only fires on user-driven engagement switches. Investigation surfaced a third latent bug upstream: access/meta_db.meta_db_path() and migration/lazy_migration.engagement_db_path() derive their locations from s.db_path.parent, which silently produces wrong nested paths when db_path is in the post-activation engagements/{code}.db shape (the slice E end-to-end test masks this with no-op subprocess managers; the activation worker would have hit it in production). Commit two (3467764) closes both: ui/app.py.main now routes the API at the active engagement before lifecycle.start(), and a new data_dir() helper in access/meta_db.py normalises both layouts back to data/ so the meta DB and sibling engagement DBs always resolve correctly regardless of which file db_path names. Both commits pushed; operator API restarted with the env var explicitly set; UI verified green.",
+      "title": "v0.5 slice A follow-up (launcher wiring) + slice D follow-up (route API at active engagement, fix latent data_dir derivation) — two-commit Claude Code session",
+      "topics_covered": "Pre-flight per the prompt: git pull (already up to date at start), confirmed working tree clean, identity Doug Bower <doug@dougbower.com> (prompt's noted expectation of dbower44022@users.noreply.github.com was stale against the actual recent-commit convention; matched the convention). Reading order: CLAUDE.md v2 section; UI PRD v0.5 §5.4 (dogfood migration at first launch); slice A api/main.py, ui/app.py, access/meta_db.py, migration/dogfood_v0_5.py; slice E end-to-end test for fixture pattern. Pre-flight noted Doug's local data dir still contained v2.db (prompt expected it absent post-manual-migration); proceeded per the 'reasonable call and continue' direction.\n\nStep 1 — API startup hook (api/main.py). Added bootstrap_meta_db() call before init_meta_db_pool(), keeping the prior run_meta_migrations() try/except in place. First pass shipped bootstrap_meta_db() unguarded.\n\nStep 2 — desktop startup migration trigger (ui/app.py). Introduced _run_dogfood_migration_if_needed(log) helper invoked between build_application() and splash.show(). Wraps the synchronous migration in an indeterminate QProgressDialog with no cancel affordance per slice A spec; on failure surfaces a critical QMessageBox naming the .pre-v0.5-backup recovery path and returns _MIGRATION_FAILED_EXIT_CODE (=1).\n\nStep 3 — integration test (tests/crmbuilder_v2/integration/test_launcher_wiring.py, new file). Three regression tests: test_api_startup_creates_meta_db drives create_app() and asserts engagements.db materialises; test_desktop_launcher_runs_migration_when_needed drives the helper against a freshly-seeded v0.4-state fixture and asserts the post-migration filesystem shape; test_desktop_launcher_is_noop_when_already_migrated drives a second invocation and asserts no duplicate row or file rewrite. Fixture pattern adapted from tests/crmbuilder_v2/integration/test_v0_5_end_to_end.py (inline v0.4-shape v2.db seeding rather than the absent fixtures/v0_4_state_v2.db file the prompt sketched).\n\nFirst full-suite run regressed two previously-passing tests: tests/crmbuilder_v2/api/test_domains_api.py and test_entities_api.py — both test_concurrent_posts_get_distinct_identifiers. Isolated repro confirmed 4/5 to 6/10 failure rate when run together, never in isolation. Traceback fingered create_all(checkfirst=True) racing past has_table on SQLite when eight TestClient(create_app()) instances spin up in parallel — the loser hits 'table engagements already exists'. Narrow OperationalError catch around bootstrap_meta_db() in api/main.py absorbed the race; subsequent 10/10 isolated reruns confirmed clean and the full suite returned 1232 passed (+3 vs. baseline 1229). Lint via ruff --fix sorted imports in api/main.py. Stashed local changes, git pull --rebase origin main (one intervening v0.6 slice E prompt commit, unrelated), restored, committed as a4c8b35.\n\nManual smoke against Doug's machine surfaced a separate failure: UI launched, lifecycle adopted the externally-running API at port 8765, and per-engagement endpoints (/decisions, /charter/versions) returned HTTP 500 while /engagements and /health returned 200. Inspection showed Doug's data dir had three files in place — v2.db (empty: no alembic_version, no decisions, no charter), engagements/CRMBUILDER.db (alembic head 0010_v0_4_create_crm_candidates_table, 101 decisions, 2 charter), engagements.db (meta DB with the CRMBUILDER row). The running API had no CRMBUILDER_V2_DB_PATH set in its environment, so Settings.db_path defaulted to data/v2.db and SQLAlchemy lazy-create had materialised an empty file there at first connection. Confirmed not caused by the just-shipped launcher-wiring fix (the running API was started before the commit and inherits no env var management from it).\n\nRoot cause investigation. Slice D wired engagement switching through ActivationWorker, whose build_lifecycle_managers._launch_api correctly sets CRMBUILDER_V2_DB_PATH to engagement_db_path(target.engagement_code) before lifecycle.start(). But the initial UI launch never triggers activation — it loads ActiveEngagementContext from current_engagement.json, hands the UI a populated context, then ServerLifecycle.start() either adopts an externally-running API or QProcess-spawns a fresh one. Neither path touches the env var. So a clean install or any session-restart presents the same symptom; Doug's case was the externally-running-API variant.\n\nWhile sketching Option A (set CRMBUILDER_V2_DB_PATH in ui/app.py from active_engagement.engagement_code()), surfaced a second latent defect upstream: access/meta_db.meta_db_path() and migration/lazy_migration.engagement_db_path() both compute their location as s.db_path.parent / 'engagements.db' (or '.../engagements/{code}.db'). Correct when db_path is data/v2.db (parent = data, derives correctly) but silently wrong when db_path is data/engagements/CRMBUILDER.db (parent = data/engagements, derives data/engagements/engagements.db for the meta DB and data/engagements/engagements/CRMBUILDER.db for sibling engagement DBs). The activation worker has been setting db_path to that shape since slice D landed; the slice E end-to-end test masks the bug with no-op subprocess managers (the real _launch_api is never invoked). A real production spawn after activation would have hit it. Verified with a one-liner probe (CRMBUILDER_V2_DB_PATH=/tmp/x/data/engagements/CRMBUILDER.db → meta_db_path resolves wrong).\n\nOperator gate. Presented three options: narrow Option A only (trades /decisions 500 for /engagements 500 on fresh spawn — net zero on Doug's case); recommended Option A + fix data_dir derivation (closes the latent activation-worker bug as a side benefit); or hold off and design a proper fix (per-request engagement routing per DEC-080's committed multi-tenant migration trajectory). Operator chose option two.\n\nImplementation. (1) access/meta_db.py — new public data_dir() helper that returns parent.parent when parent.name == 'engagements', else parent; meta_db_path() delegates to it. Backward-compatible against every existing test. (2) migration/lazy_migration.py — engagement_db_path() imports data_dir() and uses it the same way; layout-invariant. (3) ui/app.py — new _route_api_at_active_engagement(active, log) helper invoked between active_engagement.load_from_disk() (which still reads current_engagement.json under the default data-dir resolution) and lifecycle.start(). On non-None engagement_code, sets the env var and resets settings + engine caches so this process and any QProcess.start child see the new value. No-op for fresh-install or post-deactivation. Removed an unused get_settings import flagged by ruff.\n\nTests. Added test_data_dir_normalises_both_layouts (parametrized across v2.db and engagements/CRMBUILDER.db shapes) to tests/crmbuilder_v2/access/test_meta_db_connection.py. Added test_route_api_at_active_engagement_sets_env (drives the helper against the freshly-migrated workspace and asserts CRMBUILDER_V2_DB_PATH + get_settings + meta_db_path post-state) and test_route_api_at_active_engagement_noop_without_active (asserts no env mutation for the empty-context case) to test_launcher_wiring.py. Full suite returned 1236 passed (+4 vs. prior commit, +7 vs. baseline). Lint clean. Stashed, rebased (one intervening v0.5 build-execution closeout prompt commit, unrelated), restored, committed as 3467764.\n\nPushed both commits together (edae295..3467764). Killed the misconfigured running API (auto-classifier blocked the first attempt because the agent did not spawn the process; succeeded after operator authorization). Restarted with CRMBUILDER_V2_DB_PATH explicitly set against engagements/CRMBUILDER.db. Verified: /decisions → 101 rows, /charter/versions → 2 rows, /engagements → 1 row, all 200. Operator confirmed UI working again."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-030",
+    "entity_type": "session",
+    "id": 288,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:33:24.780144"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:33:37.544053+00:00",
+      "id": 105,
+      "relationship": "is_about",
+      "source_id": "SES-030",
+      "source_type": "session",
+      "target_id": "DEC-084",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-030 -[is_about]-> decision:DEC-084",
+    "entity_type": "reference",
+    "id": 289,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:33:37.544561"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:33:37.600389+00:00",
+      "id": 106,
+      "relationship": "is_about",
+      "source_id": "SES-030",
+      "source_type": "session",
+      "target_id": "DEC-080",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-030 -[is_about]-> decision:DEC-080",
+    "entity_type": "reference",
+    "id": 290,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:33:37.601064"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:33:37.658723+00:00",
+      "id": 107,
+      "relationship": "is_about",
+      "source_id": "SES-030",
+      "source_type": "session",
+      "target_id": "DEC-078",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-030 -[is_about]-> decision:DEC-078",
+    "entity_type": "reference",
+    "id": 291,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:33:37.659138"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:33:37.721525+00:00",
+      "id": 108,
+      "relationship": "is_about",
+      "source_id": "SES-030",
+      "source_type": "session",
+      "target_id": "DEC-081",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-030 -[is_about]-> decision:DEC-081",
+    "entity_type": "reference",
+    "id": 292,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:33:37.721894"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:33:37.774798+00:00",
+      "id": 109,
+      "relationship": "is_about",
+      "source_id": "SES-030",
+      "source_type": "session",
+      "target_id": "DEC-079",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-030 -[is_about]-> decision:DEC-079",
+    "entity_type": "reference",
+    "id": 293,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:33:37.775144"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:33:37.827280+00:00",
+      "id": 110,
+      "relationship": "is_about",
+      "source_id": "SES-030",
+      "source_type": "session",
+      "target_id": "DEC-083",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-030 -[is_about]-> decision:DEC-083",
+    "entity_type": "reference",
+    "id": 294,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:33:37.827677"
   }
 ]
