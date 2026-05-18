@@ -59,8 +59,15 @@ from crmbuilder_v2.ui.workers import run_in_thread
 _log = logging.getLogger("crmbuilder_v2.ui.list_detail_panel")
 
 _STATUS_ERROR_MAX = 80
-_INITIAL_LIST_WIDTH = 480
-_INITIAL_DETAIL_WIDTH = 720
+# Default master/detail split per design pass §2.2 — 45/55. The
+# splitter accepts any two positive integers in the same ratio; using
+# 450/550 keeps the math obvious.
+_INITIAL_LIST_WIDTH = 450
+_INITIAL_DETAIL_WIDTH = 550
+# Splitter handle width per design pass §2.2 (space.3 = 12px).
+_SPLITTER_HANDLE_WIDTH = 12
+# Outer panel padding per design pass §2.2 (space.4 = 16px).
+_PANEL_OUTER_PADDING = 16
 
 
 @dataclass(frozen=True)
@@ -172,6 +179,9 @@ class ListDetailPanel(QWidget):
 
     def __init__(self, client: StorageClient, parent: QWidget | None = None):
         super().__init__(parent)
+        # v0.6 slice A: project-level QSS reads this object name to apply
+        # the panel chrome background (color.neutral.50) per design pass §2.2.
+        self.setObjectName("listDetailPanel")
         self._client = client
         self._records: list[dict[str, Any]] = []
         self._refresh_counter = 0
@@ -413,7 +423,12 @@ class ListDetailPanel(QWidget):
 
     def _build_ui(self) -> None:
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(8, 8, 8, 8)
+        outer.setContentsMargins(
+            _PANEL_OUTER_PADDING,
+            _PANEL_OUTER_PADDING,
+            _PANEL_OUTER_PADDING,
+            _PANEL_OUTER_PADDING,
+        )
         outer.setSpacing(6)
 
         self._toolbar_widget = self._build_toolbar()
@@ -468,6 +483,7 @@ class ListDetailPanel(QWidget):
             self._detail_stack.addWidget(self._loading_detail)
 
             splitter = QSplitter(Qt.Orientation.Horizontal)
+            splitter.setHandleWidth(_SPLITTER_HANDLE_WIDTH)
             splitter.addWidget(self._master_view)
             splitter.addWidget(self._detail_stack)
             splitter.setSizes([_INITIAL_LIST_WIDTH, _INITIAL_DETAIL_WIDTH])

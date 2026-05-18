@@ -12,10 +12,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPixmap
 from PySide6.QtWidgets import QSplashScreen
 
-from crmbuilder_v2.ui.styling import (
-    ACCENT_COLOR,
-    DEFAULT_FONT_FAMILY,
-)
+from crmbuilder_v2.ui.styling import t
 
 _SPLASH_WIDTH = 400
 _SPLASH_HEIGHT = 200
@@ -24,11 +21,11 @@ _SPLASH_MESSAGE = "Starting storage server…"
 
 def _build_pixmap() -> QPixmap:
     pixmap = QPixmap(_SPLASH_WIDTH, _SPLASH_HEIGHT)
-    pixmap.fill(QColor(ACCENT_COLOR))
+    pixmap.fill(QColor(t("color.accent.default")))
     painter = QPainter(pixmap)
     try:
         painter.setPen(Qt.GlobalColor.white)
-        font = QFont(DEFAULT_FONT_FAMILY, 14)
+        font = QFont(t("font.family.default"), 14)
         font.setBold(True)
         painter.setFont(font)
         painter.drawText(pixmap.rect(), Qt.AlignmentFlag.AlignCenter, _SPLASH_MESSAGE)

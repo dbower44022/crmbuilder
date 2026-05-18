@@ -1,4 +1,4 @@
-"""Tests for the AboutDialog (slice H)."""
+"""Tests for the AboutDialog (slice H; restructured in v0.6 slice A)."""
 
 from __future__ import annotations
 
@@ -6,33 +6,46 @@ from importlib.metadata import PackageNotFoundError
 
 from crmbuilder_v2.ui import about_dialog as about_module
 from crmbuilder_v2.ui.about_dialog import AboutDialog
-from PySide6.QtWidgets import QFormLayout, QLabel
+from PySide6.QtWidgets import QLabel, QVBoxLayout
+
+# Per v0.6 slice A (design pass §2.8 / DEC-094) the metadata table
+# renders as a vertical two-line-per-row list: each row is a nested
+# QVBoxLayout containing a label QLabel (the field name) and a value
+# QLabel. The wordmark + tagline header block is also a nested
+# QVBoxLayout but is structurally the first sub-VBox in the outer
+# layout, so it's skipped by position rather than content (the
+# Application row also legitimately carries "CRMBuilder v2" as its
+# value).
 
 
 def _form_rows(dialog: AboutDialog) -> dict[str, str]:
-    """Read the dialog's form layout as a {label: value} mapping."""
-    form: QFormLayout | None = None
+    """Read the dialog's metadata rows as a {label: value} mapping.
+
+    Walks the outer ``QVBoxLayout`` collecting every label+value pair
+    nested in a sub-VBox of exactly two ``QLabel``s. The wordmark +
+    tagline header block (the first sub-VBox in the outer layout) is
+    skipped by position; the action row is skipped because it's a
+    QHBoxLayout, not a QVBoxLayout.
+    """
     layout = dialog.layout()
+    assert isinstance(layout, QVBoxLayout)
+    rows: dict[str, str] = {}
+    header_skipped = False
     for i in range(layout.count()):
         item = layout.itemAt(i)
-        candidate = item.layout()
-        if isinstance(candidate, QFormLayout):
-            form = candidate
-            break
-    assert form is not None, "AboutDialog must contain a QFormLayout"
-
-    rows: dict[str, str] = {}
-    for r in range(form.rowCount()):
-        label_item = form.itemAt(r, QFormLayout.ItemRole.LabelRole)
-        field_item = form.itemAt(r, QFormLayout.ItemRole.FieldRole)
-        assert label_item is not None and field_item is not None
-        label_widget = label_item.widget()
-        field_widget = field_item.widget()
-        assert isinstance(label_widget, QLabel)
-        assert isinstance(field_widget, QLabel)
-        # Labels are wrapped in <b>...</b>; strip the tags for a stable key.
-        key = label_widget.text().replace("<b>", "").replace("</b>", "")
-        rows[key] = field_widget.text()
+        sub = item.layout()
+        if not isinstance(sub, QVBoxLayout):
+            continue
+        if not header_skipped:
+            header_skipped = True
+            continue
+        labels = [
+            sub.itemAt(j).widget()
+            for j in range(sub.count())
+            if isinstance(sub.itemAt(j).widget(), QLabel)
+        ]
+        if len(labels) == 2:
+            rows[labels[0].text()] = labels[1].text()
     return rows
 
 
@@ -42,7 +55,7 @@ def test_construct_shows_required_rows(qtbot):
     rows = _form_rows(dialog)
     assert "Application" in rows
     assert "Version" in rows
-    assert "API base URL" in rows
+    assert "API base url" in rows
     assert "Database path" in rows
     assert "Snapshot directory" in rows
 
@@ -107,7 +120,7 @@ def test_paths_are_strings_from_settings(qtbot):
     # Both paths should be non-empty stringified values.
     assert rows["Database path"]
     assert rows["Snapshot directory"]
-    assert rows["API base URL"].startswith("http")
+    assert rows["API base url"].startswith("http")
 
 
 def test_help_about_menu_opens_dialog(

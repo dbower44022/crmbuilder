@@ -60,6 +60,7 @@ from PySide6.QtWidgets import (
 
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.dialogs.error import ErrorDialog
+from crmbuilder_v2.ui.elevation import apply_dialog_shadow
 from crmbuilder_v2.ui.exceptions import (
     ConflictError,
     NotFoundError,
@@ -71,6 +72,8 @@ from crmbuilder_v2.ui.exceptions import (
 from crmbuilder_v2.ui.widgets.date_field import DateField
 from crmbuilder_v2.ui.widgets.entity_identifier_picker import EntityIdentifierPicker
 from crmbuilder_v2.ui.widgets.hierarchical_picker import HierarchicalEntityPicker
+from crmbuilder_v2.ui.widgets.modal_backdrop import attach as _backdrop_attach
+from crmbuilder_v2.ui.widgets.modal_backdrop import detach as _backdrop_detach
 
 _log = logging.getLogger("crmbuilder_v2.ui.base.crud_dialog")
 
@@ -379,6 +382,7 @@ class EntityCrudDialog(QDialog):
         self.setWindowTitle(title)
         self.setModal(True)
         self.setMinimumWidth(560)
+        apply_dialog_shadow(self)
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(16, 16, 16, 16)
@@ -430,6 +434,18 @@ class EntityCrudDialog(QDialog):
 
     def saved_identifier(self) -> str | None:
         return self._saved_identifier
+
+    # ------------------------------------------------------------------
+    # Modal backdrop hooks (v0.6 slice A — DEC-091)
+    # ------------------------------------------------------------------
+
+    def showEvent(self, event):  # noqa: N802 — Qt naming
+        super().showEvent(event)
+        _backdrop_attach(self)
+
+    def hideEvent(self, event):  # noqa: N802 — Qt naming
+        _backdrop_detach(self)
+        super().hideEvent(event)
 
     # ------------------------------------------------------------------
     # Widget construction
@@ -1046,6 +1062,7 @@ class EntityCrudDeleteDialog(QDialog):
         self.setWindowTitle(f"Delete {entity_label}")
         self.setModal(True)
         self.setMinimumWidth(420)
+        apply_dialog_shadow(self)
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(16, 16, 16, 16)
@@ -1074,6 +1091,18 @@ class EntityCrudDeleteDialog(QDialog):
         self._delete_btn.clicked.connect(self._on_delete_clicked)
         button_row.addWidget(self._delete_btn)
         outer.addLayout(button_row)
+
+    # ------------------------------------------------------------------
+    # Modal backdrop hooks (v0.6 slice A — DEC-091)
+    # ------------------------------------------------------------------
+
+    def showEvent(self, event):  # noqa: N802 — Qt naming
+        super().showEvent(event)
+        _backdrop_attach(self)
+
+    def hideEvent(self, event):  # noqa: N802 — Qt naming
+        _backdrop_detach(self)
+        super().hideEvent(event)
 
     def _on_delete_clicked(self) -> None:
         from crmbuilder_v2.ui.workers import run_in_thread

@@ -14,10 +14,11 @@ Identifier column. Soft-deleted rows render with strikethrough and a
 leading "🗑 " glyph in the Identifier column; they appear only when the
 "Show soft-deleted" toggle is on.
 
-The styling design pass (SES-027) has not yet shipped a tokens module
-as of slice C execution time; the accent color is the navy
-``ACCENT_COLOR`` from ``ui.styling``. Replace with the tokens module's
-``color.accent.default`` when it lands.
+The accent color was migrated from the legacy ``ACCENT_COLOR`` navy
+to the design-tokens ``color.accent.default`` (cool blue ``#1F5FBF``)
+in v0.6 slice A; the public ``ACTIVE_ACCENT_COLOR`` export keeps the
+same name so downstream consumers (the soft-delete strikethrough
+delegate, the legacy-pinned color tests) continue to import it.
 """
 
 from __future__ import annotations
@@ -57,16 +58,14 @@ from crmbuilder_v2.ui.exceptions import (
     StorageClientError,
     StorageConnectionError,
 )
-from crmbuilder_v2.ui.styling import ACCENT_COLOR
+from crmbuilder_v2.ui.styling import t
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.engagements")
 
-# TODO(styling-tokens): swap for ``color.accent.default`` / ``color.warning.default``
-# / ``color.neutral.500`` from the styling tokens module when it ships.
-_ACTIVE_ACCENT_COLOR = ACCENT_COLOR
-_STATUS_PAUSED_COLOR = "#B76E00"  # warm amber stand-in for color.warning.default
-_STATUS_ARCHIVED_COLOR = "#888888"  # color.neutral.500 stand-in
-_SOFT_DELETED_COLOR = "#888888"
+_ACTIVE_ACCENT_COLOR = t("color.accent.default")
+_STATUS_PAUSED_COLOR = t("color.warning.default")
+_STATUS_ARCHIVED_COLOR = t("color.neutral.500")
+_SOFT_DELETED_COLOR = t("color.neutral.500")
 
 # Glyphs prepended to the Identifier column. Plain Unicode rather than
 # Lucide icons because v0.4 panels render their list cells via the

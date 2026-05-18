@@ -28,11 +28,14 @@ from PySide6.QtWidgets import (
 )
 
 from crmbuilder_v2.ui.dialogs.error import ErrorDialog
+from crmbuilder_v2.ui.elevation import apply_dialog_shadow
 from crmbuilder_v2.ui.exceptions import (
     StorageClientError,
     StorageConnectionError,
     ValidationError,
 )
+from crmbuilder_v2.ui.widgets.modal_backdrop import attach as _backdrop_attach
+from crmbuilder_v2.ui.widgets.modal_backdrop import detach as _backdrop_detach
 from crmbuilder_v2.ui.workers import run_in_thread
 
 _log = logging.getLogger("crmbuilder_v2.ui.base.versioned_replace_dialog")
@@ -84,6 +87,7 @@ class VersionedReplaceDialog(QDialog):
         self.setWindowTitle(title)
         self.setModal(True)
         self.resize(_DEFAULT_DIALOG_WIDTH, _DEFAULT_DIALOG_HEIGHT)
+        apply_dialog_shadow(self)
         self._save_callback = save_callback
         self._title = title
         self._validated_payload: dict | None = None
@@ -272,3 +276,15 @@ class VersionedReplaceDialog(QDialog):
             except Exception:
                 _log.exception("Worker.wait failed during dialog teardown")
         super().closeEvent(event)
+
+    # ------------------------------------------------------------------
+    # Modal backdrop hooks (v0.6 slice A — DEC-091)
+    # ------------------------------------------------------------------
+
+    def showEvent(self, event):  # noqa: N802 — Qt naming
+        super().showEvent(event)
+        _backdrop_attach(self)
+
+    def hideEvent(self, event):  # noqa: N802 — Qt naming
+        _backdrop_detach(self)
+        super().hideEvent(event)

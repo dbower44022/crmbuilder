@@ -27,11 +27,14 @@ from PySide6.QtWidgets import (
 
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.dialogs.error import ErrorDialog
+from crmbuilder_v2.ui.elevation import apply_dialog_shadow
 from crmbuilder_v2.ui.exceptions import (
     NotFoundError,
     StorageClientError,
     StorageConnectionError,
 )
+from crmbuilder_v2.ui.widgets.modal_backdrop import attach as _backdrop_attach
+from crmbuilder_v2.ui.widgets.modal_backdrop import detach as _backdrop_detach
 
 _log = logging.getLogger("crmbuilder_v2.ui.dialogs.reference_delete")
 
@@ -70,6 +73,7 @@ class ReferenceDeleteDialog(QDialog):
         self.setWindowTitle("Delete reference")
         self.setModal(True)
         self.setMinimumWidth(440)
+        apply_dialog_shadow(self)
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(16, 16, 16, 16)
@@ -99,6 +103,18 @@ class ReferenceDeleteDialog(QDialog):
         self._delete_btn.clicked.connect(self._on_delete_clicked)
         button_row.addWidget(self._delete_btn)
         outer.addLayout(button_row)
+
+    # ------------------------------------------------------------------
+    # Modal backdrop hooks (v0.6 slice A — DEC-091)
+    # ------------------------------------------------------------------
+
+    def showEvent(self, event):  # noqa: N802 — Qt naming
+        super().showEvent(event)
+        _backdrop_attach(self)
+
+    def hideEvent(self, event):  # noqa: N802 — Qt naming
+        _backdrop_detach(self)
+        super().hideEvent(event)
 
     def _on_delete_clicked(self) -> None:
         from crmbuilder_v2.ui.workers import run_in_thread

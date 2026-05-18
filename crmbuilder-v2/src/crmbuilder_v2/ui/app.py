@@ -21,6 +21,7 @@ import os
 import sys
 from pathlib import Path
 
+from PySide6.QtGui import QFont, QFontDatabase
 from PySide6.QtWidgets import (
     QApplication,
     QMessageBox,
@@ -49,15 +50,54 @@ _LOG_BACKUPS = 3
 _SPAWN_FAILED_EXIT_CODE = 1
 _MIGRATION_FAILED_EXIT_CODE = 1
 
+_FONT_ASSETS_DIR = Path(__file__).resolve().parent / "assets" / "fonts"
+_BUNDLED_FONTS = (
+    "Inter-VariableFont_opsz,wght.ttf",
+    "JetBrainsMono-VariableFont_wght.ttf",
+)
+
+
+def _load_bundled_fonts() -> None:
+    """Register bundled font families with Qt's font database.
+
+    Per DEC-090 the desktop UI ships Inter Variable and JetBrains Mono
+    Variable rather than relying on per-platform system fonts. Loading
+    failure is logged but non-fatal — the application falls back to
+    system defaults.
+
+    The Inter v4.x variable font registers as ``"Inter Variable"``
+    rather than ``"Inter"``; the design tokens reference the cleaner
+    ``"Inter"`` name, so a Qt substitution maps ``Inter`` to the
+    bundled ``Inter Variable`` family.
+    """
+    log = logging.getLogger("crmbuilder_v2.ui.fonts")
+    for filename in _BUNDLED_FONTS:
+        path = _FONT_ASSETS_DIR / filename
+        try:
+            font_id = QFontDatabase.addApplicationFont(str(path))
+        except Exception:  # noqa: BLE001 — font loading is best-effort
+            log.exception("Could not load bundled font %s", filename)
+            continue
+        if font_id < 0:
+            log.warning(
+                "Qt rejected bundled font %s (path=%s)", filename, path
+            )
+            continue
+        families = QFontDatabase.applicationFontFamilies(font_id)
+        log.debug("Loaded bundled font %s — families=%s", filename, families)
+    QFont.insertSubstitution("Inter", "Inter Variable")
+
 
 def build_application(argv: list[str] | None = None) -> QApplication:
-    """Construct (or reuse) the QApplication and apply the styling stub."""
+    """Construct (or reuse) the QApplication, load fonts, apply stylesheet."""
     existing = QApplication.instance()
     if existing is not None:
+        _load_bundled_fonts()
         apply_stylesheet(existing)
         return existing
     app = QApplication(argv if argv is not None else sys.argv)
     app.setApplicationName(_APP_NAME)
+    _load_bundled_fonts()
     apply_stylesheet(app)
     return app
 

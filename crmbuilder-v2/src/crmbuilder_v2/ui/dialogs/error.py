@@ -19,6 +19,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from crmbuilder_v2.ui.elevation import apply_dialog_shadow
+from crmbuilder_v2.ui.widgets.modal_backdrop import attach as _backdrop_attach
+from crmbuilder_v2.ui.widgets.modal_backdrop import detach as _backdrop_detach
+
 _BANNER_STYLE = "color: #1F3864; font-weight: bold;"
 
 
@@ -47,6 +51,7 @@ class ErrorDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(title)
         self.setModal(True)
+        apply_dialog_shadow(self)
         self._detail_widget: QPlainTextEdit | None = None
         self._detail_button: QPushButton | None = None
 
@@ -94,3 +99,15 @@ class ErrorDialog(QDialog):
             return
         self._detail_widget.setVisible(checked)
         self._detail_button.setText("Hide details" if checked else "Show details")
+
+    # ------------------------------------------------------------------
+    # Modal backdrop hooks (v0.6 slice A — DEC-091)
+    # ------------------------------------------------------------------
+
+    def showEvent(self, event):  # noqa: N802 — Qt naming
+        super().showEvent(event)
+        _backdrop_attach(self)
+
+    def hideEvent(self, event):  # noqa: N802 — Qt naming
+        _backdrop_detach(self)
+        super().hideEvent(event)

@@ -1,72 +1,253 @@
-"""Minimal QSS stub per DEC-024.
+"""Design tokens and project-level QSS for the v2 desktop UI.
 
-Native Qt look across the application, with a small QSS layer applying
-``#1F3864`` as accent color and Arial as the default font. Both come from
-the v2 document standards so the v2 UI feels visually adjacent to the v2
-documents it represents without committing to a full visual identity.
-A full designed visual pass is deferred to v0.2 (or later).
+Discharges PI-001 — the full styling design pass deferred at v0.1
+close per DEC-024 and reopened as the v0.6 parallel workstream per
+DEC-076.
 
-Slice H refined the stub for consistency: navy accent on selection
-highlights and focus borders, deep red for inline error labels, and
-Arial 10pt as the global default. Inline error labels in the decision
-dialogs use ``ERROR_TEXT_COLOR`` directly via setStyleSheet — they are
-authored in QLabel.setStyleSheet so a single rule suffices here for
-documentation only.
+Earlier versions of this module were a minimal QSS stub: a navy accent
+on a few selection highlights, Arial 10pt default, and a single error-
+text color. v0.6 rewrites the file end-to-end with the theme-keyed
+design token system specified in ``styling-design-pass.md`` §1. The
+``apply_stylesheet(app)`` entry point is preserved so call sites in
+``app.py`` do not change.
+
+The token system has four public names:
+
+* ``TOKENS`` — the theme-keyed dict. ``TOKENS["light"][key]`` returns
+  the value for the named token. A ``"dark"`` theme can be added
+  without consumer-code retrofit (DEC-088).
+* ``t(key, theme="light")`` — accessor that returns a token value or
+  raises ``KeyError`` naming the missing key.
+* ``build_app_stylesheet(tokens)`` — generates the project-level QSS
+  string from a single theme's dict. Accepts the inner dict (not the
+  outer two-level structure) so the slice F WCAG contrast check can
+  consume tokens directly without QSS generation.
+* ``apply_stylesheet(app)`` — convenience wrapper that builds and
+  applies the light-theme stylesheet to a ``QApplication``.
 """
 
 from __future__ import annotations
 
 from PySide6.QtWidgets import QApplication
 
-ACCENT_COLOR = "#1F3864"
-ACCENT_HOVER = "#2A4880"
-ERROR_TEXT_COLOR = "#B22222"
-DEFAULT_FONT_FAMILY = "Arial"
-DEFAULT_FONT_POINT_SIZE = 10
+# ---------------------------------------------------------------------------
+# Token dict — codified from styling-design-pass.md §1
+# ---------------------------------------------------------------------------
 
-_QSS = f"""
+TOKENS: dict[str, dict[str, str]] = {
+    "light": {
+        # Spacing scale — design pass §1.1, 4px base unit.
+        "space.0": "0",
+        "space.1": "4px",
+        "space.2": "8px",
+        "space.3": "12px",
+        "space.4": "16px",
+        "space.5": "20px",
+        "space.6": "24px",
+        "space.8": "32px",
+        "space.10": "40px",
+        "space.12": "48px",
+        # Color — accent — design pass §1.2.2.
+        "color.accent.default": "#1F5FBF",
+        "color.accent.hover": "#2A6CCE",
+        "color.accent.pressed": "#184F9F",
+        "color.accent.subtle": "#E8F0FB",
+        # Focus ring rendered as rgba so consumers can drop it
+        # straight into QSS without recomputing the alpha.
+        "color.accent.focusring": "rgba(31, 95, 191, 0.4)",
+        # Color — neutral — design pass §1.2.3.
+        "color.neutral.0": "#FFFFFF",
+        "color.neutral.50": "#F7F9FB",
+        "color.neutral.100": "#EEF1F5",
+        "color.neutral.200": "#DDE3EA",
+        "color.neutral.300": "#C1CAD4",
+        "color.neutral.500": "#7A8694",
+        "color.neutral.700": "#3F4854",
+        "color.neutral.800": "#272D36",
+        "color.neutral.900": "#0F1318",
+        # Color — status — design pass §1.2.4.
+        "color.danger.default": "#C0392B",
+        "color.danger.text": "#A8281C",
+        "color.danger.subtle": "#FBEBE8",
+        "color.warning.default": "#B0731A",
+        "color.warning.subtle": "#FBF2E0",
+        "color.success.default": "#2D7A4D",
+        # Typography — design pass §1.3.
+        "font.family.default": "Inter",
+        "font.family.mono": "JetBrains Mono",
+        "font.size.caption": "12px",
+        "font.size.small": "13px",
+        "font.size.body": "14px",
+        "font.size.body_large": "16px",
+        "font.size.heading_3": "18px",
+        "font.size.heading_2": "22px",
+        "font.size.heading_1": "28px",
+        "font.weight.regular": "400",
+        "font.weight.medium": "500",
+        "font.weight.semibold": "600",
+        "font.weight.bold": "700",
+        "font.line.tight": "1.2",
+        "font.line.normal": "1.45",
+        "font.line.relaxed": "1.6",
+        # Radius and border — design pass §1.4.
+        "radius.none": "0px",
+        "radius.subtle": "3px",
+        "radius.default": "6px",
+        "radius.large": "10px",
+        # Elevation — design pass §1.5. Encoded as a structural hint:
+        # consumers (apply_dialog_shadow) read the underlying neutral.900
+        # color plus the literal offset/blur values, not these strings.
+        # The token presence here documents the design intent and lets
+        # the WCAG check enumerate the elevation surface.
+        "shadow.dialog": (
+            "offset=(0,4) blur=16 color=#0F1318 alpha=0.25"
+        ),
+        "overlay.modal_backdrop": "color=#0F1318 alpha=0.08",
+    }
+}
+
+
+def t(key: str, theme: str = "light") -> str:
+    """Look up a token value by key; default to the light theme.
+
+    Raises ``KeyError`` whose message names the offending key so a
+    typo at a call site is easy to diagnose.
+    """
+    try:
+        return TOKENS[theme][key]
+    except KeyError as exc:
+        missing = exc.args[0] if exc.args else key
+        raise KeyError(
+            f"Unknown design token: theme={theme!r}, key={missing!r}"
+        ) from None
+
+
+def build_app_stylesheet(tokens: dict[str, str]) -> str:
+    """Build the project-level QSS string from a single theme's dict.
+
+    Takes the inner theme dict (e.g. ``TOKENS["light"]``), not the
+    outer two-level structure, so the WCAG contrast check in slice F
+    can consume tokens directly.
+
+    The QSS is intentionally minimal — only app-wide chrome that every
+    widget picks up by default. Per-category buttons, sidebar
+    treatment, master-pane delegate, ReferencesSection treatment, and
+    per-panel chrome are all added in later slices.
+    """
+
+    def get(key: str) -> str:
+        try:
+            return tokens[key]
+        except KeyError as exc:
+            missing = exc.args[0] if exc.args else key
+            raise KeyError(
+                f"build_app_stylesheet: missing token {missing!r}"
+            ) from None
+
+    rules: list[str] = [
+        # Default font + body color across every widget.
+        f"""
 * {{
-    font-family: "{DEFAULT_FONT_FAMILY}";
-    font-size: {DEFAULT_FONT_POINT_SIZE}pt;
+    font-family: "{get('font.family.default')}";
+    font-size: {get('font.size.body')};
+    color: {get('color.neutral.800')};
 }}
-
-QListWidget::item:selected {{
-    background-color: {ACCENT_COLOR};
-    color: white;
+""",
+        # Text inputs / combos default state.
+        f"""
+QLineEdit, QComboBox, QPlainTextEdit, QTextEdit {{
+    border: 1px solid {get('color.neutral.300')};
+    background: {get('color.neutral.0')};
+    padding: {get('space.1')} {get('space.2')};
+    selection-background-color: {get('color.accent.subtle')};
+    selection-color: {get('color.neutral.900')};
 }}
-
-QListWidget::item:hover {{
-    background-color: #E8ECF5;
+""",
+        # Focused state — accent border.
+        f"""
+QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus, QTextEdit:focus {{
+    border: 1px solid {get('color.accent.default')};
 }}
-
-QTableView {{
-    selection-background-color: {ACCENT_COLOR};
-    selection-color: white;
-    alternate-background-color: #F5F7FB;
-}}
-
-QTableView QHeaderView::section {{
-    background-color: #E8ECF5;
-    padding: 4px 8px;
+""",
+        # Sidebar / generic list widgets pick up a subtle background.
+        # Per-state (selected/hover) treatment lands in slice B; this
+        # rule is harmless for non-sidebar QListWidgets.
+        f"""
+QListWidget {{
+    background: {get('color.neutral.100')};
     border: 0;
-    border-bottom: 1px solid #C0C7D6;
-    font-weight: bold;
 }}
-
+""",
+        # Table view — no alternating rows per design pass §2.3.
+        # Selected-state and row dividers land in slice B via the
+        # shared master-pane delegate.
+        f"""
+QTableView {{
+    background: {get('color.neutral.0')};
+    gridline-color: {get('color.neutral.200')};
+    selection-background-color: {get('color.accent.subtle')};
+    selection-color: {get('color.neutral.900')};
+}}
+""",
+        # Column header treatment.
+        f"""
+QHeaderView::section {{
+    background: {get('color.neutral.100')};
+    border: 0;
+    border-bottom: 1px solid {get('color.neutral.200')};
+    padding: {get('space.2')} {get('space.3')};
+    color: {get('color.neutral.700')};
+    font-weight: {get('font.weight.semibold')};
+}}
+""",
+        # Default QPushButton — Secondary category per §2.5.
+        # Per-category property selectors (primary / destructive /
+        # text / icon-only) are added in slice D.
+        f"""
+QPushButton {{
+    background: transparent;
+    border: 1px solid {get('color.neutral.300')};
+    color: {get('color.neutral.700')};
+    font-weight: {get('font.weight.medium')};
+    padding: {get('space.1')} {get('space.3')};
+    border-radius: {get('radius.subtle')};
+    min-width: 88px;
+}}
+QPushButton:hover {{
+    background: {get('color.neutral.100')};
+}}
+QPushButton:pressed {{
+    background: {get('color.neutral.200')};
+}}
 QPushButton:focus {{
-    border: 1px solid {ACCENT_COLOR};
+    border: 1px solid {get('color.accent.default')};
     outline: none;
 }}
-
-QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus {{
-    border: 1px solid {ACCENT_COLOR};
+QPushButton:disabled {{
+    background: transparent;
+    border: 1px solid {get('color.neutral.200')};
+    color: {get('color.neutral.300')};
 }}
-
+""",
+        # Inline error label hook used by EntityCrudDialog.
+        f"""
 QLabel[role="error"] {{
-    color: {ERROR_TEXT_COLOR};
+    color: {get('color.danger.text')};
 }}
-"""
+""",
+        # Panel chrome — content background for ListDetailPanel.
+        # Slice A adds the objectName hook on the panel widget itself;
+        # see ui/base/list_detail_panel.py.
+        f"""
+QWidget#listDetailPanel {{
+    background: {get('color.neutral.50')};
+}}
+""",
+    ]
+
+    return "\n".join(rule.strip() for rule in rules) + "\n"
 
 
 def apply_stylesheet(app: QApplication) -> None:
-    app.setStyleSheet(_QSS)
+    """Apply the project-level light-theme stylesheet to the application."""
+    app.setStyleSheet(build_app_stylesheet(TOKENS["light"]))
