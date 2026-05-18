@@ -1,19 +1,21 @@
 # CRMBuilder v2 — UI v0.6 Implementation Plan
 
 **Version:** 0.1
-**Last Updated:** 05-16-26 17:45
+**Last Updated:** 05-16-26 19:15
 **Status:** Approved
 **Companion PRD:** `ui-PRD-v0.6.md`
-**Predecessor plan:** `ui-v0.5-implementation-plan.md` (engagement management; ships first per DEC-095)
+**Predecessor plan:** `ui-v0.5-implementation-plan.md` (engagement management; ships first per DEC-105)
 **Executing prompt series:** `prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-{A..F}-*.md`
 
 ---
 
 ## Change Log
 
-**Version 0.1 (05-16-26 17:30):** Initial draft. Six-slice breakdown for v0.6 build: foundation + About, sidebar + master-pane delegate, panel retrofits + ReferencesSection, dialogs + form controls, status surfaces + crash banner, closeout. Per DEC-096 reconciled against workstream plan §5.3 strawman. Strictly sequential dependency chain — no parallelism within v0.6.
+**Version 0.1 (05-16-26 17:30):** Initial draft. Six-slice breakdown for v0.6 build: foundation + About, sidebar + master-pane delegate, panel retrofits + ReferencesSection, dialogs + form controls, status surfaces + crash banner, closeout. Per DEC-106 reconciled against workstream plan §5.3 strawman. Strictly sequential dependency chain — no parallelism within v0.6.
 
 **Version 0.1 (05-16-26 17:45):** Pre-flight corrections during slice A prompt-drafting. Status transitions from "Draft — pending approval" to "Approved." Same three corrections applied as ui-PRD-v0.6.md's parallel 17:45 entry: (1) `tokens.py` references throughout document corrected to `styling.py` — the v0.1-shipped module is rewritten in place rather than replaced by a new module; (2) About dialog file path corrected from `ui/dialogs/about.py` to `ui/about_dialog.py`; (3) `crud_delete_dialog.py` references removed — `EntityCrudDeleteDialog` shares `ui/base/crud_dialog.py` with `EntityCrudDialog`. Plus §3 directory tree gains a third dialog base I missed (`ui/base/versioned_replace_dialog.py`) and `ui/splash.py` (one consumer of legacy constants that must update). Slice A deliverables list rewritten to reflect the corrected file inventory. No content changes to slice structure or acceptance criteria.
+
+**Version 0.1 (05-16-26 19:15):** Identifier rebase to reflect parallel-workstream-consumed identifiers at close-out time. SES-028 → SES-030; DEC-095/096/097 → DEC-105/106/107. Same rebase applied to companion PRD and all six slice prompts. No content change; numbering only. Per the SES-027 rebase pattern from styling Conversation 1.
 
 ---
 
@@ -21,7 +23,7 @@
 
 This plan implements the v0.6 desktop UI specified in `ui-PRD-v0.6.md`. v0.6 is decomposed into six independently testable slices, each delivered as its own Claude Code prompt. Each prompt produces a working state of the application that exercises a coherent subset of the PRD's acceptance criteria.
 
-Slice boundaries follow DEC-096's six-slice structure. Slice A delivers the foundation (design tokens module, font and icon asset bundling, loader helpers, modal elevation infrastructure, base widget hooks, About dialog re-skin as the canary). Slice B delivers the shared visual vocabulary (sidebar + master-pane delegate). Slice C retrofits every panel with the token system. Slice D delivers dialogs + form controls + button categories. Slice E delivers status / error / warning surfaces and the crash banner re-skin. Slice F is mechanical closeout (version bump, README, WCAG contrast check, regression pass, status update).
+Slice boundaries follow DEC-106's six-slice structure. Slice A delivers the foundation (design tokens module, font and icon asset bundling, loader helpers, modal elevation infrastructure, base widget hooks, About dialog re-skin as the canary). Slice B delivers the shared visual vocabulary (sidebar + master-pane delegate). Slice C retrofits every panel with the token system. Slice D delivers dialogs + form controls + button categories. Slice E delivers status / error / warning surfaces and the crash banner re-skin. Slice F is mechanical closeout (version bump, README, WCAG contrast check, regression pass, status update).
 
 After all six prompts execute cleanly, every acceptance criterion in PRD section 6 is satisfied. The application becomes visually coherent incrementally: after slice A the About dialog renders against the new token system but every other surface is unchanged; after slice B the sidebar and every master pane render the new selected-state vocabulary even though panel chrome and detail panes are still Qt-default; after slice C panels are coherent end-to-end; after slices D and E dialogs and status surfaces complete the picture; after slice F the release is shippable.
 
@@ -113,7 +115,7 @@ Font and icon assets are git-tracked (not gitignored). Loading happens at app st
 
 ### 2.14 New for v0.6 — screenshot capture protocol
 
-Per DEC-097, each visual slice (A through E) commits after-state screenshots to `PRDs/product/crmbuilder-v2/styling-screenshots/slice-{X}/`. Screenshots are PNG, captured by Doug after running the slice's Claude Code prompt and eyeball-verifying rendering.
+Per DEC-107, each visual slice (A through E) commits after-state screenshots to `PRDs/product/crmbuilder-v2/styling-screenshots/slice-{X}/`. Screenshots are PNG, captured by Doug after running the slice's Claude Code prompt and eyeball-verifying rendering.
 
 The Claude Code prompt for each slice produces the code; Doug runs the application, captures the screenshots, and commits them in a separate operator commit immediately after the prompt's commit lands. The slice's acceptance gate (per PRD §6) is satisfied when both the code commit and the screenshot commit are present on `main`.
 
@@ -123,7 +125,7 @@ Filename convention: `{surface-name}.png` (e.g., `about-dialog.png`, `sidebar.pn
 
 Slice F adds `tests/crmbuilder_v2/ui/test_token_contrast.py` exercising the WCAG AA contrast check per design pass A9 against every text-on-background combination listed in §4.4 of the design pass. The test uses the `wcag-contrast-ratio` Python library (or equivalent — slice F's prompt picks the specific library) to compute contrast ratios from the codified `styling.py` hex values.
 
-The check is a build gate per DEC-097. Failures are not tolerated; if any combination fails, a token-value adjustment lands in `styling.py` and slice F re-runs.
+The check is a build gate per DEC-107. Failures are not tolerated; if any combination fails, a token-value adjustment lands in `styling.py` and slice F re-runs.
 
 ---
 
@@ -185,7 +187,7 @@ crmbuilder-v2/
         │   ├── entities.py                     # MODIFIED (slice C)
         │   ├── processes.py                    # MODIFIED (slice C) — also _WARNING_STYLE update from danger-red to warning-amber (slice E)
         │   ├── crm_candidates.py               # MODIFIED (slice C)
-        │   └── engagement.py                   # MODIFIED (slice C) — if v0.5 has shipped by slice C land time per DEC-095
+        │   └── engagement.py                   # MODIFIED (slice C) — if v0.5 has shipped by slice C land time per DEC-105
         ├── dialogs/
         │   ├── error.py                        # MODIFIED (slices A, E) — token-consuming chrome + elevation/backdrop hooks (standalone QDialog); header retoken with circle-x icon + danger-text in slice E
         │   ├── reference_delete.py             # MODIFIED (slice A) — elevation + backdrop hooks (standalone QDialog subclass, does not inherit from EntityCrudDeleteDialog)
@@ -386,7 +388,7 @@ Each slice lands as one commit (or a small handful, plus an operator-authored sc
 
 - `__version__` in `crmbuilder-v2/src/crmbuilder_v2/__init__.py` set to `"0.6.0"`.
 - README at `crmbuilder-v2/README.md` extended with a v0.6 release-note entry matching v0.5's format: one-paragraph summary plus a bullet list of release highlights (design tokens module, bundled fonts, bundled icons, five button categories, master-pane delegate, sub-sectioned ReferencesSection, modal elevation, retired legacy colors).
-- `tests/crmbuilder_v2/ui/test_token_contrast.py` added — exercises the WCAG AA contrast check per DEC-097 against every text-on-background combination listed in design pass §4.4. Uses an established Python WCAG-contrast library (slice F's prompt picks the specific library; `wcag-contrast-ratio` is a candidate). The test is parameterized over the codified combinations from §4.4 (body text on neutral.0; secondary text on neutral.0; read-only text on neutral.100; accent on neutral.0; danger text on neutral.0; warning on neutral.0; white on accent; white on danger). Each combination asserts the computed ratio meets AA at its target text size.
+- `tests/crmbuilder_v2/ui/test_token_contrast.py` added — exercises the WCAG AA contrast check per DEC-107 against every text-on-background combination listed in design pass §4.4. Uses an established Python WCAG-contrast library (slice F's prompt picks the specific library; `wcag-contrast-ratio` is a candidate). The test is parameterized over the codified combinations from §4.4 (body text on neutral.0; secondary text on neutral.0; read-only text on neutral.100; accent on neutral.0; danger text on neutral.0; warning on neutral.0; white on accent; white on danger). Each combination asserts the computed ratio meets AA at its target text size.
 - Full regression test pass: `uv run pytest tests/crmbuilder_v2/ -v` returns green across the full suite (v0.5 tests + the new WCAG contrast test module).
 - Final integration smoke: open the desktop app, confirm the About dialog shows v0.6.0; open each panel and confirm rendering matches the design system end-to-end; open each dialog category (create, edit, delete-confirm, references-attach, About, error) and confirm chrome / buttons / fields render per the design pass.
 
@@ -398,9 +400,9 @@ Each slice lands as one commit (or a small handful, plus an operator-authored sc
 - AC F4 (WCAG contrast check passes for every combination)
 - AC F5 (status entity updated from "v0.5 complete" to "v0.6 complete" via versioned-replace)
 - AC F6 (cumulative roll-up: all prior slices' acceptance criteria pass)
-- AC F7 (SES-028 + DEC-095/096/097 + references drafted in close-out payload)
+- AC F7 (SES-030 + DEC-105/096/097 + references drafted in close-out payload)
 
-**Out of slice:** status-entity versioned-replace (authored through the desktop UI by the operator after slice F lands, not in Claude Code); SES-028 session record application (operator runs the close-out apply prompt after slice F lands); next-release planning.
+**Out of slice:** status-entity versioned-replace (authored through the desktop UI by the operator after slice F lands, not in Claude Code); SES-030 session record application (operator runs the close-out apply prompt after slice F lands); next-release planning.
 
 ---
 
@@ -423,13 +425,13 @@ Test counts per slice (estimates):
 - Slice E: ~0 new tests; status surfaces and crash banner verified by eyeball + screenshot.
 - Slice F: ~8–12 new tests in `test_token_contrast.py` — one per WCAG combination listed in design pass §4.4.
 
-Estimated cumulative new tests for v0.6: ~8–12, all in the slice F WCAG contrast module. The numbers are small because v0.6 is visual; visual verification is screenshot-based per DEC-097 rather than test-based. The v0.5 test suite carries the regression net.
+Estimated cumulative new tests for v0.6: ~8–12, all in the slice F WCAG contrast module. The numbers are small because v0.6 is visual; visual verification is screenshot-based per DEC-107 rather than test-based. The v0.5 test suite carries the regression net.
 
 ---
 
 ## 7. Screenshot Capture Protocol
 
-Per DEC-097, slices A through E each commit after-state screenshots to `PRDs/product/crmbuilder-v2/styling-screenshots/slice-{X}/`. The protocol:
+Per DEC-107, slices A through E each commit after-state screenshots to `PRDs/product/crmbuilder-v2/styling-screenshots/slice-{X}/`. The protocol:
 
 1. Doug runs the slice's Claude Code prompt against the local checkout. The prompt produces the code commit on `main` and pushes.
 2. Doug pulls the updated `main` to the local checkout.
@@ -456,7 +458,7 @@ Slice F sets `__version__` to `"0.6.0"`. No other file carries the version.
 
 After slice F passes, the operator (Doug) writes:
 
-- The session record for the styling Conversation 2 (this conversation, SES-028) by running the close-out apply prompt at `PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-apply-close-out-ses-028.md` — the apply prompt POSTs SES-028 + DEC-095 + DEC-096 + DEC-097 + references via `apply_close_out.py` per the SES-025/026/027 precedent. The close-out apply prompt is authored at the end of this same conversation alongside the close-out payload `close-out-payloads/ses_028.json`.
+- The session record for the styling Conversation 2 (this conversation, SES-030) by running the close-out apply prompt at `PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-apply-close-out-ses-030.md` — the apply prompt POSTs SES-030 + DEC-105 + DEC-106 + DEC-107 + references via `apply_close_out.py` per the SES-025/026/027 precedent. The close-out apply prompt is authored at the end of this same conversation alongside the close-out payload `close-out-payloads/ses_030.json`.
 - The session records for any Claude Code slice-execution conversations that contributed to v0.6 build, written at the close of each slice's execution conversation per DEC-014 + DEC-029.
 - The status-entity versioned-replace update from `"v0.5 complete"` to `"v0.6 complete"` through the desktop versioned-replace dialog.
 

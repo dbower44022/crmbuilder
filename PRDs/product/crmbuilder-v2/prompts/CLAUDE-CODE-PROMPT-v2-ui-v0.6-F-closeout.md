@@ -18,13 +18,13 @@ Five deliverables:
 
 2. **README v0.6 release note.** `crmbuilder-v2/README.md` extended with a v0.6 entry matching v0.5's format: one-paragraph summary plus a bullet list of highlights (design tokens module, bundled Inter + JetBrains Mono fonts, bundled Lucide icons, five button categories, master-pane delegate, sub-sectioned ReferencesSection, modal elevation, retired legacy color values).
 
-3. **WCAG contrast test module.** New `tests/crmbuilder_v2/ui/test_token_contrast.py` exercising the WCAG AA contrast check per DEC-097 against every text-on-background combination listed in design pass §4.4 (A9). Uses the `wcag-contrast-ratio` PyPI library (or a hand-rolled implementation if the library isn't available — slice F's prompt-runner picks). The test is a build gate; failures are not tolerated.
+3. **WCAG contrast test module.** New `tests/crmbuilder_v2/ui/test_token_contrast.py` exercising the WCAG AA contrast check per DEC-107 against every text-on-background combination listed in design pass §4.4 (A9). Uses the `wcag-contrast-ratio` PyPI library (or a hand-rolled implementation if the library isn't available — slice F's prompt-runner picks). The test is a build gate; failures are not tolerated.
 
 4. **Full regression test pass.** `uv run pytest tests/crmbuilder_v2/ -v` returns green across the entire suite, including the new WCAG contrast test module.
 
 5. **Final integration smoke.** Open the application; verify About dialog shows v0.6.0; open each panel and confirm rendering matches the design system end-to-end; open each dialog category and confirm chrome / buttons / fields render per the design pass.
 
-This slice does NOT include: SES-028 session record application via `apply_close_out.py` — that is operator-authored after slice F lands. Status entity versioned-replace from "v0.5 complete" to "v0.6 complete" — operator-authored through the desktop versioned-replace dialog. Both happen post-slice-F per implementation plan §9.
+This slice does NOT include: SES-030 session record application via `apply_close_out.py` — that is operator-authored after slice F lands. Status entity versioned-replace from "v0.5 complete" to "v0.6 complete" — operator-authored through the desktop versioned-replace dialog. Both happen post-slice-F per implementation plan §9.
 
 ## Project context
 
@@ -121,7 +121,7 @@ def contrast_ratio(hex1: str, hex2: str) -> float:
 ```python
 """WCAG AA contrast verification for the v0.6 design token system.
 
-Per DEC-097, this is a build gate. Failures are not tolerated.
+Per DEC-107, this is a build gate. Failures are not tolerated.
 Each text-on-background combination listed in styling-design-pass.md
 §4.4 (A9) is checked against the WCAG AA threshold for its target
 text size.
@@ -256,7 +256,7 @@ README:
   surfaces, modal elevation, retired legacy colors
 
 WCAG contrast test (tests/crmbuilder_v2/ui/test_token_contrast.py):
-- Build-gate test per DEC-097
+- Build-gate test per DEC-107
 - 8 text-on-background combinations from design pass §4.4
   (A9) verified against WCAG AA threshold (4.5:1 for small
   body text)
@@ -281,9 +281,9 @@ v0.6 IS RELEASED.
 Operator-authored steps to complete the release (next):
 - Status entity versioned-replace from 'v0.5 complete' to
   'v0.6 complete' via the desktop versioned-replace dialog
-- SES-028 session record application via apply_close_out.py
+- SES-030 session record application via apply_close_out.py
   prompt at PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-
-  PROMPT-apply-close-out-ses-028.md (authored at v0.6 plan
+  PROMPT-apply-close-out-ses-030.md (authored at v0.6 plan
   close, applied after slice F)
 
 No schema changes; no API changes. PI-001 discharged.
@@ -291,11 +291,11 @@ No schema changes; no API changes. PI-001 discharged.
 
 After committing:
 - `git push origin main`
-- Notify Doug that v0.6 build is complete. Operator-authored closeout follows: status versioned-replace + SES-028 application.
+- Notify Doug that v0.6 build is complete. Operator-authored closeout follows: status versioned-replace + SES-030 application.
 
 ## Out of slice
 
-- SES-028 session record application via `apply_close_out.py` — operator-authored after slice F lands. The close-out apply prompt and `close-out-payloads/ses_028.json` are authored at this conversation's close, NOT in slice F.
+- SES-030 session record application via `apply_close_out.py` — operator-authored after slice F lands. The close-out apply prompt and `close-out-payloads/ses_030.json` are authored at this conversation's close, NOT in slice F.
 - Status entity versioned-replace from "v0.5 complete" to "v0.6 complete" — operator-authored through the desktop versioned-replace dialog.
 - v0.7+ planning conversations and slice work.
 

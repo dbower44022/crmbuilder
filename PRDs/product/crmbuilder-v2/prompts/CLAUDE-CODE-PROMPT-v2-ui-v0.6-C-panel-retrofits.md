@@ -34,7 +34,7 @@ This slice does NOT add: dialog chrome retoken beyond what's needed for label-ab
 
 Slices A and B landed the foundation and the shared selected-state vocabulary. After slice B, every panel's master pane renders with the new vocabulary but panel chrome (background, padding, splitter) is mostly Qt-default and detail panes still use label-left `QFormLayout`. Slice C closes both gaps.
 
-Slice C is the largest slice by file count: 12+ panels touched, the `ReferencesSection` widget rewritten internally, two dialog bases updated for `WrapAllRows`, the `build_app_stylesheet()` function gains 5–8 new QSS rules. Per DEC-097's screenshot acceptance pattern, slice C's after-state screenshots are the most numerous (one per panel plus the multi-kind ReferencesSection example).
+Slice C is the largest slice by file count: 12+ panels touched, the `ReferencesSection` widget rewritten internally, two dialog bases updated for `WrapAllRows`, the `build_app_stylesheet()` function gains 5–8 new QSS rules. Per DEC-107's screenshot acceptance pattern, slice C's after-state screenshots are the most numerous (one per panel plus the multi-kind ReferencesSection example).
 
 The retrofit pattern is highly uniform across panels: apply tokens (already done by slice A's `ListDetailPanel` chrome hooks), apply `WrapAllRows` to the panel's `QFormLayout`, adopt the `required_label` helper for required fields, add status combo caption where applicable. Slice C's prompt describes the pattern once and trusts the prompt-runner to apply it uniformly, verifying with the screenshot suite.
 

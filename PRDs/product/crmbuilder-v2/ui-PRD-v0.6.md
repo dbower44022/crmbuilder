@@ -1,17 +1,18 @@
 # CRMBuilder v2 — User Interface PRD
 
 **Version:** 0.6
-**Last Updated:** 05-16-26 17:45
+**Last Updated:** 05-16-26 19:15
 **Status:** Approved
-**Predecessor:** `ui-PRD-v0.5.md` (engagement management; ships first per DEC-095)
+**Predecessor:** `ui-PRD-v0.5.md` (engagement management; ships first per DEC-105)
 **Design input:** `styling-design-pass.md` (v0.1, Conversation 1 output per SES-027)
 
 ## Change Log
 
 | Version | Date | Description |
 | --- | --- | --- |
-| 0.6 | 05-16-26 17:30 | Initial draft from Styling Conversation 2 (build planning). v0.6 is the first v2 release whose primary frame is visual rather than structural — it discharges PI-001 (full styling design pass per DEC-024) after four prior deferrals and the workstream reopening in DEC-076. v0.6 ships in parallel with v0.5 (engagement management); the two workstreams couple only at v0.5's new engagement panel, which v0.6 retrofits alongside the existing twelve panels. Source content for visual decisions is `styling-design-pass.md` (this PRD cites rather than restates §1 tokens and §2 component visual decisions). Captures three architectural decisions taken in this conversation for recording at PRD approval: version-bundling resolved as v0.6 separate from v0.5 (DEC-095), six-slice structure A–F (DEC-096), per-slice screenshot + closeout WCAG check acceptance pattern (DEC-097). |
+| 0.6 | 05-16-26 17:30 | Initial draft from Styling Conversation 2 (build planning). v0.6 is the first v2 release whose primary frame is visual rather than structural — it discharges PI-001 (full styling design pass per DEC-024) after four prior deferrals and the workstream reopening in DEC-076. v0.6 ships in parallel with v0.5 (engagement management); the two workstreams couple only at v0.5's new engagement panel, which v0.6 retrofits alongside the existing twelve panels. Source content for visual decisions is `styling-design-pass.md` (this PRD cites rather than restates §1 tokens and §2 component visual decisions). Captures three architectural decisions taken in this conversation for recording at PRD approval: version-bundling resolved as v0.6 separate from v0.5 (DEC-105), six-slice structure A–F (DEC-106), per-slice screenshot + closeout WCAG check acceptance pattern (DEC-107). |
 | 0.6 | 05-16-26 17:45 | Pre-flight corrections during slice A prompt-drafting. Status transitions from "Draft — pending approval" to "Approved." Three factual corrections: (1) the v0.1-shipped `styling.py` module already exists at `ui/styling.py` (DEC-024's minimal QSS stub that PI-001 has been tracking) and is rewritten in place rather than replaced by a new `tokens.py` — preserves the existing `apply_stylesheet(app)` entry point and matches the user-preferences guidance to minimize churn on existing files; (2) About dialog lives at `ui/about_dialog.py` at the `ui/` top level, NOT `ui/dialogs/about.py` — there is no `about.py` in `dialogs/`; (3) `EntityCrudDeleteDialog` shares `ui/base/crud_dialog.py` with `EntityCrudDialog` (single file containing both bases) — there is no separate `crud_delete_dialog.py`. Per-dialog modal-backdrop hook count corrected from "6 files" (earlier Decision turn) to "3 base classes + 3 standalone subclasses = 6 file edits with corrected identities" — the bases are `crud_dialog.py`, `versioned_replace_dialog.py` (third base I missed: covers Charter + Status replace dialogs), and standalone subclasses are `about_dialog.py`, `dialogs/error.py`, `dialogs/reference_delete.py`. No content changes to scope, slice structure, or acceptance criteria. |
+| 0.6 | 05-16-26 19:15 | Identifier rebase from pre-flight against the database snapshot at close-out time. The SES-028 + DEC-095/096/097 identifiers anticipated when this PRD was drafted were consumed in flight by parallel v0.5 work (commits between this PRD's authoring and its close-out time). Per the parallel-workstream coupling discipline in DEC-076, this conversation rebased its numbering: SES-028 → SES-030 (next available after v0.5's SES-029); DEC-095 → DEC-105, DEC-096 → DEC-106, DEC-097 → DEC-107 (next available after v0.5's DEC-104). No content change; numbering only. Same pattern as the SES-027 rebase from SES-026 that occurred during styling Conversation 1's close-out. |
 
 ---
 
@@ -54,9 +55,9 @@ Design-pass decisions (Conversation 1, SES-027):
 
 Forthcoming decisions (to be recorded after this PRD is approved, see Section 11):
 
-- **DEC-095** — Version bundling for the styling work: ship as separate v0.6 release rather than bundled into v0.5. Independence of the two workstreams is load-bearing; bundling permanently blurs the project's release-version navigation index.
-- **DEC-096** — Slice structure for v0.6: six slices (Foundation + About, Sidebar + master-pane delegate, Panel retrofits + ReferencesSection, Dialogs + form controls, Status + crash banner, Closeout). Reconciliation differences from the workstream plan §5.3 strawman documented in §7 of this PRD.
-- **DEC-097** — Slice acceptance pattern: per-slice after-state screenshot committed to `PRDs/product/crmbuilder-v2/styling-screenshots/slice-{X}/`, plus eyeball verification against the design pass. Automated WCAG AA contrast check against codified `styling.py` values runs once at slice F closeout per design-pass A9.
+- **DEC-105** — Version bundling for the styling work: ship as separate v0.6 release rather than bundled into v0.5. Independence of the two workstreams is load-bearing; bundling permanently blurs the project's release-version navigation index.
+- **DEC-106** — Slice structure for v0.6: six slices (Foundation + About, Sidebar + master-pane delegate, Panel retrofits + ReferencesSection, Dialogs + form controls, Status + crash banner, Closeout). Reconciliation differences from the workstream plan §5.3 strawman documented in §7 of this PRD.
+- **DEC-107** — Slice acceptance pattern: per-slice after-state screenshot committed to `PRDs/product/crmbuilder-v2/styling-screenshots/slice-{X}/`, plus eyeball verification against the design pass. Automated WCAG AA contrast check against codified `styling.py` values runs once at slice F closeout per design-pass A9.
 
 ---
 
@@ -82,7 +83,7 @@ The following are required deliverables for v0.6.
 
 8. **Master-pane delegate.** Shared `QStyledItemDelegate` subclass at `crmbuilder-v2/src/crmbuilder_v2/ui/widgets/master_pane_delegate.py` implementing design pass §2.3 across all `QTableView`, `QTreeView`, and `QListView` master panes in the application. The delegate handles: 28px row height; row-divider hairlines in `color.neutral.200`; column header treatment with `font.size.small` `font.weight.semibold` `color.neutral.700` text on `color.neutral.100` background; hover-state row tinting; selected-state row treatment matching the sidebar vocabulary (3px left accent bar + `color.accent.subtle` background + `color.neutral.900` medium-weight text) per DEC-093; soft-deleted-row treatment (50% text contrast plus leading Lucide `trash-2` icon in the identifier column when `?include_deleted=true` is on); identifier-column mono-font rendering (`font.family.mono` at `font.size.small`). Registered on every existing panel's master pane in slice B; the eventual v0.5 engagement panel inherits via the same registration in slice C.
 
-9. **Panel retrofits.** Every panel in `crmbuilder-v2/src/crmbuilder_v2/ui/panels/` absorbs tokens per design pass §2.2 (panel chrome) and §2.4 (detail pane). Specifically: panel content background `color.neutral.50`; outer padding 16px (`space.4`); master/detail `QSplitter` retained with `space.3` (12px) handle width and centered hairline divider; default split 45/55; detail-pane form layout changed from current `QFormLayout` (label-left) to label-above with 4px label-to-field gap and 12px row-to-row spacing per design pass §2.4. Affected panels: 12 panels shipping in v0.5 (8 governance: Sessions, Decisions, Risks, Planning Items, Topics, References, Charter, Status; 4 methodology: Domains, Entities, Processes, CRM Candidates) plus v0.5's new Engagement panel (the 13th) if v0.5 has shipped by this slice's land time, which is expected per DEC-095's separate-release sequencing.
+9. **Panel retrofits.** Every panel in `crmbuilder-v2/src/crmbuilder_v2/ui/panels/` absorbs tokens per design pass §2.2 (panel chrome) and §2.4 (detail pane). Specifically: panel content background `color.neutral.50`; outer padding 16px (`space.4`); master/detail `QSplitter` retained with `space.3` (12px) handle width and centered hairline divider; default split 45/55; detail-pane form layout changed from current `QFormLayout` (label-left) to label-above with 4px label-to-field gap and 12px row-to-row spacing per design pass §2.4. Affected panels: 12 panels shipping in v0.5 (8 governance: Sessions, Decisions, Risks, Planning Items, Topics, References, Charter, Status; 4 methodology: Domains, Entities, Processes, CRM Candidates) plus v0.5's new Engagement panel (the 13th) if v0.5 has shipped by this slice's land time, which is expected per DEC-105's separate-release sequencing.
 
 10. **ReferencesSection sub-sectioned plain-list rendering.** Existing `crmbuilder-v2/src/crmbuilder_v2/ui/widgets/references_section.py` restructured per design pass §2.4 to render references in sub-sections grouped by relationship kind. Each sub-section has a `font.size.small` `font.weight.semibold` `color.neutral.700` header (kind name in title case — "Decided in", "Is about", "Hands off to", "Receives from", "Supersedes", "Superseded by", "References"). Entries below each header render identifier in `font.family.mono` at `font.size.small` `color.neutral.700` followed by title in `font.size.body` `color.neutral.800`. Sub-sections separated by 16px (`space.4`) vertical space. "Add reference" text-only button below the last sub-section with Lucide `plus` icon. Empty-state line "No references" in `color.neutral.500` when no references registered.
 
@@ -148,7 +149,7 @@ v0.6 adds three new modules, restructures two existing widgets, and retoken-touc
 | Application shell | `crmbuilder_v2.ui.app` | extended | App startup loads bundled fonts via `QFontDatabase.addApplicationFont()` before the main window opens. |
 | Storage layer | `crmbuilder_v2.access.*`, `crmbuilder_v2.api.*` | unchanged | v0.6 is visual-only. |
 | Migrations | `crmbuilder-v2/migrations/` | unchanged | No schema changes; no Alembic revisions. |
-| Tests | `tests/crmbuilder_v2/` | extended | New test module for the WCAG contrast verification (slice F). No new tests for the visual surfaces themselves — visual verification is screenshot-based per DEC-097. v0.5 test suite continues to pass. |
+| Tests | `tests/crmbuilder_v2/` | extended | New test module for the WCAG contrast verification (slice F). No new tests for the visual surfaces themselves — visual verification is screenshot-based per DEC-107. v0.5 test suite continues to pass. |
 
 ### Configuration
 
@@ -194,7 +195,7 @@ Design pass §2.9 and §2.10. Slice E delivers inline form-field error treatment
 
 ### 4.9 Closeout
 
-Slice F delivers `__version__` bump to `"0.6.0"`, README release note, status update from `"v0.5 complete"` to `"v0.6 complete"`, automated WCAG AA contrast verification per DEC-097, and session record drafts for SES-028 (this conversation).
+Slice F delivers `__version__` bump to `"0.6.0"`, README release note, status update from `"v0.5 complete"` to `"v0.6 complete"`, automated WCAG AA contrast verification per DEC-107, and session record drafts for SES-030 (this conversation).
 
 ---
 
@@ -210,7 +211,7 @@ Slice F adds a v0.6 release-note entry to `crmbuilder-v2/README.md` matching v0.
 
 ### 5.3 Test target
 
-`uv run pytest tests/crmbuilder_v2/ -v` continues as the test target. v0.5's test suite remains green; v0.6 adds one new test module (`tests/crmbuilder_v2/ui/test_token_contrast.py`) that exercises the WCAG AA contrast check per DEC-097 against the codified `styling.py` values. No tests added for visual surfaces themselves — visual verification is screenshot-based per DEC-097.
+`uv run pytest tests/crmbuilder_v2/ -v` continues as the test target. v0.5's test suite remains green; v0.6 adds one new test module (`tests/crmbuilder_v2/ui/test_token_contrast.py`) that exercises the WCAG AA contrast check per DEC-107 against the codified `styling.py` values. No tests added for visual surfaces themselves — visual verification is screenshot-based per DEC-107.
 
 ### 5.4 Status update
 
@@ -218,7 +219,7 @@ Status is updated from `"v0.5 complete"` to `"v0.6 complete"` after slice F pass
 
 ### 5.5 Screenshot capture
 
-Per DEC-097, each visual slice (A through E) commits an after-state screenshot per affected surface to `PRDs/product/crmbuilder-v2/styling-screenshots/slice-{X}/`. Doug captures screenshots after running the slice's Claude Code prompt and verifying eyeball-level rendering. Screenshots are PNG, sized to fit content (not full screen unless the surface itself fills the screen). Filename convention: `{surface-name}.png` (e.g., `about-dialog.png`, `sidebar.png`, `master-pane-delegate.png`, `domains-panel.png`). Total expected screenshot count across v0.6: ~15–20 PNGs at ~100–300 KB each, ~3–5 MB total.
+Per DEC-107, each visual slice (A through E) commits an after-state screenshot per affected surface to `PRDs/product/crmbuilder-v2/styling-screenshots/slice-{X}/`. Doug captures screenshots after running the slice's Claude Code prompt and verifying eyeball-level rendering. Screenshots are PNG, sized to fit content (not full screen unless the surface itself fills the screen). Filename convention: `{surface-name}.png` (e.g., `about-dialog.png`, `sidebar.png`, `master-pane-delegate.png`, `domains-panel.png`). Total expected screenshot count across v0.6: ~15–20 PNGs at ~100–300 KB each, ~3–5 MB total.
 
 ---
 
@@ -316,7 +317,7 @@ F5. Status entity updated from `"v0.5 complete"` to `"v0.6 complete"` via the ve
 
 F6. Cumulative roll-up: A1–A7 plus B1–B7 plus C1–C7 plus D1–D6 plus E1–E6 plus F1–F5 pass in the running application.
 
-F7. SES-028 session record draft and DEC-095 through DEC-097 decision records drafted in the close-out payload per the SES-025/026/027 close-out pattern.
+F7. SES-030 session record draft and DEC-105 through DEC-107 decision records drafted in the close-out payload per the SES-025/026/027 close-out pattern.
 
 ---
 
@@ -326,7 +327,7 @@ Slice breakdown, dependencies, and per-slice Claude Code prompts are at `PRDs/pr
 
 ### Reconciliation with workstream plan strawman
 
-Workstream plan §5.3 sketched a five-slice strawman (Foundation / Governance retrofit / Methodology retrofit / Dialog polish / Closeout). This PRD's six-slice structure (DEC-096) differs in three ways:
+Workstream plan §5.3 sketched a five-slice strawman (Foundation / Governance retrofit / Methodology retrofit / Dialog polish / Closeout). This PRD's six-slice structure (DEC-106) differs in three ways:
 
 1. **Master-pane delegate is its own slice (B) rather than buried in the panel retrofits.** The delegate is shared across all 12+ panels; pulling it to a foundation-tier slice avoids artificially coupling governance and methodology retrofit work.
 
@@ -340,7 +341,7 @@ Slices land in lettered order. A → B → C → D → E → F is strict; no par
 
 ### Engagement-panel coupling
 
-Per workstream plan §4, v0.5 ships first (engagement management as a separate v0.5 release per DEC-095). When slice C runs, the v0.5 engagement panel is present in `panels/` and absorbs the retrofit alongside the other 12 panels. No separate coordination needed.
+Per workstream plan §4, v0.5 ships first (engagement management as a separate v0.5 release per DEC-105). When slice C runs, the v0.5 engagement panel is present in `panels/` and absorbs the retrofit alongside the other 12 panels. No separate coordination needed.
 
 ---
 
@@ -368,11 +369,11 @@ The only structural code changes v0.6 makes are (a) base-widget hooks for token 
 
 ### Constraint: WCAG AA contrast is a build gate
 
-Per DEC-097, the slice F WCAG contrast check is not advisory — it is a build gate. If any text-on-background combination from design pass §4.4 fails, slice F fails and a token-value adjustment must land before v0.6 can ship. The check is automated and runs in pytest.
+Per DEC-107, the slice F WCAG contrast check is not advisory — it is a build gate. If any text-on-background combination from design pass §4.4 fails, slice F fails and a token-value adjustment must land before v0.6 can ship. The check is automated and runs in pytest.
 
 ### Constraint: screenshots are committed git-tracked
 
-Per DEC-097, after-state screenshots are git-tracked at `PRDs/product/crmbuilder-v2/styling-screenshots/`. They are not gitignored. This means v0.6's commit history grows by ~3–5 MB of PNG content; that is the intended trade for project navigability.
+Per DEC-107, after-state screenshots are git-tracked at `PRDs/product/crmbuilder-v2/styling-screenshots/`. They are not gitignored. This means v0.6's commit history grows by ~3–5 MB of PNG content; that is the intended trade for project navigability.
 
 ---
 
@@ -385,7 +386,7 @@ Per DEC-097, after-state screenshots are git-tracked at `PRDs/product/crmbuilder
 | The shared master-pane delegate (slice B) breaks an existing panel's per-panel column rendering | Low | High | Every panel's master pane has the same `QTableView`-based shape per v0.4's `ListDetailPanel` factory pattern. Slice B's prompt verifies each panel renders correctly post-registration. If a panel has custom column rendering that conflicts, the delegate's `paint()` falls through to `super().paint()` for non-overridden cases. |
 | Label-above form layout (slice C) makes some panel's detail pane render awkwardly because a field's content is naturally wide (e.g., a long description box plus a narrow status combo on the same row) | Medium | Low | Label-above means every field claims full row width. Existing detail-pane form builders use `QFormLayout` which already mostly renders one-field-per-row; the layout change is mostly mechanical. Slice C's acceptance criterion C2 catches any awkward case via eyeball verification on screenshots. |
 | WCAG AA contrast check (slice F) fails for the warning-amber on white at caption size | Medium | Low | Design pass §4.4 (A9) already flags this as borderline at 12px caption size. If the check fails, the warning token darkens slightly (e.g., from `#B0731A` to `#9D6517`) in `styling.py`; the change is isolated to the token module and rebases trivially. |
-| Screenshot capture (per DEC-097) becomes burdensome and Doug accumulates partial coverage across slices | Low | Low | Each visual slice's acceptance criterion lists the exact screenshot filenames expected. Slice F's roll-up criterion (F6) gates on cumulative coverage. If screenshot capture proves friction-laden, the pattern is revisable at v0.7+ work without affecting v0.6's substance. |
+| Screenshot capture (per DEC-107) becomes burdensome and Doug accumulates partial coverage across slices | Low | Low | Each visual slice's acceptance criterion lists the exact screenshot filenames expected. Slice F's roll-up criterion (F6) gates on cumulative coverage. If screenshot capture proves friction-laden, the pattern is revisable at v0.7+ work without affecting v0.6's substance. |
 | `QGraphicsDropShadowEffect` applied uniformly to every `QDialog` causes noticeable rendering lag on opening dialogs on lower-end hardware | Low | Low | Doug's hardware is a 3× 4K workstation; lag is unlikely. If lag surfaces, the elevation token's blur radius can be reduced from 16px to 8px in `styling.py`; isolated change. |
 | The new Lucide icons render at the wrong size or with the wrong stroke weight when color-tinted via the runtime helper | Low | Medium | Slice A acceptance criterion A3 verifies the loader produces visibly correct results for at least three colors. If tinting fails for some icons (e.g., icons with multiple paths and inline fills), the affected icons are re-exported without inline fills. |
 | v0.5 engagement panel ships with a structural shape that doesn't accommodate the master-pane delegate cleanly (e.g., a custom view widget instead of `QTableView`) | Low | Medium | Per workstream plan §4, v0.5's engagement panel inherits from v0.4's `ListDetailPanel` pattern. If v0.5 deviates, slice C's prompt handles the engagement panel as a separate per-surface case rather than the omnibus retrofit; the workstream plan §4 already anticipates this. |
@@ -410,19 +411,19 @@ Per DEC-097, after-state screenshots are git-tracked at `PRDs/product/crmbuilder
 
 ## 11. Decisions to Be Recorded
 
-Per DEC-014 (every v2 conversation produces a session record) and DEC-025 (`conversation_reference` convention + seed-prompt-in-`topics_covered`), this PRD's authoring conversation (Styling Conversation 2, SES-028) and its decisions are captured in the v2 database at PRD closeout.
+Per DEC-014 (every v2 conversation produces a session record) and DEC-025 (`conversation_reference` convention + seed-prompt-in-`topics_covered`), this PRD's authoring conversation (Styling Conversation 2, SES-030) and its decisions are captured in the v2 database at PRD closeout.
 
 Records to write at PRD closeout:
 
-- **SES-028** — Styling Conversation 2 (build planning). Status: Complete. `conversation_reference`: descriptive text per DEC-025 referencing this PRD draft, the `ui-v0.6-implementation-plan.md` draft, and the v0.6 slice build prompts. `topics_covered` opens with a seed-prompt summary (no formal kickoff prompt existed; the conversation worked from the styling design pass and the workstream plan directly) followed by the three architectural decisions resolved.
+- **SES-030** — Styling Conversation 2 (build planning). Status: Complete. `conversation_reference`: descriptive text per DEC-025 referencing this PRD draft, the `ui-v0.6-implementation-plan.md` draft, and the v0.6 slice build prompts. `topics_covered` opens with a seed-prompt summary (no formal kickoff prompt existed; the conversation worked from the styling design pass and the workstream plan directly) followed by the three architectural decisions resolved.
 
-- **DEC-095** — Version bundling for the styling work: ship as separate v0.6 release rather than bundled into v0.5. Context: workstream plan §6 named the question explicitly. Decision rationale: functional independence of the two workstreams is load-bearing; release versions are v2's primary navigation index; bundling permanently blurs that index. Cost: one additional closeout. Alternatives: bundle into v0.5 (rejected on navigability grounds).
+- **DEC-105** — Version bundling for the styling work: ship as separate v0.6 release rather than bundled into v0.5. Context: workstream plan §6 named the question explicitly. Decision rationale: functional independence of the two workstreams is load-bearing; release versions are v2's primary navigation index; bundling permanently blurs that index. Cost: one additional closeout. Alternatives: bundle into v0.5 (rejected on navigability grounds).
 
-- **DEC-096** — Slice structure for v0.6: six slices A–F. A = Foundation + About; B = Sidebar + master-pane delegate; C = Panel retrofits + ReferencesSection; D = Dialogs + form controls; E = Status + crash banner; F = Closeout. Context: workstream plan §5.3 had a five-slice strawman that buried the master-pane delegate and split governance/methodology retrofits artificially. Decision rationale: pulling the delegate to its own slice avoids artificial coupling; collapsing governance/methodology retrofits avoids redundant review; promoting status surfaces to their own slice separates two distinct concerns. Alternatives: stay close to strawman (rejected on artificial-coupling and redundant-review grounds).
+- **DEC-106** — Slice structure for v0.6: six slices A–F. A = Foundation + About; B = Sidebar + master-pane delegate; C = Panel retrofits + ReferencesSection; D = Dialogs + form controls; E = Status + crash banner; F = Closeout. Context: workstream plan §5.3 had a five-slice strawman that buried the master-pane delegate and split governance/methodology retrofits artificially. Decision rationale: pulling the delegate to its own slice avoids artificial coupling; collapsing governance/methodology retrofits avoids redundant review; promoting status surfaces to their own slice separates two distinct concerns. Alternatives: stay close to strawman (rejected on artificial-coupling and redundant-review grounds).
 
-- **DEC-097** — Slice acceptance pattern: per-slice after-state screenshot committed to `PRDs/product/crmbuilder-v2/styling-screenshots/slice-{X}/` plus eyeball verification against the design pass; automated WCAG AA contrast check against codified `styling.py` values at slice F closeout. Context: visual work has different acceptance signals than functional work; needed a pattern. Decision rationale: screenshots become project history and release-note material; eyeball is the appropriate primary signal for a solo developer with the right aesthetic eye; WCAG check is the one automated commitment per design pass A9. Alternatives: automated pixel-measurement (rejected as overkill at this scale); eyeball-only without screenshots (rejected on history-loss grounds).
+- **DEC-107** — Slice acceptance pattern: per-slice after-state screenshot committed to `PRDs/product/crmbuilder-v2/styling-screenshots/slice-{X}/` plus eyeball verification against the design pass; automated WCAG AA contrast check against codified `styling.py` values at slice F closeout. Context: visual work has different acceptance signals than functional work; needed a pattern. Decision rationale: screenshots become project history and release-note material; eyeball is the appropriate primary signal for a solo developer with the right aesthetic eye; WCAG check is the one automated commitment per design pass A9. Alternatives: automated pixel-measurement (rejected as overkill at this scale); eyeball-only without screenshots (rejected on history-loss grounds).
 
-- **References** — `decided_in` from SES-028 to each of DEC-095, DEC-096, DEC-097. `is_about` from SES-028 to PI-001 (the styling pass parent planning item).
+- **References** — `decided_in` from SES-030 to each of DEC-105, DEC-106, DEC-107. `is_about` from SES-030 to PI-001 (the styling pass parent planning item).
 
 A status update reflecting that UI v0.6 is now in build (phase `"v0.6 in build"`, version label incremented per the closeout sequence) is also appropriate at the same time.
 

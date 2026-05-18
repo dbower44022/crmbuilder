@@ -6,7 +6,7 @@
 **Status:** Ready to execute
 **Companion PRD:** `PRDs/product/crmbuilder-v2/ui-PRD-v0.6.md`
 **Companion implementation plan:** `PRDs/product/crmbuilder-v2/ui-v0.6-implementation-plan.md`
-**Predecessor slice:** v2-ui-v0.5-? (UI v0.5 closeout — TBD at v0.6 build-execution time; v0.5 ships first per DEC-095)
+**Predecessor slice:** v2-ui-v0.5-? (UI v0.5 closeout — TBD at v0.6 build-execution time; v0.5 ships first per DEC-105)
 
 ## Purpose
 
@@ -32,11 +32,11 @@ This is the first of six slices that build the CRMBuilder v2 desktop UI v0.6 —
 
 This slice does NOT add: sidebar visual treatment (slice B), master-pane delegate (slice B), panel chrome beyond `list_detail_panel.py`'s base hooks (slice C), per-panel detail-pane form layout change (slice C), `ReferencesSection` restructure (slice C), button categories (slice D), form-control state coverage (slice D), internal context strip on record-editing dialogs (slice D), status / error / warning surface retoken (slice E), crash banner re-skin (slice E), `__version__` bump (slice F), README release note (slice F), WCAG contrast test module (slice F).
 
-This slice does NOT write planning records (SES-028, DEC-095/096/097) to the database. Per the session-record-at-close pattern established after SES-008, those are authored by Doug through the `apply_close_out.py` script at the v0.6 build's closeout, not inside a Claude Code slice.
+This slice does NOT write planning records (SES-030, DEC-105/096/097) to the database. Per the session-record-at-close pattern established after SES-008, those are authored by Doug through the `apply_close_out.py` script at the v0.6 build's closeout, not inside a Claude Code slice.
 
 ## Project context
 
-UI v0.5 ships engagement management as a separate release per DEC-095 (version bundling resolved as v0.6 separate, not bundled). v0.6 is the parallel styling workstream reopening PI-001 per DEC-076. The styling design pass document at `PRDs/product/crmbuilder-v2/styling-design-pass.md` (Conversation 1 output, SES-027) is the authoritative source for visual decisions; this slice's prompt cites it rather than restating values.
+UI v0.5 ships engagement management as a separate release per DEC-105 (version bundling resolved as v0.6 separate, not bundled). v0.6 is the parallel styling workstream reopening PI-001 per DEC-076. The styling design pass document at `PRDs/product/crmbuilder-v2/styling-design-pass.md` (Conversation 1 output, SES-027) is the authoritative source for visual decisions; this slice's prompt cites it rather than restating values.
 
 Slice A is the only slice whose work is foundational rather than per-surface. Get the token system right and the five remaining slices follow cleanly; get it wrong and five downstream slices each carry the consequence. The About dialog re-skin in this same slice is the canary — it exercises tokens, fonts, icons, the modal elevation infrastructure, and the dialog hook pattern end-to-end before any panel work begins.
 
@@ -449,7 +449,7 @@ After committing, run:
 - README v0.6 release note (slice F).
 - WCAG contrast test module (slice F).
 - Status entity versioned-replace to "v0.6 complete" (operator-authored after slice F).
-- SES-028 session record application (operator-authored after slice F via apply-close-out prompt).
+- SES-030 session record application (operator-authored after slice F via apply-close-out prompt).
 
 ---
 

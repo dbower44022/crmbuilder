@@ -362,7 +362,7 @@ After committing:
 - WCAG AA contrast test module (slice F).
 - Full regression smoke across all v0.6 surfaces (slice F).
 - Status entity versioned-replace to "v0.6 complete" (operator-authored after slice F).
-- SES-028 session record application (operator-authored after slice F).
+- SES-030 session record application (operator-authored after slice F).
 
 ---
 
