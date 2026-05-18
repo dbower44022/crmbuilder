@@ -38,7 +38,11 @@ from crmbuilder_v2.ui.exceptions import (
     StorageClientError,
     StorageConnectionError,
 )
-from crmbuilder_v2.ui.widgets.form_helpers import required_label
+from crmbuilder_v2.ui.widgets.form_helpers import (
+    destructive_button,
+    primary_button,
+    required_label,
+)
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.risks")
@@ -94,7 +98,7 @@ class RisksPanel(ListDetailPanel):
 
     def __init__(self, client, parent=None):
         super().__init__(client, parent)
-        self._new_button = QPushButton("New Risk")
+        self._new_button = primary_button("New Risk")
         self._new_button.setObjectName("new_risk_button")
         self._new_button.clicked.connect(self._on_new_risk_clicked)
         self._action_layout.addWidget(self._new_button)
@@ -144,7 +148,7 @@ class RisksPanel(ListDetailPanel):
             lambda _checked=False, r=record: self._on_edit_clicked(r)
         )
         button_strip_layout.addWidget(edit_btn)
-        delete_btn = QPushButton("Delete")
+        delete_btn = destructive_button("Delete")
         delete_btn.setObjectName("delete_risk_button")
         delete_btn.clicked.connect(
             lambda _checked=False, r=record: self._on_delete_clicked(r)

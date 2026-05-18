@@ -59,6 +59,8 @@ from crmbuilder_v2.ui.exceptions import (
 from crmbuilder_v2.ui.styling import t as _T
 from crmbuilder_v2.ui.widgets.form_helpers import (
     CollapsibleSection,
+    destructive_button,
+    primary_button,
     required_label,
 )
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
@@ -121,7 +123,7 @@ class EntitiesPanel(ListDetailPanel):
         self._show_deleted_check.setObjectName("show_deleted_check")
         self._show_deleted_check.toggled.connect(self._on_show_deleted_toggled)
         self._action_layout.addWidget(self._show_deleted_check)
-        self._new_button = QPushButton("New Entity")
+        self._new_button = primary_button("New Entity")
         self._new_button.setObjectName("new_entity_button")
         self._new_button.clicked.connect(self._on_new_entity_clicked)
         self._action_layout.addWidget(self._new_button)
@@ -197,7 +199,7 @@ class EntitiesPanel(ListDetailPanel):
         )
         strip_layout.addWidget(edit_btn)
         if not is_deleted:
-            delete_btn = QPushButton("Delete")
+            delete_btn = destructive_button("Delete")
             delete_btn.setObjectName("delete_entity_button")
             delete_btn.clicked.connect(
                 lambda _checked=False, r=record: self._on_delete_clicked(r)

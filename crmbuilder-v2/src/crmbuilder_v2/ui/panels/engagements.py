@@ -59,7 +59,11 @@ from crmbuilder_v2.ui.exceptions import (
     StorageConnectionError,
 )
 from crmbuilder_v2.ui.styling import t
-from crmbuilder_v2.ui.widgets.form_helpers import required_label
+from crmbuilder_v2.ui.widgets.form_helpers import (
+    destructive_button,
+    primary_button,
+    required_label,
+)
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.engagements")
 
@@ -197,7 +201,7 @@ class EngagementsPanel(ListDetailPanel):
         self._show_deleted_check.toggled.connect(self._on_show_deleted_toggled)
         self._action_layout.addWidget(self._show_deleted_check)
 
-        self._new_button = QPushButton("New Engagement")
+        self._new_button = primary_button("New Engagement")
         self._new_button.setObjectName("new_engagement_button")
         self._new_button.clicked.connect(self._on_new_engagement_clicked)
         self._action_layout.addWidget(self._new_button)
@@ -342,7 +346,7 @@ class EngagementsPanel(ListDetailPanel):
         )
         strip_layout.addWidget(edit_btn)
         if not is_deleted:
-            delete_btn = QPushButton("Delete")
+            delete_btn = destructive_button("Delete")
             delete_btn.setObjectName("delete_engagement_button")
             delete_btn.clicked.connect(
                 lambda _checked=False, r=record: self._on_delete_clicked(r)
@@ -522,7 +526,7 @@ class EngagementsPanel(ListDetailPanel):
         layout.addWidget(body)
         button_row = QHBoxLayout()
         button_row.addStretch(1)
-        create_btn = QPushButton("Create Engagement")
+        create_btn = primary_button("Create Engagement")
         create_btn.setObjectName("empty_state_create_engagement_button")
         create_btn.clicked.connect(self._on_new_engagement_clicked)
         button_row.addWidget(create_btn)

@@ -52,7 +52,11 @@ from crmbuilder_v2.ui.exceptions import (
     StorageClientError,
     StorageConnectionError,
 )
-from crmbuilder_v2.ui.widgets.form_helpers import required_label
+from crmbuilder_v2.ui.widgets.form_helpers import (
+    destructive_button,
+    primary_button,
+    required_label,
+)
 from crmbuilder_v2.ui.widgets.master_pane_delegate import MasterPaneTreeDelegate
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 
@@ -137,7 +141,7 @@ class TopicsPanel(ListDetailPanel):
         # any future construction-time selection request.
         self._items_by_identifier: dict[str, QStandardItem] = {}
         super().__init__(client, parent)
-        self._new_button = QPushButton("New Topic")
+        self._new_button = primary_button("New Topic")
         self._new_button.setObjectName("new_topic_button")
         self._new_button.clicked.connect(self._on_new_clicked)
         self._action_layout.addWidget(self._new_button)
@@ -186,7 +190,7 @@ class TopicsPanel(ListDetailPanel):
             lambda _checked=False, r=record: self._on_edit_clicked(r)
         )
         button_strip_layout.addWidget(edit_btn)
-        delete_btn = QPushButton("Delete")
+        delete_btn = destructive_button("Delete")
         delete_btn.setObjectName("delete_topic_button")
         delete_btn.clicked.connect(
             lambda _checked=False, r=record: self._on_delete_clicked(r)

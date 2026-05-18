@@ -18,7 +18,6 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QDialog,
-    QDialogButtonBox,
     QHBoxLayout,
     QLabel,
     QPlainTextEdit,
@@ -34,6 +33,8 @@ from crmbuilder_v2.ui.exceptions import (
     StorageConnectionError,
     ValidationError,
 )
+from crmbuilder_v2.ui.styling import t
+from crmbuilder_v2.ui.widgets.form_helpers import primary_button
 from crmbuilder_v2.ui.widgets.modal_backdrop import attach as _backdrop_attach
 from crmbuilder_v2.ui.widgets.modal_backdrop import detach as _backdrop_detach
 from crmbuilder_v2.ui.workers import run_in_thread
@@ -131,17 +132,22 @@ class VersionedReplaceDialog(QDialog):
 
         self._editor.textChanged.connect(self._invalidate_prior_validation)
 
-        button_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Save
-            | QDialogButtonBox.StandardButton.Cancel
-        )
-        self._save_btn = button_box.button(QDialogButtonBox.StandardButton.Save)
-        self._save_btn.setObjectName("save_button")
-        self._save_btn.clicked.connect(self._on_save)
-        cancel_btn = button_box.button(QDialogButtonBox.StandardButton.Cancel)
+        # v0.6 slice D: hand-built button row so Save can carry the
+        # Primary category. Cancel stays as a bare QPushButton, which
+        # the slice-A QSS rule paints as Secondary by default.
+        button_row = QHBoxLayout()
+        button_row.setSpacing(int(t("space.2").rstrip("px")))
+        button_row.addStretch(1)
+        cancel_btn = QPushButton("Cancel")
         cancel_btn.setObjectName("cancel_button")
-        button_box.rejected.connect(self.reject)
-        outer.addWidget(button_box)
+        cancel_btn.clicked.connect(self.reject)
+        button_row.addWidget(cancel_btn)
+        self._save_btn = primary_button("Save")
+        self._save_btn.setObjectName("save_button")
+        self._save_btn.setDefault(True)
+        self._save_btn.clicked.connect(self._on_save)
+        button_row.addWidget(self._save_btn)
+        outer.addLayout(button_row)
 
         # Initial validation of the pre-populated content.
         self._on_validate()

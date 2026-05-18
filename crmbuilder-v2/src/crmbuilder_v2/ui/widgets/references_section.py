@@ -44,14 +44,13 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMenu,
-    QPushButton,
     QVBoxLayout,
     QWidget,
 )
 
 from crmbuilder_v2.ui.client import StorageClient
-from crmbuilder_v2.ui.icons import lucide
 from crmbuilder_v2.ui.styling import t
+from crmbuilder_v2.ui.widgets.form_helpers import text_link_button
 
 
 # (direction, relationship) → human-readable sub-section header.
@@ -217,29 +216,13 @@ class ReferencesSection(QWidget):
         button_row = QHBoxLayout()
         button_row.setContentsMargins(0, 0, 0, 0)
         button_row.setSpacing(int(t("space.2").rstrip("px")))
-        self._add_button = QPushButton("Add reference")
+        # v0.6 slice D: Text/Link category per design pass §2.5. The
+        # slice-C inline ``setStyleSheet`` block is gone — all chrome
+        # is now in ``build_app_stylesheet`` keyed off
+        # ``buttonCategory="text"``.
+        self._add_button = text_link_button("Add reference", icon_name="plus")
         self._add_button.setObjectName("references_section_add_button")
-        # Text/Link button category (design pass §2.5) — full category
-        # styling lands in slice D. For slice C, set the appearance
-        # inline so the button reads as a link rather than a default
-        # secondary button. Slice D's QSS rules may supersede.
-        self._add_button.setIcon(
-            lucide("plus", size=14, color_token="color.accent.default")
-        )
-        self._add_button.setFlat(True)
         self._add_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._add_button.setStyleSheet(
-            "QPushButton {"
-            " background: transparent;"
-            " border: none;"
-            f" color: {t('color.accent.default')};"
-            f" font-weight: {t('font.weight.medium')};"
-            f" padding: {t('space.1')} {t('space.2')};"
-            " text-align: left;"
-            " min-width: 0;"
-            "}"
-            f" QPushButton:hover {{ color: {t('color.accent.hover')}; }}"
-        )
         self._add_button.clicked.connect(self._on_add_clicked)
         button_row.addWidget(self._add_button)
         button_row.addStretch(1)

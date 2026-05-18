@@ -33,6 +33,7 @@ from crmbuilder_v2.ui.exceptions import (
     StorageClientError,
     StorageConnectionError,
 )
+from crmbuilder_v2.ui.widgets.form_helpers import primary_button
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 from crmbuilder_v2.ui.workers import run_in_thread
 
@@ -47,7 +48,7 @@ class StatusPanel(VersionedPanel):
 
     def __init__(self, client, parent=None):
         super().__init__(client, parent)
-        self._new_version_btn = QPushButton("New Version")
+        self._new_version_btn = primary_button("New Version")
         self._new_version_btn.setObjectName("new_status_version_button")
         self._new_version_btn.clicked.connect(self._on_new_version_clicked)
         self._action_layout.addWidget(self._new_version_btn)

@@ -69,9 +69,14 @@ from crmbuilder_v2.ui.exceptions import (
     StorageConnectionError,
     ValidationError,
 )
+from crmbuilder_v2.ui.styling import t
 from crmbuilder_v2.ui.widgets.date_field import DateField
 from crmbuilder_v2.ui.widgets.entity_identifier_picker import EntityIdentifierPicker
-from crmbuilder_v2.ui.widgets.form_helpers import required_label
+from crmbuilder_v2.ui.widgets.form_helpers import (
+    destructive_button,
+    primary_button,
+    required_label,
+)
 from crmbuilder_v2.ui.widgets.hierarchical_picker import HierarchicalEntityPicker
 from crmbuilder_v2.ui.widgets.modal_backdrop import attach as _backdrop_attach
 from crmbuilder_v2.ui.widgets.modal_backdrop import detach as _backdrop_detach
@@ -81,6 +86,7 @@ _log = logging.getLogger("crmbuilder_v2.ui.base.crud_dialog")
 _LONG_TEXT_MIN_HEIGHT = 80
 _INLINE_ERROR_STYLE = "color: #B22222;"
 _READ_ONLY_STYLE = "color: #666; background: #f4f4f4;"
+_RECORD_NAME_FIELDS = ("title", "name", "label")
 
 WidgetKind = Literal["line", "text", "combo", "date", "tree_picker", "identifier_picker"]
 DialogMode = Literal["create", "edit"]
@@ -385,9 +391,23 @@ class EntityCrudDialog(QDialog):
         self.setMinimumWidth(560)
         apply_dialog_shadow(self)
 
+        # v0.6 slice D: outer layout is edge-to-edge so the optional
+        # context strip (edit mode only) can paint a tinted band to the
+        # dialog edges. Form + button rows live inside a padded body
+        # container preserving the v0.5 16px margin / 10px spacing.
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(16, 16, 16, 16)
-        outer.setSpacing(10)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        if self._mode == "edit":
+            strip = self._build_context_strip()
+            if strip is not None:
+                outer.addWidget(strip)
+
+        body = QWidget()
+        body_layout = QVBoxLayout(body)
+        body_layout.setContentsMargins(16, 16, 16, 16)
+        body_layout.setSpacing(10)
 
         self._form = QFormLayout()
         self._form.setFieldGrowthPolicy(
@@ -407,18 +427,20 @@ class EntityCrudDialog(QDialog):
             self._form.addRow(
                 label_widget, _wrap_with_error(widget, error_label)
             )
-        outer.addLayout(self._form)
+        body_layout.addLayout(self._form)
 
         button_row = QHBoxLayout()
         button_row.addStretch(1)
         self._cancel_btn = QPushButton("Cancel")
         self._cancel_btn.clicked.connect(self.reject)
         button_row.addWidget(self._cancel_btn)
-        self._save_btn = QPushButton("Save")
+        self._save_btn = primary_button("Save")
         self._save_btn.setDefault(True)
         self._save_btn.clicked.connect(self._on_save_clicked)
         button_row.addWidget(self._save_btn)
-        outer.addLayout(button_row)
+        body_layout.addLayout(button_row)
+
+        outer.addWidget(body, stretch=1)
 
         if self._mode == "edit":
             self._populate_from_record()
@@ -435,6 +457,60 @@ class EntityCrudDialog(QDialog):
         self._refresh_dependent_fields()
 
         self._set_initial_focus()
+
+    # ------------------------------------------------------------------
+    # Internal context strip (v0.6 slice D — design pass §2.7)
+    # ------------------------------------------------------------------
+
+    def _build_context_strip(self) -> QWidget | None:
+        """Return the tinted identifier-plus-name strip for edit mode.
+
+        Only invoked in edit mode (the ``__init__`` guard). Returns
+        ``None`` when the record has neither an identifier nor a
+        recognizable record name — at which point the strip would be
+        decoratively empty and is suppressed. ``ReferenceCreateDialog``
+        passes through as create-mode and never reaches this method;
+        ``EntityCrudDeleteDialog`` is a different class and the
+        VersionedReplaceDialog inherits from ``QDialog`` directly, so
+        neither picks up the strip by inheritance.
+        """
+        identifier = self._identifier_value or ""
+        record_name = ""
+        for field_name in _RECORD_NAME_FIELDS:
+            raw = self._record.get(field_name)
+            if raw:
+                record_name = str(raw).strip()
+                break
+        if not identifier and not record_name:
+            return None
+
+        strip = QWidget()
+        strip.setObjectName("dialogContextStrip")
+        pad_px = int(t("space.3").rstrip("px"))
+        layout = QHBoxLayout(strip)
+        layout.setContentsMargins(pad_px, pad_px, pad_px, pad_px)
+        layout.setSpacing(pad_px)
+
+        if identifier:
+            id_label = QLabel(identifier)
+            id_label.setObjectName("dialogContextStripIdentifier")
+            id_label.setTextInteractionFlags(
+                Qt.TextInteractionFlag.TextSelectableByMouse
+            )
+            layout.addWidget(id_label)
+
+        if record_name:
+            name_label = QLabel(record_name)
+            name_label.setObjectName("dialogContextStripName")
+            name_label.setTextInteractionFlags(
+                Qt.TextInteractionFlag.TextSelectableByMouse
+            )
+            name_label.setWordWrap(False)
+            layout.addWidget(name_label, stretch=1)
+        else:
+            layout.addStretch(1)
+
+        return strip
 
     # ------------------------------------------------------------------
     # Public API
@@ -1074,28 +1150,33 @@ class EntityCrudDeleteDialog(QDialog):
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(16, 16, 16, 16)
-        outer.setSpacing(10)
+        outer.setSpacing(12)
 
+        # Design pass §2.7: single paragraph body in relaxed line
+        # height. The ``role="delete-body"`` selector in
+        # ``build_app_stylesheet`` carries the font-size, color, and
+        # line-height treatment so this label stays free of inline QSS.
         self._body_label = QLabel(
             f"Delete {identifier} — {title}? This cannot be undone."
         )
         self._body_label.setObjectName("delete_body_label")
+        self._body_label.setProperty("role", "delete-body")
         self._body_label.setWordWrap(True)
         outer.addWidget(self._body_label)
 
+        # Design pass §2.7: Destructive button right-aligned with Cancel
+        # to its left. ``addStretch`` pushes both to the right; Cancel
+        # comes first in tab/layout order, then Delete.
         button_row = QHBoxLayout()
+        button_row.setSpacing(int(t("space.2").rstrip("px")))
         button_row.addStretch(1)
         self._cancel_btn = QPushButton("Cancel")
         self._cancel_btn.setDefault(True)
         self._cancel_btn.clicked.connect(self.reject)
         button_row.addWidget(self._cancel_btn)
 
-        self._delete_btn = QPushButton("Delete")
+        self._delete_btn = destructive_button("Delete")
         self._delete_btn.setObjectName("delete_button")
-        self._delete_btn.setStyleSheet(
-            "QPushButton { color: #ffffff; background: #c1272d; padding: 4px 12px; }"
-            " QPushButton:disabled { color: #ffffff; background: #b6868a; }"
-        )
         self._delete_btn.clicked.connect(self._on_delete_clicked)
         button_row.addWidget(self._delete_btn)
         outer.addLayout(button_row)

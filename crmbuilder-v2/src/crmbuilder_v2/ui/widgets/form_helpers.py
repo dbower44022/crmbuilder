@@ -16,6 +16,15 @@ builders and the ``EntityCrudDialog`` base both consume:
 
 Both helpers depend on the Lucide icon loader and the design tokens; the
 icons are tinted to the right hex color at lookup time.
+
+Slice D (v0.6) adds four button-category helper factories per design
+pass §2.5: :func:`primary_button`, :func:`destructive_button`,
+:func:`text_link_button`, and :func:`icon_button`. Each tags the
+returned ``QPushButton`` with a ``buttonCategory`` dynamic property
+that the QSS rules in :func:`build_app_stylesheet` key off. Plain
+``QPushButton(text)`` continues to render Secondary by default (slice
+A's fall-through rule); the helpers are the supported way to opt into
+the other four categories.
 """
 
 from __future__ import annotations
@@ -25,6 +34,7 @@ from PySide6.QtGui import QMouseEvent
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
+    QPushButton,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
@@ -35,6 +45,8 @@ from crmbuilder_v2.ui.styling import t
 
 _ASTERISK_SIZE = 10
 _CHEVRON_SIZE = 14
+_BUTTON_ICON_SIZE = 14
+_ICON_BUTTON_SQUARE = 28
 
 
 def required_label(text: str) -> QWidget:
@@ -211,3 +223,78 @@ class CollapsibleSection(QWidget):
     def _apply_state(self) -> None:
         self._header.set_expanded(self._expanded)
         self._content.setVisible(self._expanded)
+
+
+# ---------------------------------------------------------------------------
+# Button category helpers (v0.6 slice D — design pass §2.5)
+# ---------------------------------------------------------------------------
+
+
+def primary_button(text: str) -> QPushButton:
+    """Build a Primary-category button — accent fill, white text.
+
+    Used for the single primary action in a dialog (Save, Apply) or a
+    panel toolbar (New X). The category styling lives entirely in
+    :func:`build_app_stylesheet` via the ``buttonCategory`` property
+    selector; this helper only tags the property so callers don't have
+    to remember the name.
+    """
+    btn = QPushButton(text)
+    btn.setProperty("buttonCategory", "primary")
+    return btn
+
+
+def destructive_button(text: str) -> QPushButton:
+    """Build a Destructive-category button — danger fill, white text.
+
+    Used for irreversible actions (Delete on a CRUD confirmation dialog,
+    Delete reference). Replaces the legacy inline ``#c1272d`` /
+    ``#b6868a`` per-instance ``setStyleSheet`` blocks.
+    """
+    btn = QPushButton(text)
+    btn.setProperty("buttonCategory", "destructive")
+    return btn
+
+
+def text_link_button(text: str, *, icon_name: str | None = None) -> QPushButton:
+    """Build a Text/Link-category button — transparent, accent text.
+
+    Used for inline affordances inside a content area (the
+    ``Add reference`` button at the bottom of a ReferencesSection is
+    the canonical example). Optional ``icon_name`` prefixes a Lucide
+    icon tinted in ``color.accent.default``.
+    """
+    btn = QPushButton(text)
+    btn.setProperty("buttonCategory", "text")
+    if icon_name:
+        btn.setIcon(
+            lucide(
+                icon_name,
+                size=_BUTTON_ICON_SIZE,
+                color_token="color.accent.default",
+            )
+        )
+        btn.setIconSize(QSize(_BUTTON_ICON_SIZE, _BUTTON_ICON_SIZE))
+    return btn
+
+
+def icon_button(icon_name: str, *, tooltip: str) -> QPushButton:
+    """Build an Icon-only-category button — 28×28 square, no text.
+
+    Used for compact toolbar affordances (the panel Refresh button is
+    the canonical example). The tooltip is required because the button
+    carries no visible label.
+    """
+    btn = QPushButton()
+    btn.setProperty("buttonCategory", "icon-only")
+    btn.setIcon(
+        lucide(
+            icon_name,
+            size=_BUTTON_ICON_SIZE,
+            color_token="color.neutral.700",
+        )
+    )
+    btn.setIconSize(QSize(_BUTTON_ICON_SIZE, _BUTTON_ICON_SIZE))
+    btn.setToolTip(tooltip)
+    btn.setFixedSize(_ICON_BUTTON_SQUARE, _ICON_BUTTON_SQUARE)
+    return btn

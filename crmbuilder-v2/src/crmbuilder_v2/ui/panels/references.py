@@ -32,6 +32,7 @@ from crmbuilder_v2.ui.dialogs.reference_delete import (
     ReferenceDeleteDialog,
     edge_text,
 )
+from crmbuilder_v2.ui.widgets.form_helpers import primary_button
 
 _ALL = "All"
 
@@ -63,7 +64,7 @@ class ReferencesPanel(ListDetailPanel):
         # Connect single-click navigation now that the table exists.
         self._table.clicked.connect(self._on_cell_clicked)
         # New Reference toolbar button (v0.3 slice C — DEC-033).
-        self._new_reference_button = QPushButton("New Reference")
+        self._new_reference_button = primary_button("New Reference")
         self._new_reference_button.setObjectName("new_reference_button")
         self._new_reference_button.clicked.connect(
             self._on_new_reference_clicked

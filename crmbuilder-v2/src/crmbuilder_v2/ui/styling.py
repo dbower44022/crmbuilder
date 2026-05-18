@@ -28,7 +28,27 @@ The token system has four public names:
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from PySide6.QtWidgets import QApplication
+
+# Asset directory for SVGs referenced from QSS ``image: url(...)`` rules.
+# QSS reads files from disk, not through ``ui.icons.lucide``'s runtime
+# tinting; pre-tinted SVG variants (``check-neutral-0.svg`` etc.) are
+# committed under this directory and the absolute path is interpolated
+# into the stylesheet at build time so the URL works regardless of cwd.
+_ICON_ASSET_DIR = (
+    Path(__file__).resolve().parent / "assets" / "icons" / "lucide"
+)
+
+
+def _icon_url(filename: str) -> str:
+    """Render an ``url(...)`` value for a bundled icon SVG.
+
+    Qt accepts forward slashes on every platform and strips a ``file://``
+    scheme; emitting just the absolute path keeps the rule portable.
+    """
+    return f"url({(_ICON_ASSET_DIR / filename).as_posix()})"
 
 # ---------------------------------------------------------------------------
 # Token dict — codified from styling-design-pass.md §1
@@ -272,7 +292,7 @@ QHeaderView::section {{
 """,
         # Default QPushButton — Secondary category per §2.5.
         # Per-category property selectors (primary / destructive /
-        # text / icon-only) are added in slice D.
+        # text / icon-only) are added in slice D below.
         f"""
 QPushButton {{
     background: transparent;
@@ -299,6 +319,200 @@ QPushButton:disabled {{
     color: {get('color.neutral.300')};
 }}
 """,
+        # Primary category — accent fill, white text. Used for Save in
+        # CRUD dialogs, Apply in versioned-replace, and the panel-level
+        # "New X" toolbar buttons. Per design pass §2.5.
+        f"""
+QPushButton[buttonCategory="primary"] {{
+    background: {get('color.accent.default')};
+    color: {get('color.neutral.0')};
+    border: 1px solid {get('color.accent.default')};
+    padding: {get('space.1')} {get('space.3')};
+    border-radius: {get('radius.subtle')};
+    font-weight: {get('font.weight.medium')};
+    min-width: 88px;
+}}
+QPushButton[buttonCategory="primary"]:hover {{
+    background: {get('color.accent.hover')};
+    border: 1px solid {get('color.accent.hover')};
+}}
+QPushButton[buttonCategory="primary"]:pressed {{
+    background: {get('color.accent.pressed')};
+    border: 1px solid {get('color.accent.pressed')};
+}}
+QPushButton[buttonCategory="primary"]:focus {{
+    border: 1px solid {get('color.accent.pressed')};
+    outline: none;
+}}
+QPushButton[buttonCategory="primary"]:disabled {{
+    background: {get('color.neutral.300')};
+    border: 1px solid {get('color.neutral.300')};
+    color: {get('color.neutral.500')};
+}}
+""",
+        # Destructive category — danger fill, white text. Used for
+        # Delete in CRUD-delete dialogs and the reference-delete dialog.
+        # Replaces the legacy inline ``#c1272d`` / ``#b6868a`` blocks.
+        f"""
+QPushButton[buttonCategory="destructive"] {{
+    background: {get('color.danger.default')};
+    color: {get('color.neutral.0')};
+    border: 1px solid {get('color.danger.default')};
+    padding: {get('space.1')} {get('space.3')};
+    border-radius: {get('radius.subtle')};
+    font-weight: {get('font.weight.medium')};
+    min-width: 88px;
+}}
+QPushButton[buttonCategory="destructive"]:hover {{
+    background: #A93226;
+    border: 1px solid #A93226;
+}}
+QPushButton[buttonCategory="destructive"]:pressed {{
+    background: #922B1F;
+    border: 1px solid #922B1F;
+}}
+QPushButton[buttonCategory="destructive"]:focus {{
+    border: 1px solid #922B1F;
+    outline: none;
+}}
+QPushButton[buttonCategory="destructive"]:disabled {{
+    background: {get('color.neutral.300')};
+    border: 1px solid {get('color.neutral.300')};
+    color: {get('color.neutral.500')};
+}}
+""",
+        # Text / Link category — transparent, accent text. Used for
+        # inline affordances inside a content area (the ReferencesSection
+        # "Add reference" button is the canonical example).
+        f"""
+QPushButton[buttonCategory="text"] {{
+    background: transparent;
+    border: 0;
+    color: {get('color.accent.default')};
+    font-weight: {get('font.weight.medium')};
+    padding: {get('space.1')} {get('space.2')};
+    min-width: 0;
+    text-align: left;
+}}
+QPushButton[buttonCategory="text"]:hover {{
+    color: {get('color.accent.hover')};
+    text-decoration: underline;
+}}
+QPushButton[buttonCategory="text"]:pressed {{
+    color: {get('color.accent.pressed')};
+}}
+QPushButton[buttonCategory="text"]:disabled {{
+    color: {get('color.neutral.300')};
+}}
+""",
+        # Icon-only category — 28×28 transparent square. Used for the
+        # panel Refresh button. The fixed size is set at construction
+        # time in :func:`icon_button`; this rule supplies the chrome.
+        f"""
+QPushButton[buttonCategory="icon-only"] {{
+    background: transparent;
+    border: 0;
+    padding: 0;
+    min-width: 0;
+    border-radius: {get('radius.subtle')};
+}}
+QPushButton[buttonCategory="icon-only"]:hover {{
+    background: {get('color.neutral.100')};
+}}
+QPushButton[buttonCategory="icon-only"]:pressed {{
+    background: {get('color.neutral.200')};
+}}
+QPushButton[buttonCategory="icon-only"]:focus {{
+    background: {get('color.neutral.100')};
+    outline: none;
+}}
+""",
+        # Combo dropdown chrome — design pass §2.6. The closed combo
+        # reads from the slice-A default rules above; this block adds
+        # the right-side chevron icon, popup container, and per-item
+        # styling. The chevron asset is a pre-tinted SVG variant
+        # bundled at ``assets/icons/lucide/chevron-down-neutral-500.svg``
+        # because Qt's QSS ``image: url(...)`` reads files rather than
+        # invoking the runtime tinting in ``ui.icons.lucide``.
+        f"""
+QComboBox {{
+    padding-right: 24px;
+}}
+QComboBox::drop-down {{
+    border: 0;
+    width: 20px;
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+}}
+QComboBox::down-arrow {{
+    image: {_icon_url("chevron-down-neutral-500.svg")};
+    width: 14px;
+    height: 14px;
+}}
+QComboBox QAbstractItemView {{
+    background: {get('color.neutral.0')};
+    border: 1px solid {get('color.neutral.300')};
+    border-radius: {get('radius.subtle')};
+    padding: {get('space.1')};
+    selection-background-color: {get('color.accent.subtle')};
+    selection-color: {get('color.neutral.900')};
+    outline: 0;
+}}
+QComboBox QAbstractItemView::item {{
+    min-height: 28px;
+    padding: {get('space.2')} {get('space.3')};
+    color: {get('color.neutral.800')};
+}}
+QComboBox QAbstractItemView::item:hover {{
+    background: {get('color.neutral.100')};
+    color: {get('color.neutral.900')};
+}}
+QComboBox QAbstractItemView::item:selected {{
+    background: {get('color.accent.subtle')};
+    color: {get('color.neutral.900')};
+}}
+""",
+        # Checkbox custom indicator — design pass §2.6. The check
+        # asset is a pre-tinted SVG variant bundled alongside the
+        # chevron above (white for the checked state, neutral-300 for
+        # disabled-checked).
+        f"""
+QCheckBox {{
+    spacing: {get('space.2')};
+    color: {get('color.neutral.800')};
+}}
+QCheckBox::indicator {{
+    width: 16px;
+    height: 16px;
+    border: 1px solid {get('color.neutral.300')};
+    border-radius: {get('radius.subtle')};
+    background: {get('color.neutral.0')};
+}}
+QCheckBox::indicator:hover {{
+    border: 1px solid {get('color.neutral.500')};
+}}
+QCheckBox::indicator:checked {{
+    background: {get('color.accent.default')};
+    border: 1px solid {get('color.accent.default')};
+    image: {_icon_url("check-neutral-0.svg")};
+}}
+QCheckBox::indicator:checked:hover {{
+    background: {get('color.accent.hover')};
+    border: 1px solid {get('color.accent.hover')};
+}}
+QCheckBox::indicator:disabled {{
+    background: {get('color.neutral.100')};
+    border: 1px solid {get('color.neutral.200')};
+}}
+QCheckBox::indicator:checked:disabled {{
+    background: {get('color.neutral.100')};
+    border: 1px solid {get('color.neutral.200')};
+    image: {_icon_url("check-neutral-300.svg")};
+}}
+QCheckBox:disabled {{
+    color: {get('color.neutral.300')};
+}}
+""",
         # Inline error label hook used by EntityCrudDialog.
         f"""
 QLabel[role="error"] {{
@@ -311,6 +525,40 @@ QLabel[role="error"] {{
         f"""
 QWidget#listDetailPanel {{
     background: {get('color.neutral.50')};
+}}
+""",
+        # Internal context strip on edit-mode CRUD dialogs (design
+        # pass §2.7). Tinted band sitting at the top of the dialog
+        # body that shows the record identifier (mono) plus the record
+        # name. Excluded from create-mode, delete-confirm, About,
+        # Error, ReferenceDelete dialogs — only edit-mode CRUD dialogs
+        # set the ``dialogContextStrip`` objectName via
+        # ``EntityCrudDialog._build_context_strip``.
+        f"""
+QWidget#dialogContextStrip {{
+    background: {get('color.neutral.100')};
+    border-bottom: 1px solid {get('color.neutral.200')};
+}}
+QLabel#dialogContextStripIdentifier {{
+    font-family: "{get('font.family.mono')}";
+    font-size: {get('font.size.small')};
+    color: {get('color.neutral.700')};
+    font-weight: {get('font.weight.medium')};
+}}
+QLabel#dialogContextStripName {{
+    font-size: {get('font.size.body')};
+    color: {get('color.neutral.800')};
+}}
+""",
+        # Delete-confirm dialog body label — design pass §2.7's
+        # relaxed line height. Tagged via ``role="delete-body"`` on
+        # the body QLabel inside both ``EntityCrudDeleteDialog`` and
+        # the standalone ``ReferenceDeleteDialog``.
+        f"""
+QLabel[role="delete-body"] {{
+    font-size: {get('font.size.body')};
+    color: {get('color.neutral.800')};
+    line-height: {get('font.line.relaxed')};
 }}
 """,
     ]

@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
 
 from crmbuilder_v2.ui.base.list_detail_panel import ColumnSpec, ListDetailPanel
 from crmbuilder_v2.ui.dialogs.session_create import SessionCreateDialog
-from crmbuilder_v2.ui.widgets.form_helpers import required_label
+from crmbuilder_v2.ui.widgets.form_helpers import primary_button, required_label
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 
 _LONG_TEXT_MIN_HEIGHT = 80
@@ -86,7 +86,7 @@ class SessionsPanel(ListDetailPanel):
 
     def __init__(self, client, parent=None):
         super().__init__(client, parent)
-        self._new_session_button = QPushButton("New Session")
+        self._new_session_button = primary_button("New Session")
         self._new_session_button.setObjectName("new_session_button")
         self._new_session_button.clicked.connect(
             self._on_new_session_clicked

@@ -33,6 +33,8 @@ from crmbuilder_v2.ui.exceptions import (
     StorageClientError,
     StorageConnectionError,
 )
+from crmbuilder_v2.ui.styling import t
+from crmbuilder_v2.ui.widgets.form_helpers import destructive_button
 from crmbuilder_v2.ui.widgets.modal_backdrop import attach as _backdrop_attach
 from crmbuilder_v2.ui.widgets.modal_backdrop import detach as _backdrop_detach
 
@@ -77,29 +79,29 @@ class ReferenceDeleteDialog(QDialog):
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(16, 16, 16, 16)
-        outer.setSpacing(10)
+        outer.setSpacing(12)
 
+        # Design pass §2.7: single paragraph body in relaxed line
+        # height; style lives on the ``role="delete-body"`` QSS rule.
         self._body_label = QLabel(
-            f"Delete the reference [{edge}]?\n\n"
+            f"Delete the reference [{edge}]? "
             "This cannot be undone through the UI."
         )
         self._body_label.setObjectName("reference_delete_body_label")
+        self._body_label.setProperty("role", "delete-body")
         self._body_label.setWordWrap(True)
         outer.addWidget(self._body_label)
 
         button_row = QHBoxLayout()
+        button_row.setSpacing(int(t("space.2").rstrip("px")))
         button_row.addStretch(1)
         self._cancel_btn = QPushButton("Cancel")
         self._cancel_btn.setDefault(True)
         self._cancel_btn.clicked.connect(self.reject)
         button_row.addWidget(self._cancel_btn)
 
-        self._delete_btn = QPushButton("Delete")
+        self._delete_btn = destructive_button("Delete")
         self._delete_btn.setObjectName("reference_delete_button")
-        self._delete_btn.setStyleSheet(
-            "QPushButton { color: #ffffff; background: #c1272d; padding: 4px 12px; }"
-            " QPushButton:disabled { color: #ffffff; background: #b6868a; }"
-        )
         self._delete_btn.clicked.connect(self._on_delete_clicked)
         button_row.addWidget(self._delete_btn)
         outer.addLayout(button_row)

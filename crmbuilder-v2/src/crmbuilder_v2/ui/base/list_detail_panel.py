@@ -55,6 +55,7 @@ from crmbuilder_v2.ui.exceptions import (
     StorageClientError,
     StorageConnectionError,
 )
+from crmbuilder_v2.ui.widgets.form_helpers import icon_button
 from crmbuilder_v2.ui.widgets.master_pane_delegate import MasterPaneDelegate
 from crmbuilder_v2.ui.workers import run_in_thread
 
@@ -563,7 +564,10 @@ class ListDetailPanel(QWidget):
         title_label.setFont(title_font)
         layout.addWidget(title_label)
 
-        self._refresh_button = QPushButton("Refresh")
+        # v0.6 slice D: panel toolbar refresh is icon-only per design
+        # pass §2.5. The Lucide rotate-ccw glyph carries the meaning;
+        # tooltip surfaces the label on hover.
+        self._refresh_button = icon_button("rotate-ccw", tooltip="Refresh")
         self._refresh_button.clicked.connect(self.refresh)
         layout.addWidget(self._refresh_button)
 

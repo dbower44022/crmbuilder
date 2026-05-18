@@ -64,8 +64,12 @@ def test_construction_builds_layout(qapp, qtbot):
     qtbot.addWidget(panel)
 
     # Table model exists; toolbar exposes refresh button + status label.
+    # v0.6 slice D: refresh is an icon-only button (Lucide rotate-ccw)
+    # so it carries no visible text — verify via the tooltip and
+    # buttonCategory property instead.
     assert panel._model is not None
-    assert panel._refresh_button.text() == "Refresh"
+    assert panel._refresh_button.toolTip() == "Refresh"
+    assert panel._refresh_button.property("buttonCategory") == "icon-only"
     assert panel._table.model() is panel._model
     assert panel._detail_stack.count() >= 1
 
