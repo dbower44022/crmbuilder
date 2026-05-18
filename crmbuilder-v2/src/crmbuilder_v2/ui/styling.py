@@ -519,6 +519,24 @@ QLabel[role="error"] {{
     color: {get('color.danger.text')};
 }}
 """,
+        # WarningCallout text label (slice E — design pass §2.9).
+        # Amber-toned informational warning, distinct from danger-red.
+        f"""
+QLabel#warningCalloutText {{
+    font-size: {get('font.size.small')};
+    color: {get('color.warning.default')};
+}}
+""",
+        # Error dialog header (slice E — design pass §2.9). Sits to the
+        # right of the circle-x icon in the header row; uses heading-3
+        # semibold danger-text per the design pass.
+        f"""
+QLabel#errorDialogHeader {{
+    font-size: {get('font.size.heading_3')};
+    font-weight: {get('font.weight.semibold')};
+    color: {get('color.danger.text')};
+}}
+""",
         # Panel chrome — content background for ListDetailPanel.
         # Slice A adds the objectName hook on the panel widget itself;
         # see ui/base/list_detail_panel.py.

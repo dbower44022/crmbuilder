@@ -39,6 +39,7 @@ from crmbuilder_v2.ui.panels.processes import ProcessesPanel
 from crmbuilder_v2.ui.refresh import _FILENAME_TO_ENTITY_TYPE
 from crmbuilder_v2.ui.sidebar import SIDEBAR_GROUPS, Sidebar
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
+from crmbuilder_v2.ui.widgets.warning_callout import WarningCallout
 from fastapi.testclient import TestClient
 from PySide6.QtWidgets import (
     QComboBox,
@@ -279,7 +280,7 @@ def test_detail_pane_renders_fields_in_order(qtbot, process_client):
     # ReferencesSection always present; no stale-domain warning when the
     # FK resolves to a live domain.
     assert detail.findChildren(ReferencesSection)
-    assert detail.findChild(QLabel, "process_domain_warning") is None
+    assert detail.findChild(WarningCallout, "process_domain_warning") is None
 
 
 def test_detail_pane_warns_on_stale_domain_reference(qtbot, process_client):
@@ -294,7 +295,7 @@ def test_detail_pane_warns_on_stale_domain_reference(qtbot, process_client):
     extras = panel.fetch_detail_extras(record)
     assert extras["domain"] is None
     detail = panel.render_detail(record, extras)
-    warning = detail.findChild(QLabel, "process_domain_warning")
+    warning = detail.findChild(WarningCallout, "process_domain_warning")
     assert warning is not None
     assert dom in warning.text()
 

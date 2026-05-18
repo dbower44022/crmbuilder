@@ -8,10 +8,10 @@ errors that don't map to inline field validation (5xx, 422, no-field
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
+    QHBoxLayout,
     QLabel,
     QPlainTextEdit,
     QPushButton,
@@ -20,10 +20,9 @@ from PySide6.QtWidgets import (
 )
 
 from crmbuilder_v2.ui.elevation import apply_dialog_shadow
+from crmbuilder_v2.ui.icons import lucide
 from crmbuilder_v2.ui.widgets.modal_backdrop import attach as _backdrop_attach
 from crmbuilder_v2.ui.widgets.modal_backdrop import detach as _backdrop_detach
-
-_BANNER_STYLE = "color: #1F3864; font-weight: bold;"
 
 
 class ErrorDialog(QDialog):
@@ -36,9 +35,6 @@ class ErrorDialog(QDialog):
     * Any 400/409 where the API's error envelope does NOT carry a
       ``field`` key
     * Any unexpected exception caught while submitting
-
-    Constructor signature is intentionally permissive so dialogs can
-    pass through whatever they have.
     """
 
     def __init__(
@@ -57,15 +53,26 @@ class ErrorDialog(QDialog):
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(16, 16, 16, 16)
-        outer.setSpacing(10)
+        outer.setSpacing(16)
+
+        header_row = QWidget()
+        header_layout = QHBoxLayout(header_row)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(12)
+
+        icon_label = QLabel()
+        icon_label.setPixmap(
+            lucide("circle-x", size=18, color_token="color.danger.default")
+                .pixmap(18, 18)
+        )
+        header_layout.addWidget(icon_label, alignment=Qt.AlignmentFlag.AlignTop)
 
         title_label = QLabel(title)
-        title_font = QFont(title_label.font())
-        title_font.setBold(True)
-        title_font.setPointSize(title_font.pointSize() + 1)
-        title_label.setFont(title_font)
-        title_label.setStyleSheet(_BANNER_STYLE)
-        outer.addWidget(title_label)
+        title_label.setObjectName("errorDialogHeader")
+        title_label.setWordWrap(True)
+        header_layout.addWidget(title_label, stretch=1)
+
+        outer.addWidget(header_row)
 
         message_label = QLabel(message)
         message_label.setWordWrap(True)

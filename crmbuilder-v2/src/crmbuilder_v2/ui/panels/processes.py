@@ -69,12 +69,12 @@ from crmbuilder_v2.ui.widgets.form_helpers import (
     required_label,
 )
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
+from crmbuilder_v2.ui.widgets.warning_callout import WarningCallout
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.processes")
 
 _LONG_TEXT_MIN_HEIGHT = 80
 _READ_ONLY_STYLE = "color: #444; background: #f4f4f4;"
-_WARNING_STYLE = "color: #B22222;"
 _PURPOSE_PLACEHOLDER = "One sentence — what does this process do?"
 
 
@@ -260,14 +260,12 @@ class ProcessesPanel(ListDetailPanel):
         # domain). A stale FK (missing or soft-deleted target) shows an
         # inline warning above the line per spec section 3.4.5.
         if domain_identifier and domain_record is None:
-            warning = QLabel(
-                f"⚠ This process's domain ({domain_identifier}) is "
+            warning = WarningCallout(
+                f"This process's domain ({domain_identifier}) is "
                 "missing or deleted. Click Edit to re-affiliate the "
                 "process, or restore the domain."
             )
             warning.setObjectName("process_domain_warning")
-            warning.setWordWrap(True)
-            warning.setStyleSheet(_WARNING_STYLE)
             form.addRow("", warning)
 
         if domain_record is not None:
