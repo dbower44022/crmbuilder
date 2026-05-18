@@ -1213,5 +1213,41 @@
     "source_type": "session",
     "target_id": "DEC-104",
     "target_type": "decision"
+  },
+  {
+    "created_at": "2026-05-18T03:23:06.378250",
+    "id": 136,
+    "relationship_kind": "decided_in",
+    "source_id": "DEC-105",
+    "source_type": "decision",
+    "target_id": "SES-030",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-18T03:23:06.431682",
+    "id": 137,
+    "relationship_kind": "decided_in",
+    "source_id": "DEC-106",
+    "source_type": "decision",
+    "target_id": "SES-030",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-18T03:23:06.482915",
+    "id": 138,
+    "relationship_kind": "decided_in",
+    "source_id": "DEC-107",
+    "source_type": "decision",
+    "target_id": "SES-030",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-18T03:23:06.530001",
+    "id": 139,
+    "relationship_kind": "is_about",
+    "source_id": "SES-030",
+    "source_type": "session",
+    "target_id": "PI-001",
+    "target_type": "planning_item"
   }
 ]
