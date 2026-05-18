@@ -8924,5 +8924,987 @@
     "id": 344,
     "operation": "update",
     "timestamp": "2026-05-18T22:41:40.421562"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "Committed at 7e5c010: crmbuilder-v2/src/crmbuilder_v2/ui/styling.py (rewritten in place — 72-line stub replaced by full token + builder layer); crmbuilder-v2/src/crmbuilder_v2/ui/icons.py (new — lucide loader with color tinting and caching); crmbuilder-v2/src/crmbuilder_v2/ui/elevation.py (new — apply_dialog_shadow helper); crmbuilder-v2/src/crmbuilder_v2/ui/widgets/modal_backdrop.py (new — ModalBackdropOverlay); crmbuilder-v2/src/crmbuilder_v2/ui/assets/fonts/ (Inter Variable + JetBrains Mono Variable + combined OFL); crmbuilder-v2/src/crmbuilder_v2/ui/assets/icons/lucide/ (14 SVGs + ISC license); crmbuilder-v2/src/crmbuilder_v2/ui/about_dialog.py (re-skinned per design pass §2.8); crmbuilder-v2/src/crmbuilder_v2/ui/splash.py + ui/panels/engagements.py (legacy ACCENT_COLOR migrated to t()); five dialog files received per-dialog modal hooks (crud_dialog, versioned_replace_dialog, about_dialog, dialogs/error, dialogs/reference_delete); ui/base/list_detail_panel.py chrome hooks; ui/app.py font loading + Inter substitution + apply_stylesheet call; tests/crmbuilder_v2/ui/test_about_dialog.py updated for vertical layout.",
+      "conversation_reference": "Claude Code conversation opened against PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-A-foundation.md, the first of six slice prompts authored by SES-036 (styling Conversation 2 build-planning, applied at SES-036 after the reconciliation at commit b41fb04). Built the foundation layer of the v0.6 styling release per ui-PRD-v0.6.md §2 items 1-6 plus item 11 (About dialog as canary surface). Landed at commit 7e5c010 on 05-18-26 at 01:35 ET.",
+      "created_at": "2026-05-18T22:46:42.833191+00:00",
+      "id": 36,
+      "identifier": "SES-037",
+      "in_flight_at_end": "Slice B (sidebar + master-pane delegate per CLAUDE-CODE-PROMPT-v2-ui-v0.6-B-sidebar-and-master-pane.md) is next. Five remaining slices C-F plus a follow-up palette-fix conversation will land between this slice and v0.6 release closeout.",
+      "session_date": "05-18-26",
+      "status": "Complete",
+      "summary": "",
+      "title": "v0.6 slice A — foundation infrastructure + About dialog",
+      "topics_covered": "Seed prompt: PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-A-foundation.md. This conversation built the foundational layer of v0.6 styling: the token system, asset bundling for fonts and icons, modal elevation infrastructure, and a re-skinned About dialog acting as a canary exercise of the new token plumbing end-to-end.\n\nToken system rewrite in ui/styling.py replaced the 72-line v0.1 minimal QSS stub from DEC-024 with a full theme-keyed TOKENS dict (per DEC-089), a t() accessor, a build_app_stylesheet() generator, and an apply_stylesheet(app) entry point. The light theme codifies every value from styling-design-pass.md §1 (color, space, font, radius, border, shadow tokens). Legacy module constants (ACCENT_COLOR, ACCENT_HOVER, ERROR_TEXT_COLOR, DEFAULT_FONT_FAMILY, DEFAULT_FONT_POINT_SIZE) were removed; consumers in panels/engagements.py migrated alongside splash.py.\n\nAsset bundling under ui/assets/ added Inter Variable v4.1 + JetBrains Mono Variable v2.304 per DEC-090 (OFL license bundled) and the initial 14-SVG Lucide icon wave per DEC-092 (ISC license bundled). The ui/icons.py loader exposes lucide(name, size, color_token) with runtime SVG color tinting and (name, size, color_token) caching. Modal elevation per DEC-091 landed as ui/elevation.py (apply_dialog_shadow helper using QGraphicsDropShadowEffect) plus ui/widgets/modal_backdrop.py (ModalBackdropOverlay with attach/detach module functions, fade-in via QPropertyAnimation on windowOpacity). Five modal dialogs received per-dialog hooks: crud_dialog (covers CRUD + CRUD-delete), versioned_replace_dialog (covers Charter + Status replace), about_dialog, dialogs/error, dialogs/reference_delete. list_detail_panel.py got chrome-only hooks (objectName, splitter handle, 45/55 default split) since it is not modal.\n\nNotable finding: Inter Variable v4.x registers under the family name 'Inter Variable' rather than the expected 'Inter' — ui/app.py needs an Inter → 'Inter Variable' substitution after QFontDatabase loads bundled fonts; without it, the project QSS that references 'Inter' would fall through to the system fallback. About dialog re-skin per design pass §2.8 and DEC-094 restructured to wordmark + tagline header + vertical two-line metadata list + single right-aligned Close button; serves as the canary surface exercising the full token system end-to-end. test_about_dialog.py updated to walk the new vertical layout and to match the 'API base url' sentence-cased label. Full v2 test suite: 1236 passed, 1 skipped (v0.5 inventory remains green)."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-037",
+    "entity_type": "session",
+    "id": 345,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:42.833562"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:42.882546+00:00",
+      "id": 144,
+      "relationship": "is_about",
+      "source_id": "SES-037",
+      "source_type": "session",
+      "target_id": "DEC-094",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-037 -[is_about]-> decision:DEC-094",
+    "entity_type": "reference",
+    "id": 346,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:42.882913"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:42.936790+00:00",
+      "id": 145,
+      "relationship": "is_about",
+      "source_id": "SES-037",
+      "source_type": "session",
+      "target_id": "DEC-106",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-037 -[is_about]-> decision:DEC-106",
+    "entity_type": "reference",
+    "id": 347,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:42.937183"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:42.989188+00:00",
+      "id": 146,
+      "relationship": "is_about",
+      "source_id": "SES-037",
+      "source_type": "session",
+      "target_id": "PI-001",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-037 -[is_about]-> planning_item:PI-001",
+    "entity_type": "reference",
+    "id": 348,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:42.989566"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:43.040753+00:00",
+      "id": 147,
+      "relationship": "is_about",
+      "source_id": "SES-037",
+      "source_type": "session",
+      "target_id": "DEC-087",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-037 -[is_about]-> decision:DEC-087",
+    "entity_type": "reference",
+    "id": 349,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:43.041151"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:43.089322+00:00",
+      "id": 148,
+      "relationship": "is_about",
+      "source_id": "SES-037",
+      "source_type": "session",
+      "target_id": "DEC-088",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-037 -[is_about]-> decision:DEC-088",
+    "entity_type": "reference",
+    "id": 350,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:43.089750"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:43.137393+00:00",
+      "id": 149,
+      "relationship": "is_about",
+      "source_id": "SES-037",
+      "source_type": "session",
+      "target_id": "DEC-089",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-037 -[is_about]-> decision:DEC-089",
+    "entity_type": "reference",
+    "id": 351,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:43.137887"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:43.186915+00:00",
+      "id": 150,
+      "relationship": "is_about",
+      "source_id": "SES-037",
+      "source_type": "session",
+      "target_id": "DEC-090",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-037 -[is_about]-> decision:DEC-090",
+    "entity_type": "reference",
+    "id": 352,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:43.187353"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:43.235982+00:00",
+      "id": 151,
+      "relationship": "is_about",
+      "source_id": "SES-037",
+      "source_type": "session",
+      "target_id": "DEC-091",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-037 -[is_about]-> decision:DEC-091",
+    "entity_type": "reference",
+    "id": 353,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:43.236478"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:43.282931+00:00",
+      "id": 152,
+      "relationship": "is_about",
+      "source_id": "SES-037",
+      "source_type": "session",
+      "target_id": "DEC-092",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-037 -[is_about]-> decision:DEC-092",
+    "entity_type": "reference",
+    "id": 354,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:43.283274"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:43.331605+00:00",
+      "id": 153,
+      "relationship": "is_about",
+      "source_id": "SES-037",
+      "source_type": "session",
+      "target_id": "DEC-105",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-037 -[is_about]-> decision:DEC-105",
+    "entity_type": "reference",
+    "id": 355,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:43.331954"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "Committed at 86d9072: crmbuilder-v2/src/crmbuilder_v2/ui/sidebar.py (220px column with sentence-cased headers, SidebarItemDelegate, _entry_for_label() lookup); crmbuilder-v2/src/crmbuilder_v2/ui/widgets/master_pane_delegate.py (new — MasterPaneDelegate + MasterPaneTreeDelegate); crmbuilder-v2/src/crmbuilder_v2/ui/base/list_detail_panel.py (master_pane_delegate_cls class attribute + delegate instantiation hook); crmbuilder-v2/src/crmbuilder_v2/ui/panels/topics.py (MasterPaneTreeDelegate override + _LucideChevronTreeView subclass); six panel sidebar tests + tests/crmbuilder_v2/ui/test_smoke.py updated for sentence-case + header role.",
+      "conversation_reference": "Claude Code conversation opened against PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-B-sidebar-and-master-pane.md, the second of six v0.6 slice prompts. Delivered the shared selected-state visual vocabulary per DEC-093 (3px left accent bar + tinted background) across both the sidebar and every panel's master-pane row rendering. Landed at commit 86d9072 on 05-18-26 at 02:32 ET, immediately after slice A.",
+      "created_at": "2026-05-18T22:46:49.020143+00:00",
+      "id": 37,
+      "identifier": "SES-038",
+      "in_flight_at_end": "Slice C (panel retrofits + ReferencesSection rewrite per CLAUDE-CODE-PROMPT-v2-ui-v0.6-C-panel-retrofits.md) was next on the queue. A follow-up palette-fix conversation actually landed AFTER slice C in commit order — see SES-040.",
+      "session_date": "05-18-26",
+      "status": "Complete",
+      "summary": "",
+      "title": "v0.6 slice B — sidebar + master-pane delegate",
+      "topics_covered": "Seed prompt: PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-B-sidebar-and-master-pane.md. This conversation delivered the shared selected-state visual vocabulary that defines v0.6's most visible behavior: a 3px color.accent.default left bar plus color.accent.subtle background plus medium-weight text, rendered identically whether the row lives in the sidebar or in a panel's master view.\n\nSidebar work in ui/sidebar.py landed the 220px column with color.neutral.100 background and a right-edge hairline divider per design pass §2.1. The earlier uppercased group headers retired in favor of sentence-cased renderings (e.g., 'Methodology') at semibold caption size with color.neutral.500 and +0.04em letter-spacing so the visual still reads as small-caps-style without the uppercase typographic baggage. Entries render at 32px row height with body-size text; the stale-indicator dot recolored from legacy #1F3864 to color.accent.default (#1F5FBF). SidebarItemDelegate handles selected/hover state via custom paint per DEC-093.\n\nMaster-pane delegate in ui/widgets/master_pane_delegate.py is the shared component: MasterPaneDelegate(QStyledItemDelegate) handles row height (28px), 1px color.neutral.200 dividers, hover/selected/focused state, soft-deleted-row treatment (color.neutral.500 text + leading Lucide trash-2 icon in the identifier column), and the identifier-column mono font (JetBrains Mono at font.size.small). MasterPaneTreeDelegate(MasterPaneDelegate) exposes paint_branch() for tree views; the branch indicator renders as Lucide chevron-right/chevron-down. Decoupled from any specific model API via injected record_for_index + is_soft_deleted callables.\n\nNotable findings: (1) the slice-A-anticipated Engagements/Engagements label collision (group header shares text with the panel entry) was navigated by rewiring select_entry/set_stale/is_stale through a new _entry_for_label() lookup that skips header items — so the shared label still routes to the entry rather than the same-named header; (2) registration via ListDetailPanel's master_pane_delegate_cls class attribute proved sufficient for all 13 panels because VersionedPanel turned out to be a ListDetailPanel subclass (Charter and Status inherit the delegate automatically) — the slice prompt's anticipated VersionedPanel fallback was no-work; (3) Topics panel overrides to MasterPaneTreeDelegate with a new _LucideChevronTreeView subclass that overrides drawBranches to paint the chevron icons plus indentation set to 16px. Six panel sidebar tests + test_smoke.py updated to assert sentence-cased headers and to distinguish header from entry via per-item header role rather than text case. Test suite: 1236 passed, 1 skipped."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-038",
+    "entity_type": "session",
+    "id": 356,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:49.020583"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:49.081768+00:00",
+      "id": 154,
+      "relationship": "is_about",
+      "source_id": "SES-038",
+      "source_type": "session",
+      "target_id": "DEC-094",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-038 -[is_about]-> decision:DEC-094",
+    "entity_type": "reference",
+    "id": 357,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:49.082147"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:49.129728+00:00",
+      "id": 155,
+      "relationship": "is_about",
+      "source_id": "SES-038",
+      "source_type": "session",
+      "target_id": "DEC-106",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-038 -[is_about]-> decision:DEC-106",
+    "entity_type": "reference",
+    "id": 358,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:49.130074"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:49.194336+00:00",
+      "id": 156,
+      "relationship": "is_about",
+      "source_id": "SES-038",
+      "source_type": "session",
+      "target_id": "PI-001",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-038 -[is_about]-> planning_item:PI-001",
+    "entity_type": "reference",
+    "id": 359,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:49.194699"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:49.242448+00:00",
+      "id": 157,
+      "relationship": "is_about",
+      "source_id": "SES-038",
+      "source_type": "session",
+      "target_id": "DEC-093",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-038 -[is_about]-> decision:DEC-093",
+    "entity_type": "reference",
+    "id": 360,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:49.242878"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "Committed at 0114324: crmbuilder-v2/src/crmbuilder_v2/ui/styling.py (form-label + field-state + role hook QSS rules added); crmbuilder-v2/src/crmbuilder_v2/ui/widgets/form_helpers.py (required_label helper); crmbuilder-v2/src/crmbuilder_v2/ui/widgets/collapsible_section.py (new — CollapsibleSection widget); crmbuilder-v2/src/crmbuilder_v2/ui/widgets/references_section.py (rewritten in place — sub-section plain-list model); 13 panel files retrofitted (WrapAllRows + required_label + status hint captions where applicable + CollapsibleSection migration where applicable); ui/base/crud_dialog.py + ui/base/versioned_panel.py (WrapAllRows + required_label adoption); tests/crmbuilder_v2/ui/test_references_section.py (rewritten for new model); tests/crmbuilder_v2/ui/test_processes_panel.py (handoff assertion updated).",
+      "conversation_reference": "Claude Code conversation opened against PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-C-panel-retrofits.md, the third of six v0.6 slice prompts. Delivered panel-level visual coherence across all 13 panels plus the in-place rewrite of widgets/references_section.py from v0.5's two-level Inbound/Outbound grouping to a sub-sectioned plain-list layout. Landed at commit 0114324 on 05-18-26 at 13:38 ET.",
+      "created_at": "2026-05-18T22:46:50.769631+00:00",
+      "id": 38,
+      "identifier": "SES-039",
+      "in_flight_at_end": "Slice D (dialogs + form controls per CLAUDE-CODE-PROMPT-v2-ui-v0.6-D-dialogs-and-form-controls.md) was next on the queue, but a follow-up palette-fix conversation (SES-040) interjected first based on a defect Doug discovered while reviewing slice A and slice B output against the Linux Mint OS theme.",
+      "session_date": "05-18-26",
+      "status": "Complete",
+      "summary": "",
+      "title": "v0.6 slice C — panel retrofits + ReferencesSection sub-section rewrite",
+      "topics_covered": "Seed prompt: PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-C-panel-retrofits.md. This conversation delivered panel-level visual coherence across the application: form-control treatment, required-field affordance, status-hint captions on classification combos, a CollapsibleSection widget for Notes, and a structural rewrite of widgets/references_section.py.\n\nbuild_app_stylesheet additions in ui/styling.py added QFormLayout QLabel + QLabel[role='form-label'] rules applying design pass §2.4 label treatment, editable field state coverage (focused/error/disabled/read-only) with error state via the dynamic fieldState property, and QLabel role hooks for references-kind-header and statusHintCaption. Form layout standardized on label-above EVERYWHERE: QFormLayout.WrapAllRows applied to every QFormLayout across all panel detail panes plus the crud_dialog base plus versioned_panel base. The required_label(text) helper in widgets/form_helpers.py renders a Lucide asterisk icon before the label text; panel detail builders and the CRUD dialog base adopt it for required fields.\n\nStatus combo hint captions landed as a per-panel QLabel below the status combo on Domains, Entities, CRM Candidates, plus the equivalent classification combo on Processes — caption text computed from each entity's propose-verify successor set. Notes collapsible toggle migrated from the flat QToolButton across Domains, Entities, Processes, and CRM Candidates to a new CollapsibleSection widget with the design pass §2.4 chevron + label treatment (object names preserved so tests still find sections).\n\nReferencesSection rewrite in widgets/references_section.py was a refactor in place: public API preserved (constructor signature, navigate_requested + references_changed signals, Add reference button, per-row right-click menu). The new _KIND_LABELS module constant maps (direction, relationship) tuples to title-case labels (Decided in, Supersedes, Hands off to, etc.). Sub-sectioned plain-list rendering replaces v0.5's two-level Inbound/Outbound grouping; entries render identifier (mono) + pretty entity type per design pass §2.4. The inbound_label / outbound_label constructor args are kept for backward compatibility but vestigial in the new model, documented as such.\n\nThirteen panels touched (Sessions, Decisions, Risks, Planning Items, Topics, Charter, Status, Domains, Entities, Processes, CRM Candidates, Engagements, References list-only) plus the two base classes. test_references_section.py rewritten to verify the kind-labeled sub-section layout while preserving v0.3 write-surface assertions; test_processes_panel.py::test_handoff_round_trips_directionally updated to drop the v0.5 '(N)' count suffix on kind headers. No schema changes; no API changes; v0.5 test suite remains green."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-039",
+    "entity_type": "session",
+    "id": 361,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:50.770086"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:50.822969+00:00",
+      "id": 158,
+      "relationship": "is_about",
+      "source_id": "SES-039",
+      "source_type": "session",
+      "target_id": "DEC-094",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-039 -[is_about]-> decision:DEC-094",
+    "entity_type": "reference",
+    "id": 362,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:50.823326"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:50.873515+00:00",
+      "id": 159,
+      "relationship": "is_about",
+      "source_id": "SES-039",
+      "source_type": "session",
+      "target_id": "DEC-106",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-039 -[is_about]-> decision:DEC-106",
+    "entity_type": "reference",
+    "id": 363,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:50.873863"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:50.924611+00:00",
+      "id": 160,
+      "relationship": "is_about",
+      "source_id": "SES-039",
+      "source_type": "session",
+      "target_id": "PI-001",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-039 -[is_about]-> planning_item:PI-001",
+    "entity_type": "reference",
+    "id": 364,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:50.924981"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:50.977659+00:00",
+      "id": 161,
+      "relationship": "is_about",
+      "source_id": "SES-039",
+      "source_type": "session",
+      "target_id": "DEC-087",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-039 -[is_about]-> decision:DEC-087",
+    "entity_type": "reference",
+    "id": 365,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:50.978079"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:51.026965+00:00",
+      "id": 162,
+      "relationship": "is_about",
+      "source_id": "SES-039",
+      "source_type": "session",
+      "target_id": "DEC-088",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-039 -[is_about]-> decision:DEC-088",
+    "entity_type": "reference",
+    "id": 366,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:51.027348"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:51.082632+00:00",
+      "id": 163,
+      "relationship": "is_about",
+      "source_id": "SES-039",
+      "source_type": "session",
+      "target_id": "DEC-090",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-039 -[is_about]-> decision:DEC-090",
+    "entity_type": "reference",
+    "id": 367,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:51.083121"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "Committed at ad7df1b: crmbuilder-v2/src/crmbuilder_v2/ui/app.py (build_application() now calls setStyle('Fusion') + constructs explicit QPalette from TOKENS['light']); tests/crmbuilder_v2/ui/test_app_palette.py (new — 5 palette role assertions + Fusion style assertion). Slice A follow-up prompt itself committed earlier at a8fa228.",
+      "conversation_reference": "Claude Code conversation opened against PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-A-followup-force-light-palette.md, a surgical defect-fix prompt authored after slice B exposed a dark-on-dark readability failure on Linux Mint with a Cinnamon/GTK theme. Landed at commit ad7df1b on 05-18-26 at 14:56 ET, after slice C in commit order even though the fix targets slice A's build_application() responsibilities. The prompt itself was committed at a8fa228 earlier the same day.",
+      "created_at": "2026-05-18T22:46:53.383267+00:00",
+      "id": 39,
+      "identifier": "SES-040",
+      "in_flight_at_end": "Resumption of slice D work (dialogs + form controls per CLAUDE-CODE-PROMPT-v2-ui-v0.6-D-dialogs-and-form-controls.md). The palette fix neutralized the bleed-through risk for all subsequent visual work; subsequent slices (D, E, F) do not need to worry about OS-theme interference.",
+      "session_date": "05-18-26",
+      "status": "Complete",
+      "summary": "",
+      "title": "v0.6 slice A follow-up — force Fusion style + explicit light palette to neutralize OS theme bleed-through",
+      "topics_covered": "Seed prompt: PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-A-followup-force-light-palette.md. This conversation diagnosed and fixed a defect surfaced during slice B visual review: on Linux Mint with a Cinnamon/GTK theme, Qt picked up GTK palette values for widget surfaces the project QSS did not explicitly cover (QLabel backgrounds, QWidget container backgrounds), so on a dark Mint theme the app rendered black backgrounds with near-black text — 'dark blue on black' — unreadable labels across the UI.\n\nDiagnosis surfaced that simply changing the OS theme did not reliably fix it; some Mint 'light' themes still have dark palette roles, and Qt's GTK reading was sensitive to the specific theme structure. The root cause was that slice A's build_application() constructed QApplication, loaded fonts, and applied the project QSS but did not force a Qt style or palette. Without a forced style, Qt delegated to the platform-native style on Linux which read GTK palette values; without a forced palette, the default QPalette inherited dark theme roles where the OS theme provided them.\n\nThe surgical fix: force QStyle to Fusion (cross-platform Qt-native style that does not delegate to GTK or native platform styles), then force QPalette to an explicit light palette built from TOKENS['light'] so widget surfaces without explicit QSS rules render in design-pass light-theme colors. Palette role-to-token mapping mirrors design pass §1.2 color tokens; no design pass values are duplicated or drifted. After the fix, the application renders identically regardless of OS theme.\n\nNotable findings: (1) the dark-on-dark failure mode was OS-theme-bleed-through, not a TOKENS values bug — the design pass palette was correct; it was the unstyled surfaces that needed explicit palette protection; (2) apply_stylesheet wraps the style in Qt's internal QStyleSheetStyle proxy, so a naive style().objectName() assertion sees 'QStyleSheetStyle' rather than 'Fusion' — the regression test test_style_is_fusion clears the project QSS before asserting on style().objectName() to expose the underlying base Fusion style. Intent of the test is preserved with this contortion documented in a comment. Five regression-test cases added in tests/crmbuilder_v2/ui/test_app_palette.py: five palette role assertions plus the Fusion style assertion, with the WindowText/Window contrast case (the label-readability bug) explicitly tested as test_palette_window_text_is_dark_neutral. Test count: 1236 baseline + 5 new = 1241 passed, 1 skipped."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-040",
+    "entity_type": "session",
+    "id": 368,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:53.383668"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:53.432572+00:00",
+      "id": 164,
+      "relationship": "is_about",
+      "source_id": "SES-040",
+      "source_type": "session",
+      "target_id": "DEC-094",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-040 -[is_about]-> decision:DEC-094",
+    "entity_type": "reference",
+    "id": 369,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:53.432934"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:53.481608+00:00",
+      "id": 165,
+      "relationship": "is_about",
+      "source_id": "SES-040",
+      "source_type": "session",
+      "target_id": "DEC-106",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-040 -[is_about]-> decision:DEC-106",
+    "entity_type": "reference",
+    "id": 370,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:53.481961"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:53.530109+00:00",
+      "id": 166,
+      "relationship": "is_about",
+      "source_id": "SES-040",
+      "source_type": "session",
+      "target_id": "PI-001",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-040 -[is_about]-> planning_item:PI-001",
+    "entity_type": "reference",
+    "id": 371,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:53.530534"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:53.579315+00:00",
+      "id": 167,
+      "relationship": "is_about",
+      "source_id": "SES-040",
+      "source_type": "session",
+      "target_id": "DEC-089",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-040 -[is_about]-> decision:DEC-089",
+    "entity_type": "reference",
+    "id": 372,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:53.579669"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "Committed at a54adc5: crmbuilder-v2/src/crmbuilder_v2/ui/styling.py (five button-category QSS blocks + combo dropdown + checkbox styling + delete-body line-height rule); crmbuilder-v2/src/crmbuilder_v2/ui/widgets/form_helpers.py (four button helpers: primary_button, destructive_button, text_link_button, icon_button); crmbuilder-v2/src/crmbuilder_v2/ui/assets/icons/lucide/ (chevron-down pre-tinted to neutral.500, check pre-tinted to neutral-0 and neutral-300); crmbuilder-v2/src/crmbuilder_v2/ui/base/crud_dialog.py + base/crud_delete_dialog.py + base/versioned_replace_dialog.py (button categories applied); 13 panel files (per-record Delete → destructive_button; 'New X' → primary_button; toolbar refresh → icon_button); crmbuilder-v2/src/crmbuilder_v2/ui/widgets/references_section.py (Add reference → text_link_button); crmbuilder-v2/src/crmbuilder_v2/ui/dialogs/reference_delete.py (legacy red removed); crmbuilder-v2/src/crmbuilder_v2/ui/base/crud_dialog.py (_build_context_strip method); tests/crmbuilder_v2/ui/test_list_detail_panel.py (refresh assertion updated for icon-only buttons).",
+      "conversation_reference": "Claude Code conversation opened against PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-D-dialogs-and-form-controls.md, the fourth of six v0.6 slice prompts. Delivered the dialog and form-control story for v0.6: five button categories with full state coverage, the edit-dialog context strip, delete-confirm dialog body treatment, combo/checkbox styling, and the migration of every panel's New + Delete CTAs to the new helpers. Landed at commit a54adc5 on 05-18-26 at 15:38 ET, immediately after the slice A follow-up palette fix.",
+      "created_at": "2026-05-18T22:46:55.072273+00:00",
+      "id": 40,
+      "identifier": "SES-041",
+      "in_flight_at_end": "Slice E (status, error, warning + crash banner per CLAUDE-CODE-PROMPT-v2-ui-v0.6-E-status-and-crash-banner.md) is next, followed by slice F (closeout).",
+      "session_date": "05-18-26",
+      "status": "Complete",
+      "summary": "",
+      "title": "v0.6 slice D — dialogs and form controls (button categories, edit-dialog context strip, delete-confirm)",
+      "topics_covered": "Seed prompt: PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-D-dialogs-and-form-controls.md. This conversation delivered the dialog + form-control vocabulary that defines v0.6's interactive surfaces: five button categories with full state coverage, helpers that wrap them, the internal edit-dialog context strip per design pass §2.7, and the migration of every panel's New + Delete + Add-reference + refresh CTAs.\n\nButton categories landed in build_app_stylesheet additions: Primary (accent fill, white text), Secondary (transparent + neutral border — default), Destructive (danger fill), Text/Link (transparent + accent text), Icon-only (28x28 square, icon-only) — each with full state coverage (hover/pressed/disabled/focused). The buttonCategory dynamic property drives the QSS rules; default fall-through ensures a bare QPushButton renders as Secondary so no panel accidentally renders an unstyled button.\n\nButton helpers in widgets/form_helpers.py wrap the categories: primary_button(text), destructive_button(text), text_link_button(text, *, icon_name=None), icon_button(icon_name, *, tooltip). Migration was systematic across the codebase: Dialog Save → primary_button via the CRUD base + replace base; Dialog Delete → destructive_button via CRUD-delete base + ReferenceDeleteDialog; per-record detail-pane Delete → destructive_button across 13 panels; panel 'New X' toolbar CTAs → primary_button across 13 panels; ReferencesSection 'Add reference' → text_link_button(plus); panel toolbar refresh → icon_button(rotate-ccw). Legacy #c1272d red + #b6868a disabled-destructive treatment removed from reference_delete.py and crud_dialog.py.\n\nCombo dropdown + checkbox styling additions to build_app_stylesheet: QComboBox::down-arrow with a pre-tinted Lucide chevron-down (color.neutral.500); QComboBox QAbstractItemView popup styling (tokenized container, per-item padding, hover/selected states); QCheckBox::indicator with Lucide check.svg for checked state — pre-tinted SVG variants committed to assets (check-neutral-0 for checked, check-neutral-300 for disabled-checked).\n\nInternal edit-dialog context strip in base/crud_dialog.py: new _build_context_strip() on EntityCrudDialog auto-applied in edit mode only. Renders color.neutral.100 background with mono identifier + body name. Explicitly excluded from create-mode, delete-confirm, About, Error, ReferenceDelete, ReferenceCreate, VersionedReplace dialogs per design pass §2.7. Delete-confirm dialog body treatment got font.line.relaxed (1.6) line height via a role='delete-body' QSS rule, with the Destructive button right-aligned and Cancel to its left in both EntityCrudDeleteDialog and ReferenceDeleteDialog.\n\nTest update: test_list_detail_panel.py's refresh-button assertion now reads tooltip + buttonCategory property instead of visible text (icon-only buttons carry no label, so text-based assertion no longer works). Full v2 UI suite green (633 passed)."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-041",
+    "entity_type": "session",
+    "id": 373,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:55.072672"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:55.129349+00:00",
+      "id": 168,
+      "relationship": "is_about",
+      "source_id": "SES-041",
+      "source_type": "session",
+      "target_id": "DEC-094",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-041 -[is_about]-> decision:DEC-094",
+    "entity_type": "reference",
+    "id": 374,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:55.129773"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:55.181583+00:00",
+      "id": 169,
+      "relationship": "is_about",
+      "source_id": "SES-041",
+      "source_type": "session",
+      "target_id": "DEC-106",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-041 -[is_about]-> decision:DEC-106",
+    "entity_type": "reference",
+    "id": 375,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:55.182040"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:55.233608+00:00",
+      "id": 170,
+      "relationship": "is_about",
+      "source_id": "SES-041",
+      "source_type": "session",
+      "target_id": "PI-001",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-041 -[is_about]-> planning_item:PI-001",
+    "entity_type": "reference",
+    "id": 376,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:55.233970"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:55.285088+00:00",
+      "id": 171,
+      "relationship": "is_about",
+      "source_id": "SES-041",
+      "source_type": "session",
+      "target_id": "DEC-091",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-041 -[is_about]-> decision:DEC-091",
+    "entity_type": "reference",
+    "id": 377,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:55.285490"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:55.334721+00:00",
+      "id": 172,
+      "relationship": "is_about",
+      "source_id": "SES-041",
+      "source_type": "session",
+      "target_id": "DEC-107",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-041 -[is_about]-> decision:DEC-107",
+    "entity_type": "reference",
+    "id": 378,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:55.335086"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "Committed at 296aa2a: crmbuilder-v2/src/crmbuilder_v2/ui/widgets/warning_callout.py (new — inline WarningCallout widget); crmbuilder-v2/src/crmbuilder_v2/ui/styling.py (warningCalloutText + errorDialogHeader QSS rules added); crmbuilder-v2/src/crmbuilder_v2/ui/panels/processes.py (retoken'd onto WarningCallout; _WARNING_STYLE legacy hex removed); crmbuilder-v2/src/crmbuilder_v2/ui/dialogs/error.py (header restructured onto Lucide circle-x + danger.default + heading-3; _BANNER_STYLE legacy navy removed); crmbuilder-v2/src/crmbuilder_v2/ui/crash_banner.py (re-skinned onto color.danger.default + Lucide circle-alert; _BANNER_BACKGROUND legacy constant removed); tests/crmbuilder_v2/ui/test_processes_panel.py (warning lookup by WarningCallout class).",
+      "conversation_reference": "Claude Code conversation opened against PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-E-status-and-crash-banner.md, the fifth of six v0.6 slice prompts. Delivered the small but visible status/error/warning surfaces that complete v0.6 visual coherence: a new inline WarningCallout widget, the Processes panel warning retoken'd from danger-red to warning-amber, the error dialog header retoken'd off the legacy navy, and the crash banner re-skinned onto color.danger.default. Landed at commit 296aa2a on 05-18-26 at 16:10 ET, immediately after slice D.",
+      "created_at": "2026-05-18T22:46:56.908902+00:00",
+      "id": 41,
+      "identifier": "SES-042",
+      "in_flight_at_end": "Slice F (closeout: version bump, README v0.6 release note, WCAG contrast test build gate, full regression per CLAUDE-CODE-PROMPT-v2-ui-v0.6-F-closeout.md) is the final v0.6 slice.",
+      "session_date": "05-18-26",
+      "status": "Complete",
+      "summary": "",
+      "title": "v0.6 slice E — status, error, warning + crash banner",
+      "topics_covered": "Seed prompt: PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-E-status-and-crash-banner.md. This conversation delivered the four small status/error/warning surfaces that complete v0.6 visual coherence: an inline WarningCallout widget, the Processes soft-deleted-domain warning retoken'd, the error dialog header retoken'd, and the crash banner re-skinned.\n\nWarningCallout widget at ui/widgets/warning_callout.py is a new inline panel-level warning row per design pass §2.9 — a Lucide circle-alert icon plus color.warning.default text in a horizontal row. Reusable; current single caller is the Processes panel's soft-deleted-domain warning. A QSS rule for QLabel#warningCalloutText (small + color.warning.default) lives in build_app_stylesheet.\n\nProcesses panel retoken in ui/panels/processes.py removed the legacy _WARNING_STYLE = 'color: #B22222;' constant. The soft-deleted-domain warning now renders via WarningCallout (warning-amber, not danger-red) — because the message is informational about a removed-but-still-referenced domain, not a hard error per design pass §2.9. The ad-hoc '⚠' character prefix dropped; the Lucide icon carries the affordance now.\n\nError dialog header retoken in ui/dialogs/error.py removed the legacy _BANNER_STYLE = 'color: #1F3864; font-weight: bold;' constant (a v0.1 vestige using the legacy navy). Header restructured: leading Lucide circle-x icon at 18px color.danger.default + title in font.size.heading_3 semibold color.danger.text via a QLabel#errorDialogHeader QSS rule. Body content unchanged.\n\nCrash banner re-skin in ui/crash_banner.py removed _BANNER_BACKGROUND and bespoke button-style constants. Background color.danger.default; text color.neutral.0 white at font.size.body font.weight.medium; leading Lucide circle-alert icon at 16px white. Padding 12px x 16px (space.3 x space.4). Banner button styling kept as per-widget setStyleSheet (the banner is exceptional — semi-transparent white-on-color styling doesn't fit any of the five design-system button categories from slice D). setAutoFillBackground + palette ensure the danger background renders reliably on the top-level banner widget. Behavior unchanged: always-on-top, full window width, persists until dismissed or error resolved.\n\nInline form-field error verification: the QLabel[role='error'] QSS rule from slice A confirmed rendering correctly across multiple panels' validation flows. Test update: tests/crmbuilder_v2/ui/test_processes_panel.py's soft-deleted-domain warning assertions look up the warning by its new WarningCallout widget class instead of QLabel; text content assertion preserved (the widget exposes text() with the message body). No schema changes; no API changes; v0.5 test suite remains green."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-042",
+    "entity_type": "session",
+    "id": 379,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:56.909258"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:56.962131+00:00",
+      "id": 173,
+      "relationship": "is_about",
+      "source_id": "SES-042",
+      "source_type": "session",
+      "target_id": "DEC-094",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-042 -[is_about]-> decision:DEC-094",
+    "entity_type": "reference",
+    "id": 380,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:56.962571"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:57.013560+00:00",
+      "id": 174,
+      "relationship": "is_about",
+      "source_id": "SES-042",
+      "source_type": "session",
+      "target_id": "DEC-106",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-042 -[is_about]-> decision:DEC-106",
+    "entity_type": "reference",
+    "id": 381,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:57.013940"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:57.065303+00:00",
+      "id": 175,
+      "relationship": "is_about",
+      "source_id": "SES-042",
+      "source_type": "session",
+      "target_id": "PI-001",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-042 -[is_about]-> planning_item:PI-001",
+    "entity_type": "reference",
+    "id": 382,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:57.065698"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:57.116490+00:00",
+      "id": 176,
+      "relationship": "is_about",
+      "source_id": "SES-042",
+      "source_type": "session",
+      "target_id": "DEC-088",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-042 -[is_about]-> decision:DEC-088",
+    "entity_type": "reference",
+    "id": 383,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:57.116867"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "Committed at 583f511: crmbuilder-v2/src/crmbuilder_v2/__init__.py (__version__ bumped to '0.6.0'); crmbuilder-v2/README.md (v0.6 release note section added above v0.5); crmbuilder-v2/src/crmbuilder_v2/ui/styling.py (color.neutral.500 corrected '#7A8694' → '#6A7480'; color.warning.default corrected '#B0731A' → '#9D6517'); tests/crmbuilder_v2/ui/test_token_contrast.py (new — 9 WCAG contrast cases with hand-rolled luminance + ratio); tests/crmbuilder_v2/ui/test_about_dialog.py (version assertion bumped to '0.6.0'); PRDs/product/crmbuilder-v2/styling-design-pass.md (§4.4 corrected ratios with traceability notes).",
+      "conversation_reference": "Claude Code conversation opened against PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-F-closeout.md, the sixth and final v0.6 slice prompt. Mechanically completed the v0.6 release: __version__ bumped to 0.6.0, README v0.6 release note added, WCAG contrast test landed as the build gate per DEC-107, and design pass §4.4 corrected for two transcription errors surfaced by the new contrast checks. Landed at commit 583f511 on 05-18-26 at 16:31 ET.",
+      "created_at": "2026-05-18T22:46:58.652105+00:00",
+      "id": 42,
+      "identifier": "SES-043",
+      "in_flight_at_end": "Operator-authored steps to complete the release per slice F commit message: status entity versioned-replace from 'v0.5 complete' to 'v0.6 complete' (the operation this very closeout pass executes), plus the seven v0.6 build-execution session records (this closeout). After this closeout pass plus deferred screenshot captures land, v0.6 is shippable and the paper-test workstream (DEC-077) is the next conversation.",
+      "session_date": "05-18-26",
+      "status": "Complete",
+      "summary": "",
+      "title": "v0.6 slice F — closeout (release 0.6.0): version bump, README, WCAG contrast build gate, design pass §4.4 traceability fix",
+      "topics_covered": "Seed prompt: PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-F-closeout.md. This conversation mechanically completed the v0.6 release that discharges PI-001 after four prior deferrals (DEC-024, DEC-026, DEC-037, DEC-042 → DEC-076 reopening): version bump, README release note, WCAG contrast test as build gate, design pass §4.4 traceability fix.\n\nVersion bump: crmbuilder-v2/src/crmbuilder_v2/__init__.py __version__ = '0.6.0'. Root pyproject.toml is the v1 distribution; the v2 version source per CLAUDE.md is __version__ only (About dialog reads via importlib.metadata for 'crmbuilder-v2' which is never installed as a standalone dist, so the __version__ fallback always wins). README v0.6 release note section added matching v0.5's format, placed above v0.5 in chronological-newest-first order. Highlights: tokens module (60+ tokens), bundled Inter + JetBrains Mono + Lucide assets, shared selected-state vocabulary, panel retrofit, dialog work, status surfaces (slice E), modal elevation, WCAG contrast verification, retired legacy colors.\n\nWCAG contrast test at tests/crmbuilder_v2/ui/test_token_contrast.py is the build gate per DEC-107: 8 text-on-background combinations from design pass §4.4 (A9) verified against WCAG AA threshold (4.5:1 for small body text); plus one helper-sanity test (black-on-white = 21:1, identical = 1:1) totaling 9 cases. Hand-rolled WCAG 2.x luminance + contrast implementation since the wcag-contrast-ratio PyPI lib is not bundled and the formula is short enough to inline.\n\nNotable finding: the WCAG test surfaced two design-pass transcription errors that needed correcting. color.neutral.500: drafted '#7A8694' computed 3.71:1 on white (the design pass claimed 4.62:1) — failed AA at small body size; adjusted to '#6A7480' which computes 4.75:1 (passes AA, matches design intent). color.warning.default: drafted '#B0731A' computed 3.95:1 on white (the design pass claimed ~4.7) — failed AA at body size; adjusted to '#9D6517' which computes 4.88:1 (passes AA). The color.warning.default adjustment was the explicit recommendation in design pass §4.4 and PRD Open Question #4, validated empirically here.\n\nDesign pass update: §4.4 (A9) both adjusted ratios noted inline with their old drafted values for traceability; closing line now points at the slice F WCAG build gate as the authoritative verification. Test update: tests/crmbuilder_v2/ui/test_about_dialog.py test_version_displays_* renamed and asserts '0.6.0'. Full regression: uv run pytest tests/crmbuilder_v2/ -v returns green across the entire suite (1250 passed, 1 skipped — the same v0.5 test inventory plus the 9 new WCAG cases). v0.6 IS RELEASED. PI-001 discharged. No schema changes; no API changes."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-043",
+    "entity_type": "session",
+    "id": 384,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:58.652494"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:58.704093+00:00",
+      "id": 177,
+      "relationship": "is_about",
+      "source_id": "SES-043",
+      "source_type": "session",
+      "target_id": "DEC-094",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-043 -[is_about]-> decision:DEC-094",
+    "entity_type": "reference",
+    "id": 385,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:58.704450"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:58.783544+00:00",
+      "id": 178,
+      "relationship": "is_about",
+      "source_id": "SES-043",
+      "source_type": "session",
+      "target_id": "DEC-106",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-043 -[is_about]-> decision:DEC-106",
+    "entity_type": "reference",
+    "id": 386,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:58.783892"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:58.835114+00:00",
+      "id": 179,
+      "relationship": "is_about",
+      "source_id": "SES-043",
+      "source_type": "session",
+      "target_id": "PI-001",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-043 -[is_about]-> planning_item:PI-001",
+    "entity_type": "reference",
+    "id": 387,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:58.835467"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:58.887778+00:00",
+      "id": 180,
+      "relationship": "is_about",
+      "source_id": "SES-043",
+      "source_type": "session",
+      "target_id": "DEC-105",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-043 -[is_about]-> decision:DEC-105",
+    "entity_type": "reference",
+    "id": 388,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:58.888350"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:46:58.938840+00:00",
+      "id": 181,
+      "relationship": "is_about",
+      "source_id": "SES-043",
+      "source_type": "session",
+      "target_id": "DEC-107",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-043 -[is_about]-> decision:DEC-107",
+    "entity_type": "reference",
+    "id": 389,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:46:58.939229"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:47:02.421284+00:00",
+      "id": 16,
+      "is_current": true,
+      "payload": {
+        "active_work": "v0.6 (UI styling rollout) is shipped. __version__ is 0.6.0. PI-001 (full styling design pass per DEC-024) is discharged after four prior deferrals (DEC-024 → DEC-026 → DEC-037 → DEC-042 → DEC-076 reopening → discharge at slice F). All six slices A-F plus the slice A follow-up palette fix landed on 05-18-26 across seven Claude Code build-execution conversations (SES-037..SES-043).\n\nSlice A (foundation + About dialog, commit 7e5c010 / SES-037) replaced the 72-line v0.1 QSS stub with the full token system: TOKENS dict (theme-keyed per DEC-089), t() accessor, build_app_stylesheet() generator. Bundled Inter Variable + JetBrains Mono Variable (DEC-090) and the initial 14-icon Lucide wave (DEC-092) at ui/assets/. Modal elevation (DEC-091) landed as ui/elevation.py + ui/widgets/modal_backdrop.py with per-dialog hooks across five modal dialogs. About dialog re-skinned per design pass §2.8 + DEC-094 as the canary surface.\n\nSlice B (sidebar + master-pane delegate, commit 86d9072 / SES-038) delivered the DEC-093 selected-state vocabulary uniformly: 3px left accent bar + color.accent.subtle background + medium-weight text, applied identically to sidebar entries and master-pane rows across all 13 panels via centralized ListDetailPanel registration. Sentence-cased sidebar group headers; SidebarItemDelegate + MasterPaneDelegate + MasterPaneTreeDelegate; Topics tree-view chevron variant. VersionedPanel inheritance positive surprise — slice B's anticipated VersionedPanel fallback was no-work because Charter and Status inherit the delegate automatically as ListDetailPanel subclasses.\n\nSlice A follow-up (force-light-palette fix, commit ad7df1b / SES-040, landed after slice C in commit order) is the surgical defect fix for a Linux Mint OS-theme bleed-through: dark backgrounds with near-black text rendered as 'dark blue on black' because slice A's build_application() didn't force a Qt style or palette. Fix: setStyle('Fusion') + explicit QPalette construction from TOKENS['light']. Five regression tests at tests/crmbuilder_v2/ui/test_app_palette.py.\n\nSlice C (panel retrofits + ReferencesSection sub-section rewrite, commit 0114324 / SES-039) delivered panel-level visual coherence: QFormLayout.WrapAllRows across 13 panels + crud_dialog + versioned_panel base, required_label helper with Lucide asterisk, status hint captions on classification combos, CollapsibleSection for Notes, and the in-place rewrite of widgets/references_section.py from v0.5's two-level Inbound/Outbound grouping to sub-sectioned plain-list rendering with kind labels.\n\nSlice D (dialogs + form controls, commit a54adc5 / SES-041) landed five button categories (primary/secondary/destructive/text-link/icon-only) with full state coverage plus helpers in widgets/form_helpers.py. Migrated 13 panels' New + Delete CTAs, ReferencesSection's Add reference (text_link_button), toolbar refresh (icon_button). Internal edit-dialog context strip per design pass §2.7 (mono identifier + body name); delete-confirm body line-height + Destructive-right button order. Combo dropdown chevron + checkbox check pre-tinted Lucide SVGs.\n\nSlice E (status, error, warning + crash banner, commit 296aa2a / SES-042) delivered the four small visible surfaces: new inline WarningCallout widget (Lucide circle-alert + warning.default); Processes soft-deleted-domain warning retoken'd off legacy #B22222 onto WarningCallout (warning-amber, not danger-red, because it's informational); error dialog header retoken'd off legacy #1F3864 navy onto Lucide circle-x + danger.default + heading-3; crash banner re-skinned onto color.danger.default + Lucide circle-alert + neutral.0 white text.\n\nSlice F (closeout, commit 583f511 / SES-043) bumped __version__ to '0.6.0', added the README v0.6 release note, and landed the WCAG contrast test as build gate per DEC-107 (8 design-pass §4.4 combinations + 1 sanity case = 9 cases). The test surfaced two design-pass transcription errors: color.neutral.500 #7A8694 (claimed 4.62:1 but actually 3.71:1) corrected to #6A7480 (4.75:1); color.warning.default #B0731A (claimed ~4.7 but actually 3.95:1) corrected to #9D6517 (4.88:1) per design pass §4.4 + PRD Open Question #4 recommendation. Design pass §4.4 updated with corrected ratios and traceability notes pointing to the slice F build gate as authoritative. Full regression green: 1250 passed, 1 skipped.\n\nGovernance follow-up: this status update (version 16, replacing the misleading version 15) plus the seven SES-037..SES-043 build-execution session records are applied via the v0.6 build-execution closeout prompt at prompts/CLAUDE-CODE-PROMPT-apply-v0.6-build-execution-closeout.md. The deferred slice screenshot captures (slice-B initial set already in working tree as styling-screenshots/slice-B/, untracked) land in subsequent operator commits.\n\nThe paper-test workstream (DEC-077) is fully unblocked. The next Claude.ai conversation can be the paper-test kickoff against a freshly-created CBM engagement via the single-gesture creation+activation flow shipped in v0.5 slice D.",
+        "blockers": "None.",
+        "live_inventory": {
+          "in_database": [
+            "104 decisions: DEC-001..DEC-107 with three gaps at DEC-095/096/097 (anticipated by styling Conversation 2 at PRD-authoring time, rebased to DEC-105/106/107 per parallel-workstream coupling discipline in DEC-076)",
+            "42 sessions: SES-001..SES-043 with one gap at SES-028 (consumed in flight by parallel v0.5 work; styling Conversation 2 rebased to SES-030 then displaced to SES-036 after reconciliation b41fb04; v0.6 build-execution sessions SES-037..SES-043 added by this closeout)",
+            "2 charter versions (latest is_current)",
+            "16 status versions (this one is the new current; v15 'Building v0.6' had false 'build not started' claim, now is_current=False)",
+            "177 references (139 prior + 38 new from SES-037..SES-043 is_about references to PI-001 and the styling design pass decisions DEC-087..DEC-094, DEC-105..DEC-107)",
+            "17 planning_items (PI-001..PI-017; PI-001 now discharged by slice F)",
+            "42 catalog entities + 415 catalog attributes (base entity catalog, established by SES-016)",
+            "1 engagement (CRMBUILDER) in the meta DB at crmbuilder-v2/data/engagements.db"
+          ],
+          "still_markdown": [
+            "PRDs/product/crmbuilder-v2/storage-system-PRD-v0.1.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/storage-system-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/prompts/*.md (Claude Code prompt files)",
+            "PRDs/product/crmbuilder-v2/ui-PRD-v0.1.md, v0.2.md, v0.3.md, v0.4.md, v0.5.md, v0.6.md (PRDs, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/ui-implementation-plan.md and ui-v0.2-/v0.3-/v0.4-/v0.5-/v0.6-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/styling-design-pass.md and styling-workstream-plan.md",
+            "PRDs/product/crmbuilder-v2/v0.5-conversation-1-kickoff.md and styling-conversation-1-kickoff.md",
+            "PRDs/product/crmbuilder-v2/close-out-payloads/*.json (apply-script inputs; ephemeral once applied)"
+          ],
+          "v1_unchanged": [
+            "v1 codebase under crmbuilder-v1/ — frozen reference; no v0.5/v0.6 changes touch it",
+            "v1 documentation under PRDs/ outside the crmbuilder-v2/ subtree — frozen reference",
+            "Cleveland Business Mentors engagement under separate dbower44022/ClevelandBusinessMentoring repo — separate workstream",
+            "Operating-mode and decision-template preferences in user profile — methodology-stable across releases",
+            "CLAUDE.md repo conventions — unchanged since SES-025 update"
+          ]
+        },
+        "metadata": {
+          "Last Updated": "05-18-26 17:00",
+          "Status": "v0.6 shipped (slices A-F + slice A follow-up palette fix all landed)"
+        },
+        "pending": {
+          "deferred_post_v0_6_operator_work": [
+            "Slice screenshot captures beyond slice B (slice-B already in working tree as styling-screenshots/slice-B/, untracked) — operator-authored per DEC-107 acceptance pattern",
+            "Any user-visible follow-ups from the slice E status surface review (additional warning/error sites identified but not deemed in-scope for v0.6)"
+          ],
+          "planning_paused_until_paper_test": [
+            "v0.7+ planning (engagement-record details surfaces, methodology authoring surfaces) — gated on paper-test learnings",
+            "Dark-mode theme values authoring — token structure is dark-mode-ready per DEC-089; values deferred to a separate PI",
+            "Windows-specific cross-platform polish — deferred per workstream plan §3.2"
+          ],
+          "post_v0_6_candidates": [
+            "Paper-test kickoff against a freshly-created CBM engagement (single-gesture creation+activation flow shipped in v0.5 slice D)",
+            "CBM-branded palette theme variant (additive theme dict per DEC-089 structure)",
+            "Print-friendly theme variant (same pattern)",
+            "Custom brand mark for About dialog (deferred per DEC-094 — modest showcase chosen over full showcase to avoid logo-authoring derail)",
+            "Full accessibility audit beyond WCAG AA contrast floor (deferred per design pass §4.6)",
+            "Animation and motion design (deferred per design pass §4.6)",
+            "Phosphor or expanded Lucide icon set (additive per DEC-092 — icons bundled as components need them)",
+            "Spreadsheet-density master pane variant for high-row-count panels (rejected at v0.6 design pass per DEC-093 master-pane posture decision; could be reconsidered if usage patterns change)"
+          ]
+        },
+        "phase": "v0.6 complete",
+        "reading_order_for_new_sessions": "For a new Claude.ai session opening against this project, the recommended reading order at v0.6 ship is: (1) CLAUDE.md at the repo root; (2) the current status entity (this record) for the snapshot of where things stand; (3) the latest charter version for governance philosophy; (4) sessions.json filtered to SES-029..SES-043 to ground in recent v0.5 ship + v0.6 design + v0.6 build work; (5) the styling design pass at PRDs/product/crmbuilder-v2/styling-design-pass.md if the session involves any visual work; (6) crmbuilder-v2/README.md for the v0.6 release note and the public framing of what shipped. For paper-test work specifically: also read DEC-077 and the workstream plan reference.",
+        "title": "CRMBuilder v2 status",
+        "version_label": "0.6.0"
+      },
+      "version": 16
+    },
+    "before_payload": {
+      "created_at": "2026-05-18T22:41:40.421089",
+      "id": 15,
+      "is_current": true,
+      "payload": {
+        "active_work": "v0.5 (engagement management) is shipped and governance-complete. The multi-engagement routing foundation is live: meta DB at crmbuilder-v2/data/engagements.db holds the engagements registry; per-engagement DBs at crmbuilder-v2/data/engagements/{engagement_code}.db hold the methodology and governance content; the two-database API server routes /engagements/* to the meta DB and everything else to the active engagement DB; the desktop top-strip + picker + activation worker orchestrate the kill-relaunch dance to switch engagements; cross-restart active-state persists via current_engagement.json; the dogfood migration rehoused the existing v2.db into engagements/CRMBUILDER.db with backup-first verify-row-counts delete-original discipline. v0.5 governance trail: SES-029 (PRD authoring) + DEC-098..104; SES-030 (slice A launcher-wiring follow-up + slice D follow-up); SES-031..SES-035 (build-execution closeouts). __version__ is 0.5.0.\n\nv0.6 (UI styling rollout) build planning is governance-complete but the build itself has NOT started. Source state at HEAD: ui/styling.py is still the 72-line v0.1 minimal QSS stub from DEC-024 (legacy navy #1F3864 accent, no tokens, no QFontDatabase font loading, no Lucide icons); ui/assets/ does not exist; ui/widgets/master_pane_delegate.py does not exist; ui/icons.py and ui/elevation.py do not exist; ui/widgets/references_section.py is still the v0.3-shipped widget with inbound/outbound grouping (not sub-sectioned plain-list). The styling design pass (SES-027, DEC-087..094) settled tokens, fonts, icons, modal elevation, selected-state vocabulary, and component visual decisions. The build planning (SES-036, DEC-105..107) settled version bundling as separate v0.6 release, six-slice structure A-F, and slice acceptance pattern (per-slice screenshots + closeout WCAG check). Six slice build prompts authored at prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-{A..F}-*.md. None executed yet. Slice A (foundation + About dialog) is next.\n\nPI-001 (full styling design pass per DEC-024) discharges with slice F when __version__ bumps to 0.6.0. The four prior deferral decisions (DEC-026/037/042/076) are settled by virtue of v0.6 build being queued.\n\nThe paper-test workstream (DEC-077) is fully unblocked. The next Claude.ai conversation can be the paper-test kickoff against a freshly-created CBM engagement via the single-gesture creation+activation flow shipped in v0.5 slice D.\n\nIdentifier reconciliation history: the styling Conversation 2 originally anticipated SES-028 at PRD-authoring time, rebased to SES-030 at close-out artifact authoring (commit 7255667 on 05-16-26) based on snapshot showing SES-029 as latest applied. Between that rebase and Doug's apply-prompt run (05-18-26), a separate v0.5 follow-up conversation independently claimed SES-030 on 05-17-26 by direct API POST without committing a ses_030.json file. When Doug ran the styling Conversation 2's apply prompt (commit cfdd088), the script absorbed the SES-030 conflict as SKIP and DEC-105/106/107 plus four references inserted pointing at the wrong SES-030 record. Reconciled at commit b41fb04: the styling Conversation 2 session content was applied at SES-036 (next available after SES-035), four corrected references added pointing at SES-036, and four orphan references (ids 136, 137, 138, 139) deleted. SES-030 in the DB remains correctly the v0.5 follow-up record. The styling Conversation 2's governance trail is now consistent at SES-036.",
+        "blockers": "None.",
+        "live_inventory": {
+          "in_database": [
+            "104 decisions: DEC-001..DEC-107 with three gaps at DEC-095/096/097 (anticipated by styling Conversation 2 at PRD-authoring time, rebased to DEC-105/106/107 per parallel-workstream coupling discipline in DEC-076)",
+            "35 sessions: SES-001..SES-036 with one gap at SES-028 (consumed in flight by parallel v0.5 work; styling Conversation 2 rebased to SES-030 then displaced to SES-036 after reconciliation b41fb04)",
+            "2 charter versions (latest is_current)",
+            "15 status versions (this one is the new current)",
+            "139 references",
+            "17 planning_items (PI-001..PI-017)",
+            "42 catalog entities + 415 catalog attributes (base entity catalog, established by SES-016)",
+            "1 engagement (CRMBUILDER) in the meta DB at crmbuilder-v2/data/engagements.db"
+          ],
+          "still_markdown": [
+            "PRDs/product/crmbuilder-v2/storage-system-PRD-v0.1.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/storage-system-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/prompts/*.md (Claude Code prompt files)",
+            "PRDs/product/crmbuilder-v2/ui-PRD-v0.1.md, v0.2.md, v0.3.md, v0.4.md, v0.5.md, v0.6.md (PRDs, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/ui-implementation-plan.md and ui-v0.2-/v0.3-/v0.4-/v0.5-/v0.6-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/styling-design-pass.md and styling-workstream-plan.md",
+            "PRDs/product/crmbuilder-v2/v0.5-conversation-1-kickoff.md and styling-conversation-1-kickoff.md",
+            "PRDs/product/crmbuilder-v2/close-out-payloads/*.json (apply-script inputs; ephemeral once applied)"
+          ],
+          "v1_unchanged": [
+            "v1 codebase under crmbuilder-v1/ — frozen reference; no v0.5/v0.6 changes touch it",
+            "v1 documentation under PRDs/ outside the crmbuilder-v2/ subtree — frozen reference",
+            "Cleveland Business Mentors engagement under separate dbower44022/ClevelandBusinessMentoring repo — separate workstream",
+            "Operating-mode and decision-template preferences in user profile — methodology-stable across releases",
+            "CLAUDE.md repo conventions — unchanged since SES-025 update"
+          ]
+        },
+        "metadata": {
+          "Last Updated": "05-18-26 13:00",
+          "Status": "v0.5 shipped; v0.6 build queued (slice A next)"
+        },
+        "pending": {
+          "planning_paused_until_ui_complete": [
+            "Paper-test workstream (DEC-077) — fully unblocked once v0.6 ships; can also proceed against v0.5 if visual polish is acceptable",
+            "v0.7+ planning (engagement-record details surfaces, methodology authoring surfaces) — gated on v0.6 ship",
+            "Dark-mode theme values authoring — token structure is dark-mode-ready per DEC-089; values deferred to a separate PI",
+            "Windows-specific cross-platform polish — deferred per workstream plan §3.2"
+          ],
+          "post_v0_6_candidates": [
+            "Paper-test kickoff against a freshly-created CBM engagement (single-gesture creation+activation flow shipped in v0.5 slice D)",
+            "CBM-branded palette theme variant (additive theme dict per DEC-089 structure)",
+            "Print-friendly theme variant (same pattern)",
+            "Custom brand mark for About dialog (deferred per DEC-094 — modest showcase chosen over full showcase to avoid logo-authoring derail)",
+            "Full accessibility audit beyond WCAG AA contrast floor (deferred per design pass §4.6)",
+            "Animation and motion design (deferred per design pass §4.6)",
+            "Phosphor or expanded Lucide icon set (additive per DEC-092 — icons bundled as components need them)",
+            "Spreadsheet-density master pane variant for high-row-count panels (rejected at v0.6 design pass per DEC-093 master-pane posture decision; could be reconsidered if usage patterns change)"
+          ],
+          "v0_6_in_progress": [
+            "Slice A (foundation + About dialog) — prompt authored at prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-A-foundation.md; execution queued"
+          ]
+        },
+        "phase": "Building v0.6",
+        "reading_order_for_new_sessions": "For a new Claude.ai session opening against this project, the recommended reading order at HEAD b41fb04 is: (1) CLAUDE.md at the repo root; (2) the current status entity (this record) for the snapshot of where things stand; (3) the latest charter version for governance philosophy; (4) sessions.json filtered to SES-029..SES-036 to ground in recent v0.5 and v0.6-planning work; (5) the styling design pass at PRDs/product/crmbuilder-v2/styling-design-pass.md if the session involves any visual work; (6) ui-PRD-v0.6.md and ui-v0.6-implementation-plan.md if the session is v0.6 build execution. For paper-test work specifically: also read DEC-077 and the workstream plan reference.",
+        "title": "CRMBuilder v2 status",
+        "version_label": "0.5+"
+      },
+      "version": 15
+    },
+    "entity_identifier": "status",
+    "entity_type": "status",
+    "id": 390,
+    "operation": "update",
+    "timestamp": "2026-05-18T22:47:02.421636"
   }
 ]
