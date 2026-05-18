@@ -8738,5 +8738,191 @@
     "id": 341,
     "operation": "delete",
     "timestamp": "2026-05-18T04:31:23.592837"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T17:33:07.841456+00:00",
+      "description": "",
+      "id": 1,
+      "identifier": "RSK-001",
+      "impact": "High",
+      "probability": "High",
+      "response_plan": "",
+      "status": "Open",
+      "title": "DELETE Me",
+      "updated_at": "2026-05-18T17:33:07.841464+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "RSK-001",
+    "entity_type": "risk",
+    "id": 342,
+    "operation": "insert",
+    "timestamp": "2026-05-18T17:33:07.842249"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": null,
+    "before_payload": {
+      "created_at": "2026-05-18T17:33:07.841456",
+      "description": "",
+      "id": 1,
+      "identifier": "RSK-001",
+      "impact": "High",
+      "probability": "High",
+      "response_plan": "",
+      "status": "Open",
+      "title": "DELETE Me",
+      "updated_at": "2026-05-18T17:33:07.841464"
+    },
+    "entity_identifier": "RSK-001",
+    "entity_type": "risk",
+    "id": 343,
+    "operation": "delete",
+    "timestamp": "2026-05-18T17:33:13.332942"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:41:40.421089+00:00",
+      "id": 15,
+      "is_current": true,
+      "payload": {
+        "active_work": "v0.5 (engagement management) is shipped and governance-complete. The multi-engagement routing foundation is live: meta DB at crmbuilder-v2/data/engagements.db holds the engagements registry; per-engagement DBs at crmbuilder-v2/data/engagements/{engagement_code}.db hold the methodology and governance content; the two-database API server routes /engagements/* to the meta DB and everything else to the active engagement DB; the desktop top-strip + picker + activation worker orchestrate the kill-relaunch dance to switch engagements; cross-restart active-state persists via current_engagement.json; the dogfood migration rehoused the existing v2.db into engagements/CRMBUILDER.db with backup-first verify-row-counts delete-original discipline. v0.5 governance trail: SES-029 (PRD authoring) + DEC-098..104; SES-030 (slice A launcher-wiring follow-up + slice D follow-up); SES-031..SES-035 (build-execution closeouts). __version__ is 0.5.0.\n\nv0.6 (UI styling rollout) build planning is governance-complete but the build itself has NOT started. Source state at HEAD: ui/styling.py is still the 72-line v0.1 minimal QSS stub from DEC-024 (legacy navy #1F3864 accent, no tokens, no QFontDatabase font loading, no Lucide icons); ui/assets/ does not exist; ui/widgets/master_pane_delegate.py does not exist; ui/icons.py and ui/elevation.py do not exist; ui/widgets/references_section.py is still the v0.3-shipped widget with inbound/outbound grouping (not sub-sectioned plain-list). The styling design pass (SES-027, DEC-087..094) settled tokens, fonts, icons, modal elevation, selected-state vocabulary, and component visual decisions. The build planning (SES-036, DEC-105..107) settled version bundling as separate v0.6 release, six-slice structure A-F, and slice acceptance pattern (per-slice screenshots + closeout WCAG check). Six slice build prompts authored at prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-{A..F}-*.md. None executed yet. Slice A (foundation + About dialog) is next.\n\nPI-001 (full styling design pass per DEC-024) discharges with slice F when __version__ bumps to 0.6.0. The four prior deferral decisions (DEC-026/037/042/076) are settled by virtue of v0.6 build being queued.\n\nThe paper-test workstream (DEC-077) is fully unblocked. The next Claude.ai conversation can be the paper-test kickoff against a freshly-created CBM engagement via the single-gesture creation+activation flow shipped in v0.5 slice D.\n\nIdentifier reconciliation history: the styling Conversation 2 originally anticipated SES-028 at PRD-authoring time, rebased to SES-030 at close-out artifact authoring (commit 7255667 on 05-16-26) based on snapshot showing SES-029 as latest applied. Between that rebase and Doug's apply-prompt run (05-18-26), a separate v0.5 follow-up conversation independently claimed SES-030 on 05-17-26 by direct API POST without committing a ses_030.json file. When Doug ran the styling Conversation 2's apply prompt (commit cfdd088), the script absorbed the SES-030 conflict as SKIP and DEC-105/106/107 plus four references inserted pointing at the wrong SES-030 record. Reconciled at commit b41fb04: the styling Conversation 2 session content was applied at SES-036 (next available after SES-035), four corrected references added pointing at SES-036, and four orphan references (ids 136, 137, 138, 139) deleted. SES-030 in the DB remains correctly the v0.5 follow-up record. The styling Conversation 2's governance trail is now consistent at SES-036.",
+        "blockers": "None.",
+        "live_inventory": {
+          "in_database": [
+            "104 decisions: DEC-001..DEC-107 with three gaps at DEC-095/096/097 (anticipated by styling Conversation 2 at PRD-authoring time, rebased to DEC-105/106/107 per parallel-workstream coupling discipline in DEC-076)",
+            "35 sessions: SES-001..SES-036 with one gap at SES-028 (consumed in flight by parallel v0.5 work; styling Conversation 2 rebased to SES-030 then displaced to SES-036 after reconciliation b41fb04)",
+            "2 charter versions (latest is_current)",
+            "15 status versions (this one is the new current)",
+            "139 references",
+            "17 planning_items (PI-001..PI-017)",
+            "42 catalog entities + 415 catalog attributes (base entity catalog, established by SES-016)",
+            "1 engagement (CRMBUILDER) in the meta DB at crmbuilder-v2/data/engagements.db"
+          ],
+          "still_markdown": [
+            "PRDs/product/crmbuilder-v2/storage-system-PRD-v0.1.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/storage-system-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/prompts/*.md (Claude Code prompt files)",
+            "PRDs/product/crmbuilder-v2/ui-PRD-v0.1.md, v0.2.md, v0.3.md, v0.4.md, v0.5.md, v0.6.md (PRDs, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/ui-implementation-plan.md and ui-v0.2-/v0.3-/v0.4-/v0.5-/v0.6-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/styling-design-pass.md and styling-workstream-plan.md",
+            "PRDs/product/crmbuilder-v2/v0.5-conversation-1-kickoff.md and styling-conversation-1-kickoff.md",
+            "PRDs/product/crmbuilder-v2/close-out-payloads/*.json (apply-script inputs; ephemeral once applied)"
+          ],
+          "v1_unchanged": [
+            "v1 codebase under crmbuilder-v1/ — frozen reference; no v0.5/v0.6 changes touch it",
+            "v1 documentation under PRDs/ outside the crmbuilder-v2/ subtree — frozen reference",
+            "Cleveland Business Mentors engagement under separate dbower44022/ClevelandBusinessMentoring repo — separate workstream",
+            "Operating-mode and decision-template preferences in user profile — methodology-stable across releases",
+            "CLAUDE.md repo conventions — unchanged since SES-025 update"
+          ]
+        },
+        "metadata": {
+          "Last Updated": "05-18-26 13:00",
+          "Status": "v0.5 shipped; v0.6 build queued (slice A next)"
+        },
+        "pending": {
+          "planning_paused_until_ui_complete": [
+            "Paper-test workstream (DEC-077) — fully unblocked once v0.6 ships; can also proceed against v0.5 if visual polish is acceptable",
+            "v0.7+ planning (engagement-record details surfaces, methodology authoring surfaces) — gated on v0.6 ship",
+            "Dark-mode theme values authoring — token structure is dark-mode-ready per DEC-089; values deferred to a separate PI",
+            "Windows-specific cross-platform polish — deferred per workstream plan §3.2"
+          ],
+          "post_v0_6_candidates": [
+            "Paper-test kickoff against a freshly-created CBM engagement (single-gesture creation+activation flow shipped in v0.5 slice D)",
+            "CBM-branded palette theme variant (additive theme dict per DEC-089 structure)",
+            "Print-friendly theme variant (same pattern)",
+            "Custom brand mark for About dialog (deferred per DEC-094 — modest showcase chosen over full showcase to avoid logo-authoring derail)",
+            "Full accessibility audit beyond WCAG AA contrast floor (deferred per design pass §4.6)",
+            "Animation and motion design (deferred per design pass §4.6)",
+            "Phosphor or expanded Lucide icon set (additive per DEC-092 — icons bundled as components need them)",
+            "Spreadsheet-density master pane variant for high-row-count panels (rejected at v0.6 design pass per DEC-093 master-pane posture decision; could be reconsidered if usage patterns change)"
+          ],
+          "v0_6_in_progress": [
+            "Slice A (foundation + About dialog) — prompt authored at prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-A-foundation.md; execution queued"
+          ]
+        },
+        "phase": "Building v0.6",
+        "reading_order_for_new_sessions": "For a new Claude.ai session opening against this project, the recommended reading order at HEAD b41fb04 is: (1) CLAUDE.md at the repo root; (2) the current status entity (this record) for the snapshot of where things stand; (3) the latest charter version for governance philosophy; (4) sessions.json filtered to SES-029..SES-036 to ground in recent v0.5 and v0.6-planning work; (5) the styling design pass at PRDs/product/crmbuilder-v2/styling-design-pass.md if the session involves any visual work; (6) ui-PRD-v0.6.md and ui-v0.6-implementation-plan.md if the session is v0.6 build execution. For paper-test work specifically: also read DEC-077 and the workstream plan reference.",
+        "title": "CRMBuilder v2 status",
+        "version_label": "0.5+"
+      },
+      "version": 15
+    },
+    "before_payload": {
+      "created_at": "2026-05-18T02:44:39.849005",
+      "id": 14,
+      "is_current": true,
+      "payload": {
+        "active_work": "v0.5 (engagement management) is shipped. The multi-engagement routing foundation is live: meta DB at crmbuilder-v2/data/engagements.db holds the engagements registry; per-engagement DBs at crmbuilder-v2/data/engagements/{engagement_code}.db hold the methodology + governance content; the two-database API server routes /engagements/* to the meta DB and everything else to the active engagement DB; the desktop top-strip + picker + activation worker orchestrate the kill-relaunch dance to switch engagements; cross-restart active-state persists via current_engagement.json; the dogfood migration rehoused the existing v2.db into engagements/CRMBUILDER.db with backup-first verify-row-counts delete-original discipline. The slice A follow-up (SES-030) closed the launcher-wiring gap (bootstrap_meta_db at API startup, dogfood-migration trigger at desktop startup) plus a latent data_dir-derivation defect that surfaced when access/meta_db.meta_db_path() and migration/lazy_migration.engagement_db_path() were called against a post-activation engagements/{code}.db path. v0.5 plus its follow-up is now governance-complete (SES-029 PRD authoring + DEC-098..104; SES-030 launcher-wiring + slice D follow-up; SES-031..SES-035 build-execution closeout).\n\nv0.6 (UI styling rollout) is in progress in parallel. Slices A-E of v0.6 have shipped (foundation infrastructure, sidebar + master-pane delegate, panel retrofits + sub-sectioned ReferencesSection, dialogs + form controls, status + error + warning + crash banner); slice F (closeout — version 0.6.0 bump, README release note, WCAG contrast test as build gate per DEC-097, full regression + integration smoke) is the only remaining work. Slice F prompt is authored at PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-F-closeout.md. PI-001 (full styling design pass per DEC-024) discharges with slice F.\n\nThe paper-test workstream (DEC-077) is now fully unblocked. The next Claude.ai conversation can be the paper-test kickoff against a freshly-created CBM engagement via the single-gesture creation+activation flow that slice D shipped.",
+        "blockers": "None.",
+        "live_inventory": {
+          "in_database": [
+            "104 decisions across the active engagement DB (CRMBUILDER): 101 records — DEC-001..DEC-104 with three gaps at DEC-095/096/097 (reserved by parallel v0.6 PRD authoring then rebased to DEC-105/106/107 per parallel-workstream coupling discipline in DEC-076)",
+            "34 sessions: SES-001..SES-035 with one gap at SES-028 (reserved by parallel v0.6 PRD authoring then rebased to SES-030 — note that the live SES-030 was claimed first by the slice A follow-up + slice D follow-up conversation per same DEC-076 discipline)",
+            "2 charter versions (latest is_current)",
+            "14 status versions (this one is the new current)",
+            "~135 references",
+            "17 planning_items (PI-001..PI-017)",
+            "42 catalog entities + 415 catalog attributes (base entity catalog, established by SES-016)",
+            "1 engagement (CRMBUILDER) in the meta DB at crmbuilder-v2/data/engagements.db"
+          ],
+          "still_markdown": [
+            "PRDs/product/crmbuilder-v2/storage-system-PRD-v0.1.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/storage-system-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/prompts/*.md (Claude Code prompt files)",
+            "PRDs/product/crmbuilder-v2/ui-PRD-v0.1.md, v0.2.md, v0.3.md, v0.4.md, v0.5.md, v0.6.md (PRDs, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/ui-implementation-plan.md and ui-v0.2-/v0.3-/v0.4-/v0.5-/v0.6-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/multi-engagement-architecture.md (architecture spec, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/methodology-schema-specs/*.md (entity schema specs)",
+            "PRDs/product/crmbuilder-v2/styling-design-pass.md (design tokens / styling vocabulary)"
+          ],
+          "v1_unchanged": [
+            "espo_impl/ — CRMBuilder PySide6 application code",
+            "automation/ — server management layer",
+            "PRDs/process/ — methodology guides",
+            "PRDs/product/CRMBuilder-PRD.md, app-*.md, crmbuilder-automation-PRD/ — v1 product specs",
+            "ClevelandBusinessMentoring/ — CBM client repo"
+          ]
+        },
+        "metadata": {
+          "Last Updated": "05-17-26",
+          "Status": "Active"
+        },
+        "pending": {
+          "planning_paused_until_ui_complete": [
+            "Planning dimension #6 — division of labor",
+            "Planning dimension #7 — risk register",
+            "Planning dimension #8 — exit criteria",
+            "Project-structure split decision (Claude Project, repository) — deferred to end of planning per DEC-012"
+          ],
+          "post_v0_6_candidates": [
+            "PI-017 — Migrate API and MCP servers to multi-tenant model (one process serving multiple engagements instead of v0.5's one-process-per-engagement kill-relaunch model per DEC-081)",
+            "Engagement rename (engagement_code mutation) — currently v0.6+ candidate per v0.5 PRD Out of Scope",
+            "Methodology entity panels for v0.5+ schemas: persona (PI-003), field/requirement/manual_config (PI-004), full process definition beyond Phase 1 thin shape (PI-005)",
+            "Cross-Domain Service representation (PI-013)",
+            "Catalog FK integration for methodology entities (PI-014)",
+            "Methodology entity renderers (PI-015) — Word docs, YAML, test cases generated from the database per DEC-008",
+            "Router-level per-pair vocabulary enforcement on /references (PI-016)",
+            "Reimplementation of v1 saved-views / duplicate-checks / workflow managers if their no-public-REST-API constraint is resolved"
+          ],
+          "v0_6_in_progress": [
+            "Slice F closeout — version 0.6.0 bump, README release note, WCAG contrast test as build gate per DEC-097, full regression pass + final integration smoke. Discharges PI-001 (full styling design pass per DEC-024)."
+          ]
+        },
+        "phase": "v0.5 complete",
+        "reading_order_for_new_sessions": "Tier 1: read crmbuilder/CLAUDE.md.\nTier 2 (MCP-connected): call get_current_status, get_current_charter, list_recent_sessions(limit=3), then get_decision or list_decisions_for_session as needed.\nTier 2 (file-fallback): read JSON snapshots under PRDs/product/crmbuilder-v2/db-export/ — status.json, charter.json, sessions.json, decisions.json, references.json (active engagement scope); db-export/meta/engagements.json (meta DB scope).\nTier 3 (on-demand): targeted MCP/API queries during conversation.\n\nMulti-engagement note (new in v0.5): when MCP-connected the active engagement determines which per-engagement DB is queried. The CRMBUILDER engagement holds the v2 build's own dogfood content. New methodology pilots get their own engagement via the desktop top-strip + picker single-gesture creation+activation flow; the kill-relaunch dance routes the API at the newly-created engagement DB.",
+        "title": "CRMBuilder v2 — Status",
+        "version_label": "1.0"
+      },
+      "version": 14
+    },
+    "entity_identifier": "status",
+    "entity_type": "status",
+    "id": 344,
+    "operation": "update",
+    "timestamp": "2026-05-18T22:41:40.421562"
   }
 ]
