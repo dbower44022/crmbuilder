@@ -526,7 +526,80 @@ In addition to the v0.1 surface, v0.2 added:
   deleted rows render with strikethrough and the detail pane shows
   Restore + Edit (no Delete); Restore PATCHes status back to Active.
 
-### v0.5 (current — engagement management)
+### v0.6 (current — visual design system retrofit)
+
+CRMBuilder v2 v0.6 discharges PI-001 — the full styling design pass deferred
+at v0.1 close per DEC-024 and reopened as v0.6's parallel workstream per
+DEC-076 after three further deferrals. v0.5 left every functional surface
+of the desktop UI in place but rendering against an Arial-on-default-grays
+foundation that predated any deliberate visual language. v0.6 rewrites the
+visual layer end-to-end against a complete design token system — every
+color, spacing value, font size, weight, radius, and elevation now flows
+through a single theme-keyed dict (`ui/styling.py`), bundles Inter Variable
+and JetBrains Mono Variable fonts plus the Lucide icon library as static
+assets, and applies token-driven treatment uniformly across the sidebar,
+master pane, panel chrome, dialogs, form controls, status surfaces, and
+crash banner. No schema or API changes; the v0.5 functional test suite
+remains green.
+
+- **Design tokens module (`ui/styling.py`).** 60+ tokens covering spacing
+  (4px base unit scale), color (9-step neutral, accent with hover/pressed/
+  subtle/focus-ring variants, danger/warning/success status), typography
+  (font families, six sizes, four weights, three line-heights), radius,
+  border, and elevation. Theme-keyed (`TOKENS["light"][key]`) with a
+  matching `t()` accessor; dark-mode-ready without consumer-code retrofit
+  per DEC-088.
+- **Bundled assets.** Inter Variable and JetBrains Mono Variable fonts
+  (both OFL); Lucide icons (ISC). The icons loader (`ui/icons.py`)
+  rasterises bundled SVGs with runtime token-driven tinting (`currentColor`
+  substitution) and caches by `(name, size, color_token)`.
+- **Sidebar and master-pane delegate.** Shared selected-state vocabulary
+  (3px left accent bar + tinted background + medium-weight text) lifted
+  into a reusable `MasterPaneDelegate` per DEC-093; sidebar and every
+  panel's master view consume it. Stale-data dots use the accent token.
+- **Panel retrofit.** 16px outer padding, 12px-wide splitter handle, 45/55
+  default split. Detail panes adopt label-above forms per design pass §2.4
+  with required-field asterisk icons and "Valid transitions" hint captions
+  below status combos. Internal notes render through a `CollapsibleSection`
+  helper with chevron + label treatment.
+- **ReferencesSection sub-sectioned plain-list rendering.** Decisions, Sessions,
+  Risks, Planning Items, Topics, Domains, Entities, Processes, CRM Candidates
+  all show sub-section headers per relationship kind ("Decided in", "Is about",
+  "Hands off to", etc.) per DEC-107.
+- **Dialogs.** Five button categories with full state coverage (default
+  Secondary, Primary, Destructive, Text, Icon-only) driven by the
+  `buttonCategory` dynamic property. Edit-mode CRUD dialogs render an
+  internal context strip with mono identifier + record name above the
+  form. Delete-confirm dialogs use a relaxed-line-height body treatment.
+  All dialogs adopt modal elevation (drop shadow + backdrop overlay) per
+  DEC-091.
+- **Status surfaces (slice E).** Inline form-field errors render via the
+  `QLabel[role="error"]` rule + the `fieldState="error"` property on inputs.
+  Panel-level warning callouts (`WarningCallout` widget) use warning-amber
+  with a leading Lucide circle-alert icon — distinct from danger-red, which
+  is reserved for hard errors. The error dialog header retokens to a
+  leading Lucide circle-x icon + heading-3 danger-text title. The crash
+  banner is folded into the design system with a danger-red background and
+  white text per design pass §2.10; banner buttons keep a semi-transparent
+  white-on-color treatment as the one acknowledged exception.
+- **Modal elevation.** Every QDialog picks up the design-system drop
+  shadow + backdrop overlay through `apply_dialog_shadow` and the
+  `modal_backdrop` helper attached in `showEvent`/`hideEvent`.
+- **WCAG AA contrast verification.** A new
+  `tests/crmbuilder_v2/ui/test_token_contrast.py` test module checks every
+  text-on-background combination from design pass §4.4 against the WCAG AA
+  threshold (4.5:1 for body text) as a build gate per DEC-107.
+- **Retired legacy color constants.** `#1F3864` (navy banner text),
+  `#f4f4f4` (read-only field background), `#444` / `#666` / `#888`
+  (assorted grays), `#c1272d` (legacy danger), `#b6868a` (legacy disabled-
+  destructive), `#B22222` (legacy warning-as-error). All replaced by their
+  token-system equivalents.
+
+PRD: `PRDs/product/crmbuilder-v2/ui-PRD-v0.6.md`
+Implementation plan: `PRDs/product/crmbuilder-v2/ui-v0.6-implementation-plan.md`
+Design pass: `PRDs/product/crmbuilder-v2/styling-design-pass.md`
+
+### v0.5 (engagement management)
 
 CRMBuilder v2 v0.5 closes the engagement-routing gap. v0.4's methodology
 tables and v2's governance tables both lived in a single SQLite file at

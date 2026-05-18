@@ -674,15 +674,15 @@ A8. Density-derived values (row heights, padding, button geometry) are mutually 
 A9. Light-theme contrast meets WCAG AA at minimum for every text-on-background combination used in the design:
 
 - Body text (`color.neutral.800` on `color.neutral.0`): 14.4:1 — passes AAA.
-- Secondary text (`color.neutral.500` on `color.neutral.0`): 4.62:1 — passes AA at small body size.
+- Secondary text (`color.neutral.500` on `color.neutral.0`): 4.75:1 — passes AA at small body size. (Slice F's WCAG build gate revealed the drafted `#7A8694` value computed 3.71:1 — failing AA — rather than the claimed 4.62:1. Token darkened to `#6A7480` per the design-pass intent; ratio re-verified.)
 - Read-only field text (`color.neutral.700` on `color.neutral.100`): 8.9:1 — passes AAA.
 - Accent text (`color.accent.default` on `color.neutral.0`): 4.61:1 — passes AA. (Used on text/link buttons and Add-reference affordances.)
 - Danger text (`color.danger.text` on `color.neutral.0`): ~5.4:1 — passes AA.
-- Warning text (`color.warning.default` on `color.neutral.0`): ~4.7:1 — passes AA at body size; borderline at caption size. May need a slightly darker warning variant at 12px; build-time refinement.
+- Warning text (`color.warning.default` on `color.neutral.0`): 4.88:1 — passes AA at body size. (Slice F's WCAG build gate confirmed the drafted `#B0731A` computed 3.95:1 — failing AA — rather than the claimed ~4.7. Token darkened to `#9D6517` per the design pass §4.4 "borderline at caption size" note and PRD Open Question #4; ratio re-verified, build gate green.)
 - White text on accent (`color.neutral.0` on `color.accent.default`): 4.66:1 — passes AA for body text; passes AAA for 18px+ large text.
 - White text on danger (`color.neutral.0` on `color.danger.default`): ~5.1:1 — passes AA.
 
-Values computed against drafted hex values; final verification belongs in Conversation 2's build planning when the exact accent/neutral/status values are codified in `tokens.py`.
+Final verification landed in slice F via `tests/crmbuilder_v2/ui/test_token_contrast.py`, which executes the WCAG 2.x formula against `TOKENS["light"]` on every CI run per DEC-107.
 
 A10. Focus indicators are visible on every interactive element. The `color.accent.focusring` outline (40% alpha) is specified on buttons, form fields, sidebar entries (focused), and master-pane rows (focused).
 

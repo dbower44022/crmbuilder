@@ -81,7 +81,7 @@ TOKENS: dict[str, dict[str, str]] = {
         "color.neutral.100": "#EEF1F5",
         "color.neutral.200": "#DDE3EA",
         "color.neutral.300": "#C1CAD4",
-        "color.neutral.500": "#7A8694",
+        "color.neutral.500": "#6A7480",
         "color.neutral.700": "#3F4854",
         "color.neutral.800": "#272D36",
         "color.neutral.900": "#0F1318",
@@ -89,7 +89,7 @@ TOKENS: dict[str, dict[str, str]] = {
         "color.danger.default": "#C0392B",
         "color.danger.text": "#A8281C",
         "color.danger.subtle": "#FBEBE8",
-        "color.warning.default": "#B0731A",
+        "color.warning.default": "#9D6517",
         "color.warning.subtle": "#FBF2E0",
         "color.success.default": "#2D7A4D",
         # Typography — design pass §1.3.
