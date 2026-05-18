@@ -7709,5 +7709,715 @@
     "id": 294,
     "operation": "insert",
     "timestamp": "2026-05-18T02:33:37.827677"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "Commit 0933fc2 on origin/main — v2: v0.5 slice A — foundation infrastructure and dogfood migration. Created crmbuilder-v2/migrations/meta/alembic.ini, env.py, versions/0001_create_engagements_table.py; crmbuilder-v2/src/crmbuilder_v2/access/{meta_db.py, meta_models.py, engagement_models.py}; crmbuilder-v2/src/crmbuilder_v2/api/deps.py meta_session dependency; crmbuilder-v2/src/crmbuilder_v2/migration/{lazy_migration.py, dogfood_v0_5.py}; crmbuilder-v2/src/crmbuilder_v2/ui/active_engagement_context.py. Modified crmbuilder-v2/src/crmbuilder_v2/api/main.py, cli.py, ui/{app.py, sidebar.py, refresh.py}; .gitignore. Added tests/crmbuilder_v2/{access/test_meta_db_connection.py, api/test_two_database_routing.py, migration/test_v0_5_dogfood_migration.py, ui/test_active_engagement_context.py}.\n\nDogfood migration executed locally: v2.db.pre-v0.5-backup created; engagements.db created (meta DB) with CRMBUILDER row inserted; engagements/CRMBUILDER.db created from v2.db copy; row counts verified to match (29 sessions / 86 decisions / 17 planning_items / 66 references etc. as of pre-migration baseline); original v2.db deleted; current_engagement.json written pointing at CRMBUILDER. db-export/meta/engagements.json regenerated.\n\nFull v2 non-UI suite green at session end: 546 passed, 1 skipped (24 new tests added vs. v0.4 baseline). Lint clean across all touched files.\n\nNo PRD changes; no decisions or planning items written (build-execution session per DEC-014 records decisions already settled in SES-029); no version bump (those land in slice E).",
+      "conversation_reference": "Claude Code conversation against the slice prompt at PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.5-A-foundation-and-dogfood-migration.md. First of five v0.5 build slices. Single-commit session landing at 0933fc2. No transcript preserved per DEC-025.",
+      "created_at": "2026-05-18T02:44:22.287167+00:00",
+      "id": 30,
+      "identifier": "SES-031",
+      "in_flight_at_end": "Slice B (engagement schema + access layer + REST API) is next per the v0.5 implementation plan; will replace the slice-A stub healthcheck endpoint with the eight standard endpoints and flesh out the engagement dataclass and access-layer repository. Slice prompt at PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.5-B-engagement-schema-and-api.md.\n\nDeferred gap surfaced during slice A execution but not addressed here: the migration trigger and meta DB bootstrap are wired into cli.run_api but not into the API process startup hook or the desktop launcher's first-launch path. A fresh install or any code path that spawns the API directly bypasses the trigger. The slice A follow-up prompt at CLAUDE-CODE-PROMPT-v2-ui-v0.5-A-followup-launcher-wiring.md was authored after slice A landed to close this gap; that follow-up executes as a separate Claude Code session (SES-030) outside the linear A→B→C→D→E build sequence.",
+      "session_date": "05-17-26",
+      "status": "Complete",
+      "summary": "",
+      "title": "v0.5 slice A — foundation infrastructure and dogfood migration",
+      "topics_covered": "Seed prompt: PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.5-A-foundation-and-dogfood-migration.md. Eight categories of work executed against the v0.4 baseline (SES-024 closeout): meta DB infrastructure with its own Alembic chain at crmbuilder-v2/migrations/meta/ hosting the engagements registry table; per-engagement DB convention establishing crmbuilder-v2/data/engagements/{engagement_code}.db; two-database API server wiring with FastAPI dependency injection routing /engagements/* to the meta DB pool and everything else to the active engagement DB pool; ActiveEngagementContext singleton QObject with active_engagement_changed Qt signal mirroring v1's ActiveClientContext; lazy-migration helper run_engagement_migrations(engagement_code) applying the existing v0.4 Alembic chain to a named engagement DB; the eight-step dogfood migration module at crmbuilder-v2/src/crmbuilder_v2/migration/dogfood_v0_5.py (backup → meta DB → CRMBUILDER row → copy → verify row counts → delete v2.db → refresh snapshot → write current_engagement.json); the empty Engagements sidebar group container above Governance for slice C to populate; and the refresh-service file-watch entry for db-export/meta/engagements.json.\n\nNew modules created: access/meta_db.py (meta DB connection pool independent of the per-engagement DB pool); access/meta_models.py (EngagementRow ORM); access/engagement_models.py (Engagement dataclass + EngagementStatus enum, stubbed for slice B's repository); api/deps.py.meta_session dependency; migration/lazy_migration.py; migration/dogfood_v0_5.py; ui/active_engagement_context.py. Modified: api/main.py to apply meta Alembic and init the meta pool at startup with a new /engagements/healthcheck endpoint exercising the wiring; cli.run_api to trigger needs_migration() and run_dogfood_migration() at API startup with SystemExit(1) on failure and backup intact; ui/app.py to instantiate ActiveEngagementContext and load from disk; ui/sidebar.py to add the empty Engagements group container; ui/refresh.py to add the engagements snapshot to the file-watch map.\n\n.gitignore extended with engagements.db, engagements/, current_engagement.json, v2.db.pre-v0.5-backup.\n\nTest suite: 24 new tests added across four files — access/test_meta_db_connection.py (3), api/test_two_database_routing.py (3), migration/test_v0_5_dogfood_migration.py (7), ui/test_active_engagement_context.py (11). Full non-UI suite green at 546 passed, 1 skipped.\n\nDogfood migration ran against Doug's machine producing the post-state described in the slice purpose: v2.db backed up to .pre-v0.5-backup; meta DB created at engagements.db with the CRMBUILDER row; original v2.db copied to engagements/CRMBUILDER.db with all row counts verified; current_engagement.json points at CRMBUILDER. Application launches with CRMBUILDER as the active engagement and operates exactly as it did under v0.4. The slice does NOT yet wire the meta-DB bootstrap or migration trigger into the engine launchers — those gaps surface in the slice A follow-up (SES-030) which lands the bootstrap_meta_db() at API startup and the desktop-launcher dogfood migration trigger."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-031",
+    "entity_type": "session",
+    "id": 295,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:22.287595"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:22.334085+00:00",
+      "id": 111,
+      "relationship": "is_about",
+      "source_id": "SES-031",
+      "source_type": "session",
+      "target_id": "DEC-098",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-031 -[is_about]-> decision:DEC-098",
+    "entity_type": "reference",
+    "id": 296,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:22.334463"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:22.378926+00:00",
+      "id": 112,
+      "relationship": "is_about",
+      "source_id": "SES-031",
+      "source_type": "session",
+      "target_id": "DEC-104",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-031 -[is_about]-> decision:DEC-104",
+    "entity_type": "reference",
+    "id": 297,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:22.379361"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:22.427403+00:00",
+      "id": 113,
+      "relationship": "is_about",
+      "source_id": "SES-031",
+      "source_type": "session",
+      "target_id": "DEC-078",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-031 -[is_about]-> decision:DEC-078",
+    "entity_type": "reference",
+    "id": 298,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:22.427890"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:22.474922+00:00",
+      "id": 114,
+      "relationship": "is_about",
+      "source_id": "SES-031",
+      "source_type": "session",
+      "target_id": "DEC-079",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-031 -[is_about]-> decision:DEC-079",
+    "entity_type": "reference",
+    "id": 299,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:22.475261"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:22.550983+00:00",
+      "id": 115,
+      "relationship": "is_about",
+      "source_id": "SES-031",
+      "source_type": "session",
+      "target_id": "DEC-080",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-031 -[is_about]-> decision:DEC-080",
+    "entity_type": "reference",
+    "id": 300,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:22.551424"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:22.597019+00:00",
+      "id": 116,
+      "relationship": "is_about",
+      "source_id": "SES-031",
+      "source_type": "session",
+      "target_id": "DEC-082",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-031 -[is_about]-> decision:DEC-082",
+    "entity_type": "reference",
+    "id": 301,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:22.597371"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:22.641455+00:00",
+      "id": 117,
+      "relationship": "is_about",
+      "source_id": "SES-031",
+      "source_type": "session",
+      "target_id": "DEC-083",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-031 -[is_about]-> decision:DEC-083",
+    "entity_type": "reference",
+    "id": 302,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:22.641800"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:22.685300+00:00",
+      "id": 118,
+      "relationship": "is_about",
+      "source_id": "SES-031",
+      "source_type": "session",
+      "target_id": "DEC-084",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-031 -[is_about]-> decision:DEC-084",
+    "entity_type": "reference",
+    "id": 303,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:22.685749"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "Commit e0aa4f7 on origin/main — v2: v0.5 slice B — engagement schema, access layer, REST API. Created crmbuilder-v2/src/crmbuilder_v2/access/{engagement.py, meta_exporter.py}; crmbuilder-v2/src/crmbuilder_v2/api/routers/engagements.py. Modified crmbuilder-v2/src/crmbuilder_v2/access/engagement_models.py; api/schemas.py; ui/client.py; migration/dogfood_v0_5.py. Added 50 tests across tests/crmbuilder_v2/access/test_engagement_repository.py and tests/crmbuilder_v2/api/test_engagements_router.py covering all eight endpoints, all validation rules, status transitions, immutable code, soft-delete + restore, identifier auto-assignment with concurrent-insert safety, snapshot regeneration.\n\nFull v2 non-UI suite green at session end: 600 passed, 1 skipped (+54 net vs. slice A close). Lint clean.\n\nNo PRD changes; no decisions or planning items written; no version bump.",
+      "conversation_reference": "Claude Code conversation against the slice prompt at PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.5-B-engagement-schema-and-api.md. Second of five v0.5 build slices. Single-commit session landing at e0aa4f7. No transcript preserved per DEC-025.",
+      "created_at": "2026-05-18T02:44:29.089257+00:00",
+      "id": 31,
+      "identifier": "SES-032",
+      "in_flight_at_end": "Slice C (engagement management panel UI) is next per the v0.5 implementation plan; will expose the slice-B REST API through a ListDetailPanel subclass with master/detail panes, CRUD dialogs, and the forbid-active-delete behavior per PRD §5.6. Slice prompt at PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.5-C-engagement-management-panel.md.",
+      "session_date": "05-17-26",
+      "status": "Complete",
+      "summary": "",
+      "title": "v0.5 slice B — engagement schema, access layer, REST API",
+      "topics_covered": "Seed prompt: PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.5-B-engagement-schema-and-api.md. Five categories of work executed on top of slice A's foundation: engagement dataclass fleshed out from the slice-A stub with to_dict() and from_row() helpers; access-layer repository with eight standard methods against the meta DB pool with full validation per methodology-schema-specs/engagement.md §3.5; REST API surface with eight standard endpoints consuming the slice-A get_meta_db dependency, replacing the slice-A stub healthcheck; JSON snapshot hook that writes to the meta DB regenerate db-export/meta/engagements.json per the v0.3+ DEC-022 pattern; and client extensions with eight new methods on StorageClient mirroring the v0.4 domain client pattern.\n\nValidation per engagement.md §3.5 in the access-layer repository: identifier regex ^ENG-\\d{3}$; code regex ^[A-Z][A-Z0-9]{1,9}$ mirroring v1's Client.code constraint; case-insensitive uniqueness on code and name; free status transitions across active/paused/archived; immutable code post-creation; export_dir must be absolute existing writable directory when set; soft-delete semantics with restore round-trip; collision-safe identifier auto-assignment using SAVEPOINT retry per the prefixed-identifier client-side-computation rule.\n\nNew modules created: access/engagement.py (eight-method repository); access/meta_exporter.py (write_engagements_snapshot atomic write to db-export/meta/engagements.json per DEC-022 pattern); api/routers/engagements.py (eight standard endpoints with envelope-shape preservation: POST returns 201; PUT/PATCH/DELETE/POST-restore return 200; preserves the slice-A healthcheck for backward compat). Modified: access/engagement_models.py (extended slice-A stub with to_dict() / from_row()); api/schemas.py (added EngagementCreateIn, EngagementReplaceIn, EngagementPatchIn Pydantic models); ui/client.py (eight engagement methods); migration/dogfood_v0_5.py (rewired to write_engagements_snapshot for consistency with slice B's hook).\n\nTest suite: 54 new tests added — 27 access-layer tests covering happy paths, validation rules (code format, name uniqueness, status enum, export_dir), status transitions, immutable code, soft-delete idempotency, restore round-trip, identifier auto-assignment, list ordering, snapshot regeneration; 23 API endpoint tests covering all eight endpoints plus envelope-shape verification, 422 validation, 409 collision, 404 not-found. Full non-UI suite green: 600 passed, 1 skipped (up from 546 at slice A close).\n\nAfter this slice the engagement REST API is operable end-to-end via direct API calls or external scripts. The CRMBUILDER row created by the slice-A dogfood migration is exercisable via GET / PUT / PATCH / DELETE; new engagement records can be created via POST; identifier auto-assignment works (POST /engagements with engagement_identifier omitted assigns ENG-NNN). No UI exposes the API yet — that lands in slice C."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-032",
+    "entity_type": "session",
+    "id": 304,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:29.089640"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:29.135982+00:00",
+      "id": 119,
+      "relationship": "is_about",
+      "source_id": "SES-032",
+      "source_type": "session",
+      "target_id": "DEC-098",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-032 -[is_about]-> decision:DEC-098",
+    "entity_type": "reference",
+    "id": 305,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:29.136332"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:29.181883+00:00",
+      "id": 120,
+      "relationship": "is_about",
+      "source_id": "SES-032",
+      "source_type": "session",
+      "target_id": "DEC-104",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-032 -[is_about]-> decision:DEC-104",
+    "entity_type": "reference",
+    "id": 306,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:29.182374"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:29.230151+00:00",
+      "id": 121,
+      "relationship": "is_about",
+      "source_id": "SES-032",
+      "source_type": "session",
+      "target_id": "DEC-086",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-032 -[is_about]-> decision:DEC-086",
+    "entity_type": "reference",
+    "id": 307,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:29.230652"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:29.277773+00:00",
+      "id": 122,
+      "relationship": "is_about",
+      "source_id": "SES-032",
+      "source_type": "session",
+      "target_id": "DEC-019",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-032 -[is_about]-> decision:DEC-019",
+    "entity_type": "reference",
+    "id": 308,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:29.278141"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "Commit d11b8c6 on origin/main — v2: v0.5 slice C — engagement management panel UI (master/detail panel, CRUD dialogs, forbid-active-delete with last-engagement edge case). Created crmbuilder-v2/src/crmbuilder_v2/ui/panels/engagements.py (645 lines); crmbuilder-v2/src/crmbuilder_v2/ui/dialogs/_engagement_schema.py (104 lines); crmbuilder-v2/src/crmbuilder_v2/ui/dialogs/engagement_crud.py (154 lines); crmbuilder-v2/src/crmbuilder_v2/ui/dialogs/engagement_delete.py (214 lines). Modified crmbuilder-v2/src/crmbuilder_v2/ui/{app.py, main_window.py, sidebar.py, refresh.py}. Added tests/crmbuilder_v2/ui/test_engagements_panel.py (516 lines), test_engagement_crud_dialogs.py (355 lines); modifications to tests/crmbuilder_v2/ui/{conftest.py, test_smoke.py}. 2057 insertions, 7 deletions across 12 files.\n\nNo PRD changes; no decisions or planning items written; no version bump.",
+      "conversation_reference": "Claude Code conversation against the slice prompt at PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.5-C-engagement-management-panel.md. Third of five v0.5 build slices. Single-commit session landing at d11b8c6. No transcript preserved per DEC-025.",
+      "created_at": "2026-05-18T02:44:31.304307+00:00",
+      "id": 32,
+      "identifier": "SES-033",
+      "in_flight_at_end": "Slice D (engagement switching, top-strip, picker, single-gesture creation+activation) is next per the v0.5 implementation plan. The slice-C inert 'Switch engagement' and 'Create engagement' buttons in engagement_delete.py are TODO-placeholders for slice D to rewire — slice D will hook the Switch-engagement button to open the new picker widget and the Create-engagement button to launch the new NewEngagementDialog single-gesture flow. Slice prompt at PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.5-D-engagement-switching.md.",
+      "session_date": "05-17-26",
+      "status": "Complete",
+      "summary": "",
+      "title": "v0.5 slice C — engagement management panel UI",
+      "topics_covered": "Seed prompt: PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.5-C-engagement-management-panel.md. Four categories of work executed on top of slices A and B: the engagement management panel as a ListDetailPanel subclass registered as the single entry in the Engagements sidebar group (the empty group container was introduced in slice A); CRUD dialogs as EntityCrudDialog subclasses; the delete dialog with forbid-active-engagement behavior per PRD §5.6 including the only-engagement edge case; and refresh-service registration subscribing the panel to both the db-export/meta/engagements.json file-watch signal and the active_engagement_changed Qt signal from ActiveEngagementContext.\n\nEngagement panel (ui/panels/engagements.py): master pane with five sortable columns per PRD §5.1 — Identifier (mono 80px), Code (mono 100px), Name (body flexible), Status (body with status-aware coloring active/paused/archived), Last Opened (relative-date formatted via format_relative_date helper handling 'N minutes/hours/days ago' / 'YYYY-MM-DD' / '—' cases). Default sort Last Opened descending with soft-deleted rows sorting to the bottom. Active-engagement marker — left accent bar plus prepended Lucide check icon on the Identifier column — compares against ActiveEngagementContext.engagement_identifier(). Soft-deleted row treatment in neutral.500 text with prepended Lucide trash-2 icon, gated behind a 'Show soft-deleted' checkbox that toggles the panel's client.list_engagements(include_deleted=True) call. Right-click context menu with New / Edit / Delete / Restore (Restore appears only on soft-deleted rows). The menu does NOT include Activate — the picker (slice D) is the switching gesture per PRD §5.2. Detail pane with form fields per engagement.md §3.6.3.\n\nCRUD dialogs (ui/dialogs/engagement_crud.py): EngagementCreateDialog (all fields editable; identifier auto-assigned by API on POST when omitted) and EngagementEditDialog (engagement_code read-only since rename is v0.6+ candidate per PRD Out of Scope). Field schema sourced from a new shared _engagement_schema.py module.\n\nDelete dialog (ui/dialogs/engagement_delete.py): EntityCrudDeleteDialog subclass implementing PRD §5.6's forbid-active-delete. When the row to delete is the active engagement, the dialog presents a special state with two inert TODO-placeholder buttons (Switch engagement / Create engagement) that slice D will rewire. The last-engagement edge case is handled — when the only existing engagement is the active one, the dialog presents the Create-engagement affordance as the recovery path.\n\nRefresh registration via ui/refresh.py — extended to wire engagements panel as subscriber to the file-watch signal from slice A and to the active_engagement_changed Qt signal. ui/main_window.py extended to host the new panel entry. ui/sidebar.py updated to populate the Engagements group entry that slice A added as an empty container.\n\nTest suite: extensive UI test coverage added — tests/crmbuilder_v2/ui/test_engagements_panel.py (516 lines), test_engagement_crud_dialogs.py (355 lines), updates to test_smoke.py and conftest.py covering master-pane rendering, sort behavior, status-aware coloring, active-engagement marker, soft-deleted treatment, context menu actions, CRUD dialog field validation, forbid-active-delete with last-engagement edge case."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-033",
+    "entity_type": "session",
+    "id": 309,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:31.304676"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:31.354029+00:00",
+      "id": 123,
+      "relationship": "is_about",
+      "source_id": "SES-033",
+      "source_type": "session",
+      "target_id": "DEC-098",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-033 -[is_about]-> decision:DEC-098",
+    "entity_type": "reference",
+    "id": 310,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:31.354519"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:31.402030+00:00",
+      "id": 124,
+      "relationship": "is_about",
+      "source_id": "SES-033",
+      "source_type": "session",
+      "target_id": "DEC-104",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-033 -[is_about]-> decision:DEC-104",
+    "entity_type": "reference",
+    "id": 311,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:31.402523"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:31.451592+00:00",
+      "id": 125,
+      "relationship": "is_about",
+      "source_id": "SES-033",
+      "source_type": "session",
+      "target_id": "DEC-099",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-033 -[is_about]-> decision:DEC-099",
+    "entity_type": "reference",
+    "id": 312,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:31.452004"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:31.499784+00:00",
+      "id": 126,
+      "relationship": "is_about",
+      "source_id": "SES-033",
+      "source_type": "session",
+      "target_id": "DEC-101",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-033 -[is_about]-> decision:DEC-101",
+    "entity_type": "reference",
+    "id": 313,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:31.500173"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:31.547652+00:00",
+      "id": 127,
+      "relationship": "is_about",
+      "source_id": "SES-033",
+      "source_type": "session",
+      "target_id": "DEC-102",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-033 -[is_about]-> decision:DEC-102",
+    "entity_type": "reference",
+    "id": 314,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:31.548168"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "Commit 54d920b on origin/main — v2: v0.5 slice D — engagement switching (top-strip, picker, 12-step activation worker with q6 amendment, single-gesture creation+activation flow). Created crmbuilder-v2/src/crmbuilder_v2/ui/activation_worker.py (406 lines); crmbuilder-v2/src/crmbuilder_v2/ui/dialogs/new_engagement_dialog.py (354 lines); crmbuilder-v2/src/crmbuilder_v2/ui/widgets/{activation_overlay.py (175 lines), engagement_picker.py (220 lines), engagement_top_strip.py (109 lines)}. Modified crmbuilder-v2/src/crmbuilder_v2/migration/lazy_migration.py; crmbuilder-v2/src/crmbuilder_v2/ui/{app.py, main_window.py (+135 lines), panels/engagements.py, dialogs/engagement_delete.py (+63 lines)}. Added tests/crmbuilder_v2/ui/{test_activation_worker.py (317 lines), test_engagement_picker.py (157 lines), test_engagement_top_strip.py (76 lines), test_new_engagement_flow.py (180 lines)}. 2250 insertions, 17 deletions across 14 files.\n\nNo PRD changes; no decisions or planning items written; no version bump.",
+      "conversation_reference": "Claude Code conversation against the slice prompt at PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.5-D-engagement-switching.md. Fourth of five v0.5 build slices and the highest-density UI slice in v0.5. Single-commit session landing at 54d920b. No transcript preserved per DEC-025.",
+      "created_at": "2026-05-18T02:44:33.416999+00:00",
+      "id": 33,
+      "identifier": "SES-034",
+      "in_flight_at_end": "Slice E (closeout — version bump 0.5.0, README release note, end-to-end integration smoke, full regression pass) is next per the v0.5 implementation plan. Slice prompt at PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.5-E-closeout.md.\n\nLatent defect surfaced post-slice but discovered through the slice A follow-up (SES-030) smoke pass: the activation worker correctly sets CRMBUILDER_V2_DB_PATH before launching the new API subprocess, but the initial UI launch on first start (no activation triggered) does not — and access/meta_db.meta_db_path() plus migration/lazy_migration.engagement_db_path() both derive their locations from s.db_path.parent which produces wrong nested paths when db_path is in the post-activation engagements/{code}.db shape. The slice E end-to-end test masks this defect with no-op subprocess managers. Both bugs are fixed in commit 3467764 covered by SES-030 (slice D follow-up: route API at active engagement on UI launch + fix latent data-dir derivation).",
+      "session_date": "05-17-26",
+      "status": "Complete",
+      "summary": "",
+      "title": "v0.5 slice D — engagement switching, top-strip, picker, single-gesture creation+activation",
+      "topics_covered": "Seed prompt: PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.5-D-engagement-switching.md. Five categories of work executed on top of slices A through C: the top-strip widget at the top of the sidebar container (always visible, shows active engagement's name with code in parentheses, clicking opens the picker); the picker dropdown (live engagements ordered by engagement_last_opened_at descending, paused and archived rendered muted and sorted to the bottom, active marked with a check icon, footer 'Manage engagements...' item); the activation worker as a QThread implementing the 12-step activation sequence per multi-engagement-architecture.md §4 with the PRD §3 question-6 amendment (engagement_last_opened_at PATCH deferred until after new API subprocess is up); the activation overlay centered widget binding to the worker's progress signals with retry/stay affordances on failure; and the single-gesture creation+activation flow (NewEngagementDialog extending slice-C's EngagementCreateDialog with three sequential operations: POST /engagements → create per-engagement DB file → activate via worker; three-label progress indicator; graceful failure recovery per PRD §5.3).\n\nActivation worker (ui/activation_worker.py, 406 lines): 12-step orchestration of the kill-relaunch dance across the API and MCP subprocesses. Amended order per PRD §3 q6: reachability check → confirm-target → kill MCP → kill API → write current_engagement.json → update in-memory ActiveEngagementContext → run engagement migrations → set CRMBUILDER_V2_DB_PATH env var → launch new API subprocess → launch new MCP subprocess → PATCH engagement_last_opened_at via new API → emit done signal → UI restore. Each step emits progress signals to the overlay. Failure at any step transitions the overlay to error state with retry/stay affordances.\n\nTop-strip widget (ui/widgets/engagement_top_strip.py, 109 lines): subscribes to active_engagement_changed and re-renders. Content row with engagement_name body text, code in parentheses small neutral.500, right-aligned Lucide chevron-down. Background neutral.100, height 48px, 1px hairline neutral.200 below. Handles the no-engagement-set fresh-install case with 'No engagement selected ▾' rendering.\n\nPicker dropdown (ui/widgets/engagement_picker.py, 220 lines): popup widget with two-tier ordering (live engagements first ordered by last_opened_at descending; non-live engagements next in muted neutral.500). Active-engagement indicator via leading Lucide check icon. Footer 'Manage engagements...' item separated by hairline that closes the picker and navigates the sidebar to the Engagements entry. Soft-deleted hidden from the picker (the management panel's job).\n\nActivation overlay (ui/widgets/activation_overlay.py, 175 lines): centered widget binding to worker progress signals. Converts to error state with retry/stay affordances on failure per PRD §5.3.\n\nSingle-gesture creation+activation flow (ui/dialogs/new_engagement_dialog.py, 354 lines): NewEngagementDialog extending EngagementCreateDialog. Three sequential operations with a three-label progress indicator: POST /engagements creates the meta DB row → create per-engagement DB file with Alembic at head → activate via worker. Graceful inline failure handling at each stage per PRD §5.3 — meta-DB-write failures clear the row before retry; per-engagement-DB-file-creation failures soft-delete the meta DB row and surface the error; activation failures leave the rows in place and surface the standard activation error state.\n\nWiring: migration/lazy_migration.py extended for the activation worker's step-3 invocation. ui/app.py instantiates the top-strip and docks it above the sidebar group entries. ui/main_window.py extended (+135 lines) to host the picker, overlay, and the single-gesture dialog launch. ui/dialogs/engagement_delete.py +63 lines — rewires the slice-C inert 'Switch engagement' / 'Create engagement' buttons to open the picker and the NewEngagementDialog respectively. ui/panels/engagements.py +22 lines to integrate the picker.\n\nTest suite: 4 new test files added — test_activation_worker.py (317 lines covering the 12-step sequence with all failure paths), test_engagement_picker.py (157 lines), test_engagement_top_strip.py (76 lines), test_new_engagement_flow.py (180 lines covering the three-stage single-gesture flow with all failure recovery paths).\n\nAfter this slice the full engagement-switching UX works end-to-end. Doug can switch between CRMBUILDER and any other engagement record via the picker; the kill-relaunch dance executes per spec; the active-engagement state persists across restart via current_engagement.json. Single-gesture engagement creation works: one click creates the meta DB row, creates the per-engagement DB file with Alembic at head, and activates the new engagement, with graceful inline failure handling at each stage. Per DEC-081, the v0.5 model is one-process-per-engagement — the activation worker spawns one API per engagement and kills the prior; PI-017 (Migrate API and MCP servers to multi-tenant model) tracks the eventual shift to one API serving multiple engagements."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-034",
+    "entity_type": "session",
+    "id": 315,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:33.417352"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:33.462753+00:00",
+      "id": 128,
+      "relationship": "is_about",
+      "source_id": "SES-034",
+      "source_type": "session",
+      "target_id": "DEC-098",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-034 -[is_about]-> decision:DEC-098",
+    "entity_type": "reference",
+    "id": 316,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:33.463250"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:33.508345+00:00",
+      "id": 129,
+      "relationship": "is_about",
+      "source_id": "SES-034",
+      "source_type": "session",
+      "target_id": "DEC-104",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-034 -[is_about]-> decision:DEC-104",
+    "entity_type": "reference",
+    "id": 317,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:33.508707"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:33.552377+00:00",
+      "id": 130,
+      "relationship": "is_about",
+      "source_id": "SES-034",
+      "source_type": "session",
+      "target_id": "DEC-099",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-034 -[is_about]-> decision:DEC-099",
+    "entity_type": "reference",
+    "id": 318,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:33.552754"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:33.598009+00:00",
+      "id": 131,
+      "relationship": "is_about",
+      "source_id": "SES-034",
+      "source_type": "session",
+      "target_id": "DEC-100",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-034 -[is_about]-> decision:DEC-100",
+    "entity_type": "reference",
+    "id": 319,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:33.598347"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:33.642079+00:00",
+      "id": 132,
+      "relationship": "is_about",
+      "source_id": "SES-034",
+      "source_type": "session",
+      "target_id": "DEC-081",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-034 -[is_about]-> decision:DEC-081",
+    "entity_type": "reference",
+    "id": 320,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:33.642422"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:33.685824+00:00",
+      "id": 133,
+      "relationship": "is_about",
+      "source_id": "SES-034",
+      "source_type": "session",
+      "target_id": "PI-017",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-034 -[is_about]-> planning_item:PI-017",
+    "entity_type": "reference",
+    "id": 321,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:33.686176"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "Commit 16e7a62 on origin/main — v2: v0.5 slice E — closeout (version 0.5.0, README release note, end-to-end integration smoke, full regression pass green). Modified crmbuilder-v2/README.md (+72 lines for v0.5 release note); crmbuilder-v2/src/crmbuilder_v2/__init__.py (__version__ = '0.5.0'); tests/crmbuilder_v2/ui/test_about_dialog.py (+6 lines for new version assertion). Created tests/crmbuilder_v2/integration/__init__.py; tests/crmbuilder_v2/integration/test_v0_5_end_to_end.py (271 lines). 346 insertions, 5 deletions across 5 files.\n\nFull v2 suite green at session end. Lint clean.\n\nNo PRD changes; no decisions or planning items written; no MCP-server bumps required for v0.5.",
+      "conversation_reference": "Claude Code conversation against the slice prompt at PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.5-E-closeout.md. Fifth and final v0.5 build slice. Single-commit session landing at 16e7a62. No transcript preserved per DEC-025.",
+      "created_at": "2026-05-18T02:44:35.612604+00:00",
+      "id": 34,
+      "identifier": "SES-035",
+      "in_flight_at_end": "v0.5 is shippable. Remaining operator-authored work originally identified by slice E: (1) status entity versioned-replace from 'v0.4 complete' to 'v0.5 complete'; (2) SES-NNN session record application for all v0.5 build-execution conversations. Both items are being batched and executed by the apply-v0.5-build-execution-closeout.md prompt (this closeout) rather than as separate post-slice operator steps.\n\nThe paper-test workstream (DEC-077) is now fully unblocked after the closeout — the next Claude.ai conversation can be the paper-test kickoff against a freshly-created CBM engagement using the single-gesture flow per slice D's UX.",
+      "session_date": "05-17-26",
+      "status": "Complete",
+      "summary": "",
+      "title": "v0.5 slice E — closeout (version 0.5.0, README release note, end-to-end integration smoke, full regression pass)",
+      "topics_covered": "Seed prompt: PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.5-E-closeout.md. Four categories of mechanical closeout work for the v0.5 release: version bump in crmbuilder-v2/src/crmbuilder_v2/__init__.py from 0.4.0 to 0.5.0 per the CLAUDE.md v2 version-source convention (no other file carries the version; the About dialog reads via importlib.metadata with __version__ as fallback); README release note added to crmbuilder-v2/README.md above the v0.4 entry per most-recent-first ordering with the one-paragraph summary plus bullet list format mirroring v0.4; end-to-end integration smoke test added at tests/crmbuilder_v2/integration/test_v0_5_end_to_end.py (271 lines) exercising the full lifecycle — dogfood migration → CBM single-gesture creation → cross-engagement scope verification → switch-back-and-forth; and a final regression pass green across the full suite via uv run pytest tests/crmbuilder_v2/.\n\nThe README release note covers the engagement entity type with its ten fields and the v1-mirroring code constraint; the multi-engagement routing infrastructure (meta DB with its own Alembic chain, per-engagement DBs with the v0.4 chain applied lazily at engagement-open, two-database API server, cross-restart active-state persistence via current_engagement.json); the one-shot dogfood migration with the three install scenarios handled and idempotency on rerun; the Engagements sidebar group and management panel; and the top-strip switching affordance plus the picker, activation worker, activation overlay, and single-gesture creation+activation flow from slices C and D.\n\nThe end-to-end smoke test simulates the full v0.5 lifecycle using in-process subprocess no-op managers (the smoke is integration over the activation orchestration and per-engagement scoping; the real production subprocess spawn is exercised by manual smoke and by the slice A follow-up). This no-op test-double pattern is what masked the latent CRMBUILDER_V2_DB_PATH and data_dir-derivation bugs that surface only in the real-subprocess case — caught in SES-030 (slice D follow-up). A small adjustment to tests/crmbuilder_v2/ui/test_about_dialog.py was needed to accommodate the new __version__ value.\n\nAfter this slice v0.5 is shippable. The status-entity update from 'v0.4 complete' to 'v0.5 complete' was originally specified as operator-authored after slice E lands through the desktop versioned-replace dialog; that step is being batched with the build-execution session records in this very closeout (apply-v0.5-build-execution-closeout.md) for efficiency. The v0.5 build's session records (this one plus SES-031 through SES-034) are also authored at this closeout per the in-sandbox close-out convention."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-035",
+    "entity_type": "session",
+    "id": 322,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:35.612960"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:35.658602+00:00",
+      "id": 134,
+      "relationship": "is_about",
+      "source_id": "SES-035",
+      "source_type": "session",
+      "target_id": "DEC-098",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-035 -[is_about]-> decision:DEC-098",
+    "entity_type": "reference",
+    "id": 323,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:35.659017"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:35.705616+00:00",
+      "id": 135,
+      "relationship": "is_about",
+      "source_id": "SES-035",
+      "source_type": "session",
+      "target_id": "DEC-104",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-035 -[is_about]-> decision:DEC-104",
+    "entity_type": "reference",
+    "id": 324,
+    "operation": "insert",
+    "timestamp": "2026-05-18T02:44:35.706254"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T02:44:39.849005+00:00",
+      "id": 14,
+      "is_current": true,
+      "payload": {
+        "active_work": "v0.5 (engagement management) is shipped. The multi-engagement routing foundation is live: meta DB at crmbuilder-v2/data/engagements.db holds the engagements registry; per-engagement DBs at crmbuilder-v2/data/engagements/{engagement_code}.db hold the methodology + governance content; the two-database API server routes /engagements/* to the meta DB and everything else to the active engagement DB; the desktop top-strip + picker + activation worker orchestrate the kill-relaunch dance to switch engagements; cross-restart active-state persists via current_engagement.json; the dogfood migration rehoused the existing v2.db into engagements/CRMBUILDER.db with backup-first verify-row-counts delete-original discipline. The slice A follow-up (SES-030) closed the launcher-wiring gap (bootstrap_meta_db at API startup, dogfood-migration trigger at desktop startup) plus a latent data_dir-derivation defect that surfaced when access/meta_db.meta_db_path() and migration/lazy_migration.engagement_db_path() were called against a post-activation engagements/{code}.db path. v0.5 plus its follow-up is now governance-complete (SES-029 PRD authoring + DEC-098..104; SES-030 launcher-wiring + slice D follow-up; SES-031..SES-035 build-execution closeout).\n\nv0.6 (UI styling rollout) is in progress in parallel. Slices A-E of v0.6 have shipped (foundation infrastructure, sidebar + master-pane delegate, panel retrofits + sub-sectioned ReferencesSection, dialogs + form controls, status + error + warning + crash banner); slice F (closeout — version 0.6.0 bump, README release note, WCAG contrast test as build gate per DEC-097, full regression + integration smoke) is the only remaining work. Slice F prompt is authored at PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-F-closeout.md. PI-001 (full styling design pass per DEC-024) discharges with slice F.\n\nThe paper-test workstream (DEC-077) is now fully unblocked. The next Claude.ai conversation can be the paper-test kickoff against a freshly-created CBM engagement via the single-gesture creation+activation flow that slice D shipped.",
+        "blockers": "None.",
+        "live_inventory": {
+          "in_database": [
+            "104 decisions across the active engagement DB (CRMBUILDER): 101 records — DEC-001..DEC-104 with three gaps at DEC-095/096/097 (reserved by parallel v0.6 PRD authoring then rebased to DEC-105/106/107 per parallel-workstream coupling discipline in DEC-076)",
+            "34 sessions: SES-001..SES-035 with one gap at SES-028 (reserved by parallel v0.6 PRD authoring then rebased to SES-030 — note that the live SES-030 was claimed first by the slice A follow-up + slice D follow-up conversation per same DEC-076 discipline)",
+            "2 charter versions (latest is_current)",
+            "14 status versions (this one is the new current)",
+            "~135 references",
+            "17 planning_items (PI-001..PI-017)",
+            "42 catalog entities + 415 catalog attributes (base entity catalog, established by SES-016)",
+            "1 engagement (CRMBUILDER) in the meta DB at crmbuilder-v2/data/engagements.db"
+          ],
+          "still_markdown": [
+            "PRDs/product/crmbuilder-v2/storage-system-PRD-v0.1.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/storage-system-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/prompts/*.md (Claude Code prompt files)",
+            "PRDs/product/crmbuilder-v2/ui-PRD-v0.1.md, v0.2.md, v0.3.md, v0.4.md, v0.5.md, v0.6.md (PRDs, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/ui-implementation-plan.md and ui-v0.2-/v0.3-/v0.4-/v0.5-/v0.6-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/multi-engagement-architecture.md (architecture spec, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/methodology-schema-specs/*.md (entity schema specs)",
+            "PRDs/product/crmbuilder-v2/styling-design-pass.md (design tokens / styling vocabulary)"
+          ],
+          "v1_unchanged": [
+            "espo_impl/ — CRMBuilder PySide6 application code",
+            "automation/ — server management layer",
+            "PRDs/process/ — methodology guides",
+            "PRDs/product/CRMBuilder-PRD.md, app-*.md, crmbuilder-automation-PRD/ — v1 product specs",
+            "ClevelandBusinessMentoring/ — CBM client repo"
+          ]
+        },
+        "metadata": {
+          "Last Updated": "05-17-26",
+          "Status": "Active"
+        },
+        "pending": {
+          "planning_paused_until_ui_complete": [
+            "Planning dimension #6 — division of labor",
+            "Planning dimension #7 — risk register",
+            "Planning dimension #8 — exit criteria",
+            "Project-structure split decision (Claude Project, repository) — deferred to end of planning per DEC-012"
+          ],
+          "post_v0_6_candidates": [
+            "PI-017 — Migrate API and MCP servers to multi-tenant model (one process serving multiple engagements instead of v0.5's one-process-per-engagement kill-relaunch model per DEC-081)",
+            "Engagement rename (engagement_code mutation) — currently v0.6+ candidate per v0.5 PRD Out of Scope",
+            "Methodology entity panels for v0.5+ schemas: persona (PI-003), field/requirement/manual_config (PI-004), full process definition beyond Phase 1 thin shape (PI-005)",
+            "Cross-Domain Service representation (PI-013)",
+            "Catalog FK integration for methodology entities (PI-014)",
+            "Methodology entity renderers (PI-015) — Word docs, YAML, test cases generated from the database per DEC-008",
+            "Router-level per-pair vocabulary enforcement on /references (PI-016)",
+            "Reimplementation of v1 saved-views / duplicate-checks / workflow managers if their no-public-REST-API constraint is resolved"
+          ],
+          "v0_6_in_progress": [
+            "Slice F closeout — version 0.6.0 bump, README release note, WCAG contrast test as build gate per DEC-097, full regression pass + final integration smoke. Discharges PI-001 (full styling design pass per DEC-024)."
+          ]
+        },
+        "phase": "v0.5 complete",
+        "reading_order_for_new_sessions": "Tier 1: read crmbuilder/CLAUDE.md.\nTier 2 (MCP-connected): call get_current_status, get_current_charter, list_recent_sessions(limit=3), then get_decision or list_decisions_for_session as needed.\nTier 2 (file-fallback): read JSON snapshots under PRDs/product/crmbuilder-v2/db-export/ — status.json, charter.json, sessions.json, decisions.json, references.json (active engagement scope); db-export/meta/engagements.json (meta DB scope).\nTier 3 (on-demand): targeted MCP/API queries during conversation.\n\nMulti-engagement note (new in v0.5): when MCP-connected the active engagement determines which per-engagement DB is queried. The CRMBUILDER engagement holds the v2 build's own dogfood content. New methodology pilots get their own engagement via the desktop top-strip + picker single-gesture creation+activation flow; the kill-relaunch dance routes the API at the newly-created engagement DB.",
+        "title": "CRMBuilder v2 — Status",
+        "version_label": "1.0"
+      },
+      "version": 14
+    },
+    "before_payload": {
+      "created_at": "2026-05-15T15:45:06.246041",
+      "id": 13,
+      "is_current": true,
+      "payload": {
+        "active_work": "Catalog ingestion v0.1 COMPLETE (SES-016, 05-14-26). The 42-entry base entity catalog (~5,530 rows) is now authoritative in the v2 database; the YAML source files are decommissioned. The methodology entity schema-design workstream (SES-011 through SES-015) can now proceed to its build phase against a populated catalog. PI-001 (full styling design pass per DEC-024) remains the forcing-function tracker for the deferred styling work.",
+        "blockers": "None.",
+        "live_inventory": {
+          "in_database": [
+            "67 decisions (DEC-001 through DEC-067)",
+            "16 sessions (SES-001 through SES-016)",
+            "2 charter versions (latest is_current)",
+            "11 status versions (this one becomes the new current)",
+            "66 references",
+            "12 planning_items (PI-001 through PI-012)",
+            "42 catalog entities + 415 catalog attributes (base entity catalog, landed by SES-016 — catalog_* tables, ~5,530 rows total)"
+          ],
+          "still_markdown": [
+            "PRDs/product/crmbuilder-v2/storage-system-PRD-v0.1.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/storage-system-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/prompts/*.md (Claude Code prompt files)",
+            "PRDs/product/crmbuilder-v2/ui-PRD-v0.1.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/ui-PRD-v0.2.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/ui-PRD-v0.3.md (PRD, not bootstrapped governance content)",
+            "PRDs/product/crmbuilder-v2/ui-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/ui-v0.2-implementation-plan.md",
+            "PRDs/product/crmbuilder-v2/ui-v0.3-implementation-plan.md"
+          ],
+          "v1_unchanged": [
+            "espo_impl/ — CRMBuilder PySide6 application code",
+            "automation/ — server management layer",
+            "PRDs/process/ — methodology guides",
+            "PRDs/product/CRMBuilder-PRD.md, app-*.md, crmbuilder-automation-PRD/ — v1 product specs",
+            "ClevelandBusinessMentoring/ — CBM client repo"
+          ]
+        },
+        "metadata": {
+          "Last Updated": "05-14-26",
+          "Status": "Active"
+        },
+        "pending": {
+          "build_after_v0_2": [
+            "Step 0 follow-on — methodology entity schema (personas, entities, fields, processes, requirements, manual-config items, test specifications)",
+            "Renderers — Word, YAML, test cases generated from the database (DEC-008)",
+            "Application integration — CRMBuilder PySide6 reads/writes against the v2 database",
+            "MN domain migration as proving ground (per DEC-010)",
+            "Test infrastructure first deliverable (CRUD layer)",
+            "Subsequent: MR, CR, FU migration; integration / process / UI test layers; methodology guide evolution"
+          ],
+          "planning_paused_until_ui_complete": [
+            "Planning dimension #6 — division of labor",
+            "Planning dimension #7 — risk register",
+            "Planning dimension #8 — exit criteria",
+            "Project-structure split decision (Claude Project, repository) — deferred to end of planning per DEC-012"
+          ],
+          "ui_v0_4_candidates": [
+            "Full styling design pass per DEC-024 / DEC-037 — tracked by PI-001, deferred three times now",
+            "Reference filtering by relationship type on detail-pane sections",
+            "JSON diff view for Charter/Status versioned-replace",
+            "Methodology entity panels (gated on schema design)",
+            "Global search across entities",
+            "Keyboard shortcuts beyond Qt defaults (Ctrl-N for new, etc.)",
+            "Export visible panel to CSV/JSON",
+            "Bulk operations (multi-row select + delete, multi-row update)",
+            "Reimplementation of v1 saved-views / duplicate-checks / workflow managers if their no-public-REST-API constraint is resolved"
+          ]
+        },
+        "phase": "v0.4 complete",
+        "reading_order_for_new_sessions": "Tier 1: read crmbuilder/CLAUDE.md.\nTier 2 (MCP-connected): call get_current_status, get_current_charter, list_recent_sessions(limit=3), then get_decision or list_decisions_for_session as needed.\nTier 2 (file-fallback): read JSON snapshots under PRDs/product/crmbuilder-v2/db-export/ — status.json, charter.json, sessions.json, decisions.json, references.json.\nTier 3 (on-demand): targeted MCP/API queries during conversation.",
+        "title": "CRMBuilder v2 — Status",
+        "version_label": "1.0"
+      },
+      "version": 13
+    },
+    "entity_identifier": "status",
+    "entity_type": "status",
+    "id": 325,
+    "operation": "update",
+    "timestamp": "2026-05-18T02:44:39.849852"
   }
 ]

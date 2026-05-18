@@ -673,7 +673,7 @@
   {
     "created_at": "2026-05-15T15:45:06.246041",
     "id": 13,
-    "is_current": true,
+    "is_current": false,
     "payload": {
       "active_work": "Catalog ingestion v0.1 COMPLETE (SES-016, 05-14-26). The 42-entry base entity catalog (~5,530 rows) is now authoritative in the v2 database; the YAML source files are decommissioned. The methodology entity schema-design workstream (SES-011 through SES-015) can now proceed to its build phase against a populated catalog. PI-001 (full styling design pass per DEC-024) remains the forcing-function tracker for the deferred styling work.",
       "blockers": "None.",
@@ -743,5 +743,73 @@
       "version_label": "1.0"
     },
     "version": 13
+  },
+  {
+    "created_at": "2026-05-18T02:44:39.849005",
+    "id": 14,
+    "is_current": true,
+    "payload": {
+      "active_work": "v0.5 (engagement management) is shipped. The multi-engagement routing foundation is live: meta DB at crmbuilder-v2/data/engagements.db holds the engagements registry; per-engagement DBs at crmbuilder-v2/data/engagements/{engagement_code}.db hold the methodology + governance content; the two-database API server routes /engagements/* to the meta DB and everything else to the active engagement DB; the desktop top-strip + picker + activation worker orchestrate the kill-relaunch dance to switch engagements; cross-restart active-state persists via current_engagement.json; the dogfood migration rehoused the existing v2.db into engagements/CRMBUILDER.db with backup-first verify-row-counts delete-original discipline. The slice A follow-up (SES-030) closed the launcher-wiring gap (bootstrap_meta_db at API startup, dogfood-migration trigger at desktop startup) plus a latent data_dir-derivation defect that surfaced when access/meta_db.meta_db_path() and migration/lazy_migration.engagement_db_path() were called against a post-activation engagements/{code}.db path. v0.5 plus its follow-up is now governance-complete (SES-029 PRD authoring + DEC-098..104; SES-030 launcher-wiring + slice D follow-up; SES-031..SES-035 build-execution closeout).\n\nv0.6 (UI styling rollout) is in progress in parallel. Slices A-E of v0.6 have shipped (foundation infrastructure, sidebar + master-pane delegate, panel retrofits + sub-sectioned ReferencesSection, dialogs + form controls, status + error + warning + crash banner); slice F (closeout — version 0.6.0 bump, README release note, WCAG contrast test as build gate per DEC-097, full regression + integration smoke) is the only remaining work. Slice F prompt is authored at PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-F-closeout.md. PI-001 (full styling design pass per DEC-024) discharges with slice F.\n\nThe paper-test workstream (DEC-077) is now fully unblocked. The next Claude.ai conversation can be the paper-test kickoff against a freshly-created CBM engagement via the single-gesture creation+activation flow that slice D shipped.",
+      "blockers": "None.",
+      "live_inventory": {
+        "in_database": [
+          "104 decisions across the active engagement DB (CRMBUILDER): 101 records — DEC-001..DEC-104 with three gaps at DEC-095/096/097 (reserved by parallel v0.6 PRD authoring then rebased to DEC-105/106/107 per parallel-workstream coupling discipline in DEC-076)",
+          "34 sessions: SES-001..SES-035 with one gap at SES-028 (reserved by parallel v0.6 PRD authoring then rebased to SES-030 — note that the live SES-030 was claimed first by the slice A follow-up + slice D follow-up conversation per same DEC-076 discipline)",
+          "2 charter versions (latest is_current)",
+          "14 status versions (this one is the new current)",
+          "~135 references",
+          "17 planning_items (PI-001..PI-017)",
+          "42 catalog entities + 415 catalog attributes (base entity catalog, established by SES-016)",
+          "1 engagement (CRMBUILDER) in the meta DB at crmbuilder-v2/data/engagements.db"
+        ],
+        "still_markdown": [
+          "PRDs/product/crmbuilder-v2/storage-system-PRD-v0.1.md (PRD, not bootstrapped governance content)",
+          "PRDs/product/crmbuilder-v2/storage-system-implementation-plan.md",
+          "PRDs/product/crmbuilder-v2/prompts/*.md (Claude Code prompt files)",
+          "PRDs/product/crmbuilder-v2/ui-PRD-v0.1.md, v0.2.md, v0.3.md, v0.4.md, v0.5.md, v0.6.md (PRDs, not bootstrapped governance content)",
+          "PRDs/product/crmbuilder-v2/ui-implementation-plan.md and ui-v0.2-/v0.3-/v0.4-/v0.5-/v0.6-implementation-plan.md",
+          "PRDs/product/crmbuilder-v2/multi-engagement-architecture.md (architecture spec, not bootstrapped governance content)",
+          "PRDs/product/crmbuilder-v2/methodology-schema-specs/*.md (entity schema specs)",
+          "PRDs/product/crmbuilder-v2/styling-design-pass.md (design tokens / styling vocabulary)"
+        ],
+        "v1_unchanged": [
+          "espo_impl/ — CRMBuilder PySide6 application code",
+          "automation/ — server management layer",
+          "PRDs/process/ — methodology guides",
+          "PRDs/product/CRMBuilder-PRD.md, app-*.md, crmbuilder-automation-PRD/ — v1 product specs",
+          "ClevelandBusinessMentoring/ — CBM client repo"
+        ]
+      },
+      "metadata": {
+        "Last Updated": "05-17-26",
+        "Status": "Active"
+      },
+      "pending": {
+        "planning_paused_until_ui_complete": [
+          "Planning dimension #6 — division of labor",
+          "Planning dimension #7 — risk register",
+          "Planning dimension #8 — exit criteria",
+          "Project-structure split decision (Claude Project, repository) — deferred to end of planning per DEC-012"
+        ],
+        "post_v0_6_candidates": [
+          "PI-017 — Migrate API and MCP servers to multi-tenant model (one process serving multiple engagements instead of v0.5's one-process-per-engagement kill-relaunch model per DEC-081)",
+          "Engagement rename (engagement_code mutation) — currently v0.6+ candidate per v0.5 PRD Out of Scope",
+          "Methodology entity panels for v0.5+ schemas: persona (PI-003), field/requirement/manual_config (PI-004), full process definition beyond Phase 1 thin shape (PI-005)",
+          "Cross-Domain Service representation (PI-013)",
+          "Catalog FK integration for methodology entities (PI-014)",
+          "Methodology entity renderers (PI-015) — Word docs, YAML, test cases generated from the database per DEC-008",
+          "Router-level per-pair vocabulary enforcement on /references (PI-016)",
+          "Reimplementation of v1 saved-views / duplicate-checks / workflow managers if their no-public-REST-API constraint is resolved"
+        ],
+        "v0_6_in_progress": [
+          "Slice F closeout — version 0.6.0 bump, README release note, WCAG contrast test as build gate per DEC-097, full regression pass + final integration smoke. Discharges PI-001 (full styling design pass per DEC-024)."
+        ]
+      },
+      "phase": "v0.5 complete",
+      "reading_order_for_new_sessions": "Tier 1: read crmbuilder/CLAUDE.md.\nTier 2 (MCP-connected): call get_current_status, get_current_charter, list_recent_sessions(limit=3), then get_decision or list_decisions_for_session as needed.\nTier 2 (file-fallback): read JSON snapshots under PRDs/product/crmbuilder-v2/db-export/ — status.json, charter.json, sessions.json, decisions.json, references.json (active engagement scope); db-export/meta/engagements.json (meta DB scope).\nTier 3 (on-demand): targeted MCP/API queries during conversation.\n\nMulti-engagement note (new in v0.5): when MCP-connected the active engagement determines which per-engagement DB is queried. The CRMBUILDER engagement holds the v2 build's own dogfood content. New methodology pilots get their own engagement via the desktop top-strip + picker single-gesture creation+activation flow; the kill-relaunch dance routes the API at the newly-created engagement DB.",
+      "title": "CRMBuilder v2 — Status",
+      "version_label": "1.0"
+    },
+    "version": 14
   }
 ]
