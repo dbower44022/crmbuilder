@@ -38,6 +38,7 @@ from crmbuilder_v2.ui.exceptions import (
     StorageClientError,
     StorageConnectionError,
 )
+from crmbuilder_v2.ui.widgets.form_helpers import required_label
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.planning_items")
@@ -150,15 +151,20 @@ class PlanningItemsPanel(ListDetailPanel):
         outer.addWidget(_heading_label(record.get("title") or "(untitled)"))
 
         form = QFormLayout()
-        form.setLabelAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop
-        )
+        # v0.6 slice C: label-above form layout per design pass §2.4.
+        form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
         form.setFieldGrowthPolicy(
             QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
         )
-        form.addRow("Identifier", _label(record.get("identifier") or ""))
-        form.addRow("Type", _label(record.get("item_type") or ""))
-        form.addRow("Status", _label(record.get("status") or ""))
+        form.addRow(
+            required_label("Identifier"), _label(record.get("identifier") or "")
+        )
+        form.addRow(
+            required_label("Type"), _label(record.get("item_type") or "")
+        )
+        form.addRow(
+            required_label("Status"), _label(record.get("status") or "")
+        )
         resolution_ref = record.get("resolution_reference")
         form.addRow(
             "Resolution Reference",

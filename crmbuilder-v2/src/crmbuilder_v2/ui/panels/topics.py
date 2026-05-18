@@ -52,6 +52,7 @@ from crmbuilder_v2.ui.exceptions import (
     StorageClientError,
     StorageConnectionError,
 )
+from crmbuilder_v2.ui.widgets.form_helpers import required_label
 from crmbuilder_v2.ui.widgets.master_pane_delegate import MasterPaneTreeDelegate
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 
@@ -197,13 +198,14 @@ class TopicsPanel(ListDetailPanel):
         outer.addWidget(_heading_label(record.get("name") or "(unnamed)"))
 
         form = QFormLayout()
-        form.setLabelAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop
-        )
+        # v0.6 slice C: label-above form layout per design pass §2.4.
+        form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
         form.setFieldGrowthPolicy(
             QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
         )
-        form.addRow("Identifier", _label(record.get("identifier") or ""))
+        form.addRow(
+            required_label("Identifier"), _label(record.get("identifier") or "")
+        )
         form.addRow(
             "Parent Topic",
             self._parent_link_or_dash(record.get("parent_topic_identifier")),

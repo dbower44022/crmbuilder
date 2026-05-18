@@ -44,7 +44,6 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QPushButton,
     QScrollArea,
-    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -62,6 +61,11 @@ from crmbuilder_v2.ui.exceptions import (
     RequestShapeError,
     StorageClientError,
     StorageConnectionError,
+)
+from crmbuilder_v2.ui.styling import t as _T
+from crmbuilder_v2.ui.widgets.form_helpers import (
+    CollapsibleSection,
+    required_label,
 )
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 
@@ -216,9 +220,8 @@ class CrmCandidatesPanel(ListDetailPanel):
         # Fields 1-3 in section-3.2 order: identifier (read-only label),
         # name, fit-reason.
         form = QFormLayout()
-        form.setLabelAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop
-        )
+        # v0.6 slice C: label-above form layout per design pass §2.4.
+        form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
         form.setFieldGrowthPolicy(
             QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
         )
@@ -231,7 +234,7 @@ class CrmCandidatesPanel(ListDetailPanel):
 
         name_value = _read_only_line(record.get("crm_candidate_name") or "")
         name_value.setObjectName("crm_candidate_name_value")
-        form.addRow("Name", name_value)
+        form.addRow(required_label("Name"), name_value)
 
         fit_reason_value = _read_only_text(
             record.get("crm_candidate_fit_reason") or "",
@@ -240,35 +243,20 @@ class CrmCandidatesPanel(ListDetailPanel):
             ),
         )
         fit_reason_value.setObjectName("crm_candidate_fit_reason_value")
-        form.addRow("Fit reason", fit_reason_value)
+        form.addRow(required_label("Fit reason"), fit_reason_value)
         outer.addLayout(form)
 
         # Field 4: crm_candidate_notes under a collapsible "Internal
-        # notes" header, collapsed by default — internal consultant
-        # scratchpad, not part of any client-facing render.
-        notes_toggle = QToolButton()
-        notes_toggle.setObjectName("crm_candidate_notes_toggle")
-        notes_toggle.setText("Internal notes")
-        notes_toggle.setCheckable(True)
-        notes_toggle.setChecked(False)
-        notes_toggle.setToolButtonStyle(
-            Qt.ToolButtonStyle.ToolButtonTextBesideIcon
-        )
-        notes_toggle.setArrowType(Qt.ArrowType.RightArrow)
-        notes_toggle.setStyleSheet("QToolButton { border: none; }")
+        # notes" header, collapsed by default. v0.6 slice C: replaces
+        # the flat QToolButton with the design pass §2.4 chevron +
+        # label treatment via CollapsibleSection.
         notes_value = _read_only_text(record.get("crm_candidate_notes") or "")
         notes_value.setObjectName("crm_candidate_notes_value")
-        notes_value.setVisible(False)
-
-        def _toggle_notes(checked: bool, w=notes_value, t=notes_toggle) -> None:
-            w.setVisible(checked)
-            t.setArrowType(
-                Qt.ArrowType.DownArrow if checked else Qt.ArrowType.RightArrow
-            )
-
-        notes_toggle.toggled.connect(_toggle_notes)
-        outer.addWidget(notes_toggle)
-        outer.addWidget(notes_value)
+        notes_section = CollapsibleSection(
+            "Internal notes", notes_value, expanded=False
+        )
+        notes_section.setObjectName("crm_candidate_notes_toggle")
+        outer.addWidget(notes_section)
 
         # Field 5: crm_candidate_status — combo box restricted to the
         # valid successors of the record's current status; disabled
@@ -276,9 +264,7 @@ class CrmCandidatesPanel(ListDetailPanel):
         # dialog). For terminal-state records the combo shows only the
         # current value, effectively read-only.
         status_row = QFormLayout()
-        status_row.setLabelAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop
-        )
+        status_row.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
         current_status = record.get("crm_candidate_status") or "active"
         status_combo = QComboBox()
         status_combo.setObjectName("crm_candidate_status_value")
@@ -287,7 +273,27 @@ class CrmCandidatesPanel(ListDetailPanel):
         if idx >= 0:
             status_combo.setCurrentIndex(idx)
         status_combo.setEnabled(False)
-        status_row.addRow("Status", status_combo)
+        # v0.6 slice C: "Valid transitions" hint caption below the
+        # status combo per design pass §2.4. Terminal states (selected,
+        # declined, removed) have no successors, so the caption is
+        # empty for those records but the label is retained for layout
+        # stability.
+        successors = sorted(
+            set(status_choices(current_status)) - {current_status}
+        )
+        status_container = QWidget()
+        status_layout = QVBoxLayout(status_container)
+        status_layout.setContentsMargins(0, 0, 0, 0)
+        status_layout.setSpacing(int(_T("space.1").rstrip("px")))
+        status_layout.addWidget(status_combo)
+        status_hint = QLabel(
+            f"Valid transitions: {', '.join(successors)}"
+            if successors
+            else ""
+        )
+        status_hint.setObjectName("statusHintCaption")
+        status_layout.addWidget(status_hint)
+        status_row.addRow(required_label("Status"), status_container)
         outer.addLayout(status_row)
 
         outer.addWidget(_separator())

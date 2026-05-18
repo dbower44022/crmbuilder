@@ -48,6 +48,7 @@ from crmbuilder_v2.ui.exceptions import (
     StorageClientError,
     StorageConnectionError,
 )
+from crmbuilder_v2.ui.widgets.form_helpers import required_label
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.decisions")
@@ -193,13 +194,21 @@ class DecisionsPanel(ListDetailPanel):
         outer.addWidget(_heading_label(record.get("title") or "(untitled)"))
 
         form = QFormLayout()
-        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+        # v0.6 slice C: label-above form layout per design pass §2.4.
+        form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
         form.setFieldGrowthPolicy(
             QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
         )
-        form.addRow("Identifier", _label(record.get("identifier") or ""))
-        form.addRow("Decision Date", _label(record.get("decision_date") or ""))
-        form.addRow("Status", _label(record.get("status") or ""))
+        form.addRow(
+            required_label("Identifier"), _label(record.get("identifier") or "")
+        )
+        form.addRow(
+            required_label("Decision Date"),
+            _label(record.get("decision_date") or ""),
+        )
+        form.addRow(
+            required_label("Status"), _label(record.get("status") or "")
+        )
         form.addRow(
             "Supersedes",
             self._decision_link_or_dash(record.get("supersedes_identifier")),

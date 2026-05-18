@@ -163,10 +163,80 @@ QLineEdit, QComboBox, QPlainTextEdit, QTextEdit {{
     selection-color: {get('color.neutral.900')};
 }}
 """,
-        # Focused state — accent border.
+        # Focused state — accent border. The 2px-outside focus-ring per
+        # design pass §2.4 is deferred: Qt's QSS ``outline`` property is
+        # not reliably honored on input widgets, so the focused-border
+        # alone carries the visual cue in v0.6.
         f"""
 QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus, QTextEdit:focus {{
     border: 1px solid {get('color.accent.default')};
+}}
+""",
+        # Error state — toggled via the dynamic ``fieldState`` property
+        # ``field.setProperty("fieldState", "error")``; consumers call
+        # ``field.style().polish(field)`` afterward to re-evaluate the
+        # selector. Qt has no native "error" pseudo-state, so the
+        # property hook stands in for one.
+        f"""
+QLineEdit[fieldState="error"], QComboBox[fieldState="error"], QPlainTextEdit[fieldState="error"], QTextEdit[fieldState="error"] {{
+    border: 1px solid {get('color.danger.default')};
+}}
+""",
+        # Disabled state — gray background, washed-out text.
+        f"""
+QLineEdit:disabled, QComboBox:disabled, QPlainTextEdit:disabled, QTextEdit:disabled {{
+    background: {get('color.neutral.100')};
+    border: 1px solid {get('color.neutral.200')};
+    color: {get('color.neutral.300')};
+}}
+""",
+        # Read-only treatment — distinct from disabled (text stays
+        # legible, content can be selected/copied). Distinguishes a
+        # field that is intentionally locked from one that is gated off.
+        f"""
+QLineEdit[readOnly="true"], QPlainTextEdit[readOnly="true"], QTextEdit[readOnly="true"] {{
+    background: {get('color.neutral.100')};
+    border: 1px solid {get('color.neutral.200')};
+    color: {get('color.neutral.700')};
+}}
+""",
+        # Form-label treatment per design pass §2.4 — small,
+        # medium-weight, slightly muted, with a 4px breathing pad
+        # above the field below. ``role="form-label"`` is tagged
+        # on labels built by :func:`required_label` (the most
+        # important target — required-field labels); a fallback
+        # ``QFormLayout QLabel`` descendant selector covers the
+        # auto-generated labels Qt creates for ``addRow(str, widget)``.
+        f"""
+QLabel[role="form-label"] {{
+    font-size: {get('font.size.small')};
+    font-weight: {get('font.weight.medium')};
+    color: {get('color.neutral.700')};
+    padding-top: {get('space.1')};
+}}
+QFormLayout QLabel {{
+    font-size: {get('font.size.small')};
+    font-weight: {get('font.weight.medium')};
+    color: {get('color.neutral.700')};
+    padding-top: {get('space.1')};
+}}
+""",
+        # Status combo "Valid transitions" caption — sits directly
+        # below a status combo on Domains, Entities, CRM Candidates.
+        f"""
+QLabel#statusHintCaption {{
+    font-size: {get('font.size.caption')};
+    color: {get('color.neutral.500')};
+}}
+""",
+        # ReferencesSection sub-section headers (slice C — DEC-107).
+        # The widget tags its kind-header QLabels with this role so the
+        # styling lives here, not in per-widget setStyleSheet calls.
+        f"""
+QLabel[role="references-kind-header"] {{
+    font-size: {get('font.size.small')};
+    font-weight: {get('font.weight.semibold')};
+    color: {get('color.neutral.700')};
 }}
 """,
         # Sidebar / generic list widgets pick up a subtle background.

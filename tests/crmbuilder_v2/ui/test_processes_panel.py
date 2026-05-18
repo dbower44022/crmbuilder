@@ -559,7 +559,9 @@ def test_handoff_round_trips_directionally(qtbot, process_client):
     producer_labels = [
         lbl.text() for lbl in producer_detail.findChildren(QLabel)
     ]
-    assert any("Hands off to (1)" in t for t in producer_labels)
+    # v0.6 slice C: ReferencesSection drops the "(N)" count suffix on
+    # the per-kind sub-section header per design pass §2.4.
+    assert any("Hands off to" in t for t in producer_labels)
     assert any("PROC-002" in t for t in producer_labels)
 
     # Consumer detail pane: the handoff renders under "Receives from".
@@ -570,7 +572,7 @@ def test_handoff_round_trips_directionally(qtbot, process_client):
     consumer_labels = [
         lbl.text() for lbl in consumer_detail.findChildren(QLabel)
     ]
-    assert any("Receives from (1)" in t for t in consumer_labels)
+    assert any("Receives from" in t for t in consumer_labels)
     assert any("PROC-001" in t for t in consumer_labels)
 
     # Soft-deleting the producer leaves the handoff in place.

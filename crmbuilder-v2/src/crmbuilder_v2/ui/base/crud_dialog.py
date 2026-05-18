@@ -71,6 +71,7 @@ from crmbuilder_v2.ui.exceptions import (
 )
 from crmbuilder_v2.ui.widgets.date_field import DateField
 from crmbuilder_v2.ui.widgets.entity_identifier_picker import EntityIdentifierPicker
+from crmbuilder_v2.ui.widgets.form_helpers import required_label
 from crmbuilder_v2.ui.widgets.hierarchical_picker import HierarchicalEntityPicker
 from crmbuilder_v2.ui.widgets.modal_backdrop import attach as _backdrop_attach
 from crmbuilder_v2.ui.widgets.modal_backdrop import detach as _backdrop_detach
@@ -392,13 +393,20 @@ class EntityCrudDialog(QDialog):
         self._form.setFieldGrowthPolicy(
             QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
         )
+        # v0.6 slice C: label-above form layout per design pass §2.4.
+        self._form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
         for schema in self._fields:
             widget = self._build_input(schema)
             error_label = _make_inline_error()
             self._error_labels[schema.key] = error_label
             self._widgets[schema.key] = widget
             self._wire_clear_on_change(schema, widget)
-            self._form.addRow(schema.label, _wrap_with_error(widget, error_label))
+            label_widget = (
+                required_label(schema.label) if schema.required else schema.label
+            )
+            self._form.addRow(
+                label_widget, _wrap_with_error(widget, error_label)
+            )
         outer.addLayout(self._form)
 
         button_row = QHBoxLayout()

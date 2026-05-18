@@ -1,4 +1,12 @@
-"""Tests for ReferencesSection widget."""
+"""Tests for ReferencesSection widget.
+
+v0.6 slice C — DEC-107. The widget's rendering was rewritten in slice C
+to drop the top-level Inbound/Outbound direction headers and group
+entries directly under per-(direction, relationship) sub-section
+headers like "Decided in" / "Supersedes" / "Hands off to". Tests below
+exercise the new layout while preserving the v0.3 write-surface
+behavior (Add reference button + per-row right-click delete) unchanged.
+"""
 
 from __future__ import annotations
 
@@ -25,7 +33,13 @@ def test_empty_payload_renders_none_placeholder(qapp, qtbot):
     assert any("(none)" in t for t in texts)
 
 
-def test_inbound_only_renders_inbound_section_with_count(qapp, qtbot):
+def test_inbound_renders_kind_labeled_sub_section(qapp, qtbot):
+    """v0.6 slice C: inbound ``decided_in`` renders under a 'Decided in' header.
+
+    Replaces the v0.5 'Inbound (1)' + 'decided_in (1)' two-level
+    grouping with the single ``_KIND_LABELS[("inbound", "decided_in")]``
+    sub-section header.
+    """
     payload = _payload(
         as_target=[
             {
@@ -40,13 +54,11 @@ def test_inbound_only_renders_inbound_section_with_count(qapp, qtbot):
     section = ReferencesSection("decision", "DEC-001", payload)
     qtbot.addWidget(section)
     texts = _label_texts(section)
-    assert any("Inbound (1)" in t for t in texts)
-    assert any("Outbound (0)" in t for t in texts)
-    assert any("decided_in (1)" in t for t in texts)
+    assert any("Decided in" in t for t in texts)
     assert any("SES-002" in t for t in texts)
 
 
-def test_outbound_only_renders_outbound_section(qapp, qtbot):
+def test_outbound_supersedes_renders_kind_label(qapp, qtbot):
     payload = _payload(
         as_source=[
             {
@@ -61,13 +73,12 @@ def test_outbound_only_renders_outbound_section(qapp, qtbot):
     section = ReferencesSection("decision", "DEC-018", payload)
     qtbot.addWidget(section)
     texts = _label_texts(section)
-    assert any("Inbound (0)" in t for t in texts)
-    assert any("Outbound (1)" in t for t in texts)
-    assert any("supersedes (1)" in t for t in texts)
+    assert any("Supersedes" in t for t in texts)
     assert any("DEC-007" in t for t in texts)
 
 
-def test_grouping_by_relationship_with_multiple_per_group(qapp, qtbot):
+def test_multiple_kinds_render_as_distinct_sub_sections(qapp, qtbot):
+    """Three inbound rows across two kinds render two sub-section headers."""
     payload = _payload(
         as_target=[
             {
@@ -96,9 +107,13 @@ def test_grouping_by_relationship_with_multiple_per_group(qapp, qtbot):
     section = ReferencesSection("decision", "DEC-001", payload)
     qtbot.addWidget(section)
     texts = _label_texts(section)
-    assert any("Inbound (3)" in t for t in texts)
-    assert any("decided_in (2)" in t for t in texts)
-    assert any("is_about (1)" in t for t in texts)
+    # Two distinct kind headers — inbound is_about is labeled "Cited by".
+    assert any("Decided in" in t for t in texts)
+    assert any("Cited by" in t for t in texts)
+    # All three entries' identifiers render.
+    assert any("SES-002" in t for t in texts)
+    assert any("SES-003" in t for t in texts)
+    assert any("TOP-1" in t for t in texts)
 
 
 def test_exclude_relationships_filters_outbound(qapp, qtbot):
@@ -128,9 +143,10 @@ def test_exclude_relationships_filters_outbound(qapp, qtbot):
     )
     qtbot.addWidget(section)
     texts = _label_texts(section)
-    assert any("Outbound (1)" in t for t in texts)
-    assert not any("supersedes" in t for t in texts)
-    assert any("is_about (1)" in t for t in texts)
+    # Supersedes filtered out; is_about (outbound) header reads "Is about".
+    assert not any("Supersedes" in t for t in texts)
+    assert any("Is about" in t for t in texts)
+    assert any("TOP-1" in t for t in texts)
 
 
 def test_link_click_emits_navigate_requested(qapp, qtbot):
@@ -183,8 +199,8 @@ def test_excluded_relationship_with_no_remaining_renders_none(qapp, qtbot):
     qtbot.addWidget(section)
     texts = _label_texts(section)
     # The single outbound is filtered, and no inbound exists, so the
-    # widget should render the single (none) placeholder under the
-    # main References heading.
+    # widget renders the single (none) placeholder under the main
+    # References heading.
     assert any("(none)" in t for t in texts)
 
 

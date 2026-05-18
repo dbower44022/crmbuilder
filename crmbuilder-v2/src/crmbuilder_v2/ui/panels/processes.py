@@ -41,7 +41,6 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QPushButton,
     QScrollArea,
-    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -61,6 +60,11 @@ from crmbuilder_v2.ui.exceptions import (
     NotFoundError,
     StorageClientError,
     StorageConnectionError,
+)
+from crmbuilder_v2.ui.styling import t as _T
+from crmbuilder_v2.ui.widgets.form_helpers import (
+    CollapsibleSection,
+    required_label,
 )
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 
@@ -233,9 +237,8 @@ class ProcessesPanel(ListDetailPanel):
 
         # Fields 1-2: identifier (read-only label), name.
         form = QFormLayout()
-        form.setLabelAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop
-        )
+        # v0.6 slice C: label-above form layout per design pass §2.4.
+        form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
         form.setFieldGrowthPolicy(
             QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
         )
@@ -248,7 +251,7 @@ class ProcessesPanel(ListDetailPanel):
 
         name_value = _read_only_line(record.get("process_name") or "")
         name_value.setObjectName("process_name_value")
-        form.addRow("Name", name_value)
+        form.addRow(required_label("Name"), name_value)
 
         # Field 3: process_domain_identifier. Rendered as a read-only
         # line ("DOM-NNN — Domain Name" when the FK resolves to a live
@@ -274,7 +277,7 @@ class ProcessesPanel(ListDetailPanel):
             domain_display = domain_identifier or "—"
         domain_value = _read_only_line(domain_display)
         domain_value.setObjectName("process_domain_identifier_value")
-        form.addRow("Domain", domain_value)
+        form.addRow(required_label("Domain"), domain_value)
 
         # Field 4: process_purpose.
         purpose_value = _read_only_text(
@@ -282,15 +285,15 @@ class ProcessesPanel(ListDetailPanel):
             placeholder=_PURPOSE_PLACEHOLDER,
         )
         purpose_value.setObjectName("process_purpose_value")
-        form.addRow("Purpose", purpose_value)
+        form.addRow(required_label("Purpose"), purpose_value)
         outer.addLayout(form)
 
         # Field 5: process_classification — combo box restricted to the
         # valid successors of the record's current classification;
         # disabled because the detail pane is a view.
         classification_row = QFormLayout()
-        classification_row.setLabelAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop
+        classification_row.setRowWrapPolicy(
+            QFormLayout.RowWrapPolicy.WrapAllRows
         )
         current_classification = (
             record.get("process_classification") or "unclassified"
@@ -304,15 +307,35 @@ class ProcessesPanel(ListDetailPanel):
         if idx >= 0:
             classification_combo.setCurrentIndex(idx)
         classification_combo.setEnabled(False)
-        classification_row.addRow("Classification", classification_combo)
+        # v0.6 slice C: "Valid transitions" hint caption below the
+        # classification combo per design pass §2.4. ``classification``
+        # is the process equivalent of ``status`` on Domains/Entities/
+        # CRM Candidates; the same hint pattern applies.
+        successors = sorted(
+            set(classification_choices(current_classification))
+            - {current_classification}
+        )
+        classification_container = QWidget()
+        classification_layout = QVBoxLayout(classification_container)
+        classification_layout.setContentsMargins(0, 0, 0, 0)
+        classification_layout.setSpacing(int(_T("space.1").rstrip("px")))
+        classification_layout.addWidget(classification_combo)
+        classification_hint = QLabel(
+            f"Valid transitions: {', '.join(successors)}"
+            if successors
+            else ""
+        )
+        classification_hint.setObjectName("statusHintCaption")
+        classification_layout.addWidget(classification_hint)
+        classification_row.addRow(
+            required_label("Classification"), classification_container
+        )
         outer.addLayout(classification_row)
 
         # Field 6: process_classification_rationale — read-only multi-line
         # with a placeholder that varies by the current classification.
         rationale_row = QFormLayout()
-        rationale_row.setLabelAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop
-        )
+        rationale_row.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
         rationale_value = _read_only_text(
             record.get("process_classification_rationale") or "",
             placeholder=CLASSIFICATION_RATIONALE_PLACEHOLDERS.get(
@@ -325,30 +348,16 @@ class ProcessesPanel(ListDetailPanel):
         outer.addLayout(rationale_row)
 
         # Field 7: process_notes under a collapsible "Internal notes"
-        # header, collapsed by default.
-        notes_toggle = QToolButton()
-        notes_toggle.setObjectName("process_notes_toggle")
-        notes_toggle.setText("Internal notes")
-        notes_toggle.setCheckable(True)
-        notes_toggle.setChecked(False)
-        notes_toggle.setToolButtonStyle(
-            Qt.ToolButtonStyle.ToolButtonTextBesideIcon
-        )
-        notes_toggle.setArrowType(Qt.ArrowType.RightArrow)
-        notes_toggle.setStyleSheet("QToolButton { border: none; }")
+        # header, collapsed by default. v0.6 slice C: replaces the flat
+        # QToolButton with the design pass §2.4 chevron + label
+        # treatment via CollapsibleSection.
         notes_value = _read_only_text(record.get("process_notes") or "")
         notes_value.setObjectName("process_notes_value")
-        notes_value.setVisible(False)
-
-        def _toggle_notes(checked: bool, w=notes_value, t=notes_toggle) -> None:
-            w.setVisible(checked)
-            t.setArrowType(
-                Qt.ArrowType.DownArrow if checked else Qt.ArrowType.RightArrow
-            )
-
-        notes_toggle.toggled.connect(_toggle_notes)
-        outer.addWidget(notes_toggle)
-        outer.addWidget(notes_value)
+        notes_section = CollapsibleSection(
+            "Internal notes", notes_value, expanded=False
+        )
+        notes_section.setObjectName("process_notes_toggle")
+        outer.addWidget(notes_section)
 
         outer.addWidget(_separator())
 

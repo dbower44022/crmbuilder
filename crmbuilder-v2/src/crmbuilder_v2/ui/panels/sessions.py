@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
 
 from crmbuilder_v2.ui.base.list_detail_panel import ColumnSpec, ListDetailPanel
 from crmbuilder_v2.ui.dialogs.session_create import SessionCreateDialog
+from crmbuilder_v2.ui.widgets.form_helpers import required_label
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 
 _LONG_TEXT_MIN_HEIGHT = 80
@@ -184,13 +185,21 @@ class SessionsPanel(ListDetailPanel):
         outer.addWidget(_heading_label(record.get("title") or "(untitled)"))
 
         form = QFormLayout()
-        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+        # v0.6 slice C: label-above form layout per design pass §2.4.
+        form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
         form.setFieldGrowthPolicy(
             QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
         )
-        form.addRow("Identifier", _label(record.get("identifier") or ""))
-        form.addRow("Session Date", _label(record.get("session_date") or ""))
-        form.addRow("Status", _label(record.get("status") or ""))
+        form.addRow(
+            required_label("Identifier"), _label(record.get("identifier") or "")
+        )
+        form.addRow(
+            required_label("Session Date"),
+            _label(record.get("session_date") or ""),
+        )
+        form.addRow(
+            required_label("Status"), _label(record.get("status") or "")
+        )
         outer.addLayout(form)
 
         outer.addWidget(_separator())
@@ -202,11 +211,10 @@ class SessionsPanel(ListDetailPanel):
         outer.addWidget(_separator())
 
         conv_form = QFormLayout()
-        conv_form.setLabelAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop
-        )
+        # v0.6 slice C: label-above form layout per design pass §2.4.
+        conv_form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
         conv_form.addRow(
-            "Conversation Reference",
+            required_label("Conversation Reference"),
             _label(record.get("conversation_reference") or "—"),
         )
         outer.addLayout(conv_form)

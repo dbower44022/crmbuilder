@@ -59,6 +59,7 @@ from crmbuilder_v2.ui.exceptions import (
     StorageConnectionError,
 )
 from crmbuilder_v2.ui.styling import t
+from crmbuilder_v2.ui.widgets.form_helpers import required_label
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.engagements")
 
@@ -355,9 +356,8 @@ class EngagementsPanel(ListDetailPanel):
         outer.addWidget(_heading_label(title_text))
 
         form = QFormLayout()
-        form.setLabelAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop
-        )
+        # v0.6 slice C: label-above form layout per design pass §2.4.
+        form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
         form.setFieldGrowthPolicy(
             QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
         )
@@ -370,30 +370,30 @@ class EngagementsPanel(ListDetailPanel):
         identifier_label.setTextInteractionFlags(
             Qt.TextInteractionFlag.TextSelectableByMouse
         )
-        form.addRow("Identifier", identifier_label)
+        form.addRow(required_label("Identifier"), identifier_label)
 
         code_value = _read_only_line(record.get("engagement_code") or "")
         code_value.setObjectName("engagement_code_value")
         code_value.setFont(mono)
-        form.addRow("Code", code_value)
+        form.addRow(required_label("Code"), code_value)
 
         name_value = _read_only_line(record.get("engagement_name") or "")
         name_value.setObjectName("engagement_name_value")
-        form.addRow("Name", name_value)
+        form.addRow(required_label("Name"), name_value)
 
         purpose_value = _read_only_text(
             record.get("engagement_purpose") or "",
             placeholder="What this engagement covers",
         )
         purpose_value.setObjectName("engagement_purpose_value")
-        form.addRow("Purpose", purpose_value)
+        form.addRow(required_label("Purpose"), purpose_value)
 
         status_value = _read_only_line(record.get("engagement_status") or "")
         status_value.setObjectName("engagement_status_value")
         status_value.setStyleSheet(
             _read_only_status_stylesheet(record.get("engagement_status"))
         )
-        form.addRow("Status", status_value)
+        form.addRow(required_label("Status"), status_value)
 
         export_dir_value = _read_only_line(
             record.get("engagement_export_dir") or "",
