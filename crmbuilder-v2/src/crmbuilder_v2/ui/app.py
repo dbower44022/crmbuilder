@@ -21,7 +21,7 @@ import os
 import sys
 from pathlib import Path
 
-from PySide6.QtGui import QFont, QFontDatabase
+from PySide6.QtGui import QColor, QFont, QFontDatabase, QPalette
 from PySide6.QtWidgets import (
     QApplication,
     QMessageBox,
@@ -40,7 +40,7 @@ from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.main_window import MainWindow
 from crmbuilder_v2.ui.server_lifecycle import ServerLifecycle
 from crmbuilder_v2.ui.splash import Splash
-from crmbuilder_v2.ui.styling import apply_stylesheet
+from crmbuilder_v2.ui.styling import TOKENS, apply_stylesheet
 
 _APP_NAME = "CRMBuilder v2"
 _LOG_DIR = Path("~/.crmbuilder-v2").expanduser()
@@ -92,14 +92,97 @@ def build_application(argv: list[str] | None = None) -> QApplication:
     """Construct (or reuse) the QApplication, load fonts, apply stylesheet."""
     existing = QApplication.instance()
     if existing is not None:
+        existing.setStyle("Fusion")
+        _apply_light_palette(existing)
         _load_bundled_fonts()
         apply_stylesheet(existing)
         return existing
     app = QApplication(argv if argv is not None else sys.argv)
     app.setApplicationName(_APP_NAME)
+    # Force Fusion style + explicit light palette so OS theme (GTK on
+    # Linux, native on macOS/Windows) cannot bleed through to widget
+    # surfaces that the project QSS doesn't explicitly cover. The
+    # palette colors mirror TOKENS["light"] so the application bootstrap
+    # stays consistent with the styling design pass.
+    app.setStyle("Fusion")
+    _apply_light_palette(app)
     _load_bundled_fonts()
     apply_stylesheet(app)
     return app
+
+
+def _apply_light_palette(app: QApplication) -> None:
+    """Force an explicit light palette built from ``TOKENS["light"]``.
+
+    Ensures widget surfaces that don't have explicit QSS rules still
+    render against light-theme colors regardless of OS theme. Palette
+    role-to-token mapping mirrors the design pass §1.2 color tokens
+    and stays in sync with ``TOKENS`` without duplicating values.
+    """
+    light = TOKENS["light"]
+    palette = QPalette()
+    palette.setColor(
+        QPalette.ColorRole.Window, QColor(light["color.neutral.0"])
+    )
+    palette.setColor(
+        QPalette.ColorRole.WindowText, QColor(light["color.neutral.800"])
+    )
+    palette.setColor(
+        QPalette.ColorRole.Base, QColor(light["color.neutral.0"])
+    )
+    palette.setColor(
+        QPalette.ColorRole.AlternateBase, QColor(light["color.neutral.50"])
+    )
+    palette.setColor(
+        QPalette.ColorRole.ToolTipBase, QColor(light["color.neutral.0"])
+    )
+    palette.setColor(
+        QPalette.ColorRole.ToolTipText, QColor(light["color.neutral.800"])
+    )
+    palette.setColor(
+        QPalette.ColorRole.Text, QColor(light["color.neutral.800"])
+    )
+    palette.setColor(
+        QPalette.ColorRole.PlaceholderText, QColor(light["color.neutral.500"])
+    )
+    palette.setColor(
+        QPalette.ColorRole.Button, QColor(light["color.neutral.0"])
+    )
+    palette.setColor(
+        QPalette.ColorRole.ButtonText, QColor(light["color.neutral.700"])
+    )
+    palette.setColor(
+        QPalette.ColorRole.BrightText, QColor(light["color.danger.default"])
+    )
+    palette.setColor(
+        QPalette.ColorRole.Link, QColor(light["color.accent.default"])
+    )
+    palette.setColor(
+        QPalette.ColorRole.LinkVisited, QColor(light["color.accent.pressed"])
+    )
+    palette.setColor(
+        QPalette.ColorRole.Highlight, QColor(light["color.accent.subtle"])
+    )
+    palette.setColor(
+        QPalette.ColorRole.HighlightedText, QColor(light["color.neutral.900"])
+    )
+    # Disabled-state roles for grayed-out widgets.
+    palette.setColor(
+        QPalette.ColorGroup.Disabled,
+        QPalette.ColorRole.WindowText,
+        QColor(light["color.neutral.300"]),
+    )
+    palette.setColor(
+        QPalette.ColorGroup.Disabled,
+        QPalette.ColorRole.Text,
+        QColor(light["color.neutral.300"]),
+    )
+    palette.setColor(
+        QPalette.ColorGroup.Disabled,
+        QPalette.ColorRole.ButtonText,
+        QColor(light["color.neutral.300"]),
+    )
+    app.setPalette(palette)
 
 
 def _configure_logging(verbose: bool) -> None:
