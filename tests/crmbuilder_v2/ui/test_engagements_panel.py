@@ -90,16 +90,24 @@ def test_engagements_is_single_entry_in_engagements_group():
 
 
 def test_sidebar_renders_engagements_above_governance(qtbot):
+    # v0.6 slice B retired uppercased header text per design pass §2.1;
+    # the Engagements group header and the Engagements entry now share
+    # the same text and are distinguished only by the per-item header
+    # role. The entry appears under the Engagements header and before
+    # the Governance header.
+    from crmbuilder_v2.ui.sidebar import _HEADER_ROLE  # noqa: PLC0415
+
     sidebar = Sidebar()
     qtbot.addWidget(sidebar)
-    rendered = [sidebar.item(r).text() for r in range(sidebar.count())]
-    assert "ENGAGEMENTS" in rendered
-    assert "Engagements" in rendered
-    # The Engagements entry appears under the ENGAGEMENTS header and
-    # before the GOVERNANCE header.
-    eng_idx = rendered.index("Engagements")
-    gov_idx = rendered.index("GOVERNANCE")
-    assert eng_idx < gov_idx
+    items = [sidebar.item(r) for r in range(sidebar.count())]
+    headers = {item.text(): i for i, item in enumerate(items) if item.data(_HEADER_ROLE)}
+    entries = {
+        item.text(): i for i, item in enumerate(items) if not item.data(_HEADER_ROLE)
+    }
+    assert "Engagements" in headers
+    assert "Engagements" in entries
+    assert "Governance" in headers
+    assert headers["Engagements"] < entries["Engagements"] < headers["Governance"]
 
 
 def test_main_window_engagements_page_is_panel(

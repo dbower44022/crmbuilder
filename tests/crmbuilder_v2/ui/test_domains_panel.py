@@ -86,14 +86,22 @@ def test_domains_is_first_methodology_entry():
 
 
 def test_sidebar_renders_domains_under_methodology(qtbot):
+    # v0.6 slice B retired uppercased header text per design pass §2.1;
+    # headers are sentence-cased ("Methodology") and distinguished from
+    # entries via the per-item header role.
+    from crmbuilder_v2.ui.sidebar import _HEADER_ROLE  # noqa: PLC0415
+
     sidebar = Sidebar()
     qtbot.addWidget(sidebar)
-    rendered = [sidebar.item(r).text() for r in range(sidebar.count())]
-    assert "METHODOLOGY" in rendered
-    assert "Domains" in rendered
-    # Domains sits after the METHODOLOGY header and after every
-    # Governance entry.
-    assert rendered.index("Domains") == rendered.index("METHODOLOGY") + 1
+    items = [sidebar.item(r) for r in range(sidebar.count())]
+    headers = {item.text(): i for i, item in enumerate(items) if item.data(_HEADER_ROLE)}
+    entries = {
+        item.text(): i for i, item in enumerate(items) if not item.data(_HEADER_ROLE)
+    }
+    assert "Methodology" in headers
+    assert "Domains" in entries
+    # Domains sits directly after the Methodology header.
+    assert entries["Domains"] == headers["Methodology"] + 1
 
 
 def test_main_window_domains_page_is_panel(qtbot, lifecycle_stub, domain_client):

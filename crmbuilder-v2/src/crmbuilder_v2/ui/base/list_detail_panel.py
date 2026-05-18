@@ -44,6 +44,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSplitter,
     QStackedWidget,
+    QStyledItemDelegate,
     QTableView,
     QVBoxLayout,
     QWidget,
@@ -54,6 +55,7 @@ from crmbuilder_v2.ui.exceptions import (
     StorageClientError,
     StorageConnectionError,
 )
+from crmbuilder_v2.ui.widgets.master_pane_delegate import MasterPaneDelegate
 from crmbuilder_v2.ui.workers import run_in_thread
 
 _log = logging.getLogger("crmbuilder_v2.ui.list_detail_panel")
@@ -176,6 +178,14 @@ class ListDetailPanel(QWidget):
     # between the toolbar and the table by overriding
     # ``_filter_strip_widget``. Used by the slice-E ReferencesPanel.
     _has_detail_pane: ClassVar[bool] = True
+
+    # v0.6 slice B: master-pane delegate (DEC-093). Default is the
+    # shared :class:`MasterPaneDelegate`; the Topics panel overrides
+    # to :class:`MasterPaneTreeDelegate`. Centralized registration in
+    # ``_build_ui`` covers every subclass automatically.
+    master_pane_delegate_cls: ClassVar[type[QStyledItemDelegate]] = (
+        MasterPaneDelegate
+    )
 
     def __init__(self, client: StorageClient, parent: QWidget | None = None):
         super().__init__(parent)
@@ -471,6 +481,36 @@ class ListDetailPanel(QWidget):
         self._master_view.selectionModel().currentChanged.connect(
             self._on_current_changed
         )
+
+        # v0.6 slice B: install the shared master-pane delegate per
+        # DEC-093. The delegate reads soft-deleted state via the
+        # panel's _strikethrough_for_record hook (the same predicate
+        # the table model uses), and the identifier column is detected
+        # by walking list_columns() for the "identifier" field.
+        ident_col: int | None = None
+        for col_idx, spec in enumerate(columns):
+            if spec.field == "identifier":
+                ident_col = col_idx
+                break
+
+        def _record_for_index(idx: QModelIndex) -> dict | None:
+            return self._record_at_index(idx)
+
+        def _is_soft_deleted(idx: QModelIndex) -> bool:
+            record = self._record_at_index(idx)
+            if record is None:
+                return False
+            return bool(self._strikethrough_for_record(record))
+
+        delegate = self.master_pane_delegate_cls(
+            self._master_view,
+            record_for_index=_record_for_index,
+            is_soft_deleted=_is_soft_deleted,
+            identifier_column_index=ident_col,
+        )
+        self._master_view.setItemDelegate(delegate)
+        # Hold a reference so the delegate isn't garbage-collected.
+        self._master_pane_delegate = delegate
 
         if self._has_detail_pane:
             self._detail_stack = QStackedWidget()

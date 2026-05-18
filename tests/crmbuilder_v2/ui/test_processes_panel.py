@@ -120,13 +120,21 @@ def test_processes_is_third_methodology_entry():
 
 
 def test_sidebar_renders_processes_under_methodology(qtbot):
+    # v0.6 slice B retired uppercased header text per design pass §2.1;
+    # see test_domains_panel.py for the pattern.
+    from crmbuilder_v2.ui.sidebar import _HEADER_ROLE  # noqa: PLC0415
+
     sidebar = Sidebar()
     qtbot.addWidget(sidebar)
-    rendered = [sidebar.item(r).text() for r in range(sidebar.count())]
-    assert "METHODOLOGY" in rendered
-    assert "Processes" in rendered
-    assert rendered.index("Processes") == rendered.index("Entities") + 1
-    assert rendered.index("Processes") == rendered.index("METHODOLOGY") + 3
+    items = [sidebar.item(r) for r in range(sidebar.count())]
+    headers = {item.text(): i for i, item in enumerate(items) if item.data(_HEADER_ROLE)}
+    entries = {
+        item.text(): i for i, item in enumerate(items) if not item.data(_HEADER_ROLE)
+    }
+    assert "Methodology" in headers
+    assert "Processes" in entries
+    assert entries["Processes"] == entries["Entities"] + 1
+    assert entries["Processes"] == headers["Methodology"] + 3
 
 
 def test_main_window_processes_page_is_panel(

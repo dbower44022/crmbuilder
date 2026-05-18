@@ -51,15 +51,27 @@ def test_main_window_constructs(qapp, qtbot, lifecycle_stub, client_stub):
 
     sidebar = window._sidebar
     # The sidebar is grouped (UI v0.4 slice A): every selectable entry
-    # plus a non-selectable header per group. The eight governance
-    # entries all render; the "GOVERNANCE" and "METHODOLOGY" group
-    # headers render too.
-    rendered = [sidebar.item(r).text() for r in range(sidebar.count())]
+    # plus a non-selectable header per group. v0.6 slice B retired the
+    # legacy uppercased header text per design pass §2.1, so headers
+    # are sentence-cased and distinguished from same-named entries via
+    # the per-item header role (Qt.UserRole + 1).
+    from crmbuilder_v2.ui.sidebar import _HEADER_ROLE  # noqa: PLC0415
+
+    headers = {
+        sidebar.item(r).text()
+        for r in range(sidebar.count())
+        if sidebar.item(r).data(_HEADER_ROLE)
+    }
+    entries = {
+        sidebar.item(r).text()
+        for r in range(sidebar.count())
+        if not sidebar.item(r).data(_HEADER_ROLE)
+    }
     for expected in EXPECTED_ENTRIES:
-        assert expected in rendered
-    assert "ENGAGEMENTS" in rendered
-    assert "GOVERNANCE" in rendered
-    assert "METHODOLOGY" in rendered
+        assert expected in entries
+    assert "Engagements" in headers
+    assert "Governance" in headers
+    assert "Methodology" in headers
 
     assert window._stack.count() == len(EXPECTED_ENTRIES)
     assert sidebar.currentItem().text() == "Decisions"

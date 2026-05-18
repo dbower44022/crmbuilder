@@ -114,15 +114,22 @@ def test_entities_is_second_methodology_entry():
 
 
 def test_sidebar_renders_entities_under_methodology(qtbot):
+    # v0.6 slice B retired uppercased header text per design pass §2.1;
+    # see test_domains_panel.py for the pattern.
+    from crmbuilder_v2.ui.sidebar import _HEADER_ROLE  # noqa: PLC0415
+
     sidebar = Sidebar()
     qtbot.addWidget(sidebar)
-    rendered = [sidebar.item(r).text() for r in range(sidebar.count())]
-    assert "METHODOLOGY" in rendered
-    assert "Entities" in rendered
-    # Entities sits directly after Domains, both under the METHODOLOGY
-    # header and after every Governance entry.
-    assert rendered.index("Entities") == rendered.index("Domains") + 1
-    assert rendered.index("Entities") == rendered.index("METHODOLOGY") + 2
+    items = [sidebar.item(r) for r in range(sidebar.count())]
+    headers = {item.text(): i for i, item in enumerate(items) if item.data(_HEADER_ROLE)}
+    entries = {
+        item.text(): i for i, item in enumerate(items) if not item.data(_HEADER_ROLE)
+    }
+    assert "Methodology" in headers
+    assert "Entities" in entries
+    # Entities sits directly after Domains, both under Methodology.
+    assert entries["Entities"] == entries["Domains"] + 1
+    assert entries["Entities"] == headers["Methodology"] + 2
 
 
 def test_main_window_entities_page_is_panel(qtbot, lifecycle_stub, entity_client):

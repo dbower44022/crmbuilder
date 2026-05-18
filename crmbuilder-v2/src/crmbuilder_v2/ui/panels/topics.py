@@ -52,6 +52,7 @@ from crmbuilder_v2.ui.exceptions import (
     StorageClientError,
     StorageConnectionError,
 )
+from crmbuilder_v2.ui.widgets.master_pane_delegate import MasterPaneTreeDelegate
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.topics")
@@ -100,8 +101,34 @@ def _separator() -> QFrame:
     return line
 
 
+class _LucideChevronTreeView(QTreeView):
+    """``QTreeView`` whose branch indicator renders as a Lucide chevron.
+
+    Default ``QTreeView`` draws an OS-themed triangle for the
+    expand/collapse indicator; design pass §2.3 (DEC-093) replaces
+    this with Lucide ``chevron-right`` (collapsed) and
+    ``chevron-down`` (expanded) so the indicator is consistent across
+    platforms. The painting is delegated to
+    :meth:`MasterPaneTreeDelegate.paint_branch`.
+    """
+
+    def drawBranches(self, painter, rect, index):  # noqa: N802 — Qt naming
+        if self.model() is None or not index.isValid():
+            return
+        if not self.model().hasChildren(index):
+            return
+        MasterPaneTreeDelegate.paint_branch(
+            painter, rect, expanded=self.isExpanded(index)
+        )
+
+
 class TopicsPanel(ListDetailPanel):
     """Topics panel — QTreeView master + write surface (v0.2 slice D)."""
+
+    # v0.6 slice B (DEC-093): use the tree-aware master-pane delegate
+    # so chevron painting (drawBranches override on the tree view)
+    # composes cleanly with the inherited row-state vocabulary.
+    master_pane_delegate_cls = MasterPaneTreeDelegate
 
     def __init__(self, client, parent=None):
         # Initialize the items-by-identifier map before ``super().__init__``
@@ -247,13 +274,18 @@ class TopicsPanel(ListDetailPanel):
     # ------------------------------------------------------------------
 
     def _create_master_widget(self) -> QAbstractItemView:
-        """Return a configured ``QTreeView`` with the topics tree model.
+        """Return a configured ``_LucideChevronTreeView`` with the topics tree model.
 
         v0.3 slice A — DEC-035. Pre-installs ``self._tree_model`` so the
         base's default ``_RecordTableModel`` setup is skipped (the base's
         ``_build_ui`` checks ``self._master_view.model() is None``).
+
+        v0.6 slice B — DEC-093. Uses :class:`_LucideChevronTreeView` so
+        the default branch indicators render as Lucide chevrons (down
+        when expanded, right when collapsed) per design pass §2.3.
+        Indentation is set to 16px (``space.4``) per the same section.
         """
-        tree = QTreeView(self)
+        tree = _LucideChevronTreeView(self)
         tree.setHeaderHidden(False)
         tree.setSelectionBehavior(
             QAbstractItemView.SelectionBehavior.SelectRows
@@ -263,6 +295,7 @@ class TopicsPanel(ListDetailPanel):
         )
         tree.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         tree.setUniformRowHeights(True)
+        tree.setIndentation(MasterPaneTreeDelegate.indentation_per_level())
         self._tree_model = QStandardItemModel()
         self._tree_model.setHorizontalHeaderLabels(["Topic"])
         tree.setModel(self._tree_model)

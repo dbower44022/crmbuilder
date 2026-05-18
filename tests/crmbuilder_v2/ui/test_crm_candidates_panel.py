@@ -100,13 +100,19 @@ def test_crm_candidates_is_fourth_methodology_entry():
 
 
 def test_sidebar_renders_crm_candidates_under_methodology(qtbot):
+    # v0.6 slice B retired uppercased header text per design pass §2.1;
+    # see test_domains_panel.py for the pattern.
+    from crmbuilder_v2.ui.sidebar import _HEADER_ROLE  # noqa: PLC0415
+
     sidebar = Sidebar()
     qtbot.addWidget(sidebar)
-    rendered = [sidebar.item(r).text() for r in range(sidebar.count())]
-    assert "METHODOLOGY" in rendered
+    items = [sidebar.item(r) for r in range(sidebar.count())]
+    rendered = [item.text() for item in items]
+    headers = {item.text(): i for i, item in enumerate(items) if item.data(_HEADER_ROLE)}
+    assert "Methodology" in headers
     assert "CRM Candidates" in rendered
     # CRM Candidates sits at position #4 inside the Methodology group.
-    methodology_idx = rendered.index("METHODOLOGY")
+    methodology_idx = headers["Methodology"]
     assert rendered[methodology_idx + 4] == "CRM Candidates"
 
 
