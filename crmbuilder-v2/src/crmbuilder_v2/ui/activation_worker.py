@@ -22,7 +22,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
-from PySide6.QtCore import QObject, QThread, Signal, Slot
+from PySide6.QtCore import QMetaObject, QObject, Qt, QThread, Signal, Slot
 
 from crmbuilder_v2.access.engagement_models import Engagement
 from crmbuilder_v2.migration.lazy_migration import (
@@ -355,10 +355,28 @@ def build_lifecycle_managers(lifecycle) -> SubprocessManagers:
     based and not yet under desktop-side process control. Slice D's
     architecture leaves the placeholder explicit so a future MCP
     lifecycle (post-PI-017) can swap in without touching the worker.
+
+    ``ServerLifecycle`` owns ``QProcess`` and ``QTimer`` children, which
+    can only be safely manipulated from the thread that created them.
+    ``ActivationWorker`` runs on a QThread, so the kill/launch hooks
+    marshal the underlying lifecycle calls back to the lifecycle's
+    owning thread via ``BlockingQueuedConnection``. The worker still
+    blocks until the call returns, preserving the step sequencing.
     """
 
+    def _invoke_on_owner(method_name: str) -> None:
+        owner_thread = lifecycle.thread()
+        if QThread.currentThread() is owner_thread:
+            getattr(lifecycle, method_name)()
+            return
+        QMetaObject.invokeMethod(
+            lifecycle,
+            method_name,
+            Qt.ConnectionType.BlockingQueuedConnection,
+        )
+
     def _kill_api() -> None:
-        lifecycle.terminate()
+        _invoke_on_owner("terminate")
 
     def _kill_mcp() -> None:
         # No MCP process under desktop control in v0.5; the user runs
@@ -369,7 +387,7 @@ def build_lifecycle_managers(lifecycle) -> SubprocessManagers:
         # Set the env var the new spawn reads so the new API binds to
         # the activated engagement's DB.
         os.environ["CRMBUILDER_V2_DB_PATH"] = str(db_path)
-        lifecycle.start()
+        _invoke_on_owner("start")
         _poll_api_health(lifecycle, deadline_seconds=_API_HEALTH_TOTAL_TIMEOUT)
 
     def _launch_mcp(_db_path: Path) -> None:

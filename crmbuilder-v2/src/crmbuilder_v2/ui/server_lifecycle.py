@@ -14,7 +14,7 @@ import sys
 import time
 
 import httpx
-from PySide6.QtCore import QObject, QProcess, QTimer, Signal
+from PySide6.QtCore import QObject, QProcess, QTimer, Signal, Slot
 
 _log = logging.getLogger("crmbuilder_v2.ui.lifecycle")
 
@@ -72,6 +72,7 @@ class ServerLifecycle(QObject):
     def ownership(self) -> str:
         return self._ownership
 
+    @Slot()
     def start(self) -> None:
         """Probe; if the API responds, mark external. Otherwise spawn + poll."""
         self._reset_for_start()
@@ -89,6 +90,7 @@ class ServerLifecycle(QObject):
         )
         self._spawn()
 
+    @Slot()
     def terminate(self) -> None:
         """Terminate an owned subprocess; no-op for external ownership."""
         if self._ownership != "owned":
