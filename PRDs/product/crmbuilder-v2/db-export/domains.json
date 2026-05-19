@@ -1,1 +1,13 @@
-[]
+[
+  {
+    "domain_created_at": "2026-05-18T23:23:35.880019",
+    "domain_deleted_at": null,
+    "domain_description": "fdsafsafsad",
+    "domain_identifier": "DOM-001",
+    "domain_name": "Test Domain",
+    "domain_notes": "",
+    "domain_purpose": "Test domain Createion",
+    "domain_status": "candidate",
+    "domain_updated_at": "2026-05-18T23:23:35.880024"
+  }
+]

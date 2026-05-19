@@ -884,13 +884,26 @@ class EntityCrudDialog(QDialog):
             current_id=current,
             parent=self,
         )
-        result = picker.exec()
-        if result != QDialog.DialogCode.Accepted:
-            return
-        new_value = picker.selected_id() or ""
-        self._tree_picker_selections[key] = new_value or None
-        self._update_tree_picker_label(key, new_value)
-        self._clear_error(key)
+        try:
+            result = picker.exec()
+            if result != QDialog.DialogCode.Accepted:
+                return
+            new_value = picker.selected_id() or ""
+            self._tree_picker_selections[key] = new_value or None
+            self._update_tree_picker_label(key, new_value)
+            self._clear_error(key)
+        finally:
+            # Schedule destruction on the main thread's event loop rather
+            # than waiting for the dialog's eventual teardown. Without
+            # this, the picker — with its QTreeView descendant — lingers
+            # as a child of the dialog. Python's cyclic GC, running
+            # inside the save Worker thread during the POST, can then
+            # break the dialog↔worker reference cycle and tear the
+            # dialog down in the worker thread; the QTreeView destructor
+            # crashes in Qt's signal disconnect because widget teardown
+            # is not thread-safe. See the topic-create-with-parent crash
+            # diagnosed from the SIGSEGV in libQt6Core.so.
+            picker.deleteLater()
 
     def _update_tree_picker_label(self, key: str, value: str) -> None:
         widget = self._widgets[key]

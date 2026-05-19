@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "created_at": "2026-05-18T22:59:56.135523",
+    "description": "",
+    "id": 1,
+    "identifier": "RSK-002",
+    "impact": "High",
+    "probability": "High",
+    "response_plan": "",
+    "status": "Open",
+    "title": "Test - Delete",
+    "updated_at": "2026-05-18T22:59:56.135532"
+  }
+]

@@ -142,6 +142,9 @@ def test_successful_create_with_parent_sends_parent_topic(qtbot, monkeypatch):
         def selected_id(self):
             return "TOP-000"
 
+        def deleteLater(self):  # noqa: N802 — Qt naming
+            pass
+
     monkeypatch.setattr(
         "crmbuilder_v2.ui.base.crud_dialog.HierarchicalEntityPicker",
         _AcceptingPicker,
@@ -183,6 +186,9 @@ def test_create_picker_data_is_built_from_list_topics(qtbot, monkeypatch):
 
         def selected_id(self):
             return None
+
+        def deleteLater(self):  # noqa: N802 — Qt naming
+            pass
 
     monkeypatch.setattr(
         "crmbuilder_v2.ui.base.crud_dialog.HierarchicalEntityPicker",
@@ -326,6 +332,9 @@ def test_edit_reparent_sends_parent_topic(qtbot, monkeypatch):
         def selected_id(self):
             return "TOP-002"
 
+        def deleteLater(self):  # noqa: N802 — Qt naming
+            pass
+
     monkeypatch.setattr(
         "crmbuilder_v2.ui.base.crud_dialog.HierarchicalEntityPicker",
         _AcceptPicker,
@@ -368,6 +377,9 @@ def test_edit_cycle_filter_excludes_self_and_descendants(qtbot, monkeypatch):
 
         def selected_id(self):
             return None
+
+        def deleteLater(self):  # noqa: N802 — Qt naming
+            pass
 
     monkeypatch.setattr(
         "crmbuilder_v2.ui.base.crud_dialog.HierarchicalEntityPicker",

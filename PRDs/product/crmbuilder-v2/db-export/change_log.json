@@ -9906,5 +9906,103 @@
     "id": 390,
     "operation": "update",
     "timestamp": "2026-05-18T22:47:02.421636"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T22:59:56.135523+00:00",
+      "description": "",
+      "id": 1,
+      "identifier": "RSK-002",
+      "impact": "High",
+      "probability": "High",
+      "response_plan": "",
+      "status": "Open",
+      "title": "Test - Delete",
+      "updated_at": "2026-05-18T22:59:56.135532+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "RSK-002",
+    "entity_type": "risk",
+    "id": 391,
+    "operation": "insert",
+    "timestamp": "2026-05-18T22:59:56.137257"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T23:05:48.713278+00:00",
+      "description": "",
+      "id": 1,
+      "identifier": "TOP-002",
+      "name": "Delete - Test Topic",
+      "parent_topic_id": null,
+      "parent_topic_identifier": null
+    },
+    "before_payload": null,
+    "entity_identifier": "TOP-002",
+    "entity_type": "topic",
+    "id": 392,
+    "operation": "insert",
+    "timestamp": "2026-05-18T23:05:48.714396"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-18T23:14:10.820378+00:00",
+      "description": "",
+      "id": 2,
+      "identifier": "TOP-003",
+      "name": "Delete Test Child Topic",
+      "parent_topic_id": 1,
+      "parent_topic_identifier": "TOP-002"
+    },
+    "before_payload": null,
+    "entity_identifier": "TOP-003",
+    "entity_type": "topic",
+    "id": 393,
+    "operation": "insert",
+    "timestamp": "2026-05-18T23:14:10.823404"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "domain_created_at": "2026-05-18T23:23:35.880019+00:00",
+      "domain_deleted_at": null,
+      "domain_description": "fdsafsafsad",
+      "domain_identifier": "DOM-001",
+      "domain_name": "Test Domain",
+      "domain_notes": "",
+      "domain_purpose": "Test domain Createion",
+      "domain_status": "candidate",
+      "domain_updated_at": "2026-05-18T23:23:35.880024+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DOM-001",
+    "entity_type": "domain",
+    "id": 394,
+    "operation": "insert",
+    "timestamp": "2026-05-18T23:23:35.897925"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "process_classification": "unclassified",
+      "process_classification_rationale": "dfsfsa",
+      "process_created_at": "2026-05-18T23:23:59.940485+00:00",
+      "process_deleted_at": null,
+      "process_domain_identifier": "DOM-001",
+      "process_identifier": "PROC-001",
+      "process_name": "Test Process",
+      "process_notes": "",
+      "process_purpose": "fdsafs",
+      "process_updated_at": "2026-05-18T23:23:59.940487+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "PROC-001",
+    "entity_type": "process",
+    "id": 395,
+    "operation": "insert",
+    "timestamp": "2026-05-18T23:23:59.960300"
   }
 ]

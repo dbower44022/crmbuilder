@@ -1,1 +1,18 @@
-[]
+[
+  {
+    "created_at": "2026-05-18T23:05:48.713278",
+    "description": "",
+    "id": 1,
+    "identifier": "TOP-002",
+    "name": "Delete - Test Topic",
+    "parent_topic_id": null
+  },
+  {
+    "created_at": "2026-05-18T23:14:10.820378",
+    "description": "",
+    "id": 2,
+    "identifier": "TOP-003",
+    "name": "Delete Test Child Topic",
+    "parent_topic_id": 1
+  }
+]
