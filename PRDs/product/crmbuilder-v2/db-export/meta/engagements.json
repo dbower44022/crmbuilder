@@ -5,11 +5,11 @@
     "engagement_deleted_at": null,
     "engagement_export_dir": "/home/doug/Dropbox/Projects/crmbuilder/PRDs/product/crmbuilder-v2/db-export",
     "engagement_identifier": "ENG-001",
-    "engagement_last_opened_at": null,
+    "engagement_last_opened_at": "2026-05-19T15:55:17.474189+00:00",
     "engagement_name": "CRMBuilder v2",
     "engagement_purpose": "Dogfood instance hosting the v2 build's own governance content (sessions, decisions, planning items, methodology catalog).",
     "engagement_status": "active",
-    "engagement_updated_at": "2026-05-17T17:49:38.303796"
+    "engagement_updated_at": "2026-05-19T15:55:17.475312+00:00"
   },
   {
     "engagement_code": "CBM",
@@ -17,10 +17,10 @@
     "engagement_deleted_at": null,
     "engagement_export_dir": "/home/doug/Dropbox/Projects/ClevelandBusinessMentors/PRDs/methodology-records/db-export",
     "engagement_identifier": "ENG-002",
-    "engagement_last_opened_at": "2026-05-19T14:27:47.325589",
+    "engagement_last_opened_at": "2026-05-19T15:55:10.250070",
     "engagement_name": "Cleveland Business Mentoring",
     "engagement_purpose": "Paper Test Conversation",
     "engagement_status": "active",
-    "engagement_updated_at": "2026-05-19T14:35:58.787887+00:00"
+    "engagement_updated_at": "2026-05-19T15:55:10.251523"
   }
 ]
