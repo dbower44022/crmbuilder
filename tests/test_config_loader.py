@@ -2045,3 +2045,119 @@ def test_validate_program_still_catches_typo_on_native_field(
     assert any("creatdAt" in e for e in errors), (
         f"Expected typo error but got: {errors}"
     )
+
+
+def test_validate_foreign_field_accepts_link_and_field(loader, tmp_path):
+    """A `type: foreign` field with both `link` and `field` validates clean."""
+    path = _write(tmp_path, "foreign_ok.yaml", """\
+        version: "1.0"
+        description: "Foreign field smoke test"
+        entities:
+          Account:
+            fields:
+              - name: partnerName
+                type: foreign
+                label: "Partner"
+                link: partner
+                field: name
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    foreign_errors = [
+        e for e in errors
+        if "Account.partnerName" in e and ("foreign" in e or "'link'" in e
+            or "'field'" in e)
+    ]
+    assert foreign_errors == [], (
+        f"Expected no foreign-specific errors, got: {foreign_errors!r}"
+    )
+    # Field is parsed onto the typed model
+    field_def = program.entities[0].fields[0]
+    assert field_def.type == "foreign"
+    assert field_def.link == "partner"
+    assert field_def.foreign_field == "name"
+
+
+def test_validate_foreign_field_requires_link(loader, tmp_path):
+    path = _write(tmp_path, "foreign_no_link.yaml", """\
+        version: "1.0"
+        description: "Foreign missing link"
+        entities:
+          Account:
+            fields:
+              - name: partnerName
+                type: foreign
+                label: "Partner"
+                field: name
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any(
+        "Account.partnerName" in e and "foreign fields require 'link'" in e
+        for e in errors
+    ), f"Expected missing-link error, got: {errors!r}"
+
+
+def test_validate_foreign_field_requires_field(loader, tmp_path):
+    path = _write(tmp_path, "foreign_no_field.yaml", """\
+        version: "1.0"
+        description: "Foreign missing field"
+        entities:
+          Account:
+            fields:
+              - name: partnerName
+                type: foreign
+                label: "Partner"
+                link: partner
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any(
+        "Account.partnerName" in e and "foreign fields require 'field'" in e
+        for e in errors
+    ), f"Expected missing-field error, got: {errors!r}"
+
+
+def test_validate_foreign_field_rejects_required_true(loader, tmp_path):
+    path = _write(tmp_path, "foreign_required.yaml", """\
+        version: "1.0"
+        description: "Foreign with required:true is rejected"
+        entities:
+          Account:
+            fields:
+              - name: partnerName
+                type: foreign
+                label: "Partner"
+                link: partner
+                field: name
+                required: true
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any(
+        "Account.partnerName" in e and "read-only mirrors" in e
+        for e in errors
+    ), f"Expected read-only-mirror error, got: {errors!r}"
+
+
+def test_validate_link_field_only_on_foreign_type(loader, tmp_path):
+    """`link:`/`field:` on a non-foreign field is rejected."""
+    path = _write(tmp_path, "link_on_varchar.yaml", """\
+        version: "1.0"
+        description: "link on a varchar field"
+        entities:
+          Account:
+            fields:
+              - name: notes
+                type: varchar
+                label: "Notes"
+                link: partner
+                field: name
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any(
+        "Account.notes" in e
+        and "'link' and 'field' are only valid on 'type: foreign'" in e
+        for e in errors
+    ), f"Expected link-on-non-foreign error, got: {errors!r}"

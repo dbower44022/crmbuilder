@@ -333,6 +333,34 @@ configure it post-deployment via the EspoCRM admin UI. Working pattern
 reference: `MR-Dues.yaml` in the CBM repo declares its `mentor` link
 only in the `relationships:` block, with no field-side counterpart.
 
+### `type: foreign` mirrors a scalar field from a linked entity
+
+A foreign field surfaces a scalar value from a linked entity
+(typically a `manyToOne` partner) onto the current entity's
+detail/edit/list views without making the user navigate to the
+linked record. Schema reference: `PRDs/product/app-yaml-schema.md`
+Section 6.8 (added in v1.2.5).
+
+Required keys on a `type: foreign` field:
+
+- `link:` — name of a `manyToOne` or `oneToOne` link on this entity,
+  declared in the top-level `relationships:` block
+- `field:` — name of the field on the linked entity to mirror
+
+The validator rejects: missing `link:` or `field:`; `required: true`
+(foreign fields are read-only mirrors); `formula:` (mirroring and
+computing are mutually exclusive); `link:`/`field:` on any non-foreign
+type.
+
+**Deploy ordering caveat.** The Configure pipeline runs the fields
+step before the relationships step. A YAML that introduces a
+brand-new relationship and a foreign field referencing it in the
+same file therefore needs two Configure runs: the first creates the
+link and fails the foreign field (no link yet); the second succeeds
+on both. If the relationship is already deployed (declared in a
+sibling YAML or in an earlier deploy), a single run suffices.
+Subsequent re-runs are idempotent.
+
 ### Three features have no public REST API write path
 
 `savedViews:`, `duplicateChecks:`, and `workflows:` directives are

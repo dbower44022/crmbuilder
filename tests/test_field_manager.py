@@ -464,3 +464,30 @@ def test_create_field_non_json_response_surfaces_raw_text():
     messages = [msg for msg, _ in output_log]
     assert any("non-JSON response" in msg for msg in messages)
     assert any("oh no" in msg for msg in messages)
+
+
+def test_build_payload_includes_foreign_link_and_field():
+    manager, _ = make_manager()
+    field_def = FieldDefinition(
+        name="partnerName",
+        type="foreign",
+        label="Partner",
+        link="partner",
+        foreign_field="name",
+    )
+    payload = manager._build_payload(field_def)
+    assert payload["type"] == "foreign"
+    assert payload["link"] == "partner"
+    assert payload["field"] == "name"
+
+
+def test_build_payload_omits_link_and_field_for_non_foreign():
+    manager, _ = make_manager()
+    field_def = FieldDefinition(
+        name="status",
+        type="varchar",
+        label="Status",
+    )
+    payload = manager._build_payload(field_def)
+    assert "link" not in payload
+    assert "field" not in payload

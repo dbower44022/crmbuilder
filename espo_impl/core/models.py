@@ -81,6 +81,16 @@ class FieldDefinition:
         at Phase 9 generation time and is documented for
         post-deploy operator configuration in MANUAL-CONFIG.md.
         Default None (treated as False).
+    :param link: Required on ``type: foreign`` fields. Name of the
+        manyToOne or oneToOne link on this entity whose target
+        record supplies the mirrored value. Declared in the
+        top-level ``relationships:`` block (Section 8). YAML key
+        is ``link:``.
+    :param foreign_field: Required on ``type: foreign`` fields.
+        Name of the field on the linked entity whose value is
+        mirrored onto this entity's detail/list views. YAML key
+        is ``field:`` (renamed in Python to avoid shadowing the
+        ``dataclasses.field`` import).
     """
 
     name: str
@@ -111,6 +121,8 @@ class FieldDefinition:
     formula: Any = None  # Formula from models
     formula_raw: dict | None = None
     externally_populated: bool = False
+    link: str | None = None
+    foreign_field: str | None = None
 
 
 @dataclass

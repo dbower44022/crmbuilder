@@ -18,6 +18,7 @@
 | 1.2.2 | 05-03-26 | No schema changes. Adds the Section 1 subsections "Companion implementation reference" and "Keeping this PRD and the impl doc in sync" that codify this PRD as the single source of truth for the schema's shape and Section 10 as the single source of truth for its validation rules. Mirrored on the impl-doc side (`docs/impl-yaml-schema.md` v1.2.1+): that doc demoted its parallel rule list to a function-name index pointing back at Section 10, and added a step-by-step recipe that puts the PRD update *first* whenever a new block is added. Done in response to the v1.0 → v1.2 drift the impl-doc rewrite corrected, to remove the surface where it could happen again. |
 | 1.2.3 | 05-03-26 18:30 | Adds `settings.autoPlaceName` (default `true`); LayoutManager now auto-prepends the system `name` field to detail/edit layouts unless explicitly placed or opted out. |
 | 1.2.4 | 05-04-26 00:00 | Adds field-level `optionsDeferred: bool` flag on enum/multiEnum fields (Section 6.3). When `true`, the validator accepts an empty `options:` list — used for fields whose value list cannot be expressed at YAML-authoring time and is configured post-deploy via the EspoCRM admin UI per a `MANUAL-CONFIG.md` companion entry. Default `false` preserves the existing strict validator behavior. New Section 6.4.1 documents the deferred-options pattern with worked example and companion-artifact rule. Validator-only change; deploy engine behavior unchanged. |
+| 1.2.5 | 05-19-26 | Adds `foreign` field type (Section 6.2, new Section 6.8) for mirroring a scalar field from a linked entity onto the current entity's detail/list/edit views — the platform's "Foreign" field. Requires `link:` (a manyToOne or oneToOne link name declared in the top-level `relationships:` block) and `field:` (the name of the field on the linked entity to mirror). Validator rejects: missing `link:` or `field:`; `required: true` (foreign fields are read-only mirrors — set the constraint on the source field); `formula:` (mirroring and computing are mutually exclusive); `link:`/`field:` on any non-foreign type. New validation rules added to Section 10. Deploy ordering note: because the regular field step runs before the relationship step, a YAML that introduces a brand-new relationship and a foreign field referencing it in the same file needs a second Configure run after the link exists. Subsequent re-runs are idempotent. |
 
 ---
 
@@ -1384,6 +1385,7 @@ instance configuration.
 | `phone` | Phone | — |
 | `enum` | Enum | `options`, `translatedOptions`, `style`, `isSorted`, `displayAsLabel` |
 | `multiEnum` | Multi-select | `options`, `translatedOptions`, `style`, `isSorted` |
+| `foreign` | Foreign (mirrored) | `link`, `field` (see Section 6.8) |
 
 **`link` is not a valid field type.** Link relationships between entities
 are declared exclusively in the top-level `relationships:` block (Section
@@ -1505,6 +1507,96 @@ prefix (e.g., `contactType`, not `cContactType`). The tool applies any
 required prefix transformations at deployment time.
 
 No two fields within the same entity may have the same `name`.
+
+### 6.8 Foreign (Mirrored) Fields
+
+A foreign field surfaces a scalar value from a linked entity onto the
+current entity's detail, edit, and list views without making the user
+navigate to the linked record. The classic use case: showing a
+partner organization's name, phone, or primary contact on the Account
+detail panel.
+
+Foreign fields are read-only mirrors. The CRM updates them
+automatically when the source field on the linked entity changes; the
+deploy engine never writes user input through a foreign field.
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `link` | string | yes | Name of a `manyToOne` or `oneToOne` link on this entity. The link must be declared in the top-level `relationships:` block (Section 8) and resolve to the entity whose field is being mirrored. |
+| `field` | string | yes | Name of the field on the linked entity to mirror. The CRM determines the rendered type (varchar, enum, etc.) from the source field. |
+
+A foreign field's effective type — and therefore its layout
+behavior, sortability, and filterability in saved views — is
+inherited from the source field. A foreign mirror of an enum field
+renders as an enum badge; a mirror of a varchar field renders as
+plain text.
+
+#### Worked example
+
+A `partner` `manyToOne` link from `Account` to a custom
+`PartnerOrganization` entity, with two foreign fields mirroring the
+partner's name and primary phone onto the Account detail panel:
+
+```yaml
+entities:
+  Account:
+    fields:
+      - name: partnerName
+        type: foreign
+        label: "Partner"
+        link: partner
+        field: name
+      - name: partnerPhone
+        type: foreign
+        label: "Partner Phone"
+        link: partner
+        field: phone
+
+relationships:
+  - name: accountToPartner
+    entity: Account
+    entityForeign: PartnerOrganization
+    linkType: manyToOne
+    link: partner
+    linkForeign: accounts
+    label: "Partner"
+    labelForeign: "Accounts"
+```
+
+After deploy, every Account record shows the partner's name and
+phone directly on its detail panel; editing the underlying
+`PartnerOrganization.name` updates every Account's `partnerName`
+display automatically.
+
+#### Deploy ordering
+
+The Configure pipeline currently runs the fields step *before* the
+relationships step. A YAML that introduces a brand-new relationship
+and a foreign field referencing it in the same file therefore
+requires two Configure runs:
+
+1. **First run** — relationships step creates the link; the foreign
+   field step fails with a CRM-side error because the link does not
+   yet exist (the foreign field cannot be wired up).
+2. **Second run** — relationships step is idempotent (no-op); the
+   foreign field step now sees the link and succeeds.
+
+Subsequent re-runs are fully idempotent. If the relationship is
+declared in a sibling YAML that is already deployed against the same
+instance, a single Configure run suffices.
+
+#### Constraints
+
+- `required: true` is rejected. Foreign fields are read-only; if the
+  source value must always be present, set the constraint on the
+  source field of the linked entity.
+- `formula:` is rejected. A field either mirrors a linked value
+  (foreign) or computes one (formula) — never both.
+- `link` and `field` are only valid on `type: foreign` fields. Using
+  them on any other type is a hard-reject error.
+- The `link` must be a `manyToOne` or `oneToOne` link. A `manyToMany`
+  has no single target record to mirror; surface that as a list
+  panel instead.
 
 ---
 
@@ -1846,6 +1938,16 @@ rules apply to all program files:
   top-level `relationships:` block (Section 8). The validation error
   message points to this rule
 - `enum` and `multiEnum` fields must have a non-empty `options` list
+- `foreign` fields must have both `link:` (string, name of a
+  `manyToOne` or `oneToOne` link declared in the top-level
+  `relationships:` block) and `field:` (string, name of the field
+  on the linked entity to mirror)
+- `foreign` fields must not set `required: true` (they are read-only
+  mirrors — apply the constraint on the source field instead)
+- `foreign` fields must not declare `formula:` (mirroring and
+  computing are mutually exclusive)
+- `link:` and `field:` are only valid on `type: foreign` fields; the
+  validator rejects them on any other type
 - No two fields within the same entity may share the same `name`
 - `requiredWhen:`, when present, must be a valid condition expression
   (Section 11)

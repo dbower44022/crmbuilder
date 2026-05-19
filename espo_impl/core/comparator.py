@@ -7,6 +7,8 @@ from espo_impl.core.models import FieldDefinition
 
 ENUM_TYPES: set[str] = {"enum", "multiEnum"}
 
+FOREIGN_TYPES: set[str] = {"foreign"}
+
 # Properties compared for all field types.
 COMMON_PROPERTIES: list[str] = [
     "label",
@@ -25,6 +27,15 @@ ENUM_PROPERTIES: list[str] = [
     "translatedOptions",
     "style",
 ]
+
+# Spec-to-API property mapping for foreign-field comparison.
+# Python attribute names on FieldDefinition do not match the API payload
+# names because ``field`` is shadowed by the dataclasses import; the
+# comparator bridges the two.
+FOREIGN_PROPERTY_MAP: dict[str, str] = {
+    "link": "link",
+    "foreign_field": "field",
+}
 
 
 @dataclass
@@ -83,6 +94,17 @@ class FieldComparator:
                     continue
                 if spec_value != current_value:
                     differences.append(prop)
+
+        if spec.type in FOREIGN_TYPES:
+            for spec_attr, api_key in FOREIGN_PROPERTY_MAP.items():
+                spec_value = getattr(spec, spec_attr)
+                if spec_value is None:
+                    continue
+                current_value = current.get(api_key)
+                if current_value is None and api_key not in current:
+                    continue
+                if spec_value != current_value:
+                    differences.append(api_key)
 
         return ComparisonResult(
             matches=len(differences) == 0,

@@ -61,9 +61,12 @@ SUPPORTED_FIELD_TYPES: set[str] = {
     "url",
     "email",
     "phone",
+    "foreign",
 }
 
 ENUM_TYPES: set[str] = {"enum", "multiEnum"}
+
+FOREIGN_TYPES: set[str] = {"foreign"}
 
 VALID_ACTIONS: set[str] = {"create", "delete", "delete_and_create"}
 
@@ -506,6 +509,8 @@ class ConfigLoader:
             formula=formula_parsed,
             formula_raw=formula_raw,
             externally_populated=bool(data.get("externallyPopulated", False)),
+            link=data.get("link"),
+            foreign_field=data.get("field"),
         )
 
     def _parse_layout(
@@ -805,6 +810,41 @@ class ConfigLoader:
                     f"non-empty 'options' list (or set 'optionsDeferred: true' "
                     f"to defer the list to post-deploy operator configuration)"
                 )
+
+        if field_def.type in FOREIGN_TYPES:
+            if not field_def.link or not isinstance(field_def.link, str):
+                errors.append(
+                    f"{prefix}: foreign fields require 'link' — the name of a "
+                    f"manyToOne or oneToOne link declared in the top-level "
+                    f"'relationships:' block whose target supplies the "
+                    f"mirrored value"
+                )
+            if (
+                not field_def.foreign_field
+                or not isinstance(field_def.foreign_field, str)
+            ):
+                errors.append(
+                    f"{prefix}: foreign fields require 'field' — the name of "
+                    f"the field on the linked entity whose value is mirrored "
+                    f"onto this entity"
+                )
+            if field_def.required is True:
+                errors.append(
+                    f"{prefix}: foreign fields are read-only mirrors and "
+                    f"cannot set 'required: true' — apply the constraint on "
+                    f"the source field of the linked entity instead"
+                )
+            if field_def.formula is not None:
+                errors.append(
+                    f"{prefix}: foreign fields cannot declare 'formula' — "
+                    f"they mirror a value from a linked entity rather than "
+                    f"compute one"
+                )
+        elif field_def.link is not None or field_def.foreign_field is not None:
+            errors.append(
+                f"{prefix}: 'link' and 'field' are only valid on "
+                f"'type: foreign' fields"
+            )
 
         if field_def.optionsDeferred is True and field_def.type not in ENUM_TYPES:
             errors.append(

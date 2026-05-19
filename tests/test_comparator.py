@@ -133,3 +133,57 @@ def test_min_max_match():
     current = {"type": "int", "label": "Test", "min": 0, "max": 10}
     result = FieldComparator().compare(spec, current)
     assert result.matches is True
+
+
+def test_foreign_field_matches():
+    spec = make_spec(
+        type="foreign",
+        label="Partner",
+        link="partner",
+        foreign_field="name",
+    )
+    current = {
+        "type": "foreign",
+        "label": "Partner",
+        "link": "partner",
+        "field": "name",
+    }
+    result = FieldComparator().compare(spec, current)
+    assert result.matches is True
+    assert result.differences == []
+
+
+def test_foreign_field_drift_on_link():
+    spec = make_spec(
+        type="foreign",
+        label="Partner",
+        link="partner",
+        foreign_field="name",
+    )
+    current = {
+        "type": "foreign",
+        "label": "Partner",
+        "link": "primaryPartner",
+        "field": "name",
+    }
+    result = FieldComparator().compare(spec, current)
+    assert result.matches is False
+    assert "link" in result.differences
+
+
+def test_foreign_field_drift_on_source_field():
+    spec = make_spec(
+        type="foreign",
+        label="Partner",
+        link="partner",
+        foreign_field="name",
+    )
+    current = {
+        "type": "foreign",
+        "label": "Partner",
+        "link": "partner",
+        "field": "displayName",
+    }
+    result = FieldComparator().compare(spec, current)
+    assert result.matches is False
+    assert "field" in result.differences

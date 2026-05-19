@@ -597,6 +597,13 @@ class FieldManager:
         if field_def.formula is not None:
             payload["formula"] = self._render_formula(field_def.formula)
 
+        # Foreign field — mirrors a value from a linked entity (Section 6.8)
+        if field_def.type == "foreign":
+            if field_def.link is not None:
+                payload["link"] = field_def.link
+            if field_def.foreign_field is not None:
+                payload["field"] = field_def.foreign_field
+
         # externallyPopulated is a documentation-only flag (spec Section 6.1.4)
         # — not sent to the CRM API as a field property
         return payload
