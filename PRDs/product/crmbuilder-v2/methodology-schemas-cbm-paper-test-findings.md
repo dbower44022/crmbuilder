@@ -1,7 +1,7 @@
 # Methodology Schemas — CBM Content Paper-Test Findings
 
-**Last Updated:** 05-19-26 01:00
-**Status:** Draft complete — ready for full review.
+**Last Updated:** 05-19-26 03:00
+**Status:** Draft complete — corrected for per-engagement identifier numbering (CBM is a fresh engagement; first records start at 001).
 **Purpose:** Findings from the paper-test that validates the four MVS methodology entity schemas (`domain`, `entity`, `process`, `crm_candidate` — shipped in v0.4) against existing Cleveland Business Mentoring (CBM) domain content. Produces a single decision at conversation close: ship CBM redo Phase 1 on v0.4 as-is, or amend N specific schemas before Phase 1 starts.
 **Predecessor:** Kickoff at `PRDs/product/crmbuilder-v2/methodology-schemas-cbm-paper-test-kickoff.md`.
 
@@ -11,7 +11,8 @@
 
 | Version | Date | Author | Summary |
 |---------|------|--------|---------|
-| 0.1 (draft, in progress) | 05-18-26 23:30 | Doug Bower / Claude | Initial drafting pass. Findings added incrementally as confirmed in the paper-test conversation. |
+| 0.1 (draft) | 05-18-26 23:30 | Doug Bower / Claude | Initial drafting pass. Findings added incrementally as confirmed in the paper-test conversation. |
+| 0.2 (corrected) | 05-19-26 03:00 | Doug Bower / Claude | Identifier-numbering correction. CBM is a fresh engagement under the multi-tenant architecture; its records start at 001 per engagement-local counter (not continuing the CRMBUILDER dogfood's sequence). Six PI-017 references corrected to PI-001 across §3.1, §3.3, and §4. No content changes outside identifier renumbering. |
 
 ---
 
@@ -177,7 +178,7 @@ Pass 2 is advisory and does not affect the v0.4 ship/no-ship decision (Finding 2
 
 ### 3.1 Severity ratings — the seven deferred PIs named in the kickoff
 
-**PI-003 — `persona` entity type. Severity: 4.** CBM's 13 personas (MST-PER-001 through MST-PER-013) are richly defined and every Phase 3 process doc references them by identifier. The redo's Phase 3 work cannot produce process docs without persona records or persona references. Pull-forward candidate for the first v0.5+ workstream after PI-017 (sub-domain amendment).
+**PI-003 — `persona` entity type. Severity: 4.** CBM's 13 personas (MST-PER-001 through MST-PER-013) are richly defined and every Phase 3 process doc references them by identifier. The redo's Phase 3 work cannot produce process docs without persona records or persona references. Pull-forward candidate for the first v0.5+ workstream after PI-001 (sub-domain amendment).
 
 **PI-004 — `field`, `requirement`, `manual_config`, `test_spec` entity types. Severity: 5.** This is the biggest single v0.5+ workstream. CBM has 12 Entity PRDs under `PRDs/entities/` ranging from Contact v1.5 (47 fields) down to simpler entities. Every PRD has a detailed field table with names, types, required flags, defaults, validation rules. The redo's Phase 3 work to produce Entity PRDs cannot happen without `field` records. Likely multiple slices, not a single workstream. Includes the catalog-FK question (PI-014) as a dependency.
 
@@ -205,7 +206,7 @@ Lower priority than the above; named here so the prioritization signal is comple
 
 Highest impact first, after the sub-domain amendment lands:
 
-1. **PI-017** (sub-domain hierarchy amendment — BLOCKING for Phase 1; opens before Phase 1 starts).
+1. **PI-001** (sub-domain hierarchy amendment — BLOCKING for Phase 1; opens before Phase 1 starts).
 2. **PI-004 + PI-014 + PI-010 joint workstream** (Phase 3 entity richness — fields, catalog FK, variants — likely the biggest single workstream of v0.5+).
 3. **PI-005** (process_step growth — Phase 3 process richness; joint candidate with PI-004).
 4. **PI-003** (persona entity type — Phase 3 process docs depend on it).
@@ -225,13 +226,13 @@ Six other findings (1, 3, 4, 5, 6, 7) resolve as CLEAN or NO HOME under v0.4 as-
 
 Three NO HOME findings (3, 4, with consolidation in Pass 2) map cleanly to existing planning items: PI-003 (personas), PI-013 (Cross-Domain Services), with PI-004 / PI-005 / PI-015 carrying the bulk of post-Phase-1 work.
 
-**Closing recommendation.** The workstream after this paper-test closes is the PI-017 planning conversation. The CBM redo Phase 1 conversation opens after that amendment ships and the schema spec for `domain.md` is updated to reflect the self-FK.
+**Closing recommendation.** The workstream after this paper-test closes is the PI-001 planning conversation. The CBM redo Phase 1 conversation opens after that amendment ships and the schema spec for `domain.md` is updated to reflect the self-FK.
 
 **Sequence:**
 
-1. Paper-test conversation close-out — produces session record, three decisions (the BLOCKING categorization for sub-domains, the NO HOME categorizations for personas and CDS, the suggested PI-017 priority ordering), one new planning item (PI-017 — `domain_parent_identifier` self-FK for sub-domain hierarchy).
-2. PI-017 planning conversation — produces the amendment spec, slice plan, and CLAUDE-CODE prompts for the self-FK migration.
-3. PI-017 build conversations — execute the migration. Probably a 2–3 slice mini-workstream.
+1. Paper-test conversation close-out — produces session record, three decisions (the BLOCKING categorization for sub-domains, the NO HOME categorizations for personas and CDS, the suggested PI-001 priority ordering), one new planning item (PI-001 — `domain_parent_identifier` self-FK for sub-domain hierarchy).
+2. PI-001 planning conversation — produces the amendment spec, slice plan, and CLAUDE-CODE prompts for the self-FK migration.
+3. PI-001 build conversations — execute the migration. Probably a 2–3 slice mini-workstream.
 4. `domain.md` schema spec amended with section 3.3.4 updated to reflect that sub-domain hierarchy is now in scope.
 5. CBM redo Phase 1 first conversation opens — first work the consultant does is author the CBM Domain Inventory under the amended `domain` schema.
 
