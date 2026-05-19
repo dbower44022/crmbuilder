@@ -221,9 +221,20 @@ class ServerLifecycle(QObject):
                 message = str(error)
         else:
             message = str(error)
+        # SIGTERM from terminate() makes QProcess report Crashed via
+        # errorOccurred. Suppress so the engagement-switch terminate path
+        # doesn't fire spawn_failed (wired in app.py to app.exit), which
+        # would tear down the QApplication mid-activation-step.
+        if self._intentional_terminate:
+            _log.debug(
+                "QProcess error during intentional terminate (suppressed): %s",
+                message,
+            )
+            self._stop_polling()
+            return
         _log.error("QProcess error: %s", message)
         self._stop_polling()
-        if self._post_ready and not self._intentional_terminate:
+        if self._post_ready:
             # Runtime crash: surface to the in-window banner via ``crashed``.
             self.crashed.emit(message)
         else:

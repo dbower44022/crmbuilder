@@ -293,3 +293,45 @@ def test_finished_after_intentional_terminate_does_not_emit_crashed(
     qapp.processEvents()
 
     crashed_seen.assert_not_called()
+
+
+def test_error_after_intentional_terminate_does_not_emit_signals(
+    qapp, qtbot, monkeypatch
+):
+    """SIGTERM from terminate() makes QProcess report Crashed via
+    errorOccurred; the lifecycle must suppress so spawn_failed (wired in
+    app.py to app.exit) does not fire mid-activation, which would tear
+    down the QApplication while the activation worker is still emitting
+    step signals (RuntimeError: Signal source has been deleted).
+    """
+    monkeypatch.setattr(
+        server_lifecycle.httpx, "get",
+        _make_get([
+            httpx.ConnectError("nope"),
+            Mock(status_code=200),
+        ]),
+    )
+    fake_process = _patch_qprocess(monkeypatch)
+    fake_process.waitForFinished.return_value = True
+    fake_process.errorString.return_value = "Crashed"
+
+    lifecycle = ServerLifecycle(_BASE_URL)
+    with qtbot.waitSignal(lifecycle.ready, timeout=2000):
+        lifecycle.start()
+
+    assert lifecycle._post_ready is True  # noqa: SLF001
+
+    crashed_seen = Mock()
+    spawn_failed_seen = Mock()
+    lifecycle.crashed.connect(crashed_seen)
+    lifecycle.spawn_failed.connect(spawn_failed_seen)
+
+    with qtbot.waitSignal(lifecycle.terminated, timeout=1000):
+        lifecycle.terminate()
+
+    # Now the QProcess errorOccurred for the SIGTERM'd child arrives.
+    lifecycle._on_process_error(0)
+    qapp.processEvents()
+
+    crashed_seen.assert_not_called()
+    spawn_failed_seen.assert_not_called()
