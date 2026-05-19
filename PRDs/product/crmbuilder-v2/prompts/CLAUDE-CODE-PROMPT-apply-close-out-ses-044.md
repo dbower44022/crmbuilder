@@ -10,14 +10,16 @@
 
 ## Purpose
 
-Apply the SES-044 close-out payload to the CRMBUILDER engagement's database. Lands the SES-044 planning conversation's records (1 session, 7 decisions DEC-108..114, 1 planning item PI-018, 8 references) so subsequent slice A and slice B build commits can reference them.
+Apply the SES-044 close-out payload to the CRMBUILDER engagement's database. Lands the SES-044 planning conversation's records (1 session, 7 decisions DEC-108..114, 1 planning item PI-021 [rebased from PI-018 — see note below], 8 references) so subsequent slice A and slice B build commits can reference them.
+
+**Rebase note (05-19-26).** This payload originally claimed PI-018. Between close-out authoring and apply, a parallel CBM file-split planning conversation claimed PI-018 (oneToOne YAML support), PI-019 (cross-file category resolution), and PI-020 (cross-file layout aggregation). The TOCTOU pre-flight in step 7 detected the collision; the payload was rebased to PI-021 (next-available at apply time). Sessions and decisions remained uncontested. All references in this prompt and in `ses_044.json` now point at PI-021.
 
 Net effect on the v2 database after this prompt completes:
 
 - **Session.** SES-044 created with the planning conversation content (seven decisions surfaced via the eight-element template, two-slice build plan authored, slice prompts authored).
 - **Decisions.** DEC-108 through DEC-114 created — fresh-install behavior, missing engagement_export_dir behavior, plumbing model, --engagement CLI flag scope, /admin/runtime-info deferral, centralized gate scope, fail-loud-on-missing-disk-path policy.
-- **Planning item.** PI-018 created — "Complete v0.5 multi-tenancy routing: API startup engagement resolution + per-engagement export_dir". Open status; discharges after slice B lands.
-- **References.** 8 added — seven `decided_in` references (DEC-108..114 → SES-044), one `is_about` reference (SES-044 → PI-018).
+- **Planning item.** PI-021 created — "Complete v0.5 multi-tenancy routing: API startup engagement resolution + per-engagement export_dir". Open status; discharges after slice B lands.
+- **References.** 8 added — seven `decided_in` references (DEC-108..114 → SES-044), one `is_about` reference (SES-044 → PI-021).
 
 All 17 records (1 session + 7 decisions + 1 PI + 8 references) should report `OK` from the apply script. None should `SKIP` — this is a fresh apply, not a reconciliation.
 
@@ -90,14 +92,14 @@ All 17 records (1 session + 7 decisions + 1 PI + 8 references) should report `OK
 
    Expected: at least ~43 sessions returned, latest identifier SES-043 (the v0.6 release closeout). If the API returns an empty list or sub-43 count, the API is misrouted; stop and re-run step 6a.
 
-7. **Verify identifiers are still uncontested.** This payload claims SES-044, DEC-108..DEC-114, and PI-018; verify none of these have been claimed by a parallel process since this payload was authored (same TOCTOU pattern as the SES-036 reconciliation precedent — parallel workstreams calculating next-available concurrently can collide).
+7. **Verify identifiers are still uncontested.** This payload claims SES-044, DEC-108..DEC-114, and PI-021; verify none of these have been claimed by a parallel process since this payload was authored (same TOCTOU pattern as the SES-036 reconciliation precedent — parallel workstreams calculating next-available concurrently can collide).
 
    ```bash
    curl -sf http://127.0.0.1:8765/sessions/SES-044 >/dev/null 2>&1 && echo "SES-044 ALREADY EXISTS — STOP" || echo "SES-044 available"
    for dec in DEC-108 DEC-109 DEC-110 DEC-111 DEC-112 DEC-113 DEC-114; do
      curl -sf http://127.0.0.1:8765/decisions/$dec >/dev/null 2>&1 && echo "$dec ALREADY EXISTS — STOP" || echo "$dec available"
    done
-   curl -sf http://127.0.0.1:8765/planning-items/PI-018 >/dev/null 2>&1 && echo "PI-018 ALREADY EXISTS — STOP" || echo "PI-018 available"
+   curl -sf http://127.0.0.1:8765/planning-items/PI-021 >/dev/null 2>&1 && echo "PI-021 ALREADY EXISTS — STOP" || echo "PI-021 available"
    ```
 
    Every line should end in "available". If any "ALREADY EXISTS", stop and report — Doug will need to rebase the payload to next-available identifiers (the SES-036 reconciliation pattern shows how).
@@ -128,7 +130,7 @@ cd ..
 Expected output:
 - SES-044 reports `OK` (created).
 - DEC-108, DEC-109, DEC-110, DEC-111, DEC-112, DEC-113, DEC-114 each report `OK` (created).
-- PI-018 reports `OK` (created).
+- PI-021 reports `OK` (created).
 - 8 references each report `OK` (created).
 - Script exits 0.
 
@@ -148,7 +150,7 @@ for dec in DEC-108 DEC-109 DEC-110 DEC-111 DEC-112 DEC-113 DEC-114; do
 done
 
 echo "--- Planning Item ---"
-curl -sf http://127.0.0.1:8765/planning-items/PI-018 >/dev/null && echo "PI-018 OK" || echo "PI-018 MISSING"
+curl -sf http://127.0.0.1:8765/planning-items/PI-021 >/dev/null && echo "PI-021 OK" || echo "PI-021 MISSING"
 
 echo "--- References ---"
 curl -s http://127.0.0.1:8765/references | python3 -c "
@@ -157,8 +159,8 @@ refs = json.load(sys.stdin)['data']
 for dec in ['DEC-108','DEC-109','DEC-110','DEC-111','DEC-112','DEC-113','DEC-114']:
     found = any(r['source_id']==dec and r['target_id']=='SES-044' and r['relationship']=='decided_in' for r in refs)
     print(f'{dec}->SES-044 decided_in:', found)
-is_about_found = any(r['source_id']=='SES-044' and r['target_id']=='PI-018' and r['relationship']=='is_about' for r in refs)
-print(f'SES-044->PI-018 is_about:', is_about_found)
+is_about_found = any(r['source_id']=='SES-044' and r['target_id']=='PI-021' and r['relationship']=='is_about' for r in refs)
+print(f'SES-044->PI-021 is_about:', is_about_found)
 "
 ```
 
@@ -185,7 +187,7 @@ Expected modifications (assuming the multi-tenancy routing fix from this very wo
 
 - `sessions.json` — SES-044 added
 - `decisions.json` — DEC-108..114 added (7 entries)
-- `planning_items.json` — PI-018 added
+- `planning_items.json` — PI-021 added
 - `references.json` — 8 entries added
 - `change_log.json` — corresponding append entries
 
@@ -195,7 +197,7 @@ If the fix has not yet shipped (slice A not yet landed), the snapshot may have w
 find . -name "sessions.json" -newer PRDs/product/crmbuilder-v2/close-out-payloads/ses_044.json 2>/dev/null
 ```
 
-Report whatever path turned up; Doug will manually copy the snapshots to the correct location before commit. (This is the very bug PI-018 tracks; documenting in case it surfaces during the apply itself.)
+Report whatever path turned up; Doug will manually copy the snapshots to the correct location before commit. (This is the very bug PI-021 tracks; documenting in case it surfaces during the apply itself.)
 
 ### Step 5 — Commit
 
@@ -216,9 +218,9 @@ engagement database:
   * DEC-112: /admin/runtime-info endpoint — defer entirely
   * DEC-113: centralized gate at all active export-write paths
   * DEC-114: fail loud if export_dir doesn't exist on disk
-- 1 planning item: PI-018 (complete v0.5 multi-tenancy routing)
+- 1 planning item: PI-021 (complete v0.5 multi-tenancy routing) — rebased from PI-018 at apply time
 - 8 references: 7 decided_in (DEC-108..114 -> SES-044) + 1 is_about
-  (SES-044 -> PI-018)
+  (SES-044 -> PI-021)
 
 Snapshot regeneration only — payload file is unchanged.
 
@@ -229,9 +231,9 @@ Build sequence after this apply lands:
 2. Slice B build conversation opens against
    prompts/CLAUDE-CODE-PROMPT-multi-tenancy-routing-fix-B-ui-refactor-affordances.md
    — UI refactor + warning bands + dialog emphasis + integration tests
-3. PI-018 discharges after slice B lands
+3. PI-021 discharges after slice B lands
 
-The two bugs PI-018 tracks were surfaced during the 05-19-26 SES-001
+The two bugs PI-021 tracks were surfaced during the 05-19-26 SES-001
 paper-test apply attempt:
 - Bug 1: API startup ignores current_engagement.json, lands on empty
   post-migration v2.db
@@ -259,8 +261,8 @@ After Step 6 completes, the SES-044 close-out has fully landed:
 
 - 17 records (1 session + 7 decisions + 1 PI + 8 references) live in the CRMBUILDER engagement database.
 - Snapshot files regenerated and committed.
-- Slice A and slice B build conversations can now open against their respective Claude Code prompts, referencing SES-044 / DEC-108..114 / PI-018 in their commit messages.
+- Slice A and slice B build conversations can now open against their respective Claude Code prompts, referencing SES-044 / DEC-108..114 / PI-021 in their commit messages.
 
 **Next build step:** open a fresh Claude Code session against `PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-multi-tenancy-routing-fix-A-helpers-cli-gate.md` to execute slice A.
 
-**Next governance step:** none until slice B lands, at which point discharge PI-018 (`Open` → `Closed (resolved)`) via the desktop UI's planning-items panel or direct API.
+**Next governance step:** none until slice B lands, at which point discharge PI-021 (`Open` → `Closed (resolved)`) via the desktop UI's planning-items panel or direct API.
