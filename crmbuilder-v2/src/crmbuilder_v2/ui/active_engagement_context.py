@@ -25,6 +25,7 @@ from crmbuilder_v2.access.engagement_models import (
     EngagementStatus,
 )
 from crmbuilder_v2.config import get_settings
+from crmbuilder_v2.runtime.engagement_routing import resolve_active_engagement
 
 _log = logging.getLogger("crmbuilder_v2.ui.active_engagement_context")
 
@@ -94,22 +95,27 @@ class ActiveEngagementContext(QObject):
         If the file is missing or malformed, or the resolver returns
         ``None``, state is cleared and ``None`` is emitted. Returns the
         loaded engagement (or ``None``).
+
+        The active-engagement *code* and the missing/corrupt-marker
+        handling are delegated to
+        :func:`crmbuilder_v2.runtime.engagement_routing.resolve_active_engagement`
+        (the slice-A helper the CLI and API also use), so the marker
+        resolution logic lives in one place. The *identifier* — which
+        that helper does not return but the resolver and stub both need
+        — is read from the same marker file.
         """
-        path = current_engagement_path()
-        if not path.exists():
+        code = resolve_active_engagement()
+        if not code:
+            # Missing marker, unreadable/corrupt marker, or no
+            # engagement_code: no active engagement. resolve_active_engagement
+            # logs the corrupt/key-missing cases.
             self.set_engagement(None)
             return None
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            _log.warning("current_engagement.json malformed; clearing state")
-            self.set_engagement(None)
-            return None
-        identifier = payload.get("engagement_identifier")
-        code = payload.get("engagement_code")
-        if not identifier or not code:
+        identifier = self._marker_identifier()
+        if not identifier:
             _log.warning(
-                "current_engagement.json missing required keys; clearing state"
+                "current_engagement.json has engagement_code but no "
+                "engagement_identifier; clearing state"
             )
             self.set_engagement(None)
             return None
@@ -136,6 +142,23 @@ class ActiveEngagementContext(QObject):
             )
         self.set_engagement(engagement)
         return engagement
+
+    def _marker_identifier(self) -> str | None:
+        """Return ``engagement_identifier`` from the marker file, or ``None``.
+
+        Companion to :func:`resolve_active_engagement` (which returns the
+        code): reads the same ``current_engagement.json`` for the
+        identifier the code-only helper does not expose. Returns ``None``
+        on any read/parse failure — the caller treats that as "no active
+        engagement".
+        """
+        path = current_engagement_path()
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+        identifier = payload.get("engagement_identifier")
+        return identifier if identifier else None
 
     def persist_to_disk(self) -> None:
         """Atomically write ``current_engagement.json`` from current state.

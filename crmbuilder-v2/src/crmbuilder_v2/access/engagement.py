@@ -14,7 +14,10 @@ Validation posture:
 * ``engagement_status`` enum: ``active`` | ``paused`` | ``archived``;
   free transitions (no map needed).
 * ``engagement_export_dir`` optional; when set, must be an absolute
-  existing-writable directory.
+  path (must be writable if it already exists). Existence is NOT
+  required at create/update time — it is enforced at write-time by the
+  export gate (DEC-114); see ``_validate_export_dir``. (Relaxed from the
+  original "existing-writable" rule in multi-tenancy-routing-fix slice B.)
 * ``engagement_code`` is immutable post-creation.
 * Soft-delete sets ``engagement_deleted_at``; restore clears it.
 
@@ -153,17 +156,20 @@ def _validate_export_dir(value: object) -> str | None:
                 )
             ]
         )
-    if not os.path.isdir(path):
-        raise UnprocessableError(
-            [
-                FieldError(
-                    "engagement_export_dir",
-                    "not_a_directory",
-                    f"directory does not exist: {path}",
-                )
-            ]
-        )
-    if not os.access(path, os.W_OK):
+    # Existence is intentionally NOT required at create/update time. The
+    # write-time gate (``runtime.engagement_routing.assert_export_dir_ready``,
+    # DEC-114) fails loud with ``EngagementExportDirMissing`` if the
+    # configured directory does not exist when an export actually runs.
+    # Relaxing here lets the desktop Edit Engagement dialog persist a
+    # not-yet-created path ("Save anyway — create the directory later",
+    # multi-tenancy-routing-fix slice B / B6) and makes a nonexistent
+    # export_dir reachable through a normal create→activate→write flow.
+    #
+    # Writability is still enforced *when the directory already exists*:
+    # the write-time gate only checks ``is_dir()``, not writability, so a
+    # non-writable existing directory would otherwise slip through and
+    # crash in ``write_staging`` with a raw ``OSError``.
+    if os.path.isdir(path) and not os.access(path, os.W_OK):
         raise UnprocessableError(
             [
                 FieldError(

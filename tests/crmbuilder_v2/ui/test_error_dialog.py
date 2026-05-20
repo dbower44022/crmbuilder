@@ -42,3 +42,33 @@ def test_error_dialog_ok_button_closes(qtbot):
     qtbot.waitExposed(dialog)
     dialog.accept()
     assert dialog.isVisible() is False
+
+
+def test_error_dialog_without_action_has_no_action_button(qtbot):
+    dialog = ErrorDialog(title="t", message="m")
+    qtbot.addWidget(dialog)
+    assert dialog.findChild(object, "error_action_button") is None
+
+
+def test_error_dialog_action_button_invokes_callback_and_closes(qtbot):
+    """Slice B (B7): the optional action button closes the dialog, then runs."""
+    calls: dict = {"n": 0}
+
+    def cb() -> None:
+        calls["n"] += 1
+
+    dialog = ErrorDialog(
+        title="Cannot save — export directory issue",
+        message="no export dir",
+        action_text="Edit engagement…",
+        action_callback=cb,
+    )
+    qtbot.addWidget(dialog)
+    dialog.show()
+    qtbot.waitExposed(dialog)
+    button = dialog.findChild(object, "error_action_button")
+    assert button is not None
+    assert button.text() == "Edit engagement…"
+    button.click()
+    assert calls["n"] == 1
+    assert dialog.isVisible() is False

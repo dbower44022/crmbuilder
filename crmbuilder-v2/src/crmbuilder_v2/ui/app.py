@@ -28,15 +28,16 @@ from PySide6.QtWidgets import (
     QProgressDialog,
 )
 
-from crmbuilder_v2.access.db import reset_engine_cache
-from crmbuilder_v2.config import get_settings, reset_settings_cache
+from crmbuilder_v2.config import get_settings
 from crmbuilder_v2.migration.dogfood_v0_5 import (
     needs_migration,
     run_dogfood_migration,
 )
-from crmbuilder_v2.migration.lazy_migration import engagement_db_path
+from crmbuilder_v2.runtime.engagement_routing import route_settings_to_engagement
+from crmbuilder_v2.runtime.exceptions import UnknownEngagementError
 from crmbuilder_v2.ui.active_engagement_context import ActiveEngagementContext
 from crmbuilder_v2.ui.client import StorageClient
+from crmbuilder_v2.ui.dialogs.error import ErrorDialog
 from crmbuilder_v2.ui.main_window import MainWindow
 from crmbuilder_v2.ui.server_lifecycle import ServerLifecycle
 from crmbuilder_v2.ui.splash import Splash
@@ -226,30 +227,42 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
 def _route_api_at_active_engagement(
     active: ActiveEngagementContext, log: logging.Logger
 ) -> None:
-    """Point ``CRMBUILDER_V2_DB_PATH`` at the active engagement's DB.
+    """Point ``Settings`` at the active engagement's DB and export dir.
 
     No-op when ``current_engagement.json`` did not resolve to an
     engagement (fresh install with no prior CRMBUILDER row, or empty
-    after a deactivation flow). The env var feeds ``Settings.db_path``,
-    which the spawned API process reads at startup and which
-    ``meta_db_path`` / ``engagement_db_path`` normalise back to the
-    canonical ``data/`` dir via :func:`crmbuilder_v2.access.meta_db.data_dir`.
+    after a deactivation flow). Otherwise delegates to the slice-A
+    helper :func:`route_settings_to_engagement`, which sets
+    ``CRMBUILDER_V2_DB_PATH`` + ``CRMBUILDER_V2_EXPORT_DIR`` and resets
+    the Settings / engine / meta-pool caches. The env vars feed the
+    spawned API process, which reads them at startup.
+
+    An :class:`UnknownEngagementError` (marker points at a code absent
+    from the meta DB) is logged and surfaced in an error dialog; the
+    spawn proceeds and the API itself fails loud against the same
+    marker, so the operator gets a clear message either way.
     """
     code = active.engagement_code()
     if not code:
         log.debug(
-            "no active engagement on load; leaving CRMBUILDER_V2_DB_PATH unset"
+            "no active engagement on load; leaving Settings at the default route"
         )
         return
-    db_path = engagement_db_path(code)
-    os.environ["CRMBUILDER_V2_DB_PATH"] = str(db_path)
-    reset_settings_cache()
-    reset_engine_cache()
-    log.info(
-        "routing API at engagement %s (CRMBUILDER_V2_DB_PATH=%s)",
-        code,
-        db_path,
-    )
+    try:
+        route_settings_to_engagement(code)
+    except UnknownEngagementError as exc:
+        log.error("could not route API at engagement %s: %s", code, exc)
+        ErrorDialog(
+            title="Active engagement not found",
+            message=str(exc),
+            detail=(
+                "current_engagement.json points at an engagement that is "
+                "not in the meta database. Activate a valid engagement via "
+                "the Engagements panel."
+            ),
+        ).exec()
+        return
+    log.info("routing API at engagement %s", code)
 
 
 def _run_dogfood_migration_if_needed(log: logging.Logger) -> bool:

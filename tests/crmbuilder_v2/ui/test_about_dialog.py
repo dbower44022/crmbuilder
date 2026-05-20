@@ -123,6 +123,59 @@ def test_paths_are_strings_from_settings(qtbot):
     assert rows["API base url"].startswith("http")
 
 
+def test_snapshot_directory_renders_not_configured(qtbot, monkeypatch):
+    """B3: the UNCONFIGURED sentinel renders as '(not configured)'."""
+    from crmbuilder_v2.config import reset_settings_cache
+    from crmbuilder_v2.runtime.engagement_routing import UNCONFIGURED_SENTINEL
+
+    monkeypatch.setenv("CRMBUILDER_V2_EXPORT_DIR", UNCONFIGURED_SENTINEL)
+    reset_settings_cache()
+    try:
+        dialog = AboutDialog()
+        qtbot.addWidget(dialog)
+        rows = _form_rows(dialog)
+        assert rows["Snapshot directory"] == "(not configured)"
+        # The raw sentinel is never shown to the operator.
+        assert UNCONFIGURED_SENTINEL not in rows["Snapshot directory"]
+    finally:
+        reset_settings_cache()
+
+
+def test_snapshot_directory_renders_missing_path(qtbot, monkeypatch, tmp_path):
+    """B3: a configured path absent on disk renders as '(missing — <path>)'."""
+    from crmbuilder_v2.config import reset_settings_cache
+
+    missing = tmp_path / "does-not-exist"
+    monkeypatch.setenv("CRMBUILDER_V2_EXPORT_DIR", str(missing))
+    reset_settings_cache()
+    try:
+        dialog = AboutDialog()
+        qtbot.addWidget(dialog)
+        rows = _form_rows(dialog)
+        assert rows["Snapshot directory"] == f"(missing — {missing})"
+    finally:
+        reset_settings_cache()
+
+
+def test_snapshot_directory_renders_raw_path_when_present(
+    qtbot, monkeypatch, tmp_path
+):
+    """B3: an existing configured directory renders as its raw path."""
+    from crmbuilder_v2.config import reset_settings_cache
+
+    present = tmp_path / "export-here"
+    present.mkdir()
+    monkeypatch.setenv("CRMBUILDER_V2_EXPORT_DIR", str(present))
+    reset_settings_cache()
+    try:
+        dialog = AboutDialog()
+        qtbot.addWidget(dialog)
+        rows = _form_rows(dialog)
+        assert rows["Snapshot directory"] == str(present)
+    finally:
+        reset_settings_cache()
+
+
 def test_help_about_menu_opens_dialog(
     qapp, qtbot, monkeypatch, lifecycle_stub, client_stub
 ):

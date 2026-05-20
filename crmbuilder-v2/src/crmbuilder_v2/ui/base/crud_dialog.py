@@ -65,6 +65,7 @@ from crmbuilder_v2.ui.exceptions import (
     ConflictError,
     NotFoundError,
     RequestShapeError,
+    ServerError,
     StorageClientError,
     StorageConnectionError,
     ValidationError,
@@ -90,6 +91,28 @@ _RECORD_NAME_FIELDS = ("title", "name", "label")
 
 WidgetKind = Literal["line", "text", "combo", "date", "tree_picker", "identifier_picker"]
 DialogMode = Literal["create", "edit"]
+
+# Envelope error codes the API emits for export-dir write-gate failures
+# (multi-tenancy routing fix slice B). Mirror of the constants in
+# ``crmbuilder_v2.api.errors``; duplicated here to avoid a UI→API import.
+# A write that fails the gate comes back as a 500 ``ServerError`` carrying
+# one of these codes; the dialog then offers an "Edit engagement…" action
+# instead of a bare server-error message.
+_EXPORT_DIR_ERROR_CODES = frozenset(
+    {
+        "engagement_export_dir_not_configured",
+        "engagement_export_dir_missing",
+        "engagement_export_dir_error",
+    }
+)
+
+
+def _is_export_dir_error(exc: Exception) -> bool:
+    if not isinstance(exc, ServerError):
+        return False
+    return any(
+        e.get("code") in _EXPORT_DIR_ERROR_CODES for e in exc.errors
+    )
 
 
 @dataclass
@@ -1104,6 +1127,16 @@ class EntityCrudDialog(QDialog):
                     parent=self,
                 ).exec()
             return
+        if _is_export_dir_error(exc):
+            # Write-gate failure: the active engagement's export_dir is
+            # unconfigured or missing on disk. Render the helpful message
+            # plus an "Edit engagement…" remediation action rather than a
+            # bare server error (slice B — B7).
+            _log.warning("Export-dir write gate rejected save: %s", exc)
+            self._show_export_dir_error_dialog(
+                exc.message or str(exc)  # type: ignore[attr-defined]
+            )
+            return
         if isinstance(exc, StorageClientError):
             _log.warning("Domain error during save: %s", exc)
             ErrorDialog(
@@ -1120,6 +1153,61 @@ class EntityCrudDialog(QDialog):
             detail=repr(exc),
             parent=self,
         ).exec()
+
+    # ------------------------------------------------------------------
+    # Export-dir write-gate remediation (slice B — B7)
+    # ------------------------------------------------------------------
+
+    def _show_export_dir_error_dialog(self, message: str) -> None:
+        ErrorDialog(
+            title="Cannot save — export directory issue",
+            message=message,
+            parent=self,
+            action_text="Edit engagement…",
+            action_callback=self._open_active_engagement_edit,
+        ).exec()
+
+    def _open_active_engagement_edit(self) -> None:
+        """Open Edit Engagement for the active engagement.
+
+        Resolves the active engagement from the marker file, looks its
+        record up by code, and opens the edit dialog so the operator can
+        fix the export directory. Imports are local to avoid a base→
+        engagement-dialog import cycle (engagement_crud imports this base).
+        """
+        from crmbuilder_v2.runtime.engagement_routing import (
+            resolve_active_engagement,
+        )
+        from crmbuilder_v2.ui.dialogs.engagement_crud import (
+            EngagementEditDialog,
+        )
+
+        code = resolve_active_engagement()
+        if not code:
+            return
+        try:
+            engagements = self._client.list_engagements()
+        except StorageClientError as exc:
+            _log.warning(
+                "Could not list engagements to open Edit Engagement: %s", exc
+            )
+            return
+        record = next(
+            (e for e in engagements if e.get("engagement_code") == code),
+            None,
+        )
+        if record is None:
+            return
+        dialog = EngagementEditDialog(
+            self._client, record, self.parentWidget()
+        )
+        try:
+            dialog.exec()
+        finally:
+            # See the tree-picker note above: schedule teardown on the
+            # event loop so a worker-thread GC pass can't tear the dialog
+            # down off the main thread.
+            dialog.deleteLater()
 
 
 # ---------------------------------------------------------------------------

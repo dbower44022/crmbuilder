@@ -30,7 +30,8 @@ from PySide6.QtWidgets import (
 )
 
 import crmbuilder_v2
-from crmbuilder_v2.config import get_settings
+from crmbuilder_v2.config import Settings, get_settings
+from crmbuilder_v2.runtime.engagement_routing import UNCONFIGURED_SENTINEL
 from crmbuilder_v2.ui.elevation import apply_dialog_shadow
 from crmbuilder_v2.ui.styling import t
 from crmbuilder_v2.ui.widgets.modal_backdrop import attach as _backdrop_attach
@@ -46,6 +47,22 @@ _TAGLINE = "Declarative CRM deployment and methodology authoring"
 _MONO_LABELS = frozenset(
     {"API base url", "Database path", "Snapshot directory"}
 )
+
+
+def _snapshot_dir_display(settings: Settings) -> str:
+    """Render the Snapshot directory value across its three states.
+
+    Multi-tenancy routing fix slice B (B3): the active engagement's
+    export directory can be unconfigured (the ``__UNCONFIGURED__``
+    sentinel set by ``route_settings_to_engagement``) or configured at a
+    path that does not exist on disk. Surface both to the operator
+    instead of leaking the raw sentinel string or an unverified path.
+    """
+    if str(settings.export_dir) == UNCONFIGURED_SENTINEL:
+        return "(not configured)"
+    if not settings.export_dir.is_dir():
+        return f"(missing — {settings.export_dir})"
+    return str(settings.export_dir)
 
 
 def _resolve_version() -> str:
@@ -145,7 +162,7 @@ class AboutDialog(QDialog):
             ("Version", _resolve_version()),
             ("API base url", settings.api_base_url),
             ("Database path", str(settings.db_path)),
-            ("Snapshot directory", str(settings.export_dir)),
+            ("Snapshot directory", _snapshot_dir_display(settings)),
         ]
         for label_text, value_text in rows:
             row_layout = QVBoxLayout()

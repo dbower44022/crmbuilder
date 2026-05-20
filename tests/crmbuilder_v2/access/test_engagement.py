@@ -163,18 +163,20 @@ def test_create_rejects_missing_purpose(meta_db):
         )
 
 
-def test_create_rejects_nonexistent_export_dir(meta_db):
-    with meta_session_scope() as s, pytest.raises(UnprocessableError) as exc:
-        create_engagement(
+def test_create_accepts_nonexistent_export_dir(meta_db):
+    # Relaxed in multi-tenancy-routing-fix slice B: existence is no longer
+    # required at create time. The write-time gate (DEC-114) fails loud
+    # with EngagementExportDirMissing if the dir is absent when an export
+    # runs. An absolute path that does not yet exist is accepted here.
+    with meta_session_scope() as s:
+        eng = create_engagement(
             s,
             engagement_code="XY",
             engagement_name="X",
             engagement_purpose="p",
             engagement_export_dir="/nonexistent/path/zzz",
         )
-    assert any(
-        e.field == "engagement_export_dir" for e in exc.value.errors
-    )
+    assert eng.engagement_export_dir == "/nonexistent/path/zzz"
 
 
 def test_create_rejects_relative_export_dir(meta_db, tmp_path):

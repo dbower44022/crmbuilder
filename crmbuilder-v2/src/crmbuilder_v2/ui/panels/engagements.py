@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import QModelIndex, Qt
@@ -173,6 +174,112 @@ def _separator() -> QFrame:
 
 
 # ---------------------------------------------------------------------------
+# Export-dir warning band (multi-tenancy routing fix slice B — B4 / B5)
+# ---------------------------------------------------------------------------
+
+_WARN_STATE_HIDDEN = "hidden"
+_WARN_STATE_NULL = "null"
+_WARN_STATE_MISSING = "missing"
+
+_WARN_NULL_TEXT = (
+    "This engagement has no export directory configured. Reads will "
+    "work; writes are disabled until you set one via Edit Engagement."
+)
+_WARN_NULL_BUTTON = "Set export directory…"
+_WARN_MISSING_BUTTON = "Edit engagement…"
+
+
+def _warn_missing_text(path: str) -> str:
+    return (
+        f"Configured export directory does not exist on disk: {path}. "
+        "Either create the directory or update the engagement via Edit "
+        "Engagement."
+    )
+
+
+class ExportDirWarningBand(QFrame):
+    """Inline band warning that the active engagement's export_dir is unusable.
+
+    Three states (B4 / B5):
+
+    * ``null`` (yellow / warning tone) — the active engagement has no
+      ``engagement_export_dir`` configured. Reads work; writes fail loud.
+    * ``missing`` (red / danger tone) — a path is configured but does not
+      exist on disk. Writes fail loud at the export gate.
+    * ``hidden`` — export_dir is configured and present, or there is no
+      assessable active engagement.
+
+    The action button is never disabled (project convention); it is simply
+    hidden along with the band when the state is ``hidden``. The button's
+    label tracks the state; the panel connects it to a single handler that
+    dispatches on :attr:`state`.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("engagement_export_dir_warning_band")
+        self.state = _WARN_STATE_HIDDEN
+
+        layout = QHBoxLayout(self)
+        pad = int(t("space.2").rstrip("px"))
+        layout.setContentsMargins(pad, pad, pad, pad)
+        layout.setSpacing(pad)
+
+        self._text_label = QLabel()
+        self._text_label.setObjectName("engagement_export_dir_warning_text")
+        self._text_label.setWordWrap(True)
+        layout.addWidget(self._text_label, stretch=1)
+
+        self._action_button = QPushButton()
+        self._action_button.setObjectName(
+            "engagement_export_dir_warning_action"
+        )
+        layout.addWidget(self._action_button)
+
+        self.setVisible(False)
+
+    @property
+    def action_button(self) -> QPushButton:
+        return self._action_button
+
+    def show_null(self) -> None:
+        self.state = _WARN_STATE_NULL
+        self._text_label.setText(_WARN_NULL_TEXT)
+        self._action_button.setText(_WARN_NULL_BUTTON)
+        self._apply_tone(
+            bg="color.warning.subtle",
+            border="color.warning.default",
+            fg="color.warning.default",
+        )
+        self.setVisible(True)
+
+    def show_missing(self, path: str) -> None:
+        self.state = _WARN_STATE_MISSING
+        self._text_label.setText(_warn_missing_text(path))
+        self._action_button.setText(_WARN_MISSING_BUTTON)
+        self._apply_tone(
+            bg="color.danger.subtle",
+            border="color.danger.default",
+            fg="color.danger.text",
+        )
+        self.setVisible(True)
+
+    def hide_band(self) -> None:
+        self.state = _WARN_STATE_HIDDEN
+        self.setVisible(False)
+
+    def _apply_tone(self, *, bg: str, border: str, fg: str) -> None:
+        self.setStyleSheet(
+            f"#engagement_export_dir_warning_band {{"
+            f" background: {t(bg)};"
+            f" border: 1px solid {t(border)};"
+            f" border-radius: 4px;"
+            f" }}"
+            f" #engagement_export_dir_warning_text {{ color: {t(fg)}; }}"
+        )
+
+
+# ---------------------------------------------------------------------------
 # Panel
 # ---------------------------------------------------------------------------
 
@@ -206,10 +313,22 @@ class EngagementsPanel(ListDetailPanel):
         self._new_button.clicked.connect(self._on_new_engagement_clicked)
         self._action_layout.addWidget(self._new_button)
 
+        # Export-dir warning band (B4 / B5): sits immediately under the
+        # toolbar/header, above the master/detail splitter. Its state is
+        # recomputed on every refresh (``_post_process_records``) and on
+        # active-engagement switches (which trigger a refresh).
+        self._warning_band = ExportDirWarningBand()
+        self._warning_band.action_button.clicked.connect(
+            self._on_warning_band_action
+        )
+        outer = self.layout()
+        if isinstance(outer, QVBoxLayout):
+            # Index 1: after the toolbar (index 0), before the splitter.
+            outer.insertWidget(1, self._warning_band)
+
         # Empty-state overlay (toggled by ``_post_process_records``).
         self._empty_state = self._build_empty_state()
         self._empty_state.setVisible(False)
-        outer = self.layout()
         if isinstance(outer, QVBoxLayout):
             outer.addWidget(self._empty_state)
 
@@ -303,11 +422,109 @@ class EngagementsPanel(ListDetailPanel):
         # Toggle empty-state visibility.
         self._empty_state.setVisible(len(decorated) == 0)
         self._master_view.setVisible(len(decorated) > 0)
+
+        # Recompute the export-dir warning band against the freshly-fetched
+        # records (which carry the real engagement_export_dir from the meta
+        # DB). Runs on the UI thread per the base-class contract.
+        self._update_export_dir_warning(decorated)
         return decorated
 
     def _on_show_deleted_toggled(self, checked: bool) -> None:
         self._include_deleted = checked
         self.refresh()
+
+    # ------------------------------------------------------------------
+    # Export-dir warning band (B4 / B5)
+    # ------------------------------------------------------------------
+
+    def _update_export_dir_warning(
+        self, records: list[dict[str, Any]]
+    ) -> None:
+        """Set the warning band state from the active engagement's export_dir.
+
+        Reads ``engagement_export_dir`` from the active engagement's record
+        in ``records`` (the authoritative meta-DB value), not from the
+        in-memory ``ActiveEngagementContext`` stub which may carry ``None``.
+        Null/empty → yellow band; set-but-absent-on-disk → red band;
+        present → hidden. Hidden also when there is no active engagement or
+        its record is not in the current list (e.g. filtered out).
+        """
+        active_identifier = (
+            self._active_context.engagement_identifier()
+            if self._active_context is not None
+            else None
+        )
+        if not active_identifier:
+            self._warning_band.hide_band()
+            return
+        record = next(
+            (
+                r
+                for r in records
+                if r.get("engagement_identifier") == active_identifier
+            ),
+            None,
+        )
+        if record is None:
+            self._warning_band.hide_band()
+            return
+        export_dir = record.get("engagement_export_dir")
+        if not export_dir:
+            self._warning_band.show_null()
+            return
+        if not Path(export_dir).is_dir():
+            self._warning_band.show_missing(export_dir)
+            return
+        self._warning_band.hide_band()
+
+    def _on_warning_band_action(self) -> None:
+        """Open Edit Engagement for the active engagement from the band.
+
+        Null state focuses the export-dir field (so the operator lands on
+        the field to set); missing state opens the dialog normally.
+        """
+        focus = self._warning_band.state == _WARN_STATE_NULL
+        self._open_edit_for_active(focus_export_dir=focus)
+
+    def _open_edit_for_active(self, *, focus_export_dir: bool) -> None:
+        identifier = (
+            self._active_context.engagement_identifier()
+            if self._active_context is not None
+            else None
+        )
+        if not identifier:
+            return
+        try:
+            fresh = self._client.get_engagement(identifier)
+        except NotFoundError:
+            self.refresh()
+            return
+        except StorageConnectionError as exc:
+            _log.warning(
+                "Connection lost loading active %s for edit: %s",
+                identifier,
+                exc,
+            )
+            self.connection_lost.emit(str(exc))
+            return
+        except StorageClientError as exc:
+            _log.warning(
+                "Engagement error loading active %s for edit: %s",
+                identifier,
+                exc,
+            )
+            ErrorDialog(
+                title="Could not load engagement",
+                message="Could not load the latest version of this engagement.",
+                detail=str(exc),
+                parent=self,
+            ).exec()
+            return
+        dialog = EngagementEditDialog(self._client, fresh, self)
+        if focus_export_dir:
+            dialog.focus_export_dir_field()
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.refresh()
 
     # ------------------------------------------------------------------
     # Detail pane

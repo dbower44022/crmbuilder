@@ -17,6 +17,7 @@ from crmbuilder_v2.access.meta_db import bootstrap_meta_db, init_meta_db_pool
 from crmbuilder_v2.api.errors import (
     access_layer_handler,
     classification_transition_handler,
+    engagement_export_dir_handler,
     invalid_domain_reference_handler,
     request_validation_handler,
     selected_candidate_conflict_handler,
@@ -41,6 +42,7 @@ from crmbuilder_v2.api.routers import (
     topics,
 )
 from crmbuilder_v2.migration.meta_alembic import run_meta_migrations
+from crmbuilder_v2.runtime.exceptions import EngagementExportDirError
 
 
 def create_app() -> FastAPI:
@@ -74,6 +76,12 @@ def create_app() -> FastAPI:
     )
     app.add_exception_handler(AccessLayerError, access_layer_handler)
     app.add_exception_handler(RequestValidationError, request_validation_handler)
+    # Export-dir write-gate failures (multi-tenancy routing fix). Distinct
+    # exception hierarchy from AccessLayerError, so registration order
+    # relative to the handlers above does not matter.
+    app.add_exception_handler(
+        EngagementExportDirError, engagement_export_dir_handler
+    )
 
     # v0.5 slice A: apply meta-DB Alembic chain (idempotent; no-op if
     # already at head) and initialise the meta-DB connection pool

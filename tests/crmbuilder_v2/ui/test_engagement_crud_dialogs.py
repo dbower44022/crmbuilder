@@ -353,3 +353,36 @@ def test_edit_dialog_export_dir_value_widget_is_line_edit(
     qtbot.addWidget(dialog)
     line = dialog._widgets["engagement_export_dir"]
     assert isinstance(line, QLineEdit)
+
+
+def test_edit_dialog_emphasises_empty_export_dir(qtbot, engagement_client):
+    """Slice B (B6): the export-dir field is emphasised while empty."""
+    _seed(engagement_client, "ALPHA", "Alpha")
+    record = engagement_client.get_engagement("ENG-001")
+    dialog = EngagementEditDialog(engagement_client, record)
+    qtbot.addWidget(dialog)
+    line = dialog._widgets["engagement_export_dir"]
+    # Empty on open → amber border emphasis.
+    assert line.text() == ""
+    assert "border" in line.styleSheet()
+    # Typing a value clears the emphasis.
+    line.setText("/some/path")
+    assert line.styleSheet() == ""
+
+
+def test_edit_dialog_focus_export_dir_field(qtbot, engagement_client):
+    """Slice B (B6): focus_export_dir_field() targets the export-dir field.
+
+    Asserted via a setFocus spy rather than ``hasFocus()`` because the
+    offscreen Qt platform used in CI has no active window, so real focus
+    state is unreliable.
+    """
+    _seed(engagement_client, "ALPHA", "Alpha")
+    record = engagement_client.get_engagement("ENG-001")
+    dialog = EngagementEditDialog(engagement_client, record)
+    qtbot.addWidget(dialog)
+    line = dialog._widgets["engagement_export_dir"]
+    calls: dict = {"n": 0}
+    line.setFocus = lambda *a, **k: calls.__setitem__("n", calls["n"] + 1)
+    dialog.focus_export_dir_field()
+    assert calls["n"] == 1

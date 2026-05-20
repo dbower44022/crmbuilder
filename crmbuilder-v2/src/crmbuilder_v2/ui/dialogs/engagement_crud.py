@@ -24,12 +24,14 @@ lives in ``_engagement_schema.py``.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
     QLineEdit,
+    QMessageBox,
     QPushButton,
     QWidget,
 )
@@ -40,6 +42,9 @@ from crmbuilder_v2.ui.dialogs._engagement_schema import (
     engagement_fields_create,
     engagement_fields_edit,
 )
+from crmbuilder_v2.ui.styling import t
+
+_EXPORT_DIR_FIELD = "engagement_export_dir"
 
 _IDENTIFIER_FIELD = "engagement_identifier"
 _EXPORT_DIR_TOOLTIP = (
@@ -152,3 +157,75 @@ class EngagementEditDialog(EntityCrudDialog):
                 "Engagement code cannot be changed after creation."
             )
         _attach_directory_browser(self)
+
+        # Multi-tenancy routing fix slice B (B6): emphasise the export-dir
+        # field while it is empty, since an unconfigured export directory
+        # disables writes for the active engagement. The emphasis clears as
+        # soon as the operator types or browses to a path.
+        export_widget = self._field_widgets.get(_EXPORT_DIR_FIELD)
+        if isinstance(export_widget, QLineEdit):
+            export_widget.textChanged.connect(
+                lambda _t=None: self._refresh_export_dir_emphasis()
+            )
+            self._refresh_export_dir_emphasis()
+
+    # ------------------------------------------------------------------
+    # Export-dir affordances (slice B — B6)
+    # ------------------------------------------------------------------
+
+    def focus_export_dir_field(self) -> None:
+        """Move keyboard focus to the export-dir field.
+
+        Called by the Engagements panel's warning-band action button when
+        the active engagement has no export directory configured, so the
+        operator lands directly on the field to set.
+        """
+        widget = self._field_widgets.get(_EXPORT_DIR_FIELD)
+        if isinstance(widget, QLineEdit):
+            widget.setFocus()
+
+    def _refresh_export_dir_emphasis(self) -> None:
+        widget = self._field_widgets.get(_EXPORT_DIR_FIELD)
+        if not isinstance(widget, QLineEdit):
+            return
+        if widget.text().strip():
+            widget.setStyleSheet("")
+        else:
+            widget.setStyleSheet(
+                f"QLineEdit {{ border: 1px solid {t('color.warning.default')}; }}"
+            )
+
+    def _on_save_clicked(self) -> None:
+        """Confirm a non-existent export_dir before the standard save flow.
+
+        If the export-dir field holds a non-empty path that does not exist
+        on disk, prompt the operator to confirm. On confirm, proceed (the
+        access layer now accepts a not-yet-created absolute path; the
+        write-time gate fails loud if it is still absent at export). On
+        cancel, return focus to the field without closing the dialog.
+        """
+        widget = self._field_widgets.get(_EXPORT_DIR_FIELD)
+        value = widget.text().strip() if isinstance(widget, QLineEdit) else ""
+        if value and not Path(value).is_dir():
+            if not self._confirm_nonexistent_export_dir(value):
+                if isinstance(widget, QLineEdit):
+                    widget.setFocus()
+                return
+        super()._on_save_clicked()
+
+    def _confirm_nonexistent_export_dir(self, value: str) -> bool:
+        """Prompt to save a path that does not exist. Return True to proceed."""
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setWindowTitle("Export directory does not exist")
+        box.setText(
+            f"The path '{value}' does not exist. Save anyway? You can "
+            "create the directory later."
+        )
+        save_btn = box.addButton(
+            "Save anyway", QMessageBox.ButtonRole.AcceptRole
+        )
+        box.addButton("Cancel", QMessageBox.ButtonRole.RejectRole)
+        box.setDefaultButton(save_btn)
+        box.exec()
+        return box.clickedButton() is save_btn

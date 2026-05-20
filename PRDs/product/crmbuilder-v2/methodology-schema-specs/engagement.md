@@ -106,7 +106,7 @@ None in v0.5. Engagement has no outgoing FK columns and no source-side use of th
 | Field name | Type | Required | Default | Validation | Description |
 |------------|------|----------|---------|------------|-------------|
 | `engagement_last_opened_at` | DATETIME | no | null | ISO 8601 UTC when set | Set by the desktop app at engagement activation. Used by the picker UX to order engagements by recency and to restore the last-active engagement on app launch. (See multi-engagement-architecture.md §3.3.) |
-| `engagement_export_dir` | TEXT | no | null | when set: must be an existing writable directory; absolute filesystem path | Where this engagement's git-tracked JSON snapshots land. Dogfood's value is set by the v0.5 first-launch migration to the absolute path of `PRDs/product/crmbuilder-v2/db-export/` (computed from the engine repo root). Client engagements set their value at creation time via the New-Engagement dialog. Null disables auto-export with a log warning at activation. (See multi-engagement-architecture.md §3.8.) |
+| `engagement_export_dir` | TEXT | no | null | when set: absolute filesystem path; must be writable if it already exists. (Existence is NOT required at create/update time as of multi-tenancy-routing-fix slice B — enforced at write-time by the export gate, DEC-114.) | Where this engagement's git-tracked JSON snapshots land. Dogfood's value is set by the v0.5 first-launch migration to the absolute path of `PRDs/product/crmbuilder-v2/db-export/` (computed from the engine repo root). Client engagements set their value at creation time via the New-Engagement dialog. Null disables auto-export with a log warning at activation. (See multi-engagement-architecture.md §3.8.) |
 
 #### 3.2.6 Timestamp fields
 
@@ -298,7 +298,7 @@ The following twelve statements define what "the engagement entity type is corre
 
 4. **`engagement_status` enum and transition validation.** Insertions with `engagement_status` outside `{active, paused, archived}` are rejected with HTTP 422 `invalid_enum_value`. The default-on-omit (`active`) is applied. Transitions between any of the three values are accepted (free transitions); transitions to invalid values return 422.
 
-5. **`engagement_export_dir` validation when set.** Insertions and updates with `engagement_export_dir` set to a non-existent directory, an existing file (not directory), or a non-writable path return HTTP 422. Null is accepted.
+5. **`engagement_export_dir` validation when set.** Insertions and updates with `engagement_export_dir` set to a relative path, or to an existing-but-non-writable directory, return HTTP 422. Null is accepted. (As of multi-tenancy-routing-fix slice B: a non-existent absolute path is now ACCEPTED — existence is enforced at write-time by the export gate, DEC-114, which fails loud with `EngagementExportDirMissing` — so the desktop "Save anyway" affordance can persist a not-yet-created directory.)
 
 6. **Access-layer methods exist with expected signatures.** `client.list_engagements()`, `client.get_engagement(identifier)`, `client.create_engagement(...)`, `client.update_engagement(identifier, ...)`, `client.patch_engagement(identifier, ...)`, `client.delete_engagement(identifier)`, `client.restore_engagement(identifier)`, `client.next_engagement_identifier()` exist and pass unit tests covering happy path and at least one error case each.
 

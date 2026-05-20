@@ -7,6 +7,8 @@ errors that don't map to inline field validation (5xx, 422, no-field
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
@@ -43,6 +45,9 @@ class ErrorDialog(QDialog):
         message: str,
         detail: str | None = None,
         parent: QWidget | None = None,
+        *,
+        action_text: str | None = None,
+        action_callback: Callable[[], None] | None = None,
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle(title)
@@ -50,6 +55,8 @@ class ErrorDialog(QDialog):
         apply_dialog_shadow(self)
         self._detail_widget: QPlainTextEdit | None = None
         self._detail_button: QPushButton | None = None
+        self._action_button: QPushButton | None = None
+        self._action_callback = action_callback
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(16, 16, 16, 16)
@@ -99,7 +106,21 @@ class ErrorDialog(QDialog):
 
         button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
         button_box.accepted.connect(self.accept)
+        # Optional remediation action (slice B — B7: "Edit engagement…").
+        # Closes this dialog, then invokes the callback so the follow-on
+        # dialog is not parented to a dialog that is tearing down.
+        if action_text and action_callback is not None:
+            self._action_button = button_box.addButton(
+                action_text, QDialogButtonBox.ButtonRole.ActionRole
+            )
+            self._action_button.setObjectName("error_action_button")
+            self._action_button.clicked.connect(self._on_action_clicked)
         outer.addWidget(button_box)
+
+    def _on_action_clicked(self) -> None:
+        self.accept()
+        if self._action_callback is not None:
+            self._action_callback()
 
     def _on_detail_toggled(self, checked: bool) -> None:
         if self._detail_widget is None or self._detail_button is None:
