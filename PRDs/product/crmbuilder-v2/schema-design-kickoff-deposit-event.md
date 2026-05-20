@@ -107,12 +107,6 @@ The build-planning kickoff is drafted at the end of this conversation, after the
 
 ---
 
-## Read this first
-
-(Reproduced from earlier for completeness — actual reads are listed above.)
-
----
-
 ## Working style
 
 Per Doug's preferences:
