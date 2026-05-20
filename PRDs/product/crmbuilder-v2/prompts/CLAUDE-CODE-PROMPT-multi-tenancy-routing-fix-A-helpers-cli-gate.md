@@ -362,7 +362,7 @@ use these helpers, plus operator-facing affordances (warning bands
 on Open Engagement when export_dir is null or missing, dialog field
 emphasis, error-dialog handling).
 
-Refs SES-044, DEC-108..DEC-111, DEC-113, DEC-114, PI-018.
+Refs SES-044, DEC-108..DEC-111, DEC-113, DEC-114, PI-021.
 ```
 
 Doug pushes.

@@ -42,7 +42,7 @@ The seven Phase 1 decisions from SES-044 are recorded as DEC-108 through DEC-114
 | DEC-109 — Missing `engagement_export_dir` in meta DB | Refuse the write; new `EngagementExportDirNotConfigured` exception | Slice A |
 | DEC-110 — Plumbing model | Env var + cache reset (matches existing pattern); `CRMBUILDER_V2_EXPORT_DIR` added to Settings | Slice A |
 | DEC-111 — `--engagement <code>` CLI flag | Land in slice A; flag wins over marker; ephemeral (does not persist to marker) | Slice A |
-| DEC-112 — `/admin/runtime-info` endpoint | Defer entirely; file PI-019 follow-on if needed | (deferred) |
+| DEC-112 — `/admin/runtime-info` endpoint | Defer entirely; file follow-on PI if needed | (deferred) |
 | DEC-113 — Catalog / force_export / bootstrap scope | Centralized gate at all active write paths via `assert_export_dir_ready` helper | Slice A |
 | DEC-114 — Fail-loud vs auto-create on missing dir | Fail loud if engagement_export_dir doesn't exist on disk; new `EngagementExportDirMissing` exception | Slice A |
 
@@ -246,7 +246,7 @@ None. The fix changes runtime routing behavior but does not alter any database s
 
 This is a maintenance fix, not a release. `__version__` in `crmbuilder-v2/src/crmbuilder_v2/__init__.py` stays at `0.6.0` through both slices. No README entry. No closeout `__version__` bump.
 
-The fix discharges PI-018 once slice B lands.
+The fix discharges PI-021 once slice B lands.
 
 ---
 
@@ -257,7 +257,7 @@ Each slice closes out by:
 1. Slice ends when all acceptance criteria pass and the full test suite is green.
 2. Commit per the slice prompt's commit-message scaffold.
 3. Doug pushes.
-4. PI-018 status update on slice B close: `Open` → `Closed (resolved)` via the desktop UI's planning-items panel or via direct API. No new session record per slice — the work is captured under SES-044's `is_about` PI-018 reference; subsequent build conversations can author per-slice SES records if their content warrants (e.g., if slice A's investigation of `bootstrap/migrate.py:64` surfaces something worth recording).
+4. PI-021 status update on slice B close: `Open` → `Closed (resolved)` via the desktop UI's planning-items panel or via direct API. No new session record per slice — the work is captured under SES-044's `is_about` PI-021 reference; subsequent build conversations can author per-slice SES records if their content warrants (e.g., if slice A's investigation of `bootstrap/migrate.py:64` surfaces something worth recording).
 
 No version bump or release note required — see §9.
 

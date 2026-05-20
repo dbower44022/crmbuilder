@@ -19,7 +19,7 @@ Land the UI half of the multi-tenancy routing fix. Refactor the existing `ui/app
 After this slice lands:
 - UI-launched and CLI-launched API paths share one routing implementation.
 - Operators see why a write failed before they hit it (or at the latest in the error dialog with a clear remediation action).
-- PI-018 is dischargeable.
+- PI-021 is dischargeable.
 
 This slice depends on slice A having landed first — it imports from `crmbuilder_v2.runtime.engagement_routing` and `crmbuilder_v2.runtime.exceptions`.
 
@@ -286,9 +286,9 @@ Manual smoke at slice end captured screenshots at
 PRDs/product/crmbuilder-v2/styling-screenshots/multi-tenancy-routing-fix/
 (if captured).
 
-PI-018 dischargeable after this slice lands.
+PI-021 dischargeable after this slice lands.
 
-Refs SES-044, PI-018.
+Refs SES-044, PI-021.
 ```
 
 Doug pushes.
@@ -302,8 +302,8 @@ After commit lands and Doug pushes:
 - Both bugs from the investigation are fixed end-to-end.
 - UI and CLI paths share one routing implementation.
 - Operators see the new failure conditions clearly.
-- PI-018 is ready to close.
+- PI-021 is ready to close.
 
-**Next governance step:** discharge PI-018 via the desktop UI's planning-items panel or direct API POST. Status: `Open` → `Closed (resolved)`. Reference SES-044 as `is_about`.
+**Next governance step:** discharge PI-021 via the desktop UI's planning-items panel or via direct API POST. Status: `Open` → `Closed (resolved)`. Reference SES-044 as `is_about`.
 
 **Next build step:** none. The multi-tenancy routing fix workstream is complete. Resume the SES-001 paper-test apply attempt that surfaced these bugs in the first place, against the now-fixed system.
