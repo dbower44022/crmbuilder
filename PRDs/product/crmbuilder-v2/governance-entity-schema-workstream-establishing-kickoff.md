@@ -1,6 +1,6 @@
 # Governance Entity Schema Design — Workstream-Establishing Planning Conversation — Kickoff Prompt
 
-**Last Updated:** 05-20-26 14:30
+**Last Updated:** 05-20-26 21:30
 **Purpose:** Seed prompt for a new Claude.ai conversation that establishes the governance entity schema-design workstream and produces its scaffolding artifacts. Analog of Session 011 for the methodology entity schema-design workstream. This conversation does not design schemas itself — it produces the workstream master plan, the schema-spec methodology guide, and a kickoff prompt for each of the six per-entity schema-design conversations that follow.
 **Position in workstream:** Workstream-establishing planning conversation. First conversation of the governance entity schema-design workstream.
 **Predecessor:** A strategic scoping conversation in May 2026 that identified the governance gap and resolved six principle-level questions. None of those resolutions were recorded as formal decisions in the governance database at the time. The workstream-establishing conversation opening against this kickoff prompt re-records them as its first order of business.
@@ -54,7 +54,7 @@ Six per-entity schema-design conversations, in this order:
 |---|---|---|
 | 1 | workstream | Most independent — references nothing else in the new set. |
 | 2 | conversation | References workstream. |
-| 3 | reference book | Independent record, but conversations link to it; designed after conversation so references can be specified. |
+| 3 | reference book | Conversations reference reference books; reference book's own schema is most useful to design once conversation's outgoing reference set is known. |
 | 4 | work ticket | References conversation as its consumer. |
 | 5 | close-out payload | Produced by a specific conversation; references conversation. |
 | 6 | deposit event | References close-out payload and the records the deposit wrote. |
@@ -97,7 +97,8 @@ Before the first architectural question:
 1. `curl -sf http://127.0.0.1:8765/health` — V2 storage API up.
 2. `uv run pytest tests/crmbuilder_v2/ -v` — V2 test suite green.
 3. `git pull --rebase origin main` — clone current.
-4. Read items 1 through 9 in "Read This First" above.
+4. Resolve expected values against actuals: `curl -s http://127.0.0.1:8765/sessions | jq '.[-1].identifier'` and `curl -s http://127.0.0.1:8765/decisions | jq '.[-1].identifier'`. The kickoff's expected predecessor session ("Session 046") and decision range ("117 through 122") are nominal; the conversation uses whatever the database actually reports.
+5. Read items 1 through 9 in "Read This First" above.
 
 ---
 
@@ -112,6 +113,10 @@ Record contents follow the Session 011 pattern:
 - `topics_covered`: opens with the verbatim seed prompt from this kickoff file, followed by the structured summary of decisions reached.
 - `artifacts_produced`: the workstream master plan, the methodology guide, the six kickoff prompt paths, the six new decisions, and any planning items authored.
 - `in_flight_at_end`: `"Next workstream conversation: workstream schema design. Kickoff at schema-design-kickoff-workstream.md."`
+
+### Bootstrap note
+
+This workstream designs the workstream and conversation entities — but the conversation doing the designing is itself a conversation inside a workstream that doesn't yet have records. Retroactive population of workstream and conversation entity records (including for this workstream-establishing conversation and the seven that follow it) is part of post-build cleanup, not part of any conversation in this workstream. During the workstream, the session record on Decision 013's append-only sessions table remains the only governance record per conversation. The build-planning conversation authors a planning item for the retroactive backfill; the six schema specifications themselves are designed without depending on backfill ordering.
 
 ---
 
