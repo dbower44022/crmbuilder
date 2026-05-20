@@ -1,7 +1,7 @@
 # Multi-Engagement Architecture — v0.5
 
-**Last Updated:** 05-16-26 19:00
-**Status:** Draft v1.0 — produced by v0.5 Conversation 1
+**Last Updated:** 05-20-26
+**Status:** Draft v1.0 — produced by v0.5 Conversation 1 (§3.4/§4 amended 05-20-26 per DEC-115; see Change Log)
 **Position in workstream:** Sole architecture+schema conversation of the v0.5 engagement-management workstream
 **Predecessor conversation:** SES-025 (v0.5 orientation; produced the workstream plan)
 **Companion document:** `methodology-schema-specs/engagement.md` (this conversation's other deliverable)
@@ -14,12 +14,15 @@
 | Version | Date | Author | Summary |
 |---------|------|--------|---------|
 | 1.0 | 05-16-26 19:00 | Doug Bower / Claude (SES-026) | Initial draft. Produced by v0.5 Conversation 1, which combined multi-engagement architecture design with engagement schema design because the two were tightly coupled. Settles the ten architectural questions catalogued in the v0.5 workstream plan §6. |
+| 1.1 | 05-20-26 | Doug Bower / Claude (SES-045) | Amends §3.4 and §4 per DEC-115: the engagement switch no longer kills and relaunches the API subprocess. It re-routes the *running* API in place via `POST /admin/active-engagement`. The original kill-relaunch design and its rationale are retained for traceability, annotated as superseded. |
 
 ---
 
 ## Change Log
 
 **Version 1.0 (05-16-26 19:00):** Initial creation. Operationalises DEC-039's "one v2 instance per engagement" finding into a designed feature: a bootstrap meta DB hosts engagement records and serves as the registry; per-engagement SQLite files live in the engine repo under a `data/engagements/{code}.db` convention; active state persists via a small JSON file plus an in-memory `ActiveEngagementContext`; the API and MCP servers run one-process-per-engagement at v0.5, with a committed migration to multi-tenant when v2 transitions from prototype to production; governance and methodology identifiers scope per-engagement (CBM's first session is `SES-001`, not `SES-026`); migrations apply lazily at engagement-open; the existing `crmbuilder-v2/data/v2.db` retrofits cleanly into `data/engagements/CRMBUILDER.db` via a one-shot explicit migration; exports split (dogfood in engine repo, client engagements in client repo) via an `engagement_export_dir` field on the engagement record; the engagement record lives as a row in the meta DB. Nine decisions produced; one new planning item (multi-tenant migration) authored.
+
+**Version 1.1 (05-20-26):** Amends the engagement-switch mechanism per DEC-115 (recorded in SES-045). The originally-designed switch killed the API subprocess and relaunched it bound to the new engagement's DB. That design could not switch an API the desktop did not own (the documented `crmbuilder-v2-api &` dev workflow), because `terminate()` is a no-op for an unowned process and the relaunch's `/health` probe simply re-attached to the still-running old process — so the displayed data silently never changed. The switch now re-routes the *running* API in place: a new `POST /admin/active-engagement` endpoint calls `route_settings_to_engagement` (DEC-110), resetting the API process's settings + engine caches against the new DB without restarting it. §3.4 and §4 are annotated accordingly; the original kill-relaunch design is retained for traceability. Companion change: `GET /admin/connection` and `GET /admin/version` were added as operator introspection surfaces (DEC-116), the latter discharging DEC-112's deferral of a diagnostic endpoint.
 
 ---
 
@@ -111,7 +114,13 @@ The ten architectural questions from the workstream plan §6 are each settled be
 
 ### 3.4 API and MCP server model — one process per engagement at v0.5; multi-tenant target (Q4, Q9)
 
-**Decision for v0.5.** One API subprocess per engagement, bound at spawn via `CRMBUILDER_V2_DB_PATH`. Switching engagements is a kill-and-relaunch dance owned by the desktop app. The API server's code is unchanged from v0.4 — no concept of engagement, no request-routing layer, no per-request DB selection. The MCP server has the same lifecycle: one MCP subprocess per engagement, killed and relaunched on switch.
+**Decision for v0.5.** One API subprocess per engagement, bound at spawn via `CRMBUILDER_V2_DB_PATH`. ~~Switching engagements is a kill-and-relaunch dance owned by the desktop app.~~ (Switch mechanism superseded — see **Amendment** below.) The API server's code is unchanged from v0.4 — no concept of engagement, no request-routing layer, no per-request DB selection. The MCP server has the same lifecycle: one MCP subprocess per engagement, killed and relaunched on switch. (In the v0.5 implementation the MCP server was never brought under desktop process control; the kill/launch MCP hooks are no-ops and the operator runs the MCP server out-of-process when needed.)
+
+> **Amendment (DEC-115, SES-045, 05-20-26) — switch by re-routing the running API, not kill-and-relaunch.**
+>
+> The kill-and-relaunch switch was implemented and then found broken in the common case. The API binds to one engagement's DB at spawn time (the env var plus an `lru_cache`d `Settings`), so the original plan was: kill the API, relaunch it with a new `CRMBUILDER_V2_DB_PATH`. But the desktop can only kill a subprocess it *owns*. When the API is started out-of-process (`crmbuilder-v2-api &`, the documented dev/MCP workflow), `ServerLifecycle.terminate()` is a no-op, and the relaunch step's `GET /health` probe finds the old process still listening on 8765 and re-attaches to it. The engagement marker and in-memory context flipped, but the API kept serving the old DB — so the UI showed unchanged data with no error.
+>
+> The switch now **re-routes the running API in place**. A new `POST /admin/active-engagement` endpoint calls `route_settings_to_engagement(code)` (DEC-110), which resets the process's `Settings` + engine caches so subsequent requests open the new engagement's DB — no process restart, no port handoff, and it works whether the API is desktop-owned or external. The desktop's switch path no longer terminates or respawns the API in the normal case; it POSTs the re-route and falls back to spawning a fresh API only when none is reachable. This makes the "remove the kill-relaunch dance from the desktop's engagement-switch path" line item under PI-017 (§3.4 future-migration list) already satisfied for the desktop switch, independent of the broader multi-tenant refactor.
 
 **Decision for the longer term.** Multi-tenant single-process server is the target architecture. The migration from one-process-per-engagement to multi-tenant is committed; it lands when v2 transitions from prototype to production (anchoring PI-017). The trigger is the prototype-to-production transition, not a friction signal — this is a planned transition, not a deferred-with-friction-trigger pattern.
 
@@ -124,12 +133,13 @@ The ten architectural questions from the workstream plan §6 are each settled be
 **Implementation implications for v0.5.**
 
 - Port assignment: stays at 8765. Only one engagement reachable at a time means only one port is needed.
-- Desktop owns the API and MCP subprocess lifecycle (already true for the API per DEC-023). On engagement switch, the desktop:
-  1. Sends SIGTERM to both subprocesses.
-  2. Waits for port 8765 release (with timeout).
-  3. Launches new subprocesses with the new env.
-  4. Polls `/health` with backoff until 200 OK (or timeout).
-  5. Refreshes panels (they re-fetch from the API against the new engagement).
+- Desktop owns the API subprocess lifecycle (per DEC-023). On engagement switch, the desktop (per the DEC-115 amendment above):
+  1. Runs lazy migrations against the target DB and writes `current_engagement.json`.
+  2. `POST /admin/active-engagement {engagement_code}` — the running API resets its caches to the new DB in place. (Falls back to spawning a fresh API only if none is reachable.)
+  3. Polls `/health` until 200 OK (trivially fast — the same process is already up).
+  4. Refreshes the visible panel and marks the rest stale (they re-fetch from the API against the new engagement on next view).
+  
+  The original kill-relaunch steps (SIGTERM both subprocesses → wait for port release → launch new subprocesses → poll `/health`) are superseded.
 - During the switch, the desktop shows a "Switching engagement..." indicator or disabled state; gestures are either queued or rejected (Conversation 2's Slice C call).
 - The env-var override in `config.py` stays put. External tools can still set `CRMBUILDER_V2_DB_PATH` and `CRMBUILDER_V2_API_PORT` to point at a specific engagement without going through the desktop launcher.
 
@@ -235,7 +245,11 @@ The two databases share no schema-level coupling. The meta DB has its own Alembi
 
 ## 4. Activation sequence
 
-The "switch to engagement X" operation is a desktop-side orchestration in v0.5, not an API operation. The sequence:
+The "switch to engagement X" operation is a desktop-side orchestration in v0.5, not an API operation.
+
+> **Amendment (DEC-115, SES-045, 05-20-26).** Steps 4–5 and 9–10 below describe the original kill-relaunch design and are **superseded**. In the implemented flow the API and MCP processes are *not* killed and respawned on a normal switch. Instead, after writing `current_engagement.json` (step 6) the desktop calls `POST /admin/active-engagement {engagement_code}`, which re-routes the *running* API to the new engagement's DB in place (via `route_settings_to_engagement`, DEC-110). Steps 4/5 (quiesce) become no-ops; step 9 becomes the re-route call (with a spawn fallback only if no API is reachable); step 10 (MCP) is a no-op in v0.5. Steps 1–3, 6–8, and 11–12 are unchanged. The numbered list is kept below for traceability of the original design and its rationale.
+
+The original sequence:
 
 1. **User action.** User selects engagement X in the picker UI and confirms (or, on app launch, the desktop reads `current_engagement.json` and activates the named engagement automatically).
 2. **Pre-check — reachability.** Desktop reads the engagement record from the meta DB (via the currently-running API's `GET /engagements/X`); confirms the engagement is not soft-deleted; computes the expected DB path (`crmbuilder-v2/data/engagements/{X.engagement_code}.db`); confirms the file exists and is readable. If any check fails, abort with a UX message; do not proceed.
@@ -252,7 +266,7 @@ The "switch to engagement X" operation is a desktop-side orchestration in v0.5, 
 
 Total elapsed time for a typical switch: a few seconds (dominated by API subprocess startup time). For an engagement with pending migrations, longer — proportional to migration count and complexity.
 
-External clients (curl, MCP clients, scripts) connect to port 8765 throughout. During steps 4–9, the API is not reachable; external clients see connection-refused or timeout. v0.5 does not provide a "switching now" status to external clients beyond the port being temporarily unreachable.
+External clients (curl, MCP clients, scripts) connect to port 8765 throughout. ~~During steps 4–9, the API is not reachable; external clients see connection-refused or timeout.~~ Under the DEC-115 re-route flow the API stays up across a switch, so there is no connection-refused window; the change is instead a *visible state change* — after the re-route, requests on 8765 return the new engagement's data. External clients holding assumptions about which engagement is active should re-confirm via `GET /admin/connection` (DEC-116). The spawn-fallback path (no API reachable) does have a brief startup window, matching the original behavior.
 
 ---
 
@@ -286,9 +300,9 @@ Categorised. Each entry is one paragraph.
 
 **Exact UI shape for engagement picker and management.** Engagement is structurally different from the four v0.4 methodology entity types (it's v2-install-level routing metadata, not domain-scope content), so it doesn't fit the "Methodology" sidebar group. Conversation 1 names two needed affordances (a switching UI and a management/CRUD UI) without prescribing the visual shape (top-bar picker, status-bar dropdown, sidebar group, dedicated dialog). Conversation 2 picks the layout in coordination with the styling workstream (PI-001) per the boundary discipline established in DEC-076.
 
-**The `engagement_last_opened_at` update path during activation.** Step 7 of the activation sequence (§4) needs to update `engagement_last_opened_at` while no API is running. Two paths work: (a) desktop opens the meta DB directly to perform the update; (b) defer the update to after the new API subprocess is up, then PATCH through the API. Either is correct. Conversation 2 picks one consistent with the implementation pattern.
+**The `engagement_last_opened_at` update path during activation.** ~~Step 7 of the activation sequence (§4) needs to update `engagement_last_opened_at` while no API is running.~~ *Resolved — moot under DEC-115.* The implementation chose path (b) (PATCH through the API after the new context is live), and the DEC-115 re-route means the API is up throughout the switch anyway, so there is no "no API running" window to design around.
 
-**Exact retry/timeout values in the activation sequence.** Step 4's 5-second timeout for port release; step 9's exponential-backoff parameters for API health-check polling. Numbers are reasonable starting points; Conversation 2 may tune based on observed latencies.
+**Exact retry/timeout values in the activation sequence.** ~~Step 4's 5-second timeout for port release;~~ step 9's exponential-backoff parameters for API health-check polling. Numbers are reasonable starting points; Conversation 2 may tune based on observed latencies. *(Under DEC-115 the port-release timeout no longer applies — the API is not killed. The health poll after re-route returns near-instantly since the same process is already up.)*
 
 **Whether the New-Engagement dialog should default `engagement_export_dir` to anything for client engagements.** Conversation 1 says null is the default; Conversation 2 may choose a smart default (e.g., a sibling-of-engine-repo path inferred from common patterns) if there's a sensible one. Defaulting to null is the conservative choice.
 
@@ -298,11 +312,11 @@ Categorised. Each entry is one paragraph.
 
 **Whether `engagement_export_dir` configurability suffices for the actual client-repo storage use case.** If CBM's exports landing in `ClevelandBusinessMentors/v2-db-export/` works smoothly, the design holds. If not — e.g., the user wants a smarter path resolution that follows the client repo when it moves — a v0.6+ enhancement is on the table.
 
-**Whether the kill-relaunch switch UX is acceptable in practice.** A few seconds of unavailability per switch is the model. If real use shows this is too disruptive (e.g., users switch frequently), the multi-tenant migration (PI-017) becomes higher priority.
+**Whether the kill-relaunch switch UX is acceptable in practice.** ~~A few seconds of unavailability per switch is the model. If real use shows this is too disruptive (e.g., users switch frequently), the multi-tenant migration (PI-017) becomes higher priority.~~ *Resolved by DEC-115.* The switch no longer kills the API, so there is no per-switch unavailability window; the in-process re-route is effectively instantaneous. This pressure on PI-017 is relieved.
 
 ### 6.3 For v0.5+ tracked separately
 
-**[v0.6+, PI-017] Multi-tenant API + MCP migration.** Anchored by DEC-081. Trigger: v2 prototype-to-production transition. Scope: refactor every endpoint to accept engagement context via header or path-prefix; refactor access-layer connection management; refactor tests; reshape MCP server; remove kill-relaunch dance from desktop's switch path.
+**[v0.6+, PI-017] Multi-tenant API + MCP migration.** Anchored by DEC-081. Trigger: v2 prototype-to-production transition. Scope: refactor every endpoint to accept engagement context via header or path-prefix; refactor access-layer connection management; refactor tests; reshape MCP server; ~~remove kill-relaunch dance from desktop's switch path~~ (already removed for the desktop switch by DEC-115; the in-process re-route remains a single-active-engagement model, whereas PI-017's target is concurrent multi-engagement serving).
 
 **[v0.6+, candidate, not yet a PI] Optional `engagement_db_path` field.** Nullable column allowing per-engagement override of the conventional `crmbuilder-v2/data/engagements/{code}.db` path. Mirrors v1's split (per-client DBs in `{project_folder}/.crmbuilder/{code}.db`). Migration is small (add nullable column); behaviour is "null means convention, set means override." Triggered if/when an engagement needs to travel with a client repo across machines. Not a planning item yet because the use case is hypothetical for v0.5.
 
