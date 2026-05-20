@@ -10469,5 +10469,153 @@
     "id": 416,
     "operation": "update",
     "timestamp": "2026-05-20T17:10:57.272662"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "Committed at 3aa268c (crmbuilder repo, main): crmbuilder-v2/src/crmbuilder_v2/api/routers/admin.py (new — /admin/connection, /admin/version, /admin/active-engagement); crmbuilder-v2/src/crmbuilder_v2/migration/version_info.py (new — SchemaVersion + engagement/meta schema readers); crmbuilder-v2/src/crmbuilder_v2/ui/connection_info_dialog.py (new — Connection Info dialog); api/main.py (admin router registered; FastAPI version + root version sourced from __version__); ui/activation_worker.py (build_lifecycle_managers re-routes in place with spawn fallback; step descriptions reworded); ui/app.py (client passed to build_lifecycle_managers); ui/client.py (connection_info, version_info, route_active_engagement); ui/main_window.py (Connection Info menu item; post-activation panel refresh + stale-marking). 8 files, +578/-17.",
+      "conversation_reference": "Claude Code conversation on 05-20-26 working directly in the crmbuilder repo (no seed prompt). Driven by an operator bug report: switching engagements via the desktop dropdown did not change the displayed data. Diagnosed root cause, shipped the fix, and added operator introspection surfaces. Code landed at commit 3aa268c on main. No transcript preserved per DEC-025.",
+      "created_at": "2026-05-20T17:48:36.557949+00:00",
+      "id": 44,
+      "identifier": "SES-045",
+      "in_flight_at_end": "Docs follow-up: multi-engagement-architecture.md §4 still describes the kill-and-relaunch switch and should be updated to the in-process re-route per DEC-115. No follow-on PI is needed for the diagnostic endpoint DEC-112 deferred — DEC-116 built it. Operator must restart any API/app predating commit 3aa268c to pick up the /admin endpoints (the running dogfood app was already on the new code during this session). UI-side get_settings() is still only routed at startup; the About dialog's db_path can lag after a switch — acceptable since Connection Info queries the API for authoritative state, but a future polish could re-route the UI process too.",
+      "session_date": "05-20-26",
+      "status": "Complete",
+      "summary": "",
+      "title": "Fix engagement switching (in-process re-route) + connection/version introspection",
+      "topics_covered": "BUG. Switching engagements via the top-strip picker did not change displayed data. Root cause: the activation worker's switch relied on ServerLifecycle kill-and-relaunch of the API subprocess (per multi-engagement-architecture.md §4), but the API binds to one engagement's DB at spawn (env var CRMBUILDER_V2_DB_PATH + lru-cached Settings). Against an externally-launched API ('crmbuilder-v2-api &', the documented dev workflow) terminate() is a no-op (the UI does not own that process) and start() short-circuits on a successful /health probe — so the switch silently re-attached to the old process on the old DB. A stale old-code API holding port 8765 during testing confirmed the failure mode live.\n\nFIX (DEC-115). Switch now re-routes the live API in place via a new POST /admin/active-engagement, which calls the existing route_settings_to_engagement (DEC-110) to reset the settings + engine caches against the target DB — no subprocess restart, works whether the API is UI-owned or external. build_lifecycle_managers gained a client param; kill_api is a no-op when the client is wired; launch_api POSTs the re-route with a spawn fallback when the API is unreachable. On completion the main window refreshes the visible panel and marks the rest stale so they re-fetch. Verified end-to-end: CRMBUILDER→CBM flipped db_path (3.3 MB → 401 KB) and export_dir.\n\nINTROSPECTION + VERSION SYSTEM (DEC-116). Added GET /admin/connection (bound DB path/exists/size, engagement code derived from the DB filename, export-dir state) and GET /admin/version (api_version from crmbuilder_v2.__version__; engagement + meta DB Alembic schema versions as current-revision vs chain-head + up_to_date flag). The FastAPI app version, previously a hardcoded '0.1.0' in two places, now reads __version__ (0.6.0). New migration/version_info.py reads the stamped revision from each DB's alembic_version table and the head from the chain. New Help → Connection Info… dialog surfaces all of it, querying the API so it reflects the server's live state rather than the UI process's startup get_settings() (which only routes at startup and would lag after a switch — the same reason the About dialog's db_path can be stale).\n\nThis discharges DEC-112's deferral of the diagnostic endpoint: the switching bug plus the operator's request to verify the running DB/version were the 'real need' DEC-112 said would justify building it. No schema migration (no new tables); the version surface reads existing Alembic state. ruff clean across all touched files."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-045",
+    "entity_type": "session",
+    "id": 417,
+    "operation": "insert",
+    "timestamp": "2026-05-20T17:48:36.558853"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "(a) Keep kill-and-relaunch but force-kill the API — impossible for an externally-launched process the UI does not own, which is the documented dev workflow. (b) Reconcile routing to current_engagement.json on every request — mutates global process state (env, caches, pools) under uvicorn's threadpool; hazardous under concurrency. (c) In-process re-route via an explicit endpoint (chosen) — a single controlled call during activation while the UI is blocked by the overlay, no concurrency hazard.",
+      "consequences": "New /admin router. Activation worker keeps a spawn fallback for the down-API case. The UI process's own get_settings() is still only routed at startup, so About-dialog db_path can lag after a switch — Connection Info (DEC-116) queries the API for authoritative state instead. multi-engagement-architecture.md §4 is now stale and should be updated to describe the re-route.",
+      "context": "multi-engagement-architecture.md §4 specified switching engagements by killing the API subprocess and relaunching it bound to the new engagement's DB (the DB is fixed at spawn via CRMBUILDER_V2_DB_PATH + lru-cached Settings). This silently failed against an externally-launched API ('crmbuilder-v2-api &'): ServerLifecycle.terminate() is a no-op for a process the UI does not own, and start() short-circuits when /health already responds, so the switch re-attached to the old process on the old DB. Displayed data never changed — the reported bug.",
+      "created_at": "2026-05-20T17:48:36.626686+00:00",
+      "decision": "Switch by re-routing the live API in place. New POST /admin/active-engagement calls route_settings_to_engagement (DEC-110) to reset the settings + engine caches against the target DB; no subprocess restart. The activation worker's build_lifecycle_managers takes the StorageClient; kill_api is a no-op when the client is wired; launch_api POSTs the re-route and falls back to the legacy spawn only when the API is unreachable. Works identically for a UI-owned or an externally-launched API.",
+      "decision_date": "05-20-26",
+      "id": 113,
+      "identifier": "DEC-115",
+      "rationale": "Re-routing reuses the in-process routing helper DEC-110 already built for exactly this ('in-process re-routing under a long-running UI'). It works regardless of API ownership — the UI cannot kill a process it does not own, so kill-and-relaunch could never fix the external case. It also removes the port-release race between terminate and respawn and is faster (no process start). The spawn fallback preserves recovery when the API is genuinely down.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Engagement switching re-routes the live API in-process, not via kill-and-relaunch",
+      "updated_at": "2026-05-20T17:48:36.626689+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-115",
+    "entity_type": "decision",
+    "id": 418,
+    "operation": "insert",
+    "timestamp": "2026-05-20T17:48:36.627247"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "(a) One opaque /admin/runtime-info blob as DEC-112 sketched — split into /connection vs /version for clearer semantics and API docs. (b) Maintain a separate human-readable schema_version constant — redundant with and prone to drifting from the Alembic revisions. (c) Read versions UI-side from get_settings() — stale after a switch; rejected in favor of an API query.",
+      "consequences": "DEC-112's deferral is discharged; no follow-on PI for the diagnostic endpoint is needed. Future schema migrations automatically surface as 'migration pending' in the Connection Info dialog until applied. The endpoints are general-purpose operator/diagnostic surfaces other tooling can consume.",
+      "context": "DEC-112 deferred a diagnostic API endpoint (/admin/runtime-info) with 'file a follow-on when a real need arises.' Two needs arrived together: diagnosing the engagement-switch bug (DEC-115) required knowing which DB the live API was actually bound to, and the operator asked to verify which API and database versions are running. There was also no single source of truth for the API version (FastAPI app version was a hardcoded '0.1.0' diverged from __version__ = 0.6.0) and no surfaced notion of a database version.",
+      "created_at": "2026-05-20T17:48:36.688690+00:00",
+      "decision": "Add GET /admin/connection (bound DB path / exists / size, engagement code derived from the DB filename, export-dir state) and GET /admin/version (api_version from crmbuilder_v2.__version__; the active-engagement DB and meta DB Alembic schema versions as current-revision vs chain-head plus an up_to_date flag). Source the FastAPI app + root version from __version__. Add migration/version_info.py to read each DB's stamped revision and chain head. Add a Help → Connection Info… dialog that queries the API so it reflects live server state.",
+      "decision_date": "05-20-26",
+      "id": 114,
+      "identifier": "DEC-116",
+      "rationale": "The database version system already exists — it is the Alembic migration chain, whose revisions are cleanly numbered (0001..0010). Surfacing current-vs-head is the natural 'what version is this DB' answer and flags pending migrations for free. The API version is single-sourced from __version__. Querying the API (not the UI's get_settings(), which only routes at startup) makes the dialog authoritative after an in-process switch.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Build /admin/connection + /admin/version introspection and a DB/API version surface (the diagnostic endpoint DEC-112 deferred)",
+      "updated_at": "2026-05-20T17:48:36.688696+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-116",
+    "entity_type": "decision",
+    "id": 419,
+    "operation": "insert",
+    "timestamp": "2026-05-20T17:48:36.689299"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-20T17:48:36.748482+00:00",
+      "id": 190,
+      "relationship": "decided_in",
+      "source_id": "DEC-115",
+      "source_type": "decision",
+      "target_id": "SES-045",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-115 -[decided_in]-> session:SES-045",
+    "entity_type": "reference",
+    "id": 420,
+    "operation": "insert",
+    "timestamp": "2026-05-20T17:48:36.749049"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-20T17:48:36.802059+00:00",
+      "id": 191,
+      "relationship": "decided_in",
+      "source_id": "DEC-116",
+      "source_type": "decision",
+      "target_id": "SES-045",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-116 -[decided_in]-> session:SES-045",
+    "entity_type": "reference",
+    "id": 421,
+    "operation": "insert",
+    "timestamp": "2026-05-20T17:48:36.802394"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-20T17:48:36.855994+00:00",
+      "id": 192,
+      "relationship": "references",
+      "source_id": "DEC-115",
+      "source_type": "decision",
+      "target_id": "DEC-110",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-115 -[references]-> decision:DEC-110",
+    "entity_type": "reference",
+    "id": 422,
+    "operation": "insert",
+    "timestamp": "2026-05-20T17:48:36.856359"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-20T17:48:36.910381+00:00",
+      "id": 193,
+      "relationship": "references",
+      "source_id": "DEC-116",
+      "source_type": "decision",
+      "target_id": "DEC-112",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-116 -[references]-> decision:DEC-112",
+    "entity_type": "reference",
+    "id": 423,
+    "operation": "insert",
+    "timestamp": "2026-05-20T17:48:36.910722"
   }
 ]
