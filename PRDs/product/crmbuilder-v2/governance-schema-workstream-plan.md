@@ -87,7 +87,7 @@ Deliberately out of scope:
 - **Build code.** The build-planning conversation that follows the six per-entity schema-design conversations produces the Product Requirements Document, implementation plan, and per-slice build prompts. This workstream stops at six schema specifications.
 - **Backfill of historical records.** Retroactive population of workstream and conversation entity records for prior workstreams and conversations (including this one) is deferred to a post-build cleanup planning item authored by the build-planning conversation. During the workstream, the session record on the append-only sessions table remains the only governance record per conversation, per DEC-013.
 - **Resolution of the nested-workstream question.** Whether a workstream can contain a sub-workstream is deferred to the workstream entity's own schema-design conversation.
-- **Resolution of the retroactive-migration mechanism.** The mechanism (how to write workstream and conversation records for past work) is deferred to a planning item authored by this conversation.
+- **Resolution of the retroactive-migration mechanism.** The mechanism (how to write workstream and conversation records for past work) is deferred to PI-022 (already authored by the predecessor scoping conversation, SES-046).
 - **Touching methodology entities.** The methodology entities (domain, entity, process, candidate Customer Relationship Management product, engagement) shipped in user-interface versions 0.4 and 0.5 remain unchanged.
 - **Touching in-flight multi-tenancy routing work.** Sessions 044 and 045 plus remaining slices are parallel; no overlap with the governance entity scope.
 - **Opening the Cleveland Business Mentors redo Phase 1 conversation.** That conversation waits on Planning Item 001 (sub-domain hierarchy amendment) in the Cleveland Business Mentors engagement, which is a separate parallel workstream.
@@ -173,7 +173,7 @@ After all six schema specifications exist, a single build-planning conversation 
 
 Build planning is *not* attempted in this workstream-establishing conversation because the schemas it would integrate do not yet exist. It is also not attempted inside each schema-design conversation because the cross-cutting concerns (migration sequencing, sidebar ordering, About bump, README update, test target, closeout, reference-vocabulary aggregation) need to be designed with all six schemas visible at once.
 
-The build-planning conversation also authors the planning item for retroactive backfill of workstream and conversation records for prior workstreams (including this one).
+The build-planning conversation also refines **PI-022** (retroactive backfill of workstream and conversation records for prior workstreams, including this one) — already authored by the predecessor scoping conversation SES-046 — into a concrete execution plan.
 
 ---
 
@@ -197,7 +197,7 @@ The bootstrap is handled this way:
 
 - During the workstream, the session record (on the existing sessions table, append-only per DEC-013) remains the only governance record per conversation. Each schema-design conversation closes out with one session record, as today.
 - The workstream itself has no database record during its lifetime. It exists in this plan and in the kickoff prompts; that is sufficient continuity for the workstream's duration.
-- Retroactive population — writing workstream and conversation records for this workstream-establishing conversation, the six schema-design conversations, and any prior workstreams worth tracking — is a planning item authored by the build-planning conversation. It runs as post-build cleanup, after the entity types are buildable.
+- Retroactive population — writing workstream and conversation records for this workstream-establishing conversation, the six schema-design conversations, and any prior workstreams worth tracking — is tracked by **PI-022** (authored by the predecessor scoping conversation SES-046). Refinement of PI-022's resolution path (go-forward only, selective backfill, or full backfill with reconstructed outcomes) is the build-planning conversation's responsibility. It runs as post-build cleanup, after the entity types are buildable.
 - The schema-design conversations themselves design without depending on backfill ordering. The schemas must support retroactive population (records can be inserted with historical timestamps and "complete" status), but the cleanup itself is not part of this workstream's deliverable set.
 
 ---
@@ -214,9 +214,7 @@ Each per-entity schema-design conversation will record its own decisions (typica
 
 ### 8.2 Planning items
 
-This workstream-establishing conversation authors one planning item:
-
-- **Retroactive backfill of workstream and conversation records** — once the entity types are built and shipped, populate workstream and conversation records for past workstreams worth tracking (at minimum: this governance schema-design workstream, the methodology entity schema-design workstream, the user-interface version 0.4 and 0.5 workstreams). Exact scope, sequencing, and source-of-truth (kickoff prompts, session records, master plan documents) are this planning item's design responsibility. Owner: build-planning conversation. Identifier assigned at the close of this conversation.
+This workstream-establishing conversation **does not author new planning items**. The retroactive-backfill planning item is **PI-022**, authored by the predecessor scoping conversation (SES-046) with extensive description of the resolution paths to consider (go-forward only, selective backfill, full backfill with reconstructed outcomes). Refinement of PI-022 is the build-planning conversation's responsibility.
 
 Additional planning items may arise during the schema-design conversations (typically for deferred fields, deferred relationship vocabulary, or schema growth into later releases). Those are authored at each conversation's close.
 
@@ -224,7 +222,7 @@ Additional planning items may arise during the schema-design conversations (typi
 
 The session record for this workstream-establishing conversation is written at the conversation's *actual* close, through the V2 desktop New Session dialog or via the standard close-out apply script. Identifier assigned at close (working assumption: SES-047, the next identifier after SES-046).
 
-The session record captures the seed prompt verbatim, the conversational decisions reached, the artifacts produced (this plan + the methodology guide + six kickoff prompts + any new decisions + the backfill planning item), and what's in flight at conversation end (the six schema-design conversations queued up against their kickoff prompts, the build-planning conversation queued after them).
+The session record captures the seed prompt verbatim, the conversational decisions reached, the artifacts produced (this plan + the methodology guide + six kickoff prompts), and what's in flight at conversation end (the six schema-design conversations queued up against their kickoff prompts, the build-planning conversation queued after them).
 
 ### 8.4 Status
 

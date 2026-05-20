@@ -101,7 +101,7 @@ The build-planning kickoff prompt:
 - Names the six schema specifications as inputs and a Product Requirements Document, implementation plan, and per-slice build prompts as outputs.
 - Lists the cross-spec consistency check (per the spec guide's section 7.2) as the build-planning conversation's first task.
 - Names the target user-interface version as open — the build-planning conversation sets it in coordination with the active version sequence at that time.
-- Names the retroactive backfill planning item (already authored by the workstream-establishing conversation) as a build-planning concern: the build-planning conversation refines and elaborates the backfill plan, including which prior workstreams and conversations to populate and in what order.
+- Names **PI-022** (retroactive backfill of governance entity records — already authored by the predecessor scoping conversation SES-046) as a build-planning concern: the build-planning conversation refines and elaborates the backfill plan, including which prior workstreams and conversations to populate and in what order.
 
 The build-planning kickoff is drafted at the end of this conversation, after the deposit event specification is complete, so it can reference the just-finalized specification as well as the prior five.
 
