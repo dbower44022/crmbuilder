@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import OperationalError
 
+import crmbuilder_v2
 from crmbuilder_v2.access.exceptions import (
     AccessLayerError,
     ClassificationTransitionError,
@@ -24,6 +25,7 @@ from crmbuilder_v2.api.errors import (
     status_transition_handler,
 )
 from crmbuilder_v2.api.routers import (
+    admin,
     catalog,
     charter,
     crm_candidates,
@@ -48,7 +50,7 @@ from crmbuilder_v2.runtime.exceptions import EngagementExportDirError
 def create_app() -> FastAPI:
     app = FastAPI(
         title="CRMBuilder v2 — Storage System",
-        version="0.1.0",
+        version=crmbuilder_v2.__version__,
         description=(
             "REST API over the v0.1 storage system. Provides CRUD for "
             "project-management entities (charter, status, decisions, "
@@ -113,6 +115,7 @@ def create_app() -> FastAPI:
     init_meta_db_pool()
 
     app.include_router(health.router)
+    app.include_router(admin.router)
     app.include_router(engagements.router)
     app.include_router(charter.router)
     app.include_router(status.router)
@@ -133,7 +136,7 @@ def create_app() -> FastAPI:
     def root():
         return {
             "name": "crmbuilder-v2",
-            "version": "0.1.0",
+            "version": crmbuilder_v2.__version__,
             "docs": "/docs",
             "openapi": "/openapi.json",
         }

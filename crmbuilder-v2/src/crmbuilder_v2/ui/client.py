@@ -1194,6 +1194,52 @@ class StorageClient:
         )
 
     # ------------------------------------------------------------------
+    # Admin — connection introspection + in-process engagement re-routing
+    # ------------------------------------------------------------------
+
+    def connection_info(self) -> dict[str, Any]:
+        """GET /admin/connection. Report the DB the live API is bound to."""
+        result = self._request("GET", "/admin/connection")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for connection_info",
+            )
+        return result
+
+    def version_info(self) -> dict[str, Any]:
+        """GET /admin/version. API version + DB schema versions."""
+        result = self._request("GET", "/admin/version")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for version_info",
+            )
+        return result
+
+    def route_active_engagement(self, engagement_code: str) -> dict[str, Any]:
+        """POST /admin/active-engagement. Re-route the live API in-process.
+
+        Returns the post-switch connection info. Raises ``NotFoundError``
+        if the code is unknown to the meta DB, ``StorageConnectionError``
+        if the API is unreachable.
+        """
+        result = self._request(
+            "POST",
+            "/admin/active-engagement",
+            json_body={"engagement_code": engagement_code},
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for route_active_engagement",
+            )
+        return result
+
+    # ------------------------------------------------------------------
     # References (full list)
     # ------------------------------------------------------------------
 

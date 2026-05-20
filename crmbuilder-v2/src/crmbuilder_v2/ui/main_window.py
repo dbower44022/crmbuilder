@@ -339,6 +339,11 @@ class MainWindow(QMainWindow):
         file_menu.addAction(quit_action)
 
         help_menu = menu_bar.addMenu("&Help")
+        connection_action = QAction("&Connection Info…", self)
+        connection_action.triggered.connect(self._on_connection_info_triggered)
+        help_menu.addAction(connection_action)
+        self._connection_info_action = connection_action
+        help_menu.addSeparator()
         about_action = QAction("&About", self)
         about_action.triggered.connect(self._on_about_triggered)
         help_menu.addAction(about_action)
@@ -346,6 +351,13 @@ class MainWindow(QMainWindow):
 
     def _on_about_triggered(self) -> None:
         AboutDialog(parent=self).exec()
+
+    def _on_connection_info_triggered(self) -> None:
+        from crmbuilder_v2.ui.connection_info_dialog import ConnectionInfoDialog
+
+        ConnectionInfoDialog(
+            self._client, self._active_context, parent=self
+        ).exec()
 
     # ------------------------------------------------------------------
     # v0.5 slice D — engagement picker + activation orchestration
@@ -445,9 +457,25 @@ class MainWindow(QMainWindow):
         )
         overlay.stay_requested.connect(overlay.close)
         overlay.show()
+        worker.completed.connect(self._on_activation_completed)
         self._activation_overlay = overlay
         self._activation_thread = run_activation_in_thread(worker, parent=self)
         self._activation_worker = worker
+
+    def _on_activation_completed(self, _engagement) -> None:
+        """Engagement switch finished: the live API is now bound to the new
+        engagement's DB. Refresh the visible panel and mark the rest stale
+        so they re-fetch from the new DB when next navigated to."""
+        current = self._sidebar.current_text()
+        for entry, index in self._pages_by_entry.items():
+            page = self._stack.widget(index)
+            if not isinstance(page, ListDetailPanel):
+                continue
+            if entry == current:
+                page.refresh()
+            else:
+                self._stale_entries.add(entry)
+                self._sidebar.set_stale(entry, True)
 
     def _on_picker_manage_requested(self) -> None:
         """Picker footer clicked: navigate to the Engagements panel."""

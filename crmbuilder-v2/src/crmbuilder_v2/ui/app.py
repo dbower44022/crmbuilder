@@ -397,7 +397,7 @@ def main(argv: list[str] | None = None) -> int:
     # kill/relaunch through the same lifecycle the rest of the UI uses.
     from crmbuilder_v2.ui.activation_worker import build_lifecycle_managers
 
-    managers = build_lifecycle_managers(lifecycle)
+    managers = build_lifecycle_managers(lifecycle, client)
     window = MainWindow(
         lifecycle=lifecycle,
         client=client,

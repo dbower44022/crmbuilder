@@ -30,6 +30,7 @@ from crmbuilder_v2.migration.lazy_migration import (
     engagement_db_path,
     run_engagement_migrations,
 )
+from crmbuilder_v2.ui.exceptions import StorageConnectionError
 
 _log = logging.getLogger("crmbuilder_v2.ui.activation_worker")
 
@@ -44,11 +45,11 @@ STEP_DESCRIPTIONS: tuple[str, ...] = (
     "Preparing…",
     "Verifying engagement is reachable…",
     "Upgrading engagement database…",
-    "Stopping API server…",
+    "Preparing engagement switch…",
     "Stopping MCP server…",
     "Saving active engagement state…",
     "Updating engagement context…",
-    "Starting API server…",
+    "Connecting to engagement database…",
     "Starting MCP server…",
     "Recording last-opened timestamp…",
     "Notifying panels…",
@@ -348,20 +349,30 @@ def run_activation_in_thread(
 # ---------------------------------------------------------------------------
 
 
-def build_lifecycle_managers(lifecycle) -> SubprocessManagers:
+def build_lifecycle_managers(lifecycle, client=None) -> SubprocessManagers:
     """Build a :class:`SubprocessManagers` bundle from a ``ServerLifecycle``.
 
+    Engagement switching re-routes the *live* API process in place rather
+    than killing and relaunching it. The API binds to one engagement's DB
+    at spawn time (env var + lru-cached ``Settings``), so switching means
+    asking the running server to reset its caches against the new DB via
+    ``POST /admin/active-engagement``. This works whether the API is
+    UI-owned or run externally (``crmbuilder-v2-api &``) — the old
+    kill/relaunch path could not touch an externally-launched API the UI
+    does not own, which is why switching appeared to do nothing.
+
+    When ``client`` is ``None`` (or the live API is unreachable) the bundle
+    falls back to the legacy kill-and-relaunch behavior so a crashed or
+    not-yet-spawned API still recovers.
+
     The MCP hooks are no-ops in v0.5 because the v2 MCP server is stdio-
-    based and not yet under desktop-side process control. Slice D's
-    architecture leaves the placeholder explicit so a future MCP
-    lifecycle (post-PI-017) can swap in without touching the worker.
+    based and not yet under desktop-side process control.
 
     ``ServerLifecycle`` owns ``QProcess`` and ``QTimer`` children, which
     can only be safely manipulated from the thread that created them.
-    ``ActivationWorker`` runs on a QThread, so the kill/launch hooks
-    marshal the underlying lifecycle calls back to the lifecycle's
-    owning thread via ``BlockingQueuedConnection``. The worker still
-    blocks until the call returns, preserving the step sequencing.
+    ``ActivationWorker`` runs on a QThread, so the spawn-fallback hooks
+    marshal the underlying lifecycle calls back to the lifecycle's owning
+    thread via ``BlockingQueuedConnection``.
     """
 
     def _invoke_on_owner(method_name: str) -> None:
@@ -375,8 +386,20 @@ def build_lifecycle_managers(lifecycle) -> SubprocessManagers:
             Qt.ConnectionType.BlockingQueuedConnection,
         )
 
+    def _spawn_api(db_path: Path) -> None:
+        # Legacy kill-and-relaunch fallback. ``ServerLifecycle.start``
+        # resets stale process state itself, so no separate kill is needed
+        # here. Used when no client is wired or the live API is down.
+        os.environ["CRMBUILDER_V2_DB_PATH"] = str(db_path)
+        _invoke_on_owner("start")
+        _poll_api_health(lifecycle, deadline_seconds=_API_HEALTH_TOTAL_TIMEOUT)
+
     def _kill_api() -> None:
-        _invoke_on_owner("terminate")
+        # In-process re-route keeps the same API process and rebinds it to
+        # the new DB, so there is nothing to kill. Only the no-client
+        # fallback terminates (then _launch_api respawns).
+        if client is None:
+            _invoke_on_owner("terminate")
 
     def _kill_mcp() -> None:
         # No MCP process under desktop control in v0.5; the user runs
@@ -384,10 +407,24 @@ def build_lifecycle_managers(lifecycle) -> SubprocessManagers:
         return None
 
     def _launch_api(db_path: Path) -> None:
-        # Set the env var the new spawn reads so the new API binds to
-        # the activated engagement's DB.
+        # Keep the env var current so any later spawn binds correctly.
         os.environ["CRMBUILDER_V2_DB_PATH"] = str(db_path)
-        _invoke_on_owner("start")
+        if client is None:
+            _spawn_api(db_path)
+            return
+        # ``engagement_db_path`` names the file ``{code}.db``, so the stem
+        # is the canonical engagement code.
+        engagement_code = db_path.stem
+        try:
+            client.route_active_engagement(engagement_code)
+        except StorageConnectionError:
+            _log.info(
+                "Re-route failed (API unreachable); spawning a fresh API "
+                "bound to %s",
+                db_path,
+            )
+            _spawn_api(db_path)
+            return
         _poll_api_health(lifecycle, deadline_seconds=_API_HEALTH_TOTAL_TIMEOUT)
 
     def _launch_mcp(_db_path: Path) -> None:
