@@ -10439,5 +10439,35 @@
     "id": 415,
     "operation": "insert",
     "timestamp": "2026-05-19T21:10:06.695699"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-19T21:10:06.260186",
+      "description": "Two bugs surfaced during the 05-19-26 SES-001 paper-test apply attempt are addressed by a single workstream because they share a root cause (v0.5 slice D wired multi-tenancy at the DB-write path but missed two adjacent paths) and a single fix shape (extract resolve_active_engagement + route_settings_to_engagement helpers; centralized assert_export_dir_ready gate at all active export-write sites). Bug 1: API startup ignores current_engagement.json and connects to the post-migration empty v2.db, returning 'no such table: sessions' on every request — cli.py:run_api never reads the marker file; UI-launched API works only because ui/app.py:_route_api_at_active_engagement inlines the env-var-set + cache-reset pattern before spawning the API subprocess. Bug 2: export hook writes snapshots against the engine-repo default Settings.export_dir regardless of active engagement; under any non-CRMBUILDER engagement, writes silently clobber CRMBUILDER's PRDs/product/crmbuilder-v2/db-export/. Same gap exists in force_export() and the catalog exporter. Scope per the slice plan at PRDs/product/crmbuilder-v2/multi-tenancy-routing-fix-slice-plan.md: two slices (A backend, B UI). Slice A extracts the helpers, adds the CRMBUILDER_V2_EXPORT_DIR env var to Settings, adds the --engagement <code> CLI flag, wires cli.py:run_api to fail loud on no active engagement (per DEC-108), applies the assert_export_dir_ready gate at session_scope and force_export and the catalog exporter (per DEC-113), investigates and fixes bootstrap/migrate.py:64 per its scoping. Slice B refactors ui/app.py:_route_api_at_active_engagement and ui/active_engagement_context.py to use the shared helpers, surfaces the new failure conditions to operators via warning bands on Open Engagement (yellow for null export_dir, red for missing-on-disk), Edit Engagement dialog visual emphasis, about_dialog '(not configured)' / '(missing)' display, error-dialog handling for the new exceptions, and pytest-qt integration tests across a two-engagement state. The decisions captured at SES-044 are DEC-108 through DEC-114; they set out fresh-install behavior, missing-export_dir behavior, plumbing model, CLI flag inclusion, /admin/runtime-info deferral, centralized-gate scope, and fail-loud-on-missing-disk-path policy. Deferred from this workstream: cross-engagement references, snapshot replay/restore, engagement deletion, /admin/runtime-info diagnostic API endpoint (DEC-112; possibly opens as a follow-on PI if a real need arises). Discharge: slice B's commit lands; this PI moves to Closed (resolved) via the desktop UI's planning-items panel or a direct API write.",
+      "id": 21,
+      "identifier": "PI-021",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Resolved",
+      "title": "Complete v0.5 multi-tenancy routing: API startup engagement resolution + per-engagement export_dir",
+      "updated_at": "2026-05-20T17:10:57.272253+00:00"
+    },
+    "before_payload": {
+      "created_at": "2026-05-19T21:10:06.260186",
+      "description": "Two bugs surfaced during the 05-19-26 SES-001 paper-test apply attempt are addressed by a single workstream because they share a root cause (v0.5 slice D wired multi-tenancy at the DB-write path but missed two adjacent paths) and a single fix shape (extract resolve_active_engagement + route_settings_to_engagement helpers; centralized assert_export_dir_ready gate at all active export-write sites). Bug 1: API startup ignores current_engagement.json and connects to the post-migration empty v2.db, returning 'no such table: sessions' on every request — cli.py:run_api never reads the marker file; UI-launched API works only because ui/app.py:_route_api_at_active_engagement inlines the env-var-set + cache-reset pattern before spawning the API subprocess. Bug 2: export hook writes snapshots against the engine-repo default Settings.export_dir regardless of active engagement; under any non-CRMBUILDER engagement, writes silently clobber CRMBUILDER's PRDs/product/crmbuilder-v2/db-export/. Same gap exists in force_export() and the catalog exporter. Scope per the slice plan at PRDs/product/crmbuilder-v2/multi-tenancy-routing-fix-slice-plan.md: two slices (A backend, B UI). Slice A extracts the helpers, adds the CRMBUILDER_V2_EXPORT_DIR env var to Settings, adds the --engagement <code> CLI flag, wires cli.py:run_api to fail loud on no active engagement (per DEC-108), applies the assert_export_dir_ready gate at session_scope and force_export and the catalog exporter (per DEC-113), investigates and fixes bootstrap/migrate.py:64 per its scoping. Slice B refactors ui/app.py:_route_api_at_active_engagement and ui/active_engagement_context.py to use the shared helpers, surfaces the new failure conditions to operators via warning bands on Open Engagement (yellow for null export_dir, red for missing-on-disk), Edit Engagement dialog visual emphasis, about_dialog '(not configured)' / '(missing)' display, error-dialog handling for the new exceptions, and pytest-qt integration tests across a two-engagement state. The decisions captured at SES-044 are DEC-108 through DEC-114; they set out fresh-install behavior, missing-export_dir behavior, plumbing model, CLI flag inclusion, /admin/runtime-info deferral, centralized-gate scope, and fail-loud-on-missing-disk-path policy. Deferred from this workstream: cross-engagement references, snapshot replay/restore, engagement deletion, /admin/runtime-info diagnostic API endpoint (DEC-112; possibly opens as a follow-on PI if a real need arises). Discharge: slice B's commit lands; this PI moves to Closed (resolved) via the desktop UI's planning-items panel or a direct API write.",
+      "id": 21,
+      "identifier": "PI-021",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Open",
+      "title": "Complete v0.5 multi-tenancy routing: API startup engagement resolution + per-engagement export_dir",
+      "updated_at": "2026-05-19T21:10:06.260190"
+    },
+    "entity_identifier": "PI-021",
+    "entity_type": "planning_item",
+    "id": 416,
+    "operation": "update",
+    "timestamp": "2026-05-20T17:10:57.272662"
   }
 ]

@@ -226,8 +226,8 @@
     "identifier": "PI-021",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Complete v0.5 multi-tenancy routing: API startup engagement resolution + per-engagement export_dir",
-    "updated_at": "2026-05-19T21:10:06.260190"
+    "updated_at": "2026-05-20T17:10:57.272253"
   }
 ]
