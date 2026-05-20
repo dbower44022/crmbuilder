@@ -33,7 +33,6 @@ from crmbuilder_v2.bootstrap.parsers.charter import parse_charter
 from crmbuilder_v2.bootstrap.parsers.decisions import parse_decisions
 from crmbuilder_v2.bootstrap.parsers.sessions import parse_sessions
 from crmbuilder_v2.bootstrap.parsers.status import parse_status
-from crmbuilder_v2.config import get_settings
 
 
 @dataclass
@@ -56,12 +55,18 @@ class MigrationSummary:
 
 
 def default_source_dir() -> Path:
-    """Return the canonical source directory for the bootstrap content."""
-    settings = get_settings()
-    # config.py guarantees ``export_dir`` resolves to
-    # ``<repo>/PRDs/product/crmbuilder-v2/db-export``; the bootstrap source
-    # is the parent (``<repo>/PRDs/product/crmbuilder-v2``).
-    return settings.export_dir.parent
+    """Return the canonical source directory for the bootstrap content.
+
+    Engine-scoped: the v0.1 governance markdown lives in the engine
+    repo at ``<repo>/PRDs/product/crmbuilder-v2``, regardless of which
+    engagement is active. Derived from ``__file__`` rather than
+    ``settings.export_dir.parent`` so a routed engagement's export_dir
+    (e.g. a client repo) never redirects the bootstrap import. Not an
+    active export-write path, so no ``assert_export_dir_ready`` gate.
+    """
+    # migrate.py is at <repo>/crmbuilder-v2/src/crmbuilder_v2/bootstrap/migrate.py
+    repo_root = Path(__file__).resolve().parents[4]
+    return repo_root / "PRDs" / "product" / "crmbuilder-v2"
 
 
 def migrate(source_dir: Path) -> MigrationSummary:

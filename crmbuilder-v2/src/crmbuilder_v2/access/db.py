@@ -89,6 +89,7 @@ def session_scope(
         promote_staging,
         write_staging,
     )
+    from crmbuilder_v2.runtime.engagement_routing import assert_export_dir_ready
 
     s = settings or get_settings()
     factory = get_session_factory(s)
@@ -98,6 +99,7 @@ def session_scope(
         yield session
         session.flush()
         if export:
+            assert_export_dir_ready(s)
             snapshot = build_snapshot(session)
             staging = write_staging(snapshot, s.export_dir)
         session.commit()
@@ -128,8 +130,10 @@ def force_export(settings: Settings | None = None) -> None:
         promote_staging,
         write_staging,
     )
+    from crmbuilder_v2.runtime.engagement_routing import assert_export_dir_ready
 
     s = settings or get_settings()
+    assert_export_dir_ready(s)
     factory = get_session_factory(s)
     session = factory()
     try:

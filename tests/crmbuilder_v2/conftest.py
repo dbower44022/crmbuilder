@@ -23,6 +23,9 @@ from crmbuilder_v2.config import get_settings, reset_settings_cache
 def v2_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     db = tmp_path / "v2.db"
     export = tmp_path / "db-export"
+    # The export-write gate (DEC-114) requires the configured root to
+    # exist on disk; create it before any export runs.
+    export.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("CRMBUILDER_V2_DB_PATH", str(db))
     monkeypatch.setenv("CRMBUILDER_V2_EXPORT_DIR", str(export))
     reset_settings_cache()

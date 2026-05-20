@@ -54,8 +54,16 @@ def is_suppressed() -> bool:
 
 
 def catalog_export_dir(settings: Settings | None = None) -> Path:
-    """Return ``{settings.export_dir}/catalog/entities``."""
+    """Return ``{settings.export_dir}/catalog/entities``.
+
+    Gated by ``assert_export_dir_ready`` like ``session_scope`` so a
+    catalog write under an engagement with no configured (or missing)
+    export_dir fails loud instead of clobbering the engine default.
+    """
+    from crmbuilder_v2.runtime.engagement_routing import assert_export_dir_ready
+
     s = settings or get_settings()
+    assert_export_dir_ready(s)
     return s.export_dir / "catalog" / "entities"
 
 
