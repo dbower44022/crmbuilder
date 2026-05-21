@@ -32,6 +32,7 @@ and otherwise out of scope for this gap analysis.
 | 04-13-26 22:00 | Initial gap analysis covering Categories 1–10 from MR pilot Manual Configuration findings. |
 | 05-03-26 14:00 | Added Category 6 Part D — Panel and layout visibility by role. Captures gap raised during yaml-v1.1 deployment review: panel-level `visibleWhen:` (Section 7.3) cannot reference user role, and layouts cannot be scoped to roles. Proposes role-aware leaf clauses in Section 11 (Part D.1) and `forRoles:` on layout declarations (Part D.2). Targeted for v1.2 alongside Parts A–C. |
 | 05-03-26 14:15 | Retitled Category 6 from "Field-Level Access Control" to "Role-Based Access Control" to reflect that Part A (Roles declaration) and Part D (panel/layout role visibility) extend beyond field level. Summary table description updated accordingly. No external references affected — other documents reference Category 6 by number, not title. |
+| 05-20-26 21:18 | Option C reordering: Category 6 split between v1.2 (scope-level access + teams) and v1.3 (field-level access + presets). Parts restructured for v1.2 — A: Roles declaration; B: Teams declaration (new); C: Scope-level entity access (new); D: System permissions (new); E: Panel/layout role-aware visibility (was Part D). Old Parts B and C (field-level permissions, permission presets) deferred to v1.3. Q2 amended — dedicated file renamed `programs/security.yaml` to reflect roles + teams scope. Q3 amended — presets deferred to v1.3. Q7 and Q8 added (assignments-as-runtime-data; whitelist `scope_access:` semantics). Rationale: scope-level access and teams are universal to every role and translate directly to target-CRM primitives; field-level requires additional pilot input as the original plan noted. |
 
 ---
 
@@ -638,51 +639,269 @@ The MANUAL-CONFIG entry on MR-MC-AC-002 explicitly notes neither
 piece is expressible in YAML v1.0. Both deserve careful design
 across at least one more pilot domain before commitment.
 
-### Proposed YAML capability — three parts
+### Scope split — v1.2 versus v1.3
 
-#### Part A — Roles declaration (prerequisite)
+Category 6 is split across two schema versions following the
+05-20-26 reordering decision (see change log). The split is
+driven by universality and design maturity:
 
-A dedicated roles file applied before any domain file. Each role
-maps to one or more Master PRD personas.
+- **v1.2 scope.** Roles declaration, Teams declaration,
+  scope-level entity access (CRUD per role at all/team/own/no),
+  system permissions (Assignment Permission, Export, Mass
+  Update, etc.), and role-aware panel/layout visibility. These
+  are universal to every role in every domain and translate
+  directly to the target CRM's role/team primitives without
+  needing condition-expression infrastructure.
+- **v1.3 scope.** Field-level read/edit permissions and
+  permission presets. These cover the asymmetric and
+  state-dependent cases (MR-MC-AC-001/002 are the canonical
+  examples) and benefit from additional pilot data on how
+  field-level needs actually distribute across domains.
+
+The MR-pilot's two access-control items (MR-MC-AC-001/002) are
+field-level concerns and remain on the MANUAL CONFIGURATION list
+through the v1.2 release. v1.2 enables a meaningfully better
+Mentor role definition (no longer "sees everything"), but the
+ten admin-only fields still require post-deployment configuration
+in the target CRM until v1.3 lands.
+
+### Proposed YAML capability — five parts for v1.2
+
+#### Part A — Roles declaration
+
+A dedicated security file applied before any domain program file.
+Each role maps to one or more Master PRD personas.
 
 ```yaml
-# programs/roles.yaml — applied before any domain program file
+# programs/security.yaml — applied before any domain program file
 roles:
-  - id: mentor-administrator
-    name: "Mentor Administrator"
+  - name: "Mentor Administrator"
     persona: MST-PER-005
     description: >
       Manages mentor recruitment, onboarding, and lifecycle.
       Owns acceptance, background check, and decline workflows.
 
-  - id: mentor
-    name: "Mentor"
+  - name: "Mentor"
     persona: MST-PER-011
     description: >
       Active mentor with self-service edit access to public-facing
       profile fields when their mentorStatus is Active.
 
-  - id: system-administrator
-    name: "System Administrator"
+  - name: "System Administrator"
     persona: MST-PER-001
 ```
 
-#### Part B — Field-level permissions
+Role identity is the `name` — there is no separate ID. This
+matches the target CRM's role-naming convention and keeps
+references human-readable everywhere. Personas are documentation
+metadata; they hint at provenance but do not affect deployment.
+
+#### Part B — Teams declaration
+
+Teams group users for the purpose of team-level access scope on
+records. Membership is runtime data (managed in the target CRM
+UI, not in YAML — see Q7 below).
+
+```yaml
+teams:
+  - name: "Mentors"
+    description: >
+      All active mentors. Used for team-level visibility on
+      mentoring records.
+
+  - name: "Administrators"
+    description: >
+      Staff with operational oversight of the program.
+
+  - name: "Fundraising"
+    description: >
+      Staff handling contributions, dues, and donor relations.
+```
+
+#### Part C — Scope-level entity access
+
+Each role declares which entities it can touch and at what scope.
+Entities not listed in `scope_access:` are denied at every action
+(whitelist model — anything not granted is denied; see Q8).
+
+```yaml
+roles:
+  - name: "Mentor"
+    scope_access:
+      c-Engagement:
+        create: no
+        read:   own
+        edit:   own
+        delete: no
+        stream: own
+
+      c-Session:
+        create: yes
+        read:   own
+        edit:   own
+        delete: no
+        stream: own
+
+      Contact:
+        create: no
+        read:   team
+        edit:   no
+        delete: no
+        stream: team
+
+      Account:
+        create: no
+        read:   team
+        edit:   no
+        delete: no
+        stream: no
+```
+
+**Vocabulary.** `create` is `yes` or `no` only — the target CRM
+treats create as a boolean. `read`, `edit`, `delete`, and `stream`
+each take `all`, `team`, `own`, or `no`. The validator enforces
+the per-action enum.
+
+**YAML boolean coercion.** YAML 1.1 loaders parse bare `no` as
+boolean `false`. The loader normalizes both `no` and `"no"` to
+the same denial value at parse time; operators can write either,
+though the schema spec will recommend bare forms for readability.
+
+**Whitelist semantics.** Omission denies. A role with no
+`scope_access:` block has no entity access at all. This is
+intentional: it forces explicit grants and prevents accidental
+over-permissioning when entities are added in later YAML files.
+
+#### Part D — System permissions
+
+Each role declares system-level (non-entity) permissions. These
+are the role controls that affect the entire instance rather than
+a single entity.
+
+```yaml
+roles:
+  - name: "Mentor"
+    system_permissions:
+      assignment_permission: own
+      user_permission:       team
+      export:                no
+      mass_update:           no
+      audit_log:             no
+```
+
+**Vocabulary.** `assignment_permission` and `user_permission`
+take `all`/`team`/`own`/`no`. The flag-style permissions
+(`export`, `mass_update`, `audit_log`, and similar) take `yes`
+or `no`. The full enumerated list of system permissions ships
+with the v1.2 schema spec; the validator rejects unrecognized
+keys.
+
+#### Part E — Panel and layout visibility by role
+
+**Source.** Pilot question raised during yaml-v1.1 deployment
+review (05-03-26): can a panel of fields be hidden entirely
+based on the viewing user's role, rather than declaring
+`permissions:` on every individual field in the panel?
+
+**Current gap.** Schema v1.1 Section 7.3 panel-level
+`visibleWhen:` uses the Section 11 condition expression, whose
+leaf clauses reference fields on the record being evaluated.
+There is no operator that references the current user's role,
+so panels cannot be hidden by role. The same gap applies at
+the layout level — there is no way to declare "this layout for
+these roles, that layout for those roles" in YAML. Both
+situations currently fall back to post-deployment manual
+configuration in the target CRM.
+
+**Proposed YAML capability — two parts.**
+
+**Part E.1 — Role-aware leaf clauses in Section 11.** Extend
+the shared condition expression to accept a `role:` leaf clause
+alongside the existing `field:` form:
+
+```yaml
+# Shorthand — single role
+visibleWhen:
+  - { role: equals, value: "Mentor Administrator" }
+
+# Set of roles
+visibleWhen:
+  - { role: in, value: ["Mentor Administrator", "System Administrator"] }
+
+# Compound — role OR record state
+visibleWhen:
+  any:
+    - { role: in, value: ["Mentor Administrator", "System Administrator"] }
+    - { field: mentorStatus, op: equals, value: "Active" }
+```
+
+This form is available everywhere `visibleWhen:` is used (panel
+level and field level) and reuses the existing `equals`,
+`notEquals`, `in`, `notIn` operators. Other Section 11 consumers
+(saved view `filter:`, workflow `where:`, aggregate `where:`)
+are out of scope for `role:` since they evaluate against records,
+not viewing context.
+
+**Part E.2 — Layout-level role scoping.** Allow a layout
+declaration to specify which roles see it:
+
+```yaml
+layouts:
+  - name: detail
+    forRoles: ["Mentor Administrator", "System Administrator"]
+    panels:
+      - label: "Administrative"
+        rows: [...]
+
+  - name: detail
+    forRoles: ["Mentor"]
+    panels:
+      - label: "My Profile"
+        rows: [...]
+```
+
+When `forRoles:` is omitted, the layout applies to all roles
+(current behavior).
+
+**Relationship to Parts A–D.** Part E depends on Part A (Roles
+declaration must exist before role names can be referenced).
+Part E is independent of Part C (scope-level access) — a panel
+hidden by role-based visibility is a UX concern, not a security
+boundary, and the underlying record may still be accessible via
+API to the role in question.
+
+**Implementation note.** Target-CRM mappings differ. Some CRMs
+express role-based panel visibility through dynamic-logic
+expressions that include user attributes; others do it through
+per-role layout assignment. The deploy manager hides the
+difference, but the loader must validate that any `role:` name
+referenced exists in the roles declaration before deployment.
+
+### Deferred to v1.3 — field-level permissions and presets
+
+The original v1.2 plan (pre-05-20-26 reordering) included
+field-level read/edit permissions and named permission presets.
+These remain valid design proposals but ship in v1.3 to allow
+additional pilot input on field-level access patterns across
+domains.
+
+#### Deferred Part — Field-level permissions (was Part B)
 
 Add an optional `permissions:` clause to any field. Each role
 listed gets `read` and `edit` settings, each of which is `yes`,
-`no`, or a condition expression (the same construct from Categories
-3–5). Roles not listed inherit the entity's default permissions.
+`no`, or a condition expression (the same construct from
+Categories 3–5). Roles not listed inherit the entity's default
+permissions.
 
 ```yaml
 # Static admin-only field (MR-MC-AC-001 pattern)
 - name: backgroundCheckCompleted
   type: bool
   permissions:
-    mentor-administrator:
+    "Mentor Administrator":
       read: yes
       edit: yes
-    mentor:
+    "Mentor":
       read: no
       edit: no
 
@@ -690,25 +909,25 @@ listed gets `read` and `edit` settings, each of which is `yes`,
 - name: professionalBio
   type: text
   permissions:
-    mentor:
+    "Mentor":
       read: yes
       edit:
         - { field: mentorStatus, op: equals, value: "Active" }
-    # mentor-administrator inherits entity defaults (full access)
+    # Mentor Administrator inherits entity defaults
 ```
 
-#### Part C — Permission presets
+#### Deferred Part — Permission presets (was Part C)
 
-Named bundles declared once, referenced per field by name to avoid
-repeating the same `permissions:` block on twenty fields.
+Named bundles declared once, referenced per field by name to
+avoid repeating the same `permissions:` block on twenty fields.
 
 ```yaml
 permissionPresets:
   admin-only:
-    mentor-administrator: { read: yes, edit: yes }
-    mentor:                { read: no,  edit: no  }
+    "Mentor Administrator": { read: yes, edit: yes }
+    "Mentor":                { read: no,  edit: no  }
   mentor-editable-when-active:
-    mentor:
+    "Mentor":
       read: yes
       edit:
         - { field: mentorStatus, op: equals, value: "Active" }
@@ -723,149 +942,92 @@ permissionPresets:
   permissions: mentor-editable-when-active
 ```
 
-#### Part D — Panel and layout visibility by role
-
-**Source.** Pilot question raised during yaml-v1.1 deployment
-review (05-03-26): can a panel of fields be hidden entirely based
-on the viewing user's role, rather than declaring `permissions:`
-on every individual field in the panel?
-
-**Current gap.** Schema v1.1 Section 7.3 panel-level `visibleWhen:`
-uses the Section 11 condition expression, whose leaf clauses
-reference fields on the record being evaluated. There is no
-operator that references the current user's role, so panels
-cannot be hidden by role. The same gap applies at the layout
-level — there is no way to declare "this layout for these roles,
-that layout for those roles" in YAML. Both situations currently
-fall back to post-deployment manual configuration in the target
-CRM.
-
-**Proposed YAML capability — two parts.**
-
-**Part D.1 — Role-aware leaf clauses in Section 11.** Extend the
-shared condition expression to accept a `role:` leaf clause
-alongside the existing `field:` form:
-
-```yaml
-# Shorthand — single role
-visibleWhen:
-  - { role: equals, value: "mentor-administrator" }
-
-# Set of roles
-visibleWhen:
-  - { role: in, value: [mentor-administrator, system-administrator] }
-
-# Compound — role OR record state
-visibleWhen:
-  any:
-    - { role: in, value: [mentor-administrator, system-administrator] }
-    - { field: mentorStatus, op: equals, value: "Active" }
-```
-
-This form is available everywhere `visibleWhen:` is used (panel
-level and field level) and reuses the existing `equals`,
-`notEquals`, `in`, `notIn` operators. Other Section 11 consumers
-(saved view `filter:`, workflow `where:`, aggregate `where:`)
-are out of scope for `role:` since they evaluate against records,
-not viewing context.
-
-**Part D.2 — Layout-level role scoping.** Allow a layout
-declaration to specify which roles see it:
-
-```yaml
-layouts:
-  - name: detail
-    forRoles: [mentor-administrator, system-administrator]
-    panels:
-      - label: "Administrative"
-        rows: [...]
-
-  - name: detail
-    forRoles: [mentor]
-    panels:
-      - label: "My Profile"
-        rows: [...]
-```
-
-When `forRoles:` is omitted, the layout applies to all roles
-(current behavior).
-
-**Relationship to Parts A–C.** Part D depends on Part A (Roles
-declaration must exist before role IDs can be referenced). Part D
-does not replace Part B — field-level `permissions:` remain the
-right tool for read/edit asymmetry on individual fields, while
-Part D is the right tool for hiding whole panels or swapping
-whole layouts.
-
-**Implementation note.** Target-CRM mappings differ. Some CRMs
-express role-based panel visibility through dynamic-logic
-expressions that include user attributes; others do it through
-per-role layout assignment. The deploy manager hides the
-difference, but the loader must validate that any `role:` ID
-referenced exists in the roles declaration before deployment.
-
-**Open questions / decisions to record at design time.**
-
-- **Q4:** Should `role:` be a separate leaf-clause discriminator
-  (`role:` vs `field:`) or a reserved field name (`field: $role`)?
-  Separate discriminator is clearer; reserved name is more
-  uniform with the existing parser. Recommendation: separate
-  discriminator.
-- **Q5:** Does `forRoles:` on a layout need a fallback layout for
-  roles not listed, or is omission an error caught by the
-  loader? Recommendation: loader error — every role must resolve
-  to exactly one layout per layout name.
-- **Q6:** Should Part D ship in v1.2 alongside Parts A–C, or be
-  staged separately? Recommendation: ship together — Part A is
-  the prerequisite for both, and pilot users will hit Part D
-  needs the moment they try to use Part B at scale.
-
 ### Implementation considerations
 
-- The deploy manager needs CHECK→ACT paths for both Roles and
-  field-level permissions. Role creation/update is a new
-  entity-class operation, parallel to fields and relationships.
-- Roles must exist before any field references them; the loader
-  validates this and orders deployment accordingly. Dedicated
-  roles file applied first per Q2.
-- Persona IDs (MST-PER-*) must match those defined in the Master
-  PRD. The loader can optionally validate against a known list,
-  though this means reading outside the immediate program file.
-- State-dependent edit rules (Part B condition expressions)
-  translate to the target CRM's record-level access mechanism.
-  Some CRMs handle this natively; others need scripting. The
-  deploy manager hides the difference.
-- `permissionPresets:` is a YAML-only convenience — it expands to
-  inline `permissions:` blocks at load time. The CRM never sees
-  the preset name.
-- This category deserves a dedicated Phase 9 session prompt or
+- The deploy manager needs CHECK→ACT paths for Roles, Teams,
+  scope-level entity access (per role × per entity), and system
+  permissions. Each is a new entity-class operation, parallel
+  to fields and relationships.
+- Roles and Teams must exist before any field or scope grant
+  references them; the loader validates this and orders
+  deployment accordingly. Dedicated `programs/security.yaml`
+  file applied first per Q2.
+- Persona IDs (MST-PER-*) must match those defined in the
+  Master PRD. The loader can optionally validate against a
+  known list, though this means reading outside the immediate
+  program file.
+- User-to-role and user-to-team assignments are **not** in
+  YAML scope. They are runtime data managed in the target CRM
+  UI. This decision (per Q7 below) is consistent with the
+  industry pattern of treating IAM policy as code and identity
+  membership as runtime state.
+- The target CRM's REST API exposes Role and Team as
+  first-class entities (`/api/v1/Role`, `/api/v1/Team`), so
+  scope-level access deploys via the same API-only pipeline
+  as fields and relationships. Field-level access (deferred
+  to v1.3) deploys against the same Role endpoint but extends
+  the role payload with field-permission maps.
+- State-dependent edit rules (deferred field-level permissions
+  with condition expressions) translate to the target CRM's
+  record-level access mechanism. Some CRMs handle this
+  natively; others need scripting. The deploy manager hides
+  the difference.
+- `permissionPresets:` (deferred) is a YAML-only convenience —
+  it expands to inline `permissions:` blocks at load time. The
+  CRM never sees the preset name.
+- This category deserves a dedicated session prompt or
   interview rather than a sub-decision inside a broader YAML
   generation conversation.
 
 ### Recommended priority
 
-**Could** for v1.1; **Should** for v1.2 once Roles is designed
-across a second pilot domain.
+**Must** for v1.2 (Parts A–E): roles, teams, scope-level access,
+system permissions, and role-aware visibility together enable
+the first meaningfully complete role definition in YAML. Without
+scope-level access, every role today either sees all entities
+or none — there is no way to express "Mentor sees engagements
+and sessions but not contributions."
 
-The reasoning: this category is meaningfully more complex than
-Categories 1–5, requires a brand-new top-level concept (Roles), and
-the MR pilot's two access-control items are specific enough to
-remain Manual Configuration for one more pilot cycle without
-serious pain. Better to design Roles thoughtfully against a future
-MN, CR, or FU pilot than to rush a Mentor-Administrator-only
-design now.
+**Should** for v1.3 (deferred field-level + presets): completes
+the asymmetric and state-dependent cases. The MR-pilot items
+remain Manual Configuration until v1.3 ships.
 
 ### Open questions / decisions recorded
 
-- **Q1 (resolved):** Defer to v1.2. The two MR-pilot items remain
-  on the Manual Configuration list for the immediate next pilot
-  cycle. Roles capability designed in conjunction with another
-  domain's pilot, then this category lands together.
-- **Q2 (resolved):** Roles location — dedicated roles file
-  (`programs/roles.yaml`), applied before any domain program file.
-- **Q3 (resolved):** Permission presets supported from the start.
-  Twenty fields in the MR pilot alone already justify the
-  facility.
+- **Q1 (resolved 04-13-26; amended 05-20-26):** Defer to v1.2.
+  The two MR-pilot items remain on the Manual Configuration
+  list. **Amended:** category split — Parts A–E land in v1.2;
+  old Parts B–C (field-level and presets) land in v1.3.
+- **Q2 (resolved 04-13-26; amended 05-20-26):** Security
+  configuration location — dedicated file at
+  `programs/security.yaml` (renamed from the original
+  `programs/roles.yaml` to reflect roles + teams scope),
+  applied before any domain program file.
+- **Q3 (resolved 04-13-26; amended 05-20-26):** Permission
+  presets — deferred to v1.3 alongside field-level
+  permissions. Presets are valuable only once field-level
+  permissions exist, since scope-level access is already
+  compact enough to inline per role.
+- **Q4 (resolved 05-03-26):** `role:` is a separate leaf-clause
+  discriminator in Section 11, not a reserved field name.
+  Clearer to authors and to the parser.
+- **Q5 (resolved 05-03-26):** `forRoles:` on a layout must
+  resolve every role to exactly one layout per layout name —
+  the loader errors if a role is unmatched or doubly matched.
+- **Q6 (resolved 05-03-26):** Part E (was Part D) ships with
+  Parts A–D in v1.2. Part A is the prerequisite, and pilot
+  users will hit Part E needs the moment they try to
+  differentiate the Mentor and Mentor Administrator views.
+- **Q7 (resolved 05-20-26):** User-to-role and user-to-team
+  assignments are out of YAML scope. The deployment artifact
+  describes the security *structure* (roles, teams, what each
+  can do); assignment of users to roles and teams is runtime
+  operational data managed in the target CRM UI. Adding a new
+  user does not require a redeploy.
+- **Q8 (resolved 05-20-26):** Whitelist semantics for
+  `scope_access:` — entities not listed are denied. Forces
+  explicit grants and prevents accidental over-permissioning
+  as new entities are added in later YAML files.
 
 ---
 
