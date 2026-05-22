@@ -128,16 +128,23 @@ Each slice gates on the prior slice's acceptance criteria passing. Doug runs eac
    - Each new router added to the FastAPI app's router include list.
    - Router prefix and tags per V2 convention.
 
-3. **Integration tests** at `tests/crmbuilder_v2/api/routers/`:
+3. **`GET /references` filter fix** at `crmbuilder-v2/src/crmbuilder_v2/api/routers/references.py`:
+   - The endpoint accepts `source_type`, `source_id`, `target_type`, `target_id`, and `relationship_kind` query parameters but currently ignores them server-side, returning the full references list. Surfaced during the SES-054 apply (per commit `dcb7377` on origin/main, which updated the build-planning kickoff to flag it).
+   - Fix: wire the query parameters through to the access layer's `list_references(...)` method, which already supports these filters via keyword arguments. The router-level fix is small.
+   - Backward compatibility: a request with no filter parameters continues to return the full list.
+
+4. **Integration tests** at `tests/crmbuilder_v2/api/routers/`:
    - One test module per new router covering happy-path responses, validation-failure responses with envelope shape, list endpoint filters (`?include_deleted=true`, `?kind=`, `?status=`, `?outcome=`), and identifier auto-assignment.
    - One test verifying deposit_event PUT, PATCH, DELETE, restore endpoints return HTTP 405.
    - One test verifying the reference_book versions sub-endpoints (`/versions`, `/version-at?as_of=...`) return expected shapes.
+   - One test verifying the /references filter parameters are honored server-side (each parameter independently and in combination).
 
 **Acceptance criteria for Slice B:**
 
 - All endpoints return correct HTTP status codes and `{data, meta, errors}` envelope shape for happy-path and validation-failure cases.
 - The deposit_event router responds with HTTP 405 to PUT, PATCH, DELETE, and restore methods.
 - List endpoint filters work correctly: `?include_deleted=true` shows soft-deleted; `?kind=<value>` filters reference_book and work_ticket; `?status=<value>` filters workflow-shape entities; `?outcome=<value>` filters deposit_event.
+- `GET /references` filter parameters (`source_type`, `source_id`, `target_type`, `target_id`, `relationship_kind`) are honored server-side per commit `dcb7377`'s flagged gap; backward-compatible with no-filter requests.
 - Identifier auto-assignment helpers (`GET /{plural}/next-identifier`) return the next available value; POST without identifier assigns same; concurrent POSTs don't collide.
 - Reference_book version sub-endpoints work: `GET /reference-books/{id}/versions` returns descending-by-date version list; `POST /reference-books/{id}/versions` creates new version row and recomputes parent's denormalized current pointers; `GET /reference-books/{id}/version-at?as_of=...` returns the in-force version.
 - `uv run pytest tests/crmbuilder_v2/api/routers/` is green; existing API tests remain green.

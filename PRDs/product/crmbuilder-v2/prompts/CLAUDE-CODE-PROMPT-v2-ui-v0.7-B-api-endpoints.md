@@ -35,9 +35,15 @@ Per implementation plan §2.2:
    - `close_out_payloads.py` — standard eight-endpoint set with `?status=` filter.
    - `deposit_events.py` — POST `/deposit-events`, GET `/deposit-events`, GET `/deposit-events/{identifier}`, GET `/deposit-events/next-identifier` only. PUT, PATCH, DELETE, restore NOT registered; framework default returns HTTP 405.
 
-2. **Router registration** in the main API app; prefixes and tags per V2 convention.
+2. **`GET /references` filter fix** at `crmbuilder-v2/src/crmbuilder_v2/api/routers/references.py`:
+   - Surfaced during the SES-054 close-out apply (per commit `dcb7377` on origin/main): the endpoint accepts `source_type`, `source_id`, `target_type`, `target_id`, and `relationship_kind` query parameters but ignores them server-side, returning the full references list.
+   - Fix: the router applies the parameters as access-layer filters. The access-layer method `list_references(...)` already supports these filters via its keyword arguments; the router only needs to wire the query-string parameters through.
+   - Backward compatibility: a request with no filter parameters continues to return the full list as today.
+   - Adds an integration test covering each filter parameter independently and combinations.
 
-3. **Integration tests** at `tests/crmbuilder_v2/api/routers/` per slice §2.2 acceptance, including: happy path, validation failure with envelope shape, list filters, identifier auto-assignment, deposit_event HTTP 405 responses, reference_book version sub-endpoints.
+3. **Router registration** in the main API app; prefixes and tags per V2 convention.
+
+4. **Integration tests** at `tests/crmbuilder_v2/api/routers/` per slice §2.2 acceptance, including: happy path, validation failure with envelope shape, list filters (including the new /references filter fix), identifier auto-assignment, deposit_event HTTP 405 responses, reference_book version sub-endpoints.
 
 ## Working style
 
@@ -62,6 +68,7 @@ Per implementation plan §2.2:
 - All endpoints return correct HTTP status and envelope shape.
 - Deposit_event router responds HTTP 405 to PUT/PATCH/DELETE/restore.
 - List endpoint filters work: `?include_deleted=true`, `?kind=`, `?status=`, `?outcome=`.
+- `GET /references` filter parameters (`source_type`, `source_id`, `target_type`, `target_id`, `relationship_kind`) are honored server-side; backward-compatible with the no-filter case. (Per commit `dcb7377` on origin/main; surfaced during the SES-054 apply.)
 - Identifier auto-assignment helpers work without collision under concurrent POSTs.
 - Reference_book version sub-endpoints work as specified.
 - `uv run pytest tests/crmbuilder_v2/` green.
