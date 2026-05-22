@@ -41,8 +41,10 @@ ls -la ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_055.json
 
 # Verify SES-054 has been applied (the predecessor); if not, apply it first
 curl -sf http://127.0.0.1:8765/sessions/SES-054 | head -5
-# If this returns 404, run the SES-054 apply first:
-#   uv run python scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_054.json
+# If this returns 404, SES-054 has not yet been applied. Apply it via its own
+# Claude Code prompt before continuing:
+#   PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-apply-close-out-ses-054.md
+# Open that prompt in Claude Code, let it execute, then return to this prompt.
 ```
 
 ---
