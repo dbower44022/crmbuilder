@@ -25,6 +25,30 @@ from crmbuilder_v2.access.vocab import ENTITY_TYPES, REFERENCE_RELATIONSHIPS
 _ENTITY_TYPE = "reference"
 
 
+def next_reference_identifier(session: Session) -> str:
+    """Return the next available ``REF-NNNN`` external identifier (v0.7).
+
+    References gained a prefixed external identifier in v0.7 so individual
+    rows can be targeted by ``deposit_event_wrote_record`` back-references.
+    The value is server-assigned on insert; this scans the existing
+    identifiers for the highest ``REF-NNNN`` and increments, zero-padded
+    to four digits.
+    """
+    existing = session.scalars(
+        select(Reference.reference_identifier).where(
+            Reference.reference_identifier.is_not(None)
+        )
+    ).all()
+    highest = 0
+    for ident in existing:
+        if ident and ident.startswith("REF-"):
+            try:
+                highest = max(highest, int(ident.split("-", 1)[1]))
+            except ValueError:
+                continue
+    return f"REF-{highest + 1:04d}"
+
+
 def compute_next_identifier(session: Session) -> int:
     """Return the next reference primary-key ``id``.
 
@@ -159,6 +183,7 @@ def create(
         raise ConflictError(f"reference already exists: {_identifier(existing)}")
 
     row = Reference(
+        reference_identifier=next_reference_identifier(session),
         source_type=source_type,
         source_id=source_id,
         target_type=target_type,
