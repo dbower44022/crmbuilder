@@ -213,9 +213,7 @@ def create_workstream(
 
     # Backfill lifecycle timestamps (verbatim) or server-set the matching one.
     if status != "planned":
-        if timestamps:
-            for column, value in timestamps.items():
-                setattr(row, column, value)
+        gov.apply_timestamps(row, timestamps)
         gov.set_status_timestamp(row, status, _STATUS_TIMESTAMP)
     session.flush()
 

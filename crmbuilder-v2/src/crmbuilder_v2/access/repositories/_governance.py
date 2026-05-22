@@ -118,6 +118,28 @@ def check_transition(
 # ---------------------------------------------------------------------------
 
 
+def coerce_datetime(value: object, *, field: str = "timestamp") -> datetime:
+    """Coerce an ISO 8601 string (or datetime) to a datetime, or raise 422."""
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str) and value.strip():
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            pass
+    raise UnprocessableError(
+        [FieldError(field, "invalid_datetime", "must be an ISO 8601 datetime")]
+    )
+
+
+def apply_timestamps(row: object, timestamps: dict | None) -> None:
+    """Set backfill lifecycle timestamps verbatim, coercing ISO strings."""
+    if not timestamps:
+        return
+    for column, value in timestamps.items():
+        setattr(row, column, coerce_datetime(value, field=column))
+
+
 def set_status_timestamp(
     row: object,
     status: str,

@@ -277,9 +277,7 @@ def create_close_out_payload(
         session.flush()
 
     if status != "drafted":
-        if timestamps:
-            for column, value in timestamps.items():
-                setattr(row, column, value)
+        gov.apply_timestamps(row, timestamps)
         gov.set_status_timestamp(row, status, _STATUS_TIMESTAMP)
     session.flush()
 
