@@ -35,18 +35,24 @@ from crmbuilder_v2.ui.base.list_detail_panel import ListDetailPanel
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.crash_banner import CrashBanner
 from crmbuilder_v2.ui.panels.charter import CharterPanel
+from crmbuilder_v2.ui.panels.close_out_payloads import CloseOutPayloadsPanel
+from crmbuilder_v2.ui.panels.conversations import ConversationsPanel
 from crmbuilder_v2.ui.panels.crm_candidates import CrmCandidatesPanel
 from crmbuilder_v2.ui.panels.decisions import DecisionsPanel
+from crmbuilder_v2.ui.panels.deposit_events import DepositEventsPanel
 from crmbuilder_v2.ui.panels.domains import DomainsPanel
 from crmbuilder_v2.ui.panels.engagements import EngagementsPanel
 from crmbuilder_v2.ui.panels.entities import EntitiesPanel
 from crmbuilder_v2.ui.panels.planning_items import PlanningItemsPanel
 from crmbuilder_v2.ui.panels.processes import ProcessesPanel
+from crmbuilder_v2.ui.panels.reference_books import ReferenceBooksPanel
 from crmbuilder_v2.ui.panels.references import ReferencesPanel
 from crmbuilder_v2.ui.panels.risks import RisksPanel
 from crmbuilder_v2.ui.panels.sessions import SessionsPanel
 from crmbuilder_v2.ui.panels.status import StatusPanel
 from crmbuilder_v2.ui.panels.topics import TopicsPanel
+from crmbuilder_v2.ui.panels.work_tickets import WorkTicketsPanel
+from crmbuilder_v2.ui.panels.workstreams import WorkstreamsPanel
 from crmbuilder_v2.ui.refresh import RefreshService
 from crmbuilder_v2.ui.server_lifecycle import ServerLifecycle
 from crmbuilder_v2.ui.sidebar import SIDEBAR_ENTRIES, Sidebar
@@ -80,6 +86,13 @@ ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
     "crm_candidate": "CRM Candidates",
     # v0.5 slice C: meta-DB engagement registry.
     "engagement": "Engagements",
+    # v0.7 governance entities.
+    "workstream": "Workstreams",
+    "conversation": "Conversations",
+    "reference_book": "Reference Books",
+    "work_ticket": "Work Tickets",
+    "close_out_payload": "Close-Out Payloads",
+    "deposit_event": "Deposit Events",
 }
 
 
@@ -148,6 +161,20 @@ class MainWindow(QMainWindow):
                     active_context=self._active_context,
                     managers=self._managers,
                 )
+            # v0.7 governance entities — six new panels appended to the
+            # Governance group in workstream order.
+            elif entry == "Workstreams":
+                page = WorkstreamsPanel(self._client)
+            elif entry == "Conversations":
+                page = ConversationsPanel(self._client)
+            elif entry == "Reference Books":
+                page = ReferenceBooksPanel(self._client)
+            elif entry == "Work Tickets":
+                page = WorkTicketsPanel(self._client)
+            elif entry == "Close-Out Payloads":
+                page = CloseOutPayloadsPanel(self._client)
+            elif entry == "Deposit Events":
+                page = DepositEventsPanel(self._client)
             else:
                 placeholder = QLabel(
                     f"Panel for {entry} — not yet implemented."
