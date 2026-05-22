@@ -1,0 +1,98 @@
+[
+  {
+    "id": 1,
+    "reference_book_identifier": "RB-001",
+    "reference_book_version_created_at": "2026-05-22T23:56:18.140644",
+    "reference_book_version_date": "2026-05-20T00:00:00",
+    "reference_book_version_label": "1.0",
+    "reference_book_version_summary": "Governance entity schema-design workstream plan v1.0"
+  },
+  {
+    "id": 2,
+    "reference_book_identifier": "RB-002",
+    "reference_book_version_created_at": "2026-05-22T23:56:18.206763",
+    "reference_book_version_date": "2026-05-20T00:00:00",
+    "reference_book_version_label": "1.0",
+    "reference_book_version_summary": "Governance entity schema spec guide v1.0"
+  },
+  {
+    "id": 3,
+    "reference_book_identifier": "RB-003",
+    "reference_book_version_created_at": "2026-05-22T23:56:18.275447",
+    "reference_book_version_date": "2026-05-20T23:30:00",
+    "reference_book_version_label": "1.0",
+    "reference_book_version_summary": "Workstream schema specification v1.0"
+  },
+  {
+    "id": 4,
+    "reference_book_identifier": "RB-004",
+    "reference_book_version_created_at": "2026-05-22T23:56:18.341422",
+    "reference_book_version_date": "2026-05-21T06:00:00",
+    "reference_book_version_label": "1.0",
+    "reference_book_version_summary": "Conversation schema specification v1.0"
+  },
+  {
+    "id": 5,
+    "reference_book_identifier": "RB-005",
+    "reference_book_version_created_at": "2026-05-22T23:56:18.404438",
+    "reference_book_version_date": "2026-05-21T14:50:00",
+    "reference_book_version_label": "1.0",
+    "reference_book_version_summary": "Reference book schema specification v1.0"
+  },
+  {
+    "id": 6,
+    "reference_book_identifier": "RB-005",
+    "reference_book_version_created_at": "2026-05-22T23:56:18.405377",
+    "reference_book_version_date": "2026-05-21T15:30:00",
+    "reference_book_version_label": "1.1",
+    "reference_book_version_summary": "Reference book schema specification v1.1"
+  },
+  {
+    "id": 7,
+    "reference_book_identifier": "RB-006",
+    "reference_book_version_created_at": "2026-05-22T23:56:18.508042",
+    "reference_book_version_date": "2026-05-21T18:00:00",
+    "reference_book_version_label": "1.0",
+    "reference_book_version_summary": "Work ticket schema specification v1.0"
+  },
+  {
+    "id": 8,
+    "reference_book_identifier": "RB-007",
+    "reference_book_version_created_at": "2026-05-22T23:56:18.571592",
+    "reference_book_version_date": "2026-05-21T19:30:00",
+    "reference_book_version_label": "1.0",
+    "reference_book_version_summary": "Close-out payload schema specification v1.0"
+  },
+  {
+    "id": 9,
+    "reference_book_identifier": "RB-007",
+    "reference_book_version_created_at": "2026-05-22T23:56:18.572562",
+    "reference_book_version_date": "2026-05-22T17:30:00",
+    "reference_book_version_label": "1.1",
+    "reference_book_version_summary": "Close-out payload schema specification v1.1"
+  },
+  {
+    "id": 10,
+    "reference_book_identifier": "RB-008",
+    "reference_book_version_created_at": "2026-05-22T23:56:18.636053",
+    "reference_book_version_date": "2026-05-22T17:00:00",
+    "reference_book_version_label": "1.0",
+    "reference_book_version_summary": "Deposit event schema specification v1.0"
+  },
+  {
+    "id": 11,
+    "reference_book_identifier": "RB-009",
+    "reference_book_version_created_at": "2026-05-22T23:56:18.702174",
+    "reference_book_version_date": "2026-05-22T17:30:00",
+    "reference_book_version_label": "0.1",
+    "reference_book_version_summary": "Governance entity Product Requirements Document v0.1 v0.1"
+  },
+  {
+    "id": 12,
+    "reference_book_identifier": "RB-010",
+    "reference_book_version_created_at": "2026-05-22T23:56:18.764420",
+    "reference_book_version_date": "2026-05-22T17:30:00",
+    "reference_book_version_label": "0.1",
+    "reference_book_version_summary": "Governance entity implementation plan v0.1"
+  }
+]
