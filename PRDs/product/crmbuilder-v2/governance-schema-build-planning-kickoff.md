@@ -1,6 +1,6 @@
 # Governance Entity Schema Design — Build-Planning — Kickoff Prompt
 
-**Last Updated:** 05-22-26 17:00
+**Last Updated:** 05-22-26 17:45
 **Purpose:** Seed prompt for the build-planning conversation that closes the governance entity schema-design workstream. This conversation consumes the six per-entity schema specifications produced by the workstream's per-entity conversations and integrates them into the release artifacts that drive the actual build.
 **Position in workstream:** **Seventh and final conversation** of the governance entity schema-design workstream. Predecessors: the workstream-establishing conversation (SES-047) and the six per-entity schema-design conversations (SES-048 workstream, SES-049 conversation, SES-050 reference_book, SES-051 work_ticket, SES-052 close_out_payload, SES-054 deposit_event). Successor: Claude Code execution of the build slice prompts produced here, followed by a build-closeout session written through the standard apply-close-out path.
 **Workstream master:** `PRDs/product/crmbuilder-v2/governance-schema-workstream-plan.md`
@@ -94,6 +94,7 @@ The conversation will surface these in some order. The list is illustrative, not
 - **Documentation updates.** README, `crmbuilder/CLAUDE.md` v2 section, the v2 Product Requirements Document index — what needs to update with the release.
 - **Acceptance criteria aggregation.** Each per-entity spec contains its own acceptance criteria (typically 15 per spec, ~90 total). The implementation plan aggregates them into per-slice acceptance lists.
 - **Backward compatibility.** No existing data lives in the new tables (they don't exist yet), so backward compatibility concerns are limited to: existing references-table data must continue to validate against the relaxed CHECK constraint; existing close_out_payload semantics must continue to hold under the at-most-one → zero-or-more relaxation. Both should be incidental.
+- **API gap: `/references` query-parameter filtering.** Surfaced during the SES-054 close-out apply (05-22-26): the `GET /references?source_type=X&source_id=Y` query parameters are accepted by the route but ignored server-side — the endpoint returns the full references list rather than the filtered subset. Apply-prompt verification step 5 (the `decided_in` resolution spot-check) had to filter client-side in Python rather than via the documented server-side filter, in both the SES-054 apply and (by implication) every prior apply prompt that used this pattern. The gap affects every apply prompt's verification template and any future tooling that needs to query references by source. Slice B's REST-API scope is the natural place to fix; the fix is implementing the source_type/source_id (and likely target_type/target_id, plus relationship) filter parameters server-side. Worth adding a corresponding acceptance criterion to Slice B. Not a blocker for the workstream — verification still works via client-side filter — but the apply-prompt template should be updated to either rely on the filter once Slice B fixes it or use Python filtering explicitly until then.
 
 ---
 
