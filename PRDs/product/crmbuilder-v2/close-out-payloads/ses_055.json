@@ -1,0 +1,175 @@
+{
+  "label": "SES-055 governance entity build-planning conversation closed: 1 session, 6 decisions (DEC-161..166), 0 planning items, 13 references",
+  "session": {
+    "identifier": "SES-055",
+    "title": "Governance entity build-planning conversation; v0.7 release planned; close_out_payload spec reconciled to v1.1",
+    "session_date": "05-22-26",
+    "status": "Complete",
+    "conversation_reference": "Claude.ai build-planning conversation that closes the governance entity schema-design workstream. The seventh and integrating conversation: it takes the six per-entity schema specifications produced by SES-048 through SES-054 (workstream, conversation, reference_book, work_ticket, close_out_payload, deposit_event) as inputs and produces the v0.7 governance entity release plan. Doug authorized end-to-end execution: 'Please process this prompt using your recommended decisions and do not query me for input.' Four primary deliverables produced (governance-entity-PRD-v0.1.md, governance-entity-implementation-plan.md, six per-slice Claude Code prompts under prompts/, and this close-out payload), plus one in-place reconciliation (close_out_payload.md revised to v1.1 admitting zero-or-more inbound deposit_event_applies_close_out_payload edges per DEC-158). Six decisions authored at close (DEC-161 through DEC-166). Zero new planning items — the PI-022 refinement is recorded in DEC-166 rather than as a new planning item; the three follow-on backfill planning items (anticipated PI-023, PI-024, PI-025) are authored at the v0.7 build closeout session, not here. No transcript preserved per DEC-025.",
+    "topics_covered": "Seed prompt: \"confirm. Please process this prompt using your recommended decisions and do not query me for input.\" — given against the build-planning kickoff at PRDs/product/crmbuilder-v2/governance-schema-build-planning-kickoff.md.\n\nStructured summary of the build-planning work:\n\n(1) Cross-spec consistency check per spec guide section 7.2. Three findings: (a) the known close_out_payload at-most-one inbound deposit_event_applies_close_out_payload edge cardinality needs relaxation to zero-or-more per DEC-158 (settled by SES-054); (b) the deposit_event_wrote_record kind admits 'reference' as target but references-table rows lack prefixed identifiers — resolved as Slice A implementation concern via a new reference_identifier column with REF-NNNN format and back-fill of existing rows by id order; (c) change_log.entity_type CHECK constraint must extend to admit the six new entity types — resolved via the consolidated Slice A migration. Identifier prefix collision check, status value reuse check, lifecycle category coherence check, append-only vs soft-delete intentionality check all pass.\n\n(2) Cross-spec reconciliation executed in place. close_out_payload.md revised to v1.1: Revision Control v1.1 row added; Change Log v1.1 entry added; §3.3.2 cardinality column updated from at-most-one to zero-or-more; §3.4.3 applied-requires-edge rule augmented with first-success-transitions semantics — the ready→applied transition fires on the first inbound success edge; subsequent edges admitted without re-transition; failure edges never transition. The applied-requires-edge rule itself stands.\n\n(3) DEC-161 — Target user-interface version 0.7. The governance entity release lands as v0.7, a dedicated release after v0.6 styling. Bumps __version__ to 0.7.0.\n\n(4) DEC-162 — Six-slice topology in dependency order: Slice A (schema and access layer); Slice B (REST API); Slice C (UI panels); Slice D (apply script integration with deposit_event POST); Slice E (PI-022 Phase 1 backfill of the governance workstream's eight conversations and supporting records); Slice F (documentation, version bump, closeout). Sequential dependency order with each slice gating on the prior slice's acceptance criteria.\n\n(5) DEC-163 — Sidebar grouping policy: append the six new entries (Workstreams, Conversations, Reference Books, Work Tickets, Close-Out Payloads, Deposit Events) to the existing Governance group in workstream order. No sub-grouping in v0.7. The resulting fourteen-entry Governance group accepted as scannable; future signal may motivate sub-grouping in a later release.\n\n(6) DEC-164 — Deposit-event log file tracking: git-tracked under PRDs/product/crmbuilder-v2/deposit-event-logs/. Files committed alongside the corresponding close-out payload commit. The diagnostic value of durable log capture earns the modest repo-size cost (~5KB per apply attempt).\n\n(7) DEC-165 — Cross-spec consistency reconciliation: close_out_payload.md v1.1 admits zero-or-more inbound deposit_event_applies_close_out_payload edges per DEC-158. First-success-transitions semantics documented. In-place revision of close_out_payload.md executed during this conversation; the reconciliation is the build-planning equivalent of a v1.1 patch.\n\n(8) DEC-166 — PI-022 refinement: phased backfill execution plan. Phase 1 in Slice E backfills the governance entity schema-design workstream's eight conversations, one workstream, eight close_out_payloads, eight deposit_events, eight work_tickets, and ten reference_books (with two RBs carrying two version rows each). Phases 2 through 4 (prior workstreams, prior conversations, prior payload/deposit history) deferred to follow-on planning items PI-023 through PI-025 authored at v0.7 build closeout, not here. PI-022 itself remains Open at v0.7 ship; discharge waits on completion of all phases.\n\n(9) Four primary deliverables created end-to-end: governance-entity-PRD-v0.1.md (7-section PRD targeting v0.7); governance-entity-implementation-plan.md (six-slice plan with per-slice deliverables, acceptance criteria, cross-cutting concerns); six per-slice Claude Code prompts under prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.7-{A,B,C,D,E,F}-*.md; this close-out payload at close-out-payloads/ses_055.json plus the apply prompt at prompts/CLAUDE-CODE-PROMPT-apply-close-out-ses-055.md. Eleven files total committed and pushed.",
+    "artifacts_produced": "PRDs/product/crmbuilder-v2/governance-entity-PRD-v0.1.md (initial draft v0.1); PRDs/product/crmbuilder-v2/governance-entity-implementation-plan.md (initial draft v0.1); six per-slice prompts at PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.7-A-schema-and-access.md, B-api-endpoints.md, C-ui-panels.md, D-apply-script-and-deposit-events.md, E-pi022-backfill.md, F-closeout.md; PRDs/product/crmbuilder-v2/governance-schema-specs/close_out_payload.md updated to v1.1 (cross-spec consistency reconciliation per DEC-165); six decisions DEC-161 through DEC-166; thirteen references (six decided_in plus six is_about plus one cross-conversation reference to SES-054); zero new planning items.",
+    "in_flight_at_end": "v0.7 governance entity release queued for execution. Six Claude Code execution slices A through F at PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.7-*.md. Slice A is the next action — Doug runs it via Claude Code in the crmbuilder local clone. The schema-design portion of the governance entity schema-design workstream concluded at SES-054; this conversation concludes the workstream's planning-and-design phase. Build execution begins with Slice A. After all six slices ship and the closeout session at SES-NNN (TBD) lands, the workstream is fully closed and PI-022 Phase 1 is discharged. Phases 2 through 4 of PI-022 (anticipated planning items PI-023, PI-024, PI-025) are authored at the v0.7 closeout session and remain open for follow-on work."
+  },
+  "decisions": [
+    {
+      "identifier": "DEC-161",
+      "title": "Target user-interface version 0.7 for the governance entity release",
+      "context": "The governance entity schema-design workstream produced six entity-type schema specifications across SES-048 through SES-054. The build-planning conversation must set the target user-interface version for the release that ships these entities. The active version sequence has v0.6 (styling) most recently shipped (__version__ = 0.6.0 in crmbuilder-v2/src/crmbuilder_v2/__init__.py at this conversation's authoring time). The kickoff prompt named the target version as open at this writing.",
+      "decision": "Target user-interface version 0.7 for the governance entity release. The release is dedicated to the six new entity types (workstream, conversation, reference_book, work_ticket, close_out_payload, deposit_event) and their supporting infrastructure (vocabulary additions, apply-path integration, retroactive backfill of the governance workstream itself). __version__ bumps to 0.7.0 in Slice F.",
+      "rationale": "Dedicated release reads cleanly in the version history: v0.4 methodology entities, v0.5 engagement management, v0.6 styling, v0.7 governance entities. Bundling with later work (e.g., multi-tenancy routing fix slices in flight, Cleveland Business Mentors Planning Item 001) would muddy the entity-type release narrative and make per-slice testing harder. The six new entity types plus the apply-path integration plus the PI-022 Phase 1 backfill is already a substantial release; no need to dilute it.",
+      "alternatives_considered": "Bundle with the next multi-tenancy-routing-fix slice — rejected because the routing fix is parallel methodology work with no entity-type changes; bundling adds risk to both. Bundle with a hypothetical v0.7 'governance + routing' combined release — rejected for the same reason. Defer to v0.8 to bundle with as-yet-unnamed parallel work — rejected because the governance entities are ready to ship now and delay incurs governance-coverage debt.",
+      "consequences": "__version__ = '0.7.0' set in Slice F. README.md and crmbuilder/CLAUDE.md updated in Slice F. About dialog reflects v0.7 automatically via the version constant. The release tag v0.7.0 is pushed at Slice F close. v0.6 styling remains the baseline state until Slice A's migration applies; v0.7 lands additively without back-port concerns.",
+      "decision_date": "05-22-26",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-162",
+      "title": "Six-slice execution topology for v0.7 in sequential dependency order",
+      "context": "Six new entity types plus apply-path integration plus retroactive backfill plus documentation updates is too much for one slice; needs decomposition. The methodology-entity v0.4 release used a slice-per-entity topology (A foundation, B-E one entity each, F closeout); the v0.5 engagement-management used an A-E topology with the schema-and-API in Slice B; the v0.6 styling used an A-F topology with retrofit slices. The governance-entity release shares more structurally with v0.4 (multiple new entity types) but adds two complications: the apply-path modification (Slice D) and the retroactive backfill (Slice E).",
+      "decision": "Six-slice topology in strict sequential dependency order: Slice A (schema migrations, vocab.py update, ORM models, all six repository modules); Slice B (REST API routers and envelope handling); Slice C (desktop UI panels, sidebar integration, CRUD dialogs); Slice D (apply_close_out.py modifications, log file capture, atomic deposit_event POST); Slice E (PI-022 Phase 1 backfill via one-off script); Slice F (documentation updates, About-dialog version bump to 0.7.0, build closeout session, follow-on planning items). Each slice has its own Claude Code prompt under prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.7-{A..F}-*.md. Each slice gates on the prior slice's acceptance criteria passing.",
+      "rationale": "Six slices is the smallest decomposition where each slice has a coherent scope and an independent acceptance gate. Bundling A with B is feasible but inflates the slice; the API routers benefit from being authored with the access layer already shipped (clearer test boundary). Bundling D with E is feasible but the apply-script modification is a generally-useful change independent of the backfill, and bundling delays the routine close-out improvements until Phase 1 backfill is also done. Six independently revertable slices is the safest topology: a failure in any slice can be rolled back without affecting prior slices, and the application remains in a coherent state (e.g., if Slice C ships and Slice D fails, the API and UI work even though the apply path is still on the v0.6 behavior).",
+      "alternatives_considered": "Five-slice topology bundling Slice D with Slice E — rejected because the apply-script modification is independently valuable. Seven-slice topology splitting Slice A into two (schema migrations alone, then access layer) — rejected as over-decomposition; the migration plus the access layer that exercises it benefits from being authored together. Eight-slice topology with one entity type per slice — rejected because the entity types share infrastructure (vocab, migrations, panel base classes); per-entity slicing duplicates effort across slices.",
+      "consequences": "Six Claude Code execution prompts authored at this conversation's close (committed in this push). Doug executes them sequentially via Claude Code; each slice's acceptance criteria reviewed before the next slice opens. The total v0.7 effort is bounded by Slice A's complexity (largest by line count) and Slice E's data-volume risk (idempotency must be solid). Build closeout session lands at the end of Slice F.",
+      "decision_date": "05-22-26",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-163",
+      "title": "Governance sidebar grouping for v0.7: append the six new entries in workstream order with no sub-grouping",
+      "context": "The existing Governance sidebar group has eight entries (charter, status, decisions, sessions, risks, planning items, topics, references). Adding the six new governance entity panels (Workstreams, Conversations, Reference Books, Work Tickets, Close-Out Payloads, Deposit Events) makes the group fourteen entries deep. The workstream-establishing conversation flagged this as an open question deferred to build-planning. Two reasonable approaches: append the new six at the end of the existing group with no sub-grouping (Option A); introduce a 'Governance — workflow' sub-group for the six new entries (Option B); reorder the existing group to bury or promote certain entries (Option C).",
+      "decision": "Append the six new entries to the existing Governance group in workstream order (Workstreams, Conversations, Reference Books, Work Tickets, Close-Out Payloads, Deposit Events). No sub-grouping in v0.7. The resulting fourteen-entry group accepted as scannable.",
+      "rationale": "Sub-grouping (Option B) introduces a new UI pattern that doesn't exist elsewhere in the application; the methodology sidebar group has four entries and the v0.5 engagement-management work didn't introduce sub-groups. Adopting sub-groups here sets a precedent that bleeds across other sidebar groups for inconsistency. The fourteen-entry Governance group is at the threshold of scannable; if signal emerges that users have difficulty finding entries, sub-grouping can be introduced in a future release as a sidebar refactoring. Workstream-order placement is the natural reading order: workstream → conversation → reference_book → work_ticket → close_out_payload → deposit_event mirrors the schema-design conversation sequence and the dependency order of the entities. Reordering the existing group (Option C) breaks muscle memory for existing users.",
+      "alternatives_considered": "Sub-grouping into 'Governance — content' (charter, status, decisions, sessions, risks, planning items, topics, references) and 'Governance — workflow' (workstreams, conversations, reference_books, work_tickets, close_out_payloads, deposit_events) — rejected as over-decomposition for this release; deferred to signal. Reordering to alphabetize the combined group — rejected because alphabetical order obscures the workstream-order semantic. Introducing a divider between the existing eight and the new six — rejected as a low-value UI affordance.",
+      "consequences": "Slice C appends the six new sidebar entries to the existing Governance group in the named order. The sidebar configuration file (likely a Python dictionary or JSON config) gains six entries; no new sub-group code paths needed. If future user signal supports sub-grouping, the change is mechanical: introduce a sub-group rendering pattern, move six entries underneath. Until then, the fourteen-entry Governance group is the production layout.",
+      "decision_date": "05-22-26",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-164",
+      "title": "Deposit-event log file tracking policy: git-tracked under PRDs/product/crmbuilder-v2/deposit-event-logs/",
+      "context": "The deposit_event schema (DEC-159) introduced a deposit_event_log_file_path column carrying the repo-relative path to a captured stdout log written by the apply script during each apply run. The deposit_event spec section 3.8.1 deferred to build-planning whether these log files are git-tracked (committed alongside the corresponding close-out payload commit) or gitignored (treated as ephemeral local artifacts with the path recorded but the file uncommitted).",
+      "decision": "Deposit-event log files are git-tracked under PRDs/product/crmbuilder-v2/deposit-event-logs/dep_NNN.log. Files are committed alongside the close-out payload commit (typically by the apply-script's caller). The directory carries a README.md and a .gitkeep to ensure the directory is present in fresh clones. No .gitignore patterns added for the log files themselves.",
+      "rationale": "The log file is the diagnostic record of an apply attempt. Failure-case logs especially are valuable: they capture the apply script's stdout up to the point of failure, including the HTTP request bodies and the API response payloads. Without git tracking, these logs are only available on the workstation that ran the apply — useless for code review or for retrospective debugging by anyone else. The cost is modest: ~5KB per apply attempt (the apply script's stdout for a typical close-out payload is a few dozen lines), and apply attempts are infrequent (one per close-out conversation, plus the occasional re-apply for verification). The total directory size after a year of v0.7 operation is on the order of a few hundred KB. Git tracking parallels the close-out payload files themselves (close-out-payloads/ses_NNN.json), which are also committed; the deposit-event log is the matching diagnostic artifact for the apply.",
+      "alternatives_considered": "Gitignore the log files; store the path in deposit_event_log_file_path but never commit the file — rejected because the file value is wasted (the deposit_event record points at a file that may or may not exist on any given workstation). Track only failure-case logs; gitignore success-case logs — rejected as introducing per-file decision logic at commit time; failure cases are rare so the storage cost is dominated by success cases, and consistent tracking is simpler. Compress logs at commit time — rejected as premature optimization; raw text is searchable in git history without decompression.",
+      "consequences": "Slice D creates the deposit-event-logs/ directory with .gitkeep and README.md. Slice D's apply script modification writes the log file at PRDs/product/crmbuilder-v2/deposit-event-logs/dep_NNN.log; the apply's caller (typically Claude Code or Doug running locally) commits the log file alongside the close-out payload commit. Slice E's backfill creates placeholder log files (dep_NNN-historical.log) for the eight historical applies that pre-date the entity type; each is a one-line file noting the log was not captured at apply time. The directory grows by one file per apply attempt going forward.",
+      "decision_date": "05-22-26",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-165",
+      "title": "Cross-spec consistency reconciliation executed: close_out_payload.md v1.1 admits zero-or-more inbound deposit_event_applies_close_out_payload edges",
+      "context": "The deposit_event spec section 3.8.1 surfaced a cross-spec consistency finding for the build-planning conversation's section 7.2 reconciliation: the close_out_payload spec sections 3.3.2 and 3.4.3 carried at-most-one inbound deposit_event_applies_close_out_payload edge language that DEC-158 (SES-054 deposit_event Decision 2 — multi-event-per-payload precedent) supersedes. Section 3.8.3 of close_out_payload.md v1.0 explicitly invited the relaxation. The deposit_event-side spec settled the cardinality at zero-or-more; the close_out_payload-side spec needed in-place text revision to reflect the settlement.",
+      "decision": "Execute the cross-spec consistency reconciliation by revising close_out_payload.md in place to v1.1. Substantive changes: §3.3.2 cardinality column language updated from at-most-one to zero-or-more with first-success-transitions clarification; §3.4.3 applied-requires-edge rule augmented with the full first-success-transitions semantics — the ready→applied transition fires on the first inbound deposit_event_applies_close_out_payload edge from a deposit_event record with outcome=success; subsequent inbound edges (failures, re-confirmations from re-applies) admitted without further close_out_payload state change; failure edges never drive the transition. The applied-requires-edge rule itself stands — setting status to applied still requires at least one inbound success edge. Revision Control table gains a v1.1 row; Change Log gains a v1.1 entry; Last Updated and Status fields updated.",
+      "rationale": "The reconciliation is required for cross-spec coherence — the deposit_event spec describes multi-event-per-payload semantics that the close_out_payload spec must admit at the cardinality and state-transition levels. In-place revision is the natural mechanism per the spec guide section 8's revision-in-place posture for cross-spec consistency findings (as opposed to a new conversation). The first-success-transitions semantics make the state machine deterministic: only success drives the transition, only the first success drives it, subsequent edges (success or failure) admit without re-triggering. This matches the apply script's behavior (per the Slice D plan) and the access layer's intended atomic POST behavior.",
+      "alternatives_considered": "Defer the reconciliation to a separate conversation — rejected because the inconsistency would block Slice A's repository implementation; the access-layer logic at close_out_payloads.py needs the settled cardinality. Issue a v1.0.1 patch rather than v1.1 — rejected because the spec guide doesn't recognize a three-segment versioning convention; v1.1 is the natural label for the post-audit revision (paralleling reference_book.md's v1.1 audit-correction pattern). Re-author the close_out_payload spec from scratch — rejected as wasteful; the substantive content is correct, only two paragraphs need revision.",
+      "consequences": "close_out_payload.md committed at v1.1. The Slice A repository implementation at close_out_payloads.py implements the first-success-transitions logic per the revised §3.4.3. The deposit_event-side repository at deposit_events.py drives the close_out_payload transition atomically via the access layer per the deposit_event spec §3.4.3. The reconciliation is the build-planning equivalent of a v1.1 patch and serves as the precedent for any future cross-spec consistency findings that surface late in a workstream's lifecycle.",
+      "decision_date": "05-22-26",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-166",
+      "title": "PI-022 refinement: phased retroactive backfill plan; Phase 1 in Slice E covers the governance entity schema-design workstream itself",
+      "context": "PI-022 (authored by SES-046, status Open) tracks retroactive migration of governance entity records for sessions, decisions, planning items, references, and prior workstreams already in the database. The planning item's description outlines six categories of backfill candidates and three resolution paths (go-forward only, selective backfill, full backfill with reconstructed outcomes). Refinement is the build-planning conversation's responsibility per the workstream plan section 5.4.",
+      "decision": "Refine PI-022 into a phased execution plan. Phase 1 executes in Slice E of v0.7: backfill the governance entity schema-design workstream itself (1 workstream, 8 conversations, 8 close_out_payloads, 8 deposit_events, 8 work_tickets, 10 reference_books with ~14 version rows, ~70 reference edges). Phases 2 through 4 deferred to follow-on planning items authored at the v0.7 build closeout session: Phase 2 (PI-023) — prior workstreams (methodology entity schema-design, v0.5 engagement management, v0.6 styling, multi-tenancy routing fix, Cleveland Business Mentors paper test, catalog ingestion); Phase 3 (PI-024) — prior conversations SES-001 through SES-045 and their kickoffs as work_tickets where reconstructable; Phase 4 (PI-025) — historical applies as deposit_events for the ~38 prior close-out payload files. PI-022 itself remains Open at v0.7 ship; discharge waits on completion of all phases.",
+      "rationale": "Phase 1 is the proof-of-end-to-end test that the new entity types work against real content — and the content closest to hand is the workstream that designed them. The eight conversations (SES-047 through SES-052, SES-054, plus this conversation SES-055) plus their supporting records exercises every new entity type, every new relationship kind, and every access-layer rule. Failures in Phase 1 surface immediately and block Slice F's closeout — exactly the right gating. Phases 2 through 4 are operationally valuable but lower-stakes: they backfill records that are already operating without governance entities (the conversations happened, the payloads applied, the project moved forward); discovering issues in Phase 1 first means Phases 2 through 4 can run against a hardened implementation. Each subsequent phase is scoped at its own time; phases need not run sequentially and can be parallelized across workstreams. PI-022 stays Open as the parent tracker; the three follow-on planning items (PI-023, PI-024, PI-025) are the discharge children.",
+      "alternatives_considered": "Single-phase full backfill in Slice E covering everything — rejected because the scope inflates Slice E (~200 records vs ~50 for Phase 1), increases risk of partial-backfill states, and delays v0.7 ship without delivering proportional value. Go-forward only (no backfill) — rejected because the governance workstream's own records are the proof of concept; not backfilling them leaves the application without a single workstream record to display in the new panels at v0.7 ship. Selective backfill (only workstream and conversation records, skipping work_ticket and reference_book) — rejected because the supporting records (kickoffs as work_tickets, schema specs as reference_books) are needed for the cross-entity navigation patterns to demonstrate.",
+      "consequences": "Slice E executes Phase 1 via the one-off script crmbuilder-v2/scripts/backfill_governance_phase_1.py per implementation plan §2.5. At Slice F closeout, three follow-on planning items authored: PI-023 (Phase 2 — prior workstreams), PI-024 (Phase 3 — prior conversations), PI-025 (Phase 4 — historical applies as deposit_events). Each follow-on PI references PI-022 via is_about edge. PI-022's status remains Open at v0.7 ship; the planning items panel shows it alongside the three new children. Future operational decisions about when to run Phases 2 through 4 are made on a per-phase basis; each phase is its own scoped effort.",
+      "decision_date": "05-22-26",
+      "status": "Active"
+    }
+  ],
+  "planning_items": [],
+  "references": [
+    {
+      "source_type": "decision",
+      "source_id": "DEC-161",
+      "target_type": "session",
+      "target_id": "SES-055",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-162",
+      "target_type": "session",
+      "target_id": "SES-055",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-163",
+      "target_type": "session",
+      "target_id": "SES-055",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-164",
+      "target_type": "session",
+      "target_id": "SES-055",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-165",
+      "target_type": "session",
+      "target_id": "SES-055",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-166",
+      "target_type": "session",
+      "target_id": "SES-055",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-055",
+      "target_type": "planning_item",
+      "target_id": "PI-022",
+      "relationship": "is_about"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-055",
+      "target_type": "session",
+      "target_id": "SES-054",
+      "relationship": "references"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-165",
+      "target_type": "decision",
+      "target_id": "DEC-158",
+      "relationship": "references"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-166",
+      "target_type": "planning_item",
+      "target_id": "PI-022",
+      "relationship": "is_about"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-161",
+      "target_type": "decision",
+      "target_id": "DEC-122",
+      "relationship": "references"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-162",
+      "target_type": "decision",
+      "target_id": "DEC-121",
+      "relationship": "references"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-163",
+      "target_type": "decision",
+      "target_id": "DEC-117",
+      "relationship": "references"
+    }
+  ]
+}
