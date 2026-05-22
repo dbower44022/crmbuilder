@@ -6,44 +6,24 @@ decisions, planning_items, and references records, and POSTs each to the
 local v2 REST API at http://127.0.0.1:8765. Idempotent on re-run: each
 POST treats HTTP 409 conflict as already-present and continues.
 
-The payload file format is sectioned JSON. All sections are optional;
-present sections are processed in this fixed order (session → decisions
-→ planning_items → references) so that references can target records
-created earlier in the same payload:
+v0.7 (governance entity release) integrates deposit_event creation as the
+apply's last step. The script:
 
-    {
-      "label": "<human-readable description of this payload>",
-      "session": { ... session fields ... },
-      "decisions": [ { ... }, { ... }, ... ],
-      "planning_items": [ { ... }, { ... }, ... ],
-      "references": [ { ... }, { ... }, ... ]
-    }
-
-Each section is a list of records (except session, which is a single
-record) following the v2 REST API request body shape for that endpoint.
-See the existing apply_*.py scripts or the v2 REST docs for the field
-shapes per entity type.
-
-This script supersedes the per-conversation apply_ses_NNN_records.py
-pattern. Future close-out conversations should:
-  1. Commit a payload file to PRDs/product/crmbuilder-v2/close-out-payloads/
-     named ses_NNN.json (where NNN is the session identifier number).
-  2. Run this script with the payload path.
-
-The session record IS written by this script via direct API. This
-departs from the prior session-record-at-close convention (in which
-sessions were authored through the v0.3 desktop New Session dialog).
-The convention shift is documented in the SES-012 session record's
-in_flight_at_end and is tracked as PI-008 (inbox folder watcher in the
-v0.3 desktop app) for the v0.4-build-planning conversation.
-
-Usage:
-    cd crmbuilder-v2
-    uv run python scripts/apply_close_out.py <path-to-payload.json>
-
-Example:
-    uv run python scripts/apply_close_out.py \\
-      ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_012.json
+1. Fetches the next ``DEP-NNN`` identifier from
+   ``GET /deposit-events/next-identifier`` at start.
+2. Opens a log file at
+   ``PRDs/product/crmbuilder-v2/deposit-event-logs/dep_NNN.log`` and tees
+   stdout to it so the full apply transcript is captured.
+3. Captures per-record HTTP outcomes into a ``wrote_records`` accumulator
+   (200/201 only) and a ``records_summary`` counter dict (keyed by the
+   spec's plural names — ``sessions``, ``decisions``, ``planning_items``,
+   ``references``).
+4. POSTs a deposit_event at the apply's last step with the captured
+   summary, the apply-context provenance, the parent
+   ``deposit_event_applies_close_out_payload`` edge (target derived from
+   the payload basename ``ses_NNN.json`` → ``COP-NNN``), and one
+   ``deposit_event_wrote_record`` edge per record created. The access
+   layer lazy-creates the target close_out_payload when missing.
 
 Exit code 0 on full success; non-zero only if a non-409 error is
 encountered or the payload file cannot be read.
@@ -51,22 +31,26 @@ encountered or the payload file cannot be read.
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import sys
 import urllib.error
 import urllib.request
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
+
+import crmbuilder_v2
 
 BASE = "http://127.0.0.1:8765"
 
-# Section name → API endpoint path. Order matters: session first so that
-# references targeting it can be authored later in the same run.
-_SECTION_ENDPOINTS: list[tuple[str, str, bool]] = [
-    # (section_name, endpoint_path, is_singular)
-    ("session", "/sessions", True),
-    ("decisions", "/decisions", False),
-    ("planning_items", "/planning-items", False),
-    ("references", "/references", False),
+# Section name → (endpoint, is_singular, entity_type for wrote_record edge,
+# summary key for records_summary).
+_SECTION_ENDPOINTS: list[tuple[str, str, bool, str, str]] = [
+    ("session", "/sessions", True, "session", "sessions"),
+    ("decisions", "/decisions", False, "decision", "decisions"),
+    ("planning_items", "/planning-items", False, "planning_item", "planning_items"),
+    ("references", "/references", False, "reference", "references"),
 ]
 
 
@@ -109,7 +93,6 @@ def _log(label: str, status: int, payload: dict) -> bool:
 
 
 def _record_label(section: str, record: dict) -> str:
-    """Produce a short label for log output."""
     ident = record.get("identifier")
     if ident:
         return f"POST {section}  {ident}"
@@ -141,6 +124,144 @@ def _check_api_reachable() -> bool:
     return False
 
 
+# ---------------------------------------------------------------------------
+# v0.7: log-file tee + deposit_event capture
+# ---------------------------------------------------------------------------
+
+
+class _TeeStream:
+    """File-like that forwards writes to two underlying streams."""
+
+    def __init__(self, primary, secondary) -> None:
+        self._primary = primary
+        self._secondary = secondary
+
+    def write(self, data: str) -> int:
+        n = self._primary.write(data)
+        try:
+            self._secondary.write(data)
+        except (OSError, ValueError):
+            pass
+        return n
+
+    def flush(self) -> None:
+        for stream in (self._primary, self._secondary):
+            try:
+                stream.flush()
+            except (OSError, ValueError):
+                pass
+
+
+def _next_deposit_event_identifier() -> str:
+    """Return the next ``DEP-NNN`` identifier from the API, or a fallback."""
+    status, payload = _request("GET", "/deposit-events/next-identifier")
+    if status == 200 and isinstance(payload, dict):
+        nxt = payload.get("data", payload).get("next")
+        if isinstance(nxt, str):
+            return nxt
+    # Fallback so the apply still runs against an older API; the deposit
+    # POST itself will succeed because the access layer reassigns.
+    return "DEP-???"
+
+
+def _derive_cop_identifier(payload_path: Path) -> str | None:
+    """``close-out-payloads/ses_055.json`` → ``COP-055``; ``None`` if unparseable."""
+    stem = payload_path.stem  # e.g. "ses_055"
+    parts = stem.split("_")
+    if len(parts) != 2 or not parts[1].isdigit():
+        return None
+    return f"COP-{int(parts[1]):03d}"
+
+
+def _extract_data(payload: dict) -> dict:
+    """Pull the unwrapped record dict from a ``{data, meta, errors}`` body."""
+    if isinstance(payload, dict) and "data" in payload and isinstance(payload["data"], dict):
+        return payload["data"]
+    return payload if isinstance(payload, dict) else {}
+
+
+def _record_target_id(entity_type: str, response_data: dict) -> str | None:
+    """Extract the addressable identifier from a created record's response."""
+    if entity_type == "reference":
+        # References gained a REF-NNNN identifier in v0.7 (Slice A).
+        return response_data.get("reference_identifier")
+    return response_data.get("identifier")
+
+
+def _post_deposit_event(
+    *,
+    dep_identifier: str,
+    cop_identifier: str,
+    outcome: str,
+    records_summary: dict[str, int],
+    wrote_records: list[tuple[str, str]],
+    error_info: dict | None,
+    log_file_path: str,
+    target_file_path: str,
+    invocation: str,
+) -> None:
+    """POST the deposit_event capturing this apply run."""
+    timestamp = datetime.now(UTC).isoformat(timespec="seconds")
+    title = f"Apply of {cop_identifier}, {timestamp}"
+    summary_phrase = (
+        ", ".join(
+            f"{count} {key}" for key, count in sorted(records_summary.items()) if count
+        )
+        or "no records written"
+    )
+    if outcome == "success":
+        description = f"Applied {cop_identifier}. Outcome: success. {summary_phrase}."
+    else:
+        step = (error_info or {}).get("step", "?")
+        description = (
+            f"Applied {cop_identifier}. Outcome: failure at step {step}. "
+            f"Records written before failure: {summary_phrase}."
+        )
+    body: dict[str, Any] = {
+        "deposit_event_identifier": dep_identifier,
+        "deposit_event_title": title,
+        "deposit_event_description": description,
+        "deposit_event_outcome": outcome,
+        "deposit_event_records_summary": records_summary,
+        "deposit_event_apply_context": {
+            "apply_script_version": crmbuilder_v2.__version__,
+            "invocation": invocation,
+            "runner": "claude_code",
+        },
+        "deposit_event_log_file_path": log_file_path,
+        "deposit_event_error_info": error_info,
+        "target_file_path": target_file_path,
+        "references": [
+            {
+                "target_type": "close_out_payload",
+                "target_id": cop_identifier,
+                "relationship": "deposit_event_applies_close_out_payload",
+            }
+        ]
+        + [
+            {
+                "target_type": entity_type,
+                "target_id": target_id,
+                "relationship": "deposit_event_wrote_record",
+            }
+            for entity_type, target_id in wrote_records
+        ],
+    }
+    status, payload = _request("POST", "/deposit-events", body)
+    if status in (200, 201):
+        print(f"\n✓ Recorded apply as deposit_event {dep_identifier} (HTTP {status}).")
+    else:
+        # The deposit_event POST itself failed; surface it but don't change
+        # the apply's exit code (the records that landed before this step
+        # still landed). The operator can re-run; the access layer's
+        # idempotent edge upserts handle re-confirmation.
+        errors = payload.get("errors") if isinstance(payload, dict) else payload
+        print(
+            f"\n⚠ deposit_event POST failed (HTTP {status}): {errors}",
+            file=sys.stderr,
+        )
+
+
 def main() -> int:
     global BASE
 
@@ -156,6 +277,14 @@ def main() -> int:
         "--base",
         default=BASE,
         help=f"Override the v2 API base URL (default: {BASE}).",
+    )
+    parser.add_argument(
+        "--skip-deposit-event",
+        action="store_true",
+        help=(
+            "Skip the final deposit_event POST and log capture (useful for "
+            "backfill scripts that author deposit_events explicitly)."
+        ),
     )
     args = parser.parse_args()
 
@@ -173,36 +302,130 @@ def main() -> int:
         return 2
 
     label = payload.get("label", str(args.payload_path.name))
-    print(f"=== Applying close-out payload ===")
-    print(f"Source: {args.payload_path}")
-    print(f"Label:  {label}\n")
 
-    if not _check_api_reachable():
-        return 2
+    # v0.7: open the deposit-event log file and tee stdout to it. The log
+    # captures the full apply transcript regardless of outcome.
+    record_deposit = not args.skip_deposit_event
+    dep_identifier = _next_deposit_event_identifier() if record_deposit else None
+    log_dir = args.payload_path.parent.parent / "deposit-event-logs"
+    log_disk_path: Path | None = None
+    log_repo_relative: str | None = None
+    log_file_handle: io.TextIOWrapper | None = None
+    original_stdout = sys.stdout
+    if record_deposit and dep_identifier:
+        log_disk_path = log_dir / f"{dep_identifier.lower().replace('-', '_')}.log"
+        log_disk_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            log_file_handle = log_disk_path.open("w", encoding="utf-8")
+            sys.stdout = _TeeStream(original_stdout, log_file_handle)  # type: ignore[assignment]
+            log_repo_relative = (
+                f"PRDs/product/crmbuilder-v2/deposit-event-logs/{log_disk_path.name}"
+            )
+        except OSError as exc:
+            print(
+                f"⚠ Could not open log file {log_disk_path}: {exc}", file=sys.stderr
+            )
+            log_disk_path = None
+            log_repo_relative = None
 
-    ok = True
-    total_processed = 0
-
-    for section, endpoint, is_singular in _SECTION_ENDPOINTS:
-        if section not in payload or not payload[section]:
-            continue
-        records = [payload[section]] if is_singular else payload[section]
-        print(f"=== {section} ({len(records)} record{'s' if len(records) != 1 else ''}) ===")
-        for record in records:
-            status, response = _request("POST", endpoint, record)
-            ok &= _log(_record_label(section, record), status, response)
-            total_processed += 1
+    try:
+        print("=== Applying close-out payload ===")
+        print(f"Source: {args.payload_path}")
+        print(f"Label:  {label}")
+        if dep_identifier:
+            print(f"Deposit event: {dep_identifier}")
         print()
 
-    if ok:
-        print(f"✓ All {total_processed} operations complete.")
-        return 0
-    print(
-        f"✗ One or more of {total_processed} operations failed. "
-        f"See stderr for details. Re-running is safe (409 = already present).",
-        file=sys.stderr,
-    )
-    return 1
+        if not _check_api_reachable():
+            return 2
+
+        ok = True
+        total_processed = 0
+        wrote_records: list[tuple[str, str]] = []
+        records_summary: dict[str, int] = {
+            key: 0 for _section, _ep, _singular, _entity_type, key in _SECTION_ENDPOINTS
+        }
+        first_error: dict | None = None
+
+        for section, endpoint, is_singular, entity_type, summary_key in _SECTION_ENDPOINTS:
+            if section not in payload or not payload[section]:
+                continue
+            records = [payload[section]] if is_singular else payload[section]
+            print(
+                f"=== {section} ({len(records)} record{'s' if len(records) != 1 else ''}) ==="
+            )
+            for record in records:
+                status, response = _request("POST", endpoint, record)
+                rec_ok = _log(_record_label(section, record), status, response)
+                ok &= rec_ok
+                total_processed += 1
+                if status in (200, 201):
+                    response_data = _extract_data(response)
+                    target_id = _record_target_id(entity_type, response_data)
+                    if target_id:
+                        wrote_records.append((entity_type, target_id))
+                        records_summary[summary_key] += 1
+                elif status not in (200, 201, 204, 409) and first_error is None:
+                    errors = (
+                        response.get("errors") if isinstance(response, dict) else None
+                    )
+                    err_msg = (
+                        json.dumps(errors)[:300]
+                        if errors
+                        else str(response)[:300]
+                    )
+                    first_error = {
+                        "kind": "http_error" if status > 0 else "connection_failure",
+                        "message": err_msg,
+                        "step": section,
+                        "http_status": status,
+                    }
+            print()
+
+        if ok:
+            print(f"✓ All {total_processed} operations complete.")
+        else:
+            print(
+                f"✗ One or more of {total_processed} operations failed. "
+                f"See stderr for details. Re-running is safe (409 = already present).",
+                file=sys.stderr,
+            )
+
+        # v0.7: POST the deposit_event as the apply's last step.
+        if record_deposit and dep_identifier and log_repo_relative:
+            cop_identifier = _derive_cop_identifier(args.payload_path)
+            if cop_identifier is None:
+                print(
+                    "⚠ Could not derive COP-NNN from payload basename; "
+                    "skipping deposit_event POST.",
+                    file=sys.stderr,
+                )
+            else:
+                outcome = "success" if ok else "failure"
+                _post_deposit_event(
+                    dep_identifier=dep_identifier,
+                    cop_identifier=cop_identifier,
+                    outcome=outcome,
+                    records_summary=records_summary,
+                    wrote_records=wrote_records,
+                    error_info=first_error if outcome == "failure" else None,
+                    log_file_path=log_repo_relative,
+                    target_file_path=(
+                        f"PRDs/product/crmbuilder-v2/close-out-payloads/"
+                        f"{args.payload_path.name}"
+                    ),
+                    invocation=" ".join(sys.argv),
+                )
+
+        return 0 if ok else 1
+    finally:
+        if log_file_handle is not None:
+            sys.stdout = original_stdout
+            try:
+                log_file_handle.flush()
+                log_file_handle.close()
+            except OSError:
+                pass
 
 
 if __name__ == "__main__":
