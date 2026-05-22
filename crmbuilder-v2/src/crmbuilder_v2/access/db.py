@@ -25,12 +25,35 @@ _engine_url: str | None = None
 def _enable_sqlite_pragmas(dbapi_conn, _conn_record) -> None:
     cursor = dbapi_conn.cursor()
     cursor.execute("PRAGMA foreign_keys=ON")
+    # Wait (up to 5s) for a contended write lock rather than failing fast
+    # with SQLITE_BUSY. Required now that we control transactions explicitly
+    # and serialise writers via BEGIN IMMEDIATE (see ``_sqlite_emit_begin``);
+    # the concurrent-POST identifier-assignment tests spin up several writers
+    # at once.
+    cursor.execute("PRAGMA busy_timeout=5000")
     cursor.close()
+    # Disable pysqlite's legacy autocommit-emulation: by default the driver
+    # opens transactions lazily and runs DDL / SAVEPOINT statements in
+    # autocommit mode, so ``RELEASE SAVEPOINT`` durably commits and a later
+    # ``session.rollback()`` cannot undo it. Setting ``isolation_level=None``
+    # hands transaction control to SQLAlchemy, which emits BEGIN via the
+    # handler below. Without this, the autoassign SAVEPOINT pattern combined
+    # with post-insert edge-rule validation (the v0.7 governance entities)
+    # would leave orphaned partial rows on a validation failure.
+    dbapi_conn.isolation_level = None
+
+
+def _sqlite_emit_begin(conn) -> None:
+    # BEGIN IMMEDIATE acquires the RESERVED (write-intent) lock at transaction
+    # start, so concurrent writers queue cleanly (with busy_timeout) instead of
+    # both taking a read lock and deadlocking on the upgrade to write.
+    conn.exec_driver_sql("BEGIN IMMEDIATE")
 
 
 def _build_engine(url: str) -> Engine:
     engine = create_engine(url, future=True)
     event.listen(engine, "connect", _enable_sqlite_pragmas)
+    event.listen(engine, "begin", _sqlite_emit_begin)
     return engine
 
 
