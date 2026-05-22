@@ -134,7 +134,7 @@ If any record returns a non-OK, non-409 result, stop and report the full error r
 5. **Confirm `decided_in` references resolve correctly for one decision:**
 
    ```bash
-   curl -sf 'http://127.0.0.1:8765/references?source_type=decision&source_id=DEC-148' | jq '.data[] | select(.relationship_kind == "decided_in") | {target_type, target_id}'
+   curl -sf 'http://127.0.0.1:8765/references?source_type=decision&source_id=DEC-148' | jq '.data[] | select(.relationship == "decided_in") | {target_type, target_id}'
    ```
 
    Should return `{"target_type": "session", "target_id": "SES-052"}`.
