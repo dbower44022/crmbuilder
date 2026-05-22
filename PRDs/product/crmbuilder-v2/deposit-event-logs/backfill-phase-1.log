@@ -1,0 +1,125 @@
+=== PI-022 Phase 1 backfill ===
+Base: http://127.0.0.1:8765
+Started: 2026-05-22T23:56:18.032221+00:00
+
+
+=== Workstream WS-001 ===
+  ✓ workstream WS-001 (HTTP 201)
+
+=== Reference books RB-001..010 ===
+  ✓ reference_book RB-001 (HTTP 201)
+  ✓ reference_book RB-002 (HTTP 201)
+  ✓ reference_book RB-003 (HTTP 201)
+  ✓ reference_book RB-004 (HTTP 201)
+  ✓ reference_book RB-005 (HTTP 201)
+  ✓ reference_book RB-006 (HTTP 201)
+  ✓ reference_book RB-007 (HTTP 201)
+  ✓ reference_book RB-008 (HTTP 201)
+  ✓ reference_book RB-009 (HTTP 201)
+  ✓ reference_book RB-010 (HTTP 201)
+
+=== Work tickets WT-001..008 ===
+  ✓ work_ticket WT-001 (HTTP 201)
+  ✓ work_ticket WT-002 (HTTP 201)
+  ✓ work_ticket WT-003 (HTTP 201)
+  ✓ work_ticket WT-004 (HTTP 201)
+  ✓ work_ticket WT-005 (HTTP 201)
+  ✓ work_ticket WT-006 (HTTP 201)
+  ✓ work_ticket WT-007 (HTTP 201)
+  ✓ work_ticket WT-008 (HTTP 201)
+
+=== Conversations CONV-001..008 ===
+  ✓ conversation CONV-001 (HTTP 201)
+  ✓ conversation CONV-002 (HTTP 201)
+  ✓ conversation CONV-003 (HTTP 201)
+  ✓ conversation CONV-004 (HTTP 201)
+  ✓ conversation CONV-005 (HTTP 201)
+  ✓ conversation CONV-006 (HTTP 201)
+  ✓ conversation CONV-007 (HTTP 201)
+  ✓ conversation CONV-008 (HTTP 201)
+
+=== Session-record edges ===
+  ✓ edge CONV-001 records_session SES-047 (HTTP 201)
+  ✓ edge CONV-002 records_session SES-048 (HTTP 201)
+  ✓ edge CONV-003 records_session SES-049 (HTTP 201)
+  ✓ edge CONV-004 records_session SES-050 (HTTP 201)
+  ✓ edge CONV-005 records_session SES-051 (HTTP 201)
+  ✓ edge CONV-006 records_session SES-052 (HTTP 201)
+  ✓ edge CONV-007 records_session SES-054 (HTTP 201)
+  ✓ edge CONV-008 records_session SES-055 (HTTP 201)
+
+=== Consumption edges + WT consumed ===
+  ✓ edge CONV-001 opens_against WT-001 (HTTP 201)
+  ✓ WT-001 -> ready (HTTP 200)
+  ✓ WT-001 -> consumed (HTTP 200)
+  ✓ edge CONV-002 opens_against WT-002 (HTTP 201)
+  ✓ WT-002 -> ready (HTTP 200)
+  ✓ WT-002 -> consumed (HTTP 200)
+  ✓ edge CONV-003 opens_against WT-003 (HTTP 201)
+  ✓ WT-003 -> ready (HTTP 200)
+  ✓ WT-003 -> consumed (HTTP 200)
+  ✓ edge CONV-004 opens_against WT-004 (HTTP 201)
+  ✓ WT-004 -> ready (HTTP 200)
+  ✓ WT-004 -> consumed (HTTP 200)
+  ✓ edge CONV-005 opens_against WT-005 (HTTP 201)
+  ✓ WT-005 -> ready (HTTP 200)
+  ✓ WT-005 -> consumed (HTTP 200)
+  ✓ edge CONV-006 opens_against WT-006 (HTTP 201)
+  ✓ WT-006 -> ready (HTTP 200)
+  ✓ WT-006 -> consumed (HTTP 200)
+  ✓ edge CONV-007 opens_against WT-007 (HTTP 201)
+  ✓ WT-007 -> ready (HTTP 200)
+  ✓ WT-007 -> consumed (HTTP 200)
+  ✓ edge CONV-008 opens_against WT-008 (HTTP 201)
+  ✓ WT-008 -> ready (HTTP 200)
+  ✓ WT-008 -> consumed (HTTP 200)
+
+=== Conversation completion ===
+  ✓ CONV-001 -> complete (HTTP 200)
+  ✓ CONV-002 -> complete (HTTP 200)
+  ✓ CONV-003 -> complete (HTTP 200)
+  ✓ CONV-004 -> complete (HTTP 200)
+  ✓ CONV-005 -> complete (HTTP 200)
+  ✓ CONV-006 -> complete (HTTP 200)
+  ✓ CONV-007 -> complete (HTTP 200)
+  ✓ CONV-008 -> complete (HTTP 200)
+
+=== Close-out payloads COP-001..008 ===
+  ✓ close_out_payload COP-001 (HTTP 201)
+  ✓ close_out_payload COP-002 (HTTP 201)
+  ✓ close_out_payload COP-003 (HTTP 201)
+  ✓ close_out_payload COP-004 (HTTP 201)
+  ✓ close_out_payload COP-005 (HTTP 201)
+  ✓ close_out_payload COP-006 (HTTP 201)
+  ✓ close_out_payload COP-007 (HTTP 201)
+  ✓ close_out_payload COP-008 (HTTP 201)
+
+=== Deposit events DEP-001..008 ===
+  ✓ deposit_event DEP-001 (HTTP 201)
+  ✓ deposit_event DEP-002 (HTTP 201)
+  ✓ deposit_event DEP-003 (HTTP 201)
+  ✓ deposit_event DEP-004 (HTTP 201)
+  ✓ deposit_event DEP-005 (HTTP 201)
+  ✓ deposit_event DEP-006 (HTTP 201)
+  ✓ deposit_event DEP-007 (HTTP 201)
+  ✓ deposit_event DEP-008 (HTTP 201)
+
+=== Master plan edge WS-001 -> RB-001 ===
+  ✓ WS-001 planned_in RB-001 (HTTP 201)
+
+=== Verification ===
+  ✓ GET /workstreams: 1 records (expected ≥1)
+  ✓ GET /conversations: 8 records (expected ≥8)
+  ✓ GET /work-tickets: 8 records (expected ≥8)
+  ✓ GET /close-out-payloads: 8 records (expected ≥8)
+  ✓ GET /deposit-events: 8 records (expected ≥8)
+  ✓ GET /reference-books: 10 records (expected ≥10)
+  ✓ edges conversation_belongs_to_workstream: 8 (expected ≥8)
+  ✓ edges conversation_succeeds_conversation: 7 (expected ≥7)
+  ✓ edges conversation_records_session: 8 (expected ≥8)
+  ✓ edges conversation_opens_against_work_ticket: 8 (expected ≥8)
+  ✓ edges close_out_payload_produced_by_conversation: 8 (expected ≥8)
+  ✓ edges deposit_event_applies_close_out_payload: 8 (expected ≥8)
+  ✓ edges workstream_planned_in_reference_book: 1 (expected ≥1)
+
+Finished: 2026-05-22T23:56:23.961440+00:00
