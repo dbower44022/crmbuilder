@@ -81,16 +81,44 @@ def get(session: Session, ref_id: int) -> dict:
 
 
 def list_all(session: Session) -> list[dict]:
-    rows = session.scalars(
-        select(Reference).order_by(
-            Reference.source_type,
-            Reference.source_id,
-            Reference.relationship_kind,
-            Reference.target_type,
-            Reference.target_id,
-        )
-    ).all()
-    return [_row_dict(r) for r in rows]
+    return list_references(session)
+
+
+def list_references(
+    session: Session,
+    *,
+    source_type: str | None = None,
+    source_id: str | None = None,
+    target_type: str | None = None,
+    target_id: str | None = None,
+    relationship_kind: str | None = None,
+) -> list[dict]:
+    """Return references, optionally filtered by any tuple component.
+
+    With no filters this returns the full list (backward-compatible with
+    the pre-v0.7 ``GET /references`` behaviour). Each supplied filter
+    narrows the result by exact match; filters compose. Surfaced as a gap
+    during the SES-054 apply (commit ``dcb7377``).
+    """
+    stmt = select(Reference)
+    if source_type is not None:
+        stmt = stmt.where(Reference.source_type == source_type)
+    if source_id is not None:
+        stmt = stmt.where(Reference.source_id == source_id)
+    if target_type is not None:
+        stmt = stmt.where(Reference.target_type == target_type)
+    if target_id is not None:
+        stmt = stmt.where(Reference.target_id == target_id)
+    if relationship_kind is not None:
+        stmt = stmt.where(Reference.relationship_kind == relationship_kind)
+    stmt = stmt.order_by(
+        Reference.source_type,
+        Reference.source_id,
+        Reference.relationship_kind,
+        Reference.target_type,
+        Reference.target_id,
+    )
+    return [_row_dict(r) for r in session.scalars(stmt).all()]
 
 
 def list_from(session: Session, *, source_type: str, source_id: str) -> list[dict]:

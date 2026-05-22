@@ -17,9 +17,30 @@ router = APIRouter(prefix="/references", tags=["references"])
 
 
 @router.get("")
-def list_all():
+def list_all(
+    source_type: str | None = None,
+    source_id: str | None = None,
+    target_type: str | None = None,
+    target_id: str | None = None,
+    relationship_kind: str | None = None,
+):
+    """List references, optionally filtered by any tuple component.
+
+    The filter parameters were accepted but ignored before v0.7 (gap
+    surfaced during the SES-054 apply, commit ``dcb7377``); they are now
+    honored server-side. No filters returns the full list.
+    """
     with readonly_session() as s:
-        return ok(references.list_all(s))
+        return ok(
+            references.list_references(
+                s,
+                source_type=source_type,
+                source_id=source_id,
+                target_type=target_type,
+                target_id=target_id,
+                relationship_kind=relationship_kind,
+            )
+        )
 
 
 @router.get("/next-identifier")
