@@ -59,6 +59,8 @@ Forthcoming decisions (to be recorded after this PRD is approved — see Section
 
 **Renumbering note.** The draft of this PRD initially anticipated DEC-A through DEC-G mapping to DEC-095 through DEC-101. At PRD-closeout time the actual range available is DEC-098 through DEC-104, because the parallel PI-001 styling workstream's Conversation 1 (SES-027) close-out applied first (claiming DEC-087 through DEC-094) AND the styling Conversation 2 ran in parallel with this conversation and claimed SES-028 plus DEC-095 through DEC-097 for its v0.6 PRD authoring. The session identifier for this PRD's authoring conversation is therefore SES-029. The renumbering is mechanical bookkeeping — same pattern as v0.4's SES-016 → SES-017 collision-resolution.
 
+> **Final landing (post-rebase, 05-22-26).** The styling Conversation 2 identifiers anticipated above (SES-028 / DEC-095–097) were never applied. At its own closeout, styling Conversation 2 rebased to SES-030 / DEC-105–107 (commit `7255667`); a subsequent SES-030 collision was reconciled by re-homing its session content at **SES-036** while keeping **DEC-105/106/107** (commit `b41fb04c`). SES-028 and DEC-095–097 are permanently-vacant identifiers. See `crmbuilder-v2`'s investigation note for the full chain.
+
 ---
 
 ## 2. Scope
@@ -308,7 +310,7 @@ Slice breakdown, dependencies, and per-slice acceptance criteria are at `PRDs/pr
 
 ## 9. Coordination with PI-001 Styling Workstream
 
-Per DEC-076, PI-001 runs as a parallel workstream alongside v0.5. The styling Conversation 1 (SES-027) committed `styling-design-pass.md`, settling the foundation tokens and component visual decisions in DEC-087 through DEC-094. The styling Conversation 2 (SES-028) committed `ui-PRD-v0.6.md` and `ui-v0.6-implementation-plan.md` on the same day this PRD was authored, settling DEC-095 through DEC-097 (release sequencing as v0.6 separate from v0.5; six-slice structure A–F; per-slice screenshot + closeout WCAG check acceptance pattern).
+Per DEC-076, PI-001 runs as a parallel workstream alongside v0.5. The styling Conversation 1 (SES-027) committed `styling-design-pass.md`, settling the foundation tokens and component visual decisions in DEC-087 through DEC-094. The styling Conversation 2 (SES-028) committed `ui-PRD-v0.6.md` and `ui-v0.6-implementation-plan.md` on the same day this PRD was authored, settling DEC-095 through DEC-097 (release sequencing as v0.6 separate from v0.5; six-slice structure A–F; per-slice screenshot + closeout WCAG check acceptance pattern). *(Post-rebase: this conversation's records landed at SES-036 / DEC-105–107, not SES-028 / DEC-095–097 — see the §1 renumbering note.)*
 
 The release sequencing per DEC-095 (styling Conversation 2) makes the boundary discipline concrete: **v0.5 ships first with Qt-default styling on its new engagement-management surfaces; v0.6 retrofits the styling design pass across all panels including v0.5's engagement panel.** The two releases are independent — v0.5 does not block on v0.6, and v0.6 does not block on v0.5 except at v0.6's slice C (panel retrofits) which is gated on v0.5 shipping.
 
@@ -403,7 +405,7 @@ The MCP server lifecycle mirrors the API server's: one MCP subprocess per engage
 
 Per DEC-014 (every v2 conversation produces a session record) and DEC-025 (`conversation_reference` convention + seed-prompt-in-`topics_covered`), the v0.5-Conversation-2 build-planning conversation that produced this PRD is captured in the v2 database at this PRD's closeout.
 
-**Renumbering note.** The drafts in §1 initially anticipated DEC-A through DEC-G mapping to DEC-095 through DEC-101. At PRD-closeout time the actual range was DEC-098 through DEC-104 (the styling SES-027 apply consumed DEC-087–094; styling Conversation 2 ran in parallel and claimed SES-028 plus DEC-095–097 for its v0.6 PRD authoring). The session identifier is SES-029.
+**Renumbering note.** The drafts in §1 initially anticipated DEC-A through DEC-G mapping to DEC-095 through DEC-101. At PRD-closeout time the actual range was DEC-098 through DEC-104 (the styling SES-027 apply consumed DEC-087–094; styling Conversation 2 ran in parallel and claimed SES-028 plus DEC-095–097 for its v0.6 PRD authoring). The session identifier is SES-029. *(Post-rebase: styling Conversation 2's records ultimately landed at SES-036 / DEC-105–107; SES-028 / DEC-095–097 are permanently vacant — see the §1 renumbering note.)*
 
 Records to write at PRD closeout:
 
