@@ -732,3 +732,8 @@ class DepositEventCreateIn(_Base):
     deposit_event_error_info: dict[str, Any] | None = None
     deposit_event_identifier: str | None = None
     references: list[DepositEventEdgeIn] | None = None
+    # When the parent edge targets a close_out_payload that doesn't yet
+    # exist, the access layer lazy-creates it; this lets the apply script
+    # pass the real payload file path so the lazy COP's file_path points
+    # at the right artifact (PRD §3.5).
+    target_file_path: str | None = None

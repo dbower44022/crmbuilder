@@ -59,5 +59,6 @@ def create(body: DepositEventCreateIn):
                 error_info=body.deposit_event_error_info,
                 identifier=body.deposit_event_identifier,
                 references=references,
+                target_file_path=body.target_file_path,
             )
         )
