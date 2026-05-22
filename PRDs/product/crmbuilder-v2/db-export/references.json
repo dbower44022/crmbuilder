@@ -2086,5 +2086,23 @@
     "source_type": "session",
     "target_id": "PI-022",
     "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-22T05:26:45.797886",
+    "id": 237,
+    "relationship_kind": "decided_in",
+    "source_id": "DEC-153",
+    "source_type": "decision",
+    "target_id": "SES-053",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-22T05:26:45.892022",
+    "id": 238,
+    "relationship_kind": "decided_in",
+    "source_id": "DEC-154",
+    "source_type": "decision",
+    "target_id": "SES-053",
+    "target_type": "session"
   }
 ]
