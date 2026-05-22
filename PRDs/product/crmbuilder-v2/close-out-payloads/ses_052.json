@@ -85,49 +85,49 @@
       "source_id": "DEC-147",
       "target_type": "session",
       "target_id": "SES-052",
-      "relationship_kind": "decided_in"
+      "relationship": "decided_in"
     },
     {
       "source_type": "decision",
       "source_id": "DEC-148",
       "target_type": "session",
       "target_id": "SES-052",
-      "relationship_kind": "decided_in"
+      "relationship": "decided_in"
     },
     {
       "source_type": "decision",
       "source_id": "DEC-149",
       "target_type": "session",
       "target_id": "SES-052",
-      "relationship_kind": "decided_in"
+      "relationship": "decided_in"
     },
     {
       "source_type": "decision",
       "source_id": "DEC-150",
       "target_type": "session",
       "target_id": "SES-052",
-      "relationship_kind": "decided_in"
+      "relationship": "decided_in"
     },
     {
       "source_type": "decision",
       "source_id": "DEC-151",
       "target_type": "session",
       "target_id": "SES-052",
-      "relationship_kind": "decided_in"
+      "relationship": "decided_in"
     },
     {
       "source_type": "decision",
       "source_id": "DEC-152",
       "target_type": "session",
       "target_id": "SES-052",
-      "relationship_kind": "decided_in"
+      "relationship": "decided_in"
     },
     {
       "source_type": "session",
       "source_id": "SES-052",
       "target_type": "planning_item",
       "target_id": "PI-022",
-      "relationship_kind": "is_about"
+      "relationship": "is_about"
     }
   ]
 }
