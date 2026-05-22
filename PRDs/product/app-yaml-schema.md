@@ -1,8 +1,8 @@
 # CRM Builder — YAML Program File Schema
 
-**Version:** 1.2.4
+**Version:** 1.3
 **Status:** Current
-**Last Updated:** 05-04-26 00:00
+**Last Updated:** 05-22-26 14:30
 **Applies To:** All YAML program files used by CRM Builder
 
 ---
@@ -19,6 +19,7 @@
 | 1.2.3 | 05-03-26 18:30 | Adds `settings.autoPlaceName` (default `true`); LayoutManager now auto-prepends the system `name` field to detail/edit layouts unless explicitly placed or opted out. |
 | 1.2.4 | 05-04-26 00:00 | Adds field-level `optionsDeferred: bool` flag on enum/multiEnum fields (Section 6.3). When `true`, the validator accepts an empty `options:` list — used for fields whose value list cannot be expressed at YAML-authoring time and is configured post-deploy via the EspoCRM admin UI per a `MANUAL-CONFIG.md` companion entry. Default `false` preserves the existing strict validator behavior. New Section 6.4.1 documents the deferred-options pattern with worked example and companion-artifact rule. Validator-only change; deploy engine behavior unchanged. |
 | 1.2.5 | 05-19-26 | Adds `foreign` field type (Section 6.2, new Section 6.8) for mirroring a scalar field from a linked entity onto the current entity's detail/list/edit views — the platform's "Foreign" field. Requires `link:` (a manyToOne or oneToOne link name declared in the top-level `relationships:` block) and `field:` (the name of the field on the linked entity to mirror). Validator rejects: missing `link:` or `field:`; `required: true` (foreign fields are read-only mirrors — set the constraint on the source field); `formula:` (mirroring and computing are mutually exclusive); `link:`/`field:` on any non-foreign type. New validation rules added to Section 10. Deploy ordering note: because the regular field step runs before the relationship step, a YAML that introduces a brand-new relationship and a foreign field referencing it in the same file needs a second Configure run after the link exists. Subsequent re-runs are idempotent. |
+| 1.3 | 05-22-26 14:30 | Adds Category 6 Parts A–E (Role-Based Access Control) per `yaml-schema-gap-analysis-MR-pilot.md` Section 6, as amended 05-20-26 21:18 (Option C reordering — scope-level access lands here, field-level access defers). New top-level keys `roles:` and `teams:` extend the program-file shape — a file may now contain any combination of `entities:`, `relationships:`, `roles:`, and `teams:` (Section 3.1). Operational convention is a dedicated `programs/security.yaml` file, but the schema does not enforce a file-type distinction; the loader queues any file declaring `roles:` or `teams:` ahead of files referencing them (Section 12.6). New Section 12 ties the five Parts together: 12.1 Roles, 12.2 Teams, 12.3 Scope-Level Entity Access (per-role `scope_access:` block with whitelist semantics — entities not listed are denied), 12.4 System Permissions (per-role `system_permissions:` block for non-entity controls), 12.5 Role-Aware Visibility (12.5.1 `role:` leaf clause in Section 11 condition expressions, valid only in `visibleWhen:` contexts; 12.5.2 `forRoles:` on layout declarations). Section 3.1 lists the new top-level keys. Section 7.2 adds `forRoles:` to the layout property table. Section 11.2 extends the leaf-clause syntax to permit `role:` as an alternative discriminator to `field:`, with Section 11.5 adding rejection rules for `role:` in non-`visibleWhen:` contexts. Section 10 gains a new Roles/Teams/Layout-`forRoles:` validation block. Field-level permissions and permission presets (gap-analysis Section 6, "Deferred to v1.3") remain out of scope and will land in a future schema bump; "v1.3" in the gap analysis refers to feature-scope ordering, not the doc revision in which they ship. Note: "v1.2" in the gap analysis and the kickoff prompts is similarly feature-scope language — by the time Parts A–E reach the schema spec, the doc had advanced through v1.2.1–v1.2.5 patches, so this addition is the next minor bump (v1.2.5 → v1.3). |
 
 ---
 
@@ -161,9 +162,16 @@ relationships:
 | `description` | string | yes | Human-readable description of what this file configures |
 | `entities` | map | no | Map of entity name → entity definition (see Section 5). Each entity block contains `fields` (Section 6) and optionally `layout` (Section 7) |
 | `relationships` | list | no | List of relationship definitions (see Section 8) |
+| `roles` | list | no | List of role definitions for role-based access control (see Section 12.1). Operational convention: declared in a dedicated `programs/security.yaml` file |
+| `teams` | list | no | List of team definitions for team-scoped access (see Section 12.2). Operational convention: declared in the same `programs/security.yaml` file as `roles:` |
 
-A file may contain `entities`, `relationships`, or both. A file with
-neither is valid but produces no output.
+A file may contain any combination of `entities`, `relationships`, `roles`, and
+`teams`. A file with none of these is valid but produces no output. The
+schema does not enforce a file-type distinction between "entity files" and
+"security files" — `programs/security.yaml` is a recommended naming
+convention, not a discriminator. The deploy pipeline orders the batch by
+content: any file declaring `roles:` or `teams:` is queued ahead of files
+that reference them (Section 12.6).
 
 All program files are validated before any API calls are made. Validation
 rules for each section are defined in Section 10.
@@ -1622,6 +1630,20 @@ layout:
 | `detail` | Fields shown when viewing a record. Panel and tab structure |
 | `list` | Columns shown in the entity list view |
 
+The value at each `layout.{type}` key may be either:
+
+- **A single layout block** (the form shown above) — applies to all
+  roles. This is the only form available in v1.0–v1.2.5 and remains
+  the default in v1.3.
+- **A list of role-scoped variants** (v1.3+) — each variant is a
+  layout block with a required `forRoles:` list. The union of all
+  `forRoles:` lists must cover every role declared in the program
+  batch's `roles:` block, and no role may appear in more than one
+  variant. See Section 12.5.2 for the full role-scoping
+  specification.
+
+The two forms are mutually exclusive at any given `layout.{type}` key.
+
 ### 7.2 Detail Layout — Panel Structure
 
 Each panel in a detail layout has the following properties:
@@ -1985,6 +2007,61 @@ rules apply to all program files:
 - All required properties must be present (see Section 8.1)
 - `manyToMany` relationships must include `relationName`
 
+**Role-level (v1.3+, see Section 12.1):**
+- Each `roles:` entry must have a `name:` string
+- Role `name:` must be unique across the program batch
+- `persona:`, when present, is treated as documentation metadata
+  and not otherwise validated (the loader does not cross-check
+  Master PRD persona identifiers)
+- `scope_access:`, when present, must be a map of entity-name to
+  per-action settings (Section 12.3). Each entity name must
+  resolve either to an entity declared in the program batch or to
+  a recognized native entity (Contact, Account, Meeting, etc.).
+  Unresolved entity names are a hard-reject error
+- Within `scope_access.{entity}:`, the `create:` key takes only
+  `yes` or `no`. The `read:`, `edit:`, `delete:`, and `stream:`
+  keys each take one of `all`, `team`, `own`, `no`. Unrecognized
+  keys or values are a hard-reject error
+- `system_permissions:`, when present, must be a map whose keys
+  are drawn from the v1.3 system-permissions enumeration
+  (Section 12.4). Unrecognized keys are a hard-reject error.
+  Each key's value must match the per-key value vocabulary
+  documented in Section 12.4 (scope-style keys take
+  `all`/`team`/`own`/`no`; flag-style keys take `yes`/`no`)
+
+**Team-level (v1.3+, see Section 12.2):**
+- Each `teams:` entry must have a `name:` string
+- Team `name:` must be unique across the program batch
+- No other `teams:`-entry keys are required; `description:` is
+  documentation metadata
+
+**Layout-`forRoles:`-level (v1.3+, see Section 12.5.2):**
+- A layout type value (`layout.detail`, `layout.list`) is either a
+  single layout block (no `forRoles:`) or a list of layout
+  variants (each with required `forRoles:`). The two forms are
+  mutually exclusive at any given `layout.{type}` key
+- In the role-scoped list form, every variant must declare a
+  non-empty `forRoles:` list. Missing or empty `forRoles:` on a
+  variant is a hard-reject error
+- In the role-scoped list form, the union of all variants'
+  `forRoles:` lists must cover every role declared in the program
+  batch's `roles:` block. A role left unmatched is a hard-reject
+  error
+- In the role-scoped list form, no role may appear in more than
+  one variant's `forRoles:` list. Doubly-matched roles are a
+  hard-reject error
+- Every role name in any `forRoles:` list must match a role
+  declared in the program batch's `roles:` block (Section 12.1)
+
+**Top-level (v1.3+):**
+- A program file may contain any combination of `entities:`,
+  `relationships:`, `roles:`, and `teams:`. A file declaring none
+  of these is valid but produces no output
+- If a program batch contains any file declaring `roles:` or
+  `teams:`, the loader queues those files ahead of files that
+  reference them. Cross-file role-name resolution is performed
+  via the existing `ProgramContext` (Section 12.6)
+
 Validation errors are reported individually with enough detail for the
 user to locate and fix each issue. Validation failures prevent the Run
 action from proceeding (hard-reject): a YAML file with any validation
@@ -2024,9 +2101,8 @@ complete.
 
 ## 11. Shared Condition Expressions
 
-Several v1.1 features use a common condition-expression construct to
-specify which records or situations a rule applies to. These features
-are:
+Several features use a common condition-expression construct to specify
+which records or situations a rule applies to. These features are:
 
 - Saved view `filter:` (Section 5.6)
 - Field-level `requiredWhen:` (Section 6, Category 4)
@@ -2037,6 +2113,11 @@ are:
 
 All of them share the same syntax, operator vocabulary, relative-date
 vocabulary, and structural forms described in this section.
+
+Leaf clauses come in two flavors: **field clauses** (the v1.1 form,
+available in every consumer above) and **role clauses** (added in
+v1.3, valid only in `visibleWhen:` contexts — see Section 12.5.1).
+Section 11.2 documents both.
 
 ### 11.1 Structural Forms
 
@@ -2067,11 +2148,19 @@ when OR is involved or when mixed conjunction/disjunction is needed.
 
 ### 11.2 Leaf Clause Syntax
 
-Every leaf clause has the same shape:
+Every leaf clause has one of two shapes — a field clause (the v1.1
+form) or a role clause (added in v1.3, restricted to
+`visibleWhen:` contexts):
 
 ```yaml
+# Field clause
 { field: <fieldName>, op: <operator>, value: <value> }
+
+# Role clause (v1.3+, see Section 12.5.1)
+{ role: <operator>, value: <roleName-or-list> }
 ```
+
+**Field clauses:**
 
 - `field` — The name of the field to compare. Must exist on the
   entity the expression is evaluated against. For aggregate `where:`
@@ -2081,6 +2170,23 @@ Every leaf clause has the same shape:
 - `value` — A literal value, a list of literals (for `in` / `notIn`),
   or a relative-date string (Section 11.4). Omitted entirely for
   `isNull` and `isNotNull`.
+
+**Role clauses (v1.3+):**
+
+- `role` — A discriminator marking this clause as evaluating the
+  *viewing user's* role, not a field on the record. The value of the
+  `role:` key is the operator (one of `equals`, `notEquals`, `in`,
+  `notIn` — see Section 12.5.1 for the restricted operator set).
+- `value` — A single role name (string) for `equals` / `notEquals`,
+  or a list of role names for `in` / `notIn`. Each role name must
+  match a role declared in the program batch's `roles:` block
+  (Section 12.1).
+
+Role clauses are valid **only** in `visibleWhen:` contexts (field-level
+or panel-level). They are rejected in `filter:`, `where:`, and any
+other Section 11 consumer that evaluates against records rather than
+viewing context. See Section 12.5.1 for the rationale and Section 11.5
+for the rejection rule.
 
 ### 11.3 Operator Vocabulary
 
@@ -2135,3 +2241,546 @@ future minor versions.
   list
 - Structured form: the root of a `filter:` may contain either a flat
   list (shorthand) or a single `all:` / `any:` object, not both
+- A leaf clause must contain exactly one of `field:` or `role:` — not
+  both, not neither
+- `role:` leaf clauses are valid only in `visibleWhen:` contexts
+  (field-level or panel-level). They are rejected with an explicit
+  error in `filter:`, `aggregate.where:`, workflow `where:`, and any
+  other Section 11 consumer that evaluates against records rather
+  than viewing context
+- `role:`-clause operators are restricted to `equals`, `notEquals`,
+  `in`, `notIn`. Comparison and nullity operators are rejected
+- For `role:` clauses with `in` / `notIn`, `value:` must be a list of
+  role-name strings; for `equals` / `notEquals`, `value:` must be a
+  single role-name string
+- Every role name referenced in a `role:` clause must match a role
+  declared in the program batch's `roles:` block (Section 12.1). The
+  loader performs this resolution across the full batch, parallel to
+  field-name resolution via `ProgramContext`
+
+---
+
+## 12. Security and Role-Based Access Control
+
+Role-based access control (RBAC) is declared via two top-level keys —
+`roles:` and `teams:` — plus per-role blocks for entity-level access
+scope, system permissions, and role-aware layout/panel visibility.
+This section is the authoritative specification for all five Parts;
+Sections 3.1, 7.1, 10, and 11 cross-reference it from the points
+where RBAC touches the rest of the schema.
+
+**Source.** This section codifies the v1.2-scope half of Category 6
+from `yaml-schema-gap-analysis-MR-pilot.md`, as amended on
+05-20-26 21:18 (the Option C reordering decision). Field-level
+permissions and named permission presets — gap-analysis Section 6
+"Deferred to v1.3" — remain out of scope here and will land in a
+future schema bump; see Section 12.7.
+
+**Operational convention.** Roles and teams are conventionally
+declared in a dedicated `programs/security.yaml` file, separate
+from domain program files. The schema does not enforce this — a
+single program file is permitted to mix `roles:` / `teams:` with
+`entities:` / `relationships:` — but separation is recommended for
+operational hygiene: security configuration changes are reviewed,
+deployed, and audited on a different cadence than domain content
+changes.
+
+**Why role and team identity is the `name:` string.** Roles and
+teams have no separate identifier — the `name:` is identity. This
+matches the target CRM's role-naming convention, keeps every
+reference (in `scope_access:`, `forRoles:`, `role:` leaf clauses)
+human-readable, and avoids the indirection of a separate ID
+column. Role names are case-sensitive and must match exactly
+everywhere they appear.
+
+### 12.1 Roles
+
+A role is declared as an entry in the top-level `roles:` list.
+Each role maps (informationally) to one or more Master PRD
+personas, declares the entity-level scope of access it grants
+(`scope_access:`, Section 12.3), and declares the system-level
+permissions it carries (`system_permissions:`, Section 12.4).
+
+```yaml
+# programs/security.yaml
+roles:
+  - name: "Mentor Administrator"
+    persona: MST-PER-005
+    description: >
+      Manages mentor recruitment, onboarding, and lifecycle.
+      Owns acceptance, background check, and decline workflows.
+
+  - name: "Mentor"
+    persona: MST-PER-011
+    description: >
+      Active mentor with self-service edit access to public-facing
+      profile fields when their mentorStatus is Active.
+
+  - name: "System Administrator"
+    persona: MST-PER-001
+    description: >
+      Full administrative access. Used for setup, troubleshooting,
+      and bulk-data operations.
+```
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | yes | Role identity. Unique across the program batch. Used everywhere a role is referenced (`scope_access:`, `forRoles:`, `role:` leaf clauses) |
+| `persona` | string | no | Master PRD persona identifier (e.g., `MST-PER-005`). Documentation metadata — the loader does not cross-check the identifier against any source |
+| `description` | string | no | Business rationale for the role. Treated as block-scalar prose; no schema interpretation |
+| `scope_access` | map | no | Per-entity access scope (Section 12.3). Whitelist semantics — entities not listed are denied at every action |
+| `system_permissions` | map | no | Per-key non-entity controls (Section 12.4). Recognized keys are drawn from the v1.3 system-permissions enumeration |
+
+**User-to-role assignment is out of YAML scope.** The deployment
+artifact describes the security *structure* — what each role can
+do. Assignment of users to roles is runtime operational data
+managed in the target CRM administrative UI (gap-analysis Q7).
+Adding a new user does not require a redeploy.
+
+**Persona identifiers as documentation only.** A `persona:` value
+gives provenance — it tells the reader which Master PRD persona
+motivated the role's existence — but the loader does not parse
+Master PRD source to verify the identifier. The loader could
+optionally check the identifier against a known list in a future
+schema version, but that requires reading outside the immediate
+program file and is not in v1.3 scope.
+
+### 12.2 Teams
+
+A team is declared as an entry in the top-level `teams:` list.
+Teams group users for the purpose of team-level access scope on
+records (the `team` value in `scope_access:`, Section 12.3).
+Team membership is runtime data managed in the target CRM UI,
+not in YAML.
+
+```yaml
+# programs/security.yaml (continued)
+teams:
+  - name: "Mentors"
+    description: >
+      All active mentors. Used for team-level visibility on
+      mentoring records.
+
+  - name: "Administrators"
+    description: >
+      Staff with operational oversight of the program.
+
+  - name: "Fundraising"
+    description: >
+      Staff handling contributions, dues, and donor relations.
+```
+
+| Property | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | yes | Team identity. Unique across the program batch |
+| `description` | string | no | Business rationale for the team. Documentation metadata |
+
+**Why role `scope_access:` references the value `team` but not a
+specific team name.** The `team`-scoped access in
+`scope_access.{entity}.read: team` means "records owned by any
+team the viewing user belongs to" — it does not bind a role to a
+specific named team. A role granting `read: team` works for any
+user in any team. This is consistent with the target CRM's role
+model and decouples role design from team design: adding a new
+team does not require updating existing roles.
+
+**User-to-team assignment is out of YAML scope** (same rationale
+as user-to-role; gap-analysis Q7).
+
+### 12.3 Scope-Level Entity Access
+
+Each role declares which entities it can touch and at what scope
+via the `scope_access:` block inside the role's entry. The block
+is a map of entity name to a per-action access setting.
+
+```yaml
+roles:
+  - name: "Mentor"
+    scope_access:
+      c-Engagement:
+        create: no
+        read:   own
+        edit:   own
+        delete: no
+        stream: own
+
+      c-Session:
+        create: yes
+        read:   own
+        edit:   own
+        delete: no
+        stream: own
+
+      Contact:
+        create: no
+        read:   team
+        edit:   no
+        delete: no
+        stream: team
+
+      Account:
+        create: no
+        read:   team
+        edit:   no
+        delete: no
+        stream: no
+```
+
+**Per-action vocabulary.**
+
+| Action | Value vocabulary | Semantics |
+|---|---|---|
+| `create` | `yes` / `no` | Whether the role can create new records of this entity. The target CRM treats create as a boolean |
+| `read` | `all` / `team` / `own` / `no` | Which records the role may view: any record, records owned by any team the user belongs to, only records assigned to the user, or none |
+| `edit` | `all` / `team` / `own` / `no` | Same vocabulary as `read`, applied to record modification |
+| `delete` | `all` / `team` / `own` / `no` | Same vocabulary as `read`, applied to record deletion |
+| `stream` | `all` / `team` / `own` / `no` | Same vocabulary as `read`, applied to the record's activity stream (notes, change history) |
+
+The validator rejects any value outside these vocabularies. Note
+that `create` is the only action that takes a boolean — the
+record does not yet exist at create time, so `team` and `own`
+have no meaning.
+
+**Entity-name resolution.** Each entity name in `scope_access:`
+must resolve to either:
+
+- An entity declared in the program batch (a key under any
+  file's `entities:` block — cross-file resolution via
+  `ProgramContext`), or
+- A recognized native entity (Contact, Account, Meeting, etc.,
+  per `native_entity_types.py`)
+
+Unresolved entity names are a hard-reject error. Custom-entity
+names use their natural form (e.g., `c-Engagement`, matching the
+key under `entities:` in the domain YAML); platform-specific
+prefixing is applied at deploy time.
+
+**Whitelist semantics — omission denies.** A role with no
+`scope_access:` block has no entity access at all. A role with a
+`scope_access:` block has access only to the entities listed
+there; any entity not listed is denied at every action. This is
+intentional (gap-analysis Q8): it forces explicit grants and
+prevents accidental over-permissioning when new entities are
+added in later YAML files.
+
+**YAML boolean coercion.** YAML 1.1 loaders parse bare `no` as
+boolean `false` and bare `yes` as boolean `true`. The CRM Builder
+loader normalizes both bare forms and quoted string forms (`"no"`,
+`"yes"`) to the same value at parse time, so operators may write
+either. For readability, the schema spec recommends the bare
+forms — they read naturally in the context of access rules.
+
+**Deploy ordering caveat.** Role deployment runs after entity
+deployment in the Configure pipeline (see Section 12.6). An
+entity referenced in `scope_access:` that has not yet been
+deployed (because it is declared in a later batch) will cause
+the role deploy to fail. The validator catches this at
+pre-flight time via the cross-file batch context.
+
+### 12.4 System Permissions
+
+Each role declares system-level (non-entity) permissions via the
+`system_permissions:` block inside the role's entry. These are
+the role controls that affect the entire instance rather than a
+single entity.
+
+```yaml
+roles:
+  - name: "Mentor"
+    system_permissions:
+      assignment_permission: own
+      user_permission:       team
+      export:                no
+      mass_update:           no
+      audit_log:             no
+      portal:                no
+```
+
+**v1.3 system-permissions enumeration.**
+
+| Key | Value vocabulary | Semantics |
+|---|---|---|
+| `assignment_permission` | `all` / `team` / `own` / `no` | Whom the role may assign records to: any user, members of teams the user belongs to, only themselves, or no assignment |
+| `user_permission` | `all` / `team` / `own` / `no` | Which other users the role may view in the user directory |
+| `export` | `yes` / `no` | Whether the role may export records to CSV / Excel |
+| `mass_update` | `yes` / `no` | Whether the role may perform bulk updates from list views |
+| `audit_log` | `yes` / `no` | Whether the role may view the platform audit log |
+| `portal` | `yes` / `no` | Whether the role may log in via the customer portal interface (when present) |
+
+Scope-style keys (`assignment_permission`, `user_permission`)
+take `all`/`team`/`own`/`no` exactly as in Section 12.3.
+Flag-style keys (`export`, `mass_update`, `audit_log`, `portal`)
+take `yes` or `no`. The validator rejects any value outside the
+per-key vocabulary.
+
+Unrecognized keys inside `system_permissions:` are a hard-reject
+error. The enumeration above is the complete v1.3 set; future
+schema versions may extend it.
+
+**Omission defaults to deny.** Any key not listed in a role's
+`system_permissions:` block is treated as the most-restrictive
+value for that key (`no`). A role with no `system_permissions:`
+block at all has every flag-style permission denied and every
+scope-style permission set to `no`.
+
+### 12.5 Role-Aware Visibility
+
+Role-aware visibility lets a panel, a field, or an entire layout
+be hidden from users whose role does not match a stated set. It
+has two parts: a `role:` leaf clause in Section 11 condition
+expressions (12.5.1) and a `forRoles:` list on layout
+declarations (12.5.2).
+
+**Why this is separate from `scope_access:`.** Scope-level entity
+access (Section 12.3) is a security boundary — a role denied
+`read:` on an entity cannot retrieve those records via any API,
+list view, or related-record reference. Role-aware visibility is
+a UX concern — a panel or layout hidden from a role may still be
+reachable via the API by a user who knows the field name. Do not
+use 12.5.1 or 12.5.2 to enforce a security boundary; use them to
+declutter the interface for roles that don't need to see certain
+content.
+
+**Dependency on Section 12.1.** Both 12.5.1 and 12.5.2 reference
+role names. Every name referenced must match a role declared in
+the program batch's `roles:` block. The validator catches
+unresolved names at pre-flight time.
+
+#### 12.5.1 Role-Aware Leaf Clauses
+
+Section 11.2 documents the leaf-clause syntax for condition
+expressions. v1.3 extends the syntax to permit a `role:` leaf
+clause as an alternative to the v1.1 `field:` leaf clause:
+
+```yaml
+# Shorthand — single role
+visibleWhen:
+  - { role: equals, value: "Mentor Administrator" }
+
+# Set of roles
+visibleWhen:
+  - { role: in, value: ["Mentor Administrator", "System Administrator"] }
+
+# Compound — role OR record state
+visibleWhen:
+  any:
+    - { role: in, value: ["Mentor Administrator", "System Administrator"] }
+    - { field: mentorStatus, op: equals, value: "Active" }
+```
+
+The `role:` key holds the operator (one of `equals`, `notEquals`,
+`in`, `notIn` — see below); the `value:` key holds the role name
+(string) for `equals` / `notEquals` or the list of role names
+for `in` / `notIn`. There is no separate `op:` key in a role
+clause — the `role:` key carries that role.
+
+**Operator restriction.** Role clauses are restricted to
+`equals`, `notEquals`, `in`, and `notIn`. The comparison operators
+(`lessThan` etc.), the membership operator (`contains`), and the
+nullity operators (`isNull`, `isNotNull`) are not meaningful for
+role identity and are rejected at validation time.
+
+**Context restriction — only `visibleWhen:`.** Role clauses
+evaluate the *viewing user's* identity, not a value on the
+record being evaluated. They are therefore meaningful only in
+viewing-context consumers of Section 11 — field-level
+`visibleWhen:` and panel-level `visibleWhen:`. They are rejected
+with an explicit error in:
+
+- Saved view `filter:` — filters select records, not viewers
+- Field-level `requiredWhen:` — requirement is a record-validation
+  rule, not a viewing-context rule
+- Calculated field `aggregate.where:` — aggregate scope is over
+  records of a related entity
+- Workflow `where:` and trigger conditions — workflows fire on
+  record events, not viewing events
+
+This restriction is enforced by `validate_condition` at the call
+site (the consumer passes a context flag that tells the validator
+which leaf-clause flavors are permitted).
+
+**Mixing role and field clauses.** A single `visibleWhen:`
+expression may mix `role:` and `field:` clauses freely within
+the structured `all:` / `any:` forms. The compound example above
+shows the canonical pattern — "this panel is visible to
+administrators OR to anyone viewing a record whose mentorStatus
+is Active."
+
+#### 12.5.2 Layout-Level Role Scoping
+
+A layout type (`detail` or `list`) may be declared as a list of
+role-scoped variants, each with a required `forRoles:` list,
+instead of as a single layout block. The list form lets different
+roles see structurally different layouts for the same entity.
+
+```yaml
+layout:
+  detail:
+    - forRoles: ["Mentor Administrator", "System Administrator"]
+      panels:
+        - label: "Administrative"
+          rows:
+            - [backgroundCheckCompleted, backgroundCheckDate]
+            - [internalNotes, null]
+        - label: "Profile"
+          rows:
+            - [firstName, lastName]
+            - [emailAddress, phoneNumber]
+
+    - forRoles: ["Mentor"]
+      panels:
+        - label: "My Profile"
+          rows:
+            - [firstName, lastName]
+            - [emailAddress, phoneNumber]
+            - [professionalBio, null]
+```
+
+**Coverage rule (gap-analysis Q5).** When `layout.{type}` is
+expressed as a list of variants, every role declared in the
+program batch's `roles:` block must appear in exactly one
+variant's `forRoles:` list. The loader emits a hard-reject error
+if:
+
+- A role is unmatched (appears in `roles:` but in no variant's
+  `forRoles:` for this layout type)
+- A role is doubly matched (appears in more than one variant's
+  `forRoles:` for the same layout type)
+
+This forces explicit role-to-layout assignment and prevents the
+ambiguous case where two role-scoped layouts both claim the same
+role.
+
+**Backward compatibility — the single-block form.** When
+`layout.{type}` is expressed as a single layout block (the v1.0–
+v1.2.5 form, no `forRoles:`), the layout applies to all roles.
+This is the default and remains the recommended form when role
+differentiation is not needed.
+
+**Variant blocks reuse the existing panel/list schema.** A
+variant's payload (`panels:` for detail, `columns:` for list)
+follows Section 7's spec exactly. The only addition is the
+required `forRoles:` key at the variant level. Per-panel
+`visibleWhen:` (Section 7.3) and field-level `visibleWhen:`
+inside a variant remain available and may use `role:` clauses
+(12.5.1) — a Mentor variant may further hide individual panels
+or fields based on record state.
+
+**When to use 12.5.1 versus 12.5.2.** Use the `role:` leaf clause
+(12.5.1) when only one or two panels or fields differ by role.
+Use the layout-variant form (12.5.2) when the structural
+difference is large — different panel order, different tabs, or
+substantially different field sets. The variant form is more
+explicit and easier to maintain when the divergence is broad;
+the leaf-clause form is more compact when divergence is narrow.
+
+**Mapping note.** Target-CRM implementations of layout-level role
+scoping differ. Some platforms express it through dynamic-logic
+expressions that include user attributes; others use per-role
+layout assignment as a first-class concept. The deploy manager
+hides the difference. From the YAML author's perspective, the
+declarative form is the same regardless of target.
+
+### 12.6 Deploy Ordering
+
+Roles and teams must exist on the target CRM before any
+reference to them — `scope_access:` cross-references, `role:`
+leaf clauses, and `forRoles:` lists all resolve role names at
+deploy time, and panel deploys reference deployed roles. The
+Configure pipeline therefore orders the batch as follows:
+
+1. **Files declaring `roles:` and/or `teams:` run first.** The
+   loader scans every file in the batch and queues any file
+   that declares either top-level key ahead of files that do
+   not. Within this leading group, teams are deployed before
+   roles (no cross-reference between them at the YAML level —
+   the ordering is purely conventional, since a team has no
+   prerequisites and a role's `scope_access: team` value has no
+   team-name binding).
+
+2. **Domain files run next**, in the existing batch order
+   (typically alphabetical, with manual ordering applied when
+   relationship dependencies require it).
+
+3. **Per file**, the existing v1.1 step ordering applies:
+   EntitySettings → EmailTemplates → DuplicateChecks → SavedViews
+   → Fields/Layouts/Relationships → Workflows. Roles deployed in
+   step 1 are referenced during the Fields/Layouts step when
+   `forRoles:` or `role:` clauses are present.
+
+**Discovery is content-based, not filename-based.** The recommended
+filename `programs/security.yaml` is a convention; the loader
+does not key ordering off the filename. A file named
+`programs/roles-and-teams.yaml`, or a file named
+`programs/MR/MR-Contact.yaml` that happens to also declare
+`roles:`, would be detected by content and queued accordingly.
+This is the same pattern the cross-file `ProgramContext`
+follows for field-name resolution (commit `d98db71`,
+05-04-26 — see the "Deployment validation pass" section of
+the repo `CLAUDE.md`).
+
+**Mixing security and entity content.** A file is allowed to
+declare both `entities:` / `relationships:` and `roles:` /
+`teams:`. In this case, the file is queued in the leading group
+(because it declares `roles:` or `teams:`), and all of its
+content — including any `entities:` block — deploys ahead of
+files that declare only `entities:`. This may or may not match
+the operator's intent; the recommended pattern is to keep
+security declarations in a dedicated file to avoid the
+ambiguity.
+
+**Failure mode if a role reference can't be resolved.** The
+validator catches unresolved role names at pre-flight time
+across the full batch via `ProgramContext`. If a domain YAML
+file references a role that no file in the batch declares,
+the domain file is hard-rejected with an explicit error and
+removed from the deployment batch; other files in the batch
+continue to run.
+
+### 12.7 Deferred — Field-Level Permissions and Permission Presets
+
+Field-level read/edit permissions and named permission presets
+are deferred per gap-analysis Q3 (resolved 05-20-26 21:18). They
+will land in a future schema bump alongside the second half of
+Category 6.
+
+**What field-level permissions would add** (not in v1.3 scope):
+
+- An optional `permissions:` clause on any field, with per-role
+  `read:` and `edit:` settings. Each setting may be `yes`, `no`,
+  or a condition expression (the same construct from Categories
+  3–5). Roles not listed inherit the entity's default permissions
+  from `scope_access:`.
+- A canonical example: `backgroundCheckCompleted` reads `yes` /
+  edits `yes` for Mentor Administrator and reads `no` / edits
+  `no` for Mentor — the MR-MC-AC-001 pattern.
+- The MR-MC-AC-002 pattern of state-dependent edit permission —
+  Mentor can edit `professionalBio` only when their own
+  `mentorStatus` is `"Active"` — would be expressed with a
+  condition expression on the `edit:` setting.
+
+**What permission presets would add** (not in v1.3 scope):
+
+- A top-level `permissionPresets:` block declaring named bundles
+  (e.g., `admin-only`, `mentor-editable-when-active`).
+- A field referencing a preset by name in place of an inline
+  `permissions:` block, to avoid repeating the same per-role
+  permissions on twenty fields.
+
+**Why deferred.** The asymmetric and state-dependent cases
+benefit from additional pilot input on how field-level needs
+actually distribute across domains. Presets are valuable only
+once field-level permissions exist (scope-level access is
+already compact enough to inline per role). The MR pilot's two
+access-control items (MR-MC-AC-001 and MR-MC-AC-002) remain on
+the MANUAL CONFIGURATION list until the deferred parts ship.
+
+**Naming note.** The gap-analysis Section 6 calls these
+"v1.3 scope." That label is feature-scope ordering, not the
+doc revision number — by the time the deferred parts reach the
+schema spec, the doc will likely be past v1.3 (Parts A–E land
+in v1.3, Section 12 of this document). The feature-scope
+labels in the gap analysis are stable; the doc-revision number
+in which a feature ships is determined when it ships.
+
+---
