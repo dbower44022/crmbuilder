@@ -40,19 +40,27 @@ from crmbuilder_v2.access.vocab import (
     CATALOG_SYSTEMS,
     CHANGE_LOG_ACTORS,
     CHANGE_LOG_OPERATIONS,
+    CLOSE_OUT_PAYLOAD_STATUSES,
+    CONVERSATION_STATUSES,
     CRM_CANDIDATE_STATUSES,
     DECISION_STATUSES,
+    DEPOSIT_EVENT_OUTCOMES,
     DOMAIN_STATUSES,
     ENTITY_STATUSES,
     ENTITY_TYPES,
     PLANNING_ITEM_STATUSES,
     PLANNING_ITEM_TYPES,
     PROCESS_CLASSIFICATIONS,
+    REFERENCE_BOOK_KINDS,
+    REFERENCE_BOOK_STATUSES,
     REFERENCE_RELATIONSHIPS,
     RISK_IMPACTS,
     RISK_PROBABILITIES,
     RISK_STATUSES,
     SESSION_STATUSES,
+    WORK_TICKET_KINDS,
+    WORK_TICKET_STATUSES,
+    WORKSTREAM_STATUSES,
     _check_in,
 )
 
@@ -476,12 +484,451 @@ class CrmCandidate(Base):
     )
 
 
+# ---------------------------------------------------------------------------
+# Governance entities (UI v0.7). Six new entity types making the project's
+# organizing units, workflow files, and apply events queryable as governance
+# objects. Each follows the parent-prefix field-naming convention (DEC-046)
+# and uses its prefixed-string identifier as the primary key (no integer
+# surrogate), matching the v0.4 methodology-entity precedent. See the
+# per-entity schema specifications under governance-schema-specs/.
+# ---------------------------------------------------------------------------
+
+
+class Workstream(Base):
+    """Governance entity — one coherent line of related conversations.
+
+    First of six governance entity types (UI v0.7). Five-status workflow
+    lifecycle with truly-terminal terminals; four per-status lifecycle
+    timestamps. Parent-child relationships to conversations and the
+    master-plan reference book live in ``refs``, not as FK columns.
+    """
+
+    __tablename__ = "workstreams"
+
+    workstream_identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    workstream_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    workstream_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="planned"
+    )
+    workstream_purpose: Mapped[str] = mapped_column(Text, nullable=False)
+    workstream_description: Mapped[str] = mapped_column(Text, nullable=False)
+    workstream_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    workstream_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    workstream_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+    workstream_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    workstream_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    workstream_completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    workstream_cancelled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    workstream_superseded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "workstream_identifier GLOB 'WS-[0-9][0-9][0-9]'",
+            name="ck_workstream_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("workstream_status", WORKSTREAM_STATUSES),
+            name="ck_workstream_status",
+        ),
+        Index("ix_workstreams_workstream_status", "workstream_status"),
+        Index("ix_workstreams_workstream_deleted_at", "workstream_deleted_at"),
+    )
+
+
+class Conversation(Base):
+    """Governance entity — one unit of conversational work through its lifecycle.
+
+    Second of six governance entity types (UI v0.7). Seven-status workflow
+    lifecycle (forward-only planning line plus three terminals); six
+    per-status lifecycle timestamps. Workstream membership, session linkage,
+    kickoff linkage, sequencing, and supersession all live in ``refs``.
+    """
+
+    __tablename__ = "conversations"
+
+    conversation_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    conversation_title: Mapped[str] = mapped_column(String(255), nullable=False)
+    conversation_status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="planned"
+    )
+    conversation_purpose: Mapped[str] = mapped_column(Text, nullable=False)
+    conversation_description: Mapped[str] = mapped_column(Text, nullable=False)
+    conversation_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    conversation_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    conversation_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+    conversation_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    conversation_kickoff_drafted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    conversation_ready_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    conversation_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    conversation_completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    conversation_cancelled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    conversation_superseded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "conversation_identifier GLOB 'CONV-[0-9][0-9][0-9]'",
+            name="ck_conversation_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("conversation_status", CONVERSATION_STATUSES),
+            name="ck_conversation_status",
+        ),
+        Index("ix_conversations_conversation_status", "conversation_status"),
+        Index(
+            "ix_conversations_conversation_deleted_at",
+            "conversation_deleted_at",
+        ),
+    )
+
+
+class ReferenceBook(Base):
+    """Governance entity — one long-lived versioned reference document.
+
+    Third of six governance entity types (UI v0.7). Documentary-shaped
+    three-status lifecycle with base timestamps only (no per-status
+    timestamps, per DEC-137). Carries denormalized current-version pointer
+    fields kept in sync with the ``reference_book_versions`` child table.
+    """
+
+    __tablename__ = "reference_books"
+
+    reference_book_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    reference_book_title: Mapped[str] = mapped_column(String(255), nullable=False)
+    reference_book_description: Mapped[str] = mapped_column(Text, nullable=False)
+    reference_book_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reference_book_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    reference_book_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="active"
+    )
+    reference_book_file_path: Mapped[str] = mapped_column(Text, nullable=False)
+    reference_book_current_version_label: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+    reference_book_current_version_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    reference_book_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    reference_book_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+    reference_book_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    versions: Mapped[list[ReferenceBookVersion]] = relationship(
+        "ReferenceBookVersion",
+        back_populates="reference_book",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "reference_book_identifier GLOB 'RB-[0-9][0-9][0-9]'",
+            name="ck_reference_book_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("reference_book_kind", REFERENCE_BOOK_KINDS),
+            name="ck_reference_book_kind",
+        ),
+        CheckConstraint(
+            _check_in("reference_book_status", REFERENCE_BOOK_STATUSES),
+            name="ck_reference_book_status",
+        ),
+        Index("ix_reference_books_reference_book_kind", "reference_book_kind"),
+        Index(
+            "ix_reference_books_reference_book_status", "reference_book_status"
+        ),
+        Index(
+            "ix_reference_books_reference_book_deleted_at",
+            "reference_book_deleted_at",
+        ),
+    )
+
+
+class ReferenceBookVersion(Base):
+    """Child of ``reference_books`` — one known version of a reference book.
+
+    Per ``reference_book.md`` section 3.2.7. Version rows are addressed by
+    ``(reference_book_identifier, reference_book_version_label)``, not by a
+    prefixed identifier. The parent's denormalized current-version pointers
+    track the row with the newest ``reference_book_version_date``. The FK
+    references the parent's prefixed-string PK (the v0.4 PK convention has
+    no integer surrogate on governance tables) with ON DELETE CASCADE.
+    """
+
+    __tablename__ = "reference_book_versions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    reference_book_identifier: Mapped[str] = mapped_column(
+        String(32),
+        ForeignKey("reference_books.reference_book_identifier", ondelete="CASCADE"),
+        nullable=False,
+    )
+    reference_book_version_label: Mapped[str] = mapped_column(
+        String(64), nullable=False
+    )
+    reference_book_version_date: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    reference_book_version_summary: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    reference_book_version_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    reference_book: Mapped[ReferenceBook] = relationship(
+        "ReferenceBook", back_populates="versions"
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "reference_book_identifier",
+            "reference_book_version_label",
+            name="uq_reference_book_version",
+        ),
+        Index(
+            "ix_reference_book_versions_parent", "reference_book_identifier"
+        ),
+    )
+
+
+class WorkTicket(Base):
+    """Governance entity — one single-use seed document (kickoff/prompt).
+
+    Fourth of six governance entity types (UI v0.7). Five-status workflow
+    lifecycle (drafted → ready → consumed plus two terminals); four
+    per-status timestamps. The defining inbound consumption edge from a
+    conversation lives in ``refs`` and is single-use (at most one).
+    """
+
+    __tablename__ = "work_tickets"
+
+    work_ticket_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    work_ticket_title: Mapped[str] = mapped_column(String(255), nullable=False)
+    work_ticket_description: Mapped[str] = mapped_column(Text, nullable=False)
+    work_ticket_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    work_ticket_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    work_ticket_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="drafted"
+    )
+    work_ticket_file_path: Mapped[str] = mapped_column(Text, nullable=False)
+    work_ticket_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    work_ticket_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+    work_ticket_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    work_ticket_ready_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    work_ticket_consumed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    work_ticket_cancelled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    work_ticket_superseded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "work_ticket_identifier GLOB 'WT-[0-9][0-9][0-9]'",
+            name="ck_work_ticket_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("work_ticket_kind", WORK_TICKET_KINDS),
+            name="ck_work_ticket_kind",
+        ),
+        CheckConstraint(
+            _check_in("work_ticket_status", WORK_TICKET_STATUSES),
+            name="ck_work_ticket_status",
+        ),
+        Index("ix_work_tickets_work_ticket_kind", "work_ticket_kind"),
+        Index("ix_work_tickets_work_ticket_status", "work_ticket_status"),
+        Index(
+            "ix_work_tickets_work_ticket_deleted_at", "work_ticket_deleted_at"
+        ),
+    )
+
+
+class CloseOutPayload(Base):
+    """Governance entity — one single-use state-write package.
+
+    Fifth of six governance entity types (UI v0.7). Five-status workflow
+    lifecycle (drafted → ready → applied plus two terminals); four
+    per-status timestamps. Must carry exactly one outbound
+    ``close_out_payload_produced_by_conversation`` edge at all statuses.
+    The ``ready → applied`` transition fires on the first inbound success
+    ``deposit_event_applies_close_out_payload`` edge (DEC-158).
+    """
+
+    __tablename__ = "close_out_payloads"
+
+    close_out_payload_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    close_out_payload_title: Mapped[str] = mapped_column(
+        String(255), nullable=False
+    )
+    close_out_payload_description: Mapped[str] = mapped_column(
+        Text, nullable=False
+    )
+    close_out_payload_notes: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    close_out_payload_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="drafted"
+    )
+    close_out_payload_file_path: Mapped[str] = mapped_column(Text, nullable=False)
+    close_out_payload_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    close_out_payload_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+    close_out_payload_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    close_out_payload_ready_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    close_out_payload_applied_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    close_out_payload_cancelled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    close_out_payload_superseded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "close_out_payload_identifier GLOB 'COP-[0-9][0-9][0-9]'",
+            name="ck_close_out_payload_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("close_out_payload_status", CLOSE_OUT_PAYLOAD_STATUSES),
+            name="ck_close_out_payload_status",
+        ),
+        Index(
+            "ix_close_out_payloads_close_out_payload_status",
+            "close_out_payload_status",
+        ),
+        Index(
+            "ix_close_out_payloads_close_out_payload_deleted_at",
+            "close_out_payload_deleted_at",
+        ),
+    )
+
+
+class DepositEvent(Base):
+    """Governance entity — one durable record of a close_out_payload apply.
+
+    Sixth of six governance entity types (UI v0.7). Born-terminal
+    append-only: no ``_updated_at``, no ``_deleted_at``, one ``_created_at``
+    timestamp. Carries an ``_outcome`` enum (``success`` | ``failure``)
+    rather than a transitioning ``_status``. Three diagnostic JSON fields.
+    Created exclusively via POST; never updated or deleted.
+    """
+
+    __tablename__ = "deposit_events"
+
+    deposit_event_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    deposit_event_title: Mapped[str] = mapped_column(String(255), nullable=False)
+    deposit_event_description: Mapped[str] = mapped_column(Text, nullable=False)
+    deposit_event_outcome: Mapped[str] = mapped_column(String(16), nullable=False)
+    deposit_event_records_summary: Mapped[dict] = mapped_column(
+        JSON, nullable=False
+    )
+    deposit_event_error_info: Mapped[dict | None] = mapped_column(
+        JSON, nullable=True
+    )
+    deposit_event_apply_context: Mapped[dict] = mapped_column(JSON, nullable=False)
+    deposit_event_log_file_path: Mapped[str] = mapped_column(Text, nullable=False)
+    deposit_event_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "deposit_event_identifier GLOB 'DEP-[0-9][0-9][0-9]'",
+            name="ck_deposit_event_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("deposit_event_outcome", DEPOSIT_EVENT_OUTCOMES),
+            name="ck_deposit_event_outcome",
+        ),
+        Index("ix_deposit_events_deposit_event_outcome", "deposit_event_outcome"),
+        Index(
+            "ix_deposit_events_deposit_event_created_at",
+            "deposit_event_created_at",
+        ),
+    )
+
+
 class Reference(Base):
     """Universal polymorphic reference between two records (DEC-006)."""
 
     __tablename__ = "refs"  # avoid SQL reserved word "references"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # v0.7: prefixed external identifier (REF-NNNN) so individual reference
+    # rows can be targeted by deposit_event `deposit_event_wrote_record`
+    # back-references. Server-assigned on insert; back-filled by id order for
+    # existing rows (migration 0011). Nullable at the column level because the
+    # back-fill runs after the column is added; the access layer always sets it.
+    reference_identifier: Mapped[str | None] = mapped_column(
+        String(16), nullable=True, unique=True
+    )
     source_type: Mapped[str] = mapped_column(String(32), nullable=False)
     source_id: Mapped[str] = mapped_column(String(64), nullable=False)
     target_type: Mapped[str] = mapped_column(String(32), nullable=False)
@@ -501,6 +948,11 @@ class Reference(Base):
         CheckConstraint(
             _check_in("relationship_kind", REFERENCE_RELATIONSHIPS),
             name="ck_ref_relationship",
+        ),
+        CheckConstraint(
+            "reference_identifier IS NULL OR "
+            "reference_identifier GLOB 'REF-[0-9][0-9][0-9][0-9]'",
+            name="ck_ref_reference_identifier_format",
         ),
         UniqueConstraint(
             "source_type",
