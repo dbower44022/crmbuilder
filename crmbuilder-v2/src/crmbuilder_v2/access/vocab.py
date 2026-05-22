@@ -100,6 +100,114 @@ PROCESS_CLASSIFICATION_TRANSITIONS: dict[str, frozenset[str]] = {
     "deferred": frozenset({"mission_critical", "supporting"}),
 }
 
+# ---------------------------------------------------------------------------
+# Governance entity lifecycles (UI v0.7). Five workflow-shaped entities carry
+# truly-terminal status machines (no transitions out of a terminal state, no
+# transitions between terminals); reference_book is documentary-shaped; the
+# deposit_event entity is born-terminal append-only and carries an _outcome
+# enum rather than a transitioning _status. See the per-entity schema specs.
+# ---------------------------------------------------------------------------
+
+# `workstream` lifecycle (DEC-125). Five statuses; three truly terminal.
+WORKSTREAM_STATUSES: frozenset[str] = frozenset(
+    {"planned", "in_flight", "complete", "cancelled", "superseded"}
+)
+WORKSTREAM_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "planned": frozenset({"in_flight", "cancelled", "superseded"}),
+    "in_flight": frozenset({"complete", "cancelled", "superseded"}),
+    "complete": frozenset(),
+    "cancelled": frozenset(),
+    "superseded": frozenset(),
+}
+
+# `conversation` lifecycle (DEC-131). Seven statuses; forward-only planning
+# line (planned → kickoff_drafted → ready → in_flight) with three terminals.
+CONVERSATION_STATUSES: frozenset[str] = frozenset(
+    {
+        "planned",
+        "kickoff_drafted",
+        "ready",
+        "in_flight",
+        "complete",
+        "cancelled",
+        "superseded",
+    }
+)
+CONVERSATION_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "planned": frozenset({"kickoff_drafted", "cancelled", "superseded"}),
+    "kickoff_drafted": frozenset({"ready", "cancelled", "superseded"}),
+    "ready": frozenset({"in_flight", "cancelled", "superseded"}),
+    "in_flight": frozenset({"complete", "cancelled", "superseded"}),
+    "complete": frozenset(),
+    "cancelled": frozenset(),
+    "superseded": frozenset(),
+}
+
+# `reference_book` lifecycle (DEC-137). Documentary-shaped; three statuses,
+# two truly terminal. Base timestamps only (no per-status timestamps).
+REFERENCE_BOOK_STATUSES: frozenset[str] = frozenset(
+    {"active", "archived", "superseded"}
+)
+REFERENCE_BOOK_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "active": frozenset({"archived", "superseded"}),
+    "archived": frozenset(),
+    "superseded": frozenset(),
+}
+
+# `reference_book_kind` closed enum (DEC-138). Eleven values: DEC-117's seven
+# artifacts plus three observed types plus the `other` sentinel.
+REFERENCE_BOOK_KINDS: frozenset[str] = frozenset(
+    {
+        "product_requirements_document",
+        "implementation_plan",
+        "workstream_master_plan",
+        "methodology_guide",
+        "architecture_document",
+        "schema_specification",
+        "conduct_framework",
+        "investigation_report",
+        "apply_script",
+        "session_startup_document",
+        "other",
+    }
+)
+
+# `work_ticket` lifecycle (DEC-145). Five statuses; forward-only drafting line
+# (drafted → ready → consumed) with three terminals.
+WORK_TICKET_STATUSES: frozenset[str] = frozenset(
+    {"drafted", "ready", "consumed", "cancelled", "superseded"}
+)
+WORK_TICKET_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "drafted": frozenset({"ready", "cancelled", "superseded"}),
+    "ready": frozenset({"consumed", "cancelled", "superseded"}),
+    "consumed": frozenset(),
+    "cancelled": frozenset(),
+    "superseded": frozenset(),
+}
+
+# `work_ticket_kind` closed enum (DEC-145).
+WORK_TICKET_KINDS: frozenset[str] = frozenset(
+    {"kickoff_prompt", "claude_code_prompt", "ad_hoc_prompt", "other"}
+)
+
+# `close_out_payload` lifecycle (DEC-149). Five statuses; forward-only
+# (drafted → ready → applied) with three terminals.
+CLOSE_OUT_PAYLOAD_STATUSES: frozenset[str] = frozenset(
+    {"drafted", "ready", "applied", "cancelled", "superseded"}
+)
+CLOSE_OUT_PAYLOAD_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "drafted": frozenset({"ready", "cancelled", "superseded"}),
+    "ready": frozenset({"applied", "cancelled", "superseded"}),
+    "applied": frozenset(),
+    "cancelled": frozenset(),
+    "superseded": frozenset(),
+}
+
+# `deposit_event_outcome` enum (DEC-156). Born-terminal append-only; both
+# values are permanent facts, not transitioning workflow states.
+DEPOSIT_EVENT_OUTCOMES: frozenset[str] = frozenset({"success", "failure"})
+
+
 REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
     {
         "is_about",
@@ -112,6 +220,18 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         # v0.4 additions (methodology entities, UI v0.4 slice A).
         "entity_scopes_to_domain",
         "process_hands_off_to_process",
+        # v0.7 additions (governance entities). Eight new kinds aggregated
+        # across the six governance schema specs (workstream, conversation,
+        # reference_book, work_ticket, close_out_payload, deposit_event).
+        # See governance-entity-PRD-v0.1.md section 4.3.
+        "conversation_belongs_to_workstream",
+        "workstream_planned_in_reference_book",
+        "conversation_records_session",
+        "conversation_opens_against_work_ticket",
+        "conversation_succeeds_conversation",
+        "close_out_payload_produced_by_conversation",
+        "deposit_event_applies_close_out_payload",
+        "deposit_event_wrote_record",
     }
 )
 
@@ -141,6 +261,15 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         "entity",
         "process",
         "crm_candidate",
+        # Governance entities (UI v0.7). The six new entity types under
+        # the Governance sidebar group, in workstream order. See
+        # governance-entity-PRD-v0.1.md section 4.3.
+        "workstream",
+        "conversation",
+        "reference_book",
+        "work_ticket",
+        "close_out_payload",
+        "deposit_event",
     }
 )
 
@@ -186,6 +315,31 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         kinds.add("entity_scopes_to_domain")
     if source_type == "process" and target_type == "process":
         kinds.add("process_hands_off_to_process")
+    # v0.7 governance additions, grouped by source type for readability.
+    # The same-type `supersedes` clause above already admits supersession
+    # for every governance same-type pair (workstream/workstream, etc.);
+    # the same-type `conversation_succeeds_conversation` is added alongside.
+    if source_type == "conversation" and target_type == "workstream":
+        kinds.add("conversation_belongs_to_workstream")
+    if source_type == "conversation" and target_type == "session":
+        kinds.add("conversation_records_session")
+    if source_type == "conversation" and target_type == "work_ticket":
+        kinds.add("conversation_opens_against_work_ticket")
+    if source_type == "conversation" and target_type == "conversation":
+        kinds.add("conversation_succeeds_conversation")
+    if source_type == "workstream" and target_type == "reference_book":
+        kinds.add("workstream_planned_in_reference_book")
+    if source_type == "close_out_payload" and target_type == "conversation":
+        kinds.add("close_out_payload_produced_by_conversation")
+    if source_type == "deposit_event" and target_type == "close_out_payload":
+        kinds.add("deposit_event_applies_close_out_payload")
+    if source_type == "deposit_event" and target_type in (
+        "session",
+        "decision",
+        "planning_item",
+        "reference",
+    ):
+        kinds.add("deposit_event_wrote_record")
     return frozenset(kinds)
 
 
