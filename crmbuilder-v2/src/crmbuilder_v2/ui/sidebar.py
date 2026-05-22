@@ -64,6 +64,14 @@ SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "Planning Items",
             "Topics",
             "References",
+            # v0.7 governance entity release (DEC-163): six new entries
+            # appended in workstream order, no sub-grouping in this release.
+            "Workstreams",
+            "Conversations",
+            "Reference Books",
+            "Work Tickets",
+            "Close-Out Payloads",
+            "Deposit Events",
         ),
     ),
     (

@@ -1346,3 +1346,329 @@ class StorageClient:
             "%s %s -> %d", method, path, resp.status_code
         )
         raise from_response(resp)
+
+    # ------------------------------------------------------------------
+    # Governance entities (UI v0.7). Six new entity types: workstream,
+    # conversation, reference_book, work_ticket, close_out_payload, and
+    # deposit_event (POST + GET only, no PUT/PATCH/DELETE/restore).
+    # ------------------------------------------------------------------
+
+    def _expect_dict(self, result: Any, *, op: str) -> dict[str, Any]:
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[], message=f"Expected dict body for {op}"
+            )
+        return result
+
+    def _expect_list(self, result: Any) -> list[dict[str, Any]]:
+        return result if isinstance(result, list) else []
+
+    def _next_identifier_for(self, plural_path: str, op: str) -> str:
+        result = self._request("GET", f"/{plural_path}/next-identifier")
+        if isinstance(result, dict) and isinstance(result.get("next"), str):
+            return result["next"]
+        raise ServerError(
+            status_code=200, errors=[], message=f"Expected {{'next': str}} body for {op}"
+        )
+
+    # ----- workstreams ------------------------------------------------------
+
+    def list_workstreams(self, *, include_deleted: bool = False) -> list[dict[str, Any]]:
+        path = "/workstreams" + ("?include_deleted=true" if include_deleted else "")
+        return self._expect_list(self._request("GET", path))
+
+    def get_workstream(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("GET", f"/workstreams/{identifier}"), op="get_workstream"
+        )
+
+    def create_workstream(self, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("POST", "/workstreams", json_body=body), op="create_workstream"
+        )
+
+    def update_workstream(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("PUT", f"/workstreams/{identifier}", json_body=body),
+            op="update_workstream",
+        )
+
+    def patch_workstream(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("PATCH", f"/workstreams/{identifier}", json_body=body),
+            op="patch_workstream",
+        )
+
+    def delete_workstream(self, identifier: str) -> Any:
+        return self._request("DELETE", f"/workstreams/{identifier}")
+
+    def restore_workstream(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("POST", f"/workstreams/{identifier}/restore"),
+            op="restore_workstream",
+        )
+
+    def next_workstream_identifier(self) -> str:
+        return self._next_identifier_for("workstreams", "next_workstream_identifier")
+
+    # ----- conversations ----------------------------------------------------
+
+    def list_conversations(
+        self,
+        *,
+        include_deleted: bool = False,
+        status: str | None = None,
+        workstream_identifier: str | None = None,
+    ) -> list[dict[str, Any]]:
+        params: list[str] = []
+        if include_deleted:
+            params.append("include_deleted=true")
+        if status:
+            params.append(f"status={status}")
+        if workstream_identifier:
+            params.append(f"workstream_identifier={workstream_identifier}")
+        path = "/conversations" + ("?" + "&".join(params) if params else "")
+        return self._expect_list(self._request("GET", path))
+
+    def get_conversation(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("GET", f"/conversations/{identifier}"), op="get_conversation"
+        )
+
+    def create_conversation(self, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("POST", "/conversations", json_body=body),
+            op="create_conversation",
+        )
+
+    def update_conversation(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("PUT", f"/conversations/{identifier}", json_body=body),
+            op="update_conversation",
+        )
+
+    def patch_conversation(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("PATCH", f"/conversations/{identifier}", json_body=body),
+            op="patch_conversation",
+        )
+
+    def delete_conversation(self, identifier: str) -> Any:
+        return self._request("DELETE", f"/conversations/{identifier}")
+
+    def restore_conversation(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("POST", f"/conversations/{identifier}/restore"),
+            op="restore_conversation",
+        )
+
+    def next_conversation_identifier(self) -> str:
+        return self._next_identifier_for("conversations", "next_conversation_identifier")
+
+    # ----- reference_books --------------------------------------------------
+
+    def list_reference_books(
+        self, *, include_deleted: bool = False, kind: str | None = None, status: str | None = None
+    ) -> list[dict[str, Any]]:
+        params: list[str] = []
+        if include_deleted:
+            params.append("include_deleted=true")
+        if kind:
+            params.append(f"kind={kind}")
+        if status:
+            params.append(f"status={status}")
+        path = "/reference-books" + ("?" + "&".join(params) if params else "")
+        return self._expect_list(self._request("GET", path))
+
+    def get_reference_book(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("GET", f"/reference-books/{identifier}"),
+            op="get_reference_book",
+        )
+
+    def create_reference_book(self, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("POST", "/reference-books", json_body=body),
+            op="create_reference_book",
+        )
+
+    def update_reference_book(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("PUT", f"/reference-books/{identifier}", json_body=body),
+            op="update_reference_book",
+        )
+
+    def patch_reference_book(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("PATCH", f"/reference-books/{identifier}", json_body=body),
+            op="patch_reference_book",
+        )
+
+    def delete_reference_book(self, identifier: str) -> Any:
+        return self._request("DELETE", f"/reference-books/{identifier}")
+
+    def restore_reference_book(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("POST", f"/reference-books/{identifier}/restore"),
+            op="restore_reference_book",
+        )
+
+    def next_reference_book_identifier(self) -> str:
+        return self._next_identifier_for(
+            "reference-books", "next_reference_book_identifier"
+        )
+
+    def list_reference_book_versions(self, identifier: str) -> list[dict[str, Any]]:
+        return self._expect_list(
+            self._request("GET", f"/reference-books/{identifier}/versions")
+        )
+
+    def create_reference_book_version(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request(
+                "POST", f"/reference-books/{identifier}/versions", json_body=body
+            ),
+            op="create_reference_book_version",
+        )
+
+    def get_reference_book_version_at(
+        self, identifier: str, as_of: str
+    ) -> dict[str, Any] | None:
+        result = self._request(
+            "GET", f"/reference-books/{identifier}/version-at?as_of={as_of}"
+        )
+        return result if isinstance(result, dict) else None
+
+    # ----- work_tickets -----------------------------------------------------
+
+    def list_work_tickets(
+        self, *, include_deleted: bool = False, kind: str | None = None, status: str | None = None
+    ) -> list[dict[str, Any]]:
+        params: list[str] = []
+        if include_deleted:
+            params.append("include_deleted=true")
+        if kind:
+            params.append(f"kind={kind}")
+        if status:
+            params.append(f"status={status}")
+        path = "/work-tickets" + ("?" + "&".join(params) if params else "")
+        return self._expect_list(self._request("GET", path))
+
+    def get_work_ticket(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("GET", f"/work-tickets/{identifier}"), op="get_work_ticket"
+        )
+
+    def create_work_ticket(self, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("POST", "/work-tickets", json_body=body),
+            op="create_work_ticket",
+        )
+
+    def update_work_ticket(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("PUT", f"/work-tickets/{identifier}", json_body=body),
+            op="update_work_ticket",
+        )
+
+    def patch_work_ticket(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("PATCH", f"/work-tickets/{identifier}", json_body=body),
+            op="patch_work_ticket",
+        )
+
+    def delete_work_ticket(self, identifier: str) -> Any:
+        return self._request("DELETE", f"/work-tickets/{identifier}")
+
+    def restore_work_ticket(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("POST", f"/work-tickets/{identifier}/restore"),
+            op="restore_work_ticket",
+        )
+
+    def next_work_ticket_identifier(self) -> str:
+        return self._next_identifier_for("work-tickets", "next_work_ticket_identifier")
+
+    # ----- close_out_payloads -----------------------------------------------
+
+    def list_close_out_payloads(
+        self, *, include_deleted: bool = False, status: str | None = None
+    ) -> list[dict[str, Any]]:
+        params: list[str] = []
+        if include_deleted:
+            params.append("include_deleted=true")
+        if status:
+            params.append(f"status={status}")
+        path = "/close-out-payloads" + ("?" + "&".join(params) if params else "")
+        return self._expect_list(self._request("GET", path))
+
+    def get_close_out_payload(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("GET", f"/close-out-payloads/{identifier}"),
+            op="get_close_out_payload",
+        )
+
+    def create_close_out_payload(self, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("POST", "/close-out-payloads", json_body=body),
+            op="create_close_out_payload",
+        )
+
+    def update_close_out_payload(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request(
+                "PUT", f"/close-out-payloads/{identifier}", json_body=body
+            ),
+            op="update_close_out_payload",
+        )
+
+    def patch_close_out_payload(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request(
+                "PATCH", f"/close-out-payloads/{identifier}", json_body=body
+            ),
+            op="patch_close_out_payload",
+        )
+
+    def delete_close_out_payload(self, identifier: str) -> Any:
+        return self._request("DELETE", f"/close-out-payloads/{identifier}")
+
+    def restore_close_out_payload(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("POST", f"/close-out-payloads/{identifier}/restore"),
+            op="restore_close_out_payload",
+        )
+
+    def next_close_out_payload_identifier(self) -> str:
+        return self._next_identifier_for(
+            "close-out-payloads", "next_close_out_payload_identifier"
+        )
+
+    # ----- deposit_events (POST + GET only) ---------------------------------
+
+    def list_deposit_events(self, *, outcome: str | None = None) -> list[dict[str, Any]]:
+        path = "/deposit-events" + (f"?outcome={outcome}" if outcome else "")
+        return self._expect_list(self._request("GET", path))
+
+    def get_deposit_event(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("GET", f"/deposit-events/{identifier}"),
+            op="get_deposit_event",
+        )
+
+    def create_deposit_event(self, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("POST", "/deposit-events", json_body=body),
+            op="create_deposit_event",
+        )
+
+    def next_deposit_event_identifier(self) -> str:
+        return self._next_identifier_for(
+            "deposit-events", "next_deposit_event_identifier"
+        )
