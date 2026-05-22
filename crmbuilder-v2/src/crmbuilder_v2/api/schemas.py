@@ -535,3 +535,200 @@ class Envelope(_Base):
     data: Any | None
     meta: dict[str, Any] = Field(default_factory=dict)
     errors: list[dict[str, Any]] | None
+
+
+# ---------- Governance entities (UI v0.7) ----------
+
+
+class GovernanceEdgeIn(_Base):
+    """A fully-specified references-table edge supplied inline on a governance
+    create/update body. The access layer creates these in the same
+    transaction so edge-required rules see them at commit time."""
+
+    source_type: str
+    source_id: str
+    target_type: str
+    target_id: str
+    relationship: str
+
+
+class WorkstreamCreateIn(_Base):
+    workstream_name: str
+    workstream_purpose: str
+    workstream_description: str
+    workstream_notes: str | None = None
+    workstream_status: str | None = None
+    workstream_identifier: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+    timestamps: dict[str, Any] | None = None
+
+
+class WorkstreamReplaceIn(_Base):
+    workstream_identifier: str | None = None
+    workstream_name: str
+    workstream_purpose: str
+    workstream_description: str
+    workstream_notes: str | None = None
+    workstream_status: str
+    references: list[GovernanceEdgeIn] | None = None
+
+
+class WorkstreamPatchIn(_Base):
+    workstream_name: str | None = None
+    workstream_purpose: str | None = None
+    workstream_description: str | None = None
+    workstream_notes: str | None = None
+    workstream_status: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+
+
+class ConversationCreateIn(_Base):
+    conversation_title: str
+    conversation_purpose: str
+    conversation_description: str
+    conversation_notes: str | None = None
+    conversation_status: str | None = None
+    conversation_identifier: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+    timestamps: dict[str, Any] | None = None
+
+
+class ConversationReplaceIn(_Base):
+    conversation_identifier: str | None = None
+    conversation_title: str
+    conversation_purpose: str
+    conversation_description: str
+    conversation_notes: str | None = None
+    conversation_status: str
+    references: list[GovernanceEdgeIn] | None = None
+
+
+class ConversationPatchIn(_Base):
+    conversation_title: str | None = None
+    conversation_purpose: str | None = None
+    conversation_description: str | None = None
+    conversation_notes: str | None = None
+    conversation_status: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+
+
+class ReferenceBookVersionIn(_Base):
+    version_label: str
+    version_date: str
+    version_summary: str | None = None
+
+
+class ReferenceBookCreateIn(_Base):
+    reference_book_title: str
+    reference_book_description: str
+    reference_book_kind: str
+    reference_book_file_path: str
+    reference_book_notes: str | None = None
+    reference_book_status: str | None = None
+    reference_book_identifier: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+    versions: list[ReferenceBookVersionIn] | None = None
+
+
+class ReferenceBookReplaceIn(_Base):
+    reference_book_identifier: str | None = None
+    reference_book_title: str
+    reference_book_description: str
+    reference_book_kind: str
+    reference_book_file_path: str
+    reference_book_notes: str | None = None
+    reference_book_status: str
+    references: list[GovernanceEdgeIn] | None = None
+
+
+class ReferenceBookPatchIn(_Base):
+    reference_book_title: str | None = None
+    reference_book_description: str | None = None
+    reference_book_kind: str | None = None
+    reference_book_file_path: str | None = None
+    reference_book_notes: str | None = None
+    reference_book_status: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+
+
+class WorkTicketCreateIn(_Base):
+    work_ticket_title: str
+    work_ticket_description: str
+    work_ticket_kind: str
+    work_ticket_file_path: str
+    work_ticket_notes: str | None = None
+    work_ticket_status: str | None = None
+    work_ticket_identifier: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+    timestamps: dict[str, Any] | None = None
+
+
+class WorkTicketReplaceIn(_Base):
+    work_ticket_identifier: str | None = None
+    work_ticket_title: str
+    work_ticket_description: str
+    work_ticket_kind: str
+    work_ticket_file_path: str
+    work_ticket_notes: str | None = None
+    work_ticket_status: str
+    references: list[GovernanceEdgeIn] | None = None
+
+
+class WorkTicketPatchIn(_Base):
+    work_ticket_title: str | None = None
+    work_ticket_description: str | None = None
+    work_ticket_kind: str | None = None
+    work_ticket_file_path: str | None = None
+    work_ticket_notes: str | None = None
+    work_ticket_status: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+
+
+class CloseOutPayloadCreateIn(_Base):
+    close_out_payload_title: str
+    close_out_payload_description: str
+    close_out_payload_file_path: str
+    close_out_payload_notes: str | None = None
+    close_out_payload_status: str | None = None
+    close_out_payload_identifier: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+    timestamps: dict[str, Any] | None = None
+
+
+class CloseOutPayloadReplaceIn(_Base):
+    close_out_payload_identifier: str | None = None
+    close_out_payload_title: str
+    close_out_payload_description: str
+    close_out_payload_file_path: str
+    close_out_payload_notes: str | None = None
+    close_out_payload_status: str
+    references: list[GovernanceEdgeIn] | None = None
+
+
+class CloseOutPayloadPatchIn(_Base):
+    close_out_payload_title: str | None = None
+    close_out_payload_description: str | None = None
+    close_out_payload_file_path: str | None = None
+    close_out_payload_notes: str | None = None
+    close_out_payload_status: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+
+
+class DepositEventEdgeIn(_Base):
+    """An outbound edge on a deposit_event POST (source is the new event)."""
+
+    target_type: str
+    target_id: str
+    relationship: str
+
+
+class DepositEventCreateIn(_Base):
+    deposit_event_title: str
+    deposit_event_description: str
+    deposit_event_outcome: str
+    deposit_event_records_summary: dict[str, Any]
+    deposit_event_apply_context: dict[str, Any]
+    deposit_event_log_file_path: str
+    deposit_event_error_info: dict[str, Any] | None = None
+    deposit_event_identifier: str | None = None
+    references: list[DepositEventEdgeIn] | None = None
