@@ -34,16 +34,23 @@ from sqlalchemy.orm import Session
 from crmbuilder_v2.access.models import (
     ChangeLog,
     Charter,
+    CloseOutPayload,
+    Conversation,
     CrmCandidate,
     Decision,
+    DepositEvent,
     Domain,
     Entity,
     PlanningItem,
     Process,
     Reference,
+    ReferenceBook,
+    ReferenceBookVersion,
     Risk,
     Status,
     Topic,
+    WorkTicket,
+    Workstream,
 )
 from crmbuilder_v2.access.models import (
     Session as SessionModel,
@@ -62,6 +69,14 @@ _EXPORT_TABLES: list[tuple[str, type]] = [
     ("entities", Entity),
     ("processes", Process),
     ("crm_candidates", CrmCandidate),
+    # Governance entities (UI v0.7), in workstream order.
+    ("workstreams", Workstream),
+    ("conversations", Conversation),
+    ("reference_books", ReferenceBook),
+    ("reference_book_versions", ReferenceBookVersion),
+    ("work_tickets", WorkTicket),
+    ("close_out_payloads", CloseOutPayload),
+    ("deposit_events", DepositEvent),
     ("references", Reference),
     ("change_log", ChangeLog),
 ]
