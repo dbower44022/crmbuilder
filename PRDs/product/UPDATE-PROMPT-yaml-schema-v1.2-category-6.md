@@ -4,7 +4,7 @@
 **Target document:** `PRDs/product/app-yaml-schema.md`
 **Operating mode:** ARCHITECTURE (project default)
 **Last Updated:** 05-20-26 21:30
-**Created in:** the prior session that landed the Option C reordering decision and amended Category 6 of the gap analysis (commit `3d883b9`).
+**Created in:** the prior session that landed the Option C reordering decision and amended Category 6 of the gap analysis (commit `eb1d7e7`).
 
 ## Purpose
 
