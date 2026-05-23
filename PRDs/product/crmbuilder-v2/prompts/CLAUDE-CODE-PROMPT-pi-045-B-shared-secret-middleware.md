@@ -106,41 +106,67 @@ class SharedSecretMiddleware(BaseHTTPMiddleware):
 
 ### 3. `crmbuilder-v2/src/crmbuilder_v2/mcp_server/server.py` — wire the middleware
 
-In `main()`, when `transport == "streamable-http"`:
+Slice A established the pattern: `build_server()` constructs the `FastMCP` instance with `host` and `port` threaded into the constructor (FastMCP's installed SDK signature accepts `host=` and `port=` on the constructor; `run("streamable-http")` is called bare from `main()`). Slice B extends the same pattern: middleware registration belongs inside `build_server()` since that is where the `FastMCP` handle exists.
+
+**Extend `build_server()` with a `shared_secret` kwarg.** When non-None, register `SharedSecretMiddleware`. When `None` (the stdio default code path), skip middleware entirely.
+
+```python
+def build_server(
+    http: httpx.AsyncClient | None = None,
+    *,
+    host: str = "127.0.0.1",
+    port: int | None = None,
+    shared_secret: str | None = None,
+) -> FastMCP:
+    ...
+    server = FastMCP(
+        "crmbuilder-v2",
+        instructions=(...),
+        host=host,
+        port=resolved_port,
+    )
+    if shared_secret:
+        # Register SharedSecretMiddleware on FastMCP's underlying ASGI app.
+        # Exact mechanism depends on the installed FastMCP version. The
+        # FastMCP class is built on Starlette; investigate:
+        #   - FastMCP(..., middleware=[Middleware(SharedSecretMiddleware, ...)])
+        #     if the constructor accepts a middleware kwarg (Starlette convention)
+        #   - server.app.add_middleware(SharedSecretMiddleware, ...)
+        #     if the FastMCP exposes its Starlette app
+        # Confirm via the signature check in pre-flight step 3, then use
+        # the cleanest path. Do not skip silently — if no path exists,
+        # stop and report; that is a blocker for the tunnel.
+        ...  # register here
+    client = http or httpx.AsyncClient(base_url=settings.api_base_url, timeout=30.0)
+    register_tools(server, client)
+    return server
+```
+
+**Update `main()` to enforce the secret and pass it through.** When `transport == "streamable-http"`:
 
 ```python
 elif transport == "streamable-http":
-    from crmbuilder_v2.config import get_settings
-    from crmbuilder_v2.mcp_server.middleware import SharedSecretMiddleware
-
     settings = get_settings()
     if not settings.mcp_shared_secret:
         raise RuntimeError(
             "CRMBUILDER_V2_MCP_SHARED_SECRET must be set when "
             "transport is streamable-http (DEC-204 second-layer auth)"
         )
-    if port is None:
-        port = settings.mcp_http_port
-
-    # Register the middleware on FastMCP's underlying ASGI app.
-    # Exact mechanism depends on the installed FastMCP version; use the
-    # method confirmed in pre-flight step 3. The intent is that the
-    # middleware runs BEFORE the MCP protocol handler so unauthenticated
-    # requests never reach the tool dispatch layer.
-    # Example shape — adjust to match the SDK:
-    #     server.app.add_middleware(
-    #         SharedSecretMiddleware,
-    #         expected_secret=settings.mcp_shared_secret,
-    #     )
-
-    server.run("streamable-http", host=host, port=port)
+    server = build_server(
+        host=host,
+        port=port,
+        shared_secret=settings.mcp_shared_secret,
+    )
+    server.run("streamable-http")
 ```
 
-If the FastMCP SDK does not expose a way to inject Starlette middleware at the app layer (some versions only expose `run()` with no app handle), fall back to wrapping the ASGI app at the `run()` boundary or to subclassing FastMCP. Report what the installed version supports and use the cleanest path. Do not skip the middleware registration silently — if no path exists, stop and report; that is a blocker for the tunnel and needs to be discussed before proceeding.
+The stdio code path is unchanged — `build_server()` is called with default `shared_secret=None` so no middleware is registered, matching Slice A's stdio dispatch byte-for-byte.
+
+If the installed FastMCP version exposes neither a constructor `middleware=` kwarg nor an `app` attribute for middleware registration, fall back to wrapping the ASGI app at the `run()` boundary or to subclassing `FastMCP`. Report what the installed version supports and use the cleanest path. Do not skip the middleware registration silently — if no path exists, stop and report; that is a blocker for the tunnel and needs to be discussed before proceeding.
 
 ### 4. Tests
 
-Add `crmbuilder-v2/tests/mcp_server/test_shared_secret_middleware.py`:
+Add `tests/crmbuilder_v2/mcp_server/test_shared_secret_middleware.py` (Slice A established the `tests/crmbuilder_v2/<area>/` layout; the `mcp_server/` subdirectory was created by Slice A's dispatch tests and is where MCP-server tests live):
 
 Use Starlette's `TestClient` against a minimal Starlette app with the middleware applied:
 
@@ -149,7 +175,7 @@ Use Starlette's `TestClient` against a minimal Starlette app with the middleware
 - `test_wrong_secret_returns_401` — `X-CRMBuilder-Secret: nope` → 401.
 - `test_empty_secret_constructor_raises` — `SharedSecretMiddleware(app, expected_secret="")` → `ValueError`.
 
-Extend `crmbuilder-v2/tests/mcp_server/test_transport_dispatch.py` (from slice A):
+Extend `tests/crmbuilder_v2/mcp_server/test_transport_dispatch.py` (the dispatch tests Slice A created):
 
 - `test_streamable_http_without_secret_raises_at_startup` — monkeypatch `get_settings` to return `mcp_shared_secret=None`; `pytest.raises(RuntimeError, match="CRMBUILDER_V2_MCP_SHARED_SECRET")` on `main(transport="streamable-http")`.
 - `test_streamable_http_with_secret_proceeds_to_run` — monkeypatch settings with a secret set and `FastMCP.run` to record; assert `run` called and the middleware registration call happened (record on a stub).
@@ -161,7 +187,7 @@ Extend `crmbuilder-v2/tests/mcp_server/test_transport_dispatch.py` (from slice A
 After tests pass:
 
 1. **Startup hard-fails without the secret.** Unset the env var, run `crmbuilder-v2-mcp --transport streamable-http`. Process exits non-zero with the named error. `echo $?` confirms.
-2. **Startup succeeds with the secret.** `export CRMBUILDER_V2_MCP_SHARED_SECRET=$(openssl rand -hex 32)`; run the MCP. Process stays up.
+2. **Startup succeeds with the secret.** `export CRMBUILDER_V2_MCP_SHARED_SECRET=$(openssl rand -hex 32)`; run `crmbuilder-v2-mcp --transport streamable-http`. Process stays up and binds 127.0.0.1:8810 (same proof as Slice A's HTTP 406 response from a non-MCP GET).
 3. **Missing header → 401.** From another shell: `curl -v http://127.0.0.1:8810/` (no header). Response is 401, body `{"error":"unauthorized"}`.
 4. **Wrong header → 401.** `curl -v -H "X-CRMBuilder-Secret: wrong" http://127.0.0.1:8810/`. 401.
 5. **Correct header passes the middleware.** `curl -v -H "X-CRMBuilder-Secret: $CRMBUILDER_V2_MCP_SHARED_SECRET" http://127.0.0.1:8810/`. Response is something other than 401 (the MCP protocol may complain about the bare GET — that is expected; the proof point is that auth did not block it).

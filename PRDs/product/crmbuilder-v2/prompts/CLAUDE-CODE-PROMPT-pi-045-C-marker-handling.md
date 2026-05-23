@@ -155,7 +155,7 @@ set_marker_at_start(active_code)
 
 ### 4. Tests
 
-Add `crmbuilder-v2/tests/api/test_marker_guard_middleware.py`:
+Add `tests/crmbuilder_v2/api/test_marker_guard_middleware.py` (the `tests/crmbuilder_v2/<area>/` layout was confirmed by Slice A; existing API tests like `test_cli_engagement_flag.py` already live under `tests/crmbuilder_v2/api/`):
 
 ```python
 """Tests for EngagementMarkerGuardMiddleware (DEC-205)."""
