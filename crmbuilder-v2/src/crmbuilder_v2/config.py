@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     api_host: str = "127.0.0.1"
     api_port: int = 8765
     api_base_url: str = "http://127.0.0.1:8765"
+    mcp_http_port: int = 8810
 
     @property
     def db_url(self) -> str:
