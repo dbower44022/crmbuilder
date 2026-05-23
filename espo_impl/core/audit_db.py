@@ -4,6 +4,7 @@ Inserts Entity, Field, FieldOption, Relationship, LayoutPanel, LayoutRow,
 and ListColumn records into the client SQLite database from audit results.
 """
 
+import json
 import logging
 import sqlite3
 from datetime import datetime, timezone
@@ -18,6 +19,22 @@ from espo_impl.core.audit_manager import (
 from espo_impl.core.audit_utils import EntityClass
 
 logger = logging.getLogger(__name__)
+
+
+def _serialize_default(value: Any) -> Any:
+    """Coerce a field-default value into something SQLite can bind to TEXT.
+
+    EspoCRM multiEnum defaults arrive as Python lists; enum/scalar defaults
+    arrive as primitives. SQLite parameter binding rejects ``list``/``dict``,
+    so we JSON-encode containers and pass primitives through untouched
+    (``None`` stays ``None`` so it lands as NULL).
+
+    :param value: Raw default value from the EspoCRM metadata response.
+    :returns: A value safe to bind into a TEXT column.
+    """
+    if isinstance(value, (list, dict)):
+        return json.dumps(value, ensure_ascii=False)
+    return value
 
 
 def insert_audit_records(
@@ -165,7 +182,7 @@ def _insert_field(
                 field_result.label,
                 field_result.field_type,
                 props.get("required", False),
-                props.get("default"),
+                _serialize_default(props.get("default")),
                 props.get("readOnly", False),
                 props.get("audited", False),
                 props.get("maxLength"),
@@ -218,7 +235,13 @@ def _insert_field_options(
 
         label = translated.get(value, value)
         style = styles.get(value)
-        is_default = (value == default_value) if default_value else False
+        # multiEnum defaults are a list of values; enum defaults are a scalar.
+        if isinstance(default_value, list):
+            is_default = value in default_value
+        elif default_value:
+            is_default = value == default_value
+        else:
+            is_default = False
 
         try:
             conn.execute(
