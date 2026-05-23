@@ -251,5 +251,38 @@
     "status": "Open",
     "title": "Workstream-state reconciliation utility at kickoff pre-flight to prevent git-vs-database state drift",
     "updated_at": "2026-05-21T19:23:11.658576"
+  },
+  {
+    "created_at": "2026-05-23T00:02:29.695511",
+    "description": "Backfill the workstreams that pre-date PI-022 Phase 1: methodology entity schema-design (the UI v0.4 workstream that produced domain/entity/process/crm_candidate); user-interface version 0.5 engagement management; user-interface version 0.6 styling; multi-tenancy routing fix; Cleveland Business Mentors paper test; catalog ingestion; the v0.7 release itself (this conversation's workstream — though WS-001 is already created). Each becomes a workstream record with the appropriate lifecycle timestamps, plus the conversations that belong to it (Phase 3 work in PI-025). Continues the discharge of PI-022 from Phase 1.",
+    "id": 24,
+    "identifier": "PI-024",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "PI-022 Phase 2 — backfill prior workstreams",
+    "updated_at": "2026-05-23T00:02:29.695515"
+  },
+  {
+    "created_at": "2026-05-23T00:02:29.763507",
+    "description": "Backfill the conversations that pre-date PI-022 Phase 1: SES-001 through SES-046 (52 prior session records) plus SES-053 (the parallel-workstream conversation outside the governance workstream). Each becomes a conversation record at status `complete` with the appropriate workstream membership edge (from Phase 2), a session edge to its SES record, and (where reconstructable from session-record in_flight_at_end text) a conversation_succeeds_conversation chain. Where reconstructable, also create the kickoff-prompt work_ticket records and link them via conversation_opens_against_work_ticket. Continues the discharge of PI-022 after PI-024.",
+    "id": 25,
+    "identifier": "PI-025",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "PI-022 Phase 3 — backfill prior conversations",
+    "updated_at": "2026-05-23T00:02:29.763510"
+  },
+  {
+    "created_at": "2026-05-23T00:02:29.863137",
+    "description": "Backfill deposit_event records for the ~38 prior close-out payload files at PRDs/product/crmbuilder-v2/close-out-payloads/ses_001.json through ses_046.json (excluding ses_047..055 which Phase 1 covered). Each becomes a deposit_event with `_outcome = 'success'`, a placeholder dep_NNN-historical.log, `_records_summary` reconstructed from the payload's section counts, `wrote_record` back-references where reconstructable, and `_apply_context.runner = 'backfill_script'`. Each transitions its target close_out_payload (from Phase 3) to `applied`. Final phase of PI-022; discharges the planning item once complete.",
+    "id": 26,
+    "identifier": "PI-026",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "PI-022 Phase 4 — backfill historical applies as deposit_events",
+    "updated_at": "2026-05-23T00:02:29.863141"
   }
 ]

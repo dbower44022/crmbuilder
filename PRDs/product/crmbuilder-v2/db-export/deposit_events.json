@@ -158,5 +158,25 @@
       "sessions": 1
     },
     "deposit_event_title": "Apply of COP-008 (historical backfill)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "0.7.0",
+      "invocation": "crmbuilder-v2/scripts/apply_close_out.py PRDs/product/crmbuilder-v2/close-out-payloads/ses_056.json",
+      "runner": "claude_code"
+    },
+    "deposit_event_created_at": "2026-05-23T00:02:57.228428",
+    "deposit_event_description": "Applied COP-056. Outcome: success. no records written.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-009",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_009.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 0
+    },
+    "deposit_event_title": "Apply of COP-056, 2026-05-23T00:02:57+00:00"
   }
 ]

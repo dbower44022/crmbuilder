@@ -1,7 +1,7 @@
 [
   {
     "workstream_cancelled_at": null,
-    "workstream_completed_at": null,
+    "workstream_completed_at": "2026-05-23T00:02:45.440918",
     "workstream_created_at": "2026-05-22T23:56:18.054992",
     "workstream_deleted_at": null,
     "workstream_description": "Seven schema-design conversations (SES-047 through SES-052 plus SES-054) plus a build-planning conversation (SES-055) produce the six per-entity schema specifications and the integrating PRD that deliver v0.7's six new governance entity types: workstream, conversation, reference_book, work_ticket, close_out_payload, and deposit_event.",
@@ -10,8 +10,8 @@
     "workstream_notes": null,
     "workstream_purpose": "Close the gap between V2's governance database role and its actual coverage of the planning-and-execution machinery itself",
     "workstream_started_at": "2026-05-20T22:00:00",
-    "workstream_status": "in_flight",
+    "workstream_status": "complete",
     "workstream_superseded_at": null,
-    "workstream_updated_at": "2026-05-22T23:56:18.055962"
+    "workstream_updated_at": "2026-05-23T00:02:45.441515"
   }
 ]

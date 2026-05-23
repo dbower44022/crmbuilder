@@ -2606,5 +2606,21 @@
     "supersedes_id": null,
     "title": "PI-022 refinement: phased retroactive backfill plan; Phase 1 in Slice E covers the governance entity schema-design workstream itself",
     "updated_at": "2026-05-22T18:38:43.467790"
+  },
+  {
+    "alternatives_considered": "(a) Restructure every governance repository to validate edges before the autoassign insert (impossible because edges reference the not-yet-assigned identifier). (b) Replace the SAVEPOINT pattern with a single explicit BEGIN-then-INSERT-with-retry-on-IntegrityError without nesting (works but rewrites the well-precedented autoassign across every repo). (c) Add a 'remove orphan on rollback' compensating action in every repository (fragile, can't fully reverse side effects). (d) Accept the orphan rows and document the limitation (violates the access layer's transaction contract and would surface as data corruption under any real edge-rule failure in production). Option (e), the SQLAlchemy SQLite recipe, addresses the root cause at the engine layer and is what the bug actually warrants.",
+    "consequences": "Every transaction begins with BEGIN IMMEDIATE; the connection is in non-autocommit mode (controlled by SQLAlchemy). Concurrent writers wait up to 5s on the lock before erroring. Existing tests stay green (no regressions across the 628-test suite). Future engine work in the per-engagement DB inherits the same correctness. If a real performance problem surfaces under heavy concurrent read load (extremely unlikely for the project's workload), the busy_timeout can be tuned or BEGIN switched to DEFERRED with the deadlock risk re-evaluated.",
+    "context": "Slice B testing uncovered that a 422 failure on a governance create left an orphaned partial row (verified: a conversation POST missing the workstream-membership edge persisted CONV-001 despite the API returning 422 and the session_scope context manager calling session.rollback()). Root cause: the governance repositories use the v0.4 SAVEPOINT-based autoassign pattern (begin_nested + savepoint.commit for collision-safe identifier assignment) followed by post-insert edge-rule validation. Under pysqlite's default autocommit emulation, RELEASE SAVEPOINT durably commits to disk because no outer BEGIN was ever issued; a later session.rollback() then has nothing to undo. The methodology repos never exercised the pattern because they validate before insert, so the bug was latent until the governance entities' insert-then-validate-edges shape exposed it.",
+    "created_at": "2026-05-23T00:02:29.629032",
+    "decision": "Apply the standard SQLAlchemy SQLite transaction-control recipe in access/db.py: in the connect handler, set dbapi_conn.isolation_level=None to disable pysqlite's autocommit emulation and add PRAGMA busy_timeout=5000 so contended writers queue rather than fail fast; in a new 'begin' event handler, emit 'BEGIN IMMEDIATE' explicitly so concurrent writers acquire the RESERVED lock at transaction start (avoiding the deferred-then-upgrade deadlock the eight-thread concurrent-POST tests would otherwise hit).",
+    "decision_date": "2026-05-22",
+    "id": 165,
+    "identifier": "DEC-167",
+    "rationale": "The fix is the SQLAlchemy-documented recipe for SQLite plus explicit transactions, applies one foundational change (the engine in access/db.py) that makes the entire access layer's transaction semantics correct, and lets every governance repository's validate-after-insert pattern work as written. The methodology repos get the same correctness for free even though they never exposed the bug. The full access+api suite runs faster under explicit transactions (~107s vs ~7min for access alone previously) because the explicit transactions are more consistent for SQLAlchemy's flush ordering. The trade-off is BEGIN IMMEDIATE acquires the RESERVED lock at transaction start even for read-only sessions, mildly serializing reads against writes; for the project's desktop/single-user/test loads this is operationally invisible and is what the busy_timeout exists to absorb.",
+    "status": "Active",
+    "superseded_by_id": null,
+    "supersedes_id": null,
+    "title": "SQLite transaction-control fix — explicit BEGIN IMMEDIATE + busy_timeout for proper rollback",
+    "updated_at": "2026-05-23T00:02:29.629035"
   }
 ]

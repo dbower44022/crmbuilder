@@ -3518,5 +3518,75 @@
     "source_type": "workstream",
     "target_id": "RB-001",
     "target_type": "reference_book"
+  },
+  {
+    "created_at": "2026-05-23T00:02:29.935469",
+    "id": 357,
+    "reference_identifier": "REF-0353",
+    "relationship_kind": "decided_in",
+    "source_id": "DEC-167",
+    "source_type": "decision",
+    "target_id": "SES-056",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T00:02:30.006161",
+    "id": 358,
+    "reference_identifier": "REF-0354",
+    "relationship_kind": "is_about",
+    "source_id": "PI-024",
+    "source_type": "planning_item",
+    "target_id": "PI-022",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-23T00:02:30.075456",
+    "id": 359,
+    "reference_identifier": "REF-0355",
+    "relationship_kind": "is_about",
+    "source_id": "PI-025",
+    "source_type": "planning_item",
+    "target_id": "PI-022",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-23T00:02:30.150981",
+    "id": 360,
+    "reference_identifier": "REF-0356",
+    "relationship_kind": "is_about",
+    "source_id": "PI-026",
+    "source_type": "planning_item",
+    "target_id": "PI-022",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-23T00:02:30.225744",
+    "id": 361,
+    "reference_identifier": "REF-0357",
+    "relationship_kind": "blocks",
+    "source_id": "PI-025",
+    "source_type": "planning_item",
+    "target_id": "PI-024",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-23T00:02:30.296969",
+    "id": 362,
+    "reference_identifier": "REF-0358",
+    "relationship_kind": "blocks",
+    "source_id": "PI-026",
+    "source_type": "planning_item",
+    "target_id": "PI-025",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-23T00:02:57.230106",
+    "id": 363,
+    "reference_identifier": "REF-0359",
+    "relationship_kind": "deposit_event_applies_close_out_payload",
+    "source_id": "DEP-009",
+    "source_type": "deposit_event",
+    "target_id": "COP-056",
+    "target_type": "close_out_payload"
   }
 ]

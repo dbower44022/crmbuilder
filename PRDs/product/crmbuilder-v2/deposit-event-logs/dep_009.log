@@ -1,0 +1,27 @@
+=== Applying close-out payload ===
+Source: PRDs/product/crmbuilder-v2/close-out-payloads/ses_056.json
+Label:  SES-056 v0.7 governance entity release shipped: 1 session, 1 decision (DEC-167), 3 planning items (PI-024..026), 6 references
+Deposit event: DEP-009
+
+=== session (1 record) ===
+  · POST session  SES-056 already present (HTTP 409) — skipping
+
+=== decisions (1 record) ===
+  · POST decisions  DEC-167 already present (HTTP 409) — skipping
+
+=== planning_items (3 records) ===
+  · POST planning_items  PI-024 already present (HTTP 409) — skipping
+  · POST planning_items  PI-025 already present (HTTP 409) — skipping
+  · POST planning_items  PI-026 already present (HTTP 409) — skipping
+
+=== references (6 records) ===
+  · POST references  DEC-167 decided_in SES-056 already present (HTTP 409) — skipping
+  · POST references  PI-024 is_about PI-022 already present (HTTP 409) — skipping
+  · POST references  PI-025 is_about PI-022 already present (HTTP 409) — skipping
+  · POST references  PI-026 is_about PI-022 already present (HTTP 409) — skipping
+  · POST references  PI-025 blocks PI-024 already present (HTTP 409) — skipping
+  · POST references  PI-026 blocks PI-025 already present (HTTP 409) — skipping
+
+✓ All 11 operations complete.
+
+✓ Recorded apply as deposit_event DEP-009 (HTTP 201).
