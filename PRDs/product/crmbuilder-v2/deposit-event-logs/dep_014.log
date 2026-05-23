@@ -1,0 +1,34 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_061.json
+Label:  SES-061 Code Change Lifecycle methodology drafted: settled 8 design decisions (DEC-183..182), authored methodology-code-change-lifecycle.md v1.0 and schema-design-kickoff-commit.md (PI-028 kickoff); PI-027 stays Open pending PI-033 retroactive resolve; 1 session, 8 decisions, 0 planning items, 11 references
+Deposit event: DEP-014
+
+=== session (1 record) ===
+  ✓ POST session  SES-061 (HTTP 201)
+
+=== decisions (8 records) ===
+  ✓ POST decisions  DEC-183 (HTTP 201)
+  ✓ POST decisions  DEC-184 (HTTP 201)
+  ✓ POST decisions  DEC-185 (HTTP 201)
+  ✓ POST decisions  DEC-186 (HTTP 201)
+  ✓ POST decisions  DEC-187 (HTTP 201)
+  ✓ POST decisions  DEC-188 (HTTP 201)
+  ✓ POST decisions  DEC-189 (HTTP 201)
+  ✓ POST decisions  DEC-190 (HTTP 201)
+
+=== references (11 records) ===
+  ✓ POST references  DEC-183 decided_in SES-061 (HTTP 201)
+  ✓ POST references  DEC-184 decided_in SES-061 (HTTP 201)
+  ✓ POST references  DEC-185 decided_in SES-061 (HTTP 201)
+  ✓ POST references  DEC-186 decided_in SES-061 (HTTP 201)
+  ✓ POST references  DEC-187 decided_in SES-061 (HTTP 201)
+  ✓ POST references  DEC-188 decided_in SES-061 (HTTP 201)
+  ✓ POST references  DEC-189 decided_in SES-061 (HTTP 201)
+  ✓ POST references  DEC-190 decided_in SES-061 (HTTP 201)
+  ✓ POST references  SES-061 is_about PI-028 (HTTP 201)
+  ✓ POST references  SES-061 is_about PI-027 (HTTP 201)
+  ✓ POST references  DEC-190 references DEC-170 (HTTP 201)
+
+✓ All 20 operations complete.
+
+✓ Recorded apply as deposit_event DEP-014 (HTTP 201).
