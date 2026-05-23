@@ -138,5 +138,47 @@
     "reference_book_status": "active",
     "reference_book_title": "Governance entity implementation plan",
     "reference_book_updated_at": "2026-05-22T23:56:18.764879"
+  },
+  {
+    "reference_book_created_at": "2026-05-23T16:06:17.232762",
+    "reference_book_current_version_date": "2026-05-11T16:00:00",
+    "reference_book_current_version_label": "1.0",
+    "reference_book_deleted_at": null,
+    "reference_book_description": "Master plan for WS-003 — establishes the four-entity scope (domain, entity, process, crm_candidate), the sequence of four per-entity schema-design conversations plus a v0.4-build-planning conversation, and the schema-spec methodology guide template.",
+    "reference_book_file_path": "PRDs/product/crmbuilder-v2/methodology-schema-workstream-plan.md",
+    "reference_book_identifier": "RB-011",
+    "reference_book_kind": "workstream_master_plan",
+    "reference_book_notes": null,
+    "reference_book_status": "active",
+    "reference_book_title": "Methodology entity schema-design workstream plan",
+    "reference_book_updated_at": "2026-05-23T16:06:17.267686"
+  },
+  {
+    "reference_book_created_at": "2026-05-23T16:06:17.345808",
+    "reference_book_current_version_date": "2026-05-16T14:00:00",
+    "reference_book_current_version_label": "1.0",
+    "reference_book_deleted_at": null,
+    "reference_book_description": "Master plan for WS-004 — establishes multi-engagement architecture, engagement schema, REST API extension for engagement routing, and the engagement-management UI.",
+    "reference_book_file_path": "PRDs/product/crmbuilder-v2/v0.5-engagement-management-workstream-plan.md",
+    "reference_book_identifier": "RB-012",
+    "reference_book_kind": "workstream_master_plan",
+    "reference_book_notes": null,
+    "reference_book_status": "active",
+    "reference_book_title": "User-interface v0.5 engagement-management workstream plan",
+    "reference_book_updated_at": "2026-05-23T16:06:17.346932"
+  },
+  {
+    "reference_book_created_at": "2026-05-23T16:06:17.423780",
+    "reference_book_current_version_date": "2026-05-16T14:00:00",
+    "reference_book_current_version_label": "1.0",
+    "reference_book_deleted_at": null,
+    "reference_book_description": "Master plan for WS-005 — establishes the design pass (tokens, component visual decisions, application priorities) and the six-slice implementation arc.",
+    "reference_book_file_path": "PRDs/product/crmbuilder-v2/styling-workstream-plan.md",
+    "reference_book_identifier": "RB-013",
+    "reference_book_kind": "workstream_master_plan",
+    "reference_book_notes": null,
+    "reference_book_status": "active",
+    "reference_book_title": "User-interface v0.6 styling workstream plan",
+    "reference_book_updated_at": "2026-05-23T16:06:17.424772"
   }
 ]

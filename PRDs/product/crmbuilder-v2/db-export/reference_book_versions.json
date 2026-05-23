@@ -94,5 +94,29 @@
     "reference_book_version_date": "2026-05-22T17:30:00",
     "reference_book_version_label": "0.1",
     "reference_book_version_summary": "Governance entity implementation plan v0.1"
+  },
+  {
+    "id": 13,
+    "reference_book_identifier": "RB-011",
+    "reference_book_version_created_at": "2026-05-23T16:06:17.266499",
+    "reference_book_version_date": "2026-05-11T16:00:00",
+    "reference_book_version_label": "1.0",
+    "reference_book_version_summary": "Methodology entity schema-design workstream plan v1.0"
+  },
+  {
+    "id": 14,
+    "reference_book_identifier": "RB-012",
+    "reference_book_version_created_at": "2026-05-23T16:06:17.346414",
+    "reference_book_version_date": "2026-05-16T14:00:00",
+    "reference_book_version_label": "1.0",
+    "reference_book_version_summary": "User-interface v0.5 engagement-management workstream plan v1.0"
+  },
+  {
+    "id": 15,
+    "reference_book_identifier": "RB-013",
+    "reference_book_version_created_at": "2026-05-23T16:06:17.424311",
+    "reference_book_version_date": "2026-05-16T14:00:00",
+    "reference_book_version_label": "1.0",
+    "reference_book_version_summary": "User-interface v0.6 styling workstream plan v1.0"
   }
 ]
