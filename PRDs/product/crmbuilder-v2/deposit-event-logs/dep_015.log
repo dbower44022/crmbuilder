@@ -1,0 +1,29 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_062.json
+Label:  SES-062 PI-025 prior-conversations backfill planned: 7 decisions settled (DEC-191 scope with WS-008 audit-v1.2 fold-in, DEC-192 WS-006 cross-engagement defer Option IV, DEC-193 born-complete single-POST pattern, DEC-194 unambiguous succeeds-chain policy, DEC-195 source-document field defaults, DEC-196 work_ticket backfill scope, DEC-197 sixteen orphan sessions deferred); 37 conversation records and 37 work_tickets across WS-002..WS-008 specified for out-of-band landing via the PI-025 backfill prompt. 1 session, 7 decisions (DEC-191..197), 7 references (7 decided_in).
+Deposit event: DEP-015
+
+=== session (1 record) ===
+  ✓ POST session  SES-062 (HTTP 201)
+
+=== decisions (7 records) ===
+  ✓ POST decisions  DEC-191 (HTTP 201)
+  ✓ POST decisions  DEC-192 (HTTP 201)
+  ✓ POST decisions  DEC-193 (HTTP 201)
+  ✓ POST decisions  DEC-194 (HTTP 201)
+  ✓ POST decisions  DEC-195 (HTTP 201)
+  ✓ POST decisions  DEC-196 (HTTP 201)
+  ✓ POST decisions  DEC-197 (HTTP 201)
+
+=== references (7 records) ===
+  ✓ POST references  DEC-191 decided_in SES-062 (HTTP 201)
+  ✓ POST references  DEC-192 decided_in SES-062 (HTTP 201)
+  ✓ POST references  DEC-193 decided_in SES-062 (HTTP 201)
+  ✓ POST references  DEC-194 decided_in SES-062 (HTTP 201)
+  ✓ POST references  DEC-195 decided_in SES-062 (HTTP 201)
+  ✓ POST references  DEC-196 decided_in SES-062 (HTTP 201)
+  ✓ POST references  DEC-197 decided_in SES-062 (HTTP 201)
+
+✓ All 15 operations complete.
+
+✓ Recorded apply as deposit_event DEP-015 (HTTP 201).
