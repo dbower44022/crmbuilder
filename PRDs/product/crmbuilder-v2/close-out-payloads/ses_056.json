@@ -1,0 +1,94 @@
+{
+  "label": "SES-056 v0.7 governance entity release shipped: 1 session, 1 decision (DEC-167), 3 planning items (PI-024..026), 6 references",
+  "session": {
+    "identifier": "SES-056",
+    "title": "v0.7 governance entity release shipped",
+    "session_date": "2026-05-22",
+    "status": "Complete",
+    "conversation_reference": "Claude Code orchestration session executing the six v0.7 slice prompts end-to-end (CLAUDE-CODE-PROMPT-v2-ui-v0.7-{A..F}.md) over a single session at the close of 05-22-26",
+    "topics_covered": "v0.7 governance entity release executed across six slices: Slice A (schema migrations, vocab.py, ORM models, six repositories, ~55 access-layer tests); Slice B (six routers + GET /references filter fix + ~9 API tests; uncovered and fixed the pysqlite SAVEPOINT autocommit bug that left orphan rows on edge-rule validation failure — explicit BEGIN IMMEDIATE + busy_timeout per the SQLAlchemy SQLite recipe; full access + api suite green at 628 tests); Slice C (StorageClient gained 47 governance methods, six panels, five CRUD dialogs with edge-aware create flows for conversation/close_out_payload, sidebar appended with six entries, 14 UI smoke tests); Slice D (apply_close_out.py tees stdout to deposit-event-logs/dep_NNN.log and POSTs a deposit_event atomically as its last step; 3 script tests); Slice E (PI-022 Phase 1 backfill executed live against the dogfood CRMBUILDER.db — 1 workstream, 8 conversations, 10 reference books with 12 version rows, 8 work_tickets, 8 close_out_payloads, 8 deposit_events, ~70 reference edges; idempotent on re-run; exporter updated to snapshot the seven governance tables); Slice F (version bump to 0.7.0, README + CLAUDE.md updates, this closeout). The release closes the gap between the v2 governance database's stated single-source-of-truth role and its actual coverage of the planning-and-execution machinery itself.",
+    "summary": "v0.7 ships. 24 slice commits plus 1 amend, every slice's tests green at slice close. The transaction-correctness fix is the most consequential engineering decision: every governance edge-rule failure now rolls back cleanly. The full access+api suite runs faster under explicit transactions (107s vs slower prior). WS-001 transitions to complete as the final step. Phases 2-4 of PI-022 are authored as PI-024 (prior workstreams), PI-025 (prior conversations), PI-026 (historical applies as deposit_events) for future execution.",
+    "artifacts_produced": "Migration 0011 (CHECK extensions, REF-NNNN ids, seven new tables); vocab.py extended with 8 relationship kinds + 6 entity types + lifecycle/transition maps; seven ORM models + Reference.reference_identifier; six repositories (workstreams, conversations, reference_books, work_tickets, close_out_payloads, deposit_events) with shared _governance helpers; six routers + Pydantic schemas + the GET /references filter fix; SQLite transaction-control fix in access/db.py; UI StorageClient + six panels + five dialogs + sidebar wiring; apply_close_out.py log-tee + atomic deposit_event POST + the new deposit-event-logs/ directory; backfill_governance_phase_1.py + the eight dep_NNN-historical.log placeholders + backfill-phase-1.log; exporter extension; 80+ new tests across access/api/ui/scripts. Documentation: README v0.7 subsection, CLAUDE.md v0.7 subsection.",
+    "in_flight_at_end": "v0.7 shipped. WS-001 transitions to complete as the last step of this apply. The dogfood engagement holds the Phase 1 backfilled records; phases 2-4 of PI-022 remain Open with the new follow-on planning items PI-024/025/026 capturing their scope. The next conversation is whatever Doug opens next; no specific successor planned at v0.7 close."
+  },
+  "decisions": [
+    {
+      "identifier": "DEC-167",
+      "title": "SQLite transaction-control fix — explicit BEGIN IMMEDIATE + busy_timeout for proper rollback",
+      "decision_date": "2026-05-22",
+      "status": "Active",
+      "context": "Slice B testing uncovered that a 422 failure on a governance create left an orphaned partial row (verified: a conversation POST missing the workstream-membership edge persisted CONV-001 despite the API returning 422 and the session_scope context manager calling session.rollback()). Root cause: the governance repositories use the v0.4 SAVEPOINT-based autoassign pattern (begin_nested + savepoint.commit for collision-safe identifier assignment) followed by post-insert edge-rule validation. Under pysqlite's default autocommit emulation, RELEASE SAVEPOINT durably commits to disk because no outer BEGIN was ever issued; a later session.rollback() then has nothing to undo. The methodology repos never exercised the pattern because they validate before insert, so the bug was latent until the governance entities' insert-then-validate-edges shape exposed it.",
+      "decision": "Apply the standard SQLAlchemy SQLite transaction-control recipe in access/db.py: in the connect handler, set dbapi_conn.isolation_level=None to disable pysqlite's autocommit emulation and add PRAGMA busy_timeout=5000 so contended writers queue rather than fail fast; in a new 'begin' event handler, emit 'BEGIN IMMEDIATE' explicitly so concurrent writers acquire the RESERVED lock at transaction start (avoiding the deferred-then-upgrade deadlock the eight-thread concurrent-POST tests would otherwise hit).",
+      "rationale": "The fix is the SQLAlchemy-documented recipe for SQLite plus explicit transactions, applies one foundational change (the engine in access/db.py) that makes the entire access layer's transaction semantics correct, and lets every governance repository's validate-after-insert pattern work as written. The methodology repos get the same correctness for free even though they never exposed the bug. The full access+api suite runs faster under explicit transactions (~107s vs ~7min for access alone previously) because the explicit transactions are more consistent for SQLAlchemy's flush ordering. The trade-off is BEGIN IMMEDIATE acquires the RESERVED lock at transaction start even for read-only sessions, mildly serializing reads against writes; for the project's desktop/single-user/test loads this is operationally invisible and is what the busy_timeout exists to absorb.",
+      "alternatives_considered": "(a) Restructure every governance repository to validate edges before the autoassign insert (impossible because edges reference the not-yet-assigned identifier). (b) Replace the SAVEPOINT pattern with a single explicit BEGIN-then-INSERT-with-retry-on-IntegrityError without nesting (works but rewrites the well-precedented autoassign across every repo). (c) Add a 'remove orphan on rollback' compensating action in every repository (fragile, can't fully reverse side effects). (d) Accept the orphan rows and document the limitation (violates the access layer's transaction contract and would surface as data corruption under any real edge-rule failure in production). Option (e), the SQLAlchemy SQLite recipe, addresses the root cause at the engine layer and is what the bug actually warrants.",
+      "consequences": "Every transaction begins with BEGIN IMMEDIATE; the connection is in non-autocommit mode (controlled by SQLAlchemy). Concurrent writers wait up to 5s on the lock before erroring. Existing tests stay green (no regressions across the 628-test suite). Future engine work in the per-engagement DB inherits the same correctness. If a real performance problem surfaces under heavy concurrent read load (extremely unlikely for the project's workload), the busy_timeout can be tuned or BEGIN switched to DEFERRED with the deadlock risk re-evaluated."
+    }
+  ],
+  "planning_items": [
+    {
+      "identifier": "PI-024",
+      "title": "PI-022 Phase 2 — backfill prior workstreams",
+      "item_type": "pending_work",
+      "description": "Backfill the workstreams that pre-date PI-022 Phase 1: methodology entity schema-design (the UI v0.4 workstream that produced domain/entity/process/crm_candidate); user-interface version 0.5 engagement management; user-interface version 0.6 styling; multi-tenancy routing fix; Cleveland Business Mentors paper test; catalog ingestion; the v0.7 release itself (this conversation's workstream — though WS-001 is already created). Each becomes a workstream record with the appropriate lifecycle timestamps, plus the conversations that belong to it (Phase 3 work in PI-025). Continues the discharge of PI-022 from Phase 1.",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-025",
+      "title": "PI-022 Phase 3 — backfill prior conversations",
+      "item_type": "pending_work",
+      "description": "Backfill the conversations that pre-date PI-022 Phase 1: SES-001 through SES-046 (52 prior session records) plus SES-053 (the parallel-workstream conversation outside the governance workstream). Each becomes a conversation record at status `complete` with the appropriate workstream membership edge (from Phase 2), a session edge to its SES record, and (where reconstructable from session-record in_flight_at_end text) a conversation_succeeds_conversation chain. Where reconstructable, also create the kickoff-prompt work_ticket records and link them via conversation_opens_against_work_ticket. Continues the discharge of PI-022 after PI-024.",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-026",
+      "title": "PI-022 Phase 4 — backfill historical applies as deposit_events",
+      "item_type": "pending_work",
+      "description": "Backfill deposit_event records for the ~38 prior close-out payload files at PRDs/product/crmbuilder-v2/close-out-payloads/ses_001.json through ses_046.json (excluding ses_047..055 which Phase 1 covered). Each becomes a deposit_event with `_outcome = 'success'`, a placeholder dep_NNN-historical.log, `_records_summary` reconstructed from the payload's section counts, `wrote_record` back-references where reconstructable, and `_apply_context.runner = 'backfill_script'`. Each transitions its target close_out_payload (from Phase 3) to `applied`. Final phase of PI-022; discharges the planning item once complete.",
+      "status": "Open"
+    }
+  ],
+  "references": [
+    {
+      "source_type": "decision",
+      "source_id": "DEC-167",
+      "target_type": "session",
+      "target_id": "SES-056",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-024",
+      "target_type": "planning_item",
+      "target_id": "PI-022",
+      "relationship": "is_about"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-025",
+      "target_type": "planning_item",
+      "target_id": "PI-022",
+      "relationship": "is_about"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-026",
+      "target_type": "planning_item",
+      "target_id": "PI-022",
+      "relationship": "is_about"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-025",
+      "target_type": "planning_item",
+      "target_id": "PI-024",
+      "relationship": "blocks"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-026",
+      "target_type": "planning_item",
+      "target_id": "PI-025",
+      "relationship": "blocks"
+    }
+  ]
+}
