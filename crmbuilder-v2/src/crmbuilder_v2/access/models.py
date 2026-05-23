@@ -915,6 +915,93 @@ class DepositEvent(Base):
     )
 
 
+class Commit(Base):
+    """Governance entity — one git-commit-as-governance-record (v0.8, PI-029).
+
+    Seventh governance entity type, the first under the Code Change Lifecycle
+    methodology workstream. Captures one commit produced by a conversation,
+    attributed to that conversation via ``commit_conversation_id`` (FK
+    deviation from DEC-124 on frequency-justified-denormalization grounds;
+    see DEC-199 and commit.md §3.2.4 / §3.3).
+
+    Documentary-shaped lifecycle, **status-free** — refines DEC-137 per
+    DEC-198. No ``commit_status``, no transitions; soft-delete-with-restore
+    is the only state-change mechanism.
+
+    ``commit_committed_at`` is TEXT (not DateTime) so the ISO 8601 offset
+    is preserved verbatim — commit.md §3.2.5.
+    ``commit_parent_shas`` is a JSON-array column (0/1/2 SHA strings) — the
+    first such column on a governance entity table; commit.md §1 establishes
+    the cross-spec precedent for variable-cardinality scalar lists.
+    """
+
+    __tablename__ = "commits"
+
+    commit_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    commit_sha: Mapped[str] = mapped_column(
+        String(64), nullable=False, unique=True
+    )
+    commit_message_first_line: Mapped[str] = mapped_column(Text, nullable=False)
+    commit_message_full: Mapped[str] = mapped_column(Text, nullable=False)
+    commit_author_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    commit_author_email: Mapped[str] = mapped_column(String(255), nullable=False)
+    # ISO 8601 with explicit offset preserved verbatim (committer-local
+    # time). NOT normalized to UTC.
+    commit_committed_at: Mapped[str] = mapped_column(Text, nullable=False)
+    commit_repository: Mapped[str] = mapped_column(String(255), nullable=False)
+    commit_branch: Mapped[str] = mapped_column(
+        String(255), nullable=False, default="main"
+    )
+    # JSON array of 0/1/2 SHA strings — empty for initial commit, single
+    # for normal commit, two for merge commit. Per commit.md §3.2.4.
+    commit_parent_shas: Mapped[list] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    commit_files_changed_count: Mapped[int] = mapped_column(
+        Integer, nullable=False
+    )
+    # Soft FK to conversations.conversation_identifier — access-layer
+    # validated, not SQL-level FK per V2 convention. Direct FK column on
+    # this dense entity per DEC-199's frequency-justified deviation from
+    # DEC-124's references-edge precedent.
+    commit_conversation_id: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    commit_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    commit_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+    commit_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "commit_identifier GLOB 'CM-[0-9][0-9][0-9][0-9]'",
+            name="ck_commit_identifier_format",
+        ),
+        # Lowercase 40-char hex SHA-1. SHA-256 widening anticipated in
+        # commit.md §3.8.2.
+        CheckConstraint(
+            "LENGTH(commit_sha) = 40 AND "
+            "commit_sha NOT GLOB '*[^0-9a-f]*'",
+            name="ck_commit_sha_format",
+        ),
+        CheckConstraint(
+            "commit_files_changed_count >= 0",
+            name="ck_commit_files_changed_count_nonneg",
+        ),
+        Index("ix_commits_commit_conversation_id", "commit_conversation_id"),
+        Index("ix_commits_commit_repository", "commit_repository"),
+        Index("ix_commits_commit_committed_at", "commit_committed_at"),
+        Index("ix_commits_commit_deleted_at", "commit_deleted_at"),
+    )
+
+
 class Reference(Base):
     """Universal polymorphic reference between two records (DEC-006)."""
 

@@ -215,7 +215,6 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         "decided_in",
         "affects",
         "covers",
-        "blocks",
         "references",
         # v0.4 additions (methodology entities, UI v0.4 slice A).
         "entity_scopes_to_domain",
@@ -232,6 +231,17 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         "close_out_payload_produced_by_conversation",
         "deposit_event_applies_close_out_payload",
         "deposit_event_wrote_record",
+        # v0.8 additions (Code Change Lifecycle methodology, PI-029).
+        # Three new kinds plus the rename of `blocks` → `blocked_by`:
+        #   - `resolves` (conversation → planning_item; methodology §3.2).
+        #   - `addresses` (conversation → planning_item, work_ticket →
+        #     planning_item; methodology §3.3).
+        #   - `blocked_by` (planning_item → planning_item; methodology
+        #     §3.4 — directional rename of the prior `blocks` kind,
+        #     which is dropped from the vocabulary).
+        "resolves",
+        "addresses",
+        "blocked_by",
     }
 )
 
@@ -270,6 +280,11 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         "work_ticket",
         "close_out_payload",
         "deposit_event",
+        # v0.8 governance entity (Code Change Lifecycle methodology,
+        # PI-029). Seventh governance entity type; first under the
+        # Code Change Lifecycle workstream. See
+        # governance-schema-specs/commit.md v1.0.
+        "commit",
     }
 )
 
@@ -285,12 +300,17 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
     * ``supersedes`` — source and target types must match.
     * ``affects`` — source must be a risk.
     * ``covers`` — source must be charter or status.
-    * ``blocks`` — source must be a risk or planning_item.
     * ``entity_scopes_to_domain`` — source must be an entity, target must
       be a domain (v0.4, DEC-053).
     * ``process_hands_off_to_process`` — source and target must both be
       processes (v0.4, DEC-058; directional, source=producer,
       target=consumer).
+    * ``resolves`` — source must be a conversation, target must be a
+      planning_item (v0.8, methodology §3.2).
+    * ``addresses`` — source must be a conversation or work_ticket,
+      target must be a planning_item (v0.8, methodology §3.3).
+    * ``blocked_by`` — source and target must both be planning_item;
+      replaces the prior ``blocks`` kind (v0.8, methodology §3.4).
 
     The ruleset is permissive by design: every pair has at least the
     two generic kinds, so the dialog never produces an empty kind list
@@ -305,9 +325,6 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         kinds.add("supersedes")
     if source_type == "risk":
         kinds.add("affects")
-        kinds.add("blocks")
-    if source_type == "planning_item":
-        kinds.add("blocks")
     if source_type in ("charter", "status"):
         kinds.add("covers")
     # v0.4 additions per DEC-053 and DEC-058:
@@ -340,6 +357,14 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         "reference",
     ):
         kinds.add("deposit_event_wrote_record")
+    # v0.8 Code Change Lifecycle additions (PI-029, methodology §3.2–§3.4):
+    if source_type == "conversation" and target_type == "planning_item":
+        kinds.add("resolves")
+        kinds.add("addresses")
+    if source_type == "work_ticket" and target_type == "planning_item":
+        kinds.add("addresses")
+    if source_type == "planning_item" and target_type == "planning_item":
+        kinds.add("blocked_by")
     return frozenset(kinds)
 
 

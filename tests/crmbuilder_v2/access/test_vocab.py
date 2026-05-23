@@ -64,10 +64,19 @@ def test_covers_requires_charter_or_status_source():
             assert source in ("charter", "status")
 
 
-def test_blocks_requires_risk_or_planning_item_source():
-    for (source, _target), kinds in RELATIONSHIP_RULES.items():
-        if "blocks" in kinds:
-            assert source in ("risk", "planning_item")
+def test_legacy_blocks_kind_not_emitted_anywhere():
+    """v0.8 retired the legacy ``blocks`` kind in favor of directed
+    ``blocked_by`` per methodology §3.4. No pair should emit it."""
+    for (_source, _target), kinds in RELATIONSHIP_RULES.items():
+        assert "blocks" not in kinds
+
+
+def test_blocked_by_is_planning_item_to_planning_item_only():
+    """The directed ``blocked_by`` kind is planning_item → planning_item."""
+    for (source, target), kinds in RELATIONSHIP_RULES.items():
+        if "blocked_by" in kinds:
+            assert source == "planning_item"
+            assert target == "planning_item"
 
 
 def test_kinds_for_source_returns_union():

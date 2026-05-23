@@ -71,8 +71,10 @@ _KIND_LABELS: dict[tuple[str, str], str] = {
     # Risks / planning_items.
     ("outbound", "affects"): "Affects",
     ("inbound", "affects"): "Affected by",
-    ("outbound", "blocks"): "Blocks",
-    ("inbound", "blocks"): "Blocked by",
+    # v0.8: legacy ``blocks`` kind retired; replaced by directed
+    # ``blocked_by`` (planning_item → planning_item) per methodology §3.4.
+    ("outbound", "blocked_by"): "Blocked by",
+    ("inbound", "blocked_by"): "Blocks",
     # Charter / status coverage.
     ("outbound", "covers"): "Covers",
     ("inbound", "covers"): "Covered by",
@@ -81,6 +83,11 @@ _KIND_LABELS: dict[tuple[str, str], str] = {
     ("inbound", "entity_scopes_to_domain"): "Scoped by",
     ("outbound", "process_hands_off_to_process"): "Hands off to",
     ("inbound", "process_hands_off_to_process"): "Receives from",
+    # v0.8 Code Change Lifecycle additions (methodology §3.2–§3.3).
+    ("outbound", "resolves"): "Resolves",
+    ("inbound", "resolves"): "Resolved by",
+    ("outbound", "addresses"): "Addresses",
+    ("inbound", "addresses"): "Addressed by",
 }
 
 

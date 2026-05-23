@@ -137,14 +137,19 @@ def test_kind_combo_filtered_by_source_type(qapp, qtbot):
     assert "covers" not in items
 
 
-def test_kind_combo_for_risk_includes_affects_and_blocks(qapp, qtbot):
+def test_kind_combo_for_risk_includes_affects(qapp, qtbot):
+    """v0.8: risk no longer emits ``blocks`` (the kind is retired); ``affects``
+    remains. The directed ``blocked_by`` replacement is sourced from
+    ``planning_item``, not ``risk`` — see vocab.py and methodology §3.4.
+    """
     dialog = _make(qtbot)
     source_type = dialog._field_widgets["source_type"]
     rel = dialog._field_widgets["relationship"]
     source_type.setCurrentText("risk")
     items = sorted([rel.itemText(i) for i in range(rel.count())])
     assert "affects" in items
-    assert "blocks" in items
+    assert "blocks" not in items
+    assert "blocked_by" not in items
 
 
 def test_target_type_combo_filtered_by_source_and_kind_decided_in(qapp, qtbot):
