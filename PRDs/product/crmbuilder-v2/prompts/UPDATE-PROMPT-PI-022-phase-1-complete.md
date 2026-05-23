@@ -1,9 +1,9 @@
 # UPDATE-PROMPT — PI-022 description refresh: Phase 1 complete
 
-**Last Updated:** 05-22-26 18:00
+**Last Updated:** 05-23-26 04:15
 **Operating mode:** DETAIL
 **Series:** update-prompt
-**Status:** Ready to execute
+**Status:** Executed 05-23-26 04:06:43 (PATCH applied; commit 0beffaa on local main, pushed after review). Template-level snapshot-refresh section corrected post-execution to drop a hallucinated exporter-script invocation; the per-write `_refresh_snapshot` hook in `engagement.py` already regenerates `db-export/<table>.json` automatically. Future UPDATE-PROMPTs should follow the corrected pattern.
 
 ---
 
@@ -87,23 +87,30 @@ Expected: status remains `Open`; description opens with "DEC-117 through DEC-120
 
 ---
 
-## Refresh snapshot and commit
+## Verify snapshot and change_log, then commit
 
-The `db-export/planning_items.json` snapshot is committed to the repo as a forensic record. Refresh it so the snapshot matches the live database:
+**Snapshot regeneration is automatic.** The per-write `_refresh_snapshot` hook in `crmbuilder-v2/src/crmbuilder_v2/access/engagement.py` regenerates the `db-export/<table>.json` snapshots on every write through the V2 API, and appends an audit row to `db-export/change_log.json` with the full before/after payload. There is no standalone exporter script to invoke. Just confirm both files reflect the change and commit them together.
 
 ```bash
-# Refresh the planning_items snapshot
-uv run python scripts/export_engagement_to_json.py \
-  --engagement CRMBUILDER \
-  --output ../PRDs/product/crmbuilder-v2/db-export/
+cd ..
 
-# Confirm the snapshot picked up the change
-grep -c "v0.7 governance entity release" ../PRDs/product/crmbuilder-v2/db-export/planning_items.json
+# Confirm the snapshot picked up the description change
+grep -c "v0.7 governance entity release" PRDs/product/crmbuilder-v2/db-export/planning_items.json
 # Expected: 1 (the PI-022 row now carries the refreshed description)
 
-# Commit the snapshot
-cd ..
-git add PRDs/product/crmbuilder-v2/db-export/planning_items.json
+# Confirm change_log.json has a new audit row for this PATCH
+python3 -c "
+import json
+with open('PRDs/product/crmbuilder-v2/db-export/change_log.json') as f:
+    rows = json.load(f)
+latest = rows[-1]
+print(f'Latest change_log id: {latest[\"id\"]}')
+print(f'entity_type: {latest[\"entity_type\"]}, entity_identifier: {latest[\"entity_identifier\"]}, action: {latest[\"action\"]}')"
+# Expected: entity_type 'planning_item', entity_identifier 'PI-022', action 'updated'
+
+# Commit the snapshot AND change_log audit row together
+git add PRDs/product/crmbuilder-v2/db-export/planning_items.json \
+        PRDs/product/crmbuilder-v2/db-export/change_log.json
 git commit -m "PI-022 description refresh post-v0.7: Phase 1 complete, parent stays Open
 
 Description text updated to reflect:
@@ -117,8 +124,10 @@ Description text updated to reflect:
 - PI-022 remains Open as parent tracker; discharge waits on completion of all
   three child phases.
 
-PATCH /planning-items/PI-022 applied; snapshot regenerated; no other records
-affected. Status unchanged (Open). Applied via UPDATE-PROMPT-PI-022-phase-1-complete.md."
+PATCH /planning-items/PI-022 applied; snapshot + change_log audit row
+regenerated automatically by the access-layer _refresh_snapshot hook;
+no other records affected. Status unchanged (Open). Applied via
+UPDATE-PROMPT-PI-022-phase-1-complete.md."
 ```
 
 ---
