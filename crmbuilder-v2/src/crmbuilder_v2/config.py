@@ -54,6 +54,11 @@ class Settings(BaseSettings):
     api_port: int = 8765
     api_base_url: str = "http://127.0.0.1:8765"
     mcp_http_port: int = 8810
+    # Shared secret for the FastMCP HTTP transport's X-CRMBuilder-Secret
+    # header check. No default — unset is valid for stdio (which never
+    # registers the middleware). server.main() hard-fails at startup
+    # when streamable-http is selected with this unset (DEC-204).
+    mcp_shared_secret: str | None = None
 
     @property
     def db_url(self) -> str:
