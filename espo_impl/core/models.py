@@ -527,6 +527,58 @@ class RelationshipDefinition:
     action: str | None = None
 
 
+@dataclass
+class RoleDefinition:
+    """A role declared in the top-level ``roles:`` list.
+
+    Roles declare entity-level scope access (Section 12.3) and
+    system-level permissions (Section 12.4). This dataclass holds
+    only the minimal typed fields; ``scope_access:`` and
+    ``system_permissions:`` are stashed as raw values for
+    structured parsing in a later prompt.
+
+    :param name: Role identity. Unique across the program batch
+        (uniqueness enforced by a later prompt via
+        ``ProgramContext``).
+    :param description: Business rationale for the role. Optional
+        block-scalar prose; no schema interpretation.
+    :param persona: Master PRD persona identifier (e.g.,
+        ``MST-PER-005``). Documentation metadata only — the loader
+        does not cross-check the identifier against any source
+        (per DEC-178 / planning doc §9.1).
+    :param scope_access_raw: Raw per-entity access scope block.
+        Parsed into a typed structure in a later prompt.
+    :param system_permissions_raw: Raw system-level permissions
+        block. Parsed into a typed structure in a later prompt.
+    """
+
+    name: str
+    description: str | None = None
+    persona: str | None = None
+    scope_access_raw: dict | None = None
+    system_permissions_raw: dict | None = None
+
+
+@dataclass
+class TeamDefinition:
+    """A team declared in the top-level ``teams:`` list.
+
+    Teams group users for the purpose of team-level access scope
+    on records (the ``team`` value in ``scope_access:``).
+    Team-to-user assignment is runtime data managed in the target
+    CRM admin UI, not in YAML.
+
+    :param name: Team identity. Unique across the program batch
+        (uniqueness enforced by a later prompt via
+        ``ProgramContext``).
+    :param description: Business rationale for the team. Optional
+        block-scalar prose; no schema interpretation.
+    """
+
+    name: str
+    description: str | None = None
+
+
 class TooltipStatus(Enum):
     """Outcome status for a tooltip import operation."""
 
@@ -591,6 +643,8 @@ class ProgramFile:
     source_path: Path | None = None
     content_version: str = "1.0.0"
     relationships: list[RelationshipDefinition] = field(default_factory=list)
+    roles: list[RoleDefinition] = field(default_factory=list)
+    teams: list[TeamDefinition] = field(default_factory=list)
     deprecation_warnings: list[str] = field(default_factory=list)
     condition_warnings: list[str] = field(default_factory=list)
 

@@ -37,8 +37,10 @@ from espo_impl.core.models import (
     ProgramContext,
     ProgramFile,
     RelationshipDefinition,
+    RoleDefinition,
     SavedView,
     TabSpec,
+    TeamDefinition,
     Workflow,
     WorkflowAction,
     WorkflowTrigger,
@@ -242,6 +244,10 @@ class ConfigLoader:
                 if isinstance(rel_data, dict):
                     relationships.append(self._parse_relationship(rel_data))
 
+        # Parse top-level roles and teams (Section 12.1, 12.2)
+        roles = self._parse_roles(raw.get("roles"))
+        teams = self._parse_teams(raw.get("teams"))
+
         return ProgramFile(
             version=str(raw.get("version", "")),
             description=str(raw.get("description", "")),
@@ -249,6 +255,8 @@ class ConfigLoader:
             entities=entities,
             source_path=path,
             relationships=relationships,
+            roles=roles,
+            teams=teams,
             deprecation_warnings=deprecation_warnings,
         )
 
@@ -1448,6 +1456,126 @@ class ConfigLoader:
                 else:
                     first_seen[tab.scope] = entity.name
         return errors
+
+    def _parse_roles(self, raw_roles: Any) -> list[RoleDefinition]:
+        """Parse the top-level ``roles:`` list.
+
+        Hard-rejects malformed entries (non-list at root, non-dict
+        entry, missing or non-string ``name:``) by raising
+        ``ValueError`` matching the existing parser conventions.
+        Stashes ``scope_access`` and ``system_permissions`` as raw
+        dicts for a later prompt to parse structurally.
+
+        :param raw_roles: Raw value from ``raw.get("roles")``.
+            ``None`` and missing key return an empty list (the YAML
+            omits the block); a non-list value raises.
+        :returns: Parsed role definitions (possibly empty).
+        :raises ValueError: On malformed structure.
+        """
+        if raw_roles is None:
+            return []
+        if not isinstance(raw_roles, list):
+            raise ValueError(
+                "Top-level 'roles' must be a list of role definitions"
+            )
+
+        roles: list[RoleDefinition] = []
+        for idx, role_data in enumerate(raw_roles):
+            if not isinstance(role_data, dict):
+                raise ValueError(
+                    f"roles[{idx}] must be a mapping, got "
+                    f"{type(role_data).__name__}"
+                )
+            name = role_data.get("name")
+            if not isinstance(name, str) or not name.strip():
+                raise ValueError(
+                    f"roles[{idx}] is missing a non-empty string 'name'"
+                )
+
+            description = role_data.get("description")
+            if description is not None and not isinstance(description, str):
+                raise ValueError(
+                    f"roles[{idx}] ('{name}'): 'description' must be a "
+                    f"string when present"
+                )
+
+            persona = role_data.get("persona")
+            if persona is not None and not isinstance(persona, str):
+                raise ValueError(
+                    f"roles[{idx}] ('{name}'): 'persona' must be a "
+                    f"string when present"
+                )
+
+            scope_access_raw = role_data.get("scope_access")
+            if scope_access_raw is not None and not isinstance(
+                scope_access_raw, dict
+            ):
+                raise ValueError(
+                    f"roles[{idx}] ('{name}'): 'scope_access' must be a "
+                    f"mapping when present"
+                )
+
+            system_permissions_raw = role_data.get("system_permissions")
+            if system_permissions_raw is not None and not isinstance(
+                system_permissions_raw, dict
+            ):
+                raise ValueError(
+                    f"roles[{idx}] ('{name}'): 'system_permissions' must "
+                    f"be a mapping when present"
+                )
+
+            roles.append(RoleDefinition(
+                name=name,
+                description=description,
+                persona=persona,
+                scope_access_raw=scope_access_raw,
+                system_permissions_raw=system_permissions_raw,
+            ))
+
+        return roles
+
+    def _parse_teams(self, raw_teams: Any) -> list[TeamDefinition]:
+        """Parse the top-level ``teams:`` list.
+
+        Hard-rejects malformed entries by raising ``ValueError``.
+
+        :param raw_teams: Raw value from ``raw.get("teams")``.
+        :returns: Parsed team definitions (possibly empty).
+        :raises ValueError: On malformed structure.
+        """
+        if raw_teams is None:
+            return []
+        if not isinstance(raw_teams, list):
+            raise ValueError(
+                "Top-level 'teams' must be a list of team definitions"
+            )
+
+        teams: list[TeamDefinition] = []
+        for idx, team_data in enumerate(raw_teams):
+            if not isinstance(team_data, dict):
+                raise ValueError(
+                    f"teams[{idx}] must be a mapping, got "
+                    f"{type(team_data).__name__}"
+                )
+            name = team_data.get("name")
+            if not isinstance(name, str) or not name.strip():
+                raise ValueError(
+                    f"teams[{idx}] is missing a non-empty string 'name'"
+                )
+
+            description = team_data.get("description")
+            if description is not None and not isinstance(description, str):
+                raise ValueError(
+                    f"teams[{idx}] ('{name}'): 'description' must be a "
+                    f"string when present"
+                )
+
+            teams.append(TeamDefinition(
+                name=name,
+                description=description,
+            ))
+
+        return teams
 
     def _parse_email_templates(
         self, raw: list | None, yaml_dir: Path | None,

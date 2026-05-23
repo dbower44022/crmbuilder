@@ -2161,3 +2161,360 @@ def test_validate_link_field_only_on_foreign_type(loader, tmp_path):
         and "'link' and 'field' are only valid on 'type: foreign'" in e
         for e in errors
     ), f"Expected link-on-non-foreign error, got: {errors!r}"
+
+
+# ----------------------------------------------------------------------
+# audit-v1.2 Prompt A — top-level roles: and teams: loader recognition
+# ----------------------------------------------------------------------
+
+
+def test_load_roles_block_basic(loader, tmp_path):
+    """A valid roles: block populates ProgramFile.roles."""
+    path = _write(tmp_path, "roles_basic.yaml", """\
+        version: "1.0"
+        description: "Roles only"
+        roles:
+          - name: Mentor
+            description: "Volunteer who delivers sessions to mentees."
+            persona: MST-PER-005
+          - name: StaffMember
+    """)
+    program = loader.load_program(path)
+    assert len(program.roles) == 2
+    mentor, staff = program.roles
+    assert mentor.name == "Mentor"
+    assert mentor.description == (
+        "Volunteer who delivers sessions to mentees."
+    )
+    assert mentor.persona == "MST-PER-005"
+    assert mentor.scope_access_raw is None
+    assert mentor.system_permissions_raw is None
+    assert staff.name == "StaffMember"
+    assert staff.description is None
+    assert staff.persona is None
+    assert staff.scope_access_raw is None
+    assert staff.system_permissions_raw is None
+
+
+def test_load_teams_block_basic(loader, tmp_path):
+    """A valid teams: block populates ProgramFile.teams."""
+    path = _write(tmp_path, "teams_basic.yaml", """\
+        version: "1.0"
+        description: "Teams only"
+        teams:
+          - name: NortheastOhio
+            description: "Geographic team for the NEO region."
+          - name: Operations
+    """)
+    program = loader.load_program(path)
+    assert len(program.teams) == 2
+    neo, ops = program.teams
+    assert neo.name == "NortheastOhio"
+    assert neo.description == "Geographic team for the NEO region."
+    assert ops.name == "Operations"
+    assert ops.description is None
+
+
+def test_load_roles_teams_with_entities(loader, tmp_path):
+    """roles: and teams: alongside entities: parse independently."""
+    path = _write(tmp_path, "all_three.yaml", """\
+        version: "1.0"
+        description: "Roles + teams + entities"
+        entities:
+          Contact:
+            fields:
+              - name: nickname
+                type: varchar
+                label: "Nickname"
+        roles:
+          - name: Admin
+        teams:
+          - name: HQ
+    """)
+    program = loader.load_program(path)
+    assert len(program.entities) == 1
+    assert program.entities[0].name == "Contact"
+    assert program.entities[0].fields[0].name == "nickname"
+    assert len(program.roles) == 1
+    assert program.roles[0].name == "Admin"
+    assert len(program.teams) == 1
+    assert program.teams[0].name == "HQ"
+
+
+def test_load_program_without_roles_or_teams(loader, valid_yaml):
+    """Programs without roles:/teams: still load cleanly with empty lists."""
+    program = loader.load_program(valid_yaml)
+    assert program.roles == []
+    assert program.teams == []
+
+
+def test_load_role_with_raw_scope_and_permissions(loader, tmp_path):
+    """scope_access and system_permissions are stashed as raw dicts."""
+    path = _write(tmp_path, "role_with_raw.yaml", """\
+        version: "1.0"
+        description: "Role with raw blocks"
+        roles:
+          - name: Mentor
+            scope_access:
+              Engagement: own
+              Contact:
+                read: team
+                edit: own
+            system_permissions:
+              massUpdate: false
+              export: true
+    """)
+    program = loader.load_program(path)
+    assert len(program.roles) == 1
+    mentor = program.roles[0]
+    assert mentor.scope_access_raw == {
+        "Engagement": "own",
+        "Contact": {"read": "team", "edit": "own"},
+    }
+    assert mentor.system_permissions_raw == {
+        "massUpdate": False,
+        "export": True,
+    }
+
+
+def test_roles_teams_load_from_security_subdir(loader, tmp_path):
+    """A YAML under security/ loads identically to one at the root.
+
+    Locks in the DEC-182 convention that security YAMLs live in
+    a ``security/`` subdirectory of the program directory. The
+    recursive scan in deployment_logic picks them up unchanged;
+    this test guards equivalence at the loader level.
+    """
+    body = """\
+        version: "1.0"
+        description: "Shared security content"
+        roles:
+          - name: Mentor
+            persona: MST-PER-005
+          - name: Admin
+        teams:
+          - name: HQ
+          - name: Field
+    """
+    root_path = _write(tmp_path, "security.yaml", body)
+    security_dir = tmp_path / "security"
+    security_dir.mkdir()
+    subdir_path = security_dir / "security.yaml"
+    subdir_path.write_text(dedent(body))
+
+    root_program = loader.load_program(root_path)
+    subdir_program = loader.load_program(subdir_path)
+
+    assert [r.name for r in root_program.roles] == [
+        r.name for r in subdir_program.roles
+    ]
+    assert [r.persona for r in root_program.roles] == [
+        r.persona for r in subdir_program.roles
+    ]
+    assert [t.name for t in root_program.teams] == [
+        t.name for t in subdir_program.teams
+    ]
+    assert root_program.version == subdir_program.version
+    assert root_program.description == subdir_program.description
+
+
+# ---- Rejection cases: roles ----
+
+
+def test_roles_top_level_must_be_list(loader, tmp_path):
+    path = _write(tmp_path, "roles_not_list.yaml", """\
+        version: "1.0"
+        description: "Bad roles"
+        roles:
+          Mentor:
+            description: "A mapping at the top, not a list"
+    """)
+    with pytest.raises(ValueError, match="'roles' must be a list"):
+        loader.load_program(path)
+
+
+def test_role_entry_must_be_mapping(loader, tmp_path):
+    path = _write(tmp_path, "role_entry_scalar.yaml", """\
+        version: "1.0"
+        description: "Role entry scalar"
+        roles:
+          - Mentor
+    """)
+    with pytest.raises(ValueError, match=r"roles\[0\] must be a mapping"):
+        loader.load_program(path)
+
+
+def test_role_missing_name(loader, tmp_path):
+    path = _write(tmp_path, "role_no_name.yaml", """\
+        version: "1.0"
+        description: "Role missing name"
+        roles:
+          - description: "No name here"
+    """)
+    with pytest.raises(
+        ValueError,
+        match=r"roles\[0\] is missing a non-empty string 'name'",
+    ):
+        loader.load_program(path)
+
+
+def test_role_name_empty_string(loader, tmp_path):
+    path = _write(tmp_path, "role_empty_name.yaml", """\
+        version: "1.0"
+        description: "Role empty name"
+        roles:
+          - name: ""
+    """)
+    with pytest.raises(
+        ValueError,
+        match=r"roles\[0\] is missing a non-empty string 'name'",
+    ):
+        loader.load_program(path)
+
+
+def test_role_name_non_string(loader, tmp_path):
+    path = _write(tmp_path, "role_int_name.yaml", """\
+        version: "1.0"
+        description: "Role int name"
+        roles:
+          - name: 42
+    """)
+    with pytest.raises(
+        ValueError,
+        match=r"roles\[0\] is missing a non-empty string 'name'",
+    ):
+        loader.load_program(path)
+
+
+def test_role_description_non_string(loader, tmp_path):
+    path = _write(tmp_path, "role_bad_desc.yaml", """\
+        version: "1.0"
+        description: "Role bad description"
+        roles:
+          - name: Mentor
+            description: 99
+    """)
+    with pytest.raises(
+        ValueError,
+        match=r"roles\[0\] \('Mentor'\): 'description' must be a string",
+    ):
+        loader.load_program(path)
+
+
+def test_role_persona_non_string(loader, tmp_path):
+    path = _write(tmp_path, "role_bad_persona.yaml", """\
+        version: "1.0"
+        description: "Role bad persona"
+        roles:
+          - name: Mentor
+            persona: 7
+    """)
+    with pytest.raises(
+        ValueError,
+        match=r"roles\[0\] \('Mentor'\): 'persona' must be a string",
+    ):
+        loader.load_program(path)
+
+
+def test_role_scope_access_must_be_mapping(loader, tmp_path):
+    path = _write(tmp_path, "role_bad_scope.yaml", """\
+        version: "1.0"
+        description: "Role bad scope_access"
+        roles:
+          - name: Mentor
+            scope_access:
+              - Engagement
+              - Contact
+    """)
+    with pytest.raises(
+        ValueError,
+        match=r"roles\[0\] \('Mentor'\): 'scope_access' must be a mapping",
+    ):
+        loader.load_program(path)
+
+
+def test_role_system_permissions_must_be_mapping(loader, tmp_path):
+    path = _write(tmp_path, "role_bad_sysperm.yaml", """\
+        version: "1.0"
+        description: "Role bad system_permissions"
+        roles:
+          - name: Mentor
+            system_permissions: "all"
+    """)
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"roles\[0\] \('Mentor'\): 'system_permissions' must be a "
+            r"mapping"
+        ),
+    ):
+        loader.load_program(path)
+
+
+# ---- Rejection cases: teams ----
+
+
+def test_teams_top_level_must_be_list(loader, tmp_path):
+    path = _write(tmp_path, "teams_not_list.yaml", """\
+        version: "1.0"
+        description: "Bad teams"
+        teams:
+          HQ:
+            description: "A mapping at the top, not a list"
+    """)
+    with pytest.raises(ValueError, match="'teams' must be a list"):
+        loader.load_program(path)
+
+
+def test_team_entry_must_be_mapping(loader, tmp_path):
+    path = _write(tmp_path, "team_entry_scalar.yaml", """\
+        version: "1.0"
+        description: "Team entry scalar"
+        teams:
+          - HQ
+    """)
+    with pytest.raises(ValueError, match=r"teams\[0\] must be a mapping"):
+        loader.load_program(path)
+
+
+def test_team_missing_name(loader, tmp_path):
+    path = _write(tmp_path, "team_no_name.yaml", """\
+        version: "1.0"
+        description: "Team missing name"
+        teams:
+          - description: "No name here"
+    """)
+    with pytest.raises(
+        ValueError,
+        match=r"teams\[0\] is missing a non-empty string 'name'",
+    ):
+        loader.load_program(path)
+
+
+def test_team_name_empty_string(loader, tmp_path):
+    path = _write(tmp_path, "team_empty_name.yaml", """\
+        version: "1.0"
+        description: "Team empty name"
+        teams:
+          - name: ""
+    """)
+    with pytest.raises(
+        ValueError,
+        match=r"teams\[0\] is missing a non-empty string 'name'",
+    ):
+        loader.load_program(path)
+
+
+def test_team_description_non_string(loader, tmp_path):
+    path = _write(tmp_path, "team_bad_desc.yaml", """\
+        version: "1.0"
+        description: "Team bad description"
+        teams:
+          - name: HQ
+            description: 123
+    """)
+    with pytest.raises(
+        ValueError,
+        match=r"teams\[0\] \('HQ'\): 'description' must be a string",
+    ):
+        loader.load_program(path)
