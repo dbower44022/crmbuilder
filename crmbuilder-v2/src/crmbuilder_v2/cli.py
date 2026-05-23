@@ -142,9 +142,40 @@ def run_api() -> None:
 
 
 def run_mcp() -> None:
+    import argparse
+
+    from crmbuilder_v2.config import get_settings
     from crmbuilder_v2.mcp_server.server import main as mcp_main
 
-    mcp_main()
+    parser = argparse.ArgumentParser(
+        prog="crmbuilder-v2-mcp",
+        description=(
+            "Start the crmbuilder_v2 MCP server. Default transport is "
+            "stdio (Claude Desktop pipes here). Use --transport "
+            "streamable-http to bind the FastMCP HTTP transport for "
+            "cloudflared / Cloudflare Tunnel ingress."
+        ),
+    )
+    parser.add_argument(
+        "--transport",
+        choices=("stdio", "streamable-http"),
+        default="stdio",
+        help="MCP transport (default: stdio)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=None,
+        metavar="PORT",
+        help=(
+            "Override CRMBUILDER_V2_MCP_HTTP_PORT for the running process. "
+            "Only meaningful when --transport=streamable-http."
+        ),
+    )
+    args = parser.parse_args()
+
+    port = args.port if args.port is not None else get_settings().mcp_http_port
+    mcp_main(transport=args.transport, port=port)
 
 
 def bootstrap_db() -> None:
