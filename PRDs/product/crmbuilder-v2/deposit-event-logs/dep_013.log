@@ -1,0 +1,25 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_060.json
+Label:  SES-060 audit-v1.2 planning resolved: four §9 open questions plus security.yaml file placement decided, planning doc bumped from v1.0 to v1.3; 1 session, 5 decisions (DEC-178..182), 5 references. Rebased from SES-059 to SES-060 to clear collision with the PI-024 prior-workstreams backfill conversation's SES-059 close-out (commit 44182d1).
+Deposit event: DEP-013
+
+=== session (1 record) ===
+  ✓ POST session  SES-060 (HTTP 201)
+
+=== decisions (5 records) ===
+  ✓ POST decisions  DEC-178 (HTTP 201)
+  ✓ POST decisions  DEC-179 (HTTP 201)
+  ✓ POST decisions  DEC-180 (HTTP 201)
+  ✓ POST decisions  DEC-181 (HTTP 201)
+  ✓ POST decisions  DEC-182 (HTTP 201)
+
+=== references (5 records) ===
+  ✓ POST references  DEC-178 decided_in SES-060 (HTTP 201)
+  ✓ POST references  DEC-179 decided_in SES-060 (HTTP 201)
+  ✓ POST references  DEC-180 decided_in SES-060 (HTTP 201)
+  ✓ POST references  DEC-181 decided_in SES-060 (HTTP 201)
+  ✓ POST references  DEC-182 decided_in SES-060 (HTTP 201)
+
+✓ All 11 operations complete.
+
+✓ Recorded apply as deposit_event DEP-013 (HTTP 201).
