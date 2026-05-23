@@ -3,8 +3,8 @@
 **Document type:** Application development planning (planning only; not implementation)
 **Repository:** `crmbuilder`
 **Path:** `PRDs/product/crmbuilder-automation-PRD/audit-v1.2-planning.md`
-**Last Updated:** 05-23-26 03:05
-**Version:** 1.2 (security.yaml placement resolution)
+**Last Updated:** 05-23-26 03:55
+**Version:** 1.3 (identifier rebase — SES-060 / DEC-178..182)
 
 ---
 
@@ -23,6 +23,7 @@ The work this document covers is anticipated to span 11 Claude Code prompts acro
 | 1.0 | 05-23-26 01:10 | Doug Bower / Claude | Initial planning document. Captures Decisions 1, 2, 2.5, 3 from the planning kickoff conversation; surveys the existing v1.1 audit feature; designs the v1.2 expansion (entity-level selection, filtered tabs audit, full Section 12 round-trip including role-aware visibility); proposes an 11-prompt implementation series. |
 | 1.1 | 05-23-26 02:30 | Doug Bower / Claude | Resolves all four §9 open questions: persona is documentation metadata with no validation; empty `scope_access:` roles produce an informational audit-log warning; `include_security` and `include_filtered_tabs` default to True; existing audit output is overwritten with a pre-run confirmation guard when the output directory contains prior emission. Corrects Prompt H to reference the project's actual versioned migration mechanism in `automation/db/migrations.py` (new `_client_v4` migration) rather than Alembic. Threads the overwrite-confirmation dialog into §4.1 operator flow and Prompt J. |
 | 1.2 | 05-23-26 03:05 | Doug Bower / Claude | Resolves the `security.yaml` file-placement question carried as a workflow item in v1.1's §10: security files live in a `security/` subdirectory of the program directory, not at root alongside per-entity YAMLs. Future-proofs the v1.4 deferred work (Section 12.7 permission presets) by anchoring security-related files in a single folder. Updates §4.1 step 8, Prompt A loader scan, Prompt H emission target, and Prompt J overwrite-confirmation trigger pattern. §10 is updated to remove the placement bullet, leaving only the series-size workflow question. |
+| 1.3 | 05-23-26 03:55 | Doug Bower / Claude | Identifier rebase. The PI-024 prior-workstreams backfill conversation ran concurrently with this resolution conversation and pushed its SES-059 / DEC-175..177 close-out to origin/main first (commit 44182d1 at 15:32 UTC; my v1.2 of this doc pushed at 15:28 UTC, but the close-out payload hadn't pushed yet). v1.3 rebases this conversation's identifiers from SES-059 / DEC-175..179 to SES-060 / DEC-178..182. §10 updated; close-out payload re-authored at ses_060.json; apply prompt re-authored at ses-060.md. No design content changes — pure identifier-collision repair. |
 
 ---
 
@@ -50,6 +51,10 @@ Two corrections folded in:
 - **Rationale.** The §7 deferred-work list already names v1.4 work (Section 12.7 field-level permissions and permission presets) that will produce additional security-related files. Anchoring those files in a single folder now is cheaper than migrating v1.2 outputs when v1.4 lands. The cost is a small loader convention (scan root plus `security/`) and a one-line addition to the §9.4 overwrite-confirmation trigger pattern.
 - **Updates threaded through.** §4.1 step 8 specifies the emission path; Prompt A's loader work scans the `security/` subdirectory in addition to root; Prompt H emits to `security/security.yaml`; Prompt J's overwrite-confirmation trigger now matches `*.yaml` at root and `security/*.yaml` under the subdirectory.
 - **§10 updated.** The `security.yaml` placement bullet is removed. The series-size mitigation question remains as the only workflow item, deliberately not resolved in the document.
+
+**Version 1.3 (05-23-26 03:55):** Identifier-collision repair — pure rebase, no design content changes.
+
+The PI-024 prior-workstreams backfill conversation ran concurrently with this audit-v1.2 resolution conversation. Both targeted SES-059 as the next available session identifier per the engagement's db-export snapshot (which still showed SES-057 as head locally because SES-058's apply had not yet run). PI-024 pushed its close-out commit first (44182d1 at 15:32 UTC), taking SES-059 with DEC-175 through DEC-177. v1.3 rebases this conversation's records to SES-060 with DEC-178 through DEC-182. §10's "recorded as formal governance records under SES-059 (DEC-175 through DEC-179)" updated to "SES-060 (DEC-178 through DEC-182)" with a note about the collision. The close-out payload was re-authored at `close-out-payloads/ses_060.json` and the apply prompt at `prompts/CLAUDE-CODE-PROMPT-apply-close-out-ses-060.md`; the apply prompt's pre-flight expects SES-059 (Doug's PI-024 close-out) to be applied first.
 
 ---
 
@@ -511,7 +516,7 @@ These items were open at v1.0 with provisional answers. v1.1 records the resolut
 
 ## 10. Status — Prompt A Unblocked
 
-As of v1.2, all four §9 design questions and the `security.yaml` placement question are resolved, and the two corrections (Alembic→`_client_v4` migration, overwrite-confirmation dialog) are folded into the relevant prompts. The doc is the design authority for Prompt A. The §9 resolutions and the placement decision are recorded as formal governance records under SES-059 (DEC-175 through DEC-179).
+As of v1.2, all four §9 design questions and the `security.yaml` placement question are resolved, and the two corrections (Alembic→`_client_v4` migration, overwrite-confirmation dialog) are folded into the relevant prompts. The doc is the design authority for Prompt A. The §9 resolutions and the placement decision are recorded as formal governance records under SES-060 (DEC-178 through DEC-182). The PI-024 prior-workstreams backfill conversation ran concurrently with this resolution conversation and claimed SES-059 first (DEC-175 through DEC-177); this session rebased to SES-060 / DEC-178 through DEC-182 to clear the collision.
 
 The next step is writing **Prompt A** (`CLAUDE-CODE-PROMPT-audit-v1.2-A-roles-teams-recognition.md`) as the first implementation deliverable. Each subsequent prompt is written after the prior is confirmed green by Doug running it through Claude Code locally.
 
