@@ -1,0 +1,35 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_057.json
+Label:  SES-057 Code Change Lifecycle workstream established: planning_items resolution gap diagnosed, Option III adopted, kickoff authored; 1 session, 3 decisions (DEC-168..170), 7 planning items (PI-027..033), 10 references
+Deposit event: DEP-010
+
+=== session (1 record) ===
+  ✓ POST session  SES-057 (HTTP 201)
+
+=== decisions (3 records) ===
+  ✓ POST decisions  DEC-168 (HTTP 201)
+  ✓ POST decisions  DEC-169 (HTTP 201)
+  ✓ POST decisions  DEC-170 (HTTP 201)
+
+=== planning_items (7 records) ===
+  ✓ POST planning_items  PI-027 (HTTP 201)
+  ✓ POST planning_items  PI-028 (HTTP 201)
+  ✓ POST planning_items  PI-029 (HTTP 201)
+  ✓ POST planning_items  PI-030 (HTTP 201)
+  ✓ POST planning_items  PI-031 (HTTP 201)
+  ✓ POST planning_items  PI-032 (HTTP 201)
+  ✓ POST planning_items  PI-033 (HTTP 201)
+
+=== references (10 records) ===
+  ✓ POST references  DEC-168 decided_in SES-057 (HTTP 201)
+  ✓ POST references  DEC-169 decided_in SES-057 (HTTP 201)
+  ✓ POST references  DEC-170 decided_in SES-057 (HTTP 201)
+  ✓ POST references  SES-057 is_about PI-027 (HTTP 201)
+  ✓ POST references  SES-057 is_about PI-028 (HTTP 201)
+  ✓ POST references  SES-057 is_about PI-029 (HTTP 201)
+  ✓ POST references  SES-057 is_about PI-030 (HTTP 201)
+  ✓ POST references  SES-057 is_about PI-031 (HTTP 201)
+  ✓ POST references  SES-057 is_about PI-032 (HTTP 201)
+  ✓ POST references  SES-057 is_about PI-033 (HTTP 201)
+
+✓ All 21 operations complete.

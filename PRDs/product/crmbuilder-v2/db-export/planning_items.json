@@ -284,5 +284,82 @@
     "status": "Open",
     "title": "PI-022 Phase 4 — backfill historical applies as deposit_events",
     "updated_at": "2026-05-23T00:02:29.863141"
+  },
+  {
+    "created_at": "2026-05-23T05:32:48.198169",
+    "description": "Author PRDs/product/crmbuilder-v2/methodology-code-change-lifecycle.md defining the seven-stage code change lifecycle in V2: a planning_item motivates a planning conversation; the planning conversation produces decisions and one or more work_ticket records; an execution conversation opens against a work_ticket; the execution conversation produces commits; a close-out payload records resolves edges plus work_ticket consumptions plus commits; the apply transaction lands all of it as data; downstream queries walk the chain. Settle seven deferred design decisions plus the blocks direction question in passing. Deferred decisions are: commit identifier strategy (CM-NNN sequence with server-side auto-assignment versus SHA-as-identifier versus both); granularity of resolves edges (per-commit only via commit_resolves_planning_item, per-conversation only via conversation_resolves_planning_item, or both); commit ingestion trigger (manual command invoked by the apply script, git post-commit hook running the apply script, or background polling against git log); commit record fields (the minimum set: sha, message, author, committed_at, repository, branch, parent_sha; the optional set: files_changed_count, files_changed_paths, signed_by); multi-repo scoping (commits to the crmbuilder repo live in the CRMBUILDER engagement DB, commits to the ClevelandBusinessMentoring repo live in the CBM engagement DB — but Claude Code conversations sometimes touch both repos in a single conversation; the methodology must specify whether the conversation record itself is scoped to one engagement and the cross-repo commits are tracked via cross-engagement references, or whether the conversation forks into per-engagement child records); typed addresses relationship_kind for work_ticket-to-planning_item (define a typed kind for queryability versus continue using generic is_about); work_ticket authoring rule scope (only CLAUDE-CODE-PROMPT-*.md files under PRDs/product/crmbuilder-v2/prompts/, or all single-use kickoff documents including planning-kickoff files, or some other boundary). The blocks direction question: source blocks target meaning target waits for source, versus the inverse — settled by reading the existing PI-024 PI-025 PI-026 chain in the dogfood database and documenting the convention. Acceptance: methodology document committed; all deferred decisions recorded as decisions in the methodology conversation's close-out; kickoff prompt for the PI-028 commit entity schema conversation authored as the methodology conversation's deliverable.",
+    "id": 27,
+    "identifier": "PI-027",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Draft Code Change Lifecycle methodology document and settle deferred design decisions",
+    "updated_at": "2026-05-23T05:32:48.198173"
+  },
+  {
+    "created_at": "2026-05-23T05:32:48.307539",
+    "description": "Author PRDs/product/crmbuilder-v2/governance-schema-specs/commit.md in the seven-section governance schema spec format established by the v0.7 schema-design workstream (purpose and position; summary; schema specification including identity, fields, lifecycle, relationships, API contract; access-layer rules; UI surface; acceptance criteria; revision control). Derives content from the methodology document at PI-027: identifier strategy per the decision chosen in PI-027, fields per PI-027 minimum and optional sets, lifecycle per PI-027 — likely append-only with one timestamp matching deposit_event's posture, relationship_kinds the entity participates in (conversation_produced_commit, commit_resolves_planning_item, commit_addresses_work_ticket if PI-027 chose per-commit granularity; possibly also commit_supersedes_commit if amends and rebases need typed handling), soft-delete posture, UI surface (commits panel — read-only browse with filter by repository, conversation, planning_item). Acceptance: spec committed at v1.0; cross-spec consistency check against the six v0.7 specs passes; identifier prefix collision check passes; the spec names the migration SQL needed for the new entity table and the refs CHECK constraint extension. PI-029 cannot begin until this spec is at v1.0.",
+    "id": 28,
+    "identifier": "PI-028",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Author commit entity schema spec in the governance schema spec format",
+    "updated_at": "2026-05-23T05:32:48.307542"
+  },
+  {
+    "created_at": "2026-05-23T05:32:48.377038",
+    "description": "Implement the commit entity end-to-end per the schema spec at PI-028 and the methodology at PI-027. Concrete deliverables: Alembic migration creating the commits table plus adding the new relationship_kinds to the refs.relationship_kind CHECK constraint; vocab.py edits adding commit to ENTITY_TYPES, adding the new relationship_kinds to REFERENCE_RELATIONSHIPS, and extending _kinds_for_pair with the new typed pairs; ORM model at crmbuilder-v2/src/crmbuilder_v2/access/models.py; commit repository at crmbuilder-v2/src/crmbuilder_v2/access/repositories/commits.py; REST API router at crmbuilder-v2/src/crmbuilder_v2/api/routers/commits.py with the standard endpoint set (POST, GET list, GET by identifier, PATCH, DELETE soft-delete, GET deleted, POST restore); StorageClient methods exposing the new endpoints. Tests across access layer (approximately 10 to 15 unit tests covering CRUD, edge cases, idempotency) and API layer (approximately 5 to 10 tests covering envelope handling, filter behavior, error paths). Acceptance: full access plus api test suite green; new entity creatable via API; new relationship_kinds accepted by the cascading ReferenceCreateDialog logic; refs CHECK constraint admits new kinds. The Claude Code prompt series for this planning_item is likely structured A (migration plus vocab plus models), B (repository plus API), C (tests plus StorageClient).",
+    "id": 29,
+    "identifier": "PI-029",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Implement commit entity schema vocab access layer and REST API",
+    "updated_at": "2026-05-23T05:32:48.377044"
+  },
+  {
+    "created_at": "2026-05-23T05:32:48.451418",
+    "description": "Extend the close-out payload JSON schema with three new top-level sections: resolves_planning_items (mapping of PI-NNN to resolution source identifier per the DEC granularity choice in PI-027), work_tickets (array of work_ticket records authored in the same payload — closes the close-out-payloads-cannot-author-work_tickets gap surfaced in this conversation's close-out), and commits (array of commit records to be ingested as part of the apply transaction). Extend crmbuilder-v2/scripts/apply_close_out.py to process the three new sections idempotently: write resolves edges (refs rows), flip planning_item.status to Resolved on the resolved planning_items, populate planning_items.resolution_reference, POST work_ticket records via the API, POST commit records via the API, write the corresponding deposit_event references. Build a git-log ingestion tool at crmbuilder-v2/tools/ingest_commits.py that reads commits from a named branch since a baseline SHA and authors commit records via the API. The methodology in PI-027 settles whether ingestion is invoked manually by apply_close_out.py at the end of an apply, or by a git post-commit hook, or by background polling. Acceptance: close-out payload schema documented (JSON schema or markdown spec); apply script tests cover all three new sections plus idempotency on re-run; ingestion tool tested against a fixture git repo; the close-out for PI-030 itself uses the new payload sections to author its own work_tickets and commits (the methodology eating its own dog food at the moment of landing).",
+    "id": 30,
+    "identifier": "PI-030",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Extend close-out payload schema and apply script; build git-log ingestion tool",
+    "updated_at": "2026-05-23T05:32:48.451421"
+  },
+  {
+    "created_at": "2026-05-23T05:32:48.517895",
+    "description": "Implement the V2 desktop UI updates for the code change lifecycle. Commits panel under the Governance sidebar group, appended after Deposit Events per the v0.7 sidebar precedent (DEC-163): read-only browse with master/detail layout, filterable by repository, conversation, and planning_item; detail view shows the commit's edges (which work_ticket it addresses, which planning_items it resolves, which conversation produced it). Planning_items panel updates to show the resolution chain in the detail view: when a planning_item is Resolved, display the resolution_reference value plus a clickable chain back through the resolving session, the close-out payload that authored the resolves edge, the deposit_event that applied it, and the commits associated with the resolving conversation. Acceptance: panels render; UI smoke tests pass; sidebar navigation works; the planning_items panel detail view materially helps a user trace a resolved planning_item back to its delivering commits without leaving the application.",
+    "id": 31,
+    "identifier": "PI-031",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Implement commits panel and planning_item resolution display in V2 desktop UI",
+    "updated_at": "2026-05-23T05:32:48.517898"
+  },
+  {
+    "created_at": "2026-05-23T05:32:48.588725",
+    "description": "Roll the new methodology into the project's working conventions. Update PRDs/product/crmbuilder-v2/CLAUDE.md (or wherever the close-out methodology guide lives) with: the work_ticket authoring rule (every committed CLAUDE-CODE-PROMPT-*.md is born as a work_ticket record at status ready, authored in the same close-out payload that produces the prompt file; the consuming Claude Code conversation flips it to consumed via the conversation_opens_against_work_ticket edge); the resolves discipline (every close-out that completes a prior planning_item must declare the resolution in the resolves_planning_items payload section; failure to declare leaves the planning_item Open, which is the methodology's enforcement mechanism); the commits convention (every close-out that produced commits must enumerate them in the commits payload section for ingestion). Update the close-out kickoff prompt template at the project's seed-prompt location to reflect the new sections. Update repo-level CLAUDE.md files to point at the new methodology. Acceptance: methodology guide updated; close-out template includes the new sections; one example close-out using the full new shape included in the methodology guide as a reference.",
+    "id": 32,
+    "identifier": "PI-032",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Methodology rollout — close-out template and work_ticket authoring rule documented",
+    "updated_at": "2026-05-23T05:32:48.588728"
+  },
+  {
+    "created_at": "2026-05-23T05:32:48.657844",
+    "description": "Retroactively populate the governance system with the historical records that pre-date the Code Change Lifecycle workstream. Three sub-tasks: (a) Walk every committed CLAUDE-CODE-PROMPT-*.md file under PRDs/product/crmbuilder-v2/prompts/ and PRDs/product/crmbuilder-automation-PRD/; for the prompts whose conversations have completed (have a corresponding apply close-out), author a work_ticket record at status consumed with the conversation_opens_against_work_ticket edge; for prompts whose conversations have not yet opened, author at status ready. The kickoff document committed in this conversation (code-change-lifecycle-workstream-establishing-kickoff.md) is back-filled here as the WT-NNN that PI-027's methodology conversation opens against. (b) Walk every Open planning_item in the CRMBUILDER engagement DB (25 planning_items at this conversation's writing) and read each against subsequent sessions to determine which should actually be Resolved; for each genuinely-resolved planning_item, author the resolves edge and populate resolution_reference. PI-021 itself is back-filled with the actual completing session identifier (currently NULL despite the Resolved status). (c) Walk git log on both repos (crmbuilder and ClevelandBusinessMentoring) and author commit records for every commit through the back-fill cutoff date, with the corresponding edges to conversations, work_tickets, and planning_items where the linkage is clear. Sub-task (b) is paired Doug-and-Claude reading per the diagnostic's finding that is_about semantics are too weak to mechanically reclassify; sub-tasks (a) and (c) can be largely scripted. Also fix the three diagnostic script bugs in tools/diagnostics/diagnose_planning_items.py (table name refs not references; unquoted PRAGMA; case-sensitive status filter) since the script will be re-run against the new schema as part of back-fill verification. Acceptance: every historical Claude Code prompt has a work_ticket record at the appropriate status; every historical resolved planning_item has a populated resolution_reference and a resolves edge; the commits table is populated for both repos through the back-fill cutoff date; the diagnostic script runs cleanly against the new schema and reports honest status distributions.",
+    "id": 33,
+    "identifier": "PI-033",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Back-fill historical planning_item resolutions work_tickets and commits",
+    "updated_at": "2026-05-23T05:32:48.657846"
   }
 ]
