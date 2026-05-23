@@ -122,12 +122,12 @@ curl -s 'http://127.0.0.1:8765/references?source_type=decision&source_id=DEC-175
   | python3 -c "import sys,json; d=json.load(sys.stdin)['data']; [print(r['source_id'], '->', r['target_id'], '[', r['relationship_kind'], ']') for r in d]"
 # Expect at minimum: DEC-175 -> SES-059 [ decided_in ]
 
-# Confirm reference total delta is +3 from pre-apply
+# Confirm reference total delta is +8 from pre-apply (3 payload refs + 4 wrote_record + 1 applies_close_out_payload)
 echo "Reference total after apply:"
 curl -s 'http://127.0.0.1:8765/references?limit=2000' | python3 -c "import sys,json; d=json.load(sys.stdin)['data']; print(len(d))"
 ```
 
-Expected: sessions head SES-059, decisions head DEC-177, planning_items head PI-044 (unchanged), reference total +3 from pre-apply.
+Expected: sessions head SES-059, decisions head DEC-177, planning_items head PI-044 (unchanged), reference total +8 from pre-apply (3 payload `decided_in` refs + 4 `wrote_record` edges from the apply script's deposit_event POST + 1 `applies_close_out_payload` edge to the lazy-created COP-059).
 
 ---
 
@@ -173,7 +173,7 @@ git push
 Reply with:
 
 - Pre-apply heads: SES-058, DEC-174, PI-044, references = N (captured)
-- Post-apply heads: SES-059, DEC-177, PI-044, references = N + 3
+- Post-apply heads: SES-059, DEC-177, PI-044, references = N + 8 (3 payload refs + 4 wrote_record edges + 1 applies_close_out_payload edge)
 - Record counts (expect 1 session OK, 3 decisions OK, 0 planning items, 3 references OK, 0 SKIPs on first run)
 - Snapshot commit SHA from the commit-snapshot-regeneration step
 - Next prompt to run: `PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-pi-024-prior-workstreams-backfill.md` — installs and runs the backfill script that lands the six workstream records, three reference_book records, and three master-plan edges
