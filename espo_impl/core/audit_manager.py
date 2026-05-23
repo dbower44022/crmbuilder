@@ -210,6 +210,86 @@ class AuditManager:
         self._options = options or AuditOptions()
         self._cb = callback or (lambda msg, color: None)
         self._custom_field_names: dict[str, set[str]] = {}
+        # i18n payload (full /I18n tree) fetched lazily and reused across
+        # all label lookups during an audit. EspoCRM stores entity, field,
+        # and link display labels here — entityDefs has none of them. See
+        # `_ensure_i18n` for the fetch and `_field_label`/`_link_label`/
+        # `_scope_labels` for the lookups.
+        self._i18n: dict[str, Any] = {}
+        self._i18n_fetched: bool = False
+
+    # ------------------------------------------------------------------
+    # i18n label lookups
+    # ------------------------------------------------------------------
+
+    def _ensure_i18n(self) -> None:
+        """Fetch the i18n tree once per audit run.
+
+        Logs a yellow warning on failure but doesn't abort — every
+        lookup falls back to a yaml-derived name.
+        """
+        if self._i18n_fetched:
+            return
+        self._i18n_fetched = True
+        status, body = self._client.get_i18n()
+        if status == 200 and isinstance(body, dict):
+            self._i18n = body
+        else:
+            self._cb(
+                f"[AUDIT]    WARNING: failed to fetch i18n labels "
+                f"(HTTP {status}); falling back to internal names",
+                "yellow",
+            )
+
+    def _scope_labels(self, scope: str) -> tuple[str | None, str | None]:
+        """Look up an entity's singular/plural display labels.
+
+        :param scope: Internal scope name (e.g. ``CEngagement``, ``Contact``).
+        :returns: (singular, plural) — either may be None if absent.
+        """
+        self._ensure_i18n()
+        global_block = self._i18n.get("Global")
+        if not isinstance(global_block, dict):
+            return None, None
+        sn = global_block.get("scopeNames", {})
+        snp = global_block.get("scopeNamesPlural", {})
+        singular = sn.get(scope) if isinstance(sn, dict) else None
+        plural = snp.get(scope) if isinstance(snp, dict) else None
+        return singular, plural
+
+    def _field_label(self, scope: str, field_name: str, fallback: str) -> str:
+        """Look up a field's display label with entity → Global fallback.
+
+        :param scope: Internal entity scope (e.g. ``CMentorProfile``).
+        :param field_name: API field name (e.g. ``cMentorStatus``).
+        :param fallback: Value to return if no label is found.
+        """
+        return self._i18n_lookup(scope, "fields", field_name, fallback)
+
+    def _link_label(self, scope: str, link_name: str, fallback: str) -> str:
+        """Look up a link's display label with entity → Global fallback."""
+        return self._i18n_lookup(scope, "links", link_name, fallback)
+
+    def _i18n_lookup(
+        self, scope: str, category: str, key: str, fallback: str
+    ) -> str:
+        """Look up ``i18n[scope][category][key]`` then ``i18n.Global[category][key]``."""
+        self._ensure_i18n()
+        entity_block = self._i18n.get(scope)
+        if isinstance(entity_block, dict):
+            cat = entity_block.get(category)
+            if isinstance(cat, dict):
+                value = cat.get(key)
+                if value:
+                    return value
+        global_block = self._i18n.get("Global")
+        if isinstance(global_block, dict):
+            cat = global_block.get(category)
+            if isinstance(cat, dict):
+                value = cat.get(key)
+                if value:
+                    return value
+        return fallback
 
     def run_audit(
         self,
@@ -326,6 +406,13 @@ class AuditManager:
             self._cb(f"[AUDIT]    ERROR: {msg}", "red")
             return []
 
+        # Warm the i18n cache so the entity/field/link label lookups in
+        # this method and the field/relationship extractors that run later
+        # all share a single /I18n fetch. EspoCRM does NOT store
+        # labelSingular/labelPlural in entityDefs — labels POSTed at create
+        # time land in i18n under Global.scopeNames / scopeNamesPlural.
+        self._ensure_i18n()
+
         results: list[EntityAuditResult] = []
         for scope_name, scope_meta in scopes.items():
             if not isinstance(scope_meta, dict):
@@ -342,16 +429,9 @@ class AuditManager:
             yaml_name = get_yaml_entity_name(scope_name)
             entity_type = scope_meta.get("type")
 
-            # Fetch labels from full metadata
-            label_singular = None
-            label_plural = None
-            meta_status, meta = self._client.get_entity_full_metadata(scope_name)
-            if meta_status == 200 and isinstance(meta, dict):
-                label_singular = meta.get("fields", {}).get("name", {}).get("label") or scope_name
-                # Try to get labels from the scope or metadata
-                # EspoCRM doesn't always have these in entityDefs
-            label_singular = label_singular or yaml_name
-            label_plural = label_plural or f"{yaml_name}s"
+            singular, plural = self._scope_labels(scope_name)
+            label_singular = singular or yaml_name
+            label_plural = plural or f"{yaml_name}s"
 
             results.append(EntityAuditResult(
                 yaml_name=yaml_name,
@@ -405,7 +485,13 @@ class AuditManager:
                 yaml_name = api_name
 
             field_type = meta.get("type", "varchar")
-            label = meta.get("label", yaml_name)
+            # Field labels live in i18n, not entityDefs (which has no
+            # `label` key at all on this server). Look up
+            # `i18n[Entity].fields[apiName]` first so per-entity overrides
+            # win, falling back to `i18n.Global.fields[apiName]` for
+            # native fields like firstName/lastName, then to yaml_name as
+            # a final cosmetic fallback.
+            label = self._field_label(entity.espo_name, api_name, yaml_name)
 
             # Build properties dict with non-None values
             props: dict[str, Any] = {}
@@ -747,13 +833,15 @@ class AuditManager:
                 # Build a descriptive name
                 rel_name = f"{yaml_entity.lower()}To{yaml_foreign}"
 
-                # Labels — use link name as fallback
-                label = link_meta.get("label", yaml_link)
-                label_foreign = ""
-                if foreign_link_meta and isinstance(foreign_link_meta, dict):
-                    label_foreign = foreign_link_meta.get("label", yaml_link_foreign)
-                else:
-                    label_foreign = yaml_link_foreign
+                # Link labels live in i18n (`i18n[Entity].links[linkName]`)
+                # with `i18n.Global.links[linkName]` as fallback for native
+                # links. The link_meta dict (from entityDefs.links) has no
+                # `label` key on this server, so the prior reads always
+                # collapsed to the link's API name.
+                label = self._link_label(entity.espo_name, link_name, yaml_link)
+                label_foreign = self._link_label(
+                    foreign_entity, foreign_link, yaml_link_foreign
+                )
 
                 rel = RelationshipAuditResult(
                     name=rel_name,

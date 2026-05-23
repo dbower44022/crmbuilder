@@ -425,6 +425,35 @@ class EspoAdminClient:
         url = f"{self.profile.api_url}/I18n?language={language}"
         return self._request("GET", url)
 
+    def get_i18n(
+        self, language: str = "en_US"
+    ) -> tuple[int, dict[str, Any]]:
+        """Fetch the full merged i18n payload for the given language.
+
+        EspoCRM stores display labels (``labelSingular``/``labelPlural`` on
+        entities, plus field and link labels) in i18n resources, not in
+        ``entityDefs.{Entity}``. The ``/I18n`` endpoint returns the merged
+        tree:
+
+        - ``{"Global": {"scopeNames": {...}, "scopeNamesPlural": {...},
+          "fields": {...}, "links": {...}, ...}}``
+        - ``{"<Entity>": {"fields": {...}, "links": {...}, ...}}`` per
+          entity, with entity-specific overrides of Global defaults.
+
+        Probing ``/Metadata?key=i18n.<lang>.<path>`` for nested keys
+        returns ``null`` on this server, so callers must fetch the whole
+        tree and traverse it client-side.
+
+        :param language: Language code (default: ``"en_US"``).
+        :returns: Tuple of (status_code, i18n tree). Empty dict on any
+            non-200 or shape mismatch so callers can ``.get()`` safely.
+        """
+        url = f"{self.profile.api_url}/I18n?language={language}"
+        status, body = self._request("GET", url)
+        if status != 200 or not isinstance(body, dict):
+            return status, {}
+        return status, body
+
     # --- Relationship Manager endpoints ---
 
     def get_link(
