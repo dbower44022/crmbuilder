@@ -19359,5 +19359,289 @@
     "id": 814,
     "operation": "insert",
     "timestamp": "2026-05-23T15:52:47.981046"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-pi-024-prior-workstreams-backfill.md (this conversation; installs crmbuilder-v2/scripts/backfill_pi_024_prior_workstreams.py and runs it); PRDs/product/crmbuilder-v2/close-out-payloads/ses_059.json (this payload); PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-apply-close-out-ses-059.md (apply prompt); three decisions DEC-175 DEC-176 DEC-177; three references (decided_in edges). Workstream records WS-002 through WS-007, reference_book records RB-011 through RB-013, and three workstream_planned_in_reference_book edges are authored out-of-band by the backfill script the backfill prompt installs.",
+      "conversation_reference": "Claude.ai ARCHITECTURE-mode planning conversation. Opened against the PI-024 kickoff at PRDs/product/crmbuilder-v2/pi-024-prior-workstreams-backfill-kickoff.md to settle the metadata for six prior workstreams pre-dating PI-022 Phase 1 (which had created only WS-001) and produce the Claude Code prompt that will POST them to the V2 governance database. The conversation settled three consequential decisions: definitive workstream inventory (strict six; defer three questionable candidates to the Code Change Lifecycle workstream), lifecycle-date reconstruction strategy (session-date range with document-timestamp fallback), and master-plan reference_book bundling (three clean cases; defer three split-document cases). It also produced the proposed full names, purposes, descriptions, and notes for all six workstream records and the three reference_book records, all approved before the apply artifacts were drafted. The close-out payload contains the three governance decisions; the workstream and reference_book records themselves are authored out-of-band by the backfill script the apply prompt installs and runs.",
+      "created_at": "2026-05-23T15:59:47.997062+00:00",
+      "id": 58,
+      "identifier": "SES-059",
+      "in_flight_at_end": "PI-024 backfill prompt queued for execution. Apply order: this close-out (SES-059) first to land DEC-175 / DEC-176 / DEC-177; then the backfill prompt to land six workstream records, three reference_book records, and three master-plan edges. After both apply, PI-024 is dischargeable to Resolved (resolution mechanism is queued for PI-029 / PI-030 per the Code Change Lifecycle workstream and is not wired in this phase; PI-024 will remain Open until then). Next conversation: PI-025 (prior-conversations backfill — approximately 52 prior session records plus SES-053 become conversation records, each with workstream-membership and session-record edges; the cross-engagement conversation-membership question for WS-006's CBM paper-test sessions surfaces here). PI-025 kickoff to be authored at the end of the PI-024 apply session; path TBD.",
+      "session_date": "2026-05-23",
+      "status": "Complete",
+      "summary": "",
+      "title": "PI-024 prior-workstreams backfill planned: six workstream records (WS-002 through WS-007) and three master-plan reference_book records (RB-011 through RB-013) specified, with Claude Code backfill prompt authored",
+      "topics_covered": "Seed prompt: PI-024 prior-workstreams backfill kickoff (PRDs/product/crmbuilder-v2/pi-024-prior-workstreams-backfill-kickoff.md) attached to the conversation's opening turn alongside the project operating-mode preamble. Substantive task: backfill the six prior workstreams pre-dating PI-022 Phase 1 as workstream entity records in the V2 governance database, settle their metadata, and produce the Claude Code prompt that POSTs them.\n\nStructured summary of the planning work:\n\n(1) Identifier rebasing surfaced at orientation. The PI-024 kickoff (authored 05-23-26 05:30) anticipated SES-057 as this conversation's close; in the intervening window SES-057 had been used by the diagnostic-and-design conversation that established the Code Change Lifecycle workstream. Actual identifier heads verified against the CRMBUILDER db-export snapshots: SES-057 highest session, DEC-170 highest decision, WS-001 highest workstream. This conversation therefore closes at SES-059 and produces decisions starting at DEC-175. The kickoff's own re-verification rule anticipated this case.\n\n(2) Contextual note from SES-057. The Code Change Lifecycle workstream queued behind this conversation (PI-027 through PI-033) introduces a first-class commit entity intended to make planning_item-to-commit-SHA traceability queryable via a single SQL join. That sharpens the test for the three questionable candidate workstreams the kickoff names — the YAML schema v1.1 eight-prompt series, the error-handling-prompt series A–E, and the layout-fix triplet of commits in May. These are structurally code-change clusters rather than multi-conversation arcs; the commit entity is being built to index exactly this kind of work.\n\n(3) DEC-175 — Definitive workstream inventory. Three options framed: Option A (strict six clear candidates), Option B (six plus YAML schema v1.1 only — the one questionable candidate with a written master plan), Option C (all nine candidates). Adopted Option A. Two reasons: (a) the kickoff's inclusion test (\"coherent purpose, multiple connected conversations or prompts, recognizable beginning/end\") is cleanly satisfied by the six clear candidates but only marginally by the three questionable ones; (b) the Code Change Lifecycle workstream is being scoped explicitly to capture commit-level audit trails, and the three questionable candidates are exactly the kind of code-change cluster its first-class commit entity is designed to index — backfilling them as workstreams now creates structure that PI-027 through PI-033 will provide more naturally.\n\n(4) DEC-176 — Lifecycle-date reconstruction strategy. Three candidate sources framed: Option A (git-commit range), Option B (session-date range — the calendar of the workstream's conversation arc), Option C (document-timestamp range — kickoff or master-plan Last Updated for started_at, closeout payload session_date for completed_at). Adopted Option B as the primary rule with Option C as a documented fallback for workstreams lacking clean session bookends. Two reasons: (a) WS-001's precedent effectively uses session-date range (its workstream_started_at approximates SES-047's session_date); staying consistent with the one prior record is worthwhile; (b) the semantic fit is best — workstreams are conversation arcs, and session_date is the conversation arc's calendar. The Option C fallback handles the one or two workstreams where the rule degrades (WS-002 catalog ingestion uses Option C for started_at because planning preceded the single build session by ~5 days; WS-006 CBM paper test uses Option C throughout because its sessions live in the CBM engagement database, not CRMBUILDER's).\n\n(5) Specific dates approved. WS-002 Catalog ingestion 2026-05-09 → 2026-05-14 (Option C started, Option B completed). WS-003 Methodology entity schema design 2026-05-11 → 2026-05-15 (both Option B, SES-011 → SES-024). WS-004 UI v0.5 engagement management 2026-05-16 → 2026-05-17 (both Option B, SES-025 → SES-035). WS-005 UI v0.6 styling 2026-05-16 → 2026-05-18 (both Option B, SES-027 → SES-043). WS-006 CBM paper test 2026-05-18 → 2026-05-19 (both Option C — kickoff Last Updated → findings Last Updated). WS-007 Multi-tenancy routing fix 2026-05-19 → 2026-05-20 (both Option B, SES-044 → SES-045). All timestamps stored as YYYY-MM-DDT00:00:00 (UTC midnight) since wall-clock precision is not available for these backdated records.\n\n(6) WS-006 cross-engagement reading settled. The CBM paper-test conversation sessions live in the CBM engagement database, not CRMBUILDER's — SES-046's session record explicitly cites PI-001 in the Cleveland Business Mentors engagement as the paper-test's blocking finding, confirming the conversations ran in CBM. Read A (workstream lives in CRMBUILDER per kickoff intent; PI-025 handles the cross-engagement conversation-membership question) adopted over Read B (workstream lives in CBM; exclude from PI-024). Read A aligns with the kickoff's listing of CBM paper test among the six to backfill in this engagement and frames the paper test as a CRMBUILDER-dogfood-methodology activity that executed its sessions in CBM for a meaningful validation. The cross-engagement conversation-membership question is deferred to PI-025.\n\n(7) Routine decisions decided per ARCHITECTURE mode and announced. Status for all six workstreams: complete (no exceptions; the CBM paper test completed its validation scope, and the blocking finding it surfaced is a downstream schema-amendment consequence rather than an indication of incompletion). No workstream_supersedes edges: each workstream satisfied its own scope (the v0.4 → v0.5 → v0.6 chain is a release-version sequence, not supersession; methodology entity schema design and governance entity schema design cover different entity types, neither superseded the other).\n\n(8) DEC-177 — Master-plan reference_book bundling. Three options framed: Option A (bundle all six master-plan reference_books, with judgment-call source-document picks for split-document workstreams), Option B (bundle only the three clean cases — methodology, v0.5, v0.6 — defer the three split-document cases), Option C (defer all six to a later phase). Adopted Option B. Three reasons: (a) follows WS-001's established pattern without forcing pick-one judgments on workstreams that genuinely have multi-document planning material; (b) surfaces the multi-document-planning design question as its own future decision rather than answering it implicitly through PI-024's pick choices; (c) keeps PI-024's prompt scope manageable — three RB records and three edges is a small additive change, whereas six RBs with three needing judgment-call source documents would noticeably complicate the apply script and add review burden.\n\n(9) Three reference_book records specified. RB-011 methodology entity schema-design workstream plan (PRDs/product/crmbuilder-v2/methodology-schema-workstream-plan.md, v1.0 dated 2026-05-11T16:00:00). RB-012 user-interface v0.5 engagement-management workstream plan (PRDs/product/crmbuilder-v2/v0.5-engagement-management-workstream-plan.md, v1.0 dated 2026-05-16T14:00:00). RB-013 user-interface v0.6 styling workstream plan (PRDs/product/crmbuilder-v2/styling-workstream-plan.md, v1.0 dated 2026-05-16T14:00:00). All kind workstream_master_plan, status active. Three workstream_planned_in_reference_book edges: WS-003 → RB-011, WS-004 → RB-012, WS-005 → RB-013.\n\n(10) Full names, purposes, descriptions, and notes for all six workstream records approved. The full text matches what the backfill script's _WORKSTREAMS list embeds verbatim, so the script file itself is the canonical record of the approved content.\n\n(11) Backfill prompt authored. PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-pi-024-prior-workstreams-backfill.md installs the backfill script, runs it, verifies counts and lifecycle timestamps, and commits in two steps (script-file commit first, then regenerated db-export snapshots commit). Mirrors backfill_governance_phase_1.py's idempotency contract (HTTP 409 and 422-duplicate treated as already-present).\n\n(12) Close-out payload and apply prompt produced. This payload (ses_059.json) and its apply prompt (CLAUDE-CODE-PROMPT-apply-close-out-ses-059.md) cover the three governance decisions only. The workstream and reference_book records arrive out-of-band via the backfill prompt; this payload's records_summary notes that explicitly. Apply order: SES-059 close-out first (lands DEC-175, DEC-176, DEC-177), then the backfill prompt (lands WS-002..007, RB-011..013, three master-plan edges)."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-059",
+    "entity_type": "session",
+    "id": 815,
+    "operation": "insert",
+    "timestamp": "2026-05-23T15:59:47.997421"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Option B — backfill the six plus YAML schema v1.1 only (WS-002 through WS-008). YAML schema v1.1 had app-yaml-schema.md as a written master plan and a structured eight-prompt arc with clear end-state, structurally the most workstream-shaped of the three questionable candidates. Rejected because admitting it asymmetrically still leaves the broader question (\"what's a workstream worth backfilling versus a code-change cluster worth capturing as commit records?\") unresolved, and the Code Change Lifecycle workstream is being built to answer that question more cleanly. Option C — backfill all nine (WS-002 through WS-010). Rejected for the same reason scaled up: aggressively comprehensive backfill creates thin workstream records that are better captured as something else once the commit entity ships, and risks duplicating structure that PI-027 through PI-033 will provide.",
+      "consequences": "Two downstream effects. (1) PI-025 (prior-conversations backfill) inherits a workstream inventory of seven (WS-001 through WS-007) for attaching conversation-membership edges. The three excluded candidates' sessions, if any (the YAML v1.1 series and error-handling series likely had no sessions; the layout-fix triplet had none), receive no workstream membership in PI-025. (2) The Code Change Lifecycle workstream gains specific scope: when PI-027 settles the methodology for capturing code-change clusters as commit records, the three excluded candidates become its first backfill targets. The PI-033 back-fill planning item explicitly anticipates this.",
+      "context": "The PI-024 kickoff named six clear workstream candidates pre-dating PI-022 Phase 1 (methodology entity schema design, UI v0.5 engagement management, UI v0.6 styling, multi-tenancy routing fix, CBM paper test, catalog ingestion) plus three questionable candidates whose qualification as workstreams depends on the inclusion test (YAML schema v1.1 eight-prompt series, error-handling-prompt series A–E in espo_impl, layout-fix triplet of commits in May 2026). The kickoff's inclusion test: \"coherent purpose, multiple connected conversations or prompts, recognizable beginning/end.\" SES-057 had just established the Code Change Lifecycle workstream (PI-027 through PI-033) which adds a first-class commit entity intended to make planning_item-to-commit-SHA traceability queryable via a single SQL join — designed to capture exactly the kind of code-change clusters the three questionable candidates represent.",
+      "created_at": "2026-05-23T15:59:48.073967+00:00",
+      "decision": "Backfill exactly the six clear candidates as workstream records WS-002 through WS-007 in chronological start order: WS-002 Catalog ingestion, WS-003 Methodology entity schema design, WS-004 UI v0.5 engagement management, WS-005 UI v0.6 styling, WS-006 CBM paper test, WS-007 Multi-tenancy routing fix. The three questionable candidates — YAML schema v1.1 eight-prompt series, error-handling-prompt series A–E, layout-fix triplet — remain outside PI-024 and are queued for capture as commit clusters or work_ticket bundles by the Code Change Lifecycle workstream once PI-027 (methodology) and PI-028 (commit schema spec) ship.",
+      "decision_date": "2026-05-23",
+      "id": 173,
+      "identifier": "DEC-175",
+      "rationale": "Two reasons. (a) The kickoff's inclusion test is cleanly satisfied by the six clear candidates but only marginally by the three questionable ones: the six have either multi-conversation arcs (v0.4/v0.5/v0.6 each have 5–15 sessions) or a written master plan (catalog ingestion has a PRD plus implementation plan; CBM paper test has a kickoff plus findings; multi-tenancy fix has a planning kickoff plus slice plan plus investigation report) or both. The three questionable candidates have neither — the YAML schema v1.1 series ran entirely as a Claude Code prompt sequence without conversational kickoffs, the error-handling-prompt series was a hardening pass on the espo_impl code path, and the layout-fix triplet was three small commits over a single day. (b) The Code Change Lifecycle workstream is being scoped explicitly to capture commit-level audit trails. The three questionable candidates are exactly the kind of code-change cluster its first-class commit entity is designed to index. Backfilling them as workstreams now creates structure that PI-027 through PI-033 will provide more naturally, and may force later cleanup decisions (cancel? supersede?) if the new model surfaces a better representation.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Backfill the six prior workstreams listed in the PI-024 kickoff; defer the three questionable candidates to the Code Change Lifecycle workstream",
+      "updated_at": "2026-05-23T15:59:48.073970+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-175",
+    "entity_type": "decision",
+    "id": 816,
+    "operation": "insert",
+    "timestamp": "2026-05-23T15:59:48.074383"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Option A — git-commit range (first commit touching the workstream's material as started_at, last commit as completed_at). Most objective and reproducible but conflates planning-prep commits with the work itself; a single late commit unrelated to the workstream's substance can spuriously extend the end date. Rejected because the semantic fit is poorer than session_date range for the audit-query use case. Option C as the primary rule everywhere (document timestamps for both ends). Rejected because not every workstream has a clean kickoff document with a Last Updated timestamp (WS-003 has both a planning prompt and a master plan; WS-007 has a planning kickoff plus a slice plan plus an investigation report), so the rule would itself require per-workstream source-document picks. Using Option C only as a fallback narrows those picks to the two workstreams where the primary rule genuinely degrades.",
+      "consequences": "Per-workstream lifecycle dates are now reproducible from session_date data plus, for WS-002 and WS-006, the named source document's Last Updated. The choice is queryable retrospectively: workstream_notes records the source rule applied per workstream, so any future audit can compare the stored date against the named source. PI-025 will cross-validate by attaching conversation-membership edges and confirming each conversation's session_date falls inside the parent workstream's [started_at, completed_at] window.",
+      "context": "Each of the six backfilled workstreams needs workstream_started_at and workstream_completed_at timestamps. WS-001's precedent set workstream_started_at to a wall-clock time approximately matching its first session (2026-05-20T22:00:00, near SES-047's start), and workstream_completed_at was server-set when the workstream transitioned to complete. PI-024's six workstreams require both timestamps backdated since no live transition occurs. Three candidate source rules: git-commit dates of the workstream's material; the session_date range from the first to the last session belonging to the workstream; document-timestamp range from the kickoff/master-plan Last Updated to the closeout payload's session_date or the findings document's Last Updated.",
+      "created_at": "2026-05-23T15:59:48.153857+00:00",
+      "decision": "Adopt session-date range as the primary rule (workstream_started_at equals the session_date of the workstream's first session; workstream_completed_at equals the session_date of the last). Use document-timestamp range as a documented fallback for any workstream lacking clean session bookends, with the source document named in workstream_notes for the affected workstream. Concretely: WS-002 (single build session preceded by ~5 days of PRD authoring) uses Option C for started_at (PRD Last Updated 2026-05-09); WS-006 (CBM paper-test sessions live in the CBM engagement database, not CRMBUILDER's) uses Option C for both ends (kickoff Last Updated 2026-05-18; findings v0.2 Last Updated 2026-05-19). The other four workstreams use Option B for both ends. All timestamps stored as YYYY-MM-DDT00:00:00 (UTC midnight) since wall-clock precision is not available for these backdated records.",
+      "decision_date": "2026-05-23",
+      "id": 174,
+      "identifier": "DEC-176",
+      "rationale": "Two reasons. (a) WS-001's precedent effectively uses session-date range — its workstream_started_at approximates SES-047's session_date, the workstream's first session. Staying consistent with the one prior record is worthwhile. (b) The semantic fit is best: workstreams are conversation arcs, and session_date is the conversation arc's calendar. The audit-query \"what work arcs were in flight in May 2026?\" returns the most truthful answer when workstream timestamps align with the sessions that constitute them. PI-025 will formalize the same mapping as conversation-belongs-to-workstream edges and can validate PI-024's date-setting against the actual edges; any mismatch surfaces a backfill bug worth fixing, so PI-024's decisions get a free audit downstream.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Reconstruct prior-workstream lifecycle dates from session_date ranges where sessions are present; fall back to document-timestamp range where clean session bookends are absent",
+      "updated_at": "2026-05-23T15:59:48.153862+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-176",
+    "entity_type": "decision",
+    "id": 817,
+    "operation": "insert",
+    "timestamp": "2026-05-23T15:59:48.154388"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Option A — bundle all six master-plan reference_books with judgment-call picks for split-document workstreams (most likely the PRD for catalog ingestion, the kickoff for paper test, the slice plan for multi-tenancy fix). Rejected because each pick implies a precedence between documents that wasn't established at the time the workstream ran, and the resulting RB records would be harder to undo than to defer. Option C — defer all six master-plan reference_books and all other reference_book backfill to a later phase, including the three clean cases. Rejected because the three clean cases mirror WS-001's pattern exactly with no design ambiguity, and deferring them sacrifices the parity benefit without buying any future design flexibility.",
+      "consequences": "Two effects. (1) PI-024 lands with three workstreams (WS-002, WS-006, WS-007) carrying no workstream_planned_in_reference_book outbound edge. Queries that count workstreams with master plans return four (WS-001 plus the three new); queries that count workstreams without master plans return three. The asymmetry is self-documenting via the workstream_notes entries on the three bare workstreams, which name their planning documents and explicitly note the deferral. (2) A future reference-book backfill phase is now scoped to handle three additional master-plan records (for WS-002, WS-006, WS-007) plus any non-master-plan reference_book records (PRDs, implementation plans, kickoff prompts, findings documents, slice plans, investigation reports) the engagement wants captured. The design question of whether to expand the reference_book kind enum and how many reference_book records per workstream to admit becomes that phase's primary concern.",
+      "context": "WS-001 has RB-001 as its master-plan reference_book (kind workstream_master_plan), the established precedent for one such record per workstream. For PI-024's six backfilled workstreams, three have a clean single workstream-plan-style document: WS-003 (methodology-schema-workstream-plan.md), WS-004 (v0.5-engagement-management-workstream-plan.md), WS-005 (styling-workstream-plan.md). The other three do not: WS-002 (catalog-ingestion-PRD-v0.1.md plus catalog-ingestion-implementation-plan.md — two documents, neither a workstream-plan-style master), WS-006 (methodology-schemas-cbm-paper-test-kickoff.md plus methodology-schemas-cbm-paper-test-findings.md — kickoff plus findings, no plan), WS-007 (multi-tenancy-routing-fix-planning-kickoff.md plus multi-tenancy-routing-fix-slice-plan.md plus multi-tenancy-routing-investigation-report.md — three documents). The PI-024 kickoff framed reference_book bundling as binary (bundle one master-plan record per workstream, or defer all reference_book work to a future phase), with Option B (the asymmetric middle ground) as a recognized alternative.",
+      "created_at": "2026-05-23T15:59:48.295996+00:00",
+      "decision": "Adopt Option B. Bundle three master-plan reference_book records into PI-024's apply: RB-011 for WS-003 (methodology-schema-workstream-plan.md), RB-012 for WS-004 (v0.5-engagement-management-workstream-plan.md), RB-013 for WS-005 (styling-workstream-plan.md). Create three workstream_planned_in_reference_book edges (WS-003 → RB-011, WS-004 → RB-012, WS-005 → RB-013). The other three workstreams (WS-002, WS-006, WS-007) land bare; their master-plan reference_book records and any other reference_book backfill (PRDs, implementation plans, kickoff prompts, findings documents, slice plans, investigation reports) are deferred to a future reference-book backfill phase that can also decide how to model multi-document planning material.",
+      "decision_date": "2026-05-23",
+      "id": 175,
+      "identifier": "DEC-177",
+      "rationale": "Three reasons. (a) Follows WS-001's established pattern (one workstream_master_plan reference_book per workstream) without forcing pick-one judgments on workstreams that genuinely have multi-document planning material. Picking one document from a multi-document set implies a precedence relationship between the documents that may not exist. (b) Surfaces the multi-document-planning design question as its own future decision rather than answering it implicitly through PI-024's pick choices. The future reference-book backfill phase can settle the broader question (workstream_master_plan kind only, or expand to workstream_planning_kickoff / workstream_findings / workstream_investigation_report kinds; one master-plan reference per workstream or several reference_book records per workstream with one designated master) cleanly. (c) Keeps PI-024's prompt scope manageable — three RB records and three edges is a small additive change to the workstream-only prompt and easy to review; six RBs with three needing judgment-call source documents would noticeably complicate the apply script and the review burden.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Bundle master-plan reference_book records only for the three prior workstreams with a single-file master plan; defer master-plan records for the three multi-document workstreams to a future phase",
+      "updated_at": "2026-05-23T15:59:48.295999+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-177",
+    "entity_type": "decision",
+    "id": 818,
+    "operation": "insert",
+    "timestamp": "2026-05-23T15:59:48.296399"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T15:59:48.373915+00:00",
+      "id": 418,
+      "reference_identifier": "REF-0414",
+      "relationship": "decided_in",
+      "source_id": "DEC-175",
+      "source_type": "decision",
+      "target_id": "SES-059",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-175 -[decided_in]-> session:SES-059",
+    "entity_type": "reference",
+    "id": 819,
+    "operation": "insert",
+    "timestamp": "2026-05-23T15:59:48.374279"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T15:59:48.461289+00:00",
+      "id": 419,
+      "reference_identifier": "REF-0415",
+      "relationship": "decided_in",
+      "source_id": "DEC-176",
+      "source_type": "decision",
+      "target_id": "SES-059",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-176 -[decided_in]-> session:SES-059",
+    "entity_type": "reference",
+    "id": 820,
+    "operation": "insert",
+    "timestamp": "2026-05-23T15:59:48.461758"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T15:59:48.545706+00:00",
+      "id": 420,
+      "reference_identifier": "REF-0416",
+      "relationship": "decided_in",
+      "source_id": "DEC-177",
+      "source_type": "decision",
+      "target_id": "SES-059",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-177 -[decided_in]-> session:SES-059",
+    "entity_type": "reference",
+    "id": 821,
+    "operation": "insert",
+    "timestamp": "2026-05-23T15:59:48.546147"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T15:59:48.630535+00:00",
+      "id": 421,
+      "reference_identifier": "REF-0417",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-012",
+      "source_type": "deposit_event",
+      "target_id": "COP-059",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-012 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-059",
+    "entity_type": "reference",
+    "id": 822,
+    "operation": "insert",
+    "timestamp": "2026-05-23T15:59:48.631110"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T15:59:48.632332+00:00",
+      "id": 422,
+      "reference_identifier": "REF-0418",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-012",
+      "source_type": "deposit_event",
+      "target_id": "SES-059",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-012 -[deposit_event_wrote_record]-> session:SES-059",
+    "entity_type": "reference",
+    "id": 823,
+    "operation": "insert",
+    "timestamp": "2026-05-23T15:59:48.632738"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T15:59:48.633861+00:00",
+      "id": 423,
+      "reference_identifier": "REF-0419",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-012",
+      "source_type": "deposit_event",
+      "target_id": "DEC-175",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-012 -[deposit_event_wrote_record]-> decision:DEC-175",
+    "entity_type": "reference",
+    "id": 824,
+    "operation": "insert",
+    "timestamp": "2026-05-23T15:59:48.634202"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T15:59:48.635365+00:00",
+      "id": 424,
+      "reference_identifier": "REF-0420",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-012",
+      "source_type": "deposit_event",
+      "target_id": "DEC-176",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-012 -[deposit_event_wrote_record]-> decision:DEC-176",
+    "entity_type": "reference",
+    "id": 825,
+    "operation": "insert",
+    "timestamp": "2026-05-23T15:59:48.635677"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T15:59:48.636809+00:00",
+      "id": 425,
+      "reference_identifier": "REF-0421",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-012",
+      "source_type": "deposit_event",
+      "target_id": "DEC-177",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-012 -[deposit_event_wrote_record]-> decision:DEC-177",
+    "entity_type": "reference",
+    "id": 826,
+    "operation": "insert",
+    "timestamp": "2026-05-23T15:59:48.637076"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "0.7.0",
+        "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_059.json",
+        "runner": "claude_code"
+      },
+      "deposit_event_created_at": "2026-05-23T15:59:48.628239+00:00",
+      "deposit_event_description": "Applied COP-059. Outcome: success. 3 decisions, 1 sessions.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-012",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_012.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 3,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-059, 2026-05-23T15:59:48+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-012",
+    "entity_type": "deposit_event",
+    "id": 827,
+    "operation": "insert",
+    "timestamp": "2026-05-23T15:59:48.637406"
   }
 ]

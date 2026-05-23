@@ -1,0 +1,21 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_059.json
+Label:  SES-059 PI-024 prior-workstreams backfill planned: inventory of six prior workstreams settled, lifecycle-date reconstruction strategy adopted (Option B with Option C fallback), master-plan reference_book bundling scoped to three clean cases; 1 session, 3 decisions (DEC-175..173), 3 references. Workstream and reference_book records authored out-of-band by backfill_pi_024_prior_workstreams.py per the apply prompt at PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-pi-024-prior-workstreams-backfill.md.
+Deposit event: DEP-012
+
+=== session (1 record) ===
+  ✓ POST session  SES-059 (HTTP 201)
+
+=== decisions (3 records) ===
+  ✓ POST decisions  DEC-175 (HTTP 201)
+  ✓ POST decisions  DEC-176 (HTTP 201)
+  ✓ POST decisions  DEC-177 (HTTP 201)
+
+=== references (3 records) ===
+  ✓ POST references  DEC-175 decided_in SES-059 (HTTP 201)
+  ✓ POST references  DEC-176 decided_in SES-059 (HTTP 201)
+  ✓ POST references  DEC-177 decided_in SES-059 (HTTP 201)
+
+✓ All 7 operations complete.
+
+✓ Recorded apply as deposit_event DEP-012 (HTTP 201).
