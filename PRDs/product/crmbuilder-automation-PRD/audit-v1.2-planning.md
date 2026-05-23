@@ -3,8 +3,8 @@
 **Document type:** Application development planning (planning only; not implementation)
 **Repository:** `crmbuilder`
 **Path:** `PRDs/product/crmbuilder-automation-PRD/audit-v1.2-planning.md`
-**Last Updated:** 05-23-26 01:10
-**Version:** 1.0 (initial draft)
+**Last Updated:** 05-23-26 02:30
+**Version:** 1.1 (open-question resolutions + Alembic correction)
 
 ---
 
@@ -21,12 +21,27 @@ The work this document covers is anticipated to span 11 Claude Code prompts acro
 | Version | Date | Author | Summary |
 |---------|------|--------|---------|
 | 1.0 | 05-23-26 01:10 | Doug Bower / Claude | Initial planning document. Captures Decisions 1, 2, 2.5, 3 from the planning kickoff conversation; surveys the existing v1.1 audit feature; designs the v1.2 expansion (entity-level selection, filtered tabs audit, full Section 12 round-trip including role-aware visibility); proposes an 11-prompt implementation series. |
+| 1.1 | 05-23-26 02:30 | Doug Bower / Claude | Resolves all four §9 open questions: persona is documentation metadata with no validation; empty `scope_access:` roles produce an informational audit-log warning; `include_security` and `include_filtered_tabs` default to True; existing audit output is overwritten with a pre-run confirmation guard when the output directory contains prior emission. Corrects Prompt H to reference the project's actual versioned migration mechanism in `automation/db/migrations.py` (new `_client_v4` migration) rather than Alembic. Threads the overwrite-confirmation dialog into §4.1 operator flow and Prompt J. |
 
 ---
 
 ## Change Log
 
 **Version 1.0 (05-23-26 01:10):** Initial creation. Records the design decisions made in the planning conversation: users out of audit scope (Decision 1, Option C); roles/teams full round-trip with both audit and deploy bundled in this workstream (Decision 2, Option B); all five parts of Section 12 in scope including role-aware visibility (Decision 2.5, Option A); pre-flight live discovery for the entity picker (Decision 3). Surveys the existing v1.1 audit feature in commit `1eabfbb` and the v1.3 schema gaps (Section 12 paper-only, no role-clause support in `condition_expression.py`). Proposes an 11-prompt series with letter assignments, dependencies, validation criteria, and per-prompt end states.
+
+**Version 1.1 (05-23-26 02:30):** Resolves all four §9 open questions captured in v1.0 and corrects two design errors caught during the resolution conversation.
+
+- §9.1 resolved as "no validation": the `persona:` field on `RoleDefinition` is documentation metadata only. The loader does not cross-check it; the audit emits whatever the source instance carries.
+- §9.2 resolved as "yes, informational log warning": when a captured role has empty `scope_access:`, the audit log records an informational warning. The YAML output itself is unaffected.
+- §9.3 resolved as "default True": `include_security` and `include_filtered_tabs` follow the existing `AuditOptions` pattern and default to checked. This is a revision from the provisional default-False answer in v1.0.
+- §9.4 resolved as "overwrite with confirmation guard": v1.2 overwrites prior audit output in the same directory, but the Audit dialog displays a pre-run confirmation when the output directory contains files matching the audit emission pattern.
+
+Two corrections folded in:
+
+- Prompt H previously referenced "Alembic-style migration" for the new role and team tables. The project does not use Alembic; the actual mechanism is the versioned migration runner in `automation/db/migrations.py` with a `schema_version` table and `_client_v1` through `_client_v3` migrations. v1.1 corrects Prompt H to add a new `_client_v4` migration following the existing pattern. Prompt I receives the same correction for its filtered-tab tables (folded into `_client_v4` rather than a separate version).
+- §4.1 operator flow gains a new step describing the overwrite-confirmation dialog. Prompt J's UI work picks up the dialog implementation.
+
+§9 is renamed from "Open Questions" to "Resolved Design Questions" and rewritten to record the decisions rather than flag them. §10 is updated to reflect that the four §9 questions are resolved and Prompt A is now unblocked.
 
 ---
 
@@ -148,12 +163,13 @@ This section describes what the v1.2 audit feature does, end-to-end, from the op
 1. Operator selects a source instance from the Audit sidebar entry's instance picker (existing v1.1 behavior).
 2. Operator clicks "Configure Audit" (renamed from current "Start Audit" button to make the options dialog more discoverable).
 3. The options dialog opens. On open, it calls `get_all_scopes()` against the source instance and populates a scrollable entity-picker list with checkboxes. By default, all entities are selected. The operator can deselect entities they don't want audited, or use "Select All" / "Select None" buttons.
-4. Below the entity picker, the existing category-level checkboxes remain: detail layouts, list layouts, relationships, native fields. New checkboxes are added: **Filtered tabs**, **Security (roles, teams, role-aware visibility)**.
-5. Operator clicks "Run Audit". The progress dialog opens and the audit worker runs the pipeline.
-6. The pipeline runs entity discovery (filtered to selected entities), field extraction, layout extraction, relationship discovery, filtered-tab discovery (if enabled), role and team discovery (if enabled).
-7. YAML files are written to the audit output directory. Per-entity YAMLs include their entity blocks plus the new `filteredTabs:` blocks if any. A separate `security.yaml` is written if security was enabled and any roles or teams were found.
-8. Database records are inserted (existing v1.1 behavior, extended to cover new dataclasses).
-9. Progress dialog shows a summary: files written, records inserted, any warnings.
+4. Below the entity picker, the existing category-level checkboxes remain: detail layouts, list layouts, relationships, native fields. New checkboxes are added: **Filtered tabs**, **Security (roles, teams, role-aware visibility)**. Both new checkboxes default to checked (§9.3).
+5. Operator clicks "Run Audit". If the output directory contains files matching the audit emission pattern from a prior run, the dialog displays an overwrite-confirmation prompt ("Output directory contains N existing audit YAML files; running this audit will overwrite them. Proceed?") and waits for the operator to confirm or cancel before opening the progress dialog (§9.4).
+6. The progress dialog opens and the audit worker runs the pipeline.
+7. The pipeline runs entity discovery (filtered to selected entities), field extraction, layout extraction, relationship discovery, filtered-tab discovery (if enabled), role and team discovery (if enabled).
+8. YAML files are written to the audit output directory. Per-entity YAMLs include their entity blocks plus the new `filteredTabs:` blocks if any. A separate `security.yaml` is written if security was enabled and any roles or teams were found.
+9. Database records are inserted (existing v1.1 behavior, extended to cover new dataclasses).
+10. Progress dialog shows a summary: files written, records inserted, any warnings (including the §9.2 informational warning for any captured role with empty `scope_access:`).
 
 ### 4.2 v1.2 audit scope summary
 
@@ -328,13 +344,15 @@ The implementation is broken into 11 Claude Code prompts. Each prompt is self-co
 - New `RoleAuditResult` and `TeamAuditResult` dataclasses
 - `_reverse_dynamic_logic()` is extended to recognize and emit `role:` leaf clauses when it sees EspoCRM's role-aware dynamic-logic JSON shape
 - `_write_yaml_files()` writes a separate `security.yaml` containing the `roles:` and `teams:` blocks when security was captured and any results exist
-- `AuditOptions.include_security: bool` (default False) controls whether the discovery runs
-- `audit_db.py` inserts role and team records (new tables in client schema — Alembic-style migration)
+- `_write_yaml_files()` also emits the §9.2 informational warning to the audit log for any captured role with empty `scope_access:`
+- `AuditOptions.include_security: bool` (default True, per §9.3) controls whether the discovery runs
+- New `_client_v4` migration in `automation/db/migrations.py` adds role and team tables to the client schema, following the existing `_client_v1` through `_client_v3` pattern (versioned migration runner with `schema_version` table). `audit_db.py` inserts role and team records into those tables.
 
 **Validation:**
 - An audit against a source with three roles and two teams produces `security.yaml` with the correct content; re-running deploy on the target reproduces the same role and team records
 - A source field with a role-aware `requiredWhen` clause is captured with the role predicate intact
-- Audit with `include_security=False` (default) produces no `security.yaml` and no role/team DB records
+- A captured role with empty `scope_access:` produces an informational warning in the audit log; the YAML output still contains the role
+- Audit run with the Security option unchecked produces no `security.yaml` and no role/team DB records
 
 **End state:** Full v1.3 Section 12 round-trip is operational; audit can read what the deploy engine can write.
 
@@ -347,13 +365,13 @@ The implementation is broken into 11 Claude Code prompts. Each prompt is self-co
 - New `FilteredTabAuditResult` dataclass
 - Reverse-engineering walks both halves of the pattern: for each audited entity, query `list_report_filters(entity)` (existing method) for Report Filter records, and read `clientDefs.{entity}` metadata to identify any custom scope tabs binding to those filters
 - YAML emission slots into each entity's existing `filteredTabs:` block in the per-entity YAML
-- `AuditOptions.include_filtered_tabs: bool` (default False)
-- `audit_db.py` inserts filtered-tab records into a new client-schema table
+- `AuditOptions.include_filtered_tabs: bool` (default True, per §9.3)
+- The `_client_v4` migration from Prompt H is extended to add the filtered-tab table (one migration covers all v1.2 audit schema additions). `audit_db.py` inserts filtered-tab records into that table.
 
 **Validation:**
 - An audit against a source with two filtered tabs (one per entity) produces YAML entity blocks each containing one correct `filteredTabs:` entry
 - Re-deploying the audited YAML against a fresh target reproduces both filtered tabs (assuming Advanced Pack is present)
-- Audit with `include_filtered_tabs=False` produces no filtered-tab DB records and no `filteredTabs:` blocks in YAML
+- Audit run with the Filtered tabs option unchecked produces no filtered-tab DB records and no `filteredTabs:` blocks in YAML
 
 **End state:** Filtered tabs round-trip cleanly through audit and deploy.
 
@@ -367,12 +385,15 @@ The implementation is broken into 11 Claude Code prompts. Each prompt is self-co
 - `audit_entry.py` gains a pre-flight discovery step on dialog open: calls `client.get_all_scopes()` synchronously (with a brief loading state), populates a scrollable entity-picker `QListWidget` with checkboxes, default all checked
 - "Select All" / "Select None" buttons above the picker
 - The picker integrates with the existing category checkboxes (entity picker says "which entities", category checkboxes say "what aspects of those entities")
-- New checkboxes added: "Filtered tabs", "Security (roles, teams, role-aware visibility)"
+- New checkboxes added: "Filtered tabs", "Security (roles, teams, role-aware visibility)", both default-checked per §9.3
+- An overwrite-confirmation dialog (§9.4) fires when the operator clicks Run Audit and the output directory contains files matching the audit emission pattern (per-entity YAMLs or `security.yaml`). Default focus on Cancel; operator must explicitly confirm to proceed.
 
 **Validation:**
 - Selecting two entities out of ten in the picker results in only those two entities being audited end-to-end
 - Selecting "Select None" disables the Run button (no work to do)
 - Pre-flight discovery failure (network error, auth error) shows a clear error in the dialog without crashing it
+- Clicking Run Audit against an output directory containing prior audit output displays the overwrite-confirmation dialog; Cancel returns to the options dialog without writing anything; Proceed continues normally
+- Clicking Run Audit against an empty output directory proceeds without the confirmation dialog
 
 **End state:** Operator can audit a precisely-chosen subset of entities.
 
@@ -440,30 +461,51 @@ Filtered tabs require EspoCRM's Advanced Pack (the same dependency as existing `
 
 ---
 
-## 9. Open Questions
+## 9. Resolved Design Questions
 
-These are items where the planning conversation did not produce a definitive answer; resolving them before Prompt A is recommended.
+These items were open at v1.0 with provisional answers. v1.1 records the resolutions reached in the planning conversation continuation on 05-23-26. Implementation prompts cite these resolutions by number.
 
-### 9.1 Should `RoleDefinition` carry a `persona:` cross-reference?
+### 9.1 — `persona:` field is documentation metadata only
 
-Schema Section 12.1 includes a `persona:` field on roles ("documentation metadata — the loader does not cross-check the identifier against any source"). The audit captures whatever the source instance has. But on a fresh deploy from audited YAML, the persona identifier is metadata only. Question for Doug: should the loader optionally validate `persona:` against a known list (a list of all defined Master PRD personas for the client implementation) and warn on unknown values? If yes, where does that list live? My provisional answer is **no** for v1.2 — keep it documentation-only as the schema says — but flag it.
+**Resolved:** No validation. The loader does not cross-check `persona:` values against any source; the audit captures whatever the source instance carries and emits it as-is.
 
-### 9.2 Audit output for roles with empty `scope_access:`
+**Rationale.** Schema Section 12.1 is explicit that `persona:` is documentation metadata. Cross-checking it would require a source-of-truth list of Master PRD personas, which doesn't live anywhere the loader has access to and would couple the loader to client-specific PRD content. The failure mode of a typo'd persona name is "documentation reader briefly confused" — not severe enough to justify the validation infrastructure or the coupling.
 
-If a source instance has a role with no per-entity access (e.g., a placeholder role for documentation purposes), the audit captures it as a role with an empty `scope_access:` map. The schema allows this. Should the audit emit a warning ("role X has no scope_access; this role grants no entity access")? My provisional answer is **yes, as an informational warning** in the audit log, not in the YAML output. Flag for Doug.
+**Consequence for the workstream.** No persona-validation logic in `config_loader.py`. No new dependency from the loader on any client-specific document list. Prompts A, B, and D treat `persona:` as opaque metadata.
 
-### 9.3 Default for `include_security` and `include_filtered_tabs`
+### 9.2 — Empty `scope_access:` on captured roles produces an informational warning
 
-Current `AuditOptions` defaults all category-wide options to `True`. For the two new options, my provisional choice is **default `False`** — these are new capabilities, and defaulting them off avoids surprising operators on the next audit run after this workstream lands. After v1.2 has run successfully a few times, defaults can flip to True in a future change. Flag for Doug: confirm default-off, or set them default-on with the existing options?
+**Resolved:** Yes, informational warning in the audit log, not in the YAML output. When a captured role has no per-entity access, the audit log records a line of the form "Role X has no scope_access; this role grants no entity access on the source instance." The YAML output itself is unaffected — the role is emitted with whatever its source state was.
 
-### 9.4 Backward compatibility for existing audit YAML
+**Rationale.** Matches the existing audit log pattern for analogous edge cases (e.g., entity with no custom fields). Gives operators visibility into "this role grants nothing on the source and probably wants cleanup" without altering the audited content.
 
-Audited YAML files produced under v1.1 don't have `filteredTabs:` blocks or `security.yaml` siblings. When v1.2 runs against an instance previously audited under v1.1 and produces those new artifacts, what happens to the existing v1.1 YAML files? Three options: (a) v1.2 overwrites existing v1.1 YAMLs entirely, replacing them with v1.2 output; (b) v1.2 produces new YAMLs alongside the existing ones (with a versioned suffix), leaving the v1.1 YAMLs untouched; (c) v1.2 merges new blocks into existing files where it can. My provisional answer is **(a) overwrite** — audited YAML is a snapshot, not source code, and an audit is the operator's explicit request to capture the current state. Flag for Doug.
+**Consequence for the workstream.** Prompt H's `_write_yaml_files()` emits the warning. No effect on the loader, the validator, or the deploy side — a role with empty `scope_access:` is a valid YAML construct that deploys as written.
+
+### 9.3 — `include_security` and `include_filtered_tabs` default to True
+
+**Resolved:** Default True. Both new checkboxes in the Audit dialog start checked. Operators opt out by unchecking.
+
+**Rationale.** The existing `AuditOptions` defaults are all True; the audit's identity is "capture the full configuration of a source instance for round-trip deploy." A default-off new capability is a quiet inconsistency in that identity and has a bad failure mode (operators who never notice the new checkboxes get half-audits indefinitely). The "default-off avoids surprising operators" reasoning that produced the v1.0 provisional answer was overcautious for the actual operator situation: Doug is effectively the sole operator and will read the v1.2 release notes.
+
+**Consequence for the workstream.** Prompts H, I, and J use `default=True` for the new `AuditOptions` booleans. Documentation in Prompt K notes the new default behavior. First v1.2 audit run after the workstream lands produces `security.yaml` and `filteredTabs:` blocks automatically; this is a one-time behavior change and is called out in the user guide update.
+
+### 9.4 — Overwrite existing audit output with a pre-run confirmation guard
+
+**Resolved:** Overwrite, with a one-line UX guard. When the operator clicks Run Audit and the output directory contains files matching the audit emission pattern (per-entity YAMLs or `security.yaml`), the dialog displays a confirmation prompt: "Output directory contains N existing audit YAML files; running this audit will overwrite them. Proceed?" The operator confirms or cancels. Empty output directories run without the prompt.
+
+**Rationale.** Audited YAML is a snapshot, not source code. An audit run is the operator's explicit request to capture the current state of the source instance. Hand-editing audit output is an anti-pattern; the right place to fork audit output is into a separate working directory under the operator's control. But the audit itself doesn't enforce or document that, so the confirmation guard catches the lost-edits failure mode for a one-line UX cost. The merge option was rejected on maintenance grounds (diffing structural YAML is fragile across schema evolution); the alongside option was rejected because two YAML versions of the same entity coexisting in the same program root creates real deploy ambiguity.
+
+**Consequence for the workstream.** Prompt J implements the confirmation dialog as part of the UI work. The dialog's trigger condition is "any file in the output directory matching `*.yaml` from a prior audit emission," not the literal presence of specific filenames — this handles renamed entities and security.yaml-only outputs uniformly. Dialog default focus on Cancel; Proceed requires an explicit click.
 
 ---
 
-## 10. Approval to Proceed
+## 10. Status — Prompt A Unblocked
 
-When Doug approves this planning document, the next step is writing **Prompt A** (`CLAUDE-CODE-PROMPT-audit-v1.2-A-roles-teams-recognition.md`) as the first implementation deliverable. Each subsequent prompt is written after the prior is confirmed green by Doug running it through Claude Code locally.
+As of v1.1, all four §9 design questions are resolved and the two corrections (Alembic→`_client_v4` migration, overwrite-confirmation dialog) are folded into the relevant prompts. The doc is now the design authority for Prompt A.
 
-Approval can be given as a simple "approved" / "approved with changes" / specific reshaping requests. Open questions in §9 can be answered before approval or alongside it.
+The next step is writing **Prompt A** (`CLAUDE-CODE-PROMPT-audit-v1.2-A-roles-teams-recognition.md`) as the first implementation deliverable. Each subsequent prompt is written after the prior is confirmed green by Doug running it through Claude Code locally.
+
+Two workflow questions are deliberately not captured in this document because they're about how to execute the design, not what the design is:
+
+- **Series-size mitigation (§8.5).** Whether to pause at Prompt E for a deploy-side validation milestone before starting Prompts F–K is a workflow choice for Doug to make at execution time. The doc neither requires nor forbids the pause.
+- **`security.yaml` file placement.** Root of program directory versus a `security/` subdirectory affects loader discovery and audit emission. v1.4 deferred work (Section 12.7 permission presets) may add more security-style files, which would favor a subdirectory. This is the one remaining design question that warrants a decision before Prompt A is written. Surfacing separately to Doug rather than carrying it into v1.1 of the doc.
