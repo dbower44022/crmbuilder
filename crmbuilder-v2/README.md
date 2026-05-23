@@ -526,7 +526,51 @@ In addition to the v0.1 surface, v0.2 added:
   deleted rows render with strikethrough and the detail pane shows
   Restore + Edit (no Delete); Restore PATCHes status back to Active.
 
-### v0.6 (current — visual design system retrofit)
+### v0.7 (current — governance entity release)
+
+CRMBuilder v2 v0.7 lands six new governance entity types — **workstream,
+conversation, reference_book, work_ticket, close_out_payload, deposit_event** —
+that close the gap between the v2 governance database's stated single-source-of-
+truth role and its actual coverage of the planning-and-execution machinery
+itself. Each gains its own table (plus `reference_book_versions` for the child
+version history), its REST endpoints (deposit_event reduced to POST + GET only
+per its born-terminal append-only posture), its desktop panel under the
+Governance sidebar group, and its access-layer methods with the spec's edge-
+required rules: supersession requires an outbound `supersedes` edge; a
+conversation requires its workstream-membership edge at every status and a
+session edge to transition to `complete`; a work_ticket requires the inbound
+consumption edge at `consumed`; a close_out_payload requires the production
+edge at every status and at least one inbound success deposit_event edge to
+transition to `applied`. The deposit_event POST is atomic — it creates the row,
+the parent edge, the wrote_record back-references, and (on first success
+against a `ready` payload) drives the payload to `applied`, all in one
+transaction.
+
+The release also lands the apply-script integration: `apply_close_out.py` tees
+its stdout to `PRDs/product/crmbuilder-v2/deposit-event-logs/dep_NNN.log` and
+POSTs a deposit_event at the apply's last step capturing the records_summary,
+apply_context provenance, parent and wrote_record edges, and (on failure)
+structured error_info. The access layer lazy-creates the target close_out_payload
+when missing so the bootstrap and backfill paths work without a separate setup
+step.
+
+A foundational correctness fix landed as part of the release: explicit
+`BEGIN IMMEDIATE` + `busy_timeout` on the SQLite engine so an outer
+`session.rollback()` actually undoes the autoassign SAVEPOINT writes. This was
+required for the governance repos' validate-after-insert edge-rule pattern; the
+methodology repos never exercised it but get the same correctness for free.
+
+PI-022 Phase 1 backfill executed against the dogfood engagement: 1 workstream
+(WS-001), 8 conversations, 10 reference books, 8 work_tickets, 8 close_out
+payloads, 8 deposit_events, plus ~70 reference edges representing the
+governance entity schema-design workstream itself. Phases 2 (prior
+workstreams), 3 (prior conversations), and 4 (historical applies as
+deposit_events) are deferred to follow-on planning items.
+
+PRD: `PRDs/product/crmbuilder-v2/governance-entity-PRD-v0.1.md`
+Implementation plan: `PRDs/product/crmbuilder-v2/governance-entity-implementation-plan.md`
+
+### v0.6 (visual design system retrofit)
 
 CRMBuilder v2 v0.6 discharges PI-001 — the full styling design pass deferred
 at v0.1 close per DEC-024 and reopened as v0.6's parallel workstream per
