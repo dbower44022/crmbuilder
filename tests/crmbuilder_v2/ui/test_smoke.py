@@ -32,6 +32,14 @@ EXPECTED_ENTRIES = (
     "Planning Items",
     "Topics",
     "References",
+    # v0.7 governance entity release (DEC-163): six new entries appended
+    # to the Governance group in workstream order, no sub-grouping.
+    "Workstreams",
+    "Conversations",
+    "Reference Books",
+    "Work Tickets",
+    "Close-Out Payloads",
+    "Deposit Events",
     # Methodology group — Domains landed in UI v0.4 slice B,
     # Entities in slice C, Processes in slice D, CRM Candidates in slice E.
     "Domains",

@@ -26,6 +26,14 @@ def test_bootstrap_creates_all_export_files(v2_env, export_dir: Path):
         "entities.json",
         "processes.json",
         "crm_candidates.json",
+        # Governance entity snapshots (UI v0.7).
+        "workstreams.json",
+        "conversations.json",
+        "reference_books.json",
+        "reference_book_versions.json",
+        "work_tickets.json",
+        "close_out_payloads.json",
+        "deposit_events.json",
         "references.json",
         "change_log.json",
     }
