@@ -503,6 +503,7 @@ def verify() -> None:
 
 
 def main() -> int:
+    global BASE
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--base",
@@ -510,7 +511,6 @@ def main() -> int:
         help=f"API base URL (default: {BASE})",
     )
     args = parser.parse_args()
-    global BASE
     BASE = args.base
 
     print(f"PI-024 prior-workstreams backfill against {BASE}\n")
