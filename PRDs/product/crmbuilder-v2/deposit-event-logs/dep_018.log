@@ -1,0 +1,19 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_065.json
+Label:  SES-065 V2 remote-access deployment planning conversation: DEC-205 marker-mid-process handling settled (fail-loud on drift via FastAPI middleware comparing live marker against _MARKER_AT_START captured at API process start; mismatch returns HTTP 409 with structured body and a WARNING log line; restart required to bind to new engagement); five decide-and-announce implementation choices recorded inline (MCP HTTP port 8810, header name X-CRMBuilder-Secret, secret storage via launchd-plist env var sourced from ~/.config/crmbuilder/mcp-secret, Cloudflare Access identity provider Google login, documentation home crmbuilder-v2/docs/remote-deployment.md); three Claude Code prompts authored for the PI-045 code-changes implementation conversation (A transport flag + HTTP binding, B shared-secret middleware, C marker fail-loud guard). 1 session, 1 decision, 0 planning items, 3 references.
+Deposit event: DEP-018
+
+=== session (1 record) ===
+  ✓ POST session  SES-065 (HTTP 201)
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-205 (HTTP 201)
+
+=== references (3 records) ===
+  ✓ POST references  DEC-205 decided_in SES-065 (HTTP 201)
+  ✓ POST references  SES-065 is_about PI-045 (HTTP 201)
+  ✓ POST references  DEC-205 references DEC-203 (HTTP 201)
+
+✓ All 5 operations complete.
+
+✓ Recorded apply as deposit_event DEP-018 (HTTP 201).

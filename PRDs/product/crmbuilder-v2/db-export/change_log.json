@@ -31094,5 +31094,197 @@
     "id": 1269,
     "operation": "insert",
     "timestamp": "2026-05-23T21:29:52.235867"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "Five governance and implementation artifacts pushed in the same commit. Governance: PRDs/product/crmbuilder-v2/close-out-payloads/ses_065.json (this payload); PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-apply-close-out-ses-065.md (apply prompt for Doug to run via Claude Code, mirroring the SES-064 apply prompt's structure with single-predecessor SES-064 in apply order). PI-045 implementation prompts: PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-pi-045-A-transport-flag-and-http-binding.md (slice A: --transport flag, --port flag, parameterized server.main(), Settings.mcp_http_port at env CRMBUILDER_V2_MCP_HTTP_PORT default 8810, host hardcoded 127.0.0.1, no auth in this slice, tests for argparse and dispatch); PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-pi-045-B-shared-secret-middleware.md (slice B: Settings.mcp_shared_secret at env CRMBUILDER_V2_MCP_SHARED_SECRET, startup hard-fail on missing secret for streamable-http, Starlette SharedSecretMiddleware at mcp_server/middleware.py validating X-CRMBuilder-Secret via hmac.compare_digest with 401 on miss, stdio unaffected, run-time open about FastMCP ASGI-app exposure); PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-pi-045-C-marker-handling.md (slice C: api/marker_guard.py with _MARKER_AT_START and EngagementMarkerGuardMiddleware, cli.run_api() captures active_code after marker resolution and before uvicorn.run, 409 with structured body and WARNING log on drift, exempt paths /health /openapi.json /docs /redoc, tests for match/mismatch/missing/exempt).",
+      "conversation_reference": "Claude.ai conversation opened against the seed prompt 'Open the PI-045 V2 remote-access deployment planning conversation. Read the kickoff at PRDs/product/crmbuilder-v2/pi-045-remote-access-deployment-kickoff.md and proceed.' The conversation ran in ARCHITECTURE mode (project default and explicit in the kickoff). The mandate from the kickoff was to (1) surface the engagement-marker-mid-process question identified in DEC-203's named footgun using the eight-element consequential decision template; (2) decide and announce inline the five operational implementation choices below the consequential threshold (HTTP port, header name, secret storage, identity provider, doc home); (3) draft the three Claude Code prompts for the code-changes implementation conversation as drafts presented in a block for Doug's review. Orientation read: crmbuilder/CLAUDE.md and the PI-045 kickoff end-to-end; SES-064 close-out payload for the four anchor decisions DEC-201 through DEC-204; the relevant codebase surface for the marker-handling decision (mcp_server/server.py line 44 confirmed at server.run('stdio'); cli.py run_mcp at line 144 as a thin wrapper, run_api at line 28 with marker resolution; tool count in tools.py verified at 44; mcp>=1.0 in pyproject.toml; FastMCP supports streamable-http transport per the installed SDK version). One codebase finding that materially changed the framing of the consequential decision: route_settings_to_engagement() in runtime/engagement_routing.py is NOT a stat-and-read operation — it mutates os.environ for CRMBUILDER_V2_DB_PATH and CRMBUILDER_V2_EXPORT_DIR, calls reset_settings_cache(), access_db.reset_engine_cache(), and init_meta_db_pool(). The kickoff's framing of Option 1 (per-request marker re-read) as 'small — a stat + a JSON read per request, both cached by the OS page cache' understates the cost: per-request rerouting would reset the SQLAlchemy engine cache on every request (defeating connection pooling) and create a race window under concurrent in-flight requests across a marker flip. The cheap version of silent-follow is a structural refactor of the access layer to thread per-request engagement codes through every DB call rather than reading from singleton Settings — well beyond PI-045's scope. This finding moved the recommendation from a balanced trade-off to a clear preference for fail-loud, and Doug approved (b) fail-loud with the terse 'b'. The five decide-and-announce items were settled as suggested by the kickoff: port 8810 via CRMBUILDER_V2_MCP_HTTP_PORT; header X-CRMBuilder-Secret; secret storage via launchd-plist env var sourced from a 0600-mode file at ~/.config/crmbuilder/mcp-secret with the canonical value held in Doug's password manager out-of-band, manual three-place rotation; Cloudflare Access Google login matching Doug's owner identity; new documentation file at crmbuilder-v2/docs/remote-deployment.md. The three Claude Code prompts (PI-045 slices A/B/C) were drafted in the sandbox at /mnt/user-data/outputs/ and presented to Doug via present_files for visual review, with an inline summary of each slice's scope, the open question flagged for Claude Code to resolve at run-time in slice B (the FastMCP middleware-registration mechanism varies by SDK version), and a small open in slice C about whether the current API has a /health endpoint for the exempt-paths list. Doug approved all three drafts as-is with the terse 'approved'. No identifier rebase was required during the conversation: a pre-commit fetch confirmed two new commits had landed on origin/main since the initial sandbox clone (audit-v1.2 prompts A and B), but the governance snapshots remained at SES-064 / DEC-204 / PI-045, so SES-065 / DEC-205 were clear to claim. The conversation closes with five files committed and pushed together in one commit per the sandbox push convention: the SES-065 close-out payload (this file), the SES-065 apply prompt, and the three PI-045 Claude Code prompts.",
+      "created_at": "2026-05-23T22:12:29.216990+00:00",
+      "id": 64,
+      "identifier": "SES-065",
+      "in_flight_at_end": "Two follow-on conversations are sequenced. Immediate next (after Doug applies SES-065 locally): the Claude Code coding conversation that runs PI-045 slices A, B, C in series at Doug's terminal. Each slice has its own commit at the end per the Claude Code convention (Claude commits, Doug pushes). After the code-changes conversation closes, the operational conversation runs the procedural steps: crmbuilder.com nameserver migration to Cloudflare (free plan, ~15 minutes), cloudflared install as launchd service on Doug's laptop, named tunnel + DNS record routing mcp.crmbuilder.com to 127.0.0.1:8810, Cloudflare Access policy with Google login, and claude.ai MCP integration registration with the X-CRMBuilder-Secret custom header. The smoke-test conversation that exercises all 44 MCP tools end-to-end against both CRMBUILDER and CBM engagements follows the operational conversation and produces the documentation deliverables (crmbuilder-v2/docs/remote-deployment.md and a Tier-2 paragraph in crmbuilder/CLAUDE.md) as part of its close-out. PI-045's status moves from Open to In Progress when the code-changes Claude Code conversation opens, and to Complete when the smoke-test conversation's close-out applies.",
+      "session_date": "2026-05-23",
+      "status": "Complete",
+      "summary": "",
+      "title": "PI-045 V2 remote-access deployment planning: DEC-205 fail-loud on engagement-marker drift; five operational implementation choices announced inline; three Claude Code prompts authored for the code-changes implementation conversation",
+      "topics_covered": "Seed prompt: \"Open the PI-045 V2 remote-access deployment planning conversation. Read the kickoff at `PRDs/product/crmbuilder-v2/pi-045-remote-access-deployment-kickoff.md` and proceed.\"\n\nStructured summary of the planning conversation:\n\n(1) Orientation. Read crmbuilder/CLAUDE.md for engagement context (sparse-checkout pattern, v0.7 governance entity state, working conventions including the sandbox commit-and-push convention). Read the PI-045 kickoff end-to-end including the Surface-and-settle section with the two framed options for the consequential decision and the five decide-and-announce items. Read the SES-064 close-out payload to confirm the four anchor decisions DEC-201 through DEC-204 in full text. Verified identifier heads from PRDs/product/crmbuilder-v2/db-export/ at SES-064 / DEC-204 / PI-045 (counts: 63 sessions, 201 decisions, 45 planning items, 634 references); confirmed no payload exists yet for SES-065. Verified codebase facts the kickoff cited: mcp_server/server.py main() calls server.run('stdio') at line 44 with module docstring 'Claude Desktop pipes here'; cli.py has run_mcp at line 144 (thin wrapper) and run_api at line 28 (with marker resolution); tool count in mcp_server/tools.py is 44; pyproject.toml declares mcp>=1.0 (FastMCP supports stdio / sse / streamable-http transports). Minor citation drift noted: the kickoff refers to 'crmbuilder-v2/src/crmbuilder_v2/api/config.py' for api_host/api_port; the actual settings module is crmbuilder_v2/config.py. Drift is cosmetic — does not affect scope.\n\n(2) Codebase finding that reframed DEC-205. Read runtime/engagement_routing.py end-to-end to understand the cost of the kickoff's Option 1 (per-request marker re-read). Discovered that route_settings_to_engagement() is NOT a stat-and-read operation: it queries the meta DB to validate the engagement code, mutates os.environ for CRMBUILDER_V2_DB_PATH and CRMBUILDER_V2_EXPORT_DIR, calls reset_settings_cache(), access_db.reset_engine_cache(), and init_meta_db_pool(). Calling this per request would reset the SQLAlchemy engine cache on every dispatch (defeating connection pooling and adding real latency on warm caches) and create a race window under concurrent in-flight requests bracketing a marker flip. The cheap framing in the kickoff ('a stat + a JSON read per request, both cached by the OS page cache after the first call') only gets you detection, not rerouting. The actually-cheap silent-follow option requires a structural refactor of the access layer to thread per-request engagement codes through every DB call rather than reading from singleton Settings — beyond PI-045's scope. This finding moved Option 2 (fail-loud) from a balanced alternative to a clear preference, with the cost of Option 1 named honestly in the surfaced decision.\n\n(3) DEC-205 surfaced using the eight-element consequential decision template. Plain-language question: when Doug flips the engagement marker in the desktop UI mid-conversation, what should the remote MCP API do? Concrete example: CBM decision flow with one decision already written; Doug flips to CRMBUILDER between writes; second decision lands in CRMBUILDER under a CRMBUILDER identifier while Doug's mental model is 'still writing CBM decisions in the same conversation.' Options framed: (a) per-request reroute with cost named at process-global state mutation per request and connection-pool reset; (b) per-request fail-loud with a Starlette/FastAPI middleware that stats the marker file, reads engagement_code, compares to _MARKER_AT_START captured at process start, returns HTTP 409 on mismatch with structured body {error: 'engagement_marker_changed', marker_at_start, marker_now, action: 'restart API to bind to new engagement'} and a WARNING log line. Why it matters: correctness model for engagement binding — per-request (silent follow) versus per-process (engagement is the marker's value at API start, a switch is a visible event). Cost of recommended option named honestly: forces a manual API restart on each engagement switch (~5 seconds of downtime, in-flight requests 409 once); friction roughly invisible for Doug's actual stretch-on-one-engagement pattern; a desktop-UI 'Restart API' button is a natural follow-up if friction surfaces. Recommendation: (b) fail-loud. Doug approved with the terse 'b'.\n\n(4) Five decide-and-announce items settled inline. Each was confirmed as below the two-part consequential test on closer examination (port and header are matching-token choices, secret-storage is conventional macOS practice, identity-provider follows owner identity, doc home follows the kickoff's suggested split). MCP HTTP transport port = 8810, configured via CRMBUILDER_V2_MCP_HTTP_PORT to match the existing Settings env-var pattern (REST API stays at 8765; MCP HTTP at 8810 keeps the v2 services adjacent). Shared-secret header name = X-CRMBuilder-Secret, lives identically in three places (laptop env var CRMBUILDER_V2_MCP_SHARED_SECRET, the MCP middleware via hmac.compare_digest, claude.ai's MCP integration custom-header configuration). Shared-secret storage = single-line file at ~/.config/crmbuilder/mcp-secret (mode 0600), sourced into a launchd-plist-defined env var for the MCP process; canonical value held out-of-band in Doug's password manager; rotation is manual three-place edit (the file, claude.ai's MCP integration, then launchctl unload+load). Cloudflare Access identity provider = Google login, single Access policy on mcp.crmbuilder.com requiring Google auth for Doug's owner email. Documentation home = new file crmbuilder-v2/docs/remote-deployment.md, with the top-level README getting a one-paragraph pointer and crmbuilder/CLAUDE.md getting a Tier-2 paragraph naming the remote MCP URL and the marker-driven routing implication.\n\n(5) Three Claude Code prompts authored for the PI-045 code-changes implementation. Each is a self-contained slice that can be applied in series in one Claude Code session. Slice A (CLAUDE-CODE-PROMPT-pi-045-A-transport-flag-and-http-binding.md): adds --transport {stdio,streamable-http} and --port to the crmbuilder-v2-mcp CLI; adds Settings.mcp_http_port (env CRMBUILDER_V2_MCP_HTTP_PORT, default 8810); parameterizes mcp_server.server.main() on transport/host/port with stdio as the default; host hardcoded to 127.0.0.1 per DEC-202 (MCP-only public exposure dialed by cloudflared); tests cover argparse choices and the build-and-dispatch path; no auth in this slice. Slice B (CLAUDE-CODE-PROMPT-pi-045-B-shared-secret-middleware.md): adds Settings.mcp_shared_secret (env CRMBUILDER_V2_MCP_SHARED_SECRET, default None); startup hard-fails if streamable-http is selected without the secret; new Starlette SharedSecretMiddleware in a new module mcp_server/middleware.py validates X-CRMBuilder-Secret via hmac.compare_digest and 401s misses before route dispatch; stdio bypasses the middleware entirely; one open question flagged for Claude Code at run-time: how the installed FastMCP SDK version exposes its ASGI app for middleware registration — if no clean path exists in the installed version, prompt B stops and reports rather than skip silently. Slice C (CLAUDE-CODE-PROMPT-pi-045-C-marker-handling.md): implements DEC-205; new module api/marker_guard.py with module-level _MARKER_AT_START and EngagementMarkerGuardMiddleware; cli.run_api() calls set_marker_at_start(active_code) after the existing engagement resolution and before uvicorn.run; the middleware compares the live marker reading to the captured value on every non-exempt request and returns HTTP 409 with the structured body and a WARNING log line on mismatch; exempt paths /health, /openapi.json, /docs, /redoc bypass the guard. Captures active_code (the resolved engagement code that may have come from --engagement flag or the marker file) rather than re-reading the marker, so processes started with --engagement override stay bound to that engagement regardless of later marker changes. Tests cover match / mismatch / missing-marker / exempt-bypass. Drafts were presented via present_files for Doug's review; Doug approved all three with the terse 'approved'.\n\n(6) Identifier rebase check. Pre-commit fetch of origin/main brought in two new commits since the initial sandbox clone (1f7bd0e 'Add audit-v1.2 Prompts A and B' and 84b55c2 'Add audit-v1.2 Prompt A: roles/teams loader recognition'); these are methodology prompts, not governance close-outs. Governance snapshot heads remained at SES-064 / DEC-204 / PI-045, so this conversation's claim on SES-065 / DEC-205 stands without rebase. The parallel-sandbox identifier-collision pattern named in the kickoff (three occurrences in the recent backfill program) did not trigger this time, though the watchpoint remains: PI-032 Code Change Lifecycle methodology rollout is the home for the reserve-at-apply-time identifier model that would eliminate this class of collisions.\n\n(7) Sandbox commit and push. The five deliverable files are committed and pushed together in one commit per the sandbox push convention: PRDs/product/crmbuilder-v2/close-out-payloads/ses_065.json (this payload), PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-apply-close-out-ses-065.md (the apply prompt for Doug to run via Claude Code), and the three PI-045 implementation prompts at PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-pi-045-{A,B,C}-*.md.\n\n(8) In-flight at end. The Claude Code coding conversation that runs PI-045 prompts A, B, C in sequence (this is the immediate next action after Doug applies SES-065 locally). After the code-changes conversation closes, the operational conversation follows: move crmbuilder.com nameservers from current registrar to Cloudflare (free plan, ~15 minutes); install cloudflared as a launchd service on Doug's laptop; create the named tunnel and DNS record routing mcp.crmbuilder.com to 127.0.0.1:8810; create the Cloudflare Access policy requiring Google login on mcp.crmbuilder.com; register the MCP URL in claude.ai's MCP integration with the X-CRMBuilder-Secret custom header. The smoke-test conversation that exercises all 44 MCP tools end-to-end against both CRMBUILDER and CBM engagements follows the operational conversation and produces the documentation deliverables (crmbuilder-v2/docs/remote-deployment.md and the crmbuilder/CLAUDE.md entry) as part of its close-out."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-065",
+    "entity_type": "session",
+    "id": 1270,
+    "operation": "insert",
+    "timestamp": "2026-05-23T22:12:29.217434"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "(a) Per-request reroute, silent follow. Every API request re-resolves the marker and reroutes settings if it changed. Claude.ai cannot detect the switch from its side — the world it sees just changes from the next call onward. Implementation reality is either calling route_settings_to_engagement() per request (process-global mutation, engine cache reset on every dispatch, racy under concurrency) or refactoring the access layer to take a per-request engagement code (structural change beyond PI-045's scope). Rejected for the reasons named in the rationale: the cost framing in the kickoff was misleading once route_settings_to_engagement was read in full, and the cheap alternative is out of scope. (c) Hybrid considered briefly: detect-and-reroute with a graceful drain of in-flight requests via Starlette lifespan events. Rejected as adding complexity without addressing the underlying split-correctness problem — claude.ai would still write half a decision flow to one engagement and the other half to another within a single conversation. The fail-loud path makes drift a visible event the operator must acknowledge before continuing.",
+      "consequences": "Operators must remember to restart the API process when switching engagements; if they don't, claude.ai's next request 409s with a structured body naming marker_at_start and marker_now, surfacing the drift visibly rather than silently. Manual restart is `pkill -f crmbuilder-v2-api && crmbuilder-v2-api &` in v1. A desktop-UI 'Restart API' button is a natural follow-up if the manual-restart friction surfaces in actual use — not in scope for PI-045 itself; would be a small slice in a v0.8 UI workstream if surfaced as a planning item. The implementation lives in a new module api/marker_guard.py exporting _MARKER_AT_START, set_marker_at_start(value), get_marker_at_start() (for tests), EXEMPT_PATHS (frozenset of /health, /openapi.json, /docs, /redoc), and EngagementMarkerGuardMiddleware. cli.run_api() calls set_marker_at_start(active_code) after route_settings_to_engagement(active_code) and before uvicorn.run. The middleware is registered in api.main.create_app() before any other middleware so exempt paths short-circuit cleanly. Tests in tests/api/test_marker_guard_middleware.py cover match (200), mismatch (409 with correct body fields), missing marker file (409 with marker_now: null), and exempt-path bypass (200 on /health even under drift). The semantic that the captured value is active_code (which may have come from --engagement flag) rather than a re-read of the marker means a process started with --engagement override stays bound to that engagement; this is the correct behavior for the override pattern.",
+      "context": "DEC-203 chose marker-driven single deployment for the remote MCP and named the footgun explicitly: if Doug switches engagements in the desktop UI's Engagements panel mid-conversation, claude.ai's reads silently switch with the desktop UI under the current API behavior. The API process today reads current_engagement.json once at launch via runtime.engagement_routing.resolve_active_engagement(), then calls route_settings_to_engagement(active_code) before uvicorn.run() — and that routing call mutates process-global state (os.environ for CRMBUILDER_V2_DB_PATH and CRMBUILDER_V2_EXPORT_DIR, reset_settings_cache(), access_db.reset_engine_cache(), init_meta_db_pool()), not request-scoped state. With the remote MCP exposing this API to claude.ai over Cloudflare Tunnel, the question is what the API should do when the marker on disk diverges from the marker the process was launched against. The two viable options framed under the eight-element consequential decision template were (a) per-request reroute and (b) per-request fail-loud.",
+      "created_at": "2026-05-23T22:12:29.326661+00:00",
+      "decision": "Per-request fail-loud. Capture the engagement code that run_api() resolved at process start in a module-level constant _MARKER_AT_START at api/marker_guard.py, set via a helper called from cli.run_api() after route_settings_to_engagement(active_code) succeeds and before uvicorn.run. Register an EngagementMarkerGuardMiddleware in api.main.create_app() that runs before route dispatch. On every non-exempt request, the middleware calls resolve_active_engagement() to read the live marker value, compares to _MARKER_AT_START, and on mismatch returns HTTP 409 with body {\"error\":\"engagement_marker_changed\",\"marker_at_start\":\"<code>\",\"marker_now\":\"<code>\",\"action\":\"restart API to bind to new engagement\"} and a WARNING log line naming both values. Exempt paths bypass the guard so operators retain liveness and schema introspection on a stale-marker process: /health, /openapi.json, /docs, /redoc. The captured value is active_code (the resolved engagement code that may have come from --engagement flag or from the marker file at startup), not the marker's current value at each comparison — so a process started with --engagement CRMBUILDER stays bound to CRMBUILDER even if the marker later names CBM. Restart mechanism is manual (pkill + relaunch) in v1; a desktop-UI 'Restart API' button is a natural follow-up if friction surfaces.",
+      "decision_date": "2026-05-23",
+      "id": 203,
+      "identifier": "DEC-205",
+      "rationale": "Silent follow is wrong by default for write correctness, and the actually-cheap version of silent follow is a structural refactor of the access layer well beyond PI-045's scope. Per-request reroute as framed in the kickoff (a stat + a JSON read per request) misstates the cost: rerouting actually means calling route_settings_to_engagement on every request, which resets the SQLAlchemy engine cache (defeating connection pooling), mutates process-global env vars, and creates a race window under any concurrent in-flight requests bracketing a marker flip. The cheap path — refactoring the access layer to thread a per-request engagement code through every DB call instead of reading from singleton Settings — is a meaningful architectural change that does not belong in a tunneling workstream. Fail-loud is ~10µs per request (one stat plus one small JSON read warm in the OS page cache after the first request), no global state mutation, no concurrency risk, and forces correctness at the cost of a manual restart on engagement switch. The cost is small for Doug's actual workflow of stretches on one engagement, and the system surfaces drift visibly via the structured 409 response rather than silently splitting writes across databases.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Engagement-marker-mid-process handling on the remote v2 API: per-request reroute (silent follow) versus per-request fail-loud (HTTP 409 on drift)",
+      "updated_at": "2026-05-23T22:12:29.326664+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-205",
+    "entity_type": "decision",
+    "id": 1271,
+    "operation": "insert",
+    "timestamp": "2026-05-23T22:12:29.327156"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T22:12:29.491190+00:00",
+      "id": 639,
+      "reference_identifier": "REF-0635",
+      "relationship": "decided_in",
+      "source_id": "DEC-205",
+      "source_type": "decision",
+      "target_id": "SES-065",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-205 -[decided_in]-> session:SES-065",
+    "entity_type": "reference",
+    "id": 1272,
+    "operation": "insert",
+    "timestamp": "2026-05-23T22:12:29.491813"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T22:12:29.594661+00:00",
+      "id": 640,
+      "reference_identifier": "REF-0636",
+      "relationship": "is_about",
+      "source_id": "SES-065",
+      "source_type": "session",
+      "target_id": "PI-045",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-065 -[is_about]-> planning_item:PI-045",
+    "entity_type": "reference",
+    "id": 1273,
+    "operation": "insert",
+    "timestamp": "2026-05-23T22:12:29.595089"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T22:12:29.697863+00:00",
+      "id": 641,
+      "reference_identifier": "REF-0637",
+      "relationship": "references",
+      "source_id": "DEC-205",
+      "source_type": "decision",
+      "target_id": "DEC-203",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-205 -[references]-> decision:DEC-203",
+    "entity_type": "reference",
+    "id": 1274,
+    "operation": "insert",
+    "timestamp": "2026-05-23T22:12:29.698288"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T22:12:29.799374+00:00",
+      "id": 642,
+      "reference_identifier": "REF-0638",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-018",
+      "source_type": "deposit_event",
+      "target_id": "COP-065",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-018 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-065",
+    "entity_type": "reference",
+    "id": 1275,
+    "operation": "insert",
+    "timestamp": "2026-05-23T22:12:29.799833"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T22:12:29.801385+00:00",
+      "id": 643,
+      "reference_identifier": "REF-0639",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-018",
+      "source_type": "deposit_event",
+      "target_id": "SES-065",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-018 -[deposit_event_wrote_record]-> session:SES-065",
+    "entity_type": "reference",
+    "id": 1276,
+    "operation": "insert",
+    "timestamp": "2026-05-23T22:12:29.801922"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T22:12:29.804220+00:00",
+      "id": 644,
+      "reference_identifier": "REF-0640",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-018",
+      "source_type": "deposit_event",
+      "target_id": "DEC-205",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-018 -[deposit_event_wrote_record]-> decision:DEC-205",
+    "entity_type": "reference",
+    "id": 1277,
+    "operation": "insert",
+    "timestamp": "2026-05-23T22:12:29.804607"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "0.7.0",
+        "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_065.json",
+        "runner": "claude_code"
+      },
+      "deposit_event_created_at": "2026-05-23T22:12:29.797521+00:00",
+      "deposit_event_description": "Applied COP-065. Outcome: success. 1 decisions, 1 sessions.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-018",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_018.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 1,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-065, 2026-05-23T22:12:29+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-018",
+    "entity_type": "deposit_event",
+    "id": 1278,
+    "operation": "insert",
+    "timestamp": "2026-05-23T22:12:29.805166"
   }
 ]
