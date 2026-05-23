@@ -4728,5 +4728,1405 @@
     "source_type": "deposit_event",
     "target_id": "DEC-197",
     "target_type": "decision"
+  },
+  {
+    "created_at": "2026-05-23T21:12:05.635716",
+    "id": 478,
+    "reference_identifier": "REF-0474",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-044",
+    "source_type": "conversation",
+    "target_id": "WS-008",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:12:05.637302",
+    "id": 479,
+    "reference_identifier": "REF-0475",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-044",
+    "source_type": "conversation",
+    "target_id": "SES-058",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:12:05.638681",
+    "id": 480,
+    "reference_identifier": "REF-0476",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-044",
+    "source_type": "conversation",
+    "target_id": "WT-044",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:12:05.764523",
+    "id": 481,
+    "reference_identifier": "REF-0477",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-045",
+    "source_type": "conversation",
+    "target_id": "WS-008",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:12:05.766143",
+    "id": 482,
+    "reference_identifier": "REF-0478",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-045",
+    "source_type": "conversation",
+    "target_id": "SES-060",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:12:05.767539",
+    "id": 483,
+    "reference_identifier": "REF-0479",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-045",
+    "source_type": "conversation",
+    "target_id": "WT-045",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:12:08.767681",
+    "id": 484,
+    "reference_identifier": "REF-0480",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-010",
+    "source_type": "conversation",
+    "target_id": "CONV-009",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:08.863683",
+    "id": 485,
+    "reference_identifier": "REF-0481",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-011",
+    "source_type": "conversation",
+    "target_id": "CONV-010",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:08.946403",
+    "id": 486,
+    "reference_identifier": "REF-0482",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-012",
+    "source_type": "conversation",
+    "target_id": "CONV-011",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:09.061750",
+    "id": 487,
+    "reference_identifier": "REF-0483",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-013",
+    "source_type": "conversation",
+    "target_id": "CONV-012",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:09.147682",
+    "id": 488,
+    "reference_identifier": "REF-0484",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-015",
+    "source_type": "conversation",
+    "target_id": "CONV-013",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:09.237952",
+    "id": 489,
+    "reference_identifier": "REF-0485",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-016",
+    "source_type": "conversation",
+    "target_id": "CONV-015",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:09.324874",
+    "id": 490,
+    "reference_identifier": "REF-0486",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-017",
+    "source_type": "conversation",
+    "target_id": "CONV-016",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:09.415095",
+    "id": 491,
+    "reference_identifier": "REF-0487",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-018",
+    "source_type": "conversation",
+    "target_id": "CONV-017",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:09.535890",
+    "id": 492,
+    "reference_identifier": "REF-0488",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-019",
+    "source_type": "conversation",
+    "target_id": "CONV-018",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:09.622121",
+    "id": 493,
+    "reference_identifier": "REF-0489",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-020",
+    "source_type": "conversation",
+    "target_id": "CONV-019",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:09.717119",
+    "id": 494,
+    "reference_identifier": "REF-0490",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-021",
+    "source_type": "conversation",
+    "target_id": "CONV-020",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:09.799844",
+    "id": 495,
+    "reference_identifier": "REF-0491",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-022",
+    "source_type": "conversation",
+    "target_id": "CONV-021",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:09.891676",
+    "id": 496,
+    "reference_identifier": "REF-0492",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-024",
+    "source_type": "conversation",
+    "target_id": "CONV-023",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:10.011914",
+    "id": 497,
+    "reference_identifier": "REF-0493",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-026",
+    "source_type": "conversation",
+    "target_id": "CONV-024",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:10.114582",
+    "id": 498,
+    "reference_identifier": "REF-0494",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-028",
+    "source_type": "conversation",
+    "target_id": "CONV-026",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:10.218678",
+    "id": 499,
+    "reference_identifier": "REF-0495",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-029",
+    "source_type": "conversation",
+    "target_id": "CONV-028",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:10.333833",
+    "id": 500,
+    "reference_identifier": "REF-0496",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-030",
+    "source_type": "conversation",
+    "target_id": "CONV-029",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:10.442741",
+    "id": 501,
+    "reference_identifier": "REF-0497",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-031",
+    "source_type": "conversation",
+    "target_id": "CONV-030",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:10.576716",
+    "id": 502,
+    "reference_identifier": "REF-0498",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-032",
+    "source_type": "conversation",
+    "target_id": "CONV-031",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:10.683807",
+    "id": 503,
+    "reference_identifier": "REF-0499",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-033",
+    "source_type": "conversation",
+    "target_id": "CONV-025",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:10.778917",
+    "id": 504,
+    "reference_identifier": "REF-0500",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-034",
+    "source_type": "conversation",
+    "target_id": "CONV-033",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:10.882906",
+    "id": 505,
+    "reference_identifier": "REF-0501",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-035",
+    "source_type": "conversation",
+    "target_id": "CONV-034",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:10.996551",
+    "id": 506,
+    "reference_identifier": "REF-0502",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-036",
+    "source_type": "conversation",
+    "target_id": "CONV-035",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:11.115637",
+    "id": 507,
+    "reference_identifier": "REF-0503",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-038",
+    "source_type": "conversation",
+    "target_id": "CONV-036",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:11.246096",
+    "id": 508,
+    "reference_identifier": "REF-0504",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-039",
+    "source_type": "conversation",
+    "target_id": "CONV-038",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:11.348062",
+    "id": 509,
+    "reference_identifier": "REF-0505",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-040",
+    "source_type": "conversation",
+    "target_id": "CONV-039",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:11.459597",
+    "id": 510,
+    "reference_identifier": "REF-0506",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-042",
+    "source_type": "conversation",
+    "target_id": "CONV-041",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:11.567689",
+    "id": 511,
+    "reference_identifier": "REF-0507",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-044",
+    "source_type": "conversation",
+    "target_id": "CONV-043",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:12:11.681961",
+    "id": 512,
+    "reference_identifier": "REF-0508",
+    "relationship_kind": "conversation_succeeds_conversation",
+    "source_id": "CONV-045",
+    "source_type": "conversation",
+    "target_id": "CONV-044",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-23T21:16:19.640400",
+    "id": 513,
+    "reference_identifier": "REF-0509",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-014",
+    "source_type": "conversation",
+    "target_id": "WS-002",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:19.642042",
+    "id": 514,
+    "reference_identifier": "REF-0510",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-014",
+    "source_type": "conversation",
+    "target_id": "SES-016",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:19.643560",
+    "id": 515,
+    "reference_identifier": "REF-0511",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-014",
+    "source_type": "conversation",
+    "target_id": "WT-009",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:19.729818",
+    "id": 516,
+    "reference_identifier": "REF-0512",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-009",
+    "source_type": "conversation",
+    "target_id": "WS-003",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:19.731437",
+    "id": 517,
+    "reference_identifier": "REF-0513",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-009",
+    "source_type": "conversation",
+    "target_id": "SES-011",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:19.733037",
+    "id": 518,
+    "reference_identifier": "REF-0514",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-009",
+    "source_type": "conversation",
+    "target_id": "WT-010",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:19.826514",
+    "id": 519,
+    "reference_identifier": "REF-0515",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-010",
+    "source_type": "conversation",
+    "target_id": "WS-003",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:19.828336",
+    "id": 520,
+    "reference_identifier": "REF-0516",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-010",
+    "source_type": "conversation",
+    "target_id": "SES-012",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:19.829928",
+    "id": 521,
+    "reference_identifier": "REF-0517",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-010",
+    "source_type": "conversation",
+    "target_id": "WT-011",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:19.953942",
+    "id": 522,
+    "reference_identifier": "REF-0518",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-011",
+    "source_type": "conversation",
+    "target_id": "WS-003",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:19.955770",
+    "id": 523,
+    "reference_identifier": "REF-0519",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-011",
+    "source_type": "conversation",
+    "target_id": "SES-013",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:19.957580",
+    "id": 524,
+    "reference_identifier": "REF-0520",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-011",
+    "source_type": "conversation",
+    "target_id": "WT-012",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.046774",
+    "id": 525,
+    "reference_identifier": "REF-0521",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-012",
+    "source_type": "conversation",
+    "target_id": "WS-003",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.048424",
+    "id": 526,
+    "reference_identifier": "REF-0522",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-012",
+    "source_type": "conversation",
+    "target_id": "SES-014",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.050647",
+    "id": 527,
+    "reference_identifier": "REF-0523",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-012",
+    "source_type": "conversation",
+    "target_id": "WT-013",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.138875",
+    "id": 528,
+    "reference_identifier": "REF-0524",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-013",
+    "source_type": "conversation",
+    "target_id": "WS-003",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.140608",
+    "id": 529,
+    "reference_identifier": "REF-0525",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-013",
+    "source_type": "conversation",
+    "target_id": "SES-015",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.142120",
+    "id": 530,
+    "reference_identifier": "REF-0526",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-013",
+    "source_type": "conversation",
+    "target_id": "WT-014",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.237832",
+    "id": 531,
+    "reference_identifier": "REF-0527",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-015",
+    "source_type": "conversation",
+    "target_id": "WS-003",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.239536",
+    "id": 532,
+    "reference_identifier": "REF-0528",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-015",
+    "source_type": "conversation",
+    "target_id": "SES-017",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.241126",
+    "id": 533,
+    "reference_identifier": "REF-0529",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-015",
+    "source_type": "conversation",
+    "target_id": "WT-015",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.332035",
+    "id": 534,
+    "reference_identifier": "REF-0530",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-016",
+    "source_type": "conversation",
+    "target_id": "WS-003",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.334046",
+    "id": 535,
+    "reference_identifier": "REF-0531",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-016",
+    "source_type": "conversation",
+    "target_id": "SES-018",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.336278",
+    "id": 536,
+    "reference_identifier": "REF-0532",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-016",
+    "source_type": "conversation",
+    "target_id": "WT-016",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.472799",
+    "id": 537,
+    "reference_identifier": "REF-0533",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-017",
+    "source_type": "conversation",
+    "target_id": "WS-003",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.474995",
+    "id": 538,
+    "reference_identifier": "REF-0534",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-017",
+    "source_type": "conversation",
+    "target_id": "SES-019",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.476701",
+    "id": 539,
+    "reference_identifier": "REF-0535",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-017",
+    "source_type": "conversation",
+    "target_id": "WT-017",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.579605",
+    "id": 540,
+    "reference_identifier": "REF-0536",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-018",
+    "source_type": "conversation",
+    "target_id": "WS-003",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.581519",
+    "id": 541,
+    "reference_identifier": "REF-0537",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-018",
+    "source_type": "conversation",
+    "target_id": "SES-020",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.583386",
+    "id": 542,
+    "reference_identifier": "REF-0538",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-018",
+    "source_type": "conversation",
+    "target_id": "WT-018",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.678965",
+    "id": 543,
+    "reference_identifier": "REF-0539",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-019",
+    "source_type": "conversation",
+    "target_id": "WS-003",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.680585",
+    "id": 544,
+    "reference_identifier": "REF-0540",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-019",
+    "source_type": "conversation",
+    "target_id": "SES-021",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.682123",
+    "id": 545,
+    "reference_identifier": "REF-0541",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-019",
+    "source_type": "conversation",
+    "target_id": "WT-019",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.777206",
+    "id": 546,
+    "reference_identifier": "REF-0542",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-020",
+    "source_type": "conversation",
+    "target_id": "WS-003",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.778863",
+    "id": 547,
+    "reference_identifier": "REF-0543",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-020",
+    "source_type": "conversation",
+    "target_id": "SES-022",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.780371",
+    "id": 548,
+    "reference_identifier": "REF-0544",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-020",
+    "source_type": "conversation",
+    "target_id": "WT-020",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.871455",
+    "id": 549,
+    "reference_identifier": "REF-0545",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-021",
+    "source_type": "conversation",
+    "target_id": "WS-003",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.873522",
+    "id": 550,
+    "reference_identifier": "REF-0546",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-021",
+    "source_type": "conversation",
+    "target_id": "SES-023",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:20.875101",
+    "id": 551,
+    "reference_identifier": "REF-0547",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-021",
+    "source_type": "conversation",
+    "target_id": "WT-021",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.006546",
+    "id": 552,
+    "reference_identifier": "REF-0548",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-022",
+    "source_type": "conversation",
+    "target_id": "WS-003",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.008265",
+    "id": 553,
+    "reference_identifier": "REF-0549",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-022",
+    "source_type": "conversation",
+    "target_id": "SES-024",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.009939",
+    "id": 554,
+    "reference_identifier": "REF-0550",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-022",
+    "source_type": "conversation",
+    "target_id": "WT-022",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.107948",
+    "id": 555,
+    "reference_identifier": "REF-0551",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-023",
+    "source_type": "conversation",
+    "target_id": "WS-004",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.109668",
+    "id": 556,
+    "reference_identifier": "REF-0552",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-023",
+    "source_type": "conversation",
+    "target_id": "SES-025",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.111308",
+    "id": 557,
+    "reference_identifier": "REF-0553",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-023",
+    "source_type": "conversation",
+    "target_id": "WT-023",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.215497",
+    "id": 558,
+    "reference_identifier": "REF-0554",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-024",
+    "source_type": "conversation",
+    "target_id": "WS-004",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.217776",
+    "id": 559,
+    "reference_identifier": "REF-0555",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-024",
+    "source_type": "conversation",
+    "target_id": "SES-026",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.219774",
+    "id": 560,
+    "reference_identifier": "REF-0556",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-024",
+    "source_type": "conversation",
+    "target_id": "WT-024",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.312082",
+    "id": 561,
+    "reference_identifier": "REF-0557",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-026",
+    "source_type": "conversation",
+    "target_id": "WS-004",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.313777",
+    "id": 562,
+    "reference_identifier": "REF-0558",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-026",
+    "source_type": "conversation",
+    "target_id": "SES-029",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.315354",
+    "id": 563,
+    "reference_identifier": "REF-0559",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-026",
+    "source_type": "conversation",
+    "target_id": "WT-025",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.450510",
+    "id": 564,
+    "reference_identifier": "REF-0560",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-027",
+    "source_type": "conversation",
+    "target_id": "WS-004",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.452525",
+    "id": 565,
+    "reference_identifier": "REF-0561",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-027",
+    "source_type": "conversation",
+    "target_id": "SES-030",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.454467",
+    "id": 566,
+    "reference_identifier": "REF-0562",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-027",
+    "source_type": "conversation",
+    "target_id": "WT-026",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.544581",
+    "id": 567,
+    "reference_identifier": "REF-0563",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-028",
+    "source_type": "conversation",
+    "target_id": "WS-004",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.546344",
+    "id": 568,
+    "reference_identifier": "REF-0564",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-028",
+    "source_type": "conversation",
+    "target_id": "SES-031",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.548127",
+    "id": 569,
+    "reference_identifier": "REF-0565",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-028",
+    "source_type": "conversation",
+    "target_id": "WT-027",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.642092",
+    "id": 570,
+    "reference_identifier": "REF-0566",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-029",
+    "source_type": "conversation",
+    "target_id": "WS-004",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.643876",
+    "id": 571,
+    "reference_identifier": "REF-0567",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-029",
+    "source_type": "conversation",
+    "target_id": "SES-032",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.645591",
+    "id": 572,
+    "reference_identifier": "REF-0568",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-029",
+    "source_type": "conversation",
+    "target_id": "WT-028",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.735770",
+    "id": 573,
+    "reference_identifier": "REF-0569",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-030",
+    "source_type": "conversation",
+    "target_id": "WS-004",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.737572",
+    "id": 574,
+    "reference_identifier": "REF-0570",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-030",
+    "source_type": "conversation",
+    "target_id": "SES-033",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.739150",
+    "id": 575,
+    "reference_identifier": "REF-0571",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-030",
+    "source_type": "conversation",
+    "target_id": "WT-029",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.831750",
+    "id": 576,
+    "reference_identifier": "REF-0572",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-031",
+    "source_type": "conversation",
+    "target_id": "WS-004",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.834037",
+    "id": 577,
+    "reference_identifier": "REF-0573",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-031",
+    "source_type": "conversation",
+    "target_id": "SES-034",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.836506",
+    "id": 578,
+    "reference_identifier": "REF-0574",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-031",
+    "source_type": "conversation",
+    "target_id": "WT-030",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.970222",
+    "id": 579,
+    "reference_identifier": "REF-0575",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-032",
+    "source_type": "conversation",
+    "target_id": "WS-004",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.972151",
+    "id": 580,
+    "reference_identifier": "REF-0576",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-032",
+    "source_type": "conversation",
+    "target_id": "SES-035",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:21.973827",
+    "id": 581,
+    "reference_identifier": "REF-0577",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-032",
+    "source_type": "conversation",
+    "target_id": "WT-031",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.066204",
+    "id": 582,
+    "reference_identifier": "REF-0578",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-025",
+    "source_type": "conversation",
+    "target_id": "WS-005",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.068030",
+    "id": 583,
+    "reference_identifier": "REF-0579",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-025",
+    "source_type": "conversation",
+    "target_id": "SES-027",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.069791",
+    "id": 584,
+    "reference_identifier": "REF-0580",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-025",
+    "source_type": "conversation",
+    "target_id": "WT-032",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.167885",
+    "id": 585,
+    "reference_identifier": "REF-0581",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-033",
+    "source_type": "conversation",
+    "target_id": "WS-005",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.170880",
+    "id": 586,
+    "reference_identifier": "REF-0582",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-033",
+    "source_type": "conversation",
+    "target_id": "SES-036",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.173741",
+    "id": 587,
+    "reference_identifier": "REF-0583",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-033",
+    "source_type": "conversation",
+    "target_id": "WT-033",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.279111",
+    "id": 588,
+    "reference_identifier": "REF-0584",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-034",
+    "source_type": "conversation",
+    "target_id": "WS-005",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.281216",
+    "id": 589,
+    "reference_identifier": "REF-0585",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-034",
+    "source_type": "conversation",
+    "target_id": "SES-037",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.283330",
+    "id": 590,
+    "reference_identifier": "REF-0586",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-034",
+    "source_type": "conversation",
+    "target_id": "WT-034",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.378988",
+    "id": 591,
+    "reference_identifier": "REF-0587",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-035",
+    "source_type": "conversation",
+    "target_id": "WS-005",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.380728",
+    "id": 592,
+    "reference_identifier": "REF-0588",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-035",
+    "source_type": "conversation",
+    "target_id": "SES-038",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.382365",
+    "id": 593,
+    "reference_identifier": "REF-0589",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-035",
+    "source_type": "conversation",
+    "target_id": "WT-035",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.512036",
+    "id": 594,
+    "reference_identifier": "REF-0590",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-036",
+    "source_type": "conversation",
+    "target_id": "WS-005",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.514004",
+    "id": 595,
+    "reference_identifier": "REF-0591",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-036",
+    "source_type": "conversation",
+    "target_id": "SES-039",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.515706",
+    "id": 596,
+    "reference_identifier": "REF-0592",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-036",
+    "source_type": "conversation",
+    "target_id": "WT-036",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.609067",
+    "id": 597,
+    "reference_identifier": "REF-0593",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-037",
+    "source_type": "conversation",
+    "target_id": "WS-005",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.610919",
+    "id": 598,
+    "reference_identifier": "REF-0594",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-037",
+    "source_type": "conversation",
+    "target_id": "SES-040",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.612568",
+    "id": 599,
+    "reference_identifier": "REF-0595",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-037",
+    "source_type": "conversation",
+    "target_id": "WT-037",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.712231",
+    "id": 600,
+    "reference_identifier": "REF-0596",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-038",
+    "source_type": "conversation",
+    "target_id": "WS-005",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.714150",
+    "id": 601,
+    "reference_identifier": "REF-0597",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-038",
+    "source_type": "conversation",
+    "target_id": "SES-041",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.716419",
+    "id": 602,
+    "reference_identifier": "REF-0598",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-038",
+    "source_type": "conversation",
+    "target_id": "WT-038",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.809636",
+    "id": 603,
+    "reference_identifier": "REF-0599",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-039",
+    "source_type": "conversation",
+    "target_id": "WS-005",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.811533",
+    "id": 604,
+    "reference_identifier": "REF-0600",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-039",
+    "source_type": "conversation",
+    "target_id": "SES-042",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.813221",
+    "id": 605,
+    "reference_identifier": "REF-0601",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-039",
+    "source_type": "conversation",
+    "target_id": "WT-039",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.956162",
+    "id": 606,
+    "reference_identifier": "REF-0602",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-040",
+    "source_type": "conversation",
+    "target_id": "WS-005",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.958111",
+    "id": 607,
+    "reference_identifier": "REF-0603",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-040",
+    "source_type": "conversation",
+    "target_id": "SES-043",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:22.959873",
+    "id": 608,
+    "reference_identifier": "REF-0604",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-040",
+    "source_type": "conversation",
+    "target_id": "WT-040",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:23.061873",
+    "id": 609,
+    "reference_identifier": "REF-0605",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-041",
+    "source_type": "conversation",
+    "target_id": "WS-007",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:23.063677",
+    "id": 610,
+    "reference_identifier": "REF-0606",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-041",
+    "source_type": "conversation",
+    "target_id": "SES-044",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:23.065559",
+    "id": 611,
+    "reference_identifier": "REF-0607",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-041",
+    "source_type": "conversation",
+    "target_id": "WT-041",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:23.168270",
+    "id": 612,
+    "reference_identifier": "REF-0608",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-042",
+    "source_type": "conversation",
+    "target_id": "WS-007",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:23.171671",
+    "id": 613,
+    "reference_identifier": "REF-0609",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-042",
+    "source_type": "conversation",
+    "target_id": "SES-045",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:23.173943",
+    "id": 614,
+    "reference_identifier": "REF-0610",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-042",
+    "source_type": "conversation",
+    "target_id": "WT-042",
+    "target_type": "work_ticket"
+  },
+  {
+    "created_at": "2026-05-23T21:16:23.280169",
+    "id": 615,
+    "reference_identifier": "REF-0611",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-043",
+    "source_type": "conversation",
+    "target_id": "WS-008",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-23T21:16:23.282091",
+    "id": 616,
+    "reference_identifier": "REF-0612",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-043",
+    "source_type": "conversation",
+    "target_id": "SES-053",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-23T21:16:23.283732",
+    "id": 617,
+    "reference_identifier": "REF-0613",
+    "relationship_kind": "conversation_opens_against_work_ticket",
+    "source_id": "CONV-043",
+    "source_type": "conversation",
+    "target_id": "WT-043",
+    "target_type": "work_ticket"
   }
 ]

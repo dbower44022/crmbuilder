@@ -82,12 +82,12 @@
     "workstream_description": "A methodology-validation workstream that ran the v0.4 methodology entity schemas against real-world CBM domain content. Originally deferred when v0.4 shipped (co-mingling dogfood and client content in one V2 database was the friction); re-flagged ready on 05-18-26 after v0.5 engagement isolation closed the gap. Produced methodology-schemas-cbm-paper-test-findings.md with one blocking finding — a sub-domain hierarchy amendment to the domain schema — recorded as planning item 001 in the Cleveland Business Mentors engagement.",
     "workstream_identifier": "WS-006",
     "workstream_name": "Cleveland Business Mentors paper test",
-    "workstream_notes": "Cross-engagement: the paper-test conversation sessions live in the CBM engagement database, not CRMBUILDER's. PI-025 will face a cross-engagement decision when wiring conversation-membership edges back to this workstream record. Lifecycle-date reconstruction uses DEC-176 Option C fallback throughout (kickoff Last Updated 05-18-26 → findings Last Updated 05-19-26). Planning material spans kickoff + findings documents; no workstream-plan-style master document, so master-plan reference_book record deferred per DEC-177.",
+    "workstream_notes": "Paper-test conversations live in the CBM engagement (ENG-002). CONV records to be authored when CBM engagement state is committed or a cross-engagement edge convention is settled — see SES-062 close-out and DEC-192.",
     "workstream_purpose": "Validate the four v0.4 methodology entity schemas (domain, entity, process, crm_candidate) against existing Cleveland Business Mentoring domain content, producing findings and a single decision about whether CBM redo Phase 1 ships on v0.4 as-is or requires schema amendments first.",
     "workstream_started_at": "2026-05-18T00:00:00",
     "workstream_status": "complete",
     "workstream_superseded_at": null,
-    "workstream_updated_at": "2026-05-23T16:06:17.850761"
+    "workstream_updated_at": "2026-05-23T21:12:02.576822"
   },
   {
     "workstream_cancelled_at": null,
@@ -103,5 +103,20 @@
     "workstream_status": "complete",
     "workstream_superseded_at": null,
     "workstream_updated_at": "2026-05-23T16:06:17.928625"
+  },
+  {
+    "workstream_cancelled_at": null,
+    "workstream_completed_at": "2026-05-23T00:00:00",
+    "workstream_created_at": "2026-05-23T21:12:02.486055",
+    "workstream_deleted_at": null,
+    "workstream_description": "A three-session audit-v1.2 workstream. SES-053 reordered YAML schema Category 6 (Role-Based Access Control) work across v1.2 and v1.3 and drafted the audit-v1.2 gap-analysis Section 9. SES-058 established audit-v1.2 as a workstream and captured four foundational design decisions plus the v1.0 plan document. SES-060 resolved the Section 9 open questions and the security.yaml placement question, bumping the plan doc to v1.3. The implementation Prompts A through K are queued separately as planning items PI-034 through PI-044 and are not part of this workstream's content scope.",
+    "workstream_identifier": "WS-008",
+    "workstream_name": "Audit feature v1.2",
+    "workstream_notes": null,
+    "workstream_purpose": "Deliver the v1.2 plan for the role-aware audit feature — roles and teams top-level recognition, structured scope_access and system_permissions parsing, role-aware audit, role-aware configure, condition-expression role: leaf clause, deploy ordering, role-aware visibility, and security.yaml emission.",
+    "workstream_started_at": "2026-05-22T00:00:00",
+    "workstream_status": "complete",
+    "workstream_superseded_at": null,
+    "workstream_updated_at": "2026-05-23T21:12:02.486393"
   }
 ]
