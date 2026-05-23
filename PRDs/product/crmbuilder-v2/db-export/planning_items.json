@@ -482,5 +482,16 @@
     "status": "Open",
     "title": "audit-v1.2 Prompt K — feat-audit.md v1.2 and user-guide updates",
     "updated_at": "2026-05-23T15:52:46.585744"
+  },
+  {
+    "created_at": "2026-05-23T21:29:51.535148",
+    "description": "Implement the four decisions from SES-064 (DEC-201 local-canonical with tunneled MCP; DEC-202 MCP-only exposure; DEC-203 marker-driven single deployment; DEC-204 Cloudflare Tunnel on mcp.crmbuilder.com with Access + shared-secret auth). Scope: (a) Code changes delivered as CLAUDE-CODE-PROMPT-*.md files: add --transport {stdio,streamable-http} flag to the crmbuilder-v2-mcp CLI entry point in crmbuilder-v2/src/crmbuilder_v2/cli.py, parameterize the transport in mcp_server/server.py main(), bind the FastMCP HTTP transport to 127.0.0.1 with a configurable port, add a shared-secret header middleware to the HTTP transport that 401s missing or wrong secrets, address the engagement-marker-mid-process risk identified in DEC-203 by either re-reading current_engagement.json per request or failing loud on marker change with restart-required signal. (b) Operational steps: move crmbuilder.com nameservers from current registrar to Cloudflare (free plan); install cloudflared on Doug's laptop and configure as a launchd service; create the named tunnel and DNS record routing mcp.crmbuilder.com to 127.0.0.1:<mcp_port>; create the Cloudflare Access policy requiring Google login (Doug's identity) for the mcp.crmbuilder.com hostname; register the MCP URL in claude.ai's MCP integration with the shared-secret custom header. (c) Verification: smoke-test all 44 MCP tools end-to-end from a claude.ai conversation against both CRMBUILDER and CBM engagements (flip the engagement marker between runs); confirm an unauthenticated request from a non-Doug browser is blocked at the Access layer; confirm a request with wrong shared secret is blocked at the MCP layer; confirm engagement marker drives the right database. (d) Documentation: README section in crmbuilder-v2/ covering remote deployment setup; entry in repo CLAUDE.md under the v2 section describing the remote MCP URL and auth model; the deployment kickoff prompt itself (the in-flight follow-on conversation deliverable, drafted before any of the above starts).",
+    "id": 45,
+    "identifier": "PI-045",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "V2 remote-access deployment: expose MCP server publicly so claude.ai can read and write the v2 governance database",
+    "updated_at": "2026-05-23T21:29:51.535151"
   }
 ]

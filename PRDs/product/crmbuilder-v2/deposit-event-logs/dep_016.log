@@ -1,0 +1,22 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_063.json
+Label:  SES-063 PI-028 commit entity schema spec authored: status-free documentary lifecycle settled (DEC-198), FK-over-references-edge deviation articulated (DEC-199), four new cross-spec precedents established (DEC-200); 1 session, 3 decisions, 4 references. Rebased at close-out time from SES-062 / DEC-191..193 to SES-063 / DEC-198..200 after a parallel sandbox session pushed ses_062.json (PI-025 prior-conversations backfill, DEC-191..197) first. PI-029 schema migration prompt A authored at PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-pi-029-A-commits-table-and-vocab.md and queued for Claude Code execution. PI-028 stays Open per methodology §9 — resolves_planning_items payload section does not yet ship.
+Deposit event: DEP-016
+
+=== session (1 record) ===
+  ✓ POST session  SES-063 (HTTP 201)
+
+=== decisions (3 records) ===
+  ✓ POST decisions  DEC-198 (HTTP 201)
+  ✓ POST decisions  DEC-199 (HTTP 201)
+  ✓ POST decisions  DEC-200 (HTTP 201)
+
+=== references (4 records) ===
+  ✓ POST references  DEC-198 decided_in SES-063 (HTTP 201)
+  ✓ POST references  DEC-199 decided_in SES-063 (HTTP 201)
+  ✓ POST references  DEC-200 decided_in SES-063 (HTTP 201)
+  ✓ POST references  SES-063 is_about PI-028 (HTTP 201)
+
+✓ All 8 operations complete.
+
+✓ Recorded apply as deposit_event DEP-016 (HTTP 201).

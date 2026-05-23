@@ -1,0 +1,27 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_064.json
+Label:  SES-064 V2 remote-access deployment architecture decided (rebased from SES-062 to SES-064 to clear collisions with PI-025 prior-conversations backfill planning sandbox (SES-062) and PI-029 commit entity schema spec sandbox (SES-063)): local-canonical DB stays on Doug's laptop, MCP exposed publicly via Cloudflare Tunnel under crmbuilder.com with Cloudflare Access + shared-secret auth, REST API stays on localhost, marker-driven engagement routing. Transport verification against the codebase confirms the current MCP server runs stdio-only (server.py:44 — server.run('stdio')) and needs an HTTP transport adapter (FastMCP supports streamable-http). 1 session, 4 decisions, 1 planning item, 5 references.
+Deposit event: DEP-017
+
+=== session (1 record) ===
+  ✓ POST session  SES-064 (HTTP 201)
+
+=== decisions (4 records) ===
+  ✓ POST decisions  DEC-201 (HTTP 201)
+  ✓ POST decisions  DEC-202 (HTTP 201)
+  ✓ POST decisions  DEC-203 (HTTP 201)
+  ✓ POST decisions  DEC-204 (HTTP 201)
+
+=== planning_items (1 record) ===
+  ✓ POST planning_items  PI-045 (HTTP 201)
+
+=== references (5 records) ===
+  ✓ POST references  DEC-201 decided_in SES-064 (HTTP 201)
+  ✓ POST references  DEC-202 decided_in SES-064 (HTTP 201)
+  ✓ POST references  DEC-203 decided_in SES-064 (HTTP 201)
+  ✓ POST references  DEC-204 decided_in SES-064 (HTTP 201)
+  ✓ POST references  SES-064 is_about PI-045 (HTTP 201)
+
+✓ All 11 operations complete.
+
+✓ Recorded apply as deposit_event DEP-017 (HTTP 201).

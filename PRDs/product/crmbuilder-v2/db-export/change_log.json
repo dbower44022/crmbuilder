@@ -30384,5 +30384,715 @@
     "id": 1236,
     "operation": "update",
     "timestamp": "2026-05-23T21:16:31.161050"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "PRDs/product/crmbuilder-v2/governance-schema-specs/commit.md v1.0 (this conversation's primary deliverable; 427 lines, nine-subsection format per governance-entity-schema-spec-guide.md); PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-pi-029-A-commits-table-and-vocab.md (Claude Code execution prompt for PI-029's structural foundation slice); PRDs/product/crmbuilder-v2/close-out-payloads/ses_063.json (this payload); PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-apply-close-out-ses-063.md (apply prompt for this close-out); three decisions DEC-198, DEC-199, DEC-200; four references (three decided_in edges plus one is_about edge SES-063→PI-028). PI-028's reference_book record (the commit.md spec captured as a reference_book governance record) is NOT authored in this conversation; PI-033's back-fill handles all reference_book records for the methodology-and-schema documents authored before PI-030's close-out payload schema extension ships.",
+      "conversation_reference": "Claude.ai ARCHITECTURE-mode schema-design conversation. Opened against the PI-028 kickoff at PRDs/product/crmbuilder-v2/schema-design-kickoff-commit.md to render the v0.8 commit entity type defined in methodology-code-change-lifecycle.md §3.1 into the standard nine-subsection schema-spec format and produce the first Claude Code prompt for the downstream PI-029 schema migration. The conversation was heavily pre-decided by the methodology document (eight foundation decisions DEC-183 through DEC-190 had already settled the architectural questions); this conversation's substantive contribution was the labeling of inheritable precedents and the articulation of the FK-over-references-edge deviation from DEC-124 the methodology had silently adopted. Three decisions authored: DEC-198 locks the status-free documentary lifecycle as a refinement of DEC-137; DEC-199 articulates the FK-over-references-edge deviation with frequency-justified-denormalization rationale; DEC-200 elevates four new cross-spec precedents for successor governance specs to inherit.",
+      "created_at": "2026-05-23T21:29:45.421465+00:00",
+      "id": 62,
+      "identifier": "SES-063",
+      "in_flight_at_end": "PI-029 schema-migration Prompt A queued for Claude Code execution. After the SES-063 close-out applies, Doug runs the Prompt A apply locally; on success, the commits table exists in the CRMBUILDER engagement database, the refs.relationship_kind CHECK admits the three new kinds, the two existing 'blocks' rows have migrated to 'blocked_by', and vocab.py knows about 'commit' and the three new kinds. PI-029 slices B (access-layer CRUD), C (REST endpoints), D (tests) emerge from Prompt A's review and a future PI-029 build-planning conversation; this conversation does not author them. PI-030 (close-out payload extension and apply script update — adds the four new sections commits/work_tickets/resolves_planning_items/addresses_planning_items to the payload format), PI-031 (Commits panel UI), and PI-033 (historical commit and work_ticket back-fill plus retroactive resolves edges plus is_about→addresses migration plus blocks→blocked_by row migration finalization) remain Open and queued. PI-028 stays Open at this conversation's close per methodology §9 — PI-033 resolves it retroactively once the resolves_planning_items payload section ships in PI-030. Next Claude.ai conversation: depends on prioritization between (a) PI-029 build-planning (settles the URL shapes for the derived endpoints from commit.md §3.8.1 plus the access-layer cardinality rules for the new resolves/addresses edges), (b) PI-030 build-planning (settles the close-out payload schema extension and the enumerate_commits.py helper design), or (c) deferred audit-v1.2 build slices A through F that were queued by SES-058's workstream-establishing conversation. Doug's call at next conversation kickoff.",
+      "session_date": "2026-05-23",
+      "status": "Complete",
+      "summary": "",
+      "title": "Commit entity schema spec authored per the seven-section governance schema-spec format; PI-029 schema-migration prompt A queued",
+      "topics_covered": "Seed prompt: \"Project default operating mode: ARCHITECTURE.\" [project preamble], followed by the PI-028 kickoff at PRDs/product/crmbuilder-v2/schema-design-kickoff-commit.md attached to the opening turn. Substantive task: author PRDs/product/crmbuilder-v2/governance-schema-specs/commit.md per the seven-section format defined in governance-entity-schema-spec-guide.md, settling the seven design questions enumerated in the kickoff.\n\nStructured summary of the schema-design work:\n\n(1) Identifier rebasing at orientation, then again at close. The kickoff (authored 05-23-26 21:00 by SES-061) anticipated this conversation closing at SES-061 itself per the kickoff close-out-expectations block. In the intervening window SES-060 (audit-v1.2 planning, DEC-178..182) and SES-061 (methodology drafting, DEC-183..190) had been authored and their payloads queued in close-out-payloads/. At conversation start, actual heads verified against the CRMBUILDER db-export snapshots showed SES-059 as highest applied session and ses_060.json / ses_061.json queued, so this conversation planned to close at SES-062 with decisions DEC-191..193. During close-out artifact authoring, a final pull surfaced that a parallel sandbox session had already pushed ses_062.json (PI-025 prior-conversations backfill, DEC-191..197) and its apply prompt; the close-out rebased a second time to SES-063 and DEC-198..200. The narrative and the renamed files (ses_063.json, CLAUDE-CODE-PROMPT-apply-close-out-ses-063.md) reflect the second rebase. The apply prompt's pre-flight re-verifies against the live API in case a third concurrent close-out arrives between now and apply time.\n\n(2) Pre-flight reading. CLAUDE.md (root), methodology-code-change-lifecycle.md v1.0, governance-entity-schema-spec-guide.md v1.0, governance-schema-specs/work_ticket.md v1.0, governance-schema-specs/reference_book.md v1.1, and crmbuilder-v2/src/crmbuilder_v2/access/vocab.py read end-to-end before drafting. The other four governance schema specs (workstream, conversation, close_out_payload, deposit_event) spot-checked for cross-spec precedent context.\n\n(3) Plan articulated and approved before drafting. Per ARCHITECTURE mode, the conversation laid out how each of the seven kickoff design questions would be handled and surfaced the calls that genuinely needed Doug's input. All seven decided autonomously per ARCHITECTURE mode's decide-and-announce posture; none individually passed the two-part stop-the-flow test (real downstream impact AND two viable options with meaningfully different outcomes), as the methodology document had already pre-decided the architectural shape and the remaining work was rendering decisions into the standard format.\n\n(4) DEC-198 — Status-free documentary lifecycle. The methodology's v0.8 field inventory (§3.1) has no commit_status column. The reference_book spec (DEC-137 source) established that documentary-shaped lifecycles inherit base timestamps only, but reference_book still carries a three-value status field (active → archived / superseded). Commit goes further: no status field at all. The spec articulates this as a refinement of DEC-137 — documentary lifecycles MAY drop the status field entirely when no operationally meaningful states exist — and frames it as MAY-not-MUST so future documentary entities with even a two-status distinction continue to follow reference_book's precedent.\n\n(5) DEC-199 — FK-over-references-edge deviation. The methodology §3.1 chose a foreign-key column (commit_conversation_id) for the commit→conversation relationship, and the audit queries in methodology §6.1 and §6.2 JOIN through the FK directly. This deviates from DEC-124's cross-spec precedent (references-edge over FK for parent-child governance relationships). The spec articulates the deviation explicitly with three justifications: frequency of traversal (every audit query walks commit→conversation; JOIN cost compounds linearly with commit count), cardinality (every commit has exactly one producing conversation, which FK + NOT NULL expresses cleanly), and DEC-187 reinforcement (the conversation-scoped accounting unit principle makes ownership mandatory by the model; FK enforces mandatory ownership at the schema level). The deviation is framed as the sibling of DEC-133's frequency-justified-deferral logic — the same volume-of-traversal reasoning, applied in the opposite direction.\n\n(6) DEC-200 — Four new cross-spec precedents. The spec elevates four precedents successor governance specs may inherit: (a) status-free documentary lifecycles (per DEC-198's refinement of DEC-137); (b) natural-key lookup endpoints via GET /{plural}/by-{key}/{value} — introduced by GET /commits/by-sha/{sha} for SHA-based lookup, generalizes to any future entity with a strong natural key distinct from its V2 identifier; (c) JSON-array columns for variable-cardinality scalar lists — introduced by commit_parent_shas (0/1/2 elements), generalizes to any 0-to-N scalar list intrinsic to the entity's identity that doesn't warrant a separate normalized table; (d) conversation-scoped accounting unit principle — restating DEC-187 (settled by methodology authoring at SES-061) in spec-inheritable form. The fourth is the most consequential structurally because it generalizes the engagement-as-accounting-unit principle to any future entity type representing external artifacts (a network response, a deployed config, a database backup).\n\n(7) Routine design choices decided per ARCHITECTURE mode and announced. Four-digit identifier width CM-NNNN (vs the three-digit governance default of CM-NNN), justified by expected cardinality (~700 historical + ongoing development volume). Client-side identifier assignment per CLAUDE.md line 62 (deviation from spec-guide §6's server-side default, consistent with every other prefixed-identifier entity in V2). SHA validation as ^[0-9a-f]{40}$ with lowercase enforced; SHA-256 migration anticipation captured as §3.8.2 open question. Repository validation: non-empty trimmed, no whitespace, no path separators, no scheme prefix; no enum constraint (new repos added as encountered). commit_committed_at preserves ISO 8601 offset (deviation from base UTC) because committer-local time is informational signal. Soft-delete-with-restore preferred over born-terminal append-only (contrast with deposit_event) because mis-ingestion correction is a real path that born-terminal would forbid. Commits panel under Governance sidebar group with Repository column and Repository filter combo (natural addition paralleling work_ticket's Kind column and close_out_payload's Status filter combo precedents); default sort commit_committed_at descending (audit-log convention paralleling deposit_event's deviation from V2's default ascending).\n\n(8) Thirteen acceptance criteria captured in §3.7, above the spec-guide §7.1 floor of ten.\n\n(9) Five open questions captured in §3.8 with explicit category tags: derived endpoint URL shapes [for build-planning], SHA-256 migration anticipation [for retroactive backfill or future user-interface version], commit_author_kind attribution discipline [for future user-interface version], branch-pinning queries [for retroactive backfill], sub-grouping in the Governance sidebar [for build-planning].\n\n(10) PI-029 Prompt A authored at PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-pi-029-A-commits-table-and-vocab.md. Scope: one Alembic migration (revision 0012) adding the commits table, extending refs.source_type/target_type CHECKs to admit 'commit', updating refs.relationship_kind CHECK in two steps (interim admits both 'blocks' and 'blocked_by'; data migration UPDATEs the two REF-0357/REF-0358 rows; final removes 'blocks'), extending change_log.entity_type CHECK; one vocab.py update adding 'commit' to ENTITY_TYPES, adding 'resolves' / 'addresses' / 'blocked_by' to REFERENCE_RELATIONSHIPS, removing 'blocks', adding the three new _kinds_for_pair clauses, removing the legacy 'blocks'-emitting clauses; three migration-mechanics tests verifying table creation, blocks→blocked_by data migration, and vocab integrity. Subsequent prompts (B access layer, C REST endpoints, D tests) emerge from this prompt's review and a future PI-029 build-planning conversation.\n\n(11) PI-028 stays Open at this conversation's close per methodology §9. The resolves_planning_items payload section the methodology specifies does not yet ship (PI-030 work), so this conversation cannot resolve its own planning item via the new mechanism. PI-033's back-fill resolves PI-028 retroactively. Honesty of \"the methodology specifies a model the schema does not yet support\" matters more than visual neatness of a flipped status.\n\n(12) Close-out payload and apply prompt produced. This payload (ses_063.json) and its apply prompt (CLAUDE-CODE-PROMPT-apply-close-out-ses-063.md) cover only the three governance decisions and one is_about edge from the session to PI-028; PI-029 Prompt A is committed separately for Doug to execute via Claude Code after this close-out applies."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-063",
+    "entity_type": "session",
+    "id": 1237,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:45.421880"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Option B — carry a placeholder commit_status enum with values like active/reverted/archived to maintain parity with the other six governance entities, even though none of the values are meaningful in v0.8. Rejected because placeholder columns with no semantics are schema noise; the v0.8 fields list deliberately omits commit_status, and the methodology document §3.1 anticipated the absence by listing all candidate fields explicitly. Option C — name the status-free posture as a one-off deviation in commit.md §3.4 without elevating it to a cross-spec precedent. Rejected because the methodology workstream is on a trajectory to author additional governance entity types (a future commit-attribution-kind entity, a future database-row-change entity, an api-request entity if such a workstream lands); precedents named explicitly accelerate those conversations. Option D — invert the framing and treat reference_book's three-status documentary lifecycle as the deviation rather than commit's no-status documentary lifecycle. Rejected because reference_book's three-status pattern (active → archived / superseded) is itself meaningful per its operational use (a PRD can be authoritative or archived or superseded by a newer PRD), and reference_book's precedent has already been inherited by no spec other than DEC-137's lifecycle category boundary; demoting it would require a reference_book.md spec revision without any operational benefit.",
+      "consequences": "Three downstream effects. (1) The commits table has 15 columns (12 substantive + 3 governance-standard timestamps) instead of 16 (no commit_status). (2) PI-029's Alembic migration omits any commit_status CHECK constraint, simplifying the table-creation block. (3) Successor governance schema specs that find themselves authoring an entity with no operationally meaningful status field now have a named cross-spec precedent (DEC-200's first inheritable precedent, sourced from this decision) to cite. The refinement does not change reference_book's posture, does not change any v0.7 entity's posture, and does not block the future addition of a commit_status enum if real-use signal warrants — a future v0.9 migration would add the column additively without violating this decision.",
+      "context": "The Code Change Lifecycle methodology (methodology-code-change-lifecycle.md §3.1) defined the commit entity's v0.8 field inventory with no commit_status column. The PI-028 kickoff named this as Q1, asking whether the spec should confirm a documentary lifecycle posture per DEC-137 (reference_book's documentary-shape precedent) or surface an unanticipated workflow consideration. DEC-137 itself was settled at SES-050 (the reference_book schema-design conversation) and established that documentary-shaped lifecycles inherit base timestamps only — but reference_book, the precedent's original instance, still carries a three-value status field (active → archived / superseded). Commit goes further than reference_book by carrying no status field at all. The question for this conversation: does the absence of a status field warrant naming a refinement of DEC-137 as its own cross-spec precedent, or is it an unremarkable application of the existing precedent on commit's facts?",
+      "created_at": "2026-05-23T21:29:45.522329+00:00",
+      "decision": "Lock the commit lifecycle as status-free documentary. The commits table has no commit_status column, no transitions, no terminals. The entity either exists in the engagement database or doesn't; soft-delete-with-restore (per V2 base behavior) is the only state-change mechanism. Articulate this in commit.md §3.4 as a refinement of DEC-137: documentary-shaped lifecycles MAY drop the status field entirely when no operationally meaningful states exist. The refinement is intentionally permissive (MAY, not MUST); future documentary entities with even a two-status distinction (e.g., active/archived) continue to follow reference_book's precedent. The refinement is elevated to a cross-spec precedent (one of the four named in DEC-200) so successor governance specs can inherit the option.",
+      "decision_date": "2026-05-23",
+      "id": 196,
+      "identifier": "DEC-198",
+      "rationale": "Two reasons. (a) The underlying artifact has no workflow. A git commit is an immutable observed fact: there is no 'active' → 'archived' analogue (a commit doesn't become inauthentic when its message is supplanted by a later commit — the two coexist in the DAG), and there is no 'superseded' analogue (git's reset and revert operations don't supersede commits, they add new commits). The absence of a meaningful workflow on the underlying artifact is the absence of a meaningful workflow on its governance record; carrying a placeholder commit_status enum with values like active/reverted would be schema noise without semantics. (b) The refinement is worth naming explicitly because the spec-guide §3.4 names lifecycle as one of nine required subsections and the spec-guide §3.7 enumerates lifecycle-related acceptance criteria; a successor spec author reading the existing six v0.7 governance specs would see status fields everywhere (workstream, conversation, work_ticket, close_out_payload all have rich workflows; reference_book and deposit_event have status fields too despite their non-workflow shapes) and might default to authoring a status field even when none is operationally meaningful. The named refinement gives the successor author a precedent to cite when their entity also has no operational states.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Commit lifecycle is documentary and status-free; refines DEC-137 — documentary lifecycles MAY drop the status field entirely when no operationally meaningful states exist",
+      "updated_at": "2026-05-23T21:29:45.522331+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-198",
+    "entity_type": "decision",
+    "id": 1238,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:45.522733"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Option B — model commit→conversation as a references-table edge with a new typed kind commit_produced_by_conversation (or, source-first per DEC-048, conversation_produced_commit with reversed direction). Rejected on all three grounds above: the JOIN cost compounds with commit volume; the at-most-one cardinality requires an access-layer enforcement rule; and the mandatory-ownership constraint requires the same access-layer rule. The FK with NOT NULL is structurally simpler. Option C — keep both mechanisms (FK column AND a typed references-edge), with the access layer maintaining the two in sync. Rejected as double-bookkeeping with no information gain; if both mechanisms encode the same fact, one is redundant, and the FK is the more queryable form. Option D — adopt FK but register the typed relationship_kind anyway (commit_produced_by_conversation) as documentation, with the kind never actually used in refs rows. Rejected as vocab.py noise; the value would never appear in data and would mislead future readers searching vocab for what relationships exist.",
+      "consequences": "Three effects. (1) The commits table carries a NOT NULL commit_conversation_id column; the access layer validates that the named conversation exists (V2's soft-FK convention: TEXT column holding the conversation's identifier string, no SQL-level FOREIGN KEY constraint, access-layer enforcement). Mis-attribution errors surface at POST time as HTTP 422 commit_conversation_id_not_found rather than as a silently-orphaned record. (2) The cross-spec precedent landscape gains an articulated deviation pattern. Future high-volume governance entities have a named precedent (this decision) to cite when they apply the frequency-justified-FK reasoning. The DEC-124 references-edge precedent remains the default for low-volume entities. (3) The methodology document's audit queries (§6.1, §6.2) are validated by this spec — the JOIN through commit_conversation_id works exactly as the methodology describes, with no schema-level surprises waiting to surface at PI-029 implementation time.",
+      "context": "DEC-124 (settled at SES-048, the workstream schema-design conversation) established the cross-spec precedent that parent-child governance relationships use references-table edges, not foreign-key columns. The precedent has been inherited verbatim by every v0.7 governance schema spec: workstream→none, conversation→workstream via conversation_belongs_to_workstream edge, reference_book→none, work_ticket→none (inbound consumption edge from conversation, not outbound from work_ticket), close_out_payload→conversation via close_out_payload_produced_by_conversation edge, deposit_event→close_out_payload via deposit_event_applies_close_out_payload edge. The Code Change Lifecycle methodology (methodology-code-change-lifecycle.md §3.1) chose a different mechanism for the commit→conversation relationship: a foreign-key column commit_conversation_id on the commits table, with the audit queries in methodology §6.1 and §6.2 JOINing through the FK directly. This deviates from DEC-124's precedent and the methodology document does not articulate the deviation. The PI-028 kickoff named this as Q5, asking whether the spec should follow the methodology as-is with a brief noted deviation or surface the issue for explicit articulation. The conversation chose explicit articulation.",
+      "created_at": "2026-05-23T21:29:45.630645+00:00",
+      "decision": "Lock the FK column commit_conversation_id (TEXT, NOT NULL) on the commits table as the canonical mechanism for the commit→conversation relationship, deviating from DEC-124's references-edge precedent. No typed relationship_kind value is registered for the relationship (no commit_belongs_to_conversation kind, no commit_produced_by_conversation kind). The audit queries in methodology §6.1 and §6.2 use the FK JOIN directly. The deviation is articulated in commit.md §3.2.4 with three justifications: frequency of traversal, cardinality, DEC-187 reinforcement. The deviation is framed as the sibling of DEC-133's frequency-justified-deferral logic — the same volume-of-traversal reasoning, applied in the opposite direction. The deviation is locked for this entity type only; future high-volume governance entities (a future database_row_change entity, a future api_request entity) may apply the same frequency-justified-FK reasoning on their own facts; low-volume entities continue to default to references-edge per DEC-124.",
+      "decision_date": "2026-05-23",
+      "id": 197,
+      "identifier": "DEC-199",
+      "rationale": "Three reasons. (a) Frequency of traversal. Every audit query in methodology §6 walks from commit to owning conversation. The references-edge model would require one refs row per commit (refs grows linearly with commit count) and one JOIN per query (every commit-touching query becomes a two-table operation). Commits are dense: methodology §7.1 estimates several hundred historical commits per engagement plus dozens per quarter going forward, vs ~tens for work_ticket and reference_book. The FK column saves both the refs row and the JOIN at the cost of one TEXT column on the commits table. (b) Cardinality. A commit has exactly one producing conversation, always. The references-edge model is many-to-many by default; the FK column expresses one-to-many cleanly and lets the schema enforce the one-conversation constraint via NOT NULL (every commit MUST have a commit_conversation_id). Under references-edge, the constraint would require an access-layer rule (every commit MUST have an inbound edge of kind X from a conversation), which is more machinery for the same outcome. (c) DEC-187 reinforcement. The conversation-scoped accounting unit principle (DEC-187, settled by methodology authoring at SES-061) makes every commit's conversation membership mandatory by the model. FK enforces mandatory ownership at the schema level via NOT NULL; references-edge does not (a record without an edge is still a valid record absent a separate access-layer rule). The FK is the more correct semantic expression of the mandatory-ownership constraint DEC-187 establishes.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Model commit→conversation as a foreign-key column on the commits table, not as a references-table edge; deviation from DEC-124 on frequency-justified-denormalization grounds",
+      "updated_at": "2026-05-23T21:29:45.630649+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-199",
+    "entity_type": "decision",
+    "id": 1239,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:45.631194"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Option B — elevate only the three precedents the kickoff named, on the grounds that the fourth (status-free documentary) is already captured by DEC-198 and a separate cross-spec listing would be duplicative. Rejected because cross-spec precedents are inheritance signals to successor specs, and a successor spec author reading commit.md §1 should see the full inheritable set in one place. DEC-198 records the architectural decision; DEC-200's (a) line records the inheritability. Option C — elevate only the third (conversation-scoped accounting unit principle), on the grounds that it is the most consequential and the other three are minor patterns that don't need precedent-level naming. Rejected because the other three are not minor in the aggregate — the by-sha lookup is a non-trivial URL-design choice with ambiguous-prefix semantics; the JSON-array-column choice has implications for query patterns (JSON_EACH() vs separate-table JOIN); the status-free refinement is a real choice future specs face. All three are worth naming. Option D — elevate zero new precedents, on the grounds that commit is sufficiently different from the v0.7 governance entities that inheritance is unlikely. Rejected because the Code Change Lifecycle methodology is the start of a longer arc (PI-029 through PI-033 in scope; future commit-attribution-kind, future audit-event-record, future workspace-state-snapshot entities all plausible), and inheritance becomes more useful as the family grows.",
+      "consequences": "Three effects. (1) The cross-spec precedent landscape grows by four entries. Successor governance schema specs that find themselves authoring an entity with one of the four pattern shapes have a named precedent to cite. The cumulative precedent set after this spec is: DEC-124 (references-edge over FK; deviation in DEC-199), DEC-125 (terminal-states-are-terminal), DEC-126 (per-status timestamps for workflow lifecycles), DEC-133 (typed sequencing introduced when frequency justifies), DEC-137 (documentary lifecycle category; refined by DEC-198), DEC-143 (terminal-state consumption requires inbound edge), DEC-156 (born-terminal append-only), DEC-158 (multi-event-per-target-record), and now DEC-200's four. (2) PI-029's structural foundation slice (Prompt A) implements the schema-level realization of three of the four precedents: status-free table shape (no commit_status column); the JSON column type for commit_parent_shas; the by-sha endpoint stub in vocab.py is not directly relevant to Prompt A but the endpoint pattern is documented in commit.md §3.5 for subsequent slices. The conversation-scoped accounting unit principle does not need a schema-level implementation — it is satisfied by the access layer routing every record to the producing conversation's engagement database, which already happens per the v0.7 multi-tenancy fix (SES-045, DEC-167 et seq.). (3) Future build-planning conversations have a clearer inheritance map. The PI-029 build-planning conversation (not yet held; will follow Prompt A's execution and review) opens against this spec's §3.8 open questions plus DEC-200's four precedents as starting context.",
+      "context": "The PI-028 kickoff named this as Q2: what (if anything) does the commit spec establish that successor governance schemas should inherit? The kickoff offered three candidate precedents and recommended elevating all three: (a) the <entity>_by-natural-key/{value} lookup endpoint pattern (introduced by GET /commits/by-sha/{sha}), (b) the JSON array column pattern for variable-cardinality scalar lists (introduced by commit_parent_shas), (c) the conversation-scoped accounting unit principle (restating DEC-187 in spec-inheritable form, since this is the first governance entity whose physical artifact lives outside the engagement database). The conversation surfaced a fourth candidate during the spec-drafting phase: the status-free documentary lifecycle refinement of DEC-137 (per DEC-198's standalone decision; the refinement is also a precedent successor specs may inherit). The question for this conversation: which (if any) of the four to elevate.",
+      "created_at": "2026-05-23T21:29:45.773673+00:00",
+      "decision": "Elevate all four as named cross-spec precedents in commit.md §1, with each precedent stated as MAY-not-MUST and framed for inheritance with rationale. (a) Status-free documentary lifecycle — documentary lifecycles MAY drop the status field entirely when no operationally meaningful states exist. Refines DEC-137; precedent generalizes to any future immutable-observed-fact entity. Sourced from DEC-198. (b) Natural-key lookup endpoints via GET /{plural}/by-{key}/{value} — the standard endpoint set includes identifier-based lookup at GET /{plural}/{identifier}; the natural-key variant is introduced for entities with a strong natural key distinct from the V2-assigned identifier. Ambiguous prefix returns HTTP 409 with the candidate list. Precedent generalizes to a future file_artifact entity with content-hash natural key, a future network_response entity with response-id natural key, and similar. (c) JSON-array columns for variable-cardinality scalar lists — commit_parent_shas is the first JSON array column on a governance entity table (0/1/2 elements). Precedent generalizes to any 0-to-N scalar list intrinsic to the entity's identity that is read as a unit and doesn't warrant a separate normalized table. Unbounded or queried-by-element lists still warrant separate tables (reference_book → reference_book_versions pattern remains the precedent for those). (d) Conversation-scoped accounting unit principle — restates DEC-187 (settled by methodology authoring at SES-061) in spec-inheritable form. The physical home of an artifact and the governance home of its record are independent; the governance home is always the producing conversation's engagement database; the physical home is captured by an attribute (here, commit_repository). Precedent generalizes to any future governance entity representing an external artifact (a deployed config, a database backup, a third-party service response).",
+      "decision_date": "2026-05-23",
+      "id": 198,
+      "identifier": "DEC-200",
+      "rationale": "Two reasons. (a) Successor governance specs benefit from named precedents to inherit. The six v0.7 governance schema specs in PRDs/product/crmbuilder-v2/governance-schema-specs/ each open with an inheritance block that lists prior precedents; named precedents accelerate successor conversations by giving them well-articulated patterns to apply on their own facts (rather than re-deriving the pattern from scratch). (b) Each of the four named precedents is likely to recur. The by-sha lookup pattern especially: future entities with strong natural keys (content hashes, response IDs, API tokens) will reach for the same endpoint shape. The JSON-array-column pattern is a small enough idea that any future entity needing a bounded scalar list (a list of email addresses, a list of categorical tags) may apply it. The conversation-scoped accounting unit principle is the most consequential structurally — it generalizes the engagement-as-accounting-unit principle to any future entity type representing artifacts that physically live outside the engagement database, of which commit is the first instance.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Commit spec establishes four new cross-spec precedents for successor governance schema specs to inherit: status-free documentary lifecycle (refining DEC-137), natural-key lookup endpoints, JSON-array columns for variable-cardinality scalar lists, and conversation-scoped accounting unit principle as a cross-spec precedent (restating DEC-187)",
+      "updated_at": "2026-05-23T21:29:45.773676+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-200",
+    "entity_type": "decision",
+    "id": 1240,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:45.774146"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T21:29:45.877077+00:00",
+      "id": 618,
+      "reference_identifier": "REF-0614",
+      "relationship": "decided_in",
+      "source_id": "DEC-198",
+      "source_type": "decision",
+      "target_id": "SES-063",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-198 -[decided_in]-> session:SES-063",
+    "entity_type": "reference",
+    "id": 1241,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:45.877445"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T21:29:45.978678+00:00",
+      "id": 619,
+      "reference_identifier": "REF-0615",
+      "relationship": "decided_in",
+      "source_id": "DEC-199",
+      "source_type": "decision",
+      "target_id": "SES-063",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-199 -[decided_in]-> session:SES-063",
+    "entity_type": "reference",
+    "id": 1242,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:45.979070"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T21:29:46.082967+00:00",
+      "id": 620,
+      "reference_identifier": "REF-0616",
+      "relationship": "decided_in",
+      "source_id": "DEC-200",
+      "source_type": "decision",
+      "target_id": "SES-063",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-200 -[decided_in]-> session:SES-063",
+    "entity_type": "reference",
+    "id": 1243,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:46.083478"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T21:29:46.235381+00:00",
+      "id": 621,
+      "reference_identifier": "REF-0617",
+      "relationship": "is_about",
+      "source_id": "SES-063",
+      "source_type": "session",
+      "target_id": "PI-028",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-063 -[is_about]-> planning_item:PI-028",
+    "entity_type": "reference",
+    "id": 1244,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:46.235913"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T21:29:46.351980+00:00",
+      "id": 622,
+      "reference_identifier": "REF-0618",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-016",
+      "source_type": "deposit_event",
+      "target_id": "COP-063",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-016 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-063",
+    "entity_type": "reference",
+    "id": 1245,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:46.352810"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T21:29:46.354650+00:00",
+      "id": 623,
+      "reference_identifier": "REF-0619",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-016",
+      "source_type": "deposit_event",
+      "target_id": "SES-063",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-016 -[deposit_event_wrote_record]-> session:SES-063",
+    "entity_type": "reference",
+    "id": 1246,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:46.355227"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T21:29:46.356769+00:00",
+      "id": 624,
+      "reference_identifier": "REF-0620",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-016",
+      "source_type": "deposit_event",
+      "target_id": "DEC-198",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-016 -[deposit_event_wrote_record]-> decision:DEC-198",
+    "entity_type": "reference",
+    "id": 1247,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:46.357212"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T21:29:46.358644+00:00",
+      "id": 625,
+      "reference_identifier": "REF-0621",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-016",
+      "source_type": "deposit_event",
+      "target_id": "DEC-199",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-016 -[deposit_event_wrote_record]-> decision:DEC-199",
+    "entity_type": "reference",
+    "id": 1248,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:46.358994"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T21:29:46.360350+00:00",
+      "id": 626,
+      "reference_identifier": "REF-0622",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-016",
+      "source_type": "deposit_event",
+      "target_id": "DEC-200",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-016 -[deposit_event_wrote_record]-> decision:DEC-200",
+    "entity_type": "reference",
+    "id": 1249,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:46.360577"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "0.7.0",
+        "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_063.json",
+        "runner": "claude_code"
+      },
+      "deposit_event_created_at": "2026-05-23T21:29:46.348974+00:00",
+      "deposit_event_description": "Applied COP-063. Outcome: success. 3 decisions, 1 sessions.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-016",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_016.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 3,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-063, 2026-05-23T21:29:46+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-016",
+    "entity_type": "deposit_event",
+    "id": 1250,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:46.360960"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "Two governance artifacts pushed in the same commit: PRDs/product/crmbuilder-v2/close-out-payloads/ses_064.json (this payload) and PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-apply-close-out-ses-062.md (the apply prompt for Doug to run via Claude Code).",
+      "conversation_reference": "Claude.ai conversation opened against the seed prompt 'We need to deploy the CRM Builder V2 api and mcp somewhere where claude.ai can begin accessing the information stored in the database. There are way too many problems where it does not know what is current, or writes prompts that are out of date vs the database.' The conversation ran in ARCHITECTURE mode (project default) and worked through one consequential architectural decision plus three decide-and-announce follow-on decisions. The architectural decision (DEC-201) was framed using the eight-element consequential decision template with three options: (A) local-canonical database with public MCP via tunnel, (B) remote-canonical database on VPS or managed store with desktop UI and Claude.ai both as remote clients, (C) hybrid with stale read-only snapshot pushed to cloud. Option C was dismissed in the framing as not solving the stated problem (claude.ai writing out-of-date prompts because the snapshot it reads is also out of date). Doug approved Option A with the terse acknowledgment 'a'. After approval, the conversation verified the MCP transport against the codebase: cloned the crmbuilder repo with sparse checkout (CLAUDE.md, PRDs/, crmbuilder-v2/), read crmbuilder-v2/src/crmbuilder_v2/mcp_server/server.py line 44 to confirm server.run('stdio') and the docstring 'Claude Desktop pipes here', counted 44 tools exposed in tools.py (broad read+write surface including replace_charter, create_decision, delete_reference, etc.), verified mcp>=1.0 dependency (FastMCP supports stdio/sse/streamable-http transports), and checked config.py confirming api_host='127.0.0.1' default. Three decide-and-announce decisions followed: DEC-202 (expose MCP server only, REST API stays localhost — narrows attack surface and matches Doug's single-laptop Claude Code workflow); DEC-203 (single remote MCP with marker-driven engagement routing — matches existing single-engagement-active workflow versus per-engagement tunnel deploys); DEC-204 (Cloudflare Tunnel on subdomain mcp.crmbuilder.com with Cloudflare Access identity gating — requires moving crmbuilder.com nameservers to Cloudflare from current registrar). Doug confirmed the domain selection unprompted ('We have the crmbuilder.com domain registered and it would make more sense to use that. It is not on cloudflair.'). No code changes authored in this conversation; the deliverables are the four governance decisions, the planning item PI-045 that scopes the implementation workstream, and the in-flight follow-on to draft the deployment kickoff prompt in a separate Claude.ai conversation. On push, the payload collided with a parallel sandbox that had pushed ses_062.json first (PI-025 prior-conversations backfill planning); this conversation rebased to SES-064 + DEC-201..201 + PI-045 and re-pushed.",
+      "created_at": "2026-05-23T21:29:51.006031+00:00",
+      "id": 63,
+      "identifier": "SES-064",
+      "in_flight_at_end": "Drafting the V2 remote-access deployment kickoff prompt for PI-045 in a separate follow-on Claude.ai conversation. The kickoff prompt sequences: (1) Claude Code prompt for the transport flag and shared-secret middleware in the MCP server; (2) Claude Code prompt addressing the engagement-marker-mid-process risk identified in DEC-203; (3) operational checklist for the Cloudflare nameserver migration, cloudflared launchd service install, named tunnel + Access policy creation, claude.ai MCP URL registration; (4) smoke-test plan for the 44-tool surface; (5) documentation updates to crmbuilder-v2 README and repo CLAUDE.md. The kickoff drafting conversation should open with the four decisions DEC-201..DEC-204 as inputs and produce the kickoff document at a path under PRDs/product/crmbuilder-v2/.",
+      "session_date": "2026-05-23",
+      "status": "Complete",
+      "summary": "",
+      "title": "V2 remote-access deployment architecture decided: Option A (local-canonical DB + tunneled MCP) approved; transport verified stdio-only; marker-driven engagement routing chosen; tunnel under crmbuilder.com via Cloudflare Tunnel + Access",
+      "topics_covered": "Seed prompt: \"We need to deploy the CRM Builder V2 api and mcp somewhere where claude.ai can begin accessing the information stored in the database. There are way too many problems where it does not know what is current, or writes prompts that are out of date vs the database.\"\n\nStructured summary of the architectural decision conversation:\n\n(0) Identifier rebase (two collisions). The close-out payload was originally drafted as ses_062.json claiming SES-062 + DEC-191..194 + PI-045 against snapshot heads of SES-061/DEC-190/PI-044. On first push, a parallel sandbox had pushed ses_062.json first (PI-025 prior-conversations backfill planning, DEC-191..197). Rebased to SES-063 + DEC-198..201 + PI-045. On second push, yet another parallel sandbox had pushed ses_063.json first (commit entity schema spec for PI-029, DEC-198..200). Rebased to SES-064 + DEC-201..204 + PI-045 (PIs head unchanged through both rebases because neither colliding payload authored planning items). Predecessor apply chain extended by two: SES-058 → SES-059 → SES-060 → SES-061 → SES-062 (PI-025 backfill planning, parallel sandbox A) → SES-063 (commit entity schema spec, parallel sandbox B) → SES-064 (this conversation). This is the same parallel-sandbox identifier-collision case the Code Change Lifecycle methodology conversation hit twice in SES-061 — three active sandboxes claiming consecutive identifiers within minutes strongly reinforces SES-061's flag that reserve-at-apply-time is the only collision-free model. The PI-032 methodology rollout scope should treat this as a near-term priority rather than a future-tense follow-on.\n\n(1) Problem reframed. The pain Doug named — claude.ai writing prompts that are out of date versus the database — is the inverse of the v2 architectural premise. The database is supposed to be canonical for sessions, decisions, planning items, references; if claude.ai cannot read it, then claude.ai is not operating against canonical state and necessarily produces drift between conversation-memory inferences and reality. The fix is to give claude.ai a read+write path to the canonical store.\n\n(2) Three options framed under the eight-element template. Option A: local-canonical DB with tunneled MCP — laptop stays source of truth, MCP server gets a public URL via tunnel, REST API stays on localhost, claude.ai reaches the MCP whenever the laptop is on and reachable. Option B: remote-canonical DB — move SQLite to a small VPS or migrate to managed DB (Postgres/Turso); desktop UI and claude.ai are both clients of the remote API; always-on but requires desktop UI rework for network latency and an offline story that does not exist today. Option C: hybrid scheduled push of read-only snapshot to cloud — dismissed as not solving the stated problem since stale snapshots produce the exact failure mode Doug is escaping. Why this matters: the v2 premise depends on every actor (desktop, claude.ai, Claude Code) reading and writing the same canonical store; today only two of three can reach it. The choice between A and B determines whether the gap closes by letting claude.ai reach into the laptop, or by moving the canonical store to a place all three actors reach equally. Recommendation: Option A. Cost named honestly: claude.ai data access is bounded by laptop online time; if Doug wants to think through a CBM question on a phone while the laptop is shut, claude.ai gets nothing. For the actual usage pattern (session work in front of the laptop) this is invisible; for ambient queries it is broken. Doug confirmed Option A with 'a'.\n\n(3) Transport verification (post-approval prerequisite). Cloned dbower44022/crmbuilder via sparse checkout (CLAUDE.md, PRDs/, crmbuilder-v2/) at HEAD commit 8215614. Read crmbuilder-v2/src/crmbuilder_v2/mcp_server/server.py — line 44 calls server.run('stdio'); the module docstring explicitly notes 'crmbuilder-v2-mcp # talk MCP over stdio (Claude Desktop pipes here)'. The current MCP server is stdio-only and not remotely reachable by claude.ai. Dependency check on pyproject.toml confirms mcp>=1.0 (the official Python SDK whose FastMCP class supports three transports — stdio, sse, streamable-http). Switching is a one-line change at the server.run() call site plus a CLI flag in cli.py:run_mcp. The REST API at config.py:55 binds to api_host='127.0.0.1' by default and stays unchanged — the MCP server speaks to it over localhost. Tool surface counted at 44 tools in tools.py including charter/status/decisions/sessions/risks/planning/topics/references CRUD plus catalog queries; the write surface includes replace_charter, create_decision, update_decision, delete_decision, create_session, replace_status, add_reference, delete_reference, create_risk, update_risk, create_planning_item, update_planning_item, create_topic, update_topic. The auth posture has to assume any caller could rewrite the charter, so Cloudflare Access identity gating at the edge plus a shared-secret header validated by the MCP HTTP transport is the right belt-and-braces pattern.\n\n(4) Complication surfaced: engagement routing. The API is single-engagement per process — cli.py:run_api reads current_engagement.json (written by the desktop UI's Engagements panel) or --engagement flag at launch to pick which database to serve. CBM-engagement work and CRMBUILDER-engagement work read different databases. claude.ai sessions on either workstream need to reach the right one. Two viable options: (X) marker-driven, single remote MCP that follows whichever engagement is currently active in current_engagement.json; (Y) per-engagement deploys — two tunnels, two API+MCP process pairs, two claude.ai MCP URLs. (Y) is architecturally cleaner since claude.ai picks engagement by URL but roughly doubles the operational footprint. (X) matches the existing workflow with zero new state for Doug to manage. DEC-203 chose (X) decide-and-announce. Known footgun named: if Doug switches engagements mid-conversation in the desktop UI, the conversation's claude.ai reads switch silently to the new engagement; the API needs either to detect marker changes on each request or restart on marker change. Mitigation is part of PI-045's scope and is named in the kickoff prompt for the follow-on conversation.\n\n(5) Public surface scope. DEC-202 decide-and-announce: expose the MCP server only via the tunnel, not the REST API. The MCP process talks to the API over localhost unchanged. Rationale: narrows the public attack surface to the MCP protocol; the 44 tools are the contract claude.ai consumes; REST endpoints would be redundant for claude.ai and double the auth surface. The alternative — exposing both — would let Claude Code prompts run remotely too (cross-machine appeal), but Doug runs Claude Code only at the laptop today; the marginal value does not justify the extra surface.\n\n(6) Tunnel product and host. DEC-204 decide-and-announce: Cloudflare Tunnel on subdomain mcp.crmbuilder.com with Cloudflare Access policy gating by identity (Google login or similar) before requests reach the MCP, plus a shared-secret header the MCP validates. Doug confirmed crmbuilder.com is the right host (clearer than dougbower.com for project-scoped infrastructure) and noted it is currently not on Cloudflare — moving nameservers to Cloudflare (free plan, ~15 minutes) is a prerequisite operational step. Alternatives considered: Tailscale Funnel (no DNS migration but ties auth to tailnet membership rather than identity provider); ngrok (free tier unstable hostnames; paid ~$8/mo); raw SSH reverse tunnel (no identity gating). Cloudflare wins on stable hostname + free Access + project-scoped DNS.\n\n(7) Planning item authored. PI-045 V2 remote-access deployment scopes the full workstream: (a) code changes — add --transport {stdio,streamable-http} flag to crmbuilder-v2-mcp CLI, parameterize transport in server.py main(), add shared-secret header middleware to the FastMCP HTTP transport, address the marker-change-mid-process risk identified in DEC-203 (re-read current_engagement.json per request or fail-loud on marker change with restart); (b) operational — move crmbuilder.com nameservers to Cloudflare, install cloudflared as a launchd service on Doug's laptop, create the named tunnel and Access policy for mcp.crmbuilder.com, register the MCP URL in claude.ai's MCP integration; (c) verification — smoke-test all 44 tools end-to-end, confirm auth gating blocks unauthenticated requests at both layers, confirm engagement marker drives the right database; (d) documentation — README section in crmbuilder-v2 covering remote deployment, entry in repo CLAUDE.md, kickoff prompt at PRDs/product/crmbuilder-v2/ that opens the implementation conversation. PI-045 status Open at end of this conversation.\n\n(8) In-flight at end. The deployment kickoff prompt that PI-045 will be opened against is NOT authored in this conversation. The kickoff prompt is the deliverable of a follow-on Claude.ai conversation whose seed prompt will be 'draft the V2 remote-access deployment kickoff prompt for PI-045 per the four decisions in SES-064.' This split keeps the architectural decision conversation focused on its purpose and lets the kickoff drafting conversation read the four DECs as inputs.\n\n(9) Sandbox commit and push. The ses_064.json close-out payload and CLAUDE-CODE-PROMPT-apply-close-out-ses-062.md apply prompt are committed and pushed together in one commit per the sandbox push convention."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-064",
+    "entity_type": "session",
+    "id": 1251,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:51.006397"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Option B: remote-canonical — move the SQLite to a small VPS (DigitalOcean, Hetzner, Fly.io) or migrate to a managed DB (Postgres, Turso). Always-on access from any actor. Costs $5-15/mo. Requires the desktop UI to handle network latency on every read and write, and requires an offline story that does not exist today; the v2 access layer assumes local SQLite. Apply scripts would re-target the remote API (mostly a config change). The async DB-access patterns and connection-pool management add real implementation work. Rejected as premature — the gain (always-on claude.ai access) does not yet justify the desktop-side rework. Option C: hybrid scheduled push of read-only snapshot to cloud — keep canonical DB local, push a daily or per-commit snapshot to a read-only cloud endpoint claude.ai polls. Cheapest and simplest. Rejected because it explicitly does not solve the stated problem: claude.ai would still write out-of-date prompts because the snapshot it reads is itself out of date. The asymmetry between session-time writes and stale reads is precisely the failure mode the user is trying to escape.",
+      "consequences": "Claude.ai's database access is bounded by laptop online time. When the laptop is asleep or off-network, claude.ai's MCP calls return connection errors and the conversation falls back to whatever it can infer from conversation memory — current behavior, just in the gaps rather than everywhere. The shared-secret header lives in claude.ai's MCP server configuration (custom headers) and on Doug's laptop in an environment variable or config file; rotation is a manual step. Operational footprint adds one persistent service (cloudflared as a launchd job). The MCP server code needs a transport flag and an auth middleware — both small additions, scoped under PI-045. Option B remains available as a future workstream; the apply scripts, MCP tool registrations, and desktop access patterns all stay compatible because the wire format (FastAPI REST + MCP protocol) does not change between Option A and a future Option B.",
+      "context": "The v2 architectural premise is that a structured database is canonical for all governance artifacts (sessions, decisions, planning items, references, charter, status, risks, topics). Today only the desktop UI and Claude Code reach this database — both run on Doug's laptop against the local SQLite file. Claude.ai cannot reach it, so claude.ai conversations infer state from conversation memory and produce prompts and references that drift from canonical truth. The architectural fork is whether to close the gap by exposing the local database to claude.ai (keeping the laptop as source of truth) or by moving the canonical database to a cloud-hosted store that all three actors reach equally.",
+      "created_at": "2026-05-23T21:29:51.102599+00:00",
+      "decision": "Option A — local-canonical SQLite stays on Doug's laptop; expose the MCP server publicly via a tunnel so claude.ai can read and write through it; REST API stays bound to 127.0.0.1; auth via identity-provider gating at the tunnel edge plus a shared-secret header validated by the MCP HTTP transport. The desktop UI, Claude Code, and Claude.ai all read and write the same single SQLite file via the same REST API; Claude.ai's path is just MCP-over-tunnel-to-localhost-API instead of MCP-over-stdio-to-localhost-API.",
+      "decision_date": "2026-05-23",
+      "id": 199,
+      "identifier": "DEC-201",
+      "rationale": "Solves the stated problem (claude.ai's data drift) with minimum architectural change. Preserves the desktop UI's local-first behavior — no network latency on CRUD, no offline-mode design needed. The migration to remote-canonical (Option B) is left as a separable later workstream if and when the laptop-online-time bound starts hurting; a few months of operating under Option A will reveal what the real claude.ai read/write patterns are and inform whether the larger migration is justified.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "V2 remote-access deployment architecture: local-canonical SQLite on Doug's laptop with public MCP via tunnel (Option A) versus remote-canonical cloud migration (Option B)",
+      "updated_at": "2026-05-23T21:29:51.102601+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-201",
+    "entity_type": "decision",
+    "id": 1252,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:51.102979"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "(a) Expose both MCP and REST API — appealing because Claude Code prompts could run from any machine and apply scripts could target the remote API directly. Rejected because Doug's actual Claude Code usage is laptop-local, and the security posture cost is real. (b) Expose REST API only and have claude.ai talk REST through a thin shim — rejected because claude.ai's MCP integration is the supported protocol and the existing MCP tool definitions already provide the right abstraction layer.",
+      "consequences": "Cloudflare Tunnel ingress has exactly one route (mcp.crmbuilder.com → 127.0.0.1:<mcp_port>). Cloudflare Access has exactly one policy. If a future use case for remote REST API access surfaces (cross-machine apply scripts, remote Claude Code), exposing it is a separate decision and a separate tunnel route — explicitly not bundled here. The MCP server's HTTP transport binds to 127.0.0.1 (so it is reachable from cloudflared but not from anywhere else on the network); cloudflared dials it as an internal connection.",
+      "context": "DEC-201 commits to exposing the v2 stack to claude.ai through a tunnel. The follow-on question is what gets tunneled. The candidates are (a) MCP server only, with the MCP process speaking to the API over 127.0.0.1 unchanged, or (b) both the MCP server and the REST API, which would let Claude Code prompts and ad-hoc curl run remotely as well.",
+      "created_at": "2026-05-23T21:29:51.242947+00:00",
+      "decision": "Expose the MCP server only. The REST API keeps its 127.0.0.1 bind and is reachable only from processes on Doug's laptop. The MCP process speaks to the API over localhost unchanged.",
+      "decision_date": "2026-05-23",
+      "id": 200,
+      "identifier": "DEC-202",
+      "rationale": "Narrows the public surface to the MCP protocol contract (44 named tools with declared schemas) instead of the full FastAPI route table (every endpoint, every list query, every error envelope). The MCP layer also provides natural rate-limiting and tool-selection discipline through the tool-call mechanism that bare HTTP would not. Doug currently runs Claude Code only at the laptop, so the marginal value of exposing the REST API (cross-machine Claude Code runs) does not justify the doubled attack surface and doubled auth-policy maintenance.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Public exposure scope: MCP server only, REST API stays on localhost",
+      "updated_at": "2026-05-23T21:29:51.242950+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-202",
+    "entity_type": "decision",
+    "id": 1253,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:51.243333"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Per-engagement deploys — run one tunnel + API + MCP triple per engagement (mcp-crmbuilder.crmbuilder.com, mcp-cbm.crmbuilder.com), let claude.ai pick by registering both URLs in its MCP integration and choosing which one to call. Architecturally cleaner because the engagement is in the URL path and there is no implicit state in current_engagement.json. Rejected because it roughly doubles the operational footprint (two cloudflared services, two API processes, two Access policies, two MCP URLs in claude.ai), and Doug switches engagements rarely enough that marker discipline is not burdensome.",
+      "consequences": "Known footgun: if Doug switches engagements in the desktop UI mid-conversation (rare but possible — e.g., reaches a stopping point on CBM and flips back to CRMBUILDER while a claude.ai window is still open), claude.ai's reads silently switch to the new engagement. The API process needs either to re-read current_engagement.json on each request (cheap, ~µs file stat) or to detect a marker change and restart itself. Mitigation is in PI-045's scope. The current API behavior of reading the marker once at launch needs to change for the remote deployment to be safe under engagement switching. If the per-engagement model becomes more attractive later (e.g., regular concurrent multi-engagement work), the migration cost is one extra cloudflared tunnel and one extra API process — not architectural.",
+      "context": "The v2 API is single-engagement per process — cli.py:run_api reads current_engagement.json (written by the desktop UI's Engagements panel) or takes --engagement on launch to pick which engagement's SQLite database it serves. CRMBUILDER (dogfood) and CBM (paper-test client) are separate databases. When claude.ai opens a conversation, it needs to read the right one. The routing question is whether to run one remote MCP that follows whichever engagement is currently active in current_engagement.json (matching how the local desktop API works) or run one remote MCP per engagement (separate tunnel, separate API process, separate claude.ai MCP URL for CRMBUILDER versus CBM).",
+      "created_at": "2026-05-23T21:29:51.345111+00:00",
+      "decision": "Single remote MCP, marker-driven. The deployed API + MCP read current_engagement.json the same way the local stack does. When Doug switches engagements in the desktop UI's Engagements panel, the remote MCP's next request serves the new engagement. Claude.ai's MCP integration is registered once with one URL (mcp.crmbuilder.com).",
+      "decision_date": "2026-05-23",
+      "id": 201,
+      "identifier": "DEC-203",
+      "rationale": "Matches the existing single-engagement-active workflow with zero new state for Doug to manage — engagement switching already happens in the desktop UI, and the remote MCP becomes another consumer of that switch. Operational footprint stays at one tunnel, one API process, one MCP process, one Access policy. Doug's pattern of working on one engagement at a time across all surfaces (desktop, Claude Code, Claude.ai) means the simpler model fits actual usage.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Engagement routing for the remote MCP: marker-driven single deployment versus per-engagement tunnel deploys",
+      "updated_at": "2026-05-23T21:29:51.345115+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-203",
+    "entity_type": "decision",
+    "id": 1254,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:51.345538"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Tailscale Funnel — no DNS migration needed and Tailscale's ACLs are clean, but ties identity to tailnet membership rather than Google login (cuts off claude.ai web sessions that are not authenticated via tailnet); also gives a {machine}.{tailnet}.ts.net hostname rather than a project-scoped one. Rejected on the auth-model fit. ngrok — free tier has unstable hostnames that change on each restart; paid tier (~$8/mo) for a reserved subdomain; auth via reserved-domain restriction is weaker than Cloudflare Access. Rejected on cost and auth. Raw SSH reverse tunnel from a small VPS — no identity gating at all without additional layers; rejected on auth.",
+      "consequences": "crmbuilder.com domain administration moves to Cloudflare's DNS console (the domain registrar is unchanged; just the nameservers point to Cloudflare). cloudflared installs as a launchd service on Doug's laptop and reconnects automatically on reboot or network change. The shared secret lives in claude.ai's MCP server custom-header configuration and in an environment variable Doug's local MCP process reads; rotation is a manual edit in both places. If Doug later wants to expose other services under crmbuilder.com (a status page, a docs site), the domain is already on Cloudflare and adding ingress is straightforward.",
+      "context": "DEC-201 and DEC-202 commit to publicly exposing the MCP server. The implementation choices are tunnel product (Cloudflare Tunnel, Tailscale Funnel, ngrok, raw SSH reverse tunnel) and host (which domain and subdomain). Doug confirmed during the conversation that crmbuilder.com is the right host — it is the project-scoped domain Doug already owns, and the project-scoped framing is clearer than using dougbower.com (his personal domain). The domain is not currently on Cloudflare.",
+      "created_at": "2026-05-23T21:29:51.441205+00:00",
+      "decision": "Cloudflare Tunnel on subdomain mcp.crmbuilder.com. Cloudflare Access policy gates by identity (Google login) before requests reach the MCP. A shared-secret header (X-CRMBuilder-Secret or similar) is validated by the MCP HTTP transport as a second-layer check in case Access is misconfigured. Prerequisite operational step: move crmbuilder.com nameservers from the current registrar to Cloudflare (free plan, ~15 minutes).",
+      "decision_date": "2026-05-23",
+      "id": 202,
+      "identifier": "DEC-204",
+      "rationale": "Cloudflare Tunnel gives a stable hostname free, supports Cloudflare Access identity gating free, and ties cleanly to a domain Doug already owns. The two-layer auth (Access at the edge + shared secret at the MCP) means a misconfiguration at either layer alone does not expose the write surface to the internet. The project-scoped subdomain reads correctly in claude.ai's MCP integration listing and in any future documentation.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Tunnel product and host: Cloudflare Tunnel on mcp.crmbuilder.com with Cloudflare Access identity gating",
+      "updated_at": "2026-05-23T21:29:51.441207+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-204",
+    "entity_type": "decision",
+    "id": 1255,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:51.441597"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T21:29:51.535148+00:00",
+      "description": "Implement the four decisions from SES-064 (DEC-201 local-canonical with tunneled MCP; DEC-202 MCP-only exposure; DEC-203 marker-driven single deployment; DEC-204 Cloudflare Tunnel on mcp.crmbuilder.com with Access + shared-secret auth). Scope: (a) Code changes delivered as CLAUDE-CODE-PROMPT-*.md files: add --transport {stdio,streamable-http} flag to the crmbuilder-v2-mcp CLI entry point in crmbuilder-v2/src/crmbuilder_v2/cli.py, parameterize the transport in mcp_server/server.py main(), bind the FastMCP HTTP transport to 127.0.0.1 with a configurable port, add a shared-secret header middleware to the HTTP transport that 401s missing or wrong secrets, address the engagement-marker-mid-process risk identified in DEC-203 by either re-reading current_engagement.json per request or failing loud on marker change with restart-required signal. (b) Operational steps: move crmbuilder.com nameservers from current registrar to Cloudflare (free plan); install cloudflared on Doug's laptop and configure as a launchd service; create the named tunnel and DNS record routing mcp.crmbuilder.com to 127.0.0.1:<mcp_port>; create the Cloudflare Access policy requiring Google login (Doug's identity) for the mcp.crmbuilder.com hostname; register the MCP URL in claude.ai's MCP integration with the shared-secret custom header. (c) Verification: smoke-test all 44 MCP tools end-to-end from a claude.ai conversation against both CRMBUILDER and CBM engagements (flip the engagement marker between runs); confirm an unauthenticated request from a non-Doug browser is blocked at the Access layer; confirm a request with wrong shared secret is blocked at the MCP layer; confirm engagement marker drives the right database. (d) Documentation: README section in crmbuilder-v2/ covering remote deployment setup; entry in repo CLAUDE.md under the v2 section describing the remote MCP URL and auth model; the deployment kickoff prompt itself (the in-flight follow-on conversation deliverable, drafted before any of the above starts).",
+      "id": 45,
+      "identifier": "PI-045",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Open",
+      "title": "V2 remote-access deployment: expose MCP server publicly so claude.ai can read and write the v2 governance database",
+      "updated_at": "2026-05-23T21:29:51.535151+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "PI-045",
+    "entity_type": "planning_item",
+    "id": 1256,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:51.535556"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T21:29:51.632916+00:00",
+      "id": 627,
+      "reference_identifier": "REF-0623",
+      "relationship": "decided_in",
+      "source_id": "DEC-201",
+      "source_type": "decision",
+      "target_id": "SES-064",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-201 -[decided_in]-> session:SES-064",
+    "entity_type": "reference",
+    "id": 1257,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:51.633686"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T21:29:51.779812+00:00",
+      "id": 628,
+      "reference_identifier": "REF-0624",
+      "relationship": "decided_in",
+      "source_id": "DEC-202",
+      "source_type": "decision",
+      "target_id": "SES-064",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-202 -[decided_in]-> session:SES-064",
+    "entity_type": "reference",
+    "id": 1258,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:51.780167"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T21:29:51.875131+00:00",
+      "id": 629,
+      "reference_identifier": "REF-0625",
+      "relationship": "decided_in",
+      "source_id": "DEC-203",
+      "source_type": "decision",
+      "target_id": "SES-064",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-203 -[decided_in]-> session:SES-064",
+    "entity_type": "reference",
+    "id": 1259,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:51.875487"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T21:29:51.976957+00:00",
+      "id": 630,
+      "reference_identifier": "REF-0626",
+      "relationship": "decided_in",
+      "source_id": "DEC-204",
+      "source_type": "decision",
+      "target_id": "SES-064",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-204 -[decided_in]-> session:SES-064",
+    "entity_type": "reference",
+    "id": 1260,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:51.977320"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T21:29:52.079620+00:00",
+      "id": 631,
+      "reference_identifier": "REF-0627",
+      "relationship": "is_about",
+      "source_id": "SES-064",
+      "source_type": "session",
+      "target_id": "PI-045",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-064 -[is_about]-> planning_item:PI-045",
+    "entity_type": "reference",
+    "id": 1261,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:52.080098"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T21:29:52.224946+00:00",
+      "id": 632,
+      "reference_identifier": "REF-0628",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-017",
+      "source_type": "deposit_event",
+      "target_id": "COP-064",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-017 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-064",
+    "entity_type": "reference",
+    "id": 1262,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:52.225353"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T21:29:52.226727+00:00",
+      "id": 633,
+      "reference_identifier": "REF-0629",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-017",
+      "source_type": "deposit_event",
+      "target_id": "SES-064",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-017 -[deposit_event_wrote_record]-> session:SES-064",
+    "entity_type": "reference",
+    "id": 1263,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:52.227061"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T21:29:52.228384+00:00",
+      "id": 634,
+      "reference_identifier": "REF-0630",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-017",
+      "source_type": "deposit_event",
+      "target_id": "DEC-201",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-017 -[deposit_event_wrote_record]-> decision:DEC-201",
+    "entity_type": "reference",
+    "id": 1264,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:52.228706"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T21:29:52.229951+00:00",
+      "id": 635,
+      "reference_identifier": "REF-0631",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-017",
+      "source_type": "deposit_event",
+      "target_id": "DEC-202",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-017 -[deposit_event_wrote_record]-> decision:DEC-202",
+    "entity_type": "reference",
+    "id": 1265,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:52.230309"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T21:29:52.231621+00:00",
+      "id": 636,
+      "reference_identifier": "REF-0632",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-017",
+      "source_type": "deposit_event",
+      "target_id": "DEC-203",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-017 -[deposit_event_wrote_record]-> decision:DEC-203",
+    "entity_type": "reference",
+    "id": 1266,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:52.231920"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T21:29:52.233256+00:00",
+      "id": 637,
+      "reference_identifier": "REF-0633",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-017",
+      "source_type": "deposit_event",
+      "target_id": "DEC-204",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-017 -[deposit_event_wrote_record]-> decision:DEC-204",
+    "entity_type": "reference",
+    "id": 1267,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:52.233619"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T21:29:52.235166+00:00",
+      "id": 638,
+      "reference_identifier": "REF-0634",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-017",
+      "source_type": "deposit_event",
+      "target_id": "PI-045",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-017 -[deposit_event_wrote_record]-> planning_item:PI-045",
+    "entity_type": "reference",
+    "id": 1268,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:52.235502"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "0.7.0",
+        "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_064.json",
+        "runner": "claude_code"
+      },
+      "deposit_event_created_at": "2026-05-23T21:29:52.223118+00:00",
+      "deposit_event_description": "Applied COP-064. Outcome: success. 4 decisions, 1 planning_items, 1 sessions.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-017",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_017.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 4,
+        "planning_items": 1,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-064, 2026-05-23T21:29:52+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-017",
+    "entity_type": "deposit_event",
+    "id": 1269,
+    "operation": "insert",
+    "timestamp": "2026-05-23T21:29:52.235867"
   }
 ]
