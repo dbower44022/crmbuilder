@@ -361,5 +361,126 @@
     "status": "Open",
     "title": "Back-fill historical planning_item resolutions work_tickets and commits",
     "updated_at": "2026-05-23T05:32:48.657846"
+  },
+  {
+    "created_at": "2026-05-23T15:52:45.766469",
+    "description": "Author CLAUDE-CODE-PROMPT-audit-v1.2-A-roles-teams-recognition.md in PRDs/product/crmbuilder-automation-PRD/. The prompt adds: config_loader.py recognition of roles: and teams: as valid top-level keys; models.py RoleDefinition and TeamDefinition dataclasses with raw-passthrough fields for scope_access_raw and system_permissions_raw mirroring how saved_views_raw and workflows_raw work today; ProgramFile.roles list and ProgramFile.teams list collections; hard-reject for malformed structures (missing name:, wrong types). Does NOT add structured parsing of scope_access or system_permissions (Prompt B) or any deploy-side execution (Prompts C and D). Acceptance: a test YAML with valid roles and teams blocks loads cleanly; a test YAML with a role missing name: produces a clear validation error; all existing tests pass.",
+    "id": 34,
+    "identifier": "PI-034",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "audit-v1.2 Prompt A — roles and teams top-level recognition plus raw-passthrough dataclasses",
+    "updated_at": "2026-05-23T15:52:45.766472"
+  },
+  {
+    "created_at": "2026-05-23T15:52:45.843356",
+    "description": "Author CLAUDE-CODE-PROMPT-audit-v1.2-B-scope-access-system-permissions.md. Adds: ScopeAccess dataclass per role.entity (Section 12.3) with entity_name, read, edit, delete, stream, assignmentPermission, recordAccessControl fields; SystemPermissions dataclass per role (Section 12.4) with the v1.3 enumeration of system-level permission keys; RoleDefinition.scope_access dict mapping entity_name to ScopeAccess; RoleDefinition.system_permissions SystemPermissions; validators for scope_access entity name resolution against batch context plus v1.3 permission value enumeration. Does NOT add the 12.5 role: leaf clause (Prompt F). Depends on PI-034. Acceptance: Section 12 examples from app-yaml-schema.md parse and roundtrip cleanly through the loader; invalid values produce specific error messages.",
+    "id": 35,
+    "identifier": "PI-035",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "audit-v1.2 Prompt B — structured scope_access and system_permissions parsing",
+    "updated_at": "2026-05-23T15:52:45.843358"
+  },
+  {
+    "created_at": "2026-05-23T15:52:45.947550",
+    "description": "Author CLAUDE-CODE-PROMPT-audit-v1.2-C-team-manager.md. Adds: espo_impl/core/team_manager.py implementing CHECK→ACT against EspoCRM's Team entity; api_client.py gains get_teams, create_team, update_team methods; TeamStatus enum and TeamResult dataclass in models.py (OK, CREATED, UPDATED, ERROR). Depends on PI-034 (model and loader prerequisites). Acceptance: a YAML declaring a new team applies to a target instance; re-running is idempotent (CHECK passes, no spurious updates); modifying an existing team's description updates without creating a duplicate. Team deletion is out of scope per the existing managers' conservative-deletion convention; document this.",
+    "id": 36,
+    "identifier": "PI-036",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "audit-v1.2 Prompt C — team_manager.py deploy-side CHECK→ACT",
+    "updated_at": "2026-05-23T15:52:45.947552"
+  },
+  {
+    "created_at": "2026-05-23T15:52:46.024905",
+    "description": "Author CLAUDE-CODE-PROMPT-audit-v1.2-D-role-manager.md. The most substantive new deploy-side module in the series. Adds: espo_impl/core/role_manager.py implementing CHECK→ACT against EspoCRM's Role entity; api_client.py gains get_roles, create_role, update_role methods; RoleStatus enum and RoleResult dataclass in models.py; the scope_access translation layer mapping YAML scope_access blocks to EspoCRM Role record's data field shape (per-entity-per-action permission matrix with assignment scope); system_permissions translation mapping YAML system_permissions keys to EspoCRM Role record's top-level permission columns. Depends on PI-035 (structured scope_access parsing) and PI-036 (team_manager precedent). Acceptance: a test role with scope_access on three entities applies cleanly with correct per-entity permissions on the deployed Role record; re-running is idempotent; modifying a scope_access value redeploys correctly; referencing a non-existent entity in scope_access produces a clear pre-deploy error.",
+    "id": 37,
+    "identifier": "PI-037",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "audit-v1.2 Prompt D — role_manager.py deploy-side CHECK→ACT including scope_access translation",
+    "updated_at": "2026-05-23T15:52:46.024908"
+  },
+  {
+    "created_at": "2026-05-23T15:52:46.099809",
+    "description": "Author CLAUDE-CODE-PROMPT-audit-v1.2-E-deploy-ordering.md. Adds: a new pipeline step Security in run_worker._run_full, ordered after Workflows per existing orchestration sequence; the step calls team_manager first (teams have no entity dependencies) then role_manager (roles reference entity names that must exist on the target); within-batch dependency resolution ensures security YAMLs are processed last regardless of filename alphabetical position; updated STEP SUMMARY block to include security step status. Resolves a known interaction: the existing backlog notes that the deploy engine processes files in alphabetical order rather than topological order. This prompt adds a security-specific special-case rule (security files always run last); it does NOT solve the general topological-sort backlog issue. Depends on PI-036 and PI-037. Acceptance: a batch containing entity YAMLs and a security.yaml deploys cleanly regardless of filename order; a security YAML referencing an entity not in the batch and not on the server produces a clear error before any API write.",
+    "id": 38,
+    "identifier": "PI-038",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "audit-v1.2 Prompt E — Section 12.6 deploy ordering and security pipeline step",
+    "updated_at": "2026-05-23T15:52:46.099813"
+  },
+  {
+    "created_at": "2026-05-23T15:52:46.171502",
+    "description": "Author CLAUDE-CODE-PROMPT-audit-v1.2-F-role-clause.md. Adds: condition_expression.py gains a new leaf clause variant for role: predicates (Section 12.5.1); AST extension with RoleClause joining the existing LeafClause, AllNode, AnyNode set; parse_condition recognizes role: keys at the leaf level; validate_condition accepts an optional known_roles set and validates role names against it if provided; render_condition emits role clauses in structured form. evaluate_condition is deliberately NOT extended for roles — role-aware evaluation requires current-user context that the deploy engine does not have; the boundary is correct, validators ensure clauses are well-formed and actual evaluation happens in the target CRM at runtime. Depends on PI-034 (RoleDefinition exists). Acceptance: round-trip of a YAML requiredWhen clause with a role predicate parses and renders correctly; compound clauses mixing role and record-state predicates parse correctly; invalid role names (when known_roles is provided) produce specific errors.",
+    "id": 39,
+    "identifier": "PI-039",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "audit-v1.2 Prompt F — role: leaf clause variant in condition_expression.py",
+    "updated_at": "2026-05-23T15:52:46.171505"
+  },
+  {
+    "created_at": "2026-05-23T15:52:46.248463",
+    "description": "Author CLAUDE-CODE-PROMPT-audit-v1.2-G-role-aware-visibility.md. Adds: config_loader.py validates that requiredWhen and visibleWhen clauses with role: predicates reference roles declared in the program batch's roles: block; field_manager.py and layout_manager.py translate role-aware clauses into EspoCRM's dynamic-logic JSON when writing to the target; layout-level forRoles: scoping (Section 12.5.2) is implemented as a layout-set selector at deploy time; validator cross-checks ensure every role referenced in any condition expression exists in the batch's roles: block or on the target instance. Depends on PI-037 (role_manager) and PI-039 (role clause parser). Acceptance: a YAML with a field requiredWhen clause referencing the Mentor role deploys correctly with role-aware dynamic logic on the target; a layout with forRoles: [Mentor Administrator] deploys only to that role's effective layout; a field with a role clause referencing an undeclared role produces a clear pre-deploy error.",
+    "id": 40,
+    "identifier": "PI-040",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "audit-v1.2 Prompt G — Section 12.5 wiring: role-aware field/panel visibility and role-scoped layouts",
+    "updated_at": "2026-05-23T15:52:46.248465"
+  },
+  {
+    "created_at": "2026-05-23T15:52:46.320619",
+    "description": "Author CLAUDE-CODE-PROMPT-audit-v1.2-H-audit-security.md. Adds: audit_manager.py _discover_roles and _discover_teams methods using new get_roles and get_teams api_client methods; RoleAuditResult and TeamAuditResult dataclasses; _reverse_dynamic_logic extended to recognize and emit role: leaf clauses when it sees EspoCRM's role-aware dynamic-logic JSON shape; _write_yaml_files writes a separate security.yaml containing roles: and teams: blocks when security was captured and any results exist; AuditOptions.include_security boolean (default False per the planning doc Open Question 9.3); audit_db.py inserts role and team records into new client-schema tables (Alembic-style migration). Depends on PI-034 through PI-040 (full schema and deploy work in place so audited output is round-trip-deployable). Acceptance: an audit against a source with three roles and two teams produces security.yaml with correct content; re-running deploy on the target reproduces the same role and team records; a source field with a role-aware requiredWhen clause is captured with the role predicate intact; audit with include_security=False produces no security.yaml and no role/team DB records.",
+    "id": 41,
+    "identifier": "PI-041",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "audit-v1.2 Prompt H — audit-side _discover_roles, _discover_teams, role-aware logic reversal, security.yaml emission",
+    "updated_at": "2026-05-23T15:52:46.320622"
+  },
+  {
+    "created_at": "2026-05-23T15:52:46.401245",
+    "description": "Author CLAUDE-CODE-PROMPT-audit-v1.2-I-filtered-tab-audit.md. Adds: audit_manager.py _discover_filtered_tabs method called after relationship discovery; FilteredTabAuditResult dataclass; reverse-engineering walks both halves of the pattern — for each audited entity, query list_report_filters(entity) for Report Filter records and read clientDefs.{entity} metadata to identify custom scope tabs binding to those filters; YAML emission slots into each entity's existing filteredTabs: block in the per-entity YAML; AuditOptions.include_filtered_tabs boolean (default False per planning doc Open Question 9.3); audit_db.py inserts filtered-tab records into a new client-schema table. Depends on PI-041 only for sequencing convenience — no logical dependency. Acceptance: an audit against a source with two filtered tabs (one per entity) produces YAML entity blocks each containing one correct filteredTabs entry; re-deploying the audited YAML against a fresh target with Advanced Pack present reproduces both filtered tabs; audit with include_filtered_tabs=False produces no records and no YAML blocks. Graceful failure: HTTP 404 from list_report_filters (Advanced Pack not installed) is treated as no filtered tabs to capture.",
+    "id": 42,
+    "identifier": "PI-042",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "audit-v1.2 Prompt I — filtered-tab audit capture",
+    "updated_at": "2026-05-23T15:52:46.401247"
+  },
+  {
+    "created_at": "2026-05-23T15:52:46.484849",
+    "description": "Author CLAUDE-CODE-PROMPT-audit-v1.2-J-entity-picker.md. Adds: AuditOptions.selected_entities (set of str or None; None means all, preserving current v1.1 behavior); _discover_entities extended to filter to selected_entities after fetching scopes; audit_entry.py gains a pre-flight discovery step on dialog open calling client.get_all_scopes synchronously with a brief loading state and populating a scrollable entity-picker QListWidget with checkboxes (default all checked); Select All and Select None buttons above the picker; integration with existing category checkboxes (entity picker says which entities, category checkboxes say what aspects); new checkboxes Filtered tabs and Security (roles, teams, role-aware visibility). Implements DEC-174 (pre-flight live discovery, not cached). No logical dependency on PI-034 through PI-042 — purely UI work — but slotted late so the dialog can reference the new include_security and include_filtered_tabs flags. Acceptance: selecting two entities out of ten in the picker results in only those two being audited end-to-end; Select None disables the Run button; pre-flight discovery failure shows a clear error without crashing the dialog.",
+    "id": 43,
+    "identifier": "PI-043",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "audit-v1.2 Prompt J — entity-picker UI and AuditOptions.selected_entities",
+    "updated_at": "2026-05-23T15:52:46.484852"
+  },
+  {
+    "created_at": "2026-05-23T15:52:46.585740",
+    "description": "Author CLAUDE-CODE-PROMPT-audit-v1.2-K-documentation.md. Adds: PRDs/product/features/feat-audit.md bumped from v1.1 to v1.2 with new sections covering entity-level selection, filtered-tab audit, and full Section 12 security round-trip; docs/user/user-guide.md updated section on the Audit feature with new screenshots and option descriptions; updated entries in crmbuilder repo CLAUDE.md describing the new managers, dataclasses, and security pipeline step. Depends on PI-034 through PI-043 (all functional work complete so the documentation reflects what actually shipped, not what was planned). Acceptance: feat-audit.md v1.2 accurately describes the shipped feature read against the actual code; user-guide steps reproduce successfully against a test instance.",
+    "id": 44,
+    "identifier": "PI-044",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "audit-v1.2 Prompt K — feat-audit.md v1.2 and user-guide updates",
+    "updated_at": "2026-05-23T15:52:46.585744"
   }
 ]

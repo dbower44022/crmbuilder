@@ -1,0 +1,47 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_058.json
+Label:  SES-058 Audit feature v1.2 workstream established: 4 design decisions captured (DEC-171..174), audit-v1.2-planning.md authored, decomposed into 11-prompt Claude Code series (audit-v1.2 A..K); 1 session, 4 decisions, 11 planning items, 15 references
+Deposit event: DEP-011
+
+=== session (1 record) ===
+  ✓ POST session  SES-058 (HTTP 201)
+
+=== decisions (4 records) ===
+  ✓ POST decisions  DEC-171 (HTTP 201)
+  ✓ POST decisions  DEC-172 (HTTP 201)
+  ✓ POST decisions  DEC-173 (HTTP 201)
+  ✓ POST decisions  DEC-174 (HTTP 201)
+
+=== planning_items (11 records) ===
+  ✓ POST planning_items  PI-034 (HTTP 201)
+  ✓ POST planning_items  PI-035 (HTTP 201)
+  ✓ POST planning_items  PI-036 (HTTP 201)
+  ✓ POST planning_items  PI-037 (HTTP 201)
+  ✓ POST planning_items  PI-038 (HTTP 201)
+  ✓ POST planning_items  PI-039 (HTTP 201)
+  ✓ POST planning_items  PI-040 (HTTP 201)
+  ✓ POST planning_items  PI-041 (HTTP 201)
+  ✓ POST planning_items  PI-042 (HTTP 201)
+  ✓ POST planning_items  PI-043 (HTTP 201)
+  ✓ POST planning_items  PI-044 (HTTP 201)
+
+=== references (15 records) ===
+  ✓ POST references  DEC-171 decided_in SES-058 (HTTP 201)
+  ✓ POST references  DEC-172 decided_in SES-058 (HTTP 201)
+  ✓ POST references  DEC-173 decided_in SES-058 (HTTP 201)
+  ✓ POST references  DEC-174 decided_in SES-058 (HTTP 201)
+  ✓ POST references  SES-058 is_about PI-034 (HTTP 201)
+  ✓ POST references  SES-058 is_about PI-035 (HTTP 201)
+  ✓ POST references  SES-058 is_about PI-036 (HTTP 201)
+  ✓ POST references  SES-058 is_about PI-037 (HTTP 201)
+  ✓ POST references  SES-058 is_about PI-038 (HTTP 201)
+  ✓ POST references  SES-058 is_about PI-039 (HTTP 201)
+  ✓ POST references  SES-058 is_about PI-040 (HTTP 201)
+  ✓ POST references  SES-058 is_about PI-041 (HTTP 201)
+  ✓ POST references  SES-058 is_about PI-042 (HTTP 201)
+  ✓ POST references  SES-058 is_about PI-043 (HTTP 201)
+  ✓ POST references  SES-058 is_about PI-044 (HTTP 201)
+
+✓ All 31 operations complete.
+
+✓ Recorded apply as deposit_event DEP-011 (HTTP 201).
