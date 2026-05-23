@@ -19913,5 +19913,419 @@
     "id": 839,
     "operation": "insert",
     "timestamp": "2026-05-23T16:06:18.162622"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "PRDs/product/crmbuilder-automation-PRD/audit-v1.2-planning.md v1.1 (commit 315801b — §9 resolutions, Alembic→_client_v4 correction, overwrite-confirmation wiring), v1.2 (commit c9ebcda — security.yaml subdirectory placement threaded through), and v1.3 (pending commit — identifier rebase to SES-060/DEC-178..182); PRDs/product/crmbuilder-v2/close-out-payloads/ses_060.json (this payload); PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-apply-close-out-ses-060.md (apply prompt); five decisions DEC-178 through DEC-182; five references (decided_in linking each decision to SES-060). Note: this conversation's original ses_059.json and CLAUDE-CODE-PROMPT-apply-close-out-ses-059.md were overwritten on pull-rebase by Doug's concurrently-pushed PI-024 close-out (commit 44182d1); their content has been re-authored at the SES-060 paths with identifier shifts only.",
+      "conversation_reference": "Claude.ai resolution conversation following SES-058 (audit-v1.2 workstream establishment). Opened on Doug's upload of audit-v1.2-planning.md v1.0 for review and continuation, with no accompanying user message text — the kickoff was the document itself paired with the project's standing system prompt setting ARCHITECTURE mode as default. The conversation produced three revisions of the planning document (v1.1 commit 315801b, v1.2 commit c9ebcda, v1.3 identifier-rebase pending), resolving all four open questions §9 had carried forward from v1.0 plus the security.yaml file-placement question Claude surfaced during initial doc review. Two design errors caught during review were also folded into v1.1: Prompt H had referenced 'Alembic-style migration' for new role/team tables, when the project actually uses a homegrown versioned migration runner at automation/db/migrations.py with a schema_version table and _client_v1..v3 migrations; v1.1 corrects to a new _client_v4 migration. The §9.4 overwrite-confirmation dialog was also wired into §4.1 operator flow and Prompt J during v1.1. v1.2 then resolved security.yaml placement (subdirectory) and threaded the consequence through §4.1, Prompt A loader scan, Prompt H emission target, and Prompt J overwrite-trigger pattern. After v1.2 pushed, Doug's concurrently-running PI-024 prior-workstreams backfill conversation pushed its own SES-059 close-out (commit 44182d1), taking the SES-059 / DEC-175..177 identifier range; v1.3 of this doc rebases this conversation's records to SES-060 / DEC-178..182 and updates §10 accordingly. End state: audit-v1.2-planning.md is at v1.3 and is the design authority for Prompt A; one workflow question remains (series-size mitigation at Prompt E), deliberately not captured in the doc.",
+      "created_at": "2026-05-23T20:51:27.730629+00:00",
+      "id": 59,
+      "identifier": "SES-060",
+      "in_flight_at_end": "Audit feature v1.2 workstream continues per the planning doc at PRDs/product/crmbuilder-automation-PRD/audit-v1.2-planning.md v1.3. The next conversation authors CLAUDE-CODE-PROMPT-audit-v1.2-A-roles-teams-recognition.md as PI-034's deliverable; that prompt covers config_loader.py recognition of roles: and teams: top-level keys, extension of the program-directory scan to include security/*.yaml under the subdirectory, addition of RoleDefinition and TeamDefinition dataclasses with raw-passthrough fields, and ProgramFile.roles/teams collections — all loader/models work, no deploy effect. After Doug runs Prompt A through Claude Code locally and confirms green, the next conversation writes Prompt B, and so on through Prompt K. One workflow choice deferred to Doug: whether to pause at Prompt E for a deploy-side validation milestone before starting Prompts F through K (§8.5 of the planning doc surfaces this option without resolving it). Out-of-scope items remain as documented in §7 of the planning doc. Methodology issue surfaced but deferred: concurrent sandbox identifier allocation can collide because pull-rebase only detects collision at push time, not at allocation time — natural home for tracking this is the Code Change Lifecycle workstream that already owns commit-and-deposit-event entity work.",
+      "session_date": "2026-05-23",
+      "status": "Complete",
+      "summary": "",
+      "title": "audit-v1.2 planning resolved: §9 open questions and security.yaml placement decided, planning doc v1.1 through v1.3 authored; rebased from SES-059 to SES-060 to clear PI-024 collision",
+      "topics_covered": "Seed: Doug uploaded audit-v1.2-planning.md v1.0 (the kickoff product of SES-058) for review and continuation. No accompanying user message text; the project's standing system prompt set ARCHITECTURE mode and provided the close-out protocol.\n\nStructured summary of the resolution conversation:\n\n(1) Initial review surfaced three architectural concerns not captured in v1.0. First: Prompt H referenced 'Alembic-style migration' for the new role and team client-schema tables. The project does not use Alembic; the actual mechanism is a homegrown versioned migration runner at automation/db/migrations.py with a schema_version table and existing _client_v1 through _client_v3 migrations. The fix is a new _client_v4 migration following the existing pattern. Second: §4.1 established security.yaml as a distinct artifact separate from per-entity YAMLs but did not pin where in a program file's directory structure it lives — root alongside per-entity YAMLs versus a security/ subdirectory. This affects both audit emission (Prompt H) and loader discovery (Prompt A). Third: §8.5 named the 11-prompt series-size risk but proposed no mitigation. Option worth considering: pause at Prompt E for a deploy-side validation milestone before starting the audit-side work in F through K. Doug approved working through the §9 open questions one at a time, with the three concerns flagged for incorporation.\n\n(2) §9.3 — Default for include_security and include_filtered_tabs. Passed the two-part test (operator-facing impact; two viable defaults). Concrete example: Doug's next CBM audit after v1.2 ships, opening the dialog and seeing the new checkboxes in either checked or unchecked state. Options: default-on (consistent with existing AuditOptions pattern where every category-wide option defaults True) versus default-off (new capabilities opt-in to avoid surprising operators). Recommendation: default-on, on the rationale that the audit's identity is capture-everything and a default-off new capability is a quiet inconsistency in that identity with a bad failure mode (operators who never notice the new checkboxes get half-audits indefinitely). The v1.0 provisional default-False was overcautious for the actual operator situation: Doug is effectively the sole operator and will read the v1.2 release notes. Doug approved default-on. This is a revision from v1.0's provisional answer.\n\n(3) §9.4 — Backward compatibility for existing audit YAML. Passed the two-part test (real risk of losing prior audit output; three genuinely different options). Concrete example: Doug audited CBM under v1.1 four weeks ago and got 8 per-entity YAMLs in audits/cbm-source/. What happens when v1.2 runs against the same source? Options: overwrite (latest snapshot replaces prior), alongside (versioned suffix or dated subdirectory, both versions coexist), merge (parse existing files and diff). Recommendation: overwrite with a one-line UX guard — the Audit dialog displays a pre-run confirmation when the output directory contains files matching the audit emission pattern. The merge option was rejected on maintenance grounds (diffing structural YAML is fragile across schema evolution); the alongside option was rejected because two YAML versions of the same entity coexisting in the same program root creates real deploy ambiguity. Doug approved overwrite with the confirmation guard.\n\n(4) §9.1 and §9.2 resolved as routine decisions in a single turn (neither passed the two-part test). §9.1 persona cross-reference validation: kept as documentation metadata only, no validation. Cross-checking would require a source-of-truth list of Master PRD personas, which doesn't live anywhere the loader has access to and would couple the loader to client-specific PRD content. The failure mode of a typo'd persona name is documentation-reader-briefly-confused, not severe enough to justify the infrastructure or coupling. §9.2 empty scope_access: emit informational warning in the audit log when a captured role has no per-entity access. Matches existing audit log pattern for analogous edge cases (e.g., entity with no custom fields); gives operators visibility into roles that grant nothing on the source. Doug approved both.\n\n(5) Planning doc v1.1 authored and pushed (commit 315801b). v1.1 rewrites §9 from open-question subsections to resolved-decision subsections, adds the Alembic→_client_v4 correction to Prompt H and threads the same migration version into Prompt I (one _client_v4 migration covers all v1.2 audit schema additions rather than separate versions per prompt), wires the §9.4 overwrite-confirmation dialog into §4.1 operator flow and Prompt J, and updates §10 to record that §9 is resolved while surfacing two workflow items (series-size mitigation and security.yaml placement) that were not yet decided.\n\n(6) security.yaml file placement decision raised separately as the one remaining design question affecting Prompt A. Passed the two-part test (real loader-discovery and future-proofing impact; two genuinely different options). Concrete example: Doug audits CBM source under v1.2 with security enabled — output ends up either flat (audits/cbm-source/security.yaml alongside per-entity YAMLs at root) or grouped (audits/cbm-source/security/security.yaml under a dedicated subdirectory). Options: root (flat program directory, loader scans *.yaml at root) versus security/ subdirectory (loader scans root and security/ for *.yaml, future security-adjacent files anchor in the same folder). Recommendation: subdirectory, on the rationale that §7 already names v1.4 deferred work (Section 12.7 field-level permissions and permission presets) that will produce additional security-related files; doing it now costs a small loader convention; doing it later costs an output migration for any program previously audited under v1.2. Doug approved subdirectory.\n\n(7) Planning doc v1.2 authored and pushed (commit c9ebcda). v1.2 threads the security/ subdirectory placement through §4.1 step 8 (emission path), §4.1 step 5 and §9.4 consequence (overwrite-confirmation trigger now matches *.yaml at root OR security/*.yaml under the subdirectory), Prompt A's loader scan (root plus security/), Prompt H's emission target, and Prompt J's overwrite-trigger pattern. §10 is trimmed to remove the resolved placement bullet, leaving only the series-size workflow question as deliberately uncaptured in the doc.\n\n(8) Identifier collision discovered and rebased. After v1.2 pushed (15:28 UTC), the close-out payload was authored as ses_059.json with DEC-175..179. On the next pull-rebase before push, origin/main had advanced to commit 44182d1 (Doug pushed at 15:32 UTC) — the PI-024 prior-workstreams backfill conversation had run concurrently in another sandbox and pushed its own SES-059 close-out first, with DEC-175 through DEC-177 covering inventory, lifecycle-date strategy, and master-plan reference_book bundling. The pull-rebase silently overwrote this conversation's ses_059.json with PI-024's version. Resolution: rebase this conversation's records to SES-060 with DEC-178..182, re-author ses_060.json with content identical to the lost ses_059.json apart from identifier shifts, and bump the planning doc to v1.3 to fix the §10 reference 'SES-059 (DEC-175 through DEC-179)' to 'SES-060 (DEC-178 through DEC-182)'. The v1.3 bump is a pure rebase with no design content change.\n\n(9) Series-size mitigation (§8.5) deliberately not resolved. Whether to pause at Prompt E for a deploy-side validation milestone before starting Prompts F through K is a workflow choice for Doug to make at execution time, not a design decision that belongs in the planning document. The doc neither requires nor forbids the pause. Surfaced in §10 for visibility but left to Doug.\n\n(10) Next-conversation kickoff. The next conversation opens against the planning document at PRDs/product/crmbuilder-automation-PRD/audit-v1.2-planning.md (now at v1.3) and produces CLAUDE-CODE-PROMPT-audit-v1.2-A-roles-teams-recognition.md as the PI-034 deliverable.\n\n(11) Lesson learned about concurrent sandbox identifier allocation. The next-available-identifier check against the engagement's db-export snapshot is necessary but not sufficient when multiple Claude.ai sandboxes are running concurrently. Both this conversation and the PI-024 backfill conversation observed the same head (SES-058 from the snapshot, with SES-058's apply not yet run locally, so functionally SES-057 was the latest applied head) and independently allocated SES-059. The collision was only detected at push time via pull-rebase. Out of scope for this conversation but flagged as a methodology issue worth tracking — the planning kickoff for the Code Change Lifecycle workstream (SES-057, PI-027 through PI-033) may be the natural home for this concern since it owns the commit-and-deposit-event entity work."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-060",
+    "entity_type": "session",
+    "id": 840,
+    "operation": "insert",
+    "timestamp": "2026-05-23T20:51:27.731089"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Option A — validate against a configured list of known personas, warning on unknown values. Rejected: introduces a configuration surface (where does the list live? per-client? in the program YAML itself?) and a coupling between the loader and client-specific PRD content for marginal benefit. Option B — validate against a list inferred from other YAML content. Rejected as too clever; persona: is metadata, not a structural reference.",
+      "consequences": "No persona-validation logic in config_loader.py. No new dependency from the loader on any client-specific document list. Prompts A, B, and D treat persona: as opaque metadata. If a future feature wants persona-aware validation (for example, a CRM Methodology Auditor that checks YAML against Master PRD content), it can build that as a separate validator outside the deploy-engine loader.",
+      "context": "Schema v1.3 Section 12.1 defines a persona: field on RoleDefinition as 'documentation metadata — the loader does not cross-check the identifier against any source.' The audit-v1.2 workstream needs to decide whether to honor this schema specification verbatim or to optionally extend the loader to validate persona: values against a known list (such as Master PRD personas for the client implementation) and warn on unknown values. v1.0 of audit-v1.2-planning.md carried this as §9.1 with a provisional answer of no validation. SES-060 formalizes the resolution.",
+      "created_at": "2026-05-23T20:51:27.854073+00:00",
+      "decision": "No validation. The loader treats persona: as opaque documentation metadata. The audit captures whatever value the source instance carries and emits it as-is. No cross-checking against any list, no warnings on unrecognized values, no new dependency from the loader on client-specific document content.",
+      "decision_date": "2026-05-23",
+      "id": 176,
+      "identifier": "DEC-178",
+      "rationale": "Schema Section 12.1 is explicit that persona: is metadata. Cross-checking it would require a source-of-truth list of Master PRD personas, which doesn't live anywhere the loader currently has access to and would couple the loader to client-specific PRD content (a coupling the rest of the loader carefully avoids). The failure mode of a typo'd persona name is 'documentation reader briefly confused' — minor and self-correcting. The validation infrastructure and the loader-to-PRD coupling are not justified by that failure mode.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "RoleDefinition.persona is documentation metadata only — no loader validation",
+      "updated_at": "2026-05-23T20:51:27.854077+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-178",
+    "entity_type": "decision",
+    "id": 841,
+    "operation": "insert",
+    "timestamp": "2026-05-23T20:51:27.854605"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Option A — silent capture, no log line. Rejected: operator visibility into degenerate cases is cheap and useful. Option B — warning emitted as a YAML comment in the output. Rejected: intrusive on every redeploy. Option C — elevate to warning severity that surfaces in the audit summary panel. Rejected: implies a problem where there isn't one.",
+      "consequences": "Prompt H's _write_yaml_files() emits the informational log line for every captured role with empty scope_access. The validator, the loader, and the deploy side are unaffected — they handle empty scope_access roles identically to non-empty ones. The audit progress dialog's summary line at end of run mentions the warning count if any informational warnings were emitted.",
+      "context": "If a source EspoCRM instance has a role with no per-entity access — for example, a placeholder role kept for documentation purposes or a role that was created and never had scope_access wired up — the v1.2 audit captures it as a role with an empty scope_access: map. The schema allows this construct (an empty mapping is valid). The audit-v1.2-planning.md v1.0 §9.2 carried the open question: should the audit surface this case to the operator, and if so, how? v1.0's provisional answer was yes-as-informational-log-warning. SES-060 formalizes the resolution.",
+      "created_at": "2026-05-23T20:51:27.951510+00:00",
+      "decision": "Yes, informational warning in the audit log, not in the YAML output. When the audit captures a role with empty scope_access, the audit log records a line of the form 'Role X has no scope_access; this role grants no entity access on the source instance.' The YAML output itself is unaffected — the role is emitted with whatever its source state was, including the empty scope_access mapping. The warning level is informational, not error or warning-severity.",
+      "decision_date": "2026-05-23",
+      "id": 177,
+      "identifier": "DEC-179",
+      "rationale": "Matches the existing audit log pattern for analogous edge cases (e.g., entity with no custom fields, layout with no rows). Gives operators visibility into 'this role grants nothing on the source and probably wants cleanup' without altering the audited content. Putting the warning in the YAML output would be intrusive (operators would have to remove a YAML comment or warning block on every redeploy), and elevating the severity to warning or error would imply a deploy-blocking condition where there isn't one — an empty scope_access role is valid YAML that deploys cleanly.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Captured role with empty scope_access produces an informational audit-log warning",
+      "updated_at": "2026-05-23T20:51:27.951513+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-179",
+    "entity_type": "decision",
+    "id": 842,
+    "operation": "insert",
+    "timestamp": "2026-05-23T20:51:27.952045"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Option A — default False per v1.0 provisional answer. Rejected on grounds above. Option B — split default (one True, one False, e.g., filtered tabs default True because lower behavioral footprint, security default False because larger). Rejected as arbitrary; both new options sit at the same conceptual level as existing options, and splitting defaults invites confusion. Option C — prompt operator on first v1.2 run to choose defaults. Rejected as over-engineered.",
+      "consequences": "Prompts H, I, and J use default=True for the new AuditOptions booleans. Prompt K's documentation includes a release-notes mention of the new defaults so operators know what to expect on the first v1.2 run. First v1.2 audit run after the workstream lands produces security.yaml (under security/) and filteredTabs: blocks automatically. Operators who specifically don't want this output uncheck the boxes once and the AuditOptions persistence preserves that choice on subsequent runs (where AuditOptions persistence already exists; if not, that's a separate feature).",
+      "context": "Audit-v1.2 adds two new category-wide AuditOptions booleans: include_security (gates the role and team discovery added in Prompt H) and include_filtered_tabs (gates the filtered-tab discovery added in Prompt I). The Audit dialog exposes these as checkboxes. v1.0 of audit-v1.2-planning.md §9.3 carried the open question: should these new checkboxes default to checked or unchecked? v1.0's provisional answer was default False, on the rationale of avoiding surprising operators on the first v1.2 run. SES-060 revises this.",
+      "created_at": "2026-05-23T20:51:28.032599+00:00",
+      "decision": "Both new AuditOptions booleans default to True. The Audit dialog's Filtered tabs and Security checkboxes start checked when the dialog opens. Operators opt out by unchecking. This matches the existing pattern — every current AuditOptions category-wide boolean defaults True.",
+      "decision_date": "2026-05-23",
+      "id": 178,
+      "identifier": "DEC-180",
+      "rationale": "The audit's product identity is 'capture the full configuration of a source instance for round-trip deploy.' Every existing AuditOptions boolean defaults True, expressing that identity in code. A default-off new capability is a quiet inconsistency in that identity and has a bad failure mode: operators who never notice the new checkboxes get half-audits indefinitely without realizing what's missing. The 'default-off avoids surprising operators' reasoning that produced v1.0's provisional answer was overcautious for the actual operator situation — Doug is effectively the sole operator at this stage and will read the v1.2 release notes. The one-time surprise of new artifacts appearing on the first v1.2 run is preferable to silent half-audits in perpetuity.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "AuditOptions.include_security and include_filtered_tabs default to True",
+      "updated_at": "2026-05-23T20:51:28.032602+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-180",
+    "entity_type": "decision",
+    "id": 843,
+    "operation": "insert",
+    "timestamp": "2026-05-23T20:51:28.032969"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Option A — overwrite without any guard. Rejected: minor UX cost, real safety benefit. Option B — alongside output (versioned suffix or dated subdirectory). Rejected: file proliferation and deploy ambiguity. Option C — merge (parse existing, diff, emit merged output). Rejected on maintenance grounds.",
+      "consequences": "Prompt J implements the confirmation dialog as part of the entity-picker UI work. The dialog's trigger condition uniformly matches *.yaml at root and security/*.yaml under the subdirectory. Operators who want to preserve prior audit output have two options: (a) cancel the dialog and manually rename or move the output directory before re-running, (b) point the audit at a different output directory. Neither is automated by the audit; both are operator responsibility.",
+      "context": "v1.2 audit runs against a source instance whose output directory may already contain artifacts from a prior v1.1 audit run — per-entity YAMLs without filteredTabs: blocks, no security.yaml, possibly with operator edits. v1.0 of audit-v1.2-planning.md §9.4 carried the open question: what happens to the existing files? Three options were framed: overwrite (latest snapshot replaces prior), alongside (versioned suffix or dated subdirectory, both versions coexist in the same root), merge (parse existing files and emit files merging new blocks into existing content). v1.0's provisional answer was overwrite. SES-060 formalizes the resolution and adds a UX guard.",
+      "created_at": "2026-05-23T20:51:28.112011+00:00",
+      "decision": "Overwrite, with a pre-run confirmation guard. When the operator clicks Run Audit and the output directory contains files matching the audit emission pattern (any file matching *.yaml at the output directory root OR security/*.yaml under the subdirectory), the Audit dialog displays an overwrite-confirmation prompt: 'Output directory contains N existing audit YAML files; running this audit will overwrite them. Proceed?' The dialog defaults focus to Cancel; the operator must explicitly click Proceed to continue. Empty output directories run without the prompt.",
+      "decision_date": "2026-05-23",
+      "id": 179,
+      "identifier": "DEC-181",
+      "rationale": "Audited YAML is a snapshot, not source code. An audit run is the operator's explicit request to capture the current state of the source instance. Hand-editing audit output is an anti-pattern; the right place to fork audit output is into a separate working directory under the operator's control. But the audit itself doesn't enforce or document that, and there is a real failure mode of losing operator edits on a subsequent audit run. The confirmation guard catches that failure mode for a one-line UX cost. The merge option was rejected on maintenance grounds (diffing structural YAML is fragile across schema evolution, renamed fields, reordered blocks); the alongside option was rejected because two YAML versions of the same entity coexisting in the same program root creates real deploy ambiguity.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Existing audit output is overwritten with a pre-run confirmation guard",
+      "updated_at": "2026-05-23T20:51:28.112014+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-181",
+    "entity_type": "decision",
+    "id": 844,
+    "operation": "insert",
+    "timestamp": "2026-05-23T20:51:28.112431"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Option A — root placement, security.yaml alongside per-entity YAMLs. Rejected on future-proofing grounds detailed above. Option B — per-entity security blocks embedded in the entity YAML rather than a separate file. Rejected because roles and teams are not entity-scoped; the data shape doesn't fit. Option C — named subdirectories per security category (security/roles/, security/teams/) anticipating v1.4. Rejected as premature; v1.4 may or may not produce that structure, and over-anticipating creates its own migration burden.",
+      "consequences": "Prompt A extends config_loader.py's scan to include security/*.yaml under the subdirectory. Prompt H emits to <output_dir>/security/security.yaml. Prompt J's overwrite-confirmation trigger pattern matches both root *.yaml and security/*.yaml uniformly. The user-guide update in Prompt K calls out the subdirectory convention. v1.4 work picks up the same subdirectory for any additional security-related YAML it produces. Programs audited under v1.2 that need to be hand-edited or forked to a working directory should preserve the security/ subdirectory structure to avoid loader confusion.",
+      "context": "v1.2 audit emits a new artifact, security.yaml, containing the roles: and teams: blocks captured from the source instance. The placement of this file in a program directory is consequential for two reasons: it determines where the loader looks for the file (Prompt A's config_loader.py scan), and it sets a precedent for where future security-related files land. Section 12.7 (field-level permissions and permission presets) is named in audit-v1.2-planning.md §7 as deferred v1.4 work and will likely produce additional security-related files. v1.1 of audit-v1.2-planning.md §10 surfaced this question separately from the §9 resolutions. SES-060 resolves it.",
+      "created_at": "2026-05-23T20:51:28.192105+00:00",
+      "decision": "security.yaml lives in a security/ subdirectory of the program directory, not at root alongside per-entity YAMLs. The loader's program-directory scan is extended to scan both root *.yaml and security/*.yaml. The audit emits to <output_dir>/security/security.yaml, creating the subdirectory if missing. The overwrite-confirmation trigger pattern (DEC-181) matches files at either location. The subdirectory is conventional — the parser does not require any specific filename within it; any YAML in security/ is parsed by the same loader logic as root YAML.",
+      "decision_date": "2026-05-23",
+      "id": 180,
+      "identifier": "DEC-182",
+      "rationale": "v1.4 deferred work (Section 12.7) will produce more security-related files (permission presets, possibly field-level permission overlays). Anchoring those files in a single subdirectory now is cheaper than migrating v1.2 outputs when v1.4 lands. The cost is a small loader convention (operators learn that security YAMLs live in security/, not at root like entity YAMLs) and one extra scan target in config_loader.py. The alternative — flat placement at root — would either (a) clutter v1.4 program directories with mixed entity and security files, or (b) require migrating all v1.2-audited outputs when v1.4 ships. Both are worse than the small loader convention being adopted now.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "security.yaml lives in a security/ subdirectory of the program directory",
+      "updated_at": "2026-05-23T20:51:28.192108+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-182",
+    "entity_type": "decision",
+    "id": 845,
+    "operation": "insert",
+    "timestamp": "2026-05-23T20:51:28.192569"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T20:51:28.274738+00:00",
+      "id": 429,
+      "reference_identifier": "REF-0425",
+      "relationship": "decided_in",
+      "source_id": "DEC-178",
+      "source_type": "decision",
+      "target_id": "SES-060",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-178 -[decided_in]-> session:SES-060",
+    "entity_type": "reference",
+    "id": 846,
+    "operation": "insert",
+    "timestamp": "2026-05-23T20:51:28.275295"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T20:51:28.395857+00:00",
+      "id": 430,
+      "reference_identifier": "REF-0426",
+      "relationship": "decided_in",
+      "source_id": "DEC-179",
+      "source_type": "decision",
+      "target_id": "SES-060",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-179 -[decided_in]-> session:SES-060",
+    "entity_type": "reference",
+    "id": 847,
+    "operation": "insert",
+    "timestamp": "2026-05-23T20:51:28.396287"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T20:51:28.484750+00:00",
+      "id": 431,
+      "reference_identifier": "REF-0427",
+      "relationship": "decided_in",
+      "source_id": "DEC-180",
+      "source_type": "decision",
+      "target_id": "SES-060",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-180 -[decided_in]-> session:SES-060",
+    "entity_type": "reference",
+    "id": 848,
+    "operation": "insert",
+    "timestamp": "2026-05-23T20:51:28.485169"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T20:51:28.583704+00:00",
+      "id": 432,
+      "reference_identifier": "REF-0428",
+      "relationship": "decided_in",
+      "source_id": "DEC-181",
+      "source_type": "decision",
+      "target_id": "SES-060",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-181 -[decided_in]-> session:SES-060",
+    "entity_type": "reference",
+    "id": 849,
+    "operation": "insert",
+    "timestamp": "2026-05-23T20:51:28.584061"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T20:51:28.666900+00:00",
+      "id": 433,
+      "reference_identifier": "REF-0429",
+      "relationship": "decided_in",
+      "source_id": "DEC-182",
+      "source_type": "decision",
+      "target_id": "SES-060",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-182 -[decided_in]-> session:SES-060",
+    "entity_type": "reference",
+    "id": 850,
+    "operation": "insert",
+    "timestamp": "2026-05-23T20:51:28.667277"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T20:51:28.754947+00:00",
+      "id": 434,
+      "reference_identifier": "REF-0430",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-013",
+      "source_type": "deposit_event",
+      "target_id": "COP-060",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-013 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-060",
+    "entity_type": "reference",
+    "id": 851,
+    "operation": "insert",
+    "timestamp": "2026-05-23T20:51:28.755734"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T20:51:28.757444+00:00",
+      "id": 435,
+      "reference_identifier": "REF-0431",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-013",
+      "source_type": "deposit_event",
+      "target_id": "SES-060",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-013 -[deposit_event_wrote_record]-> session:SES-060",
+    "entity_type": "reference",
+    "id": 852,
+    "operation": "insert",
+    "timestamp": "2026-05-23T20:51:28.757984"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T20:51:28.759410+00:00",
+      "id": 436,
+      "reference_identifier": "REF-0432",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-013",
+      "source_type": "deposit_event",
+      "target_id": "DEC-178",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-013 -[deposit_event_wrote_record]-> decision:DEC-178",
+    "entity_type": "reference",
+    "id": 853,
+    "operation": "insert",
+    "timestamp": "2026-05-23T20:51:28.759869"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T20:51:28.761028+00:00",
+      "id": 437,
+      "reference_identifier": "REF-0433",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-013",
+      "source_type": "deposit_event",
+      "target_id": "DEC-179",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-013 -[deposit_event_wrote_record]-> decision:DEC-179",
+    "entity_type": "reference",
+    "id": 854,
+    "operation": "insert",
+    "timestamp": "2026-05-23T20:51:28.761413"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T20:51:28.762554+00:00",
+      "id": 438,
+      "reference_identifier": "REF-0434",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-013",
+      "source_type": "deposit_event",
+      "target_id": "DEC-180",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-013 -[deposit_event_wrote_record]-> decision:DEC-180",
+    "entity_type": "reference",
+    "id": 855,
+    "operation": "insert",
+    "timestamp": "2026-05-23T20:51:28.762851"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T20:51:28.763970+00:00",
+      "id": 439,
+      "reference_identifier": "REF-0435",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-013",
+      "source_type": "deposit_event",
+      "target_id": "DEC-181",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-013 -[deposit_event_wrote_record]-> decision:DEC-181",
+    "entity_type": "reference",
+    "id": 856,
+    "operation": "insert",
+    "timestamp": "2026-05-23T20:51:28.764272"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T20:51:28.765342+00:00",
+      "id": 440,
+      "reference_identifier": "REF-0436",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-013",
+      "source_type": "deposit_event",
+      "target_id": "DEC-182",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-013 -[deposit_event_wrote_record]-> decision:DEC-182",
+    "entity_type": "reference",
+    "id": 857,
+    "operation": "insert",
+    "timestamp": "2026-05-23T20:51:28.765569"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "0.7.0",
+        "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_060.json",
+        "runner": "claude_code"
+      },
+      "deposit_event_created_at": "2026-05-23T20:51:28.752724+00:00",
+      "deposit_event_description": "Applied COP-060. Outcome: success. 5 decisions, 1 sessions.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-013",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_013.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 5,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-060, 2026-05-23T20:51:28+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-013",
+    "entity_type": "deposit_event",
+    "id": 858,
+    "operation": "insert",
+    "timestamp": "2026-05-23T20:51:28.765948"
   }
 ]
