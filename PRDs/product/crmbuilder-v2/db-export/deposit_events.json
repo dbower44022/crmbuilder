@@ -178,5 +178,26 @@
       "sessions": 0
     },
     "deposit_event_title": "Apply of COP-056, 2026-05-23T00:02:57+00:00"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "0.7.0",
+      "invocation": "uv run python scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_057.json",
+      "note": "manual back-fill via curl; the apply script's deposit_event POST 400'd on the original run due to references in wrote_records",
+      "runner": "claude_code"
+    },
+    "deposit_event_created_at": "2026-05-23T05:53:16.775461",
+    "deposit_event_description": "Applied COP-057. Outcome: success. 3 decisions, 7 planning_items, 1 sessions. (Back-filled: the original apply landed all 21 records cleanly but the deposit_event POST 400'd because the wrote_records list included references; this row recovers the audit trail and the script has been patched to filter references out.)",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-010",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_010.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 3,
+      "planning_items": 7,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-057, 2026-05-23T05:53:16+00:00"
   }
 ]

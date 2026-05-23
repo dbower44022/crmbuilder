@@ -144,6 +144,69 @@ def test_failure_path_records_error_info_and_leaves_cop_ready(
     assert cop["close_out_payload_status"] == "ready"
 
 
+def test_references_in_payload_do_not_break_deposit_event_post(
+    routed, tmp_path, monkeypatch
+):
+    # Regression: the deposit_event POST's references[] block validates
+    # target_type against the governance vocab, which does not include
+    # 'reference'. If reference rows leak into wrote_records, the
+    # deposit_event POST 400s and the apply leaves no audit row.
+    payload = {
+        "label": "Test payload with references",
+        "session": {
+            "identifier": "SES-102",
+            "title": "Session with refs",
+            "session_date": "2026-05-22",
+            "status": "Complete",
+            "topics_covered": "x",
+            "summary": "x",
+        },
+        "decisions": [
+            {
+                "identifier": "DEC-300",
+                "title": "Test decision",
+                "decision_date": "2026-05-22",
+                "status": "Active",
+            }
+        ],
+        "references": [
+            {
+                "source_type": "decision",
+                "source_id": "DEC-300",
+                "target_type": "session",
+                "target_id": "SES-102",
+                "relationship": "decided_in",
+            }
+        ],
+    }
+    path = _payload_path(tmp_path, "ses_102.json", payload)
+    monkeypatch.setattr("sys.argv", ["apply_close_out.py", str(path)])
+    rc = apply_close_out.main()
+    assert rc == 0
+
+    deposits = routed.get("/deposit-events").json()["data"]
+    assert len(deposits) == 1
+    dep = deposits[0]
+    assert dep["deposit_event_outcome"] == "success"
+    assert dep["deposit_event_records_summary"]["sessions"] == 1
+    assert dep["deposit_event_records_summary"]["decisions"] == 1
+    # references are intentionally NOT counted in records_summary: the
+    # access layer enforces sum(records_summary) == len(wrote_records),
+    # and references can't be in wrote_records (no 'reference' in vocab).
+    assert dep["deposit_event_records_summary"]["references"] == 0
+
+    # wrote_record edges exist for session and decision but NOT for the
+    # reference row (it's first-class data but its target_type isn't in
+    # the governance vocab the deposit_event references block validates
+    # against).
+    refs = routed.get(
+        f"/references?source_id={dep['deposit_event_identifier']}"
+        f"&relationship_kind=deposit_event_wrote_record"
+    ).json()["data"]
+    wrote_targets = sorted((r["target_type"], r["target_id"]) for r in refs)
+    assert wrote_targets == [("decision", "DEC-300"), ("session", "SES-102")]
+
+
 def test_skip_deposit_event_flag_runs_apply_without_log_or_event(
     routed, tmp_path, monkeypatch
 ):

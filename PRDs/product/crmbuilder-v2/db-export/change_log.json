@@ -18114,5 +18114,263 @@
     "id": 752,
     "operation": "insert",
     "timestamp": "2026-05-23T05:32:49.431887"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T05:53:16.777498+00:00",
+      "id": 374,
+      "reference_identifier": "REF-0370",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-010",
+      "source_type": "deposit_event",
+      "target_id": "COP-057",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-010 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-057",
+    "entity_type": "reference",
+    "id": 753,
+    "operation": "insert",
+    "timestamp": "2026-05-23T05:53:16.778179"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T05:53:16.779412+00:00",
+      "id": 375,
+      "reference_identifier": "REF-0371",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-010",
+      "source_type": "deposit_event",
+      "target_id": "SES-057",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-010 -[deposit_event_wrote_record]-> session:SES-057",
+    "entity_type": "reference",
+    "id": 754,
+    "operation": "insert",
+    "timestamp": "2026-05-23T05:53:16.779770"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T05:53:16.780791+00:00",
+      "id": 376,
+      "reference_identifier": "REF-0372",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-010",
+      "source_type": "deposit_event",
+      "target_id": "DEC-168",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-010 -[deposit_event_wrote_record]-> decision:DEC-168",
+    "entity_type": "reference",
+    "id": 755,
+    "operation": "insert",
+    "timestamp": "2026-05-23T05:53:16.781119"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T05:53:16.782213+00:00",
+      "id": 377,
+      "reference_identifier": "REF-0373",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-010",
+      "source_type": "deposit_event",
+      "target_id": "DEC-169",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-010 -[deposit_event_wrote_record]-> decision:DEC-169",
+    "entity_type": "reference",
+    "id": 756,
+    "operation": "insert",
+    "timestamp": "2026-05-23T05:53:16.782550"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T05:53:16.783628+00:00",
+      "id": 378,
+      "reference_identifier": "REF-0374",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-010",
+      "source_type": "deposit_event",
+      "target_id": "DEC-170",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-010 -[deposit_event_wrote_record]-> decision:DEC-170",
+    "entity_type": "reference",
+    "id": 757,
+    "operation": "insert",
+    "timestamp": "2026-05-23T05:53:16.783921"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T05:53:16.785003+00:00",
+      "id": 379,
+      "reference_identifier": "REF-0375",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-010",
+      "source_type": "deposit_event",
+      "target_id": "PI-027",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-010 -[deposit_event_wrote_record]-> planning_item:PI-027",
+    "entity_type": "reference",
+    "id": 758,
+    "operation": "insert",
+    "timestamp": "2026-05-23T05:53:16.785308"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T05:53:16.786328+00:00",
+      "id": 380,
+      "reference_identifier": "REF-0376",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-010",
+      "source_type": "deposit_event",
+      "target_id": "PI-028",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-010 -[deposit_event_wrote_record]-> planning_item:PI-028",
+    "entity_type": "reference",
+    "id": 759,
+    "operation": "insert",
+    "timestamp": "2026-05-23T05:53:16.786639"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T05:53:16.787653+00:00",
+      "id": 381,
+      "reference_identifier": "REF-0377",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-010",
+      "source_type": "deposit_event",
+      "target_id": "PI-029",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-010 -[deposit_event_wrote_record]-> planning_item:PI-029",
+    "entity_type": "reference",
+    "id": 760,
+    "operation": "insert",
+    "timestamp": "2026-05-23T05:53:16.787952"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T05:53:16.788956+00:00",
+      "id": 382,
+      "reference_identifier": "REF-0378",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-010",
+      "source_type": "deposit_event",
+      "target_id": "PI-030",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-010 -[deposit_event_wrote_record]-> planning_item:PI-030",
+    "entity_type": "reference",
+    "id": 761,
+    "operation": "insert",
+    "timestamp": "2026-05-23T05:53:16.789239"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T05:53:16.790274+00:00",
+      "id": 383,
+      "reference_identifier": "REF-0379",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-010",
+      "source_type": "deposit_event",
+      "target_id": "PI-031",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-010 -[deposit_event_wrote_record]-> planning_item:PI-031",
+    "entity_type": "reference",
+    "id": 762,
+    "operation": "insert",
+    "timestamp": "2026-05-23T05:53:16.790565"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T05:53:16.791529+00:00",
+      "id": 384,
+      "reference_identifier": "REF-0380",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-010",
+      "source_type": "deposit_event",
+      "target_id": "PI-032",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-010 -[deposit_event_wrote_record]-> planning_item:PI-032",
+    "entity_type": "reference",
+    "id": 763,
+    "operation": "insert",
+    "timestamp": "2026-05-23T05:53:16.791881"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T05:53:16.792930+00:00",
+      "id": 385,
+      "reference_identifier": "REF-0381",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-010",
+      "source_type": "deposit_event",
+      "target_id": "PI-033",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-010 -[deposit_event_wrote_record]-> planning_item:PI-033",
+    "entity_type": "reference",
+    "id": 764,
+    "operation": "insert",
+    "timestamp": "2026-05-23T05:53:16.793174"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "0.7.0",
+        "invocation": "uv run python scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_057.json",
+        "note": "manual back-fill via curl; the apply script's deposit_event POST 400'd on the original run due to references in wrote_records",
+        "runner": "claude_code"
+      },
+      "deposit_event_created_at": "2026-05-23T05:53:16.775461+00:00",
+      "deposit_event_description": "Applied COP-057. Outcome: success. 3 decisions, 7 planning_items, 1 sessions. (Back-filled: the original apply landed all 21 records cleanly but the deposit_event POST 400'd because the wrote_records list included references; this row recovers the audit trail and the script has been patched to filter references out.)",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-010",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_010.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 3,
+        "planning_items": 7,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-057, 2026-05-23T05:53:16+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-010",
+    "entity_type": "deposit_event",
+    "id": 765,
+    "operation": "insert",
+    "timestamp": "2026-05-23T05:53:16.793558"
   }
 ]

@@ -363,8 +363,17 @@ def main() -> int:
                     response_data = _extract_data(response)
                     target_id = _record_target_id(entity_type, response_data)
                     if target_id:
-                        wrote_records.append((entity_type, target_id))
-                        records_summary[summary_key] += 1
+                        # References are first-class records here but are not
+                        # in the deposit_event references' target_type vocab,
+                        # so they cannot appear as deposit_event_wrote_record
+                        # back-edges. The access layer enforces
+                        # sum(records_summary) == len(wrote_records), so we
+                        # also skip the summary bump — the count of references
+                        # written lives in the source payload and the
+                        # references table itself.
+                        if entity_type != "reference":
+                            wrote_records.append((entity_type, target_id))
+                            records_summary[summary_key] += 1
                 elif status not in (200, 201, 204, 409) and first_error is None:
                     errors = (
                         response.get("errors") if isinstance(response, dict) else None
