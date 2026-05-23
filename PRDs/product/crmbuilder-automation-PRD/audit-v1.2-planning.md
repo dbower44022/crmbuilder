@@ -3,8 +3,8 @@
 **Document type:** Application development planning (planning only; not implementation)
 **Repository:** `crmbuilder`
 **Path:** `PRDs/product/crmbuilder-automation-PRD/audit-v1.2-planning.md`
-**Last Updated:** 05-23-26 02:30
-**Version:** 1.1 (open-question resolutions + Alembic correction)
+**Last Updated:** 05-23-26 03:05
+**Version:** 1.2 (security.yaml placement resolution)
 
 ---
 
@@ -22,6 +22,7 @@ The work this document covers is anticipated to span 11 Claude Code prompts acro
 |---------|------|--------|---------|
 | 1.0 | 05-23-26 01:10 | Doug Bower / Claude | Initial planning document. Captures Decisions 1, 2, 2.5, 3 from the planning kickoff conversation; surveys the existing v1.1 audit feature; designs the v1.2 expansion (entity-level selection, filtered tabs audit, full Section 12 round-trip including role-aware visibility); proposes an 11-prompt implementation series. |
 | 1.1 | 05-23-26 02:30 | Doug Bower / Claude | Resolves all four §9 open questions: persona is documentation metadata with no validation; empty `scope_access:` roles produce an informational audit-log warning; `include_security` and `include_filtered_tabs` default to True; existing audit output is overwritten with a pre-run confirmation guard when the output directory contains prior emission. Corrects Prompt H to reference the project's actual versioned migration mechanism in `automation/db/migrations.py` (new `_client_v4` migration) rather than Alembic. Threads the overwrite-confirmation dialog into §4.1 operator flow and Prompt J. |
+| 1.2 | 05-23-26 03:05 | Doug Bower / Claude | Resolves the `security.yaml` file-placement question carried as a workflow item in v1.1's §10: security files live in a `security/` subdirectory of the program directory, not at root alongside per-entity YAMLs. Future-proofs the v1.4 deferred work (Section 12.7 permission presets) by anchoring security-related files in a single folder. Updates §4.1 step 8, Prompt A loader scan, Prompt H emission target, and Prompt J overwrite-confirmation trigger pattern. §10 is updated to remove the placement bullet, leaving only the series-size workflow question. |
 
 ---
 
@@ -42,6 +43,13 @@ Two corrections folded in:
 - §4.1 operator flow gains a new step describing the overwrite-confirmation dialog. Prompt J's UI work picks up the dialog implementation.
 
 §9 is renamed from "Open Questions" to "Resolved Design Questions" and rewritten to record the decisions rather than flag them. §10 is updated to reflect that the four §9 questions are resolved and Prompt A is now unblocked.
+
+**Version 1.2 (05-23-26 03:05):** Resolves the `security.yaml` file-placement question that v1.1 carried as a workflow item in §10.
+
+- **Resolution.** `security.yaml` lives in a `security/` subdirectory of the program directory, not at root alongside per-entity YAMLs.
+- **Rationale.** The §7 deferred-work list already names v1.4 work (Section 12.7 field-level permissions and permission presets) that will produce additional security-related files. Anchoring those files in a single folder now is cheaper than migrating v1.2 outputs when v1.4 lands. The cost is a small loader convention (scan root plus `security/`) and a one-line addition to the §9.4 overwrite-confirmation trigger pattern.
+- **Updates threaded through.** §4.1 step 8 specifies the emission path; Prompt A's loader work scans the `security/` subdirectory in addition to root; Prompt H emits to `security/security.yaml`; Prompt J's overwrite-confirmation trigger now matches `*.yaml` at root and `security/*.yaml` under the subdirectory.
+- **§10 updated.** The `security.yaml` placement bullet is removed. The series-size mitigation question remains as the only workflow item, deliberately not resolved in the document.
 
 ---
 
@@ -164,10 +172,10 @@ This section describes what the v1.2 audit feature does, end-to-end, from the op
 2. Operator clicks "Configure Audit" (renamed from current "Start Audit" button to make the options dialog more discoverable).
 3. The options dialog opens. On open, it calls `get_all_scopes()` against the source instance and populates a scrollable entity-picker list with checkboxes. By default, all entities are selected. The operator can deselect entities they don't want audited, or use "Select All" / "Select None" buttons.
 4. Below the entity picker, the existing category-level checkboxes remain: detail layouts, list layouts, relationships, native fields. New checkboxes are added: **Filtered tabs**, **Security (roles, teams, role-aware visibility)**. Both new checkboxes default to checked (§9.3).
-5. Operator clicks "Run Audit". If the output directory contains files matching the audit emission pattern from a prior run, the dialog displays an overwrite-confirmation prompt ("Output directory contains N existing audit YAML files; running this audit will overwrite them. Proceed?") and waits for the operator to confirm or cancel before opening the progress dialog (§9.4).
+5. Operator clicks "Run Audit". If the output directory contains files matching the audit emission pattern from a prior run — `*.yaml` at root or `security/*.yaml` under the subdirectory — the dialog displays an overwrite-confirmation prompt ("Output directory contains N existing audit YAML files; running this audit will overwrite them. Proceed?") and waits for the operator to confirm or cancel before opening the progress dialog (§9.4).
 6. The progress dialog opens and the audit worker runs the pipeline.
 7. The pipeline runs entity discovery (filtered to selected entities), field extraction, layout extraction, relationship discovery, filtered-tab discovery (if enabled), role and team discovery (if enabled).
-8. YAML files are written to the audit output directory. Per-entity YAMLs include their entity blocks plus the new `filteredTabs:` blocks if any. A separate `security.yaml` is written if security was enabled and any roles or teams were found.
+8. YAML files are written to the audit output directory. Per-entity YAMLs sit at the program root and include their entity blocks plus the new `filteredTabs:` blocks if any. A separate `security.yaml` is written to `<output_dir>/security/security.yaml` (created if missing) when security was enabled and any roles or teams were found.
 9. Database records are inserted (existing v1.1 behavior, extended to cover new dataclasses).
 10. Progress dialog shows a summary: files written, records inserted, any warnings (including the §9.2 informational warning for any captured role with empty `scope_access:`).
 
@@ -211,6 +219,7 @@ The implementation is broken into 11 Claude Code prompts. Each prompt is self-co
 
 **Adds:**
 - `config_loader.py` recognizes `roles:` and `teams:` as valid top-level keys
+- `config_loader.py`'s program-directory scan is extended to also scan `<program_dir>/security/*.yaml` in addition to root `*.yaml`. Files in the `security/` subdirectory are loaded with the same parser; the subdirectory is conventional for security-related YAMLs but the parser does not require any specific filename
 - `models.py` adds `RoleDefinition` and `TeamDefinition` dataclasses with raw-passthrough fields for `scope_access_raw`, `system_permissions_raw` (mirroring how `saved_views_raw` and `workflows_raw` work today)
 - `ProgramFile` gains `roles: list[RoleDefinition]` and `teams: list[TeamDefinition]` collections
 - Hard-reject for malformed structures (missing `name:`, wrong types) per existing validator patterns
@@ -222,6 +231,7 @@ The implementation is broken into 11 Claude Code prompts. Each prompt is self-co
 **Validation:**
 - A test YAML with valid `roles:` and `teams:` blocks loads cleanly with all top-level fields populated
 - A test YAML with a role missing its `name:` produces a clear validation error
+- A `security.yaml` placed under `<program_dir>/security/` loads via the extended scan and produces the same parsed result as if it were at root (subdirectory placement is a convention, not a parsing dependency)
 - All existing tests pass (no regression on existing schema)
 
 **End state:** Loader and models recognize roles and teams; no deploy effect yet.
@@ -343,7 +353,7 @@ The implementation is broken into 11 Claude Code prompts. Each prompt is self-co
 - `audit_manager.py` gains `_discover_roles()` and `_discover_teams()` methods using new `get_roles()` / `get_teams()` API client methods
 - New `RoleAuditResult` and `TeamAuditResult` dataclasses
 - `_reverse_dynamic_logic()` is extended to recognize and emit `role:` leaf clauses when it sees EspoCRM's role-aware dynamic-logic JSON shape
-- `_write_yaml_files()` writes a separate `security.yaml` containing the `roles:` and `teams:` blocks when security was captured and any results exist
+- `_write_yaml_files()` writes a separate `security.yaml` to `<output_dir>/security/security.yaml` (creating the subdirectory if missing) containing the `roles:` and `teams:` blocks when security was captured and any results exist
 - `_write_yaml_files()` also emits the §9.2 informational warning to the audit log for any captured role with empty `scope_access:`
 - `AuditOptions.include_security: bool` (default True, per §9.3) controls whether the discovery runs
 - New `_client_v4` migration in `automation/db/migrations.py` adds role and team tables to the client schema, following the existing `_client_v1` through `_client_v3` pattern (versioned migration runner with `schema_version` table). `audit_db.py` inserts role and team records into those tables.
@@ -386,7 +396,7 @@ The implementation is broken into 11 Claude Code prompts. Each prompt is self-co
 - "Select All" / "Select None" buttons above the picker
 - The picker integrates with the existing category checkboxes (entity picker says "which entities", category checkboxes say "what aspects of those entities")
 - New checkboxes added: "Filtered tabs", "Security (roles, teams, role-aware visibility)", both default-checked per §9.3
-- An overwrite-confirmation dialog (§9.4) fires when the operator clicks Run Audit and the output directory contains files matching the audit emission pattern (per-entity YAMLs or `security.yaml`). Default focus on Cancel; operator must explicitly confirm to proceed.
+- An overwrite-confirmation dialog (§9.4) fires when the operator clicks Run Audit and the output directory contains files matching the audit emission pattern. The trigger condition matches `*.yaml` at root OR `security/*.yaml` under the subdirectory. Default focus on Cancel; operator must explicitly confirm to proceed.
 
 **Validation:**
 - Selecting two entities out of ten in the picker results in only those two entities being audited end-to-end
@@ -495,17 +505,16 @@ These items were open at v1.0 with provisional answers. v1.1 records the resolut
 
 **Rationale.** Audited YAML is a snapshot, not source code. An audit run is the operator's explicit request to capture the current state of the source instance. Hand-editing audit output is an anti-pattern; the right place to fork audit output is into a separate working directory under the operator's control. But the audit itself doesn't enforce or document that, so the confirmation guard catches the lost-edits failure mode for a one-line UX cost. The merge option was rejected on maintenance grounds (diffing structural YAML is fragile across schema evolution); the alongside option was rejected because two YAML versions of the same entity coexisting in the same program root creates real deploy ambiguity.
 
-**Consequence for the workstream.** Prompt J implements the confirmation dialog as part of the UI work. The dialog's trigger condition is "any file in the output directory matching `*.yaml` from a prior audit emission," not the literal presence of specific filenames — this handles renamed entities and security.yaml-only outputs uniformly. Dialog default focus on Cancel; Proceed requires an explicit click.
+**Consequence for the workstream.** Prompt J implements the confirmation dialog as part of the UI work. The dialog's trigger condition matches `*.yaml` at the output directory root OR `security/*.yaml` under the subdirectory — this uniformly covers entity YAMLs and the security YAML wherever it lives. Dialog default focus on Cancel; Proceed requires an explicit click.
 
 ---
 
 ## 10. Status — Prompt A Unblocked
 
-As of v1.1, all four §9 design questions are resolved and the two corrections (Alembic→`_client_v4` migration, overwrite-confirmation dialog) are folded into the relevant prompts. The doc is now the design authority for Prompt A.
+As of v1.2, all four §9 design questions and the `security.yaml` placement question are resolved, and the two corrections (Alembic→`_client_v4` migration, overwrite-confirmation dialog) are folded into the relevant prompts. The doc is the design authority for Prompt A. The §9 resolutions and the placement decision are recorded as formal governance records under SES-059 (DEC-175 through DEC-179).
 
 The next step is writing **Prompt A** (`CLAUDE-CODE-PROMPT-audit-v1.2-A-roles-teams-recognition.md`) as the first implementation deliverable. Each subsequent prompt is written after the prior is confirmed green by Doug running it through Claude Code locally.
 
-Two workflow questions are deliberately not captured in this document because they're about how to execute the design, not what the design is:
+One workflow question is deliberately not captured in this document because it's about how to execute the design, not what the design is:
 
 - **Series-size mitigation (§8.5).** Whether to pause at Prompt E for a deploy-side validation milestone before starting Prompts F–K is a workflow choice for Doug to make at execution time. The doc neither requires nor forbids the pause.
-- **`security.yaml` file placement.** Root of program directory versus a `security/` subdirectory affects loader discovery and audit emission. v1.4 deferred work (Section 12.7 permission presets) may add more security-style files, which would favor a subdirectory. This is the one remaining design question that warrants a decision before Prompt A is written. Surfacing separately to Doug rather than carrying it into v1.1 of the doc.
