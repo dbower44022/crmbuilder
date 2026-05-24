@@ -6,9 +6,10 @@ endpoint's ``?workstream_identifier=`` and ``?status=`` filters.
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from crmbuilder_v2.access.exceptions import NotFoundError
+from crmbuilder_v2.access.repositories import commits as commits_repo
 from crmbuilder_v2.access.repositories import conversations
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
@@ -121,3 +122,51 @@ def delete(identifier: str):
 def restore(identifier: str):
     with writable_session() as s:
         return ok(conversations.restore_conversation(s, identifier))
+
+
+@router.get("/{conversation_identifier}/commits")
+def commits_for_conversation(
+    conversation_identifier: str,
+    include_deleted: bool = False,
+    commit_repository: str | None = None,
+    sort: str = "commit_committed_at",
+    order: str = "desc",
+    limit: int | None = None,
+    offset: int = 0,
+):
+    """List every commit produced by a specific conversation.
+
+    Derived from the standard ``/commits?commit_conversation_id=`` filter
+    per DEC-211 — one-hop FK-scoped derived endpoint shipped in PI-029
+    slice B. The two-hop ``/workstreams/{id}/commits`` variant was
+    explicitly deferred.
+
+    Returns 404 with ``conversation_not_found`` if the named conversation
+    does not exist; returns 200 with empty array if the conversation
+    exists but produced no commits.
+    """
+    with readonly_session() as s:
+        # Existence check — uses include_deleted=True so commits attributed
+        # to a soft-deleted conversation can still be listed
+        # (administrative-correction case).
+        conv = conversations.get_conversation(
+            s, conversation_identifier, include_deleted=True
+        )
+        if conv is None:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "code": "conversation_not_found",
+                    "identifier": conversation_identifier,
+                },
+            )
+        return ok(commits_repo.list_commits(
+            s,
+            include_deleted=include_deleted,
+            commit_conversation_id=conversation_identifier,
+            commit_repository=commit_repository,
+            sort=sort,
+            order=order,
+            limit=limit,
+            offset=offset,
+        ))
