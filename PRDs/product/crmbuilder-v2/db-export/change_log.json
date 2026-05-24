@@ -36981,5 +36981,35 @@
     "id": 1548,
     "operation": "insert",
     "timestamp": "2026-05-24T15:35:23.898497"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-20T21:51:34.389573",
+      "description": "DEC-117 through DEC-120 (later expanded through DEC-160 across the seven-conversation governance entity schema-design workstream, SES-046 through SES-054) introduced six new entity types: workstream, conversation, reference book, work ticket, close-out payload, deposit event. The v0.7 governance entity release (SES-055 build-planning conversation; built across Slices A through F per `governance-entity-implementation-plan.md`; closed at SES-056) shipped these entity types live in the dogfood CRMBUILDER database. The retroactive-migration question this planning item originally posed was resolved by DEC-166 (SES-055) as: yes, phased backfill, executed per child planning item scope at operational discretion.\n\n**Phase 1: Complete (v0.7 Slice E).** The governance entity schema-design workstream's own records backfilled live against CRMBUILDER.db via `crmbuilder-v2/scripts/backfill_governance_phase_1.py`: 1 workstream (WS-001), 8 conversations (CONV-001..008 covering SES-047 through SES-055), 10 reference books (RB-001..010, with RB-005 and RB-007 each carrying two version rows), 8 work tickets (WT-001..008 for the eight kickoff prompts), 8 close-out payloads (COP-001..008), 8 deposit events (DEP-001..008 historical reconstructions, plus DEP-009 from the SES-056 closeout apply), and ~70 reference edges connecting them. The backfill script is idempotent on re-run.\n\n**Phases 2 through 4: Tracked in child planning items, deferred to operational signal.** PI-024 — Phase 2: backfill prior workstreams (methodology entity schema-design, v0.5 engagement management, v0.6 styling, multi-tenancy routing fix, Cleveland Business Mentors paper test, catalog ingestion). PI-025 — Phase 3: backfill prior conversations SES-001 through SES-045 and their kickoffs as work_tickets where reconstructable. PI-026 — Phase 4: backfill historical applies as deposit_events for the ~38 pre-v0.7 close-out payload files. Each child carries an is_about reference edge to this parent (created at SES-056 closeout).\n\n**Status posture.** This planning item remains Open as the parent tracker; discharge waits on completion of all three child phases. The original question this item posed is resolved; what remains is the per-phase execution work scoped under the child items. When all three phases ship, this parent's status moves to Resolved with resolution_reference pointing at the conversation that closes the final phase.",
+      "id": 22,
+      "identifier": "PI-022",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Resolved",
+      "title": "Retroactive migration: whether to backfill governance entity records for sessions, decisions, planning items, references, and prior workstreams already in the database",
+      "updated_at": "2026-05-24T16:16:32.415025+00:00"
+    },
+    "before_payload": {
+      "created_at": "2026-05-20T21:51:34.389573",
+      "description": "DEC-117 through DEC-120 (later expanded through DEC-160 across the seven-conversation governance entity schema-design workstream, SES-046 through SES-054) introduced six new entity types: workstream, conversation, reference book, work ticket, close-out payload, deposit event. The v0.7 governance entity release (SES-055 build-planning conversation; built across Slices A through F per `governance-entity-implementation-plan.md`; closed at SES-056) shipped these entity types live in the dogfood CRMBUILDER database. The retroactive-migration question this planning item originally posed was resolved by DEC-166 (SES-055) as: yes, phased backfill, executed per child planning item scope at operational discretion.\n\n**Phase 1: Complete (v0.7 Slice E).** The governance entity schema-design workstream's own records backfilled live against CRMBUILDER.db via `crmbuilder-v2/scripts/backfill_governance_phase_1.py`: 1 workstream (WS-001), 8 conversations (CONV-001..008 covering SES-047 through SES-055), 10 reference books (RB-001..010, with RB-005 and RB-007 each carrying two version rows), 8 work tickets (WT-001..008 for the eight kickoff prompts), 8 close-out payloads (COP-001..008), 8 deposit events (DEP-001..008 historical reconstructions, plus DEP-009 from the SES-056 closeout apply), and ~70 reference edges connecting them. The backfill script is idempotent on re-run.\n\n**Phases 2 through 4: Tracked in child planning items, deferred to operational signal.** PI-024 — Phase 2: backfill prior workstreams (methodology entity schema-design, v0.5 engagement management, v0.6 styling, multi-tenancy routing fix, Cleveland Business Mentors paper test, catalog ingestion). PI-025 — Phase 3: backfill prior conversations SES-001 through SES-045 and their kickoffs as work_tickets where reconstructable. PI-026 — Phase 4: backfill historical applies as deposit_events for the ~38 pre-v0.7 close-out payload files. Each child carries an is_about reference edge to this parent (created at SES-056 closeout).\n\n**Status posture.** This planning item remains Open as the parent tracker; discharge waits on completion of all three child phases. The original question this item posed is resolved; what remains is the per-phase execution work scoped under the child items. When all three phases ship, this parent's status moves to Resolved with resolution_reference pointing at the conversation that closes the final phase.",
+      "id": 22,
+      "identifier": "PI-022",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Open",
+      "title": "Retroactive migration: whether to backfill governance entity records for sessions, decisions, planning items, references, and prior workstreams already in the database",
+      "updated_at": "2026-05-23T04:06:43.109447"
+    },
+    "entity_identifier": "PI-022",
+    "entity_type": "planning_item",
+    "id": 1549,
+    "operation": "update",
+    "timestamp": "2026-05-24T16:16:32.415473"
   }
 ]
