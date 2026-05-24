@@ -450,7 +450,11 @@ def verify_record_counts() -> bool:
         r for r in wrote_edges
         if "DEP-020" <= r["source_id"] <= "DEP-043"
     ]
-    expected_wrote = 221  # 24 session + 63 decision + 9 planning_item + 125 reference
+    # Per Option I (see module docstring): wrote_record edges to references
+    # are NOT authored; expected count drops from the original 221 (which
+    # assumed DEC-206's reference-inclusion) to 96 = 24 session + 63 decision
+    # + 9 planning_item.
+    expected_wrote = 96
     print(f"  deposit_event_wrote_record edges from PI-026 DEPs: {len(pi_026_wrote)}/{expected_wrote}")
     if len(pi_026_wrote) != expected_wrote:
         ok = False
