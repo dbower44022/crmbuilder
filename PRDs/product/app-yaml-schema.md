@@ -2397,14 +2397,14 @@ is a map of entity name to a per-action access setting.
 roles:
   - name: "Mentor"
     scope_access:
-      c-Engagement:
+      Engagement:
         create: no
         read:   own
         edit:   own
         delete: no
         stream: own
 
-      c-Session:
+      Session:
         create: yes
         read:   own
         edit:   own
@@ -2451,9 +2451,12 @@ must resolve to either:
   per `native_entity_types.py`)
 
 Unresolved entity names are a hard-reject error. Custom-entity
-names use their natural form (e.g., `c-Engagement`, matching the
-key under `entities:` in the domain YAML); platform-specific
-prefixing is applied at deploy time.
+names use their natural form — the same string used as the key
+under the domain YAML's `entities:` block (e.g., `Engagement`,
+not `c-Engagement` or `CEngagement`). The platform-specific
+`C` prefix that appears in EspoCRM's wire metadata is applied
+by the deploy engine at deploy time and is not visible at the
+YAML layer.
 
 **Whitelist semantics — omission denies.** A role with no
 `scope_access:` block has no entity access at all. A role with a

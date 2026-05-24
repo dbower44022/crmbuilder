@@ -190,6 +190,27 @@ VALID_NORMALIZE_VALUES: set[str] = {
 
 VALID_ON_MATCH_VALUES: set[str] = {"block", "warn"}
 
+# Scope-style action vocabulary used by scope_access read/edit/delete/stream
+# (Section 12.3) and by system_permissions assignment_permission /
+# user_permission (Section 12.4).
+SCOPE_ACCESS_VALUES: frozenset[str] = frozenset({"all", "team", "own", "no"})
+
+# v1.3 system-permissions key enumeration (Section 12.4). Two scope-style
+# keys take SCOPE_ACCESS_VALUES; four flag-style keys take bool.
+SYSTEM_PERMISSION_SCOPE_KEYS: frozenset[str] = frozenset({
+    "assignment_permission",
+    "user_permission",
+})
+SYSTEM_PERMISSION_FLAG_KEYS: frozenset[str] = frozenset({
+    "export",
+    "mass_update",
+    "audit_log",
+    "portal",
+})
+VALID_SYSTEM_PERMISSION_KEYS: frozenset[str] = (
+    SYSTEM_PERMISSION_SCOPE_KEYS | SYSTEM_PERMISSION_FLAG_KEYS
+)
+
 
 @dataclass
 class EntitySettings:
@@ -528,33 +549,103 @@ class RelationshipDefinition:
 
 
 @dataclass
+class ScopeAccess:
+    """Per-entity access scope for a role (Section 12.3).
+
+    All fields default to the most-restrictive value (denied) so
+    that an entity entry with omitted actions defaults to "no
+    access for that action". The whitelist-semantics rule —
+    entities not listed are denied entirely — is enforced at the
+    role level, not in this dataclass.
+
+    :param create: Whether the role may create new records of this
+        entity. ``yes`` and ``no`` only (the record does not exist
+        at create time, so ``team`` / ``own`` have no meaning).
+    :param read: Which records the role may view. One of ``all``,
+        ``team``, ``own``, ``no``.
+    :param edit: Same vocabulary as ``read``, applied to record
+        modification.
+    :param delete: Same vocabulary as ``read``, applied to record
+        deletion.
+    :param stream: Same vocabulary as ``read``, applied to the
+        record's activity stream.
+    """
+
+    create: bool = False
+    read: str = "no"
+    edit: str = "no"
+    delete: str = "no"
+    stream: str = "no"
+
+
+@dataclass
+class SystemPermissions:
+    """System-level (non-entity) permissions for a role (Section 12.4).
+
+    All fields default to the most-restrictive value (denied) per
+    Section 12.4's "Omission defaults to deny" rule.
+
+    :param assignment_permission: Whom the role may assign records
+        to. One of ``all``, ``team``, ``own``, ``no``.
+    :param user_permission: Which other users the role may view in
+        the user directory. Same vocabulary as
+        ``assignment_permission``.
+    :param export: Whether the role may export records.
+    :param mass_update: Whether the role may perform bulk updates.
+    :param audit_log: Whether the role may view the platform audit
+        log.
+    :param portal: Whether the role may log in via the customer
+        portal interface.
+    """
+
+    assignment_permission: str = "no"
+    user_permission: str = "no"
+    export: bool = False
+    mass_update: bool = False
+    audit_log: bool = False
+    portal: bool = False
+
+
+@dataclass
 class RoleDefinition:
     """A role declared in the top-level ``roles:`` list.
 
     Roles declare entity-level scope access (Section 12.3) and
-    system-level permissions (Section 12.4). This dataclass holds
-    only the minimal typed fields; ``scope_access:`` and
-    ``system_permissions:`` are stashed as raw values for
-    structured parsing in a later prompt.
+    system-level permissions (Section 12.4). The structured
+    ``scope_access`` and ``system_permissions`` fields are
+    populated by the loader's structured parsers; the
+    ``*_raw`` passthroughs preserve the original YAML for
+    round-tripping and audit-side reverse-engineering.
 
     :param name: Role identity. Unique across the program batch
-        (uniqueness enforced by a later prompt via
-        ``ProgramContext``).
+        (uniqueness enforced via ``ProgramContext``).
     :param description: Business rationale for the role. Optional
         block-scalar prose; no schema interpretation.
     :param persona: Master PRD persona identifier (e.g.,
         ``MST-PER-005``). Documentation metadata only — the loader
         does not cross-check the identifier against any source
         (per DEC-178 / planning doc §9.1).
-    :param scope_access_raw: Raw per-entity access scope block.
-        Parsed into a typed structure in a later prompt.
-    :param system_permissions_raw: Raw system-level permissions
-        block. Parsed into a typed structure in a later prompt.
+    :param scope_access: Per-entity access scope, keyed on entity
+        natural name. Empty dict when the YAML has no
+        ``scope_access:`` block or an empty one. Whitelist
+        semantics — entities not present are denied entirely.
+    :param system_permissions: Typed system-permissions block.
+        ``None`` when the YAML omits the block (the deploy-side
+        manager treats ``None`` as "every-flag-denied" by
+        constructing a default ``SystemPermissions()``).
+    :param scope_access_raw: Original raw per-entity access scope
+        block from YAML. Preserved verbatim alongside the
+        structured field.
+    :param system_permissions_raw: Original raw system-level
+        permissions block from YAML. Preserved verbatim alongside
+        the structured field.
     """
 
     name: str
     description: str | None = None
     persona: str | None = None
+    scope_access: dict[str, ScopeAccess] = field(default_factory=dict)
+    system_permissions: SystemPermissions | None = None
     scope_access_raw: dict | None = None
     system_permissions_raw: dict | None = None
 
@@ -670,16 +761,42 @@ class ProgramContext:
 
     ``ProgramContext`` exposes the union of field names per entity
     across the entire batch, so single-file validation can resolve
-    references that are satisfied by sibling files.
+    references that are satisfied by sibling files. It also tracks
+    cross-batch role/team/entity name sets and per-name occurrence
+    counts so cross-block validators (``_validate_roles``,
+    ``_validate_teams``) can detect duplicate identifiers and
+    resolve entity-name references inside ``scope_access:`` blocks
+    against the union of all entities declared anywhere in the
+    batch.
 
     :param fields_by_entity: Mapping of entity natural name (e.g.
         ``Contact``, ``Account``, ``Engagement``) to the set of all
         field names declared for that entity across the batch.
         Custom-entity names appear in their natural form (without
         the ``C`` prefix EspoCRM applies on the wire).
+    :param entity_names: Frozenset of every entity natural name
+        declared in the batch. Subset of
+        ``fields_by_entity.keys()`` when every entity declares at
+        least one field; can be strictly larger if a program lists
+        an entity with no ``fields:`` block.
+    :param role_names: Frozenset of every role name declared in
+        the batch (deduplicated).
+    :param team_names: Frozenset of every team name declared in
+        the batch (deduplicated).
+    :param role_count_by_name: Mapping of role name to the number
+        of times it appears across the batch. A value > 1 marks a
+        cross-batch duplicate.
+    :param team_count_by_name: Mapping of team name to the number
+        of times it appears across the batch. A value > 1 marks a
+        cross-batch duplicate.
     """
 
     fields_by_entity: dict[str, frozenset[str]]
+    entity_names: frozenset[str] = frozenset()
+    role_names: frozenset[str] = frozenset()
+    team_names: frozenset[str] = frozenset()
+    role_count_by_name: dict[str, int] = field(default_factory=dict)
+    team_count_by_name: dict[str, int] = field(default_factory=dict)
 
     def field_names_for(self, entity_name: str) -> frozenset[str]:
         """Return the union of declared field names for ``entity_name``.
@@ -701,18 +818,35 @@ class ProgramContext:
         fields available too, so callers can pass a single program
         and use the same code path.
 
+        Roles and teams are accumulated with counts so callers can
+        detect cross-batch duplicates by checking for entries with
+        ``count > 1``.
+
         :param programs: List of parsed programs to union.
         :returns: New ``ProgramContext``.
         """
         fields_by_entity: dict[str, set[str]] = defaultdict(set)
+        entity_names: set[str] = set()
+        role_counts: dict[str, int] = defaultdict(int)
+        team_counts: dict[str, int] = defaultdict(int)
         for program in programs:
             for entity in program.entities:
+                entity_names.add(entity.name)
                 for field_def in entity.fields:
                     fields_by_entity[entity.name].add(field_def.name)
+            for role in program.roles:
+                role_counts[role.name] += 1
+            for team in program.teams:
+                team_counts[team.name] += 1
         return cls(
             fields_by_entity={
                 k: frozenset(v) for k, v in fields_by_entity.items()
-            }
+            },
+            entity_names=frozenset(entity_names),
+            role_names=frozenset(role_counts.keys()),
+            team_names=frozenset(team_counts.keys()),
+            role_count_by_name=dict(role_counts),
+            team_count_by_name=dict(team_counts),
         )
 
 

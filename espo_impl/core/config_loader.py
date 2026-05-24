@@ -15,10 +15,14 @@ from espo_impl.core.condition_expression import (
 )
 from espo_impl.core.formula_parser import extract_field_refs, parse_arithmetic
 from espo_impl.core.models import (
+    SCOPE_ACCESS_VALUES,
     SUPPORTED_ENTITY_TYPES,
+    SYSTEM_PERMISSION_FLAG_KEYS,
+    SYSTEM_PERMISSION_SCOPE_KEYS,
     VALID_NORMALIZE_VALUES,
     VALID_ON_MATCH_VALUES,
     VALID_SETTINGS_KEYS,
+    VALID_SYSTEM_PERMISSION_KEYS,
     AggregateFormula,
     ArithmeticFormula,
     ColumnSpec,
@@ -39,6 +43,8 @@ from espo_impl.core.models import (
     RelationshipDefinition,
     RoleDefinition,
     SavedView,
+    ScopeAccess,
+    SystemPermissions,
     TabSpec,
     TeamDefinition,
     Workflow,
@@ -291,7 +297,12 @@ class ConfigLoader:
                 errors.append(
                     "Missing required top-level key: 'description'"
                 )
-            if not program.entities and not program.relationships:
+            if (
+                not program.entities
+                and not program.relationships
+                and not program.roles
+                and not program.teams
+            ):
                 errors.append(
                     "Missing or empty 'entities' and 'relationships' sections"
                 )
@@ -308,6 +319,10 @@ class ConfigLoader:
 
             # Cross-entity uniqueness for filteredTab scope names
             errors.extend(self._validate_filtered_tab_scopes(program))
+
+            # Section 12 — roles and teams
+            errors.extend(self._validate_roles(program))
+            errors.extend(self._validate_teams(program))
 
             for rel in program.relationships:
                 errors.extend(self._validate_relationship(rel))
@@ -1457,14 +1472,267 @@ class ConfigLoader:
                     first_seen[tab.scope] = entity.name
         return errors
 
+    def _validate_roles(self, program: ProgramFile) -> list[str]:
+        """Validate the ``roles:`` block of a program file.
+
+        Enforces (1) within-file role-name uniqueness, (2)
+        cross-batch role-name uniqueness via ``ProgramContext``,
+        and (3) entity-name resolution for each role's
+        ``scope_access:`` keys. Vocabulary checks are already
+        enforced at parse time by the parser helpers.
+
+        :param program: Parsed program file.
+        :returns: List of error messages. Empty list means valid.
+        """
+        from espo_impl.core.native_entity_types import (
+            NATIVE_ENTITY_BASE_TYPE,
+        )
+
+        errors: list[str] = []
+        seen_names: set[str] = set()
+        for role in program.roles:
+            if role.name in seen_names:
+                errors.append(
+                    f"roles ('{role.name}'): duplicate role name within "
+                    f"this file; role names must be unique"
+                )
+            else:
+                seen_names.add(role.name)
+
+            count = self._active_context.role_count_by_name.get(
+                role.name, 0,
+            )
+            if count > 1:
+                errors.append(
+                    f"roles ('{role.name}'): role is declared in "
+                    f"{count} files in the batch; role names must be "
+                    f"unique across the batch"
+                )
+
+            valid_entities = (
+                self._active_context.entity_names
+                | frozenset(NATIVE_ENTITY_BASE_TYPE.keys())
+            )
+            for entity_name in role.scope_access:
+                if entity_name not in valid_entities:
+                    errors.append(
+                        f"roles ('{role.name}').scope_access"
+                        f"['{entity_name}']: entity '{entity_name}' is "
+                        f"not declared in this batch and is not a "
+                        f"recognized native entity"
+                    )
+
+        return errors
+
+    def _validate_teams(self, program: ProgramFile) -> list[str]:
+        """Validate the ``teams:`` block of a program file.
+
+        Enforces within-file team-name uniqueness and cross-batch
+        team-name uniqueness via ``ProgramContext``.
+
+        :param program: Parsed program file.
+        :returns: List of error messages. Empty list means valid.
+        """
+        errors: list[str] = []
+        seen_names: set[str] = set()
+        for team in program.teams:
+            if team.name in seen_names:
+                errors.append(
+                    f"teams ('{team.name}'): duplicate team name within "
+                    f"this file; team names must be unique"
+                )
+            else:
+                seen_names.add(team.name)
+
+            count = self._active_context.team_count_by_name.get(
+                team.name, 0,
+            )
+            if count > 1:
+                errors.append(
+                    f"teams ('{team.name}'): team is declared in "
+                    f"{count} files in the batch; team names must be "
+                    f"unique across the batch"
+                )
+
+        return errors
+
+    def _coerce_yesno(
+        self, value: Any, *, prefix: str, key: str,
+    ) -> bool:
+        """Normalize a YAML yes/no scalar to ``bool``.
+
+        Accepts: ``True`` (bare ``yes``), ``False`` (bare ``no``),
+        string ``"yes"`` (quoted), string ``"no"`` (quoted). All
+        other values raise ``ValueError`` with a clear message.
+
+        :param value: Raw value from YAML.
+        :param prefix: Error-message prefix locating the source of
+            the value (e.g. ``"roles[0] ('Mentor').scope_access.
+            Engagement"``).
+        :param key: The property name being normalized
+            (e.g. ``"create"``).
+        :returns: Normalized boolean value.
+        :raises ValueError: If ``value`` is not a recognized yes/no
+            scalar.
+        """
+        if value is True or value == "yes":
+            return True
+        if value is False or value == "no":
+            return False
+        raise ValueError(
+            f"{prefix}.{key}: must be 'yes' or 'no' (got {value!r})"
+        )
+
+    def _coerce_scope(
+        self, value: Any, *, prefix: str, key: str,
+    ) -> str:
+        """Normalize a YAML scope-vocabulary scalar to a canonical string.
+
+        Accepts: strings ``"all"``, ``"team"``, ``"own"``, ``"no"``;
+        the boolean ``False`` (from bare ``no``) normalizes to
+        ``"no"``. Bare ``yes`` / ``True`` / quoted ``"yes"`` are
+        rejected — ``yes`` is not in the scope vocabulary.
+
+        :param value: Raw value from YAML.
+        :param prefix: Error-message prefix.
+        :param key: The property name being normalized.
+        :returns: Canonical scope-vocabulary string.
+        :raises ValueError: If ``value`` is not in the scope
+            vocabulary.
+        """
+        if value is False:
+            return "no"
+        if isinstance(value, str) and value in SCOPE_ACCESS_VALUES:
+            return value
+        raise ValueError(
+            f"{prefix}.{key}: must be one of 'all', 'team', 'own', "
+            f"'no' (got {value!r})"
+        )
+
+    def _parse_scope_access(
+        self, raw: dict | None, *, role_name: str,
+    ) -> dict[str, ScopeAccess]:
+        """Parse a role's ``scope_access:`` block into typed values.
+
+        :param raw: Raw scope_access dict (or None for absent block).
+        :param role_name: Role name for error-message attribution.
+        :returns: Mapping of entity natural name to ScopeAccess.
+        :raises ValueError: On malformed structure or vocabulary
+            violation.
+        """
+        if raw is None:
+            return {}
+        if not isinstance(raw, dict):
+            raise ValueError(
+                f"roles ('{role_name}'): 'scope_access' must be a mapping"
+            )
+
+        valid_actions = {"create", "read", "edit", "delete", "stream"}
+        result: dict[str, ScopeAccess] = {}
+        for entity_name, entity_block in raw.items():
+            if not isinstance(entity_name, str) or not entity_name.strip():
+                raise ValueError(
+                    f"roles ('{role_name}').scope_access: entity-name "
+                    f"key must be a non-empty string"
+                )
+            prefix = (
+                f"roles ('{role_name}').scope_access.{entity_name}"
+            )
+            if not isinstance(entity_block, dict):
+                raise ValueError(
+                    f"{prefix}: must be a mapping of per-action settings"
+                )
+
+            unknown_keys = set(entity_block.keys()) - valid_actions
+            if unknown_keys:
+                raise ValueError(
+                    f"{prefix}: unknown action(s) "
+                    f"{sorted(unknown_keys)!r}; valid actions are "
+                    f"create, read, edit, delete, stream"
+                )
+
+            scope = ScopeAccess()
+            if "create" in entity_block:
+                scope.create = self._coerce_yesno(
+                    entity_block["create"],
+                    prefix=prefix,
+                    key="create",
+                )
+            for action_key in ("read", "edit", "delete", "stream"):
+                if action_key in entity_block:
+                    setattr(
+                        scope,
+                        action_key,
+                        self._coerce_scope(
+                            entity_block[action_key],
+                            prefix=prefix,
+                            key=action_key,
+                        ),
+                    )
+            result[entity_name] = scope
+
+        return result
+
+    def _parse_system_permissions(
+        self, raw: dict | None, *, role_name: str,
+    ) -> SystemPermissions | None:
+        """Parse a role's ``system_permissions:`` block into typed values.
+
+        Returns ``None`` if the block is absent in YAML. Returns a
+        fully-populated ``SystemPermissions`` (with per-key defaults
+        for any omitted keys) if the block is present, even if
+        empty.
+
+        :param raw: Raw system_permissions dict (or None for absent
+            block).
+        :param role_name: Role name for error-message attribution.
+        :returns: SystemPermissions instance or None.
+        :raises ValueError: On unknown key or vocabulary violation.
+        """
+        if raw is None:
+            return None
+        if not isinstance(raw, dict):
+            raise ValueError(
+                f"roles ('{role_name}'): 'system_permissions' must be "
+                f"a mapping"
+            )
+
+        prefix = f"roles ('{role_name}').system_permissions"
+        unknown_keys = set(raw.keys()) - VALID_SYSTEM_PERMISSION_KEYS
+        if unknown_keys:
+            raise ValueError(
+                f"{prefix}: unknown key(s) {sorted(unknown_keys)!r}; "
+                f"valid keys are "
+                f"{sorted(VALID_SYSTEM_PERMISSION_KEYS)!r}"
+            )
+
+        perms = SystemPermissions()
+        for sk in SYSTEM_PERMISSION_SCOPE_KEYS:
+            if sk in raw:
+                setattr(
+                    perms,
+                    sk,
+                    self._coerce_scope(raw[sk], prefix=prefix, key=sk),
+                )
+        for fk in SYSTEM_PERMISSION_FLAG_KEYS:
+            if fk in raw:
+                setattr(
+                    perms,
+                    fk,
+                    self._coerce_yesno(raw[fk], prefix=prefix, key=fk),
+                )
+        return perms
+
     def _parse_roles(self, raw_roles: Any) -> list[RoleDefinition]:
         """Parse the top-level ``roles:`` list.
 
         Hard-rejects malformed entries (non-list at root, non-dict
         entry, missing or non-string ``name:``) by raising
         ``ValueError`` matching the existing parser conventions.
-        Stashes ``scope_access`` and ``system_permissions`` as raw
-        dicts for a later prompt to parse structurally.
+        Populates both structured ``scope_access`` /
+        ``system_permissions`` fields and the raw passthroughs so
+        downstream consumers (validators, deploy managers,
+        round-trippers) can use whichever form is appropriate.
 
         :param raw_roles: Raw value from ``raw.get("roles")``.
             ``None`` and missing key return an empty list (the YAML
@@ -1524,10 +1792,19 @@ class ConfigLoader:
                     f"be a mapping when present"
                 )
 
+            scope_access = self._parse_scope_access(
+                scope_access_raw, role_name=name,
+            )
+            system_permissions = self._parse_system_permissions(
+                system_permissions_raw, role_name=name,
+            )
+
             roles.append(RoleDefinition(
                 name=name,
                 description=description,
                 persona=persona,
+                scope_access=scope_access,
+                system_permissions=system_permissions,
                 scope_access_raw=scope_access_raw,
                 system_permissions_raw=system_permissions_raw,
             ))

@@ -2249,30 +2249,32 @@ def test_load_program_without_roles_or_teams(loader, valid_yaml):
 
 
 def test_load_role_with_raw_scope_and_permissions(loader, tmp_path):
-    """scope_access and system_permissions are stashed as raw dicts."""
+    """scope_access and system_permissions are stashed as raw dicts
+    alongside the structured fields populated by Prompt B."""
     path = _write(tmp_path, "role_with_raw.yaml", """\
         version: "1.0"
         description: "Role with raw blocks"
         roles:
           - name: Mentor
             scope_access:
-              Engagement: own
+              Engagement:
+                read: own
               Contact:
                 read: team
                 edit: own
             system_permissions:
-              massUpdate: false
-              export: true
+              mass_update: no
+              export: yes
     """)
     program = loader.load_program(path)
     assert len(program.roles) == 1
     mentor = program.roles[0]
     assert mentor.scope_access_raw == {
-        "Engagement": "own",
+        "Engagement": {"read": "own"},
         "Contact": {"read": "team", "edit": "own"},
     }
     assert mentor.system_permissions_raw == {
-        "massUpdate": False,
+        "mass_update": False,
         "export": True,
     }
 
@@ -2518,3 +2520,669 @@ def test_team_description_non_string(loader, tmp_path):
         match=r"teams\[0\] \('HQ'\): 'description' must be a string",
     ):
         loader.load_program(path)
+
+
+# ----------------------------------------------------------------------
+# audit-v1.2 Prompt B — structured scope_access / system_permissions
+# parsing, validation, entity-name resolution, cross-batch uniqueness
+# ----------------------------------------------------------------------
+
+
+# ---- Structured scope_access parsing ----
+
+
+def test_scope_access_structured_two_entities(loader, tmp_path):
+    """scope_access populates a structured dict alongside the raw pass."""
+    path = _write(tmp_path, "scope_two.yaml", """\
+        version: "1.0"
+        description: "Two-entity scope"
+        entities:
+          Engagement:
+            fields:
+              - name: status
+                type: varchar
+                label: "Status"
+        roles:
+          - name: Mentor
+            scope_access:
+              Engagement:
+                create: yes
+                read:   own
+                edit:   own
+                delete: no
+                stream: own
+              Contact:
+                read:   team
+                edit:   no
+    """)
+    program = loader.load_program(path)
+    mentor = program.roles[0]
+    assert set(mentor.scope_access.keys()) == {"Engagement", "Contact"}
+
+    eng = mentor.scope_access["Engagement"]
+    assert eng.create is True
+    assert eng.read == "own"
+    assert eng.edit == "own"
+    assert eng.delete == "no"
+    assert eng.stream == "own"
+
+    contact = mentor.scope_access["Contact"]
+    assert contact.create is False
+    assert contact.read == "team"
+    assert contact.edit == "no"
+    assert contact.delete == "no"
+    assert contact.stream == "no"
+
+    # Raw passthrough must remain populated (Prompt A regression).
+    assert mentor.scope_access_raw == {
+        "Engagement": {
+            "create": True,
+            "read": "own",
+            "edit": "own",
+            "delete": False,
+            "stream": "own",
+        },
+        "Contact": {"read": "team", "edit": False},
+    }
+
+
+def test_scope_access_partial_actions_default_denied(loader, tmp_path):
+    """Omitted actions take dataclass defaults (denied)."""
+    path = _write(tmp_path, "scope_partial.yaml", """\
+        version: "1.0"
+        description: "Partial scope"
+        roles:
+          - name: Mentor
+            scope_access:
+              Contact:
+                read: own
+                edit: own
+    """)
+    program = loader.load_program(path)
+    contact = program.roles[0].scope_access["Contact"]
+    assert contact.create is False
+    assert contact.read == "own"
+    assert contact.edit == "own"
+    assert contact.delete == "no"
+    assert contact.stream == "no"
+
+
+def test_scope_access_empty_block_yields_empty_dict(loader, tmp_path):
+    path = _write(tmp_path, "scope_empty.yaml", """\
+        version: "1.0"
+        description: "Empty scope"
+        roles:
+          - name: Mentor
+            scope_access: {}
+    """)
+    program = loader.load_program(path)
+    assert program.roles[0].scope_access == {}
+
+
+def test_scope_access_absent_yields_empty_dict(loader, tmp_path):
+    path = _write(tmp_path, "scope_absent.yaml", """\
+        version: "1.0"
+        description: "Absent scope"
+        roles:
+          - name: Mentor
+    """)
+    program = loader.load_program(path)
+    assert program.roles[0].scope_access == {}
+
+
+# ---- YAML 1.1 boolean coercion ----
+
+
+def test_create_bare_yes_no(loader, tmp_path):
+    path = _write(tmp_path, "create_bare.yaml", """\
+        version: "1.0"
+        description: "Bare yes/no for create"
+        roles:
+          - name: Mentor
+            scope_access:
+              Contact:
+                create: yes
+              Account:
+                create: no
+    """)
+    program = loader.load_program(path)
+    mentor = program.roles[0]
+    assert mentor.scope_access["Contact"].create is True
+    assert mentor.scope_access["Account"].create is False
+
+
+def test_create_quoted_yes_no(loader, tmp_path):
+    path = _write(tmp_path, "create_quoted.yaml", """\
+        version: "1.0"
+        description: "Quoted yes/no for create"
+        roles:
+          - name: Mentor
+            scope_access:
+              Contact:
+                create: "yes"
+              Account:
+                create: "no"
+    """)
+    program = loader.load_program(path)
+    mentor = program.roles[0]
+    assert mentor.scope_access["Contact"].create is True
+    assert mentor.scope_access["Account"].create is False
+
+
+def test_read_bare_no_normalizes_to_string_no(loader, tmp_path):
+    """Bare ``no`` (YAML False) normalizes to scope 'no'."""
+    path = _write(tmp_path, "read_bare_no.yaml", """\
+        version: "1.0"
+        description: "Bare no for read"
+        roles:
+          - name: Mentor
+            scope_access:
+              Contact:
+                read: no
+    """)
+    program = loader.load_program(path)
+    assert program.roles[0].scope_access["Contact"].read == "no"
+
+
+def test_read_quoted_no_normalizes_to_string_no(loader, tmp_path):
+    path = _write(tmp_path, "read_quoted_no.yaml", """\
+        version: "1.0"
+        description: "Quoted no for read"
+        roles:
+          - name: Mentor
+            scope_access:
+              Contact:
+                read: "no"
+    """)
+    program = loader.load_program(path)
+    assert program.roles[0].scope_access["Contact"].read == "no"
+
+
+@pytest.mark.parametrize(
+    "action",
+    ["read", "edit", "delete", "stream"],
+)
+def test_scope_actions_bare_vs_quoted_equivalence(
+    loader, tmp_path, action,
+):
+    """Bare and quoted scope values produce identical results."""
+    bare_path = _write(tmp_path, f"{action}_bare.yaml", f"""\
+        version: "1.0"
+        description: "Bare {action}"
+        roles:
+          - name: Mentor
+            scope_access:
+              Contact:
+                {action}: no
+    """)
+    quoted_path = _write(tmp_path, f"{action}_quoted.yaml", f"""\
+        version: "1.0"
+        description: "Quoted {action}"
+        roles:
+          - name: Mentor
+            scope_access:
+              Contact:
+                {action}: "no"
+    """)
+    bare_program = loader.load_program(bare_path)
+    quoted_program = loader.load_program(quoted_path)
+    assert (
+        getattr(bare_program.roles[0].scope_access["Contact"], action)
+        == getattr(
+            quoted_program.roles[0].scope_access["Contact"],
+            action,
+        )
+        == "no"
+    )
+
+
+# ---- scope_access rejection ----
+
+
+def test_create_invalid_value_rejected(loader, tmp_path):
+    path = _write(tmp_path, "create_bad.yaml", """\
+        version: "1.0"
+        description: "Bad create value"
+        roles:
+          - name: Mentor
+            scope_access:
+              Contact:
+                create: maybe
+    """)
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"roles \('Mentor'\)\.scope_access\.Contact\.create: must "
+            r"be 'yes' or 'no'"
+        ),
+    ):
+        loader.load_program(path)
+
+
+def test_read_yes_rejected_not_in_scope_vocabulary(loader, tmp_path):
+    """``yes`` is not in the scope vocabulary."""
+    path = _write(tmp_path, "read_yes.yaml", """\
+        version: "1.0"
+        description: "yes is not a scope value"
+        roles:
+          - name: Mentor
+            scope_access:
+              Contact:
+                read: yes
+    """)
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"roles \('Mentor'\)\.scope_access\.Contact\.read: must "
+            r"be one of 'all', 'team', 'own', 'no'"
+        ),
+    ):
+        loader.load_program(path)
+
+
+def test_read_unknown_string_rejected(loader, tmp_path):
+    path = _write(tmp_path, "read_bad.yaml", """\
+        version: "1.0"
+        description: "Unknown scope"
+        roles:
+          - name: Mentor
+            scope_access:
+              Contact:
+                read: somewhere
+    """)
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"roles \('Mentor'\)\.scope_access\.Contact\.read: must "
+            r"be one of"
+        ),
+    ):
+        loader.load_program(path)
+
+
+def test_unknown_action_key_rejected(loader, tmp_path):
+    path = _write(tmp_path, "unknown_action.yaml", """\
+        version: "1.0"
+        description: "Unknown action key"
+        roles:
+          - name: Mentor
+            scope_access:
+              Contact:
+                archive: yes
+    """)
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"roles \('Mentor'\)\.scope_access\.Contact: unknown "
+            r"action\(s\) \['archive'\]"
+        ),
+    ):
+        loader.load_program(path)
+
+
+def test_per_entity_block_not_mapping_rejected(loader, tmp_path):
+    path = _write(tmp_path, "entity_block_scalar.yaml", """\
+        version: "1.0"
+        description: "Per-entity not a mapping"
+        roles:
+          - name: Mentor
+            scope_access:
+              Contact: own
+    """)
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"roles \('Mentor'\)\.scope_access\.Contact: must be a "
+            r"mapping"
+        ),
+    ):
+        loader.load_program(path)
+
+
+# ---- system_permissions parsing ----
+
+
+def test_system_permissions_full_block(loader, tmp_path):
+    path = _write(tmp_path, "sysperm_full.yaml", """\
+        version: "1.0"
+        description: "Full system permissions"
+        roles:
+          - name: Admin
+            system_permissions:
+              assignment_permission: all
+              user_permission: all
+              export: yes
+              mass_update: yes
+              audit_log: yes
+              portal: no
+    """)
+    program = loader.load_program(path)
+    perms = program.roles[0].system_permissions
+    assert perms is not None
+    assert perms.assignment_permission == "all"
+    assert perms.user_permission == "all"
+    assert perms.export is True
+    assert perms.mass_update is True
+    assert perms.audit_log is True
+    assert perms.portal is False
+
+
+def test_system_permissions_partial_block(loader, tmp_path):
+    path = _write(tmp_path, "sysperm_partial.yaml", """\
+        version: "1.0"
+        description: "Partial system permissions"
+        roles:
+          - name: Operator
+            system_permissions:
+              export: yes
+    """)
+    program = loader.load_program(path)
+    perms = program.roles[0].system_permissions
+    assert perms is not None
+    assert perms.export is True
+    assert perms.mass_update is False
+    assert perms.audit_log is False
+    assert perms.portal is False
+    assert perms.assignment_permission == "no"
+    assert perms.user_permission == "no"
+
+
+def test_system_permissions_absent_yields_none(loader, tmp_path):
+    path = _write(tmp_path, "sysperm_absent.yaml", """\
+        version: "1.0"
+        description: "Absent system permissions"
+        roles:
+          - name: Plain
+    """)
+    program = loader.load_program(path)
+    assert program.roles[0].system_permissions is None
+
+
+def test_system_permissions_empty_block_yields_defaults(loader, tmp_path):
+    path = _write(tmp_path, "sysperm_empty.yaml", """\
+        version: "1.0"
+        description: "Empty system permissions"
+        roles:
+          - name: Plain
+            system_permissions: {}
+    """)
+    program = loader.load_program(path)
+    perms = program.roles[0].system_permissions
+    assert perms is not None
+    assert perms.assignment_permission == "no"
+    assert perms.user_permission == "no"
+    assert perms.export is False
+    assert perms.mass_update is False
+    assert perms.audit_log is False
+    assert perms.portal is False
+
+
+# ---- system_permissions rejection ----
+
+
+def test_system_permissions_unknown_key_rejected(loader, tmp_path):
+    path = _write(tmp_path, "sysperm_unknown.yaml", """\
+        version: "1.0"
+        description: "Unknown sysperm key"
+        roles:
+          - name: Mentor
+            system_permissions:
+              foobar: yes
+    """)
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"roles \('Mentor'\)\.system_permissions: unknown key\(s\) "
+            r"\['foobar'\]"
+        ),
+    ):
+        loader.load_program(path)
+
+
+def test_system_permissions_scope_key_with_bool_rejected(loader, tmp_path):
+    path = _write(tmp_path, "sysperm_scope_bool.yaml", """\
+        version: "1.0"
+        description: "Scope key with bool"
+        roles:
+          - name: Mentor
+            system_permissions:
+              assignment_permission: yes
+    """)
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"roles \('Mentor'\)\.system_permissions\.assignment_permission: "
+            r"must be one of"
+        ),
+    ):
+        loader.load_program(path)
+
+
+def test_system_permissions_flag_key_with_scope_rejected(loader, tmp_path):
+    path = _write(tmp_path, "sysperm_flag_scope.yaml", """\
+        version: "1.0"
+        description: "Flag key with scope value"
+        roles:
+          - name: Mentor
+            system_permissions:
+              export: team
+    """)
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"roles \('Mentor'\)\.system_permissions\.export: must "
+            r"be 'yes' or 'no'"
+        ),
+    ):
+        loader.load_program(path)
+
+
+# ---- _validate_roles ----
+
+
+def test_within_file_role_uniqueness_violation(loader, tmp_path):
+    path = _write(tmp_path, "dupe_roles.yaml", """\
+        version: "1.0"
+        description: "Duplicate role"
+        roles:
+          - name: Mentor
+          - name: Mentor
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any(
+        "duplicate role name within this file" in e
+        and "Mentor" in e
+        for e in errors
+    ), f"Expected within-file duplicate role error, got: {errors!r}"
+
+
+def test_cross_batch_role_uniqueness_violation(loader, tmp_path):
+    """Two files each declaring the same role produce a cross-batch error."""
+    from espo_impl.core.models import ProgramContext
+
+    path_a = _write(tmp_path, "a.yaml", """\
+        version: "1.0"
+        description: "A"
+        roles:
+          - name: Mentor
+    """)
+    path_b = _write(tmp_path, "b.yaml", """\
+        version: "1.0"
+        description: "B"
+        roles:
+          - name: Mentor
+    """)
+    program_a = loader.load_program(path_a)
+    program_b = loader.load_program(path_b)
+    context = ProgramContext.from_programs([program_a, program_b])
+    errors_a = loader.validate_program_with_context(program_a, context)
+    errors_b = loader.validate_program_with_context(program_b, context)
+    assert any("declared in 2 files" in e for e in errors_a), errors_a
+    assert any("declared in 2 files" in e for e in errors_b), errors_b
+
+
+def test_scope_access_entity_resolves_native(loader, tmp_path):
+    """Native entity in scope_access validates cleanly."""
+    path = _write(tmp_path, "native_scope.yaml", """\
+        version: "1.0"
+        description: "Native entity in scope_access"
+        roles:
+          - name: Mentor
+            scope_access:
+              Contact:
+                read: team
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert errors == [], f"Unexpected errors: {errors!r}"
+
+
+def test_scope_access_entity_resolves_custom_in_batch(loader, tmp_path):
+    """Custom entity declared elsewhere in batch validates cleanly."""
+    from espo_impl.core.models import ProgramContext
+
+    entity_file = _write(tmp_path, "ent.yaml", """\
+        version: "1.0"
+        description: "Engagement entity"
+        entities:
+          Engagement:
+            fields:
+              - name: status
+                type: varchar
+                label: "Status"
+    """)
+    role_file = _write(tmp_path, "role.yaml", """\
+        version: "1.0"
+        description: "Role referencing Engagement"
+        roles:
+          - name: Mentor
+            scope_access:
+              Engagement:
+                read: own
+    """)
+    program_entity = loader.load_program(entity_file)
+    program_role = loader.load_program(role_file)
+    context = ProgramContext.from_programs(
+        [program_entity, program_role],
+    )
+    errors = loader.validate_program_with_context(program_role, context)
+    assert errors == [], f"Unexpected errors: {errors!r}"
+
+
+def test_scope_access_entity_unresolved_rejected(loader, tmp_path):
+    path = _write(tmp_path, "unknown_entity.yaml", """\
+        version: "1.0"
+        description: "Unknown entity in scope_access"
+        roles:
+          - name: Mentor
+            scope_access:
+              NonexistentEntity:
+                read: own
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any(
+        "NonexistentEntity" in e
+        and "not declared in this batch" in e
+        for e in errors
+    ), f"Expected unresolved-entity error, got: {errors!r}"
+
+
+# ---- _validate_teams ----
+
+
+def test_within_file_team_uniqueness_violation(loader, tmp_path):
+    path = _write(tmp_path, "dupe_teams.yaml", """\
+        version: "1.0"
+        description: "Duplicate team"
+        teams:
+          - name: HQ
+          - name: HQ
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any(
+        "duplicate team name within this file" in e
+        and "HQ" in e
+        for e in errors
+    ), f"Expected within-file duplicate team error, got: {errors!r}"
+
+
+def test_cross_batch_team_uniqueness_violation(loader, tmp_path):
+    from espo_impl.core.models import ProgramContext
+
+    path_a = _write(tmp_path, "a.yaml", """\
+        version: "1.0"
+        description: "A"
+        teams:
+          - name: HQ
+    """)
+    path_b = _write(tmp_path, "b.yaml", """\
+        version: "1.0"
+        description: "B"
+        teams:
+          - name: HQ
+    """)
+    program_a = loader.load_program(path_a)
+    program_b = loader.load_program(path_b)
+    context = ProgramContext.from_programs([program_a, program_b])
+    errors_a = loader.validate_program_with_context(program_a, context)
+    errors_b = loader.validate_program_with_context(program_b, context)
+    assert any("declared in 2 files" in e for e in errors_a), errors_a
+    assert any("declared in 2 files" in e for e in errors_b), errors_b
+
+
+# ---- ProgramContext extensions ----
+
+
+def test_program_context_tracks_entity_role_team_names(loader, tmp_path):
+    from espo_impl.core.models import ProgramContext
+
+    path = _write(tmp_path, "all.yaml", """\
+        version: "1.0"
+        description: "All three"
+        entities:
+          Engagement:
+            fields:
+              - name: status
+                type: varchar
+                label: "Status"
+        roles:
+          - name: Mentor
+        teams:
+          - name: HQ
+    """)
+    program = loader.load_program(path)
+    context = ProgramContext.from_programs([program])
+    assert context.entity_names == frozenset({"Engagement"})
+    assert context.role_names == frozenset({"Mentor"})
+    assert context.team_names == frozenset({"HQ"})
+    assert context.role_count_by_name == {"Mentor": 1}
+    assert context.team_count_by_name == {"HQ": 1}
+
+
+def test_program_context_role_team_counts_accumulate(loader, tmp_path):
+    from espo_impl.core.models import ProgramContext
+
+    a = _write(tmp_path, "a.yaml", """\
+        version: "1.0"
+        description: "A"
+        roles:
+          - name: Mentor
+        teams:
+          - name: HQ
+    """)
+    b = _write(tmp_path, "b.yaml", """\
+        version: "1.0"
+        description: "B"
+        roles:
+          - name: Mentor
+        teams:
+          - name: HQ
+    """)
+    pa = loader.load_program(a)
+    pb = loader.load_program(b)
+    context = ProgramContext.from_programs([pa, pb])
+    assert context.role_count_by_name == {"Mentor": 2}
+    assert context.team_count_by_name == {"HQ": 2}
