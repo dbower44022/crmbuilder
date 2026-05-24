@@ -1,6 +1,6 @@
 # Code Change Lifecycle — Methodology
 
-**Last Updated:** 05-23-26 21:00
+**Last Updated:** 05-24-26 17:30
 **Status:** Draft v1.0
 **Workstream:** Code Change Lifecycle (established in SES-057)
 **Produced by:** SES-061 (PI-027 methodology drafting conversation)
@@ -17,6 +17,8 @@
 ---
 
 ## Change Log
+
+**Version 1.0 amendment (05-24-26 17:30):** PI-030 slice A — added §4.0 `conversation` block and updated §4's apply-ordering bullet to insert `conversation` between `session` and `work_tickets`. The amendment was required by DEC-223 (close-out payload format gains a conversation block; methodology amended) to close the gap where sessions from SES-061 forward had no associated conversation records, blocking commits' FK to `commit_conversation_id`. Document version stays at v1.0 — the amendment is additive and clarifying.
 
 **Version 1.0 (05-23-26 21:00):** Initial creation. Defines the seven-stage code-change-lifecycle chain that connects a planning item, through the work that addresses it, through the commits that deliver it, to the resolution declaration. Introduces three new relationship_kinds (`resolves`, `addresses`, `blocked_by`), one renamed kind (`blocks` → `blocked_by`), and one new governance entity type (`commit` with identifier prefix `CM-NNNN`). Specifies four new close-out payload sections (`commits`, `work_tickets`, `resolves_planning_items`, `addresses_planning_items`). States the broad work_ticket authoring rule (every single-use seed document committed to a repo is a work_ticket record, classified by the four-value kind enum). Specifies the apply-time payload-declared, helper-enumerated commit ingestion model. Specifies the conversation-scoped commits model (commits live in their conversation's engagement database regardless of physical repo; `repository` column distinguishes). Specifies the audit query patterns the chain supports. Documents the back-fill posture for pre-methodology records (PI-033 scope: ~220 historical work_tickets, several hundred historical commits, retroactive `resolves` for previously-Resolved planning items, `is_about` → `addresses` migration on v0.7 work_ticket edges, two `blocks` → `blocked_by` row migrations). Names known gaps: until PI-030 ships, the close-out payload format does not yet support the four new sections, so this methodology is normative-but-not-yet-implemented at v1.0 authoring time.
 
@@ -165,14 +167,37 @@ All new entity types follow the existing prefixed-identifier convention document
 
 ## 4. Close-out Payload Format Extension
 
-The v0.7 close-out payload structure (one session record, decisions array, planning_items array, references array) extends with four new top-level array sections. The apply script processes the sections in fixed order to honor dependency constraints:
+The v0.7 close-out payload structure (one session record, decisions array, planning_items array, references array) extends with **five** new top-level sections (one conversation block plus four array sections). The apply script processes the sections in fixed order to honor dependency constraints:
 
 ```
-session → work_tickets → planning_items → commits → decisions
+session → conversation → work_tickets → planning_items → commits → decisions
        → references → resolves_planning_items → addresses_planning_items
 ```
 
-Rationale for the order: work_tickets must exist before they can be referenced from is_about/addresses/opens-against edges; commits must exist before resolves/addresses edges can be authored against the conversation that produced them; resolves edges flip planning_item status, so the planning item record must exist first.
+Rationale for the order: the conversation must exist before commits can be FK-attached to it via `commit_conversation_id` (added by PI-030 slice A's amendment per DEC-223); work_tickets must exist before they can be referenced from is_about/addresses/opens-against edges; commits must exist before resolves/addresses edges can be authored against the conversation that produced them; resolves edges flip planning_item status, so the planning item record must exist first.
+
+### 4.0 `conversation` block
+
+```json
+"conversation": {
+  "conversation_identifier": "CONV-046",
+  "conversation_title": "PI-030 architecture planning — close-out payload extensions and apply integration",
+  "conversation_purpose": "Settle Q0 (PI-030 scope), Q1 (commit-metadata helper architecture), and Q2 (conversation gap closure). Author the three PI-030 slice prompts.",
+  "conversation_status": "complete",
+  "conversation_completed_at": "2026-05-24T17:30:00-04:00",
+  "references": [
+    {
+      "target_type": "session",
+      "target_id": "SES-070",
+      "relationship": "conversation_records_session"
+    }
+  ]
+}
+```
+
+Generates one `conversation` record plus the embedded `conversation_records_session` edge to the session block's identifier in the same atomic POST. Required for any close-out that includes a `commits` section — the commits' `commit_conversation_id` FK targets this conversation. The conversation_identifier is computed client-side via `GET /conversations/next-identifier`. The status is typically `complete` at close-out time, but earlier statuses are admitted for in-flight close-outs that defer some fields to a subsequent edit. Omitting the conversation block when commits are present causes `commit_conversation_id_not_found` errors at apply time.
+
+Authoring note: the conversation block was added in PI-030 (the methodology's downstream implementation conversation; see §8) per DEC-223. Prior close-out payloads (ses_001 through approximately ses_069) predate this section and used the v0.7 four-block format; backfill of conversation records for those sessions is PI-024/PI-025 scope.
 
 ### 4.1 `commits` section
 

@@ -221,6 +221,19 @@ def create(
     session.add(row)
     session.flush()
     after = _row_dict(row)
+    # PI-030 slice A: atomic edge + status flip for `resolves` kind.
+    # When a conversation `resolves` a planning_item, the planning_item's
+    # status transitions to "Resolved" in the same transaction. The
+    # transition is idempotent — if the target is already Resolved, the
+    # update is a no-op. Source/target type validation is enforced
+    # upstream by `_kinds_for_pair` in vocab.py (which admits `resolves`
+    # only for (conversation, planning_item) pairs); a reference whose
+    # types don't match would have been rejected before this code runs.
+    if relationship == "resolves":
+        from crmbuilder_v2.access.repositories import planning_items
+        target_record = planning_items.get(session, target_id)
+        if target_record["status"] != "Resolved":
+            planning_items.update(session, target_id, status="Resolved")
     emit(
         session,
         entity_type=_ENTITY_TYPE,

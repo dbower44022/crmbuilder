@@ -9,7 +9,12 @@ from crmbuilder_v2.access.exceptions import (
     NotFoundError,
     ValidationError,
 )
-from crmbuilder_v2.access.repositories import references
+from crmbuilder_v2.access.repositories import (
+    conversations as cr,
+    planning_items as pi,
+    references,
+    workstreams as ws,
+)
 
 
 def _add(s, **kw):
@@ -146,3 +151,119 @@ def test_delete_by_id_removes_row(v2_env):
 def test_delete_by_id_unknown_id_raises(v2_env):
     with session_scope() as s, pytest.raises(NotFoundError):
         references.delete_by_id(s, 999_999)
+
+
+class TestResolvesStatusFlip:
+    """PI-030 slice A: POST /references with relationship=resolves flips
+    target planning_item status to Resolved in the same transaction."""
+
+    @staticmethod
+    def _conv(s, identifier="CONV-991"):
+        wid = ws.create_workstream(
+            s, name="WS " + identifier, purpose="p", description="d"
+        )["workstream_identifier"]
+        return cr.create_conversation(
+            s, title="Conv " + identifier, purpose="p", description="d",
+            identifier=identifier,
+            references=[{
+                "source_type": "conversation", "source_id": identifier,
+                "target_type": "workstream", "target_id": wid,
+                "relationship": "conversation_belongs_to_workstream",
+            }],
+        )["conversation_identifier"]
+
+    @staticmethod
+    def _pi(s, identifier="PI-991", status="Open"):
+        return pi.create(
+            s,
+            identifier=identifier,
+            title="Test PI " + identifier,
+            item_type="pending_work",
+            description="",
+            status=status,
+        )["identifier"]
+
+    def test_resolves_flips_open_to_resolved(self, v2_env):
+        """Happy path: Open planning_item -> Resolved on resolves edge."""
+        with session_scope() as s:
+            conv_id = self._conv(s, "CONV-991")
+            pi_id = self._pi(s, "PI-991", status="Open")
+        with session_scope() as s:
+            references.create(
+                s,
+                source_type="conversation",
+                source_id=conv_id,
+                target_type="planning_item",
+                target_id=pi_id,
+                relationship="resolves",
+            )
+        with session_scope() as s:
+            row = pi.get(s, pi_id)
+        assert row["status"] == "Resolved"
+
+    def test_resolves_idempotent_on_already_resolved(self, v2_env):
+        """Resolved -> Resolved: no-op update; reference still created."""
+        with session_scope() as s:
+            conv_id = self._conv(s, "CONV-992")
+            pi_id = self._pi(s, "PI-992", status="Resolved")
+        with session_scope() as s:
+            created = references.create(
+                s,
+                source_type="conversation",
+                source_id=conv_id,
+                target_type="planning_item",
+                target_id=pi_id,
+                relationship="resolves",
+            )
+        with session_scope() as s:
+            row = pi.get(s, pi_id)
+        assert created["relationship"] == "resolves"
+        assert row["status"] == "Resolved"
+
+    def test_duplicate_resolves_edge_returns_409(self, v2_env):
+        """Second resolves edge with same source/target/kind raises
+        ConflictError; planning_item status remains Resolved."""
+        with session_scope() as s:
+            conv_id = self._conv(s, "CONV-993")
+            pi_id = self._pi(s, "PI-993", status="Open")
+        with session_scope() as s:
+            references.create(
+                s,
+                source_type="conversation",
+                source_id=conv_id,
+                target_type="planning_item",
+                target_id=pi_id,
+                relationship="resolves",
+            )
+        with session_scope() as s, pytest.raises(ConflictError):
+            references.create(
+                s,
+                source_type="conversation",
+                source_id=conv_id,
+                target_type="planning_item",
+                target_id=pi_id,
+                relationship="resolves",
+            )
+        with session_scope() as s:
+            row = pi.get(s, pi_id)
+        assert row["status"] == "Resolved"
+
+    def test_non_resolves_kind_does_not_flip(self, v2_env):
+        """An is_about edge from a conversation to a planning_item does
+        NOT change the planning_item's status; the flip is gated on the
+        relationship kind, not on the target type."""
+        with session_scope() as s:
+            conv_id = self._conv(s, "CONV-994")
+            pi_id = self._pi(s, "PI-994", status="Open")
+        with session_scope() as s:
+            references.create(
+                s,
+                source_type="conversation",
+                source_id=conv_id,
+                target_type="planning_item",
+                target_id=pi_id,
+                relationship="is_about",
+            )
+        with session_scope() as s:
+            row = pi.get(s, pi_id)
+        assert row["status"] == "Open"

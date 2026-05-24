@@ -91,3 +91,44 @@ def test_delete_by_id(client):
 def test_delete_by_id_unknown_returns_404(client):
     r = client.delete("/references/999999")
     assert r.status_code == 404
+
+
+def test_post_references_resolves_flips_status(client):
+    """PI-030 slice A: POST /references with relationship=resolves
+    triggers the atomic status flip on the target planning_item."""
+    ws_resp = client.post("/workstreams", json={
+        "workstream_name": "WS CONV-995",
+        "workstream_purpose": "p",
+        "workstream_description": "d",
+    })
+    wid = ws_resp.json()["data"]["workstream_identifier"]
+    client.post("/conversations", json={
+        "conversation_title": "Conv CONV-995",
+        "conversation_purpose": "p",
+        "conversation_description": "d",
+        "conversation_identifier": "CONV-995",
+        "references": [{
+            "source_type": "conversation", "source_id": "CONV-995",
+            "target_type": "workstream", "target_id": wid,
+            "relationship": "conversation_belongs_to_workstream",
+        }],
+    })
+    client.post("/planning-items", json={
+        "identifier": "PI-995",
+        "title": "Test PI for resolves",
+        "item_type": "pending_work",
+        "status": "Open",
+    })
+
+    r = client.post("/references", json={
+        "source_type": "conversation",
+        "source_id": "CONV-995",
+        "target_type": "planning_item",
+        "target_id": "PI-995",
+        "relationship": "resolves",
+    })
+    assert r.status_code == 201
+
+    r = client.get("/planning-items/PI-995")
+    assert r.status_code == 200
+    assert r.json()["data"]["status"] == "Resolved"
