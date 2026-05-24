@@ -30,6 +30,7 @@ from crmbuilder_v2.api.routers import (
     catalog,
     charter,
     close_out_payloads,
+    commits,
     conversations,
     crm_candidates,
     decisions,
@@ -150,6 +151,7 @@ def create_app() -> FastAPI:
     app.include_router(work_tickets.router)
     app.include_router(close_out_payloads.router)
     app.include_router(deposit_events.router)
+    app.include_router(commits.router)
 
     @app.get("/", tags=["meta"], include_in_schema=False)
     def root():
