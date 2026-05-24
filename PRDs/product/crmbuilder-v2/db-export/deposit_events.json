@@ -904,5 +904,25 @@
       "sessions": 0
     },
     "deposit_event_title": "Apply of COP-067, 2026-05-24T05:00:16+00:00"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "0.7.0",
+      "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_068.json",
+      "runner": "claude_code"
+    },
+    "deposit_event_created_at": "2026-05-24T05:24:21.598041",
+    "deposit_event_description": "Applied COP-068. Outcome: success. 1 decisions, 2 planning_items, 1 sessions.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-046",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_046.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 1,
+      "planning_items": 2,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-068, 2026-05-24T05:24:21+00:00"
   }
 ]

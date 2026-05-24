@@ -1,0 +1,24 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_068.json
+Label:  SES-068 PI-026 supersession close-out: DEC-215 supersedes DEC-206 (Option I — skip references as deposit_event_wrote_record targets — adopted at apply time after vocab.py schema-vs-spec contradiction rejected the references-as-targets POSTs); PI-046 surfaces the vocab.ENTITY_TYPES vs vocab._kinds_for_pair contradiction for the planning queue; PI-047 surfaces the ses_030 ↔ ses_036 duplicate-session artifact for formal cleanup. 1 session, 1 decision (DEC-215), 2 planning items (PI-046, PI-047), 4 references (1 supersedes, 1 decided_in, 2 is_about).
+Deposit event: DEP-046
+
+=== session (1 record) ===
+  ✓ POST session  SES-068 (HTTP 201)
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-215 (HTTP 201)
+
+=== planning_items (2 records) ===
+  ✓ POST planning_items  PI-046 (HTTP 201)
+  ✓ POST planning_items  PI-047 (HTTP 201)
+
+=== references (4 records) ===
+  ✓ POST references  DEC-215 supersedes DEC-206 (HTTP 201)
+  ✓ POST references  DEC-215 decided_in SES-068 (HTTP 201)
+  ✓ POST references  SES-068 is_about PI-046 (HTTP 201)
+  ✓ POST references  SES-068 is_about PI-047 (HTTP 201)
+
+✓ All 8 operations complete.
+
+✓ Recorded apply as deposit_event DEP-046 (HTTP 201).
