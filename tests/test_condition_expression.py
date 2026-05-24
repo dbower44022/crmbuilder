@@ -6,9 +6,13 @@ import pytest
 
 from espo_impl.core.condition_expression import (
     _MISSING,
+    ROLE_OPERATORS,
     AllNode,
     AnyNode,
     LeafClause,
+    RoleClause,
+    collect_unknown_fields,
+    collect_unknown_roles,
     evaluate_condition,
     parse_condition,
     render_condition,
@@ -155,7 +159,7 @@ class TestParseStructured:
             parse_condition({"any": []})
 
     def test_unknown_dict_keys_rejected(self):
-        with pytest.raises(ValueError, match="'all', 'any', or 'field'"):
+        with pytest.raises(ValueError, match="'all', 'any', 'field', or 'role'"):
             parse_condition({"bogus": True})
 
 
@@ -168,7 +172,7 @@ class TestParseLeaf:
     """Leaf clause parsing tests."""
 
     def test_missing_field_rejected(self):
-        with pytest.raises(ValueError, match="'all', 'any', or 'field'"):
+        with pytest.raises(ValueError, match="'all', 'any', 'field', or 'role'"):
             parse_condition([{"op": "equals", "value": 1}])
 
     def test_missing_op_rejected(self):
@@ -625,3 +629,429 @@ class TestRender:
         rendered = render_condition(p)
         leaf_dict = rendered["all"][0]
         assert "value" not in leaf_dict
+
+
+# ---------------------------------------------------------------------------
+# Role clauses (Section 12.5.1) — Prompt F
+# ---------------------------------------------------------------------------
+
+
+class TestParseRoleClause:
+    """Parser tests for the role-clause variant."""
+
+    def test_parse_role_clause_equals(self):
+        result = parse_condition({"role": "equals", "value": "Mentor"})
+        assert isinstance(result, RoleClause)
+        assert result.op == "equals"
+        assert result.value == "Mentor"
+
+    def test_parse_role_clause_in(self):
+        result = parse_condition(
+            {"role": "in", "value": ["Mentor", "Admin"]}
+        )
+        assert isinstance(result, RoleClause)
+        assert result.op == "in"
+        assert result.value == ["Mentor", "Admin"]
+
+    def test_parse_role_clause_in_shorthand_list(self):
+        result = parse_condition(
+            [{"role": "equals", "value": "Mentor"}]
+        )
+        assert isinstance(result, AllNode)
+        assert len(result.children) == 1
+        assert isinstance(result.children[0], RoleClause)
+        assert result.children[0].op == "equals"
+
+    def test_parse_role_clause_in_any_block(self):
+        result = parse_condition(
+            {
+                "any": [
+                    {"role": "in", "value": ["Mentor", "Admin"]},
+                    {"role": "equals", "value": "Staff"},
+                ]
+            }
+        )
+        assert isinstance(result, AnyNode)
+        assert len(result.children) == 2
+        assert all(isinstance(c, RoleClause) for c in result.children)
+
+    def test_parse_compound_field_and_role(self):
+        result = parse_condition(
+            {
+                "any": [
+                    {"field": "x", "op": "equals", "value": "y"},
+                    {"role": "in", "value": ["A"]},
+                ]
+            }
+        )
+        assert isinstance(result, AnyNode)
+        assert isinstance(result.children[0], LeafClause)
+        assert isinstance(result.children[1], RoleClause)
+
+    def test_parse_role_clause_missing_value(self):
+        with pytest.raises(ValueError, match="must include a 'value' key"):
+            parse_condition({"role": "equals"})
+
+    def test_parse_role_clause_missing_role_key(self):
+        with pytest.raises(
+            ValueError, match="'all', 'any', 'field', or 'role'",
+        ):
+            parse_condition({"value": "Mentor"})
+
+    def test_parse_role_clause_empty_role_value(self):
+        with pytest.raises(
+            ValueError, match="non-empty string 'role' key",
+        ):
+            parse_condition({"role": "", "value": "Mentor"})
+
+    def test_parse_role_clause_non_string_role(self):
+        with pytest.raises(
+            ValueError, match="non-empty string 'role' key",
+        ):
+            parse_condition({"role": 42, "value": "Mentor"})
+
+    def test_parse_role_clause_with_extra_op_key(self):
+        with pytest.raises(
+            ValueError, match="unexpected key",
+        ):
+            parse_condition(
+                {"role": "equals", "op": "equals", "value": "Mentor"}
+            )
+
+    def test_parse_role_clause_with_field_key_conflict(self):
+        with pytest.raises(
+            ValueError, match="both 'field' and 'role'",
+        ):
+            parse_condition(
+                {"role": "equals", "field": "x", "value": "y"}
+            )
+
+
+class TestValidateRoleClauseContext:
+    """Context-restriction tests (allow_role_clauses flag)."""
+
+    def test_rejected_by_default(self):
+        ast = parse_condition({"role": "equals", "value": "Mentor"})
+        errors = validate_condition(ast, entity_field_names=set())
+        assert len(errors) == 1
+        assert "not permitted in this context" in errors[0]
+
+    def test_accepted_when_allowed(self):
+        ast = parse_condition({"role": "equals", "value": "Mentor"})
+        errors = validate_condition(
+            ast, entity_field_names=set(), allow_role_clauses=True,
+        )
+        assert errors == []
+
+    def test_rejected_inside_compound_when_disallowed(self):
+        ast = parse_condition(
+            {
+                "any": [
+                    {"field": "x", "op": "equals", "value": "y"},
+                    {"role": "in", "value": ["A"]},
+                ]
+            }
+        )
+        errors = validate_condition(
+            ast, entity_field_names={"x"}, allow_role_clauses=False,
+        )
+        assert len(errors) == 1
+        assert "not permitted in this context" in errors[0]
+
+    def test_rejected_inside_nested_all_any(self):
+        ast = parse_condition(
+            {
+                "all": [
+                    {"field": "x", "op": "equals", "value": "y"},
+                    {
+                        "any": [
+                            {"role": "equals", "value": "Mentor"},
+                        ]
+                    },
+                ]
+            }
+        )
+        errors = validate_condition(
+            ast, entity_field_names={"x"}, allow_role_clauses=False,
+        )
+        assert len(errors) == 1
+        assert "not permitted in this context" in errors[0]
+
+
+class TestValidateRoleClauseOperator:
+    """Operator-restriction tests (only 4 ops allowed)."""
+
+    @pytest.mark.parametrize(
+        "bad_op",
+        ["lessThan", "greaterThan", "lessThanOrEqual",
+         "greaterThanOrEqual", "contains", "isNull", "isNotNull"],
+    )
+    def test_disallowed_operator_rejected(self, bad_op):
+        ast = parse_condition({"role": bad_op, "value": "x"})
+        errors = validate_condition(
+            ast, entity_field_names=set(), allow_role_clauses=True,
+        )
+        assert len(errors) == 1
+        assert "Unknown role-clause operator" in errors[0]
+
+    def test_lessthan_rejected(self):
+        ast = parse_condition({"role": "lessThan", "value": "X"})
+        errors = validate_condition(
+            ast, entity_field_names=set(), allow_role_clauses=True,
+        )
+        assert any("Unknown role-clause operator" in e for e in errors)
+
+    def test_isnull_rejected(self):
+        ast = parse_condition({"role": "isNull", "value": "X"})
+        errors = validate_condition(
+            ast, entity_field_names=set(), allow_role_clauses=True,
+        )
+        assert any("Unknown role-clause operator" in e for e in errors)
+
+    def test_contains_rejected(self):
+        ast = parse_condition({"role": "contains", "value": "X"})
+        errors = validate_condition(
+            ast, entity_field_names=set(), allow_role_clauses=True,
+        )
+        assert any("Unknown role-clause operator" in e for e in errors)
+
+    @pytest.mark.parametrize("good_op", sorted(ROLE_OPERATORS))
+    def test_allowed_operator_passes_operator_check(self, good_op):
+        if good_op in {"in", "notIn"}:
+            value: object = ["Mentor"]
+        else:
+            value = "Mentor"
+        ast = parse_condition({"role": good_op, "value": value})
+        errors = validate_condition(
+            ast, entity_field_names=set(), allow_role_clauses=True,
+        )
+        assert not any("Unknown role-clause operator" in e for e in errors)
+
+
+class TestValidateRoleClauseValueShape:
+    """Value-shape checks per operator."""
+
+    def test_equals_with_list_value_rejected(self):
+        ast = parse_condition({"role": "equals", "value": ["A"]})
+        errors = validate_condition(
+            ast, entity_field_names=set(), allow_role_clauses=True,
+        )
+        assert any(
+            "non-empty string role name" in e for e in errors
+        )
+
+    def test_equals_with_empty_string_rejected(self):
+        ast = parse_condition({"role": "equals", "value": ""})
+        errors = validate_condition(
+            ast, entity_field_names=set(), allow_role_clauses=True,
+        )
+        assert any(
+            "non-empty string role name" in e for e in errors
+        )
+
+    def test_in_with_string_value_rejected(self):
+        ast = parse_condition({"role": "in", "value": "A"})
+        errors = validate_condition(
+            ast, entity_field_names=set(), allow_role_clauses=True,
+        )
+        assert any(
+            "requires 'value' to be a list" in e for e in errors
+        )
+
+    def test_in_with_empty_string_in_list_rejected(self):
+        ast = parse_condition({"role": "in", "value": ["A", ""]})
+        errors = validate_condition(
+            ast, entity_field_names=set(), allow_role_clauses=True,
+        )
+        assert any(
+            "non-empty string role name" in e for e in errors
+        )
+
+    def test_in_with_non_string_in_list_rejected(self):
+        ast = parse_condition({"role": "in", "value": ["A", 42]})
+        errors = validate_condition(
+            ast, entity_field_names=set(), allow_role_clauses=True,
+        )
+        assert any(
+            "non-empty string role name" in e for e in errors
+        )
+
+
+class TestValidateRoleClauseKnownRoles:
+    """known_roles cross-check tests."""
+
+    def test_known_roles_match(self):
+        ast = parse_condition({"role": "equals", "value": "Mentor"})
+        errors = validate_condition(
+            ast,
+            entity_field_names=set(),
+            allow_role_clauses=True,
+            known_roles={"Mentor", "Admin"},
+        )
+        assert errors == []
+
+    def test_known_roles_missing_equals(self):
+        ast = parse_condition({"role": "equals", "value": "GhostRole"})
+        errors = validate_condition(
+            ast,
+            entity_field_names=set(),
+            allow_role_clauses=True,
+            known_roles={"Mentor"},
+        )
+        assert len(errors) == 1
+        assert "GhostRole" in errors[0]
+
+    def test_known_roles_missing_in_list(self):
+        ast = parse_condition(
+            {"role": "in", "value": ["Mentor", "GhostRole"]}
+        )
+        errors = validate_condition(
+            ast,
+            entity_field_names=set(),
+            allow_role_clauses=True,
+            known_roles={"Mentor"},
+        )
+        assert len(errors) == 1
+        assert "GhostRole" in errors[0]
+        assert "Mentor" not in errors[0].replace(
+            "GhostRole", ""
+        ).replace("declared in this batch", "")
+
+    def test_known_roles_none_skips_check(self):
+        ast = parse_condition({"role": "equals", "value": "Anything"})
+        errors = validate_condition(
+            ast,
+            entity_field_names=set(),
+            allow_role_clauses=True,
+            known_roles=None,
+        )
+        assert errors == []
+
+    def test_known_roles_in_with_all_known(self):
+        ast = parse_condition(
+            {"role": "in", "value": ["Mentor", "Admin"]}
+        )
+        errors = validate_condition(
+            ast,
+            entity_field_names=set(),
+            allow_role_clauses=True,
+            known_roles={"Mentor", "Admin", "Staff"},
+        )
+        assert errors == []
+
+
+class TestCollectUnknownRoles:
+    """collect_unknown_roles walker tests."""
+
+    def test_empty_for_field_only_ast(self):
+        ast = parse_condition([{"field": "x", "op": "equals", "value": "y"}])
+        assert collect_unknown_roles(ast, set()) == set()
+
+    def test_single_equals(self):
+        ast = parse_condition({"role": "equals", "value": "Mentor"})
+        assert collect_unknown_roles(ast, {"Admin"}) == {"Mentor"}
+
+    def test_single_equals_known(self):
+        ast = parse_condition({"role": "equals", "value": "Mentor"})
+        assert collect_unknown_roles(ast, {"Mentor"}) == set()
+
+    def test_in_list_partial(self):
+        ast = parse_condition(
+            {"role": "in", "value": ["Mentor", "Admin"]}
+        )
+        assert collect_unknown_roles(ast, {"Admin"}) == {"Mentor"}
+
+    def test_in_list_all_known(self):
+        ast = parse_condition(
+            {"role": "in", "value": ["Mentor", "Admin"]}
+        )
+        assert collect_unknown_roles(ast, {"Mentor", "Admin"}) == set()
+
+    def test_nested_compound(self):
+        ast = parse_condition(
+            {
+                "all": [
+                    {"field": "x", "op": "equals", "value": "y"},
+                    {
+                        "any": [
+                            {"role": "equals", "value": "Ghost"},
+                            {"field": "z", "op": "equals", "value": 1},
+                        ]
+                    },
+                ]
+            }
+        )
+        assert collect_unknown_roles(ast, {"Mentor"}) == {"Ghost"}
+
+
+class TestRenderRoleClause:
+    """Renderer tests for role clauses."""
+
+    def test_render_role_clause_equals(self):
+        rc = RoleClause(op="equals", value="Mentor")
+        assert render_condition(rc) == {
+            "role": "equals", "value": "Mentor",
+        }
+
+    def test_render_role_clause_in(self):
+        rc = RoleClause(op="in", value=["A", "B"])
+        assert render_condition(rc) == {"role": "in", "value": ["A", "B"]}
+
+    def test_render_round_trip_role_only(self):
+        original = {"role": "in", "value": ["Mentor", "Admin"]}
+        ast = parse_condition(original)
+        assert render_condition(ast) == original
+
+    def test_render_round_trip_compound_field_and_role(self):
+        original = {
+            "any": [
+                {"field": "x", "op": "equals", "value": "y"},
+                {"role": "in", "value": ["A", "B"]},
+            ]
+        }
+        ast = parse_condition(original)
+        assert render_condition(ast) == original
+
+    def test_render_round_trip_nested(self):
+        original = {
+            "all": [
+                {"field": "x", "op": "equals", "value": "y"},
+                {
+                    "any": [
+                        {"role": "equals", "value": "Mentor"},
+                        {"field": "z", "op": "isNull"},
+                    ]
+                },
+            ]
+        }
+        ast = parse_condition(original)
+        assert render_condition(ast) == original
+
+
+class TestCollectUnknownFieldsIgnoresRoleClauses:
+    """Regression: role-clause value strings are not mistaken for field
+    references."""
+
+    def test_role_value_string_not_collected_as_field(self):
+        ast = parse_condition({"role": "equals", "value": "Mentor"})
+        assert collect_unknown_fields(ast, {"some_field"}) == set()
+
+    def test_role_value_list_not_collected_as_fields(self):
+        ast = parse_condition(
+            {"role": "in", "value": ["Mentor", "Admin"]}
+        )
+        assert collect_unknown_fields(ast, {"some_field"}) == set()
+
+    def test_compound_returns_only_field_unknowns(self):
+        ast = parse_condition(
+            {
+                "any": [
+                    {"field": "missingField", "op": "equals", "value": "y"},
+                    {"role": "equals", "value": "Mentor"},
+                ]
+            }
+        )
+        assert (
+            collect_unknown_fields(ast, set())
+            == {"missingField"}
+        )
