@@ -17,9 +17,20 @@ log file (dep_NNN-historical.log) and the supporting reference edges:
   per-record invocation, and log_file_path pointing at the placeholder log.
   Each carries one outbound deposit_event_applies_close_out_payload edge
   (parent COP) plus zero-or-more deposit_event_wrote_record edges (the
-  session, decisions, planning_items, and references the historical apply
-  created — references resolved via forward-then-reverse-then-skip per
-  DEC-208).
+  session, decisions, and planning_items the historical apply created).
+  References-as-wrote_record-targets — originally settled in DEC-206 with
+  forward-then-reverse-then-skip resolution per DEC-208 — was found at
+  execution time to be unimplementable against the deployed schema: the
+  API's request validator rejects target_type="reference" with HTTP 400
+  because `reference` is not in vocab.ENTITY_TYPES, even though
+  `vocab._kinds_for_pair` speculatively admits it for the
+  deposit_event_wrote_record kind. Pragmatic disposition (Option I, per
+  the post-discovery conversation): skip references entirely and mirror
+  Phase 1's pattern; records_summary.references stays 0; the schema-vs-
+  spec contradiction surfaces as future work. The forward/reverse resolver
+  and skip log are retained as diagnostic-only output for the data-quality
+  finding on ses_030 (DEC-105/106/107 plus PI-001 reference resolve to
+  SES-036, not SES-030 — the apparent duplicate-session artifact).
 - 24 placeholder log files at PRDs/product/crmbuilder-v2/deposit-event-logs/
   with three-line content per the Phase 1 convention.
 
@@ -293,7 +304,18 @@ def create_deposit_events(
                 })
                 summary["planning_items"] += 1
 
-        # References — resolve via forward-then-reverse-then-skip (DEC-208)
+        # References — resolution runs for diagnostic reporting only; the
+        # wrote_record edges to references are NOT authored. DEC-206
+        # originally chose to include references-as-wrote_record-targets
+        # (with forward-then-reverse-then-skip resolution per DEC-208),
+        # but execution surfaced that target_type="reference" is rejected
+        # by the API request validator (`reference` not in
+        # vocab.ENTITY_TYPES) despite the speculative admission in
+        # `vocab._kinds_for_pair`. Pragmatic disposition: skip references
+        # entirely, mirror Phase 1's pattern, records_summary.references
+        # stays 0. The resolver below still runs so the data-quality
+        # exception log (ses_030's DEC-105/106/107 + PI-001) is preserved
+        # as diagnostic output for future cleanup work.
         for pref in ses_data.get("references") or []:
             ref_id, kind = _resolve_reference(pref, forward, reverse)
             if ref_id is None:
@@ -304,11 +326,8 @@ def create_deposit_events(
                 total_forward += 1
             else:
                 total_reverse += 1
-            wrote.append({
-                "target_type": "reference", "target_id": ref_id,
-                "relationship": "deposit_event_wrote_record",
-            })
-            summary["references"] += 1
+            # Intentionally not appending to `wrote` and not incrementing
+            # summary["references"] — see block comment above.
 
         # Write the placeholder log file.
         log_disk_path = logs_root / f"{entry['dep'].lower().replace('-', '_')}-historical.log"
