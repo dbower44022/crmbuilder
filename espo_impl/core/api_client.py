@@ -589,6 +589,57 @@ class EspoAdminClient:
         url = f"{self.profile.api_url}/{entity}/{record_id}"
         return self._request("PATCH", url, json=payload)
 
+    # --- Team management ---
+
+    def get_teams(
+        self,
+    ) -> tuple[int, dict[str, Any] | None]:
+        """List all Team records on the target instance.
+
+        Bulk-fetches up to 200 teams in a single GET. This is
+        sufficient for the dogfood and pilot-client use cases; an
+        instance with more than 200 teams would require pagination,
+        which is not implemented in this workstream.
+
+        :returns: Tuple of (status_code, response_json or None).
+            The standard EspoCRM list response shape
+            ``{"total": N, "list": [...]}`` is returned on success.
+        """
+        url = f"{self.profile.api_url}/Team?maxSize=200"
+        return self._request("GET", url)
+
+    def create_team(
+        self, name: str, description: str | None = None,
+    ) -> tuple[int, dict[str, Any] | None]:
+        """Create a new Team record.
+
+        :param name: Team name (operator-chosen identifier).
+        :param description: Optional description text.
+        :returns: Tuple of (status_code, created record or None).
+        """
+        payload: dict[str, Any] = {"name": name}
+        if description is not None:
+            payload["description"] = description
+        return self.create_record("Team", payload)
+
+    def update_team(
+        self, team_id: str, description: str | None = None,
+    ) -> tuple[int, dict[str, Any] | None]:
+        """Update an existing Team record's description.
+
+        Name is the team-identity key from YAML's perspective; this
+        method intentionally does not accept a ``name`` parameter
+        so the manager cannot accidentally trigger a server-side
+        rename. The description is the only mutable field this
+        workstream manages.
+
+        :param team_id: Server-assigned Team record ID.
+        :param description: New description text (or None to clear).
+        :returns: Tuple of (status_code, response or None).
+        """
+        payload: dict[str, Any] = {"description": description}
+        return self.patch_record("Team", team_id, payload)
+
     # --- Connection test ---
 
     def test_connection(self) -> tuple[bool, str]:

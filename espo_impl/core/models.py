@@ -670,6 +670,40 @@ class TeamDefinition:
     description: str | None = None
 
 
+class TeamStatus(Enum):
+    """Outcome status for a team operation.
+
+    Values mirror the canonical Status enum precedent. Team
+    operations do not need ``DRIFT`` (there is only one mutable
+    field — ``description`` — so a CHECK that detects difference
+    is always reconcilable via PATCH) or ``NOT_SUPPORTED`` (Team
+    is a native EspoCRM record type with full REST support).
+    """
+
+    CREATED = "created"
+    UPDATED = "updated"
+    SKIPPED = "skipped"
+    ERROR = "error"
+
+
+@dataclass
+class TeamResult:
+    """Result of processing a single team.
+
+    :param name: Team name from YAML (also the match key).
+    :param status: Outcome status.
+    :param team_id: Server-assigned record ID. Populated after
+        a successful CREATE; available from CHECK on
+        SKIPPED / UPDATED for already-existing teams.
+    :param error: Error message if status is ERROR.
+    """
+
+    name: str
+    status: TeamStatus
+    team_id: str | None = None
+    error: str | None = None
+
+
 class TooltipStatus(Enum):
     """Outcome status for a tooltip import operation."""
 
