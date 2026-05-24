@@ -138,6 +138,13 @@ def run_api() -> None:
         )
         return
 
+    from crmbuilder_v2.api.marker_guard import set_marker_at_start
+
+    # DEC-205: capture the marker now so the middleware can detect mid-
+    # process drift. set_marker_at_start writes to a module-level constant
+    # read by EngagementMarkerGuardMiddleware on every non-exempt request.
+    set_marker_at_start(active_code)
+
     uvicorn.run(create_app(), host=settings.api_host, port=settings.api_port)
 
 

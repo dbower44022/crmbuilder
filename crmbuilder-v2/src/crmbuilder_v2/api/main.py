@@ -24,6 +24,7 @@ from crmbuilder_v2.api.errors import (
     selected_candidate_conflict_handler,
     status_transition_handler,
 )
+from crmbuilder_v2.api.marker_guard import EngagementMarkerGuardMiddleware
 from crmbuilder_v2.api.routers import (
     admin,
     catalog,
@@ -64,6 +65,11 @@ def create_app() -> FastAPI:
             "references table per DEC-006."
         ),
     )
+
+    # DEC-205: fail-loud on engagement-marker drift. Registered first so
+    # it sits outermost on the request side and short-circuits exempt
+    # paths cleanly before any route dispatch or other middleware.
+    app.add_middleware(EngagementMarkerGuardMiddleware)
 
     # The three dedicated-body access-layer errors must register before
     # the AccessLayerError base so Starlette routes each to its own
