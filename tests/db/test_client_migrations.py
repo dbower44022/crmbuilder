@@ -330,6 +330,91 @@ class TestClientV3MigrationWiring:
         conn.close()
 
 
+class TestClientV15Migration:
+    """Tests for ``_client_v15`` adding Role and Team tables."""
+
+    def _create_db_with_instance(self, path: Path) -> sqlite3.Connection:
+        """Create a minimal DB with an Instance table (mimics post-v3)."""
+        conn = sqlite3.connect(str(path))
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute(_SCHEMA_VERSION_TABLE)
+        # Minimal Instance table mimicking the post-v3 shape — enough
+        # to satisfy the FK pointed at by Role/Team.
+        conn.execute(
+            """
+            CREATE TABLE Instance (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                code TEXT NOT NULL,
+                environment TEXT NOT NULL
+            )
+            """
+        )
+        conn.commit()
+        return conn
+
+    def test_client_v15_creates_role_table(self, tmp_path: Path) -> None:
+        from automation.db.migrations import _client_v15
+        conn = self._create_db_with_instance(tmp_path / "v15-role.db")
+        _client_v15(conn)
+        assert _table_exists(conn, "Role")
+        cols = _col_names(conn, "Role")
+        expected = {
+            "id", "instance_id", "name", "description",
+            "scope_access_json", "system_permissions_json",
+            "created_at",
+        }
+        assert expected.issubset(cols)
+        conn.close()
+
+    def test_client_v15_creates_team_table(self, tmp_path: Path) -> None:
+        from automation.db.migrations import _client_v15
+        conn = self._create_db_with_instance(tmp_path / "v15-team.db")
+        _client_v15(conn)
+        assert _table_exists(conn, "Team")
+        cols = _col_names(conn, "Team")
+        expected = {
+            "id", "instance_id", "name", "description", "created_at",
+        }
+        assert expected.issubset(cols)
+        conn.close()
+
+    def test_client_v15_idempotent(self, tmp_path: Path) -> None:
+        from automation.db.migrations import _client_v15
+        conn = self._create_db_with_instance(tmp_path / "v15-idem.db")
+        _client_v15(conn)
+        # Second call must not raise.
+        _client_v15(conn)
+        assert _table_exists(conn, "Role")
+        assert _table_exists(conn, "Team")
+        conn.close()
+
+    def test_client_v15_no_instance_table_skips(
+        self, tmp_path: Path,
+    ) -> None:
+        from automation.db.migrations import _client_v15
+        # Build a DB without an Instance table at all.
+        conn = sqlite3.connect(str(tmp_path / "v15-skip.db"))
+        conn.execute(_SCHEMA_VERSION_TABLE)
+        conn.commit()
+        _client_v15(conn)
+        assert not _table_exists(conn, "Role")
+        assert not _table_exists(conn, "Team")
+        conn.close()
+
+    def test_role_fk_enforced(self, tmp_path: Path) -> None:
+        """Insert a Role with a bogus instance_id — should fail."""
+        from automation.db.migrations import _client_v15
+        conn = self._create_db_with_instance(tmp_path / "v15-fk.db")
+        _client_v15(conn)
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "INSERT INTO Role (instance_id, name, created_at) "
+                "VALUES (9999, 'Bogus', '2026-05-24T00:00:00Z')"
+            )
+        conn.close()
+
+
 class TestClientV3Migration:
     """Tests for _client_v3 on a pre-existing v2 database."""
 

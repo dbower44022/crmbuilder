@@ -762,6 +762,68 @@ def _client_v14(conn: sqlite3.Connection) -> None:
         conn.isolation_level = orig_isolation
 
 
+def _client_v15(conn: sqlite3.Connection) -> None:
+    """Add Role and Team tables for audit-v1.2 security capture.
+
+    Tables hold audited role and team records for instances where the
+    audit feature has been run against a source CRM that includes a
+    security configuration. ``Role`` stores ``scope_access`` and
+    ``system_permissions`` as JSON blobs (the typed surface is
+    rehydrated by downstream consumers); ``Team`` stores name and
+    description only.
+
+    Idempotent via ``CREATE TABLE IF NOT EXISTS``. Skips silently if
+    the Instance table does not yet exist (a fresh database created
+    via ``_client_v1`` does not include these tables in its baseline
+    schema, but later migrations add them through this v15 path).
+
+    See PRDs/product/crmbuilder-automation-PRD/CLAUDE-CODE-PROMPT-audit-v1.2-H-audit-side-discovery.md.
+    """
+    tables = {
+        row[0]
+        for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )
+    }
+    if "Instance" not in tables:
+        return
+
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS Role (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            instance_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT,
+            scope_access_json TEXT,
+            system_permissions_json TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (instance_id) REFERENCES Instance(id)
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_role_instance "
+        "ON Role(instance_id)"
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS Team (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            instance_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (instance_id) REFERENCES Instance(id)
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_team_instance "
+        "ON Team(instance_id)"
+    )
+
+
 CLIENT_MIGRATIONS: list[tuple[int, Migration]] = [
     (1, _client_v1),
     (2, _client_v2),
@@ -777,6 +839,7 @@ CLIENT_MIGRATIONS: list[tuple[int, Migration]] = [
     (12, _client_v12),
     (13, _client_v13),
     (14, _client_v14),
+    (15, _client_v15),
 ]
 
 

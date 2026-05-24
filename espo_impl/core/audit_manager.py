@@ -8,7 +8,7 @@ files in the same schema the configure engine consumes.
 import logging
 import sqlite3
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
@@ -24,6 +24,7 @@ from espo_impl.core.audit_utils import (
     strip_entity_c_prefix,
     strip_field_c_prefix,
 )
+from espo_impl.core.models import ScopeAccess, SystemPermissions
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,7 @@ class AuditOptions:
     :param include_list_layouts: Capture list layouts.
     :param include_relationships: Discover relationships.
     :param include_native_fields: Include native fields (normally excluded).
+    :param include_security: Discover roles and teams (DEC-180).
     """
 
     include_custom_fields: bool = True
@@ -53,6 +55,7 @@ class AuditOptions:
     include_list_layouts: bool = True
     include_relationships: bool = True
     include_native_fields: bool = False
+    include_security: bool = True
 
 
 @dataclass
@@ -107,6 +110,42 @@ class EntityAuditResult:
 
 
 @dataclass
+class RoleAuditResult:
+    """Result of auditing a single role.
+
+    Captures only the surface the v1.3 schema defines and Prompt D
+    deploys. Fields the schema doesn't carry (e.g., the three
+    EspoCRM-only permissions per DEC-2) are not captured.
+
+    :param name: Role identity (server-assigned name).
+    :param description: Role description text (None if not set).
+    :param persona: Always None on capture — the source instance
+        doesn't carry persona metadata (it's documentation in YAML
+        only per DEC-178). Operators reattach personas manually
+        when curating audited YAML.
+    :param scope_access: Per-entity access scope, keyed by natural
+        entity name (Engagement, Contact, etc.).
+    :param system_permissions: The five schema-managed system
+        permissions per Section 12.4. None when none of the five
+        managed columns are present on the source record.
+    """
+
+    name: str
+    description: str | None = None
+    persona: str | None = None
+    scope_access: dict[str, ScopeAccess] = field(default_factory=dict)
+    system_permissions: SystemPermissions | None = None
+
+
+@dataclass
+class TeamAuditResult:
+    """Result of auditing a single team."""
+
+    name: str
+    description: str | None = None
+
+
+@dataclass
 class AuditReport:
     """Aggregate results of a full audit."""
 
@@ -116,6 +155,8 @@ class AuditReport:
     output_dir: str
     entities: list[EntityAuditResult] = field(default_factory=list)
     relationships: list[RelationshipAuditResult] = field(default_factory=list)
+    roles: list[RoleAuditResult] = field(default_factory=list)
+    teams: list[TeamAuditResult] = field(default_factory=list)
     files_written: int = 0
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -316,17 +357,21 @@ class AuditManager:
         # Step 1: Discover entities
         self._cb("[AUDIT]    Discovering entities ...", "cyan")
         entities = self._discover_entities(report)
-        if not entities:
-            self._cb("[AUDIT]    No auditable entities found.", "yellow")
-            return report
 
-        custom_count = sum(1 for e in entities if e.entity_class == EntityClass.CUSTOM)
-        native_count = sum(1 for e in entities if e.entity_class == EntityClass.NATIVE)
-        self._cb(
-            f"[AUDIT]    Found {custom_count} custom entities, "
-            f"{native_count} native entities with custom fields",
-            "cyan",
-        )
+        if entities:
+            custom_count = sum(
+                1 for e in entities if e.entity_class == EntityClass.CUSTOM
+            )
+            native_count = sum(
+                1 for e in entities if e.entity_class == EntityClass.NATIVE
+            )
+            self._cb(
+                f"[AUDIT]    Found {custom_count} custom entities, "
+                f"{native_count} native entities with custom fields",
+                "cyan",
+            )
+        else:
+            self._cb("[AUDIT]    No auditable entities found.", "yellow")
 
         # Step 2: Extract fields and layouts per entity
         for i, entity in enumerate(entities, 1):
@@ -344,7 +389,7 @@ class AuditManager:
 
         # Step 3: Discover relationships
         relationships: list[RelationshipAuditResult] = []
-        if self._options.include_relationships:
+        if self._options.include_relationships and entities:
             self._cb("[AUDIT]    Discovering relationships ...", "cyan")
             relationships = self._discover_relationships(entities, report)
             self._cb(
@@ -352,8 +397,39 @@ class AuditManager:
                 "cyan",
             )
 
+        # Step 3.5: Discover security (teams + roles) per DEC-180
+        teams: list[TeamAuditResult] = []
+        roles: list[RoleAuditResult] = []
+        if self._options.include_security:
+            self._cb("[AUDIT]    Discovering teams ...", "cyan")
+            teams = self._discover_teams(report)
+            self._cb(
+                f"[AUDIT]    Found {len(teams)} teams",
+                "cyan",
+            )
+            self._cb("[AUDIT]    Discovering roles ...", "cyan")
+            roles = self._discover_roles(report)
+            self._cb(
+                f"[AUDIT]    Found {len(roles)} roles",
+                "cyan",
+            )
+            # Per DEC-6: §12.5 role-aware visibility is NOT_AUDITABLE on
+            # EspoCRM 9.x. Dynamic Logic JSON has no role-condition type;
+            # Layout Sets bind to Teams rather than Roles. Manually-
+            # configured role-aware visibility on the target instance is
+            # not round-tripped by this audit.
+            self._cb(
+                "[AUDIT]    NOTE: Section 12.5 role-aware visibility is "
+                "NOT_AUDITABLE on EspoCRM 9.x (DEC-6). Any manually-"
+                "configured role-aware visibility on the target is "
+                "not captured by this audit.",
+                "yellow",
+            )
+
         report.entities = entities
         report.relationships = relationships
+        report.teams = teams
+        report.roles = roles
 
         # Step 4: Write YAML files
         self._cb(
@@ -864,6 +940,188 @@ class AuditManager:
         return results
 
     # ------------------------------------------------------------------
+    # Security discovery (roles + teams)
+    # ------------------------------------------------------------------
+
+    def _discover_teams(
+        self, report: AuditReport,
+    ) -> list[TeamAuditResult]:
+        """Discover all teams on the source instance.
+
+        Each team becomes a TeamAuditResult with name and description.
+        Per DEC-1 (audit_log removed) and DEC-2 (EspoCRM-only
+        permissions preserved), team_to_user membership is not
+        captured — it's runtime data per Schema §12.2.
+
+        :param report: Audit report for error accumulation.
+        :returns: List of TeamAuditResult. Empty list on no teams
+            or on API failure (with the failure logged to the
+            audit report).
+        """
+        status, body = self._client.get_teams()
+        if status != 200 or not isinstance(body, dict):
+            msg = f"Failed to fetch teams (HTTP {status})"
+            report.errors.append(msg)
+            self._cb(f"[AUDIT]    ERROR: {msg}", "red")
+            return []
+        server_teams = body.get("list") or []
+        if not isinstance(server_teams, list):
+            return []
+        results: list[TeamAuditResult] = []
+        for record in server_teams:
+            if not isinstance(record, dict):
+                continue
+            name = record.get("name")
+            if not isinstance(name, str) or not name.strip():
+                continue
+            description = record.get("description")
+            if description is not None and not isinstance(description, str):
+                description = None
+            results.append(TeamAuditResult(
+                name=name,
+                description=description if description else None,
+            ))
+        return results
+
+    def _discover_roles(
+        self, report: AuditReport,
+    ) -> list[RoleAuditResult]:
+        """Discover all roles on the source instance.
+
+        Translates each Role record's wire shape to the schema's
+        structured form via :meth:`_reverse_scope_access` and
+        :meth:`_reverse_system_permissions`.
+
+        Per DEC-179, captures with empty scope_access produce an
+        informational warning in the audit log; the YAML output is
+        unaffected.
+
+        :param report: Audit report for error/warning accumulation.
+        :returns: List of RoleAuditResult. Empty on API failure
+            (with the failure logged to the audit report).
+        """
+        status, body = self._client.get_roles()
+        if status != 200 or not isinstance(body, dict):
+            msg = f"Failed to fetch roles (HTTP {status})"
+            report.errors.append(msg)
+            self._cb(f"[AUDIT]    ERROR: {msg}", "red")
+            return []
+        server_roles = body.get("list") or []
+        if not isinstance(server_roles, list):
+            return []
+        results: list[RoleAuditResult] = []
+        for record in server_roles:
+            if not isinstance(record, dict):
+                continue
+            name = record.get("name")
+            if not isinstance(name, str) or not name.strip():
+                continue
+            description = record.get("description")
+            if description is not None and not isinstance(description, str):
+                description = None
+            scope_access = self._reverse_scope_access(
+                record.get("data") or {}, report, role_name=name,
+            )
+            system_permissions = self._reverse_system_permissions(record)
+
+            if not scope_access:
+                report.warnings.append(
+                    f"Role '{name}' has empty scope_access; this role "
+                    f"grants no entity access on the source instance"
+                )
+
+            results.append(RoleAuditResult(
+                name=name,
+                description=description if description else None,
+                persona=None,
+                scope_access=scope_access,
+                system_permissions=system_permissions,
+            ))
+        return results
+
+    def _reverse_scope_access(
+        self,
+        data: dict,
+        report: AuditReport,
+        role_name: str,
+    ) -> dict[str, ScopeAccess]:
+        """Reverse-translate EspoCRM Role.data to schema scope_access.
+
+        Inverse of ``role_manager._translate_data_block``.
+
+        :param data: Raw ``data`` field from the Role record (dict of
+            per-scope permission objects).
+        :param report: Audit report for warnings on skipped scopes.
+        :param role_name: Role name for warning attribution.
+        :returns: Mapping of natural entity name to ScopeAccess.
+        """
+        result: dict[str, ScopeAccess] = {}
+        if not isinstance(data, dict):
+            return result
+        for wire_name, value in data.items():
+            if not isinstance(wire_name, str):
+                continue
+            natural_name = strip_entity_c_prefix(wire_name)
+            if not isinstance(value, dict):
+                report.warnings.append(
+                    f"Role '{role_name}': scope '{natural_name}' has "
+                    f"non-mapping value {value!r}; skipped (not "
+                    f"representable in v1.3 schema)"
+                )
+                continue
+            try:
+                scope = ScopeAccess(
+                    create=value.get("create") == "yes",
+                    read=str(value.get("read") or "no"),
+                    edit=str(value.get("edit") or "no"),
+                    delete=str(value.get("delete") or "no"),
+                    stream=str(value.get("stream") or "no"),
+                )
+                result[natural_name] = scope
+            except (ValueError, TypeError) as exc:
+                report.warnings.append(
+                    f"Role '{role_name}': scope '{natural_name}' "
+                    f"failed to translate ({exc}); skipped"
+                )
+        return result
+
+    def _reverse_system_permissions(
+        self,
+        record: dict,
+    ) -> SystemPermissions | None:
+        """Reverse-translate EspoCRM Role columns to SystemPermissions.
+
+        Inverse of ``role_manager._translate_system_permissions``.
+        Reads only the five schema-managed camelCase columns; the
+        three EspoCRM-only permissions (DEC-2 preservation list) are
+        not captured.
+
+        :param record: Full Role record from the EspoCRM API.
+        :returns: SystemPermissions instance, or None if none of the
+            five managed columns are present on the record.
+        """
+        managed_columns = (
+            "assignmentPermission", "userPermission",
+            "exportPermission", "massUpdatePermission",
+            "portalPermission",
+        )
+        has_any = any(record.get(col) is not None for col in managed_columns)
+        if not has_any:
+            return None
+
+        return SystemPermissions(
+            assignment_permission=str(
+                record.get("assignmentPermission") or "no"
+            ),
+            user_permission=str(
+                record.get("userPermission") or "no"
+            ),
+            export=record.get("exportPermission") == "yes",
+            mass_update=record.get("massUpdatePermission") == "yes",
+            portal=record.get("portalPermission") == "yes",
+        )
+
+    # ------------------------------------------------------------------
     # YAML generation
     # ------------------------------------------------------------------
 
@@ -910,6 +1168,21 @@ class AuditManager:
                 files_written += 1
             except OSError as exc:
                 msg = f"Failed to write relationships.yaml: {exc}"
+                report.errors.append(msg)
+                self._cb(f"[AUDIT]    ERROR: {msg}", "red")
+
+        # Security file (roles + teams) — DEC-182 places under security/
+        if report.roles or report.teams:
+            security_dir = output_dir / "security"
+            security_dir.mkdir(parents=True, exist_ok=True)
+            security_dict = self._build_security_yaml(report.roles, report.teams)
+            file_path = security_dir / "security.yaml"
+
+            try:
+                self._write_yaml_file(file_path, security_dict)
+                files_written += 1
+            except OSError as exc:
+                msg = f"Failed to write security/security.yaml: {exc}"
                 report.errors.append(msg)
                 self._cb(f"[AUDIT]    ERROR: {msg}", "red")
 
@@ -1007,6 +1280,82 @@ class AuditManager:
             ),
             "relationships": rels_list,
         }
+
+    def _build_security_yaml(
+        self,
+        roles: list[RoleAuditResult],
+        teams: list[TeamAuditResult],
+    ) -> dict[str, Any]:
+        """Build the YAML dict for the security file.
+
+        Emits a ``teams:`` block when teams were captured and a
+        ``roles:`` block when roles were captured. Per DEC-182 the
+        caller writes the result to ``security/security.yaml``.
+
+        :param roles: Audited roles.
+        :param teams: Audited teams.
+        :returns: YAML-serializable dict.
+        """
+        timestamp = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        source_url = self._client.profile.url
+
+        result: dict[str, Any] = {
+            "version": "1.0",
+            "content_version": "1.0.0",
+            "description": (
+                f"Security audit snapshot (roles and teams) captured "
+                f"from {source_url} on {timestamp}."
+            ),
+        }
+
+        if teams:
+            result["teams"] = [self._team_to_yaml_dict(t) for t in teams]
+        if roles:
+            result["roles"] = [self._role_to_yaml_dict(r) for r in roles]
+
+        return result
+
+    def _team_to_yaml_dict(self, team: TeamAuditResult) -> dict[str, Any]:
+        """Serialize a TeamAuditResult to its YAML dict form."""
+        team_dict: dict[str, Any] = {"name": team.name}
+        if team.description:
+            team_dict["description"] = team.description
+        return team_dict
+
+    def _role_to_yaml_dict(self, role: RoleAuditResult) -> dict[str, Any]:
+        """Serialize a RoleAuditResult to its YAML dict form.
+
+        Mirrors Schema §12.1 / §12.3 / §12.4. The five-action
+        ``scope_access`` blocks are keyed by natural entity name;
+        ``system_permissions`` carries only the five schema-managed
+        keys when present.
+        """
+        role_dict: dict[str, Any] = {"name": role.name}
+        if role.description:
+            role_dict["description"] = role.description
+        if role.persona:
+            role_dict["persona"] = role.persona
+        if role.scope_access:
+            scope_block: dict[str, dict[str, Any]] = {}
+            for entity_name, scope in role.scope_access.items():
+                scope_block[entity_name] = {
+                    "create": scope.create,
+                    "read": scope.read,
+                    "edit": scope.edit,
+                    "delete": scope.delete,
+                    "stream": scope.stream,
+                }
+            role_dict["scope_access"] = scope_block
+        if role.system_permissions is not None:
+            perms = role.system_permissions
+            role_dict["system_permissions"] = {
+                "assignment_permission": perms.assignment_permission,
+                "user_permission": perms.user_permission,
+                "export": perms.export,
+                "mass_update": perms.mass_update,
+                "portal": perms.portal,
+            }
+        return role_dict
 
     def _write_yaml_file(self, path: Path, data: dict[str, Any]) -> None:
         """Write a YAML dict to a file with clean formatting.

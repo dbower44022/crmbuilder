@@ -7,7 +7,8 @@ and ListColumn records into the client SQLite database from audit results.
 import json
 import logging
 import sqlite3
-from datetime import datetime, timezone
+from dataclasses import asdict
+from datetime import UTC, datetime, timezone
 from typing import Any
 
 from espo_impl.core.audit_manager import (
@@ -15,6 +16,8 @@ from espo_impl.core.audit_manager import (
     EntityAuditResult,
     FieldAuditResult,
     RelationshipAuditResult,
+    RoleAuditResult,
+    TeamAuditResult,
 )
 from espo_impl.core.audit_utils import EntityClass
 
@@ -87,6 +90,17 @@ def insert_audit_records(
         inserted = _insert_relationship(conn, rel, entity_ids)
         if inserted:
             total += 1
+
+    # Insert teams and roles. Both tables FK to Instance; rows are
+    # only inserted when an instance_id is supplied (the same gate
+    # that controls ConfigurationRun creation below).
+    if instance_id is not None:
+        for team in report.teams:
+            if _insert_team(conn, team, instance_id):
+                total += 1
+        for role in report.roles:
+            if _insert_role(conn, role, instance_id):
+                total += 1
 
     # Insert ConfigurationRun record
     if instance_id is not None:
@@ -477,6 +491,93 @@ def _insert_list_layout(
             )
 
     return count
+
+
+def _insert_team(
+    conn: sqlite3.Connection,
+    team: TeamAuditResult,
+    instance_id: int,
+) -> bool:
+    """Insert a Team row, skipping duplicate (instance_id, name) pairs.
+
+    :param conn: Database connection.
+    :param team: Audited team result.
+    :param instance_id: Instance row ID for the FK.
+    :returns: True if inserted, False if skipped.
+    """
+    existing = conn.execute(
+        "SELECT id FROM Team WHERE instance_id = ? AND name = ?",
+        (instance_id, team.name),
+    ).fetchone()
+    if existing:
+        return False
+
+    now = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    try:
+        conn.execute(
+            "INSERT INTO Team (instance_id, name, description, created_at) "
+            "VALUES (?, ?, ?, ?)",
+            (instance_id, team.name, team.description, now),
+        )
+        return True
+    except sqlite3.IntegrityError as exc:
+        logger.warning("Failed to insert team %s: %s", team.name, exc)
+        return False
+
+
+def _insert_role(
+    conn: sqlite3.Connection,
+    role: RoleAuditResult,
+    instance_id: int,
+) -> bool:
+    """Insert a Role row, skipping duplicate (instance_id, name) pairs.
+
+    Serializes ``scope_access`` and ``system_permissions`` to JSON
+    blobs in their respective columns. The audit DB stores the typed
+    surface opaquely; downstream consumers parse the JSON back into
+    :class:`ScopeAccess` / :class:`SystemPermissions` when needed.
+
+    :param conn: Database connection.
+    :param role: Audited role result.
+    :param instance_id: Instance row ID for the FK.
+    :returns: True if inserted, False if skipped.
+    """
+    existing = conn.execute(
+        "SELECT id FROM Role WHERE instance_id = ? AND name = ?",
+        (instance_id, role.name),
+    ).fetchone()
+    if existing:
+        return False
+
+    scope_access_json = json.dumps(
+        {name: asdict(scope) for name, scope in role.scope_access.items()},
+        ensure_ascii=False,
+    )
+    system_permissions_json = (
+        json.dumps(asdict(role.system_permissions), ensure_ascii=False)
+        if role.system_permissions is not None
+        else None
+    )
+    now = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    try:
+        conn.execute(
+            "INSERT INTO Role (instance_id, name, description, "
+            "scope_access_json, system_permissions_json, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                instance_id,
+                role.name,
+                role.description,
+                scope_access_json,
+                system_permissions_json,
+                now,
+            ),
+        )
+        return True
+    except sqlite3.IntegrityError as exc:
+        logger.warning("Failed to insert role %s: %s", role.name, exc)
+        return False
 
 
 def _insert_configuration_run(
