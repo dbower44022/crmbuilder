@@ -31700,5 +31700,4013 @@
     "id": 1297,
     "operation": "insert",
     "timestamp": "2026-05-24T01:39:38.560118"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:17.206308+00:00",
+      "id": 657,
+      "reference_identifier": "REF-0653",
+      "relationship": "close_out_payload_produced_by_conversation",
+      "source_id": "COP-009",
+      "source_type": "close_out_payload",
+      "target_id": "CONV-010",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "close_out_payload:COP-009 -[close_out_payload_produced_by_conversation]-> conversation:CONV-010",
+    "entity_type": "reference",
+    "id": 1298,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:17.207056"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "close_out_payload_applied_at": null,
+      "close_out_payload_cancelled_at": null,
+      "close_out_payload_created_at": "2026-05-24T01:45:17.203745+00:00",
+      "close_out_payload_deleted_at": null,
+      "close_out_payload_description": "Apply payload produced at CONV-010's close (SES-012). Backfilled by PI-026 (Phase 4 of PI-022) on 2026-05-24.",
+      "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_012.json",
+      "close_out_payload_identifier": "COP-009",
+      "close_out_payload_notes": null,
+      "close_out_payload_ready_at": "2026-05-11T12:00:00",
+      "close_out_payload_status": "ready",
+      "close_out_payload_superseded_at": null,
+      "close_out_payload_title": "Close-out payload for CONV-010 (SES-012)",
+      "close_out_payload_updated_at": "2026-05-24T01:45:17.204215+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "COP-009",
+    "entity_type": "close_out_payload",
+    "id": 1299,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:17.207690"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:17.354608+00:00",
+      "id": 658,
+      "reference_identifier": "REF-0654",
+      "relationship": "close_out_payload_produced_by_conversation",
+      "source_id": "COP-010",
+      "source_type": "close_out_payload",
+      "target_id": "CONV-011",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "close_out_payload:COP-010 -[close_out_payload_produced_by_conversation]-> conversation:CONV-011",
+    "entity_type": "reference",
+    "id": 1300,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:17.355090"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "close_out_payload_applied_at": null,
+      "close_out_payload_cancelled_at": null,
+      "close_out_payload_created_at": "2026-05-24T01:45:17.351987+00:00",
+      "close_out_payload_deleted_at": null,
+      "close_out_payload_description": "Apply payload produced at CONV-011's close (SES-013). Backfilled by PI-026 (Phase 4 of PI-022) on 2026-05-24.",
+      "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_013.json",
+      "close_out_payload_identifier": "COP-010",
+      "close_out_payload_notes": null,
+      "close_out_payload_ready_at": "2026-05-12T12:00:00",
+      "close_out_payload_status": "ready",
+      "close_out_payload_superseded_at": null,
+      "close_out_payload_title": "Close-out payload for CONV-011 (SES-013)",
+      "close_out_payload_updated_at": "2026-05-24T01:45:17.352422+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "COP-010",
+    "entity_type": "close_out_payload",
+    "id": 1301,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:17.355592"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:17.467494+00:00",
+      "id": 659,
+      "reference_identifier": "REF-0655",
+      "relationship": "close_out_payload_produced_by_conversation",
+      "source_id": "COP-011",
+      "source_type": "close_out_payload",
+      "target_id": "CONV-012",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "close_out_payload:COP-011 -[close_out_payload_produced_by_conversation]-> conversation:CONV-012",
+    "entity_type": "reference",
+    "id": 1302,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:17.467874"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "close_out_payload_applied_at": null,
+      "close_out_payload_cancelled_at": null,
+      "close_out_payload_created_at": "2026-05-24T01:45:17.465486+00:00",
+      "close_out_payload_deleted_at": null,
+      "close_out_payload_description": "Apply payload produced at CONV-012's close (SES-014). Backfilled by PI-026 (Phase 4 of PI-022) on 2026-05-24.",
+      "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_014.json",
+      "close_out_payload_identifier": "COP-011",
+      "close_out_payload_notes": null,
+      "close_out_payload_ready_at": "2026-05-12T12:00:00",
+      "close_out_payload_status": "ready",
+      "close_out_payload_superseded_at": null,
+      "close_out_payload_title": "Close-out payload for CONV-012 (SES-014)",
+      "close_out_payload_updated_at": "2026-05-24T01:45:17.465770+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "COP-011",
+    "entity_type": "close_out_payload",
+    "id": 1303,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:17.468285"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:17.577465+00:00",
+      "id": 660,
+      "reference_identifier": "REF-0656",
+      "relationship": "close_out_payload_produced_by_conversation",
+      "source_id": "COP-012",
+      "source_type": "close_out_payload",
+      "target_id": "CONV-013",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "close_out_payload:COP-012 -[close_out_payload_produced_by_conversation]-> conversation:CONV-013",
+    "entity_type": "reference",
+    "id": 1304,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:17.577882"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "close_out_payload_applied_at": null,
+      "close_out_payload_cancelled_at": null,
+      "close_out_payload_created_at": "2026-05-24T01:45:17.575464+00:00",
+      "close_out_payload_deleted_at": null,
+      "close_out_payload_description": "Apply payload produced at CONV-013's close (SES-015). Backfilled by PI-026 (Phase 4 of PI-022) on 2026-05-24.",
+      "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_015.json",
+      "close_out_payload_identifier": "COP-012",
+      "close_out_payload_notes": null,
+      "close_out_payload_ready_at": "2026-05-12T12:00:00",
+      "close_out_payload_status": "ready",
+      "close_out_payload_superseded_at": null,
+      "close_out_payload_title": "Close-out payload for CONV-013 (SES-015)",
+      "close_out_payload_updated_at": "2026-05-24T01:45:17.575769+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "COP-012",
+    "entity_type": "close_out_payload",
+    "id": 1305,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:17.578301"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:17.680911+00:00",
+      "id": 661,
+      "reference_identifier": "REF-0657",
+      "relationship": "close_out_payload_produced_by_conversation",
+      "source_id": "COP-013",
+      "source_type": "close_out_payload",
+      "target_id": "CONV-023",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "close_out_payload:COP-013 -[close_out_payload_produced_by_conversation]-> conversation:CONV-023",
+    "entity_type": "reference",
+    "id": 1306,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:17.681441"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "close_out_payload_applied_at": null,
+      "close_out_payload_cancelled_at": null,
+      "close_out_payload_created_at": "2026-05-24T01:45:17.678797+00:00",
+      "close_out_payload_deleted_at": null,
+      "close_out_payload_description": "Apply payload produced at CONV-023's close (SES-025). Backfilled by PI-026 (Phase 4 of PI-022) on 2026-05-24.",
+      "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_025.json",
+      "close_out_payload_identifier": "COP-013",
+      "close_out_payload_notes": null,
+      "close_out_payload_ready_at": "2026-05-16T12:00:00",
+      "close_out_payload_status": "ready",
+      "close_out_payload_superseded_at": null,
+      "close_out_payload_title": "Close-out payload for CONV-023 (SES-025)",
+      "close_out_payload_updated_at": "2026-05-24T01:45:17.679113+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "COP-013",
+    "entity_type": "close_out_payload",
+    "id": 1307,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:17.681888"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:17.830957+00:00",
+      "id": 662,
+      "reference_identifier": "REF-0658",
+      "relationship": "close_out_payload_produced_by_conversation",
+      "source_id": "COP-014",
+      "source_type": "close_out_payload",
+      "target_id": "CONV-024",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "close_out_payload:COP-014 -[close_out_payload_produced_by_conversation]-> conversation:CONV-024",
+    "entity_type": "reference",
+    "id": 1308,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:17.831408"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "close_out_payload_applied_at": null,
+      "close_out_payload_cancelled_at": null,
+      "close_out_payload_created_at": "2026-05-24T01:45:17.828522+00:00",
+      "close_out_payload_deleted_at": null,
+      "close_out_payload_description": "Apply payload produced at CONV-024's close (SES-026). Backfilled by PI-026 (Phase 4 of PI-022) on 2026-05-24.",
+      "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_026.json",
+      "close_out_payload_identifier": "COP-014",
+      "close_out_payload_notes": null,
+      "close_out_payload_ready_at": "2026-05-16T12:00:00",
+      "close_out_payload_status": "ready",
+      "close_out_payload_superseded_at": null,
+      "close_out_payload_title": "Close-out payload for CONV-024 (SES-026)",
+      "close_out_payload_updated_at": "2026-05-24T01:45:17.828941+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "COP-014",
+    "entity_type": "close_out_payload",
+    "id": 1309,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:17.831858"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:17.938297+00:00",
+      "id": 663,
+      "reference_identifier": "REF-0659",
+      "relationship": "close_out_payload_produced_by_conversation",
+      "source_id": "COP-015",
+      "source_type": "close_out_payload",
+      "target_id": "CONV-025",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "close_out_payload:COP-015 -[close_out_payload_produced_by_conversation]-> conversation:CONV-025",
+    "entity_type": "reference",
+    "id": 1310,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:17.938725"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "close_out_payload_applied_at": null,
+      "close_out_payload_cancelled_at": null,
+      "close_out_payload_created_at": "2026-05-24T01:45:17.936404+00:00",
+      "close_out_payload_deleted_at": null,
+      "close_out_payload_description": "Apply payload produced at CONV-025's close (SES-027). Backfilled by PI-026 (Phase 4 of PI-022) on 2026-05-24.",
+      "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_027.json",
+      "close_out_payload_identifier": "COP-015",
+      "close_out_payload_notes": null,
+      "close_out_payload_ready_at": "2026-05-16T12:00:00",
+      "close_out_payload_status": "ready",
+      "close_out_payload_superseded_at": null,
+      "close_out_payload_title": "Close-out payload for CONV-025 (SES-027)",
+      "close_out_payload_updated_at": "2026-05-24T01:45:17.936683+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "COP-015",
+    "entity_type": "close_out_payload",
+    "id": 1311,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:17.939138"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:18.049976+00:00",
+      "id": 664,
+      "reference_identifier": "REF-0660",
+      "relationship": "close_out_payload_produced_by_conversation",
+      "source_id": "COP-016",
+      "source_type": "close_out_payload",
+      "target_id": "CONV-026",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "close_out_payload:COP-016 -[close_out_payload_produced_by_conversation]-> conversation:CONV-026",
+    "entity_type": "reference",
+    "id": 1312,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:18.050422"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "close_out_payload_applied_at": null,
+      "close_out_payload_cancelled_at": null,
+      "close_out_payload_created_at": "2026-05-24T01:45:18.047617+00:00",
+      "close_out_payload_deleted_at": null,
+      "close_out_payload_description": "Apply payload produced at CONV-026's close (SES-029). Backfilled by PI-026 (Phase 4 of PI-022) on 2026-05-24.",
+      "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_029.json",
+      "close_out_payload_identifier": "COP-016",
+      "close_out_payload_notes": null,
+      "close_out_payload_ready_at": "2026-05-16T12:00:00",
+      "close_out_payload_status": "ready",
+      "close_out_payload_superseded_at": null,
+      "close_out_payload_title": "Close-out payload for CONV-026 (SES-029)",
+      "close_out_payload_updated_at": "2026-05-24T01:45:18.048002+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "COP-016",
+    "entity_type": "close_out_payload",
+    "id": 1313,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:18.050888"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:18.157748+00:00",
+      "id": 665,
+      "reference_identifier": "REF-0661",
+      "relationship": "close_out_payload_produced_by_conversation",
+      "source_id": "COP-017",
+      "source_type": "close_out_payload",
+      "target_id": "CONV-027",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "close_out_payload:COP-017 -[close_out_payload_produced_by_conversation]-> conversation:CONV-027",
+    "entity_type": "reference",
+    "id": 1314,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:18.158311"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "close_out_payload_applied_at": null,
+      "close_out_payload_cancelled_at": null,
+      "close_out_payload_created_at": "2026-05-24T01:45:18.155179+00:00",
+      "close_out_payload_deleted_at": null,
+      "close_out_payload_description": "Apply payload produced at CONV-027's close (SES-030). Backfilled by PI-026 (Phase 4 of PI-022) on 2026-05-24.",
+      "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_030.json",
+      "close_out_payload_identifier": "COP-017",
+      "close_out_payload_notes": null,
+      "close_out_payload_ready_at": "2026-05-17T12:00:00",
+      "close_out_payload_status": "ready",
+      "close_out_payload_superseded_at": null,
+      "close_out_payload_title": "Close-out payload for CONV-027 (SES-030)",
+      "close_out_payload_updated_at": "2026-05-24T01:45:18.155581+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "COP-017",
+    "entity_type": "close_out_payload",
+    "id": 1315,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:18.158845"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:18.302318+00:00",
+      "id": 666,
+      "reference_identifier": "REF-0662",
+      "relationship": "close_out_payload_produced_by_conversation",
+      "source_id": "COP-018",
+      "source_type": "close_out_payload",
+      "target_id": "CONV-028",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "close_out_payload:COP-018 -[close_out_payload_produced_by_conversation]-> conversation:CONV-028",
+    "entity_type": "reference",
+    "id": 1316,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:18.302819"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "close_out_payload_applied_at": null,
+      "close_out_payload_cancelled_at": null,
+      "close_out_payload_created_at": "2026-05-24T01:45:18.300192+00:00",
+      "close_out_payload_deleted_at": null,
+      "close_out_payload_description": "Apply payload produced at CONV-028's close (SES-031). Backfilled by PI-026 (Phase 4 of PI-022) on 2026-05-24.",
+      "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_031.json",
+      "close_out_payload_identifier": "COP-018",
+      "close_out_payload_notes": null,
+      "close_out_payload_ready_at": "2026-05-17T12:00:00",
+      "close_out_payload_status": "ready",
+      "close_out_payload_superseded_at": null,
+      "close_out_payload_title": "Close-out payload for CONV-028 (SES-031)",
+      "close_out_payload_updated_at": "2026-05-24T01:45:18.300500+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "COP-018",
+    "entity_type": "close_out_payload",
+    "id": 1317,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:18.303296"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:18.408808+00:00",
+      "id": 667,
+      "reference_identifier": "REF-0663",
+      "relationship": "close_out_payload_produced_by_conversation",
+      "source_id": "COP-019",
+      "source_type": "close_out_payload",
+      "target_id": "CONV-029",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "close_out_payload:COP-019 -[close_out_payload_produced_by_conversation]-> conversation:CONV-029",
+    "entity_type": "reference",
+    "id": 1318,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:18.409357"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "close_out_payload_applied_at": null,
+      "close_out_payload_cancelled_at": null,
+      "close_out_payload_created_at": "2026-05-24T01:45:18.406001+00:00",
+      "close_out_payload_deleted_at": null,
+      "close_out_payload_description": "Apply payload produced at CONV-029's close (SES-032). Backfilled by PI-026 (Phase 4 of PI-022) on 2026-05-24.",
+      "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_032.json",
+      "close_out_payload_identifier": "COP-019",
+      "close_out_payload_notes": null,
+      "close_out_payload_ready_at": "2026-05-17T12:00:00",
+      "close_out_payload_status": "ready",
+      "close_out_payload_superseded_at": null,
+      "close_out_payload_title": "Close-out payload for CONV-029 (SES-032)",
+      "close_out_payload_updated_at": "2026-05-24T01:45:18.406380+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "COP-019",
+    "entity_type": "close_out_payload",
+    "id": 1319,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:18.409846"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:18.517067+00:00",
+      "id": 668,
+      "reference_identifier": "REF-0664",
+      "relationship": "close_out_payload_produced_by_conversation",
+      "source_id": "COP-020",
+      "source_type": "close_out_payload",
+      "target_id": "CONV-030",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "close_out_payload:COP-020 -[close_out_payload_produced_by_conversation]-> conversation:CONV-030",
+    "entity_type": "reference",
+    "id": 1320,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:18.517484"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "close_out_payload_applied_at": null,
+      "close_out_payload_cancelled_at": null,
+      "close_out_payload_created_at": "2026-05-24T01:45:18.515083+00:00",
+      "close_out_payload_deleted_at": null,
+      "close_out_payload_description": "Apply payload produced at CONV-030's close (SES-033). Backfilled by PI-026 (Phase 4 of PI-022) on 2026-05-24.",
+      "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_033.json",
+      "close_out_payload_identifier": "COP-020",
+      "close_out_payload_notes": null,
+      "close_out_payload_ready_at": "2026-05-17T12:00:00",
+      "close_out_payload_status": "ready",
+      "close_out_payload_superseded_at": null,
+      "close_out_payload_title": "Close-out payload for CONV-030 (SES-033)",
+      "close_out_payload_updated_at": "2026-05-24T01:45:18.515377+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "COP-020",
+    "entity_type": "close_out_payload",
+    "id": 1321,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:18.517892"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:18.624762+00:00",
+      "id": 669,
+      "reference_identifier": "REF-0665",
+      "relationship": "close_out_payload_produced_by_conversation",
+      "source_id": "COP-021",
+      "source_type": "close_out_payload",
+      "target_id": "CONV-031",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "close_out_payload:COP-021 -[close_out_payload_produced_by_conversation]-> conversation:CONV-031",
+    "entity_type": "reference",
+    "id": 1322,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:18.625233"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "close_out_payload_applied_at": null,
+      "close_out_payload_cancelled_at": null,
+      "close_out_payload_created_at": "2026-05-24T01:45:18.622293+00:00",
+      "close_out_payload_deleted_at": null,
+      "close_out_payload_description": "Apply payload produced at CONV-031's close (SES-034). Backfilled by PI-026 (Phase 4 of PI-022) on 2026-05-24.",
+      "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_034.json",
+      "close_out_payload_identifier": "COP-021",
+      "close_out_payload_notes": null,
+      "close_out_payload_ready_at": "2026-05-17T12:00:00",
+      "close_out_payload_status": "ready",
+      "close_out_payload_superseded_at": null,
+      "close_out_payload_title": "Close-out payload for CONV-031 (SES-034)",
+      "close_out_payload_updated_at": "2026-05-24T01:45:18.622589+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "COP-021",
+    "entity_type": "close_out_payload",
+    "id": 1323,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:18.625733"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:18.779949+00:00",
+      "id": 670,
+      "reference_identifier": "REF-0666",
+      "relationship": "close_out_payload_produced_by_conversation",
+      "source_id": "COP-022",
+      "source_type": "close_out_payload",
+      "target_id": "CONV-032",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "close_out_payload:COP-022 -[close_out_payload_produced_by_conversation]-> conversation:CONV-032",
+    "entity_type": "reference",
+    "id": 1324,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:18.780463"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "close_out_payload_applied_at": null,
+      "close_out_payload_cancelled_at": null,
+      "close_out_payload_created_at": "2026-05-24T01:45:18.777213+00:00",
+      "close_out_payload_deleted_at": null,
+      "close_out_payload_description": "Apply payload produced at CONV-032's close (SES-035). Backfilled by PI-026 (Phase 4 of PI-022) on 2026-05-24.",
+      "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_035.json",
+      "close_out_payload_identifier": "COP-022",
+      "close_out_payload_notes": null,
+      "close_out_payload_ready_at": "2026-05-17T12:00:00",
+      "close_out_payload_status": "ready",
+      "close_out_payload_superseded_at": null,
+      "close_out_payload_title": "Close-out payload for CONV-032 (SES-035)",
+      "close_out_payload_updated_at": "2026-05-24T01:45:18.777603+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "COP-022",
+    "entity_type": "close_out_payload",
+    "id": 1325,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:18.780936"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:18.888644+00:00",
+      "id": 671,
+      "reference_identifier": "REF-0667",
+      "relationship": "close_out_payload_produced_by_conversation",
+      "source_id": "COP-023",
+      "source_type": "close_out_payload",
+      "target_id": "CONV-033",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "close_out_payload:COP-023 -[close_out_payload_produced_by_conversation]-> conversation:CONV-033",
+    "entity_type": "reference",
+    "id": 1326,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:18.889122"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "close_out_payload_applied_at": null,
+      "close_out_payload_cancelled_at": null,
+      "close_out_payload_created_at": "2026-05-24T01:45:18.886355+00:00",
+      "close_out_payload_deleted_at": null,
+      "close_out_payload_description": "Apply payload produced at CONV-033's close (SES-036). Backfilled by PI-026 (Phase 4 of PI-022) on 2026-05-24.",
+      "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_036.json",
+      "close_out_payload_identifier": "COP-023",
+      "close_out_payload_notes": null,
+      "close_out_payload_ready_at": "2026-05-16T12:00:00",
+      "close_out_payload_status": "ready",
+      "close_out_payload_superseded_at": null,
+      "close_out_payload_title": "Close-out payload for CONV-033 (SES-036)",
+      "close_out_payload_updated_at": "2026-05-24T01:45:18.886664+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "COP-023",
+    "entity_type": "close_out_payload",
+    "id": 1327,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:18.889802"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:19.002119+00:00",
+      "id": 672,
+      "reference_identifier": "REF-0668",
+      "relationship": "close_out_payload_produced_by_conversation",
+      "source_id": "COP-024",
+      "source_type": "close_out_payload",
+      "target_id": "CONV-034",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "close_out_payload:COP-024 -[close_out_payload_produced_by_conversation]-> conversation:CONV-034",
+    "entity_type": "reference",
+    "id": 1328,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:19.002556"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "close_out_payload_applied_at": null,
+      "close_out_payload_cancelled_at": null,
+      "close_out_payload_created_at": "2026-05-24T01:45:19.000152+00:00",
+      "close_out_payload_deleted_at": null,
+      "close_out_payload_description": "Apply payload produced at CONV-034's close (SES-037). Backfilled by PI-026 (Phase 4 of PI-022) on 2026-05-24.",
+      "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_037.json",
+      "close_out_payload_identifier": "COP-024",
+      "close_out_payload_notes": null,
+      "close_out_payload_ready_at": "2026-05-18T12:00:00",
+      "close_out_payload_status": "ready",
+      "close_out_payload_superseded_at": null,
+      "close_out_payload_title": "Close-out payload for CONV-034 (SES-037)",
+      "close_out_payload_updated_at": "2026-05-24T01:45:19.000440+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "COP-024",
+    "entity_type": "close_out_payload",
+    "id": 1329,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:19.002960"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:19.108919+00:00",
+      "id": 673,
+      "reference_identifier": "REF-0669",
+      "relationship": "close_out_payload_produced_by_conversation",
+      "source_id": "COP-025",
+      "source_type": "close_out_payload",
+      "target_id": "CONV-035",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "close_out_payload:COP-025 -[close_out_payload_produced_by_conversation]-> conversation:CONV-035",
+    "entity_type": "reference",
+    "id": 1330,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:19.109412"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "close_out_payload_applied_at": null,
+      "close_out_payload_cancelled_at": null,
+      "close_out_payload_created_at": "2026-05-24T01:45:19.106528+00:00",
+      "close_out_payload_deleted_at": null,
+      "close_out_payload_description": "Apply payload produced at CONV-035's close (SES-038). Backfilled by PI-026 (Phase 4 of PI-022) on 2026-05-24.",
+      "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_038.json",
+      "close_out_payload_identifier": "COP-025",
+      "close_out_payload_notes": null,
+      "close_out_payload_ready_at": "2026-05-18T12:00:00",
+      "close_out_payload_status": "ready",
+      "close_out_payload_superseded_at": null,
+      "close_out_payload_title": "Close-out payload for CONV-035 (SES-038)",
+      "close_out_payload_updated_at": "2026-05-24T01:45:19.106958+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "COP-025",
+    "entity_type": "close_out_payload",
+    "id": 1331,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:19.109864"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:19.281085+00:00",
+      "id": 674,
+      "reference_identifier": "REF-0670",
+      "relationship": "close_out_payload_produced_by_conversation",
+      "source_id": "COP-026",
+      "source_type": "close_out_payload",
+      "target_id": "CONV-036",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "close_out_payload:COP-026 -[close_out_payload_produced_by_conversation]-> conversation:CONV-036",
+    "entity_type": "reference",
+    "id": 1332,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:19.281580"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "close_out_payload_applied_at": null,
+      "close_out_payload_cancelled_at": null,
+      "close_out_payload_created_at": "2026-05-24T01:45:19.278662+00:00",
+      "close_out_payload_deleted_at": null,
+      "close_out_payload_description": "Apply payload produced at CONV-036's close (SES-039). Backfilled by PI-026 (Phase 4 of PI-022) on 2026-05-24.",
+      "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_039.json",
+      "close_out_payload_identifier": "COP-026",
+      "close_out_payload_notes": null,
+      "close_out_payload_ready_at": "2026-05-18T12:00:00",
+      "close_out_payload_status": "ready",
+      "close_out_payload_superseded_at": null,
+      "close_out_payload_title": "Close-out payload for CONV-036 (SES-039)",
+      "close_out_payload_updated_at": "2026-05-24T01:45:19.278951+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "COP-026",
+    "entity_type": "close_out_payload",
+    "id": 1333,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:19.282082"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:19.415574+00:00",
+      "id": 675,
+      "reference_identifier": "REF-0671",
+      "relationship": "close_out_payload_produced_by_conversation",
+      "source_id": "COP-027",
+      "source_type": "close_out_payload",
+      "target_id": "CONV-037",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "close_out_payload:COP-027 -[close_out_payload_produced_by_conversation]-> conversation:CONV-037",
+    "entity_type": "reference",
+    "id": 1334,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:19.416031"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "close_out_payload_applied_at": null,
+      "close_out_payload_cancelled_at": null,
+      "close_out_payload_created_at": "2026-05-24T01:45:19.412704+00:00",
+      "close_out_payload_deleted_at": null,
+      "close_out_payload_description": "Apply payload produced at CONV-037's close (SES-040). Backfilled by PI-026 (Phase 4 of PI-022) on 2026-05-24.",
+      "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_040.json",
+      "close_out_payload_identifier": "COP-027",
+      "close_out_payload_notes": null,
+      "close_out_payload_ready_at": "2026-05-18T12:00:00",
+      "close_out_payload_status": "ready",
+      "close_out_payload_superseded_at": null,
+      "close_out_payload_title": "Close-out payload for CONV-037 (SES-040)",
+      "close_out_payload_updated_at": "2026-05-24T01:45:19.412995+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "COP-027",
+    "entity_type": "close_out_payload",
+    "id": 1335,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:19.416618"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:19.533364+00:00",
+      "id": 676,
+      "reference_identifier": "REF-0672",
+      "relationship": "close_out_payload_produced_by_conversation",
+      "source_id": "COP-028",
+      "source_type": "close_out_payload",
+      "target_id": "CONV-038",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "close_out_payload:COP-028 -[close_out_payload_produced_by_conversation]-> conversation:CONV-038",
+    "entity_type": "reference",
+    "id": 1336,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:19.533780"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "close_out_payload_applied_at": null,
+      "close_out_payload_cancelled_at": null,
+      "close_out_payload_created_at": "2026-05-24T01:45:19.531428+00:00",
+      "close_out_payload_deleted_at": null,
+      "close_out_payload_description": "Apply payload produced at CONV-038's close (SES-041). Backfilled by PI-026 (Phase 4 of PI-022) on 2026-05-24.",
+      "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_041.json",
+      "close_out_payload_identifier": "COP-028",
+      "close_out_payload_notes": null,
+      "close_out_payload_ready_at": "2026-05-18T12:00:00",
+      "close_out_payload_status": "ready",
+      "close_out_payload_superseded_at": null,
+      "close_out_payload_title": "Close-out payload for CONV-038 (SES-041)",
+      "close_out_payload_updated_at": "2026-05-24T01:45:19.531723+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "COP-028",
+    "entity_type": "close_out_payload",
+    "id": 1337,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:19.534208"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:19.662984+00:00",
+      "id": 677,
+      "reference_identifier": "REF-0673",
+      "relationship": "close_out_payload_produced_by_conversation",
+      "source_id": "COP-029",
+      "source_type": "close_out_payload",
+      "target_id": "CONV-039",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "close_out_payload:COP-029 -[close_out_payload_produced_by_conversation]-> conversation:CONV-039",
+    "entity_type": "reference",
+    "id": 1338,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:19.663569"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "close_out_payload_applied_at": null,
+      "close_out_payload_cancelled_at": null,
+      "close_out_payload_created_at": "2026-05-24T01:45:19.660822+00:00",
+      "close_out_payload_deleted_at": null,
+      "close_out_payload_description": "Apply payload produced at CONV-039's close (SES-042). Backfilled by PI-026 (Phase 4 of PI-022) on 2026-05-24.",
+      "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_042.json",
+      "close_out_payload_identifier": "COP-029",
+      "close_out_payload_notes": null,
+      "close_out_payload_ready_at": "2026-05-18T12:00:00",
+      "close_out_payload_status": "ready",
+      "close_out_payload_superseded_at": null,
+      "close_out_payload_title": "Close-out payload for CONV-039 (SES-042)",
+      "close_out_payload_updated_at": "2026-05-24T01:45:19.661137+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "COP-029",
+    "entity_type": "close_out_payload",
+    "id": 1339,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:19.664088"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:19.827149+00:00",
+      "id": 678,
+      "reference_identifier": "REF-0674",
+      "relationship": "close_out_payload_produced_by_conversation",
+      "source_id": "COP-030",
+      "source_type": "close_out_payload",
+      "target_id": "CONV-040",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "close_out_payload:COP-030 -[close_out_payload_produced_by_conversation]-> conversation:CONV-040",
+    "entity_type": "reference",
+    "id": 1340,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:19.827719"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "close_out_payload_applied_at": null,
+      "close_out_payload_cancelled_at": null,
+      "close_out_payload_created_at": "2026-05-24T01:45:19.824652+00:00",
+      "close_out_payload_deleted_at": null,
+      "close_out_payload_description": "Apply payload produced at CONV-040's close (SES-043). Backfilled by PI-026 (Phase 4 of PI-022) on 2026-05-24.",
+      "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_043.json",
+      "close_out_payload_identifier": "COP-030",
+      "close_out_payload_notes": null,
+      "close_out_payload_ready_at": "2026-05-18T12:00:00",
+      "close_out_payload_status": "ready",
+      "close_out_payload_superseded_at": null,
+      "close_out_payload_title": "Close-out payload for CONV-040 (SES-043)",
+      "close_out_payload_updated_at": "2026-05-24T01:45:19.825031+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "COP-030",
+    "entity_type": "close_out_payload",
+    "id": 1341,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:19.828257"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:19.937395+00:00",
+      "id": 679,
+      "reference_identifier": "REF-0675",
+      "relationship": "close_out_payload_produced_by_conversation",
+      "source_id": "COP-031",
+      "source_type": "close_out_payload",
+      "target_id": "CONV-041",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "close_out_payload:COP-031 -[close_out_payload_produced_by_conversation]-> conversation:CONV-041",
+    "entity_type": "reference",
+    "id": 1342,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:19.937869"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "close_out_payload_applied_at": null,
+      "close_out_payload_cancelled_at": null,
+      "close_out_payload_created_at": "2026-05-24T01:45:19.935354+00:00",
+      "close_out_payload_deleted_at": null,
+      "close_out_payload_description": "Apply payload produced at CONV-041's close (SES-044). Backfilled by PI-026 (Phase 4 of PI-022) on 2026-05-24.",
+      "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_044.json",
+      "close_out_payload_identifier": "COP-031",
+      "close_out_payload_notes": null,
+      "close_out_payload_ready_at": "2026-05-19T12:00:00",
+      "close_out_payload_status": "ready",
+      "close_out_payload_superseded_at": null,
+      "close_out_payload_title": "Close-out payload for CONV-041 (SES-044)",
+      "close_out_payload_updated_at": "2026-05-24T01:45:19.935688+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "COP-031",
+    "entity_type": "close_out_payload",
+    "id": 1343,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:19.938312"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:20.063559+00:00",
+      "id": 680,
+      "reference_identifier": "REF-0676",
+      "relationship": "close_out_payload_produced_by_conversation",
+      "source_id": "COP-032",
+      "source_type": "close_out_payload",
+      "target_id": "CONV-043",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "close_out_payload:COP-032 -[close_out_payload_produced_by_conversation]-> conversation:CONV-043",
+    "entity_type": "reference",
+    "id": 1344,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:20.064048"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "close_out_payload_applied_at": null,
+      "close_out_payload_cancelled_at": null,
+      "close_out_payload_created_at": "2026-05-24T01:45:20.061384+00:00",
+      "close_out_payload_deleted_at": null,
+      "close_out_payload_description": "Apply payload produced at CONV-043's close (SES-053). Backfilled by PI-026 (Phase 4 of PI-022) on 2026-05-24.",
+      "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_053.json",
+      "close_out_payload_identifier": "COP-032",
+      "close_out_payload_notes": null,
+      "close_out_payload_ready_at": "2026-05-22T12:00:00",
+      "close_out_payload_status": "ready",
+      "close_out_payload_superseded_at": null,
+      "close_out_payload_title": "Close-out payload for CONV-043 (SES-053)",
+      "close_out_payload_updated_at": "2026-05-24T01:45:20.061694+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "COP-032",
+    "entity_type": "close_out_payload",
+    "id": 1345,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:20.064519"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:20.389116+00:00",
+      "id": 681,
+      "reference_identifier": "REF-0677",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-028",
+      "source_type": "deposit_event",
+      "target_id": "COP-017",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-028 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-017",
+    "entity_type": "reference",
+    "id": 1346,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:20.389728"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:20.391327+00:00",
+      "id": 682,
+      "reference_identifier": "REF-0678",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-028",
+      "source_type": "deposit_event",
+      "target_id": "SES-030",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-028 -[deposit_event_wrote_record]-> session:SES-030",
+    "entity_type": "reference",
+    "id": 1347,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:20.391700"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:20.393183+00:00",
+      "id": 683,
+      "reference_identifier": "REF-0679",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-028",
+      "source_type": "deposit_event",
+      "target_id": "DEC-105",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-028 -[deposit_event_wrote_record]-> decision:DEC-105",
+    "entity_type": "reference",
+    "id": 1348,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:20.393522"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:20.394885+00:00",
+      "id": 684,
+      "reference_identifier": "REF-0680",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-028",
+      "source_type": "deposit_event",
+      "target_id": "DEC-106",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-028 -[deposit_event_wrote_record]-> decision:DEC-106",
+    "entity_type": "reference",
+    "id": 1349,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:20.395182"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T01:45:20.396589+00:00",
+      "id": 685,
+      "reference_identifier": "REF-0681",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-028",
+      "source_type": "deposit_event",
+      "target_id": "DEC-107",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-028 -[deposit_event_wrote_record]-> decision:DEC-107",
+    "entity_type": "reference",
+    "id": 1350,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:20.396798"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "backfill",
+        "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_030.json",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-24T01:45:20.387232+00:00",
+      "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-017 (SES-030) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 3 decisions, 0 planning items, 0 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-028",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_028-historical.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 3,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-017 (historical backfill, SES-030)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-028",
+    "entity_type": "deposit_event",
+    "id": 1351,
+    "operation": "insert",
+    "timestamp": "2026-05-24T01:45:20.397160"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.480020+00:00",
+      "id": 686,
+      "reference_identifier": "REF-0682",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-020",
+      "source_type": "deposit_event",
+      "target_id": "COP-009",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-020 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-009",
+    "entity_type": "reference",
+    "id": 1352,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.480436"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.482038+00:00",
+      "id": 687,
+      "reference_identifier": "REF-0683",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-020",
+      "source_type": "deposit_event",
+      "target_id": "SES-012",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-020 -[deposit_event_wrote_record]-> session:SES-012",
+    "entity_type": "reference",
+    "id": 1353,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.482458"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.483999+00:00",
+      "id": 688,
+      "reference_identifier": "REF-0684",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-020",
+      "source_type": "deposit_event",
+      "target_id": "DEC-044",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-020 -[deposit_event_wrote_record]-> decision:DEC-044",
+    "entity_type": "reference",
+    "id": 1354,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.484349"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.485697+00:00",
+      "id": 689,
+      "reference_identifier": "REF-0685",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-020",
+      "source_type": "deposit_event",
+      "target_id": "DEC-045",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-020 -[deposit_event_wrote_record]-> decision:DEC-045",
+    "entity_type": "reference",
+    "id": 1355,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.485986"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.487384+00:00",
+      "id": 690,
+      "reference_identifier": "REF-0686",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-020",
+      "source_type": "deposit_event",
+      "target_id": "DEC-046",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-020 -[deposit_event_wrote_record]-> decision:DEC-046",
+    "entity_type": "reference",
+    "id": 1356,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.487676"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.488988+00:00",
+      "id": 691,
+      "reference_identifier": "REF-0687",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-020",
+      "source_type": "deposit_event",
+      "target_id": "DEC-047",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-020 -[deposit_event_wrote_record]-> decision:DEC-047",
+    "entity_type": "reference",
+    "id": 1357,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.489278"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.490612+00:00",
+      "id": 692,
+      "reference_identifier": "REF-0688",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-020",
+      "source_type": "deposit_event",
+      "target_id": "DEC-048",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-020 -[deposit_event_wrote_record]-> decision:DEC-048",
+    "entity_type": "reference",
+    "id": 1358,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.490911"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.492306+00:00",
+      "id": 693,
+      "reference_identifier": "REF-0689",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-020",
+      "source_type": "deposit_event",
+      "target_id": "DEC-049",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-020 -[deposit_event_wrote_record]-> decision:DEC-049",
+    "entity_type": "reference",
+    "id": 1359,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.492746"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.494596+00:00",
+      "id": 694,
+      "reference_identifier": "REF-0690",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-020",
+      "source_type": "deposit_event",
+      "target_id": "PI-006",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-020 -[deposit_event_wrote_record]-> planning_item:PI-006",
+    "entity_type": "reference",
+    "id": 1360,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.494916"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.496479+00:00",
+      "id": 695,
+      "reference_identifier": "REF-0691",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-020",
+      "source_type": "deposit_event",
+      "target_id": "PI-007",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-020 -[deposit_event_wrote_record]-> planning_item:PI-007",
+    "entity_type": "reference",
+    "id": 1361,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.496816"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.498195+00:00",
+      "id": 696,
+      "reference_identifier": "REF-0692",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-020",
+      "source_type": "deposit_event",
+      "target_id": "PI-008",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-020 -[deposit_event_wrote_record]-> planning_item:PI-008",
+    "entity_type": "reference",
+    "id": 1362,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.498421"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "backfill",
+        "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_012.json",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-24T03:30:12.478121+00:00",
+      "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-009 (SES-012) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 6 decisions, 3 planning items, 0 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-020",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_020-historical.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 6,
+        "planning_items": 3,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-009 (historical backfill, SES-012)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-020",
+    "entity_type": "deposit_event",
+    "id": 1363,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.498865"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.645783+00:00",
+      "id": 697,
+      "reference_identifier": "REF-0693",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-021",
+      "source_type": "deposit_event",
+      "target_id": "COP-010",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-021 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-010",
+    "entity_type": "reference",
+    "id": 1364,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.646177"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.647667+00:00",
+      "id": 698,
+      "reference_identifier": "REF-0694",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-021",
+      "source_type": "deposit_event",
+      "target_id": "SES-013",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-021 -[deposit_event_wrote_record]-> session:SES-013",
+    "entity_type": "reference",
+    "id": 1365,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.648036"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.650056+00:00",
+      "id": 699,
+      "reference_identifier": "REF-0695",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-021",
+      "source_type": "deposit_event",
+      "target_id": "DEC-050",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-021 -[deposit_event_wrote_record]-> decision:DEC-050",
+    "entity_type": "reference",
+    "id": 1366,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.650405"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.651817+00:00",
+      "id": 700,
+      "reference_identifier": "REF-0696",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-021",
+      "source_type": "deposit_event",
+      "target_id": "DEC-051",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-021 -[deposit_event_wrote_record]-> decision:DEC-051",
+    "entity_type": "reference",
+    "id": 1367,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.652109"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.653433+00:00",
+      "id": 701,
+      "reference_identifier": "REF-0697",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-021",
+      "source_type": "deposit_event",
+      "target_id": "DEC-052",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-021 -[deposit_event_wrote_record]-> decision:DEC-052",
+    "entity_type": "reference",
+    "id": 1368,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.653750"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.655090+00:00",
+      "id": 702,
+      "reference_identifier": "REF-0698",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-021",
+      "source_type": "deposit_event",
+      "target_id": "DEC-053",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-021 -[deposit_event_wrote_record]-> decision:DEC-053",
+    "entity_type": "reference",
+    "id": 1369,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.655421"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.656791+00:00",
+      "id": 703,
+      "reference_identifier": "REF-0699",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-021",
+      "source_type": "deposit_event",
+      "target_id": "DEC-054",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-021 -[deposit_event_wrote_record]-> decision:DEC-054",
+    "entity_type": "reference",
+    "id": 1370,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.657077"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.658422+00:00",
+      "id": 704,
+      "reference_identifier": "REF-0700",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-021",
+      "source_type": "deposit_event",
+      "target_id": "PI-009",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-021 -[deposit_event_wrote_record]-> planning_item:PI-009",
+    "entity_type": "reference",
+    "id": 1371,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.658744"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.660196+00:00",
+      "id": 705,
+      "reference_identifier": "REF-0701",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-021",
+      "source_type": "deposit_event",
+      "target_id": "PI-010",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-021 -[deposit_event_wrote_record]-> planning_item:PI-010",
+    "entity_type": "reference",
+    "id": 1372,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.660476"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "backfill",
+        "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_013.json",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-24T03:30:12.643882+00:00",
+      "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-010 (SES-013) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 5 decisions, 2 planning items, 0 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-021",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_021-historical.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 5,
+        "planning_items": 2,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-010 (historical backfill, SES-013)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-021",
+    "entity_type": "deposit_event",
+    "id": 1373,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.660832"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.761752+00:00",
+      "id": 706,
+      "reference_identifier": "REF-0702",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-022",
+      "source_type": "deposit_event",
+      "target_id": "COP-011",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-022 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-011",
+    "entity_type": "reference",
+    "id": 1374,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.762178"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.763935+00:00",
+      "id": 707,
+      "reference_identifier": "REF-0703",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-022",
+      "source_type": "deposit_event",
+      "target_id": "SES-014",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-022 -[deposit_event_wrote_record]-> session:SES-014",
+    "entity_type": "reference",
+    "id": 1375,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.764302"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.766196+00:00",
+      "id": 708,
+      "reference_identifier": "REF-0704",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-022",
+      "source_type": "deposit_event",
+      "target_id": "DEC-055",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-022 -[deposit_event_wrote_record]-> decision:DEC-055",
+    "entity_type": "reference",
+    "id": 1376,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.766691"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.768199+00:00",
+      "id": 709,
+      "reference_identifier": "REF-0705",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-022",
+      "source_type": "deposit_event",
+      "target_id": "DEC-056",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-022 -[deposit_event_wrote_record]-> decision:DEC-056",
+    "entity_type": "reference",
+    "id": 1377,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.768518"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.769911+00:00",
+      "id": 710,
+      "reference_identifier": "REF-0706",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-022",
+      "source_type": "deposit_event",
+      "target_id": "DEC-057",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-022 -[deposit_event_wrote_record]-> decision:DEC-057",
+    "entity_type": "reference",
+    "id": 1378,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.770295"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.771950+00:00",
+      "id": 711,
+      "reference_identifier": "REF-0707",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-022",
+      "source_type": "deposit_event",
+      "target_id": "DEC-058",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-022 -[deposit_event_wrote_record]-> decision:DEC-058",
+    "entity_type": "reference",
+    "id": 1379,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.772266"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.773687+00:00",
+      "id": 712,
+      "reference_identifier": "REF-0708",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-022",
+      "source_type": "deposit_event",
+      "target_id": "DEC-059",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-022 -[deposit_event_wrote_record]-> decision:DEC-059",
+    "entity_type": "reference",
+    "id": 1380,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.773991"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.775385+00:00",
+      "id": 713,
+      "reference_identifier": "REF-0709",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-022",
+      "source_type": "deposit_event",
+      "target_id": "PI-011",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-022 -[deposit_event_wrote_record]-> planning_item:PI-011",
+    "entity_type": "reference",
+    "id": 1381,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.775660"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "backfill",
+        "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_014.json",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-24T03:30:12.759724+00:00",
+      "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-011 (SES-014) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 5 decisions, 1 planning items, 0 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-022",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_022-historical.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 5,
+        "planning_items": 1,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-011 (historical backfill, SES-014)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-022",
+    "entity_type": "deposit_event",
+    "id": 1382,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.776022"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.882337+00:00",
+      "id": 714,
+      "reference_identifier": "REF-0710",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-023",
+      "source_type": "deposit_event",
+      "target_id": "COP-012",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-023 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-012",
+    "entity_type": "reference",
+    "id": 1383,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.883028"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.884811+00:00",
+      "id": 715,
+      "reference_identifier": "REF-0711",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-023",
+      "source_type": "deposit_event",
+      "target_id": "SES-015",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-023 -[deposit_event_wrote_record]-> session:SES-015",
+    "entity_type": "reference",
+    "id": 1384,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.885226"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.886701+00:00",
+      "id": 716,
+      "reference_identifier": "REF-0712",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-023",
+      "source_type": "deposit_event",
+      "target_id": "DEC-060",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-023 -[deposit_event_wrote_record]-> decision:DEC-060",
+    "entity_type": "reference",
+    "id": 1385,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.887041"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.888516+00:00",
+      "id": 717,
+      "reference_identifier": "REF-0713",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-023",
+      "source_type": "deposit_event",
+      "target_id": "DEC-061",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-023 -[deposit_event_wrote_record]-> decision:DEC-061",
+    "entity_type": "reference",
+    "id": 1386,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.888860"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.890291+00:00",
+      "id": 718,
+      "reference_identifier": "REF-0714",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-023",
+      "source_type": "deposit_event",
+      "target_id": "DEC-062",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-023 -[deposit_event_wrote_record]-> decision:DEC-062",
+    "entity_type": "reference",
+    "id": 1387,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.890601"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.892090+00:00",
+      "id": 719,
+      "reference_identifier": "REF-0715",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-023",
+      "source_type": "deposit_event",
+      "target_id": "DEC-063",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-023 -[deposit_event_wrote_record]-> decision:DEC-063",
+    "entity_type": "reference",
+    "id": 1388,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.892420"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.893873+00:00",
+      "id": 720,
+      "reference_identifier": "REF-0716",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-023",
+      "source_type": "deposit_event",
+      "target_id": "DEC-064",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-023 -[deposit_event_wrote_record]-> decision:DEC-064",
+    "entity_type": "reference",
+    "id": 1389,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.894169"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.895574+00:00",
+      "id": 721,
+      "reference_identifier": "REF-0717",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-023",
+      "source_type": "deposit_event",
+      "target_id": "PI-012",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-023 -[deposit_event_wrote_record]-> planning_item:PI-012",
+    "entity_type": "reference",
+    "id": 1390,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.895793"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "backfill",
+        "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_015.json",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-24T03:30:12.880341+00:00",
+      "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-012 (SES-015) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 5 decisions, 1 planning items, 0 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-023",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_023-historical.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 5,
+        "planning_items": 1,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-012 (historical backfill, SES-015)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-023",
+    "entity_type": "deposit_event",
+    "id": 1391,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.896167"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:12.998598+00:00",
+      "id": 722,
+      "reference_identifier": "REF-0718",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-024",
+      "source_type": "deposit_event",
+      "target_id": "COP-013",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-024 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-013",
+    "entity_type": "reference",
+    "id": 1392,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:12.999187"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.033462+00:00",
+      "id": 723,
+      "reference_identifier": "REF-0719",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-024",
+      "source_type": "deposit_event",
+      "target_id": "SES-025",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-024 -[deposit_event_wrote_record]-> session:SES-025",
+    "entity_type": "reference",
+    "id": 1393,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.033997"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.035562+00:00",
+      "id": 724,
+      "reference_identifier": "REF-0720",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-024",
+      "source_type": "deposit_event",
+      "target_id": "DEC-075",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-024 -[deposit_event_wrote_record]-> decision:DEC-075",
+    "entity_type": "reference",
+    "id": 1394,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.036014"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.037515+00:00",
+      "id": 725,
+      "reference_identifier": "REF-0721",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-024",
+      "source_type": "deposit_event",
+      "target_id": "DEC-076",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-024 -[deposit_event_wrote_record]-> decision:DEC-076",
+    "entity_type": "reference",
+    "id": 1395,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.037817"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.039291+00:00",
+      "id": 726,
+      "reference_identifier": "REF-0722",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-024",
+      "source_type": "deposit_event",
+      "target_id": "DEC-077",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-024 -[deposit_event_wrote_record]-> decision:DEC-077",
+    "entity_type": "reference",
+    "id": 1396,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.039514"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "backfill",
+        "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_025.json",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-24T03:30:12.996558+00:00",
+      "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-013 (SES-025) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 3 decisions, 0 planning items, 0 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-024",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_024-historical.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 3,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-013 (historical backfill, SES-025)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-024",
+    "entity_type": "deposit_event",
+    "id": 1397,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.039886"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.141644+00:00",
+      "id": 727,
+      "reference_identifier": "REF-0723",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-025",
+      "source_type": "deposit_event",
+      "target_id": "COP-014",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-025 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-014",
+    "entity_type": "reference",
+    "id": 1398,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.142059"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.143591+00:00",
+      "id": 728,
+      "reference_identifier": "REF-0724",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-025",
+      "source_type": "deposit_event",
+      "target_id": "SES-026",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-025 -[deposit_event_wrote_record]-> session:SES-026",
+    "entity_type": "reference",
+    "id": 1399,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.143927"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.145368+00:00",
+      "id": 729,
+      "reference_identifier": "REF-0725",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-025",
+      "source_type": "deposit_event",
+      "target_id": "DEC-078",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-025 -[deposit_event_wrote_record]-> decision:DEC-078",
+    "entity_type": "reference",
+    "id": 1400,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.145700"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.147140+00:00",
+      "id": 730,
+      "reference_identifier": "REF-0726",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-025",
+      "source_type": "deposit_event",
+      "target_id": "DEC-079",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-025 -[deposit_event_wrote_record]-> decision:DEC-079",
+    "entity_type": "reference",
+    "id": 1401,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.147459"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.149186+00:00",
+      "id": 731,
+      "reference_identifier": "REF-0727",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-025",
+      "source_type": "deposit_event",
+      "target_id": "DEC-080",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-025 -[deposit_event_wrote_record]-> decision:DEC-080",
+    "entity_type": "reference",
+    "id": 1402,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.149606"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.151230+00:00",
+      "id": 732,
+      "reference_identifier": "REF-0728",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-025",
+      "source_type": "deposit_event",
+      "target_id": "DEC-081",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-025 -[deposit_event_wrote_record]-> decision:DEC-081",
+    "entity_type": "reference",
+    "id": 1403,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.151608"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.153080+00:00",
+      "id": 733,
+      "reference_identifier": "REF-0729",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-025",
+      "source_type": "deposit_event",
+      "target_id": "DEC-082",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-025 -[deposit_event_wrote_record]-> decision:DEC-082",
+    "entity_type": "reference",
+    "id": 1404,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.153369"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.154786+00:00",
+      "id": 734,
+      "reference_identifier": "REF-0730",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-025",
+      "source_type": "deposit_event",
+      "target_id": "DEC-083",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-025 -[deposit_event_wrote_record]-> decision:DEC-083",
+    "entity_type": "reference",
+    "id": 1405,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.155084"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.156606+00:00",
+      "id": 735,
+      "reference_identifier": "REF-0731",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-025",
+      "source_type": "deposit_event",
+      "target_id": "DEC-084",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-025 -[deposit_event_wrote_record]-> decision:DEC-084",
+    "entity_type": "reference",
+    "id": 1406,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.156909"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.158326+00:00",
+      "id": 736,
+      "reference_identifier": "REF-0732",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-025",
+      "source_type": "deposit_event",
+      "target_id": "DEC-085",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-025 -[deposit_event_wrote_record]-> decision:DEC-085",
+    "entity_type": "reference",
+    "id": 1407,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.158644"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.160082+00:00",
+      "id": 737,
+      "reference_identifier": "REF-0733",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-025",
+      "source_type": "deposit_event",
+      "target_id": "DEC-086",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-025 -[deposit_event_wrote_record]-> decision:DEC-086",
+    "entity_type": "reference",
+    "id": 1408,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.160444"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.161903+00:00",
+      "id": 738,
+      "reference_identifier": "REF-0734",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-025",
+      "source_type": "deposit_event",
+      "target_id": "PI-017",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-025 -[deposit_event_wrote_record]-> planning_item:PI-017",
+    "entity_type": "reference",
+    "id": 1409,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.162151"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "backfill",
+        "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_026.json",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-24T03:30:13.139625+00:00",
+      "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-014 (SES-026) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 9 decisions, 1 planning items, 0 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-025",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_025-historical.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 9,
+        "planning_items": 1,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-014 (historical backfill, SES-026)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-025",
+    "entity_type": "deposit_event",
+    "id": 1410,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.162514"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.265234+00:00",
+      "id": 739,
+      "reference_identifier": "REF-0735",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-026",
+      "source_type": "deposit_event",
+      "target_id": "COP-015",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-026 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-015",
+    "entity_type": "reference",
+    "id": 1411,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.265882"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.267827+00:00",
+      "id": 740,
+      "reference_identifier": "REF-0736",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-026",
+      "source_type": "deposit_event",
+      "target_id": "SES-027",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-026 -[deposit_event_wrote_record]-> session:SES-027",
+    "entity_type": "reference",
+    "id": 1412,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.268216"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.269855+00:00",
+      "id": 741,
+      "reference_identifier": "REF-0737",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-026",
+      "source_type": "deposit_event",
+      "target_id": "DEC-087",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-026 -[deposit_event_wrote_record]-> decision:DEC-087",
+    "entity_type": "reference",
+    "id": 1413,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.270227"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.271745+00:00",
+      "id": 742,
+      "reference_identifier": "REF-0738",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-026",
+      "source_type": "deposit_event",
+      "target_id": "DEC-088",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-026 -[deposit_event_wrote_record]-> decision:DEC-088",
+    "entity_type": "reference",
+    "id": 1414,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.272048"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.273444+00:00",
+      "id": 743,
+      "reference_identifier": "REF-0739",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-026",
+      "source_type": "deposit_event",
+      "target_id": "DEC-089",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-026 -[deposit_event_wrote_record]-> decision:DEC-089",
+    "entity_type": "reference",
+    "id": 1415,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.273764"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.275163+00:00",
+      "id": 744,
+      "reference_identifier": "REF-0740",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-026",
+      "source_type": "deposit_event",
+      "target_id": "DEC-090",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-026 -[deposit_event_wrote_record]-> decision:DEC-090",
+    "entity_type": "reference",
+    "id": 1416,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.275468"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.276876+00:00",
+      "id": 745,
+      "reference_identifier": "REF-0741",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-026",
+      "source_type": "deposit_event",
+      "target_id": "DEC-091",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-026 -[deposit_event_wrote_record]-> decision:DEC-091",
+    "entity_type": "reference",
+    "id": 1417,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.277162"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.278607+00:00",
+      "id": 746,
+      "reference_identifier": "REF-0742",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-026",
+      "source_type": "deposit_event",
+      "target_id": "DEC-092",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-026 -[deposit_event_wrote_record]-> decision:DEC-092",
+    "entity_type": "reference",
+    "id": 1418,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.278929"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.280350+00:00",
+      "id": 747,
+      "reference_identifier": "REF-0743",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-026",
+      "source_type": "deposit_event",
+      "target_id": "DEC-093",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-026 -[deposit_event_wrote_record]-> decision:DEC-093",
+    "entity_type": "reference",
+    "id": 1419,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.280730"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.282145+00:00",
+      "id": 748,
+      "reference_identifier": "REF-0744",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-026",
+      "source_type": "deposit_event",
+      "target_id": "DEC-094",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-026 -[deposit_event_wrote_record]-> decision:DEC-094",
+    "entity_type": "reference",
+    "id": 1420,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.282443"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "backfill",
+        "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_027.json",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-24T03:30:13.263167+00:00",
+      "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-015 (SES-027) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 8 decisions, 0 planning items, 0 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-026",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_026-historical.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 8,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-015 (historical backfill, SES-027)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-026",
+    "entity_type": "deposit_event",
+    "id": 1421,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.283026"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.424538+00:00",
+      "id": 749,
+      "reference_identifier": "REF-0745",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-027",
+      "source_type": "deposit_event",
+      "target_id": "COP-016",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-027 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-016",
+    "entity_type": "reference",
+    "id": 1422,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.424954"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.426525+00:00",
+      "id": 750,
+      "reference_identifier": "REF-0746",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-027",
+      "source_type": "deposit_event",
+      "target_id": "SES-029",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-027 -[deposit_event_wrote_record]-> session:SES-029",
+    "entity_type": "reference",
+    "id": 1423,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.426869"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.428335+00:00",
+      "id": 751,
+      "reference_identifier": "REF-0747",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-027",
+      "source_type": "deposit_event",
+      "target_id": "DEC-098",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-027 -[deposit_event_wrote_record]-> decision:DEC-098",
+    "entity_type": "reference",
+    "id": 1424,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.428680"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.430144+00:00",
+      "id": 752,
+      "reference_identifier": "REF-0748",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-027",
+      "source_type": "deposit_event",
+      "target_id": "DEC-099",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-027 -[deposit_event_wrote_record]-> decision:DEC-099",
+    "entity_type": "reference",
+    "id": 1425,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.430482"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.432069+00:00",
+      "id": 753,
+      "reference_identifier": "REF-0749",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-027",
+      "source_type": "deposit_event",
+      "target_id": "DEC-100",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-027 -[deposit_event_wrote_record]-> decision:DEC-100",
+    "entity_type": "reference",
+    "id": 1426,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.432780"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.434623+00:00",
+      "id": 754,
+      "reference_identifier": "REF-0750",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-027",
+      "source_type": "deposit_event",
+      "target_id": "DEC-101",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-027 -[deposit_event_wrote_record]-> decision:DEC-101",
+    "entity_type": "reference",
+    "id": 1427,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.435039"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.436596+00:00",
+      "id": 755,
+      "reference_identifier": "REF-0751",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-027",
+      "source_type": "deposit_event",
+      "target_id": "DEC-102",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-027 -[deposit_event_wrote_record]-> decision:DEC-102",
+    "entity_type": "reference",
+    "id": 1428,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.436884"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.438426+00:00",
+      "id": 756,
+      "reference_identifier": "REF-0752",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-027",
+      "source_type": "deposit_event",
+      "target_id": "DEC-103",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-027 -[deposit_event_wrote_record]-> decision:DEC-103",
+    "entity_type": "reference",
+    "id": 1429,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.438740"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.440392+00:00",
+      "id": 757,
+      "reference_identifier": "REF-0753",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-027",
+      "source_type": "deposit_event",
+      "target_id": "DEC-104",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-027 -[deposit_event_wrote_record]-> decision:DEC-104",
+    "entity_type": "reference",
+    "id": 1430,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.440687"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "backfill",
+        "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_029.json",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-24T03:30:13.422508+00:00",
+      "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-016 (SES-029) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 7 decisions, 0 planning items, 0 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-027",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_027-historical.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 7,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-016 (historical backfill, SES-029)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-027",
+    "entity_type": "deposit_event",
+    "id": 1431,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.441084"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.547562+00:00",
+      "id": 758,
+      "reference_identifier": "REF-0754",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-029",
+      "source_type": "deposit_event",
+      "target_id": "COP-018",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-029 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-018",
+    "entity_type": "reference",
+    "id": 1432,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.547999"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.549837+00:00",
+      "id": 759,
+      "reference_identifier": "REF-0755",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-029",
+      "source_type": "deposit_event",
+      "target_id": "SES-031",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-029 -[deposit_event_wrote_record]-> session:SES-031",
+    "entity_type": "reference",
+    "id": 1433,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.550152"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "backfill",
+        "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_031.json",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-24T03:30:13.545377+00:00",
+      "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-018 (SES-031) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 0 decisions, 0 planning items, 0 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-029",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_029-historical.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 0,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-018 (historical backfill, SES-031)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-029",
+    "entity_type": "deposit_event",
+    "id": 1434,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.550582"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.661598+00:00",
+      "id": 760,
+      "reference_identifier": "REF-0756",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-030",
+      "source_type": "deposit_event",
+      "target_id": "COP-019",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-030 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-019",
+    "entity_type": "reference",
+    "id": 1435,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.662005"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.663616+00:00",
+      "id": 761,
+      "reference_identifier": "REF-0757",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-030",
+      "source_type": "deposit_event",
+      "target_id": "SES-032",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-030 -[deposit_event_wrote_record]-> session:SES-032",
+    "entity_type": "reference",
+    "id": 1436,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.663869"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "backfill",
+        "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_032.json",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-24T03:30:13.659614+00:00",
+      "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-019 (SES-032) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 0 decisions, 0 planning items, 0 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-030",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_030-historical.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 0,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-019 (historical backfill, SES-032)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-030",
+    "entity_type": "deposit_event",
+    "id": 1437,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.664297"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.816008+00:00",
+      "id": 762,
+      "reference_identifier": "REF-0758",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-031",
+      "source_type": "deposit_event",
+      "target_id": "COP-020",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-031 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-020",
+    "entity_type": "reference",
+    "id": 1438,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.816664"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.818545+00:00",
+      "id": 763,
+      "reference_identifier": "REF-0759",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-031",
+      "source_type": "deposit_event",
+      "target_id": "SES-033",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-031 -[deposit_event_wrote_record]-> session:SES-033",
+    "entity_type": "reference",
+    "id": 1439,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.818951"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "backfill",
+        "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_033.json",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-24T03:30:13.813562+00:00",
+      "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-020 (SES-033) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 0 decisions, 0 planning items, 0 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-031",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_031-historical.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 0,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-020 (historical backfill, SES-033)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-031",
+    "entity_type": "deposit_event",
+    "id": 1440,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.819424"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.930458+00:00",
+      "id": 764,
+      "reference_identifier": "REF-0760",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-032",
+      "source_type": "deposit_event",
+      "target_id": "COP-021",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-032 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-021",
+    "entity_type": "reference",
+    "id": 1441,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.931081"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:13.933047+00:00",
+      "id": 765,
+      "reference_identifier": "REF-0761",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-032",
+      "source_type": "deposit_event",
+      "target_id": "SES-034",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-032 -[deposit_event_wrote_record]-> session:SES-034",
+    "entity_type": "reference",
+    "id": 1442,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.933560"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "backfill",
+        "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_034.json",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-24T03:30:13.928200+00:00",
+      "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-021 (SES-034) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 0 decisions, 0 planning items, 0 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-032",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_032-historical.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 0,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-021 (historical backfill, SES-034)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-032",
+    "entity_type": "deposit_event",
+    "id": 1443,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:13.934111"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:14.041347+00:00",
+      "id": 766,
+      "reference_identifier": "REF-0762",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-033",
+      "source_type": "deposit_event",
+      "target_id": "COP-022",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-033 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-022",
+    "entity_type": "reference",
+    "id": 1444,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.041744"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:14.043300+00:00",
+      "id": 767,
+      "reference_identifier": "REF-0763",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-033",
+      "source_type": "deposit_event",
+      "target_id": "SES-035",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-033 -[deposit_event_wrote_record]-> session:SES-035",
+    "entity_type": "reference",
+    "id": 1445,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.043550"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "backfill",
+        "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_035.json",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-24T03:30:14.039354+00:00",
+      "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-022 (SES-035) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 0 decisions, 0 planning items, 0 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-033",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_033-historical.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 0,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-022 (historical backfill, SES-035)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-033",
+    "entity_type": "deposit_event",
+    "id": 1446,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.043927"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:14.195276+00:00",
+      "id": 768,
+      "reference_identifier": "REF-0764",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-034",
+      "source_type": "deposit_event",
+      "target_id": "COP-023",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-034 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-023",
+    "entity_type": "reference",
+    "id": 1447,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.195724"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:14.197377+00:00",
+      "id": 769,
+      "reference_identifier": "REF-0765",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-034",
+      "source_type": "deposit_event",
+      "target_id": "SES-036",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-034 -[deposit_event_wrote_record]-> session:SES-036",
+    "entity_type": "reference",
+    "id": 1448,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.197826"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:14.199565+00:00",
+      "id": 770,
+      "reference_identifier": "REF-0766",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-034",
+      "source_type": "deposit_event",
+      "target_id": "DEC-105",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-034 -[deposit_event_wrote_record]-> decision:DEC-105",
+    "entity_type": "reference",
+    "id": 1449,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.200093"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:14.201748+00:00",
+      "id": 771,
+      "reference_identifier": "REF-0767",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-034",
+      "source_type": "deposit_event",
+      "target_id": "DEC-106",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-034 -[deposit_event_wrote_record]-> decision:DEC-106",
+    "entity_type": "reference",
+    "id": 1450,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.202061"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:14.203755+00:00",
+      "id": 772,
+      "reference_identifier": "REF-0768",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-034",
+      "source_type": "deposit_event",
+      "target_id": "DEC-107",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-034 -[deposit_event_wrote_record]-> decision:DEC-107",
+    "entity_type": "reference",
+    "id": 1451,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.203992"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "backfill",
+        "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_036.json",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-24T03:30:14.192822+00:00",
+      "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-023 (SES-036) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 3 decisions, 0 planning items, 0 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-034",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_034-historical.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 3,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-023 (historical backfill, SES-036)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-034",
+    "entity_type": "deposit_event",
+    "id": 1452,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.204551"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:14.318502+00:00",
+      "id": 773,
+      "reference_identifier": "REF-0769",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-035",
+      "source_type": "deposit_event",
+      "target_id": "COP-024",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-035 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-024",
+    "entity_type": "reference",
+    "id": 1453,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.318964"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:14.320481+00:00",
+      "id": 774,
+      "reference_identifier": "REF-0770",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-035",
+      "source_type": "deposit_event",
+      "target_id": "SES-037",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-035 -[deposit_event_wrote_record]-> session:SES-037",
+    "entity_type": "reference",
+    "id": 1454,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.320717"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "backfill",
+        "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_037.json",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-24T03:30:14.316366+00:00",
+      "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-024 (SES-037) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 0 decisions, 0 planning items, 0 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-035",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_035-historical.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 0,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-024 (historical backfill, SES-037)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-035",
+    "entity_type": "deposit_event",
+    "id": 1455,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.321072"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:14.443119+00:00",
+      "id": 775,
+      "reference_identifier": "REF-0771",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-036",
+      "source_type": "deposit_event",
+      "target_id": "COP-025",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-036 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-025",
+    "entity_type": "reference",
+    "id": 1456,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.443573"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:14.445209+00:00",
+      "id": 776,
+      "reference_identifier": "REF-0772",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-036",
+      "source_type": "deposit_event",
+      "target_id": "SES-038",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-036 -[deposit_event_wrote_record]-> session:SES-038",
+    "entity_type": "reference",
+    "id": 1457,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.445469"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "backfill",
+        "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_038.json",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-24T03:30:14.441054+00:00",
+      "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-025 (SES-038) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 0 decisions, 0 planning items, 0 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-036",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_036-historical.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 0,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-025 (historical backfill, SES-038)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-036",
+    "entity_type": "deposit_event",
+    "id": 1458,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.445943"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:14.586959+00:00",
+      "id": 777,
+      "reference_identifier": "REF-0773",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-037",
+      "source_type": "deposit_event",
+      "target_id": "COP-026",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-037 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-026",
+    "entity_type": "reference",
+    "id": 1459,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.587573"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:14.589324+00:00",
+      "id": 778,
+      "reference_identifier": "REF-0774",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-037",
+      "source_type": "deposit_event",
+      "target_id": "SES-039",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-037 -[deposit_event_wrote_record]-> session:SES-039",
+    "entity_type": "reference",
+    "id": 1460,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.589601"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "backfill",
+        "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_039.json",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-24T03:30:14.547323+00:00",
+      "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-026 (SES-039) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 0 decisions, 0 planning items, 0 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-037",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_037-historical.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 0,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-026 (historical backfill, SES-039)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-037",
+    "entity_type": "deposit_event",
+    "id": 1461,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.590027"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:14.700364+00:00",
+      "id": 779,
+      "reference_identifier": "REF-0775",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-038",
+      "source_type": "deposit_event",
+      "target_id": "COP-027",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-038 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-027",
+    "entity_type": "reference",
+    "id": 1462,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.700923"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:14.702526+00:00",
+      "id": 780,
+      "reference_identifier": "REF-0776",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-038",
+      "source_type": "deposit_event",
+      "target_id": "SES-040",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-038 -[deposit_event_wrote_record]-> session:SES-040",
+    "entity_type": "reference",
+    "id": 1463,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.702786"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "backfill",
+        "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_040.json",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-24T03:30:14.697817+00:00",
+      "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-027 (SES-040) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 0 decisions, 0 planning items, 0 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-038",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_038-historical.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 0,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-027 (historical backfill, SES-040)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-038",
+    "entity_type": "deposit_event",
+    "id": 1464,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.703168"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:14.814499+00:00",
+      "id": 781,
+      "reference_identifier": "REF-0777",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-039",
+      "source_type": "deposit_event",
+      "target_id": "COP-028",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-039 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-028",
+    "entity_type": "reference",
+    "id": 1465,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.815003"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:14.817061+00:00",
+      "id": 782,
+      "reference_identifier": "REF-0778",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-039",
+      "source_type": "deposit_event",
+      "target_id": "SES-041",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-039 -[deposit_event_wrote_record]-> session:SES-041",
+    "entity_type": "reference",
+    "id": 1466,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.817448"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "backfill",
+        "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_041.json",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-24T03:30:14.812383+00:00",
+      "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-028 (SES-041) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 0 decisions, 0 planning items, 0 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-039",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_039-historical.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 0,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-028 (historical backfill, SES-041)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-039",
+    "entity_type": "deposit_event",
+    "id": 1467,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.817898"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:14.933041+00:00",
+      "id": 783,
+      "reference_identifier": "REF-0779",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-040",
+      "source_type": "deposit_event",
+      "target_id": "COP-029",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-040 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-029",
+    "entity_type": "reference",
+    "id": 1468,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.933519"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:14.935091+00:00",
+      "id": 784,
+      "reference_identifier": "REF-0780",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-040",
+      "source_type": "deposit_event",
+      "target_id": "SES-042",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-040 -[deposit_event_wrote_record]-> session:SES-042",
+    "entity_type": "reference",
+    "id": 1469,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.935326"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "backfill",
+        "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_042.json",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-24T03:30:14.930624+00:00",
+      "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-029 (SES-042) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 0 decisions, 0 planning items, 0 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-040",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_040-historical.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 0,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-029 (historical backfill, SES-042)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-040",
+    "entity_type": "deposit_event",
+    "id": 1470,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:14.935687"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:15.081496+00:00",
+      "id": 785,
+      "reference_identifier": "REF-0781",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-041",
+      "source_type": "deposit_event",
+      "target_id": "COP-030",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-041 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-030",
+    "entity_type": "reference",
+    "id": 1471,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:15.081894"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:15.083533+00:00",
+      "id": 786,
+      "reference_identifier": "REF-0782",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-041",
+      "source_type": "deposit_event",
+      "target_id": "SES-043",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-041 -[deposit_event_wrote_record]-> session:SES-043",
+    "entity_type": "reference",
+    "id": 1472,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:15.083830"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "backfill",
+        "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_043.json",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-24T03:30:15.079430+00:00",
+      "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-030 (SES-043) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 0 decisions, 0 planning items, 0 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-041",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_041-historical.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 0,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-030 (historical backfill, SES-043)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-041",
+    "entity_type": "deposit_event",
+    "id": 1473,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:15.084195"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:15.195161+00:00",
+      "id": 787,
+      "reference_identifier": "REF-0783",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-042",
+      "source_type": "deposit_event",
+      "target_id": "COP-031",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-042 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-031",
+    "entity_type": "reference",
+    "id": 1474,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:15.195609"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:15.197175+00:00",
+      "id": 788,
+      "reference_identifier": "REF-0784",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-042",
+      "source_type": "deposit_event",
+      "target_id": "SES-044",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-042 -[deposit_event_wrote_record]-> session:SES-044",
+    "entity_type": "reference",
+    "id": 1475,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:15.197558"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:15.199515+00:00",
+      "id": 789,
+      "reference_identifier": "REF-0785",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-042",
+      "source_type": "deposit_event",
+      "target_id": "DEC-108",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-042 -[deposit_event_wrote_record]-> decision:DEC-108",
+    "entity_type": "reference",
+    "id": 1476,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:15.199931"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:15.201518+00:00",
+      "id": 790,
+      "reference_identifier": "REF-0786",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-042",
+      "source_type": "deposit_event",
+      "target_id": "DEC-109",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-042 -[deposit_event_wrote_record]-> decision:DEC-109",
+    "entity_type": "reference",
+    "id": 1477,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:15.201822"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:15.203335+00:00",
+      "id": 791,
+      "reference_identifier": "REF-0787",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-042",
+      "source_type": "deposit_event",
+      "target_id": "DEC-110",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-042 -[deposit_event_wrote_record]-> decision:DEC-110",
+    "entity_type": "reference",
+    "id": 1478,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:15.203647"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:15.205131+00:00",
+      "id": 792,
+      "reference_identifier": "REF-0788",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-042",
+      "source_type": "deposit_event",
+      "target_id": "DEC-111",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-042 -[deposit_event_wrote_record]-> decision:DEC-111",
+    "entity_type": "reference",
+    "id": 1479,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:15.205443"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:15.207014+00:00",
+      "id": 793,
+      "reference_identifier": "REF-0789",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-042",
+      "source_type": "deposit_event",
+      "target_id": "DEC-112",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-042 -[deposit_event_wrote_record]-> decision:DEC-112",
+    "entity_type": "reference",
+    "id": 1480,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:15.207428"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:15.209077+00:00",
+      "id": 794,
+      "reference_identifier": "REF-0790",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-042",
+      "source_type": "deposit_event",
+      "target_id": "DEC-113",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-042 -[deposit_event_wrote_record]-> decision:DEC-113",
+    "entity_type": "reference",
+    "id": 1481,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:15.209385"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:15.211025+00:00",
+      "id": 795,
+      "reference_identifier": "REF-0791",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-042",
+      "source_type": "deposit_event",
+      "target_id": "DEC-114",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-042 -[deposit_event_wrote_record]-> decision:DEC-114",
+    "entity_type": "reference",
+    "id": 1482,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:15.211357"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:15.212929+00:00",
+      "id": 796,
+      "reference_identifier": "REF-0792",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-042",
+      "source_type": "deposit_event",
+      "target_id": "PI-021",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-042 -[deposit_event_wrote_record]-> planning_item:PI-021",
+    "entity_type": "reference",
+    "id": 1483,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:15.213187"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "backfill",
+        "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_044.json",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-24T03:30:15.192942+00:00",
+      "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-031 (SES-044) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 7 decisions, 1 planning items, 0 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-042",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_042-historical.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 7,
+        "planning_items": 1,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-031 (historical backfill, SES-044)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-042",
+    "entity_type": "deposit_event",
+    "id": 1484,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:15.213574"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:15.364328+00:00",
+      "id": 797,
+      "reference_identifier": "REF-0793",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-043",
+      "source_type": "deposit_event",
+      "target_id": "COP-032",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-043 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-032",
+    "entity_type": "reference",
+    "id": 1485,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:15.365092"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:15.367309+00:00",
+      "id": 798,
+      "reference_identifier": "REF-0794",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-043",
+      "source_type": "deposit_event",
+      "target_id": "SES-053",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-043 -[deposit_event_wrote_record]-> session:SES-053",
+    "entity_type": "reference",
+    "id": 1486,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:15.367833"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:15.369776+00:00",
+      "id": 799,
+      "reference_identifier": "REF-0795",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-043",
+      "source_type": "deposit_event",
+      "target_id": "DEC-153",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-043 -[deposit_event_wrote_record]-> decision:DEC-153",
+    "entity_type": "reference",
+    "id": 1487,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:15.370219"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T03:30:15.372054+00:00",
+      "id": 800,
+      "reference_identifier": "REF-0796",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-043",
+      "source_type": "deposit_event",
+      "target_id": "DEC-154",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-043 -[deposit_event_wrote_record]-> decision:DEC-154",
+    "entity_type": "reference",
+    "id": 1488,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:15.372377"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "backfill",
+        "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_053.json",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-24T03:30:15.361815+00:00",
+      "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-032 (SES-053) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 2 decisions, 0 planning items, 0 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-043",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_043-historical.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 2,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-032 (historical backfill, SES-053)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-043",
+    "entity_type": "deposit_event",
+    "id": 1489,
+    "operation": "insert",
+    "timestamp": "2026-05-24T03:30:15.372787"
   }
 ]

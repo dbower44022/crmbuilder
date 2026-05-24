@@ -379,5 +379,485 @@
       "sessions": 1
     },
     "deposit_event_title": "Apply of COP-066, 2026-05-24T01:39:38+00:00"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "backfill",
+      "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_012.json",
+      "runner": "backfill_script"
+    },
+    "deposit_event_created_at": "2026-05-24T03:30:12.478121",
+    "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-009 (SES-012) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 6 decisions, 3 planning items, 0 references.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-020",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_020-historical.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 6,
+      "planning_items": 3,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-009 (historical backfill, SES-012)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "backfill",
+      "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_013.json",
+      "runner": "backfill_script"
+    },
+    "deposit_event_created_at": "2026-05-24T03:30:12.643882",
+    "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-010 (SES-013) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 5 decisions, 2 planning items, 0 references.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-021",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_021-historical.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 5,
+      "planning_items": 2,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-010 (historical backfill, SES-013)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "backfill",
+      "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_014.json",
+      "runner": "backfill_script"
+    },
+    "deposit_event_created_at": "2026-05-24T03:30:12.759724",
+    "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-011 (SES-014) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 5 decisions, 1 planning items, 0 references.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-022",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_022-historical.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 5,
+      "planning_items": 1,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-011 (historical backfill, SES-014)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "backfill",
+      "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_015.json",
+      "runner": "backfill_script"
+    },
+    "deposit_event_created_at": "2026-05-24T03:30:12.880341",
+    "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-012 (SES-015) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 5 decisions, 1 planning items, 0 references.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-023",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_023-historical.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 5,
+      "planning_items": 1,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-012 (historical backfill, SES-015)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "backfill",
+      "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_025.json",
+      "runner": "backfill_script"
+    },
+    "deposit_event_created_at": "2026-05-24T03:30:12.996558",
+    "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-013 (SES-025) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 3 decisions, 0 planning items, 0 references.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-024",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_024-historical.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 3,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-013 (historical backfill, SES-025)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "backfill",
+      "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_026.json",
+      "runner": "backfill_script"
+    },
+    "deposit_event_created_at": "2026-05-24T03:30:13.139625",
+    "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-014 (SES-026) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 9 decisions, 1 planning items, 0 references.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-025",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_025-historical.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 9,
+      "planning_items": 1,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-014 (historical backfill, SES-026)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "backfill",
+      "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_027.json",
+      "runner": "backfill_script"
+    },
+    "deposit_event_created_at": "2026-05-24T03:30:13.263167",
+    "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-015 (SES-027) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 8 decisions, 0 planning items, 0 references.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-026",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_026-historical.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 8,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-015 (historical backfill, SES-027)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "backfill",
+      "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_029.json",
+      "runner": "backfill_script"
+    },
+    "deposit_event_created_at": "2026-05-24T03:30:13.422508",
+    "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-016 (SES-029) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 7 decisions, 0 planning items, 0 references.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-027",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_027-historical.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 7,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-016 (historical backfill, SES-029)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "backfill",
+      "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_030.json",
+      "runner": "backfill_script"
+    },
+    "deposit_event_created_at": "2026-05-24T01:45:20.387232",
+    "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-017 (SES-030) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 3 decisions, 0 planning items, 0 references.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-028",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_028-historical.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 3,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-017 (historical backfill, SES-030)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "backfill",
+      "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_031.json",
+      "runner": "backfill_script"
+    },
+    "deposit_event_created_at": "2026-05-24T03:30:13.545377",
+    "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-018 (SES-031) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 0 decisions, 0 planning items, 0 references.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-029",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_029-historical.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-018 (historical backfill, SES-031)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "backfill",
+      "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_032.json",
+      "runner": "backfill_script"
+    },
+    "deposit_event_created_at": "2026-05-24T03:30:13.659614",
+    "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-019 (SES-032) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 0 decisions, 0 planning items, 0 references.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-030",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_030-historical.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-019 (historical backfill, SES-032)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "backfill",
+      "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_033.json",
+      "runner": "backfill_script"
+    },
+    "deposit_event_created_at": "2026-05-24T03:30:13.813562",
+    "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-020 (SES-033) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 0 decisions, 0 planning items, 0 references.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-031",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_031-historical.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-020 (historical backfill, SES-033)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "backfill",
+      "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_034.json",
+      "runner": "backfill_script"
+    },
+    "deposit_event_created_at": "2026-05-24T03:30:13.928200",
+    "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-021 (SES-034) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 0 decisions, 0 planning items, 0 references.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-032",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_032-historical.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-021 (historical backfill, SES-034)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "backfill",
+      "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_035.json",
+      "runner": "backfill_script"
+    },
+    "deposit_event_created_at": "2026-05-24T03:30:14.039354",
+    "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-022 (SES-035) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 0 decisions, 0 planning items, 0 references.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-033",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_033-historical.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-022 (historical backfill, SES-035)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "backfill",
+      "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_036.json",
+      "runner": "backfill_script"
+    },
+    "deposit_event_created_at": "2026-05-24T03:30:14.192822",
+    "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-023 (SES-036) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 3 decisions, 0 planning items, 0 references.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-034",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_034-historical.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 3,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-023 (historical backfill, SES-036)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "backfill",
+      "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_037.json",
+      "runner": "backfill_script"
+    },
+    "deposit_event_created_at": "2026-05-24T03:30:14.316366",
+    "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-024 (SES-037) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 0 decisions, 0 planning items, 0 references.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-035",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_035-historical.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-024 (historical backfill, SES-037)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "backfill",
+      "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_038.json",
+      "runner": "backfill_script"
+    },
+    "deposit_event_created_at": "2026-05-24T03:30:14.441054",
+    "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-025 (SES-038) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 0 decisions, 0 planning items, 0 references.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-036",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_036-historical.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-025 (historical backfill, SES-038)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "backfill",
+      "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_039.json",
+      "runner": "backfill_script"
+    },
+    "deposit_event_created_at": "2026-05-24T03:30:14.547323",
+    "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-026 (SES-039) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 0 decisions, 0 planning items, 0 references.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-037",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_037-historical.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-026 (historical backfill, SES-039)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "backfill",
+      "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_040.json",
+      "runner": "backfill_script"
+    },
+    "deposit_event_created_at": "2026-05-24T03:30:14.697817",
+    "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-027 (SES-040) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 0 decisions, 0 planning items, 0 references.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-038",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_038-historical.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-027 (historical backfill, SES-040)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "backfill",
+      "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_041.json",
+      "runner": "backfill_script"
+    },
+    "deposit_event_created_at": "2026-05-24T03:30:14.812383",
+    "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-028 (SES-041) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 0 decisions, 0 planning items, 0 references.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-039",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_039-historical.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-028 (historical backfill, SES-041)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "backfill",
+      "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_042.json",
+      "runner": "backfill_script"
+    },
+    "deposit_event_created_at": "2026-05-24T03:30:14.930624",
+    "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-029 (SES-042) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 0 decisions, 0 planning items, 0 references.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-040",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_040-historical.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-029 (historical backfill, SES-042)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "backfill",
+      "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_043.json",
+      "runner": "backfill_script"
+    },
+    "deposit_event_created_at": "2026-05-24T03:30:15.079430",
+    "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-030 (SES-043) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 0 decisions, 0 planning items, 0 references.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-041",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_041-historical.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-030 (historical backfill, SES-043)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "backfill",
+      "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_044.json",
+      "runner": "backfill_script"
+    },
+    "deposit_event_created_at": "2026-05-24T03:30:15.192942",
+    "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-031 (SES-044) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 7 decisions, 1 planning items, 0 references.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-042",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_042-historical.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 7,
+      "planning_items": 1,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-031 (historical backfill, SES-044)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "backfill",
+      "invocation": "backfill_pi_026: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_053.json",
+      "runner": "backfill_script"
+    },
+    "deposit_event_created_at": "2026-05-24T03:30:15.361815",
+    "deposit_event_description": "Backfilled deposit_event for the historical apply of COP-032 (SES-053) by PI-026 (Phase 4 of PI-022). Records summary: 1 session, 2 decisions, 0 planning items, 0 references.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-043",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_043-historical.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 2,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-032 (historical backfill, SES-053)"
   }
 ]
