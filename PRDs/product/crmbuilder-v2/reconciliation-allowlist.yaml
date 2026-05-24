@@ -1,0 +1,106 @@
+# PI-023 reconciliation allowlist — known data-quality artifacts that the
+# governance graph has formally acknowledged. Each entry references either
+# a governing decision (decided_in: DEC-NNN) or planning item
+# (planning_item: PI-NNN); the canonical reasoning lives in that record.
+#
+# Schema (v1, per DEC-218 in SES-069):
+#
+#   - name: short slug, unique
+#     description: one-line human summary
+#     decided_in: DEC-NNN          # required if planning_item absent
+#     planning_item: PI-NNN        # required if decided_in absent
+#     drift_pattern:
+#       type: records_summary_field | unresolved_payload_references | payload_files_without_cop
+#       # records_summary_field shape:
+#       record_type: deposit_event
+#       identifier_range: DEP-LO..DEP-HI
+#       field: records_summary.<subfield>
+#       expected_value: <literal>
+#       # unresolved_payload_references shape:
+#       payload_file: ses_NNN.json
+#       expected_unresolved_count: <int>
+#       # payload_files_without_cop shape:
+#       payload_files: [ses_NNN.json, ses_MMM.json, ...]
+#
+# Class 4 entries (DEC-197 orphan sessions list) are NOT included — Class 4
+# is out of scope for v1 per DEC-217. Add them when scope expands.
+
+- name: phase-1-references-orphan
+  description: >
+    Phase 1 backfill (DEP-001..DEP-008) deliberately skipped reference
+    wrote_record edges. Mirrors the same pattern later adopted under
+    Option I for PI-026.
+  decided_in: DEC-216
+  drift_pattern:
+    type: records_summary_field
+    record_type: deposit_event
+    identifier_range: DEP-001..DEP-008
+    field: records_summary.references
+    expected_value: 0
+
+- name: option-i-references-orphan
+  description: >
+    PI-026 historical-applies backfill (DEP-020..DEP-043) skipped reference
+    wrote_record edges after the apply-time discovery of the vocab.py
+    schema-vs-spec contradiction (PI-046). DEC-215 supersedes DEC-206.
+  decided_in: DEC-215
+  drift_pattern:
+    type: records_summary_field
+    record_type: deposit_event
+    identifier_range: DEP-020..DEP-043
+    field: records_summary.references
+    expected_value: 0
+
+- name: orphan-session-payload-files-without-cop
+  description: >
+    SES-001 and SES-046 are orphan sessions per DEC-197 (no parent CONV
+    record). PI-026's historical-applies backfill explicitly excluded
+    them per DEC-210 since no CONV exists to attach a close_out_payload
+    to. The session JSON files exist on disk for archival continuity but
+    have no corresponding COP record.
+  decided_in: DEC-210
+  drift_pattern:
+    type: payload_files_without_cop
+    payload_files:
+      - ses_001.json
+      - ses_046.json
+
+- name: ses-001-orphan-unresolved-references
+  description: >
+    ses_001.json claims three decided_in references from DEC-001..003 to
+    SES-001 that do not resolve in the references snapshot. As an
+    orphan-session file per DEC-197/DEC-210, its references were never
+    imported into the governance graph.
+  decided_in: DEC-210
+  drift_pattern:
+    type: unresolved_payload_references
+    payload_file: ses_001.json
+    expected_unresolved_count: 3
+
+- name: pi-047-ses-030-unresolved-references
+  description: >
+    ses_030.json claims four references (decided_in edges from
+    DEC-105/106/107 plus an is_about edge from SES-030 to PI-001) that
+    do not resolve in the references snapshot. The decided_in edges
+    actually point at SES-036, an apparent duplicate-session artifact.
+    Resolution deferred to PI-047.
+  planning_item: PI-047
+  drift_pattern:
+    type: unresolved_payload_references
+    payload_file: ses_030.json
+    expected_unresolved_count: 4
+
+- name: pi-048-ses-056-stale-blocks-vocabulary
+  description: >
+    ses_056.json claims two references with relationship="blocks"
+    (PI-025 blocks PI-024, PI-026 blocks PI-025). The v0.8 methodology
+    rename dropped "blocks" in favor of the directionally-renamed
+    "blocked_by". The corresponding "blocked_by" edges exist in the
+    references snapshot; the payload's claims are stale relative to
+    the rename. PI-048 tracks migration of the payload (or formal
+    acceptance of stale-vocab in historical payloads).
+  planning_item: PI-048
+  drift_pattern:
+    type: unresolved_payload_references
+    payload_file: ses_056.json
+    expected_unresolved_count: 2
