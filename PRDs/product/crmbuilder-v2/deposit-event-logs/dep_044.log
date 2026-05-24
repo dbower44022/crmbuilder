@@ -1,0 +1,19 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_067.json
+Label:  SES-067 PI-029 slice B build planning complete: 4 decisions settled (DEC-211 derived endpoint scope option B — ship only /conversations/{id}/commits, defer /workstreams/{id}/commits; DEC-212 PATCH updatability — commit_parent_shas, commit_files_changed_count, and commit_conversation_id are updatable, identity pair commit_identifier and commit_sha are not; DEC-213 by-sha endpoint specifics — minimum prefix length 4, uppercase input lowercased before query, ambiguous-prefix 409 response uses 'candidates' field with full 40-char SHAs; DEC-214 list endpoint sort and order parameters — default sort commit_committed_at descending matching the UI master pane, sortable column set locked to a known-safe subset). Slice B Claude Code prompt authored and queued for execution. 1 session, 4 decisions (DEC-211..214), 5 references (4 decided_in + 1 is_about session→PI-029).
+Deposit event: DEP-044
+
+=== session (1 record) ===
+  ✓ POST session  SES-067 (HTTP 201)
+
+=== decisions (4 records) ===
+
+=== references (5 records) ===
+  ✓ POST references  DEC-211 decided_in SES-067 (HTTP 201)
+  ✓ POST references  DEC-212 decided_in SES-067 (HTTP 201)
+  ✓ POST references  DEC-213 decided_in SES-067 (HTTP 201)
+  ✓ POST references  DEC-214 decided_in SES-067 (HTTP 201)
+  ✓ POST references  SES-067 is_about PI-029 (HTTP 201)
+
+
+✓ Recorded apply as deposit_event DEP-044 (HTTP 201).

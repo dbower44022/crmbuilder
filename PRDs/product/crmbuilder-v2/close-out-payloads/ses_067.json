@@ -20,7 +20,7 @@
       "alternatives_considered": "Option A: ship both /conversations/{id}/commits and /workstreams/{id}/commits. Rejected — the workstream endpoint is speculative for v0.8 and adds two-hop query machinery (or a denormalization migration) for a use case that has not yet appeared operationally. Adding it now is more machinery than the evidence supports. If the workstream-scoped use case emerges, PI-032+ adds it as one additive migration plus one route handler. Option C: ship neither; rely on GET /commits?commit_conversation_id=<id> against the bare list endpoint. Rejected — the FK column was added per DEC-199 specifically because the conversation → commits walk is high-frequency; the discoverable URL is the natural API-surface complement to that storage decision, and shipping the access without the discoverable URL undersells the storage investment. The two options match the spec's §3.8.1 enumeration; no third candidate URL shape was viable.",
       "consequences": "Slice B's REST surface includes one new derived endpoint (mounted on the conversations router) plus its three tests (happy path, empty list, 404). The /commits routes themselves carry the bare list endpoint with the ?commit_conversation_id= filter as the underlying mechanism that the derived endpoint delegates to. Cross-entity asymmetry persists until or unless future build-planning conversations add parallel conversation-scoped derived endpoints for work_tickets, close_out_payloads, etc. — the asymmetry is a real signal to API consumers that commit is treated differently because of its FK column and frequency profile. PI-032+ is the natural slot for adding /workstreams/{id}/commits if operational evidence emerges; the deferred-to-build-planning entry in §3.8.1 records the pending decision.",
       "decision_date": "2026-05-24",
-      "status": "Final"
+      "status": "Active"
     },
     {
       "identifier": "DEC-212",
@@ -31,7 +31,7 @@
       "alternatives_considered": "Narrow PATCH to the message and authorship fields only, treating parent_shas / files_changed_count / conversation_id as identity-like and requiring soft-delete-and-recreate for their correction. Rejected — those three fields capture observable git metadata or attribution metadata that can be wrong at ingestion (helper bugs, manual-commit attribution mistakes); forcing soft-delete-and-recreate for what is materially the same git object is overkill and conflicts with the spec's stated correction posture in §3.4.3. Lock PATCH to no fields, requiring all corrections to go through PUT. Rejected — the PUT path requires a full-record body, which is more friction than the rare-correction case warrants, and PUT does not change the identity-protection logic (commit_identifier and commit_sha are still rejected on PUT too).",
       "consequences": "The _PATCHABLE_FIELDS frozenset in commits.py admits ten fields. The CommitPatchIn Pydantic schema declares ten optional fields and rejects commit_identifier and commit_sha at the request-validation layer (extra='forbid' inherited from _Base). The administrative-correction test surface (DEC-212 tests in test_commit.py) covers patching parent_shas to a new value, patching files_changed_count to a new value, patching conversation_id with FK existence check, and the two rejection paths (commit_identifier and commit_sha patches return 422). Future workstreams correcting historical commit metadata use PATCH as the primary mechanism; the soft-delete-and-recreate path remains documented in the commit.md spec for the rare wrong-SHA case.",
       "decision_date": "2026-05-24",
-      "status": "Final"
+      "status": "Active"
     },
     {
       "identifier": "DEC-213",
@@ -42,7 +42,7 @@
       "alternatives_considered": "(a) Bump minimum prefix length to 7 to match git's --short default. Rejected — the spec settled on 4 and the project's commit volume does not justify the tighter minimum. (b) Reject uppercase input with HTTP 422. Rejected — worse API ergonomic than normalizing. Strict-validation arguments favor rejection, but transparent normalization is the more common API convention for case-insensitive natural keys (git's own behavior, GitHub's SHA URLs, GitLab's SHA URLs). (c) Return V2 identifiers (CM-NNNN list) as candidates instead of or in addition to the SHAs. Rejected for v0.8 — the caller is asking by SHA so SHAs are the symmetric response; identifiers could be added later if a concrete UI use case wants them.",
       "consequences": "The access-layer's find_by_sha function returns three return shapes: a dict for unambiguous hits, a list[str] for ambiguous prefixes (router maps to 409), or None for misses (router maps to 404). The function lowercases its sha_or_prefix input parameter before query; the SQL startswith does NOT case-normalize, so the access-layer lowercase is the canonical normalization point. The router-level by-sha endpoint raises FastAPI HTTPException with status_code=409 and detail={code: 'ambiguous_sha_prefix', candidates: [...]} for ambiguous matches, and HTTPException with status_code=404 and detail={code: 'commit_sha_not_found', value: <input>} for misses. The test surface in test_commit.py and test_commit_api.py covers all four cases plus the prefix-too-short rejection plus the uppercase-normalization happy path plus the soft-delete exclusion behavior.",
       "decision_date": "2026-05-24",
-      "status": "Final"
+      "status": "Active"
     },
     {
       "identifier": "DEC-214",
@@ -53,7 +53,7 @@
       "alternatives_considered": "Match V2's apparent default ascending sort across other entity types. Rejected — for commits, descending matches the audit-log nature of the entity and the UI master pane convention; the operational pattern for 'what just happened' queries wants most-recent first. Admit any column for sort with free-form input. Rejected — opens the door to injection of unintended columns and makes column-rename refactors more dangerous; the known-safe subset is the standard V2 posture for sort parameter validation. Lock the sort to commit_committed_at only and disallow user-supplied sort parameters. Rejected — too restrictive for legitimate audit queries that want to sort by identity or by physical home (e.g., 'show me every commit in the crmbuilder repo by identity').",
       "consequences": "The access-layer's list_commits function accepts sort and order keyword arguments with defaults commit_committed_at and desc. Sort validation runs at function entry with the _SORTABLE_COLUMNS frozenset; order validation accepts only 'asc' or 'desc'. The router exposes both as query parameters with the same defaults. The test surface in test_commit.py covers the default-descending behavior, the asc reversal, the invalid-column rejection, and the invalid-order rejection. Future workstreams adding new sortable columns extend the _SORTABLE_COLUMNS set in one additive change; the API surface remains backward-compatible because previously-valid sort values continue to validate.",
       "decision_date": "2026-05-24",
-      "status": "Final"
+      "status": "Active"
     }
   ],
   "planning_items": [],

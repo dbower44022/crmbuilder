@@ -859,5 +859,50 @@
       "sessions": 1
     },
     "deposit_event_title": "Apply of COP-032 (historical backfill, SES-053)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "0.7.0",
+      "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_067.json",
+      "runner": "claude_code"
+    },
+    "deposit_event_created_at": "2026-05-24T04:58:46.644586",
+    "deposit_event_description": "Applied COP-067. Outcome: failure at step decisions. Records written before failure: 1 sessions.",
+    "deposit_event_error_info": {
+      "http_status": 400,
+      "kind": "http_error",
+      "message": "[{\"code\": \"invalid_value\", \"field\": \"status\", \"message\": \"must be one of ['Active', 'Deleted', 'Superseded', 'Withdrawn']\"}]",
+      "step": "decisions"
+    },
+    "deposit_event_identifier": "DEP-044",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_044.log",
+    "deposit_event_outcome": "failure",
+    "deposit_event_records_summary": {
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-067, 2026-05-24T04:58:46+00:00"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "0.7.0",
+      "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_067.json",
+      "runner": "claude_code"
+    },
+    "deposit_event_created_at": "2026-05-24T05:00:16.840006",
+    "deposit_event_description": "Applied COP-067. Outcome: success. 4 decisions.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-045",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_045.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 4,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 0
+    },
+    "deposit_event_title": "Apply of COP-067, 2026-05-24T05:00:16+00:00"
   }
 ]
