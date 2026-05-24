@@ -1,0 +1,25 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_066.json
+Label:  SES-066 PI-026 historical-applies-as-deposit-events backfill planned: 5 decisions settled (DEC-206 references included in wrote_record edges, DEC-207 sequential identifier allocation Option A, DEC-208 reference resolution forward-then-reverse-then-skip with data-quality exception logging, DEC-209 apply_context conventions for backfilled DEPs, DEC-210 24-record scope after orphan-CONV constraint excluded SES-001 and SES-046); 24 close_out_payload records (COP-009..COP-032) and 24 deposit_event records (DEP-020..DEP-043) with 221 wrote_record back-edges specified for out-of-band landing via the PI-026 backfill prompt. 1 session, 5 decisions (DEC-206..210), 5 references (5 decided_in).
+Deposit event: DEP-019
+
+=== session (1 record) ===
+  ✓ POST session  SES-066 (HTTP 201)
+
+=== decisions (5 records) ===
+  ✓ POST decisions  DEC-206 (HTTP 201)
+  ✓ POST decisions  DEC-207 (HTTP 201)
+  ✓ POST decisions  DEC-208 (HTTP 201)
+  ✓ POST decisions  DEC-209 (HTTP 201)
+  ✓ POST decisions  DEC-210 (HTTP 201)
+
+=== references (5 records) ===
+  ✓ POST references  DEC-206 decided_in SES-066 (HTTP 201)
+  ✓ POST references  DEC-207 decided_in SES-066 (HTTP 201)
+  ✓ POST references  DEC-208 decided_in SES-066 (HTTP 201)
+  ✓ POST references  DEC-209 decided_in SES-066 (HTTP 201)
+  ✓ POST references  DEC-210 decided_in SES-066 (HTTP 201)
+
+✓ All 11 operations complete.
+
+✓ Recorded apply as deposit_event DEP-019 (HTTP 201).
