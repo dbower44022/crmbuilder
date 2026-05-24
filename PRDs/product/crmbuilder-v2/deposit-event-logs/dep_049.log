@@ -1,0 +1,24 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_070.json
+Label:  SES-070 PI-030 architecture planning — close-out payload extensions and apply integration. Three stop-the-flow decisions settled (Q0 full scope, Q1 emit-time helper, Q2 conversation block) plus one decide-and-announce captured as decision (resolves status-flip via extended POST /references). Three slice prompts authored (A: methodology + resolves; B: apply extensions; C: enumerate_commits.py helper).
+Deposit event: DEP-049
+
+=== session (1 record) ===
+  ✓ POST session  SES-070 (HTTP 201)
+
+=== decisions (4 records) ===
+  ✓ POST decisions  DEC-221 (HTTP 201)
+  ✓ POST decisions  DEC-222 (HTTP 201)
+  ✓ POST decisions  DEC-223 (HTTP 201)
+  ✓ POST decisions  DEC-224 (HTTP 201)
+
+=== references (5 records) ===
+  ✓ POST references  DEC-221 decided_in SES-070 (HTTP 201)
+  ✓ POST references  DEC-222 decided_in SES-070 (HTTP 201)
+  ✓ POST references  DEC-223 decided_in SES-070 (HTTP 201)
+  ✓ POST references  DEC-224 decided_in SES-070 (HTTP 201)
+  ✓ POST references  SES-070 is_about PI-030 (HTTP 201)
+
+✓ All 10 operations complete.
+
+✓ Recorded apply as deposit_event DEP-049 (HTTP 201).
