@@ -1,0 +1,21 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_071.json
+Label:  SES-071 PI-045 V2 remote-access deployment — operational steps 1 through 4 executed at Doug's Linux Mint 22 laptop and the Cloudflare dashboard. Domain crmbuilder.ai's nameservers migrated from GoDaddy to Cloudflare (free plan, team name 'crmbuilder', team_domain crmbuilder.cloudflareaccess.com) with all 5 Google Workspace MX records plus all 5 email-related TXT records (apex SPF, delegated SPF subdomain dc-aa8e722993._spfm, google._domainkey DKIM, _dmarc, google-site-verification) preserved through the migration; the delegated SPF subdomain was missed by Cloudflare's initial DNS scan and added manually. cloudflared 2026.5.0 installed via Cloudflare's apt repository on the Mint-22 host (Ubuntu noble base — codename substitution required since pkg.cloudflare.com lacks zara distribution); zone certificate obtained via cloudflared tunnel login. Tunnel crmbuilder-mcp (UUID 6170403a-eb17-47ee-af94-ea70de6a1e74) created with DNS CNAME mcp.crmbuilder.ai → <UUID>.cfargotunnel.com and config.yml ingress rule routing to 127.0.0.1:8810 plus 404 catch-all. Systemd user unit at ~/.config/systemd/user/crmbuilder-mcp-tunnel.service with lingering enabled via sudo loginctl enable-linger; tunnel persists across reboot and login session boundaries. Cloudflare Access protects mcp.crmbuilder.ai with a Self-hosted Access Application 'CRM Builder MCP' using One-time PIN identity provider, gated by two policies: 'Service Auth claude-ai-mcp' (Action=Service Auth, Include=Service Token claude-ai-mcp) for programmatic claude.ai traffic and 'Allow admin' (Action=Allow, Include=Emails=admin@crmbuilder.ai) for browser admin. DEC-225 settles the Cloudflare Access auth model revisions (Service Token added to satisfy programmatic clients that cannot follow OAuth redirects; One-time PIN replaces Google login because Cloudflare retired the built-in Google OAuth shortcut and bring-your-own Google Cloud OAuth setup is meaningful overhead for a low-frequency single-user admin path). All three auth paths verified end-to-end: unauthenticated requests return HTTP 302 redirecting to crmbuilder.cloudflareaccess.com login; Service Token requests bearing CF-Access-Client-Id and CF-Access-Client-Secret headers return HTTP 502 (auth passes, tunnel reaches 127.0.0.1:8810, no MCP backend listening yet); browser requests authenticated via One-time PIN to admin@crmbuilder.ai reach origin and return 502 from the same tunnel-to-empty-backend path. Step 5 (registering the MCP URL in claude.ai's MCP integration with the X-CRMBuilder-Secret app middleware header and the two CF-Access-* service-token headers) is gated on the PI-045 code-changes implementation conversation completing — slices A (CLI transport flag + FastMCP HTTP binding), B (X-CRMBuilder-Secret middleware), and C (engagement-marker fail-loud guard per DEC-205) have not yet been applied. Identifier rebase note: this work was initially scoped as SES-069 / DEC-216 per the PI-045 kickoff's anticipated identifiers. Three parallel-sandbox commits between this conversation's start and end advanced the identifier heads: SES-069 / DEC-216–220 / PI-048 (PI-023 reconciliation utility planning, applied at commit 1435f0a), SES-070 / DEC-221–224 (PI-030 architecture planning, payload committed at 232e967 awaiting apply), and a 'PI-022 governance-backfill program closed' commit (b34391f). Rebased to SES-071 / DEC-225 to avoid collision. The four parallel-sandbox occurrences flagged in the kickoff (SES-057→058, SES-058→059, SES-062→063→064) and the further SES-068 occurrence now extend to a fifth, which strengthens the PI-032 case for reserve-at-apply-time identifier model.
+
+1 session, 1 decision, 0 planning items, 3 references.
+Deposit event: DEP-050
+
+=== session (1 record) ===
+  ✓ POST session  SES-071 (HTTP 201)
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-225 (HTTP 201)
+
+=== references (3 records) ===
+  ✓ POST references  DEC-225 decided_in SES-071 (HTTP 201)
+  ✓ POST references  SES-071 is_about PI-045 (HTTP 201)
+  ✓ POST references  DEC-225 references DEC-204 (HTTP 201)
+
+✓ All 5 operations complete.
+
+✓ Recorded apply as deposit_event DEP-050 (HTTP 201).
