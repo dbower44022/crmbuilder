@@ -29,11 +29,21 @@ from crmbuilder_v2.runtime.engagement_routing import resolve_active_engagement
 
 _log = logging.getLogger("crmbuilder_v2.api.marker_guard")
 
+# Sentinel meaning "set_marker_at_start() has not been called yet" —
+# distinct from None ("no active engagement at start"). When the guard
+# is in the uninitialized state the middleware short-circuits as a
+# bypass: tests that construct create_app() directly (and do not boot
+# through cli.run_api()) get normal request dispatch instead of a 409
+# from comparing a captured-None against whatever marker file may exist
+# on disk for an unrelated fixture.
+_UNINITIALIZED: object = object()
+
 # Set by cli.run_api() after resolve_active_engagement() returns and
-# before uvicorn boots. None means "no active engagement at start" —
-# treated as a valid starting state; the guard still trips if a marker
-# appears later (string != None).
-_MARKER_AT_START: str | None = None
+# before uvicorn boots. None (after init) means "no active engagement
+# at start" — treated as a valid starting state; the guard still trips
+# if a marker appears later (string != None). _UNINITIALIZED (before
+# init) means the guard is dormant.
+_MARKER_AT_START: object = _UNINITIALIZED
 
 # Paths exempt from the marker guard. These must remain available even
 # when the API process is bound to a stale engagement so operators can
@@ -55,8 +65,14 @@ def set_marker_at_start(value: str | None) -> None:
     _log.info("marker_guard: captured engagement at start = %r", value)
 
 
-def get_marker_at_start() -> str | None:
-    """Return the captured marker. Used by tests."""
+def reset_marker_at_start_for_tests() -> None:
+    """Restore the uninitialized sentinel. Used by tests for isolation."""
+    global _MARKER_AT_START
+    _MARKER_AT_START = _UNINITIALIZED
+
+
+def get_marker_at_start() -> str | None | object:
+    """Return the captured marker (or the sentinel). Used by tests."""
     return _MARKER_AT_START
 
 
@@ -64,6 +80,8 @@ class EngagementMarkerGuardMiddleware(BaseHTTPMiddleware):
     """Reject requests when the live marker differs from the start marker."""
 
     async def dispatch(self, request: Request, call_next):
+        if _MARKER_AT_START is _UNINITIALIZED:
+            return await call_next(request)
         if request.url.path in EXEMPT_PATHS:
             return await call_next(request)
 

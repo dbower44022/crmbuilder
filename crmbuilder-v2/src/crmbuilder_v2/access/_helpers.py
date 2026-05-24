@@ -13,15 +13,20 @@ _PREFIXED_IDENTIFIER_RE = re.compile(r"^(?P<prefix>[A-Z]+)-(?P<num>\d+)$")
 
 
 def next_prefixed_identifier(
-    identifiers: Iterable[str | None], prefix: str
+    identifiers: Iterable[str | None],
+    prefix: str,
+    *,
+    width: int = 3,
 ) -> str:
     """Compute the next ``PREFIX-NNN`` identifier from existing ones.
 
     Scans ``identifiers`` for values matching ``{prefix}-{digits}``,
     takes the highest numeric suffix, increments it, and zero-pads to
-    three digits. Values that don't match the prefix pattern (or are
+    ``width`` digits (default 3 for backward compatibility with v0.1-v0.7
+    governance entity types; commits use width=4 per commit.md §3.5.3).
+    Values that don't match the prefix pattern (or are
     ``None``/empty) are ignored. An empty or all-non-matching input
-    yields ``{prefix}-001``.
+    yields ``{prefix}-001`` at width=3 or ``{prefix}-0001`` at width=4.
 
     Callers should pass *all* rows including soft-deleted ones so that
     a deleted record's identifier is never reused.
@@ -34,7 +39,7 @@ def next_prefixed_identifier(
         if match is None or match.group("prefix") != prefix:
             continue
         highest = max(highest, int(match.group("num")))
-    return f"{prefix}-{highest + 1:03d}"
+    return f"{prefix}-{highest + 1:0{width}d}"
 
 
 def to_dict(row) -> dict:

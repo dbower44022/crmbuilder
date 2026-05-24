@@ -10,6 +10,7 @@ from starlette.testclient import TestClient
 
 from crmbuilder_v2.api.marker_guard import (
     EngagementMarkerGuardMiddleware,
+    reset_marker_at_start_for_tests,
     set_marker_at_start,
 )
 
@@ -28,6 +29,23 @@ def app():
     application = Starlette(routes=routes)
     application.add_middleware(EngagementMarkerGuardMiddleware)
     return application
+
+
+@pytest.fixture(autouse=True)
+def _reset_marker_after_test():
+    yield
+    reset_marker_at_start_for_tests()
+
+
+def test_uninitialized_guard_bypasses(app, monkeypatch):
+    monkeypatch.setattr(
+        "crmbuilder_v2.api.marker_guard.resolve_active_engagement",
+        lambda: "CRMBUILDER",
+    )
+    client = TestClient(app)
+    response = client.get("/ping")
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
 
 
 def test_matching_marker_dispatches_normally(app, monkeypatch):

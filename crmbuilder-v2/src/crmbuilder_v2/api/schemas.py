@@ -714,6 +714,54 @@ class CloseOutPayloadPatchIn(_Base):
     references: list[GovernanceEdgeIn] | None = None
 
 
+class CommitCreateIn(_Base):
+    commit_sha: str
+    commit_message_first_line: str
+    commit_message_full: str
+    commit_author_name: str
+    commit_author_email: str
+    commit_committed_at: str
+    commit_repository: str
+    commit_branch: str | None = "main"
+    commit_parent_shas: list[str]
+    commit_files_changed_count: int
+    commit_conversation_id: str
+    commit_identifier: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+    timestamps: dict[str, Any] | None = None
+
+
+class CommitReplaceIn(_Base):
+    commit_identifier: str | None = None
+    # body may echo current; access layer rejects any change
+    commit_sha: str | None = None
+    commit_message_first_line: str
+    commit_message_full: str
+    commit_author_name: str
+    commit_author_email: str
+    commit_committed_at: str
+    commit_repository: str
+    commit_branch: str
+    commit_parent_shas: list[str]
+    commit_files_changed_count: int
+    commit_conversation_id: str
+    references: list[GovernanceEdgeIn] | None = None
+
+
+class CommitPatchIn(_Base):
+    commit_message_first_line: str | None = None
+    commit_message_full: str | None = None
+    commit_author_name: str | None = None
+    commit_author_email: str | None = None
+    commit_committed_at: str | None = None
+    commit_repository: str | None = None
+    commit_branch: str | None = None
+    commit_parent_shas: list[str] | None = None
+    commit_files_changed_count: int | None = None
+    commit_conversation_id: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+
+
 class DepositEventEdgeIn(_Base):
     """An outbound edge on a deposit_event POST (source is the new event)."""
 
