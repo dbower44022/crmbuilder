@@ -160,12 +160,62 @@ class PanelSpec:
 
 
 @dataclass
+class LayoutVariant:
+    """A single role-scoped layout variant (Section 12.5.2).
+
+    The variant form lets different roles see structurally different
+    layouts for the same entity. A layout type (``detail`` or
+    ``edit``) may be declared as a list of variants instead of as a
+    single block; each variant carries a required ``forRoles:`` list
+    and the standard panel (or column) payload.
+
+    Per DEC-6, deploy of variant-form layouts is NOT_SUPPORTED on
+    EspoCRM 9.x — the loader accepts the YAML but the layout_manager
+    emits NOT_SUPPORTED status for any layout type using the variant
+    form. The dataclass is populated for audit round-trip and future
+    v1.4 deploy support.
+
+    :param for_roles: List of role names this variant applies to.
+        Per §12.5.2 coverage rule, every role declared in
+        ``program.roles`` must appear in exactly one variant's
+        ``for_roles`` for each variant-form layout type (enforced at
+        validate_program time).
+    :param panels: Panel list (for detail / edit variants).
+    :param columns: Column list (for list variants — also
+        NOT_SUPPORTED in v1.3 per DEC-6; populated for round-trip
+        only).
+    """
+
+    for_roles: list[str]
+    panels: list[PanelSpec] = field(default_factory=list)
+    columns: list[ColumnSpec] = field(default_factory=list)
+
+
+@dataclass
 class LayoutSpec:
-    """Layout definition for one layout type (detail, edit, or list)."""
+    """Layout definition for one layout type (detail, edit, or list).
+
+    Carries EITHER ``panels``/``columns`` (single-block form,
+    backward-compatible) OR ``variants`` (variant form, per
+    §12.5.2). Never both — the loader enforces this distinction
+    structurally.
+
+    :param layout_type: ``detail``, ``edit``, or ``list``.
+    :param panels: Panel list for single-block detail/edit layouts.
+    :param columns: Column list for single-block list layouts.
+    :param variants: List of LayoutVariant for variant-form
+        layouts. When present, ``panels`` and ``columns`` are
+        empty / None; the variants carry the per-role payload.
+    """
 
     layout_type: str
     panels: list[PanelSpec] | None = None
     columns: list[ColumnSpec] | None = None
+    variants: list[LayoutVariant] = field(default_factory=list)
+
+    def has_variants(self) -> bool:
+        """True if this layout uses the variant form (§12.5.2)."""
+        return bool(self.variants)
 
 
 class EntityAction(Enum):
@@ -923,6 +973,7 @@ class EntityLayoutStatus(Enum):
     SKIPPED = "skipped"
     VERIFICATION_FAILED = "verification_failed"
     ERROR = "error"
+    NOT_SUPPORTED = "not_supported"
 
 
 @dataclass
@@ -934,6 +985,34 @@ class LayoutResult:
     status: EntityLayoutStatus
     verified: bool = False
     error: str | None = None
+
+
+@dataclass
+class NotSupportedRoleClauseRecord:
+    """A field or panel whose visibleWhen contained role clauses and so
+    was skipped at deploy time (DEC-6 — deferred to v1.4).
+
+    The owning field or panel still deploys normally; only the
+    dynamic-logic visibility block is omitted from the payload.
+    The record exists so the run report can surface affected
+    items in the MANUAL CONFIGURATION REQUIRED advisory block.
+
+    :param entity_name: Owning entity name.
+    :param field_name: Field name, or panel label when ``is_panel``
+        is True.
+    :param is_panel: True for panel-level visibleWhen, False for
+        field-level visibleWhen.
+    :param reason: Human-readable explanation surfaced in the
+        advisory block.
+    """
+
+    entity_name: str
+    field_name: str
+    is_panel: bool = False
+    reason: str = (
+        "visibleWhen contains role clauses; EspoCRM 9.x Dynamic Logic "
+        "has no role-condition type (DEC-6 — deferred to v1.4)"
+    )
 
 
 class SettingsStatus(Enum):
@@ -1215,5 +1294,8 @@ class RunReport:
     workflow_results: list[WorkflowResult] = field(default_factory=list)
     filtered_tab_results: list[FilteredTabResult] = field(default_factory=list)
     step_results: list[StepResult] = field(default_factory=list)
+    not_supported_role_clauses: list[NotSupportedRoleClauseRecord] = field(
+        default_factory=list,
+    )
 
 

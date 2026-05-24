@@ -570,6 +570,14 @@ class RunWorker(QThread):
                     )
                     report.layout_results.extend(layout_results)
 
+                # Merge panel-level role-aware-visibility NOT_SUPPORTED
+                # records into the run report (DEC-6). Field-level
+                # records were already attached by field_mgr's report
+                # builder in Step 7.
+                report.not_supported_role_clauses.extend(
+                    layout_mgr._not_supported_role_clauses
+                )
+
                 # Update summary
                 for lr in report.layout_results:
                     if lr.status == EntityLayoutStatus.UPDATED:
@@ -1027,12 +1035,36 @@ class RunWorker(QThread):
             )
         ]
 
+        # Section 12.5 NOT_SUPPORTED items (DEC-6):
+        # - Field-level visibleWhen with role clauses
+        # - Panel-level visibleWhen with role clauses
+        # - Variant-form layouts (`forRoles:`) — surfaced as
+        #   LayoutResult NOT_SUPPORTED
+        role_field_items = [
+            f"  {r.entity_name}.{r.field_name} (field visibleWhen)"
+            for r in report.not_supported_role_clauses
+            if not r.is_panel
+        ]
+        role_panel_items = [
+            f"  {r.entity_name}.panel[{r.field_name}] visibleWhen"
+            for r in report.not_supported_role_clauses
+            if r.is_panel
+        ]
+        variant_layout_items = [
+            f"  {r.entity}.layout.{r.layout_type} (forRoles variant)"
+            for r in report.layout_results
+            if r.status == EntityLayoutStatus.NOT_SUPPORTED
+        ]
+
         if not (
             saved_view_items
             or dup_check_items
             or workflow_items
             or filtered_tab_items
             or filtered_tab_post_install
+            or role_field_items
+            or role_panel_items
+            or variant_layout_items
         ):
             return
 
@@ -1086,6 +1118,29 @@ class RunWorker(QThread):
             self.output_line.emit(line, "yellow")
         self.output_line.emit(
             "  See reports/filtered_tabs/<run_ts>/README.txt for steps.",
+            "yellow",
+        )
+        self.output_line.emit("", "yellow")
+
+        # Section 12.5 — Role-aware visibility (NOT_SUPPORTED on
+        # EspoCRM 9.x per DEC-6; deferred to v1.4).
+        self.output_line.emit(
+            "Section 12.5 role-aware visibility "
+            "(NOT_SUPPORTED on EspoCRM 9.x):",
+            "yellow",
+        )
+        self.output_line.emit("  Fields with role-clause visibleWhen:", "yellow")
+        for line in (role_field_items or ["    (none)"]):
+            self.output_line.emit(line, "yellow")
+        self.output_line.emit("  Panels with role-clause visibleWhen:", "yellow")
+        for line in (role_panel_items or ["    (none)"]):
+            self.output_line.emit(line, "yellow")
+        self.output_line.emit("  Layouts with forRoles variants:", "yellow")
+        for line in (variant_layout_items or ["    (none)"]):
+            self.output_line.emit(line, "yellow")
+        self.output_line.emit(
+            "  Configure manually via Dynamic Handler JS modules or "
+            "Layout Sets + Teams (see schema §12.5 Deploy Support).",
             "yellow",
         )
 

@@ -13,12 +13,14 @@ from typing import Any
 
 from espo_impl.core.api_client import EspoAdminClient, _format_error_detail
 from espo_impl.core.condition_expression import render_condition
+from espo_impl.core.field_manager import _condition_has_role_clauses
 from espo_impl.core.models import (
     EntityDefinition,
     EntityLayoutStatus,
     FieldDefinition,
     LayoutResult,
     LayoutSpec,
+    NotSupportedRoleClauseRecord,
     PanelSpec,
 )
 from espo_impl.ui.confirm_delete_dialog import (
@@ -52,6 +54,13 @@ class LayoutManager:
     ) -> None:
         self.client = client
         self.output_fn = output_fn
+        # Accumulator for panels whose visibleWhen contained role
+        # clauses — DEC-6: deploy is NOT_SUPPORTED on EspoCRM 9.x,
+        # so the dynamic-logic visible block is omitted and the
+        # panel is surfaced in the run report's MANUAL CONFIG block.
+        self._not_supported_role_clauses: list[
+            NotSupportedRoleClauseRecord
+        ] = []
 
     def process_layouts(
         self,
@@ -140,12 +149,36 @@ class LayoutManager:
         :raises LayoutManagerError: If 401 received.
         """
         prefix = f"{yaml_name}.{layout_type}"
+
+        # Variant-form layouts (§12.5.2) cannot be deployed natively
+        # on EspoCRM 9.x (DEC-6 — no per-role layout binding without
+        # Layout Sets + Teams). Skip the write and emit
+        # NOT_SUPPORTED so the MANUAL CONFIG block surfaces it.
+        if layout_spec.has_variants():
+            reason = (
+                "Layout uses forRoles variants (§12.5.2); EspoCRM 9.x "
+                "does not support per-role layouts natively (DEC-6 — "
+                "deferred to v1.4). Configure manually via Layout "
+                "Sets + Teams."
+            )
+            self.output_fn(
+                f"[LAYOUT]  {prefix} ... NOT SUPPORTED — {reason}",
+                "yellow",
+            )
+            return LayoutResult(
+                entity=yaml_name,
+                layout_type=layout_type,
+                status=EntityLayoutStatus.NOT_SUPPORTED,
+                error=reason,
+            )
+
         self.output_fn(f"[LAYOUT]  {prefix} ... CHECKING", "white")
 
         # Build the desired payload
         payload = self._build_payload(
             layout_spec, field_definitions, custom_field_names,
             auto_place_name=auto_place_name,
+            entity_name=yaml_name,
         )
 
         # Fetch current layout
@@ -217,6 +250,7 @@ class LayoutManager:
         field_definitions: list[FieldDefinition],
         custom_field_names: set[str],
         auto_place_name: bool,
+        entity_name: str = "",
     ) -> list[dict[str, Any]] | list[Any]:
         """Convert a LayoutSpec to the EspoCRM API payload.
 
@@ -227,6 +261,8 @@ class LayoutManager:
             detail/edit layouts that do not place it explicitly.
             Ignored for list layouts (list columns declare `name`
             explicitly in YAML).
+        :param entity_name: Owning entity name (used to record
+            NOT_SUPPORTED panel-level visibleWhen items per DEC-6).
         :returns: API payload (list of panels for detail/edit, list of columns for list).
         """
         if layout_spec.layout_type == "list":
@@ -236,6 +272,7 @@ class LayoutManager:
         return self._build_detail_payload(
             layout_spec, field_definitions, custom_field_names,
             auto_place_name=auto_place_name,
+            entity_name=entity_name,
         )
 
     def _build_list_payload(
@@ -266,6 +303,7 @@ class LayoutManager:
         field_definitions: list[FieldDefinition],
         custom_field_names: set[str],
         auto_place_name: bool,
+        entity_name: str = "",
     ) -> list[dict[str, Any]]:
         """Build a detail/edit layout payload.
 
@@ -276,6 +314,8 @@ class LayoutManager:
         :param custom_field_names: Set of custom field names.
         :param auto_place_name: Whether to auto-prepend `name` when
             it is not explicitly placed anywhere in the panels.
+        :param entity_name: Owning entity name (used to record
+            NOT_SUPPORTED panel-level visibleWhen items per DEC-6).
         :returns: List of panel dicts.
         """
         result: list[dict[str, Any]] = []
@@ -283,13 +323,15 @@ class LayoutManager:
         for panel in layout_spec.panels or []:
             if panel.tabs:
                 expanded = self._expand_tabs(
-                    panel, field_definitions, custom_field_names
+                    panel, field_definitions, custom_field_names,
+                    entity_name=entity_name,
                 )
                 result.extend(expanded)
             else:
                 result.append(
                     self._build_panel_dict(
-                        panel, custom_field_names
+                        panel, custom_field_names,
+                        entity_name=entity_name,
                     )
                 )
 
@@ -303,20 +345,39 @@ class LayoutManager:
         panel: PanelSpec,
         custom_field_names: set[str],
         rows_override: list | None = None,
+        entity_name: str = "",
     ) -> dict[str, Any]:
         """Build a single panel dict for the API payload.
 
         :param panel: Panel specification.
         :param custom_field_names: Set of custom field names.
         :param rows_override: Override rows (for tab expansion).
+        :param entity_name: Owning entity name (used to record
+            NOT_SUPPORTED panel-level visibleWhen items per DEC-6).
         :returns: Panel dict.
         """
         rows = rows_override if rows_override is not None else panel.rows
         api_rows = self._build_rows(rows or [], custom_field_names)
 
         # Determine dynamic-logic visibility:
-        # visibleWhen (v1.1) takes precedence over dynamicLogicVisible (deprecated)
-        if panel.visible_when is not None:
+        # visibleWhen (v1.1) takes precedence over dynamicLogicVisible
+        # (deprecated). DEC-6: when visibleWhen contains role clauses,
+        # omit the dynamic-logic visible block entirely — EspoCRM 9.x
+        # has no role-condition type. The panel still deploys (label,
+        # rows, tabs); only its visibility control is dropped.
+        if (
+            panel.visible_when is not None
+            and _condition_has_role_clauses(panel.visible_when)
+        ):
+            self._not_supported_role_clauses.append(
+                NotSupportedRoleClauseRecord(
+                    entity_name=entity_name,
+                    field_name=panel.label,
+                    is_panel=True,
+                )
+            )
+            dynamic_vis = None
+        elif panel.visible_when is not None:
             dynamic_vis = self._build_visible_when(
                 panel.visible_when, custom_field_names
             )
@@ -344,15 +405,34 @@ class LayoutManager:
         panel: PanelSpec,
         field_definitions: list[FieldDefinition],
         custom_field_names: set[str],
+        entity_name: str = "",
     ) -> list[dict[str, Any]]:
         """Expand a panel with tabs into multiple API panel objects.
 
         :param panel: Panel with tabs.
         :param field_definitions: Field definitions for auto-row generation.
         :param custom_field_names: Set of custom field names.
+        :param entity_name: Owning entity name (used to record
+            NOT_SUPPORTED panel-level visibleWhen items per DEC-6).
         :returns: List of expanded panel dicts.
         """
         result: list[dict[str, Any]] = []
+
+        # DEC-6: when the panel's visibleWhen contains role clauses,
+        # omit the visible block from every expanded tab panel and
+        # record once.
+        panel_has_role_visible_when = (
+            panel.visible_when is not None
+            and _condition_has_role_clauses(panel.visible_when)
+        )
+        if panel_has_role_visible_when:
+            self._not_supported_role_clauses.append(
+                NotSupportedRoleClauseRecord(
+                    entity_name=entity_name,
+                    field_name=panel.label,
+                    is_panel=True,
+                )
+            )
 
         for i, tab in enumerate(panel.tabs or []):
             if tab.rows is not None:
@@ -363,7 +443,9 @@ class LayoutManager:
                 )
 
             # visibleWhen (v1.1) takes precedence
-            if panel.visible_when is not None:
+            if panel_has_role_visible_when:
+                dynamic_vis = None
+            elif panel.visible_when is not None:
                 dynamic_vis = self._build_visible_when(
                     panel.visible_when, custom_field_names
                 )

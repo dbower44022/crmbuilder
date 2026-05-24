@@ -36,6 +36,7 @@ from espo_impl.core.models import (
     FilteredTab,
     Formula,
     LayoutSpec,
+    LayoutVariant,
     OrderByClause,
     PanelSpec,
     ProgramContext,
@@ -157,7 +158,9 @@ class ConfigLoader:
                 raw_layout = entity_data.get("layout", {})
                 if isinstance(raw_layout, dict):
                     for layout_type, layout_data in raw_layout.items():
-                        if isinstance(layout_data, dict):
+                        # Single-block (dict) or variant form (list);
+                        # both dispatch via _parse_layout per §12.5.2.
+                        if isinstance(layout_data, (dict, list)):
                             layouts[layout_type] = self._parse_layout(
                                 layout_type, layout_data,
                                 entity_name=entity_name,
@@ -323,6 +326,9 @@ class ConfigLoader:
             # Section 12 — roles and teams
             errors.extend(self._validate_roles(program))
             errors.extend(self._validate_teams(program))
+
+            # Section 12.5.2 — layout-variant coverage rule
+            errors.extend(self._validate_layout_variants(program))
 
             for rel in program.relationships:
                 errors.extend(self._validate_relationship(rel))
@@ -539,18 +545,35 @@ class ConfigLoader:
     def _parse_layout(
         self,
         layout_type: str,
-        data: dict[str, Any],
+        data: dict[str, Any] | list,
         entity_name: str = "",
         deprecation_warnings: list[str] | None = None,
     ) -> LayoutSpec:
         """Parse a layout definition from YAML.
 
+        Supports the single-block form (a dict with ``panels:`` for
+        detail/edit, ``columns:`` for list) and the variant form
+        (a list of variant dicts each with ``forRoles:`` plus the
+        standard payload — Section 12.5.2). Variant-form layouts are
+        accepted at parse time but deploy is NOT_SUPPORTED on
+        EspoCRM 9.x per DEC-6; the layout_manager surfaces the
+        status downstream.
+
         :param layout_type: Layout type (detail, edit, list).
-        :param data: Raw layout data.
+        :param data: Raw layout data (dict for single-block, list
+            for variant form).
         :param entity_name: Entity name for deprecation warning context.
         :param deprecation_warnings: Accumulator for deprecation messages.
         :returns: LayoutSpec instance.
         """
+        if isinstance(data, list):
+            return self._parse_layout_variants(
+                layout_type,
+                data,
+                entity_name=entity_name,
+                deprecation_warnings=deprecation_warnings,
+            )
+
         if layout_type == "list":
             columns: list[ColumnSpec] = []
             for col_data in data.get("columns", []):
@@ -569,6 +592,69 @@ class ConfigLoader:
                     deprecation_warnings=deprecation_warnings,
                 ))
         return LayoutSpec(layout_type=layout_type, panels=panels)
+
+    def _parse_layout_variants(
+        self,
+        layout_type: str,
+        data: list,
+        entity_name: str = "",
+        deprecation_warnings: list[str] | None = None,
+    ) -> LayoutSpec:
+        """Parse a variant-form layout per Section 12.5.2.
+
+        :param layout_type: Layout type (detail, edit, list).
+        :param data: List of variant dicts.
+        :param entity_name: Entity name for deprecation warning context.
+        :param deprecation_warnings: Accumulator for deprecation messages.
+        :returns: LayoutSpec with the ``variants`` field populated.
+        :raises ValueError: On malformed variant entries (missing
+            forRoles list, non-list forRoles, empty forRoles).
+        """
+        variants: list[LayoutVariant] = []
+        for idx, variant_data in enumerate(data):
+            if not isinstance(variant_data, dict):
+                raise ValueError(
+                    f"Layout variant [{idx}] for layout type "
+                    f"'{layout_type}' must be a mapping, got "
+                    f"{type(variant_data).__name__}"
+                )
+            for_roles = variant_data.get("forRoles")
+            if not isinstance(for_roles, list) or not for_roles:
+                raise ValueError(
+                    f"Layout variant [{idx}] for layout type "
+                    f"'{layout_type}' must have a non-empty "
+                    f"'forRoles' list"
+                )
+            if not all(isinstance(r, str) and r for r in for_roles):
+                raise ValueError(
+                    f"Layout variant [{idx}] for layout type "
+                    f"'{layout_type}': every 'forRoles' entry must "
+                    f"be a non-empty string role name"
+                )
+            if layout_type == "list":
+                v_columns = [
+                    self._parse_column(c)
+                    for c in variant_data.get("columns", [])
+                ]
+                variants.append(LayoutVariant(
+                    for_roles=list(for_roles),
+                    columns=v_columns,
+                ))
+            else:
+                v_panels = [
+                    self._parse_panel(
+                        p,
+                        entity_name=entity_name,
+                        deprecation_warnings=deprecation_warnings,
+                    )
+                    for p in variant_data.get("panels", [])
+                    if isinstance(p, dict)
+                ]
+                variants.append(LayoutVariant(
+                    for_roles=list(for_roles),
+                    panels=v_panels,
+                ))
+        return LayoutSpec(layout_type=layout_type, variants=variants)
 
     def _parse_panel(
         self,
@@ -669,6 +755,12 @@ class ConfigLoader:
             errors.append(f"{prefix}: unsupported layout type '{layout_type}'")
             return errors
 
+        # Variant-form layouts (§12.5.2) are NOT_SUPPORTED at deploy
+        # per DEC-6, but the program-level coverage rule still runs
+        # via _validate_layout_variants (called from validate_program).
+        if layout_spec.has_variants():
+            return errors
+
         if layout_type == "list":
             if not layout_spec.columns:
                 errors.append(f"{prefix}: list layout must have 'columns'")
@@ -740,8 +832,15 @@ class ConfigLoader:
                         panel.visible_when, field_names
                     )
                     padded_names = field_names | unknown_refs
+                    role_names = (
+                        self._active_context.role_names
+                        if self._active_context is not None else None
+                    )
                     structural_errors = validate_condition(
-                        panel.visible_when, padded_names
+                        panel.visible_when,
+                        padded_names,
+                        allow_role_clauses=True,
+                        known_roles=role_names,
                     )
                     for err in structural_errors:
                         errors.append(
@@ -781,6 +880,75 @@ class ConfigLoader:
                                 # Allow native field names (not in YAML fields)
                                 pass
 
+        return errors
+
+    def _validate_layout_variants(
+        self, program: ProgramFile,
+    ) -> list[str]:
+        """Validate Section 12.5.2 coverage rule for variant-form layouts.
+
+        Every role in ``program.roles`` (or in the active
+        ``ProgramContext.role_names``) must appear in exactly one
+        variant's ``for_roles`` for each variant-form layout type.
+        Unmatched and doubly-matched roles produce hard-reject errors.
+
+        :param program: The program being validated.
+        :returns: List of error messages.
+        """
+        errors: list[str] = []
+        if self._active_context is not None:
+            all_role_names = self._active_context.role_names
+        else:
+            all_role_names = frozenset(r.name for r in program.roles)
+
+        for entity in program.entities:
+            for layout_type, layout_spec in entity.layouts.items():
+                if not layout_spec.has_variants():
+                    continue
+                prefix = f"{entity.name}.layout.{layout_type}"
+
+                # Surface variant references to roles not declared
+                # anywhere in the batch (regardless of coverage status).
+                for variant in layout_spec.variants:
+                    for role_name in variant.for_roles:
+                        if role_name not in all_role_names:
+                            errors.append(
+                                f"{prefix}: variant references role "
+                                f"'{role_name}' not declared in any "
+                                f"program file's roles: block"
+                            )
+
+                if not all_role_names:
+                    # No declared roles → coverage rule has nothing to
+                    # enforce; the unresolved-name check above is the
+                    # only meaningful signal.
+                    continue
+
+                claim_count: dict[str, int] = dict.fromkeys(all_role_names, 0)
+                for variant in layout_spec.variants:
+                    for role_name in variant.for_roles:
+                        if role_name in claim_count:
+                            claim_count[role_name] += 1
+                unmatched = sorted(
+                    r for r, n in claim_count.items() if n == 0
+                )
+                doubly = sorted(
+                    r for r, n in claim_count.items() if n > 1
+                )
+                for r in unmatched:
+                    errors.append(
+                        f"{prefix}: role '{r}' is declared in roles: "
+                        f"but does not appear in any variant's "
+                        f"'forRoles' list. Per §12.5.2, every role "
+                        f"must appear in exactly one variant."
+                    )
+                for r in doubly:
+                    errors.append(
+                        f"{prefix}: role '{r}' appears in more than "
+                        f"one variant's 'forRoles' list. Per §12.5.2, "
+                        f"every role must appear in exactly one "
+                        f"variant."
+                    )
         return errors
 
     def _validate_field(
@@ -1111,7 +1279,22 @@ class ConfigLoader:
 
         unknown_refs = collect_unknown_fields(parsed, field_names)
         padded_names = field_names | unknown_refs
-        structural_errors = validate_condition(parsed, padded_names)
+        # Field-level visibleWhen permits role clauses (Section 12.5.1);
+        # requiredWhen does not — requirement is record-validation,
+        # not viewing-context.
+        if attr == "visible_when":
+            role_names = (
+                self._active_context.role_names
+                if self._active_context is not None else None
+            )
+            structural_errors = validate_condition(
+                parsed,
+                padded_names,
+                allow_role_clauses=True,
+                known_roles=role_names,
+            )
+        else:
+            structural_errors = validate_condition(parsed, padded_names)
 
         for err in structural_errors:
             errors.append(f"{prefix}.{spec_name}: {err}")

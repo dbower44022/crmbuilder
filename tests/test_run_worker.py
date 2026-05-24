@@ -1740,3 +1740,115 @@ def test_emit_step_summary_run_complete_message_treats_no_work_as_success():
         "Run completed with" in m and "step failure" in m
         for m in messages
     )
+
+
+# ───────────────────────────────────────────────────────────────────────
+# §12.5 role-aware visibility surfacing in MANUAL CONFIG (Prompt G)
+# ───────────────────────────────────────────────────────────────────────
+
+
+def test_manual_config_block_lists_role_aware_visibility_items():
+    """MANUAL CONFIG block surfaces field, panel, and variant-layout
+    NOT_SUPPORTED items under the §12.5 sub-header."""
+    from espo_impl.core.models import (
+        EntityLayoutStatus,
+        LayoutResult,
+        NotSupportedRoleClauseRecord,
+        RunReport,
+    )
+
+    worker, output_log = _make_run_worker_for_step_tests()
+
+    report = RunReport(
+        timestamp="2026-05-24T00:00:00",
+        instance_name="Test",
+        espocrm_url="https://test.com",
+        program_file="x.yaml",
+        operation="run",
+        not_supported_role_clauses=[
+            NotSupportedRoleClauseRecord(
+                entity_name="Contact",
+                field_name="secretField",
+                is_panel=False,
+            ),
+            NotSupportedRoleClauseRecord(
+                entity_name="Contact",
+                field_name="Mentor only",
+                is_panel=True,
+            ),
+        ],
+        layout_results=[
+            LayoutResult(
+                entity="Contact",
+                layout_type="detail",
+                status=EntityLayoutStatus.NOT_SUPPORTED,
+                error="forRoles variant deploy not supported",
+            ),
+        ],
+    )
+
+    worker._emit_manual_config_block(report)
+
+    messages = [m for m, _ in output_log]
+    assert any("MANUAL CONFIGURATION REQUIRED" in m for m in messages)
+    assert any(
+        "Section 12.5 role-aware visibility" in m for m in messages
+    )
+    assert any(
+        "Contact.secretField" in m and "field visibleWhen" in m
+        for m in messages
+    )
+    assert any(
+        "Contact.panel[Mentor only]" in m for m in messages
+    )
+    assert any(
+        "Contact.layout.detail" in m and "forRoles variant" in m
+        for m in messages
+    )
+
+
+def test_manual_config_block_role_only_triggers_emit():
+    """When the only NOT_SUPPORTED content is §12.5 items, the block
+    still emits (was previously suppressed)."""
+    from espo_impl.core.models import (
+        NotSupportedRoleClauseRecord,
+        RunReport,
+    )
+
+    worker, output_log = _make_run_worker_for_step_tests()
+
+    report = RunReport(
+        timestamp="2026-05-24T00:00:00",
+        instance_name="Test",
+        espocrm_url="https://test.com",
+        program_file="x.yaml",
+        operation="run",
+        not_supported_role_clauses=[
+            NotSupportedRoleClauseRecord(
+                entity_name="Contact",
+                field_name="secretField",
+            ),
+        ],
+    )
+
+    worker._emit_manual_config_block(report)
+    messages = [m for m, _ in output_log]
+    assert any("MANUAL CONFIGURATION REQUIRED" in m for m in messages)
+    assert any("Section 12.5" in m for m in messages)
+
+
+def test_manual_config_block_suppressed_when_no_role_items_or_others():
+    """No MANUAL CONFIG block when nothing requires manual config."""
+    from espo_impl.core.models import RunReport
+
+    worker, output_log = _make_run_worker_for_step_tests()
+    report = RunReport(
+        timestamp="2026-05-24T00:00:00",
+        instance_name="Test",
+        espocrm_url="https://test.com",
+        program_file="x.yaml",
+        operation="run",
+    )
+    worker._emit_manual_config_block(report)
+    messages = [m for m, _ in output_log]
+    assert not any("MANUAL CONFIGURATION REQUIRED" in m for m in messages)

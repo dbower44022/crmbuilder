@@ -3204,3 +3204,360 @@ def test_program_context_role_team_counts_accumulate(loader, tmp_path):
     context = ProgramContext.from_programs([pa, pb])
     assert context.role_count_by_name == {"Mentor": 2}
     assert context.team_count_by_name == {"HQ": 2}
+
+
+# ---------------------------------------------------------------------------
+# Section 12.5 — Role-aware visibility (Prompt G)
+# ---------------------------------------------------------------------------
+
+
+def _write(tmp_path: Path, name: str, content: str) -> Path:
+    path = tmp_path / name
+    path.write_text(dedent(content))
+    return path
+
+
+def test_parse_layout_variants_detail(loader, tmp_path):
+    """detail layout with two variants parses to LayoutSpec with variants."""
+    path = _write(tmp_path, "p.yaml", """\
+        version: "1.0"
+        description: "Variant detail"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+            layout:
+              detail:
+                - forRoles: ["Mentor"]
+                  panels:
+                    - label: "Mentor panel"
+                      rows: [[foo]]
+                - forRoles: ["Admin"]
+                  panels:
+                    - label: "Admin panel"
+                      rows: [[foo]]
+        roles:
+          - name: Mentor
+          - name: Admin
+    """)
+    program = loader.load_program(path)
+    detail = program.entities[0].layouts["detail"]
+    assert detail.has_variants() is True
+    assert detail.panels in (None, [])
+    assert len(detail.variants) == 2
+    assert detail.variants[0].for_roles == ["Mentor"]
+    assert detail.variants[1].for_roles == ["Admin"]
+
+
+def test_parse_layout_variants_list_accepted(loader, tmp_path):
+    """list layout with variants parses (deploy NOT_SUPPORTED downstream)."""
+    path = _write(tmp_path, "p.yaml", """\
+        version: "1.0"
+        description: "Variant list"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+            layout:
+              list:
+                - forRoles: ["Mentor"]
+                  columns:
+                    - field: foo
+                - forRoles: ["Admin"]
+                  columns:
+                    - field: foo
+        roles:
+          - name: Mentor
+          - name: Admin
+    """)
+    program = loader.load_program(path)
+    list_layout = program.entities[0].layouts["list"]
+    assert list_layout.has_variants() is True
+    assert len(list_layout.variants) == 2
+    assert list_layout.variants[0].columns[0].field == "foo"
+
+
+def test_parse_layout_variants_missing_forRoles(loader, tmp_path):
+    """Variant without forRoles is rejected at parse time."""
+    path = _write(tmp_path, "p.yaml", """\
+        version: "1.0"
+        description: "Bad variant"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+            layout:
+              detail:
+                - panels:
+                    - label: "P"
+                      rows: [[foo]]
+    """)
+    with pytest.raises(ValueError, match="forRoles"):
+        loader.load_program(path)
+
+
+def test_parse_layout_variants_empty_forRoles(loader, tmp_path):
+    """Empty forRoles list is rejected."""
+    path = _write(tmp_path, "p.yaml", """\
+        version: "1.0"
+        description: "Bad variant"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+            layout:
+              detail:
+                - forRoles: []
+                  panels:
+                    - label: "P"
+                      rows: [[foo]]
+    """)
+    with pytest.raises(ValueError, match="forRoles"):
+        loader.load_program(path)
+
+
+def test_parse_layout_single_block_still_works(loader, tmp_path):
+    """Regression: existing single-block detail layout parses unchanged."""
+    path = _write(tmp_path, "p.yaml", """\
+        version: "1.0"
+        description: "Single block"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+            layout:
+              detail:
+                panels:
+                  - label: "P"
+                    rows: [[foo]]
+    """)
+    program = loader.load_program(path)
+    detail = program.entities[0].layouts["detail"]
+    assert detail.has_variants() is False
+    assert detail.panels is not None
+    assert detail.panels[0].label == "P"
+
+
+def test_layout_coverage_unmatched_role(loader, tmp_path):
+    """Coverage rule rejects a role not claimed by any variant."""
+    path = _write(tmp_path, "p.yaml", """\
+        version: "1.0"
+        description: "Unmatched"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+            layout:
+              detail:
+                - forRoles: ["Mentor"]
+                  panels:
+                    - label: "P"
+                      rows: [[foo]]
+        roles:
+          - name: Mentor
+          - name: Admin
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    matching = [e for e in errors if "Admin" in e and "does not appear" in e]
+    assert matching, f"expected coverage error, got: {errors}"
+
+
+def test_layout_coverage_doubly_matched_role(loader, tmp_path):
+    """Coverage rule rejects a role appearing in two variants."""
+    path = _write(tmp_path, "p.yaml", """\
+        version: "1.0"
+        description: "Doubly matched"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+            layout:
+              detail:
+                - forRoles: ["Mentor"]
+                  panels:
+                    - label: "P1"
+                      rows: [[foo]]
+                - forRoles: ["Mentor"]
+                  panels:
+                    - label: "P2"
+                      rows: [[foo]]
+        roles:
+          - name: Mentor
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    matching = [e for e in errors if "Mentor" in e and "more than one" in e]
+    assert matching, f"expected double-match error, got: {errors}"
+
+
+def test_layout_coverage_full_match_clean(loader, tmp_path):
+    """Every role covered by exactly one variant → no coverage errors."""
+    path = _write(tmp_path, "p.yaml", """\
+        version: "1.0"
+        description: "Full coverage"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+            layout:
+              detail:
+                - forRoles: ["Mentor"]
+                  panels:
+                    - label: "P1"
+                      rows: [[foo]]
+                - forRoles: ["Admin"]
+                  panels:
+                    - label: "P2"
+                      rows: [[foo]]
+        roles:
+          - name: Mentor
+          - name: Admin
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    coverage_errors = [
+        e for e in errors
+        if "does not appear" in e or "more than one" in e
+    ]
+    assert coverage_errors == [], f"unexpected coverage errors: {errors}"
+
+
+def test_layout_variant_references_unknown_role(loader, tmp_path):
+    """A variant referencing a role not declared anywhere is flagged."""
+    path = _write(tmp_path, "p.yaml", """\
+        version: "1.0"
+        description: "Unknown role"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+            layout:
+              detail:
+                - forRoles: ["GhostRole"]
+                  panels:
+                    - label: "P"
+                      rows: [[foo]]
+        roles:
+          - name: Mentor
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    matching = [
+        e for e in errors
+        if "GhostRole" in e and "not declared" in e
+    ]
+    assert matching, f"expected unknown-role error, got: {errors}"
+
+
+def test_field_visibleWhen_role_clause_accepted_at_loader(loader, tmp_path):
+    """visibleWhen with role clause parses + validates clean at loader."""
+    path = _write(tmp_path, "p.yaml", """\
+        version: "1.0"
+        description: "Role visible"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+                visibleWhen:
+                  - { role: equals, value: "Mentor" }
+        roles:
+          - name: Mentor
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert errors == []
+
+
+def test_field_requiredWhen_role_clause_rejected(loader, tmp_path):
+    """requiredWhen with role clause is rejected (defaults from Prompt F)."""
+    path = _write(tmp_path, "p.yaml", """\
+        version: "1.0"
+        description: "Bad required"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+                requiredWhen:
+                  - { role: equals, value: "Mentor" }
+        roles:
+          - name: Mentor
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    matching = [e for e in errors if "not permitted in this context" in e]
+    assert matching, f"expected context-rejection error, got: {errors}"
+
+
+def test_saved_view_filter_role_clause_rejected(loader, tmp_path):
+    """savedView.filter with role clause is rejected."""
+    path = _write(tmp_path, "p.yaml", """\
+        version: "1.0"
+        description: "Bad filter"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+            savedViews:
+              - id: sv1
+                name: "Test"
+                columns: [foo]
+                filter:
+                  - { role: equals, value: "Mentor" }
+        roles:
+          - name: Mentor
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    matching = [e for e in errors if "not permitted in this context" in e]
+    assert matching, f"expected context-rejection error, got: {errors}"
+
+
+def test_panel_visibleWhen_role_clause_accepted(loader, tmp_path):
+    """Panel-level visibleWhen with role clause parses + validates clean."""
+    path = _write(tmp_path, "p.yaml", """\
+        version: "1.0"
+        description: "Panel role visible"
+        entities:
+          Contact:
+            fields:
+              - name: foo
+                type: varchar
+                label: "Foo"
+            layout:
+              detail:
+                panels:
+                  - label: "Mentor only"
+                    rows: [[foo]]
+                    visibleWhen:
+                      - { role: equals, value: "Mentor" }
+        roles:
+          - name: Mentor
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert errors == []

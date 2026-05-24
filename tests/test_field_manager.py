@@ -491,3 +491,107 @@ def test_build_payload_omits_link_and_field_for_non_foreign():
     payload = manager._build_payload(field_def)
     assert "link" not in payload
     assert "field" not in payload
+
+
+# ---------------------------------------------------------------------------
+# Section 12.5 — role-aware visibleWhen on fields (Prompt G, DEC-6)
+# ---------------------------------------------------------------------------
+
+
+def _role_visible_field() -> FieldDefinition:
+    """Helper: field whose visibleWhen is a pure role clause."""
+    from espo_impl.core.condition_expression import parse_condition
+
+    field_def = FieldDefinition(
+        name="secretField",
+        type="varchar",
+        label="Secret",
+    )
+    field_def.visible_when = parse_condition(
+        {"role": "equals", "value": "Mentor"}
+    )
+    return field_def
+
+
+def _field_only_visible_field() -> FieldDefinition:
+    """Helper: field whose visibleWhen is a pure field clause."""
+    from espo_impl.core.condition_expression import parse_condition
+
+    field_def = FieldDefinition(
+        name="conditionalField",
+        type="varchar",
+        label="Conditional",
+    )
+    field_def.visible_when = parse_condition(
+        [{"field": "status", "op": "equals", "value": "Active"}]
+    )
+    return field_def
+
+
+def _compound_visible_field() -> FieldDefinition:
+    """Helper: field whose visibleWhen mixes a role clause and a field clause."""
+    from espo_impl.core.condition_expression import parse_condition
+
+    field_def = FieldDefinition(
+        name="mixedField",
+        type="varchar",
+        label="Mixed",
+    )
+    field_def.visible_when = parse_condition({
+        "any": [
+            {"role": "equals", "value": "Mentor"},
+            {"field": "status", "op": "equals", "value": "Active"},
+        ]
+    })
+    return field_def
+
+
+def test_field_with_role_aware_visibleWhen_deploys_without_visible_block():
+    """visibleWhen with role clause → omit dynamicLogicVisible and record."""
+    manager, _ = make_manager()
+    field_def = _role_visible_field()
+    payload = manager._build_payload(field_def, entity="Contact")
+    assert "dynamicLogicVisible" not in payload
+    assert len(manager._not_supported_role_clauses) == 1
+    rec = manager._not_supported_role_clauses[0]
+    assert rec.entity_name == "Contact"
+    assert rec.field_name == "secretField"
+    assert rec.is_panel is False
+
+
+def test_field_with_field_only_visibleWhen_deploys_with_visible_block():
+    """Regression: pure field-clause visibleWhen still emits the block."""
+    manager, _ = make_manager()
+    field_def = _field_only_visible_field()
+    payload = manager._build_payload(field_def, entity="Contact")
+    assert "dynamicLogicVisible" in payload
+    assert manager._not_supported_role_clauses == []
+
+
+def test_field_with_compound_role_and_field_visibleWhen_omits_block():
+    """Compound any: containing both kinds — omit whole block (DEC-6)."""
+    manager, _ = make_manager()
+    field_def = _compound_visible_field()
+    payload = manager._build_payload(field_def, entity="Contact")
+    assert "dynamicLogicVisible" not in payload
+    assert len(manager._not_supported_role_clauses) == 1
+    assert (
+        manager._not_supported_role_clauses[0].field_name == "mixedField"
+    )
+
+
+def test_build_report_attaches_not_supported_role_clauses():
+    """The accumulator transfers to the report on _build_report."""
+    manager, _ = make_manager()
+    field_def = _role_visible_field()
+    manager._build_payload(field_def, entity="Contact")
+    program = ProgramFile(
+        version="1.0",
+        description="Test",
+        entities=[EntityDefinition(name="Contact", fields=[field_def])],
+    )
+    report = manager._build_report(program, "run", [])
+    assert len(report.not_supported_role_clauses) == 1
+    assert (
+        report.not_supported_role_clauses[0].field_name == "secretField"
+    )

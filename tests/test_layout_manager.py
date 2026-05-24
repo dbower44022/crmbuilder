@@ -844,3 +844,129 @@ def test_auto_place_name_all_panels_conditional_falls_back_to_first():
     # Better placed conditionally than not at all.
     assert saved_payload[0]["rows"][0] == [{"name": "name"}]
     assert saved_payload[0]["rows"][1] == [{"name": "amount"}]
+
+
+# ---------------------------------------------------------------------------
+# Section 12.5.2 — variant-form layout NOT_SUPPORTED (Prompt G, DEC-6)
+# ---------------------------------------------------------------------------
+
+
+def test_variant_form_layout_emits_not_supported():
+    """A variant-form layout produces LayoutResult with NOT_SUPPORTED."""
+    from espo_impl.core.models import LayoutVariant
+
+    client = MagicMock(spec=EspoAdminClient)
+    manager, _ = make_manager(client)
+    entity = EntityDefinition(
+        name="Contact",
+        fields=make_fields(("foo", "varchar", "ident")),
+        layouts={
+            "detail": LayoutSpec(
+                layout_type="detail",
+                variants=[
+                    LayoutVariant(
+                        for_roles=["Mentor"],
+                        panels=[
+                            PanelSpec(label="P", rows=[["foo"]]),
+                        ],
+                    ),
+                ],
+            ),
+        },
+    )
+    results = manager.process_layouts(entity, entity.fields)
+    assert len(results) == 1
+    assert results[0].status == EntityLayoutStatus.NOT_SUPPORTED
+    assert "forRoles" in (results[0].error or "")
+    # The save_layout endpoint must not be called for variant-form layouts.
+    client.save_layout.assert_not_called()
+    client.get_layout.assert_not_called()
+
+
+def test_single_block_layout_unchanged_regression():
+    """Regression: a single-block layout still proceeds through the
+    normal CHECK→APPLY path (no NOT_SUPPORTED short-circuit)."""
+    client = MagicMock(spec=EspoAdminClient)
+    client.get_layout.return_value = (200, [])
+    client.save_layout.return_value = (200, {})
+    manager, _ = make_manager(client)
+    entity = EntityDefinition(
+        name="Contact",
+        fields=make_fields(("foo", "varchar", "ident")),
+        layouts={
+            "detail": LayoutSpec(
+                layout_type="detail",
+                panels=[PanelSpec(label="P", rows=[["foo"]])],
+            ),
+        },
+    )
+    results = manager.process_layouts(entity, entity.fields)
+    assert results[0].status != EntityLayoutStatus.NOT_SUPPORTED
+    client.get_layout.assert_called_once()
+
+
+def test_panel_visible_when_with_role_clause_records_not_supported():
+    """Panel-level visibleWhen containing a role clause omits the
+    dynamicLogicVisible block and records to the accumulator (DEC-6)."""
+    from espo_impl.core.condition_expression import parse_condition
+
+    client = MagicMock(spec=EspoAdminClient)
+    client.get_layout.return_value = (200, [])
+    client.save_layout.return_value = (200, {})
+    manager, _ = make_manager(client)
+
+    panel = PanelSpec(label="Mentor panel", rows=[["foo"]])
+    panel.visible_when = parse_condition(
+        {"role": "equals", "value": "Mentor"}
+    )
+    entity = EntityDefinition(
+        name="Contact",
+        fields=make_fields(("foo", "varchar", "ident")),
+        layouts={
+            "detail": LayoutSpec(
+                layout_type="detail",
+                panels=[panel],
+            ),
+        },
+    )
+    manager.process_layouts(entity, entity.fields)
+    saved_payload = client.save_layout.call_args.args[2]
+    # The panel that carries a role visibleWhen must NOT have a
+    # dynamic-logic visible block.
+    assert saved_payload[0]["dynamicLogicVisible"] is None
+    assert len(manager._not_supported_role_clauses) == 1
+    rec = manager._not_supported_role_clauses[0]
+    assert rec.entity_name == "Contact"
+    assert rec.field_name == "Mentor panel"
+    assert rec.is_panel is True
+
+
+def test_panel_visible_when_with_field_clause_emits_dynamic_logic():
+    """Regression: a panel visibleWhen with only field clauses still
+    emits the dynamic-logic visible block normally."""
+    from espo_impl.core.condition_expression import parse_condition
+
+    client = MagicMock(spec=EspoAdminClient)
+    client.get_layout.return_value = (200, [])
+    client.save_layout.return_value = (200, {})
+    manager, _ = make_manager(client)
+
+    panel = PanelSpec(label="Conditional", rows=[["foo"]])
+    panel.visible_when = parse_condition(
+        [{"field": "status", "op": "equals", "value": "Active"}]
+    )
+    entity = EntityDefinition(
+        name="Contact",
+        fields=make_fields(("foo", "varchar", "ident")),
+        layouts={
+            "detail": LayoutSpec(
+                layout_type="detail",
+                panels=[panel],
+            ),
+        },
+    )
+    manager.process_layouts(entity, entity.fields)
+    saved_payload = client.save_layout.call_args.args[2]
+    # The block is populated; record list stays empty.
+    assert saved_payload[0]["dynamicLogicVisible"] is not None
+    assert manager._not_supported_role_clauses == []

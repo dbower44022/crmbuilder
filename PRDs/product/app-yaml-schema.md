@@ -2532,6 +2532,26 @@ has two parts: a `role:` leaf clause in Section 11 condition
 expressions (12.5.1) and a `forRoles:` list on layout
 declarations (12.5.2).
 
+**Deploy support — NOT_SUPPORTED on EspoCRM 9.x in v1.3
+(deferred to v1.4).** EspoCRM 9.x Dynamic Logic supports only
+record-field conditions; there is no role-condition type, and
+Layout Sets bind to Teams rather than Roles. The CRM Builder
+loader still parses `role:` leaf clauses (12.5.1) and `forRoles:`
+layout variants (12.5.2) so that the YAML surface is honest
+about role-aware visibility intent, but the deploy engine emits
+NOT_SUPPORTED for affected fields and layouts and adds them to
+the MANUAL CONFIGURATION REQUIRED advisory block. Operators
+using EspoCRM 9.x configure role-aware visibility manually after
+deploy, typically via Dynamic Handler JavaScript modules or via
+Layout Sets bound to Teams that mirror Role membership.
+
+Audit-side discovery (Section 13.2) cannot reverse-engineer
+manually-configured role-aware visibility from EspoCRM 9.x into
+the structured YAML form — Dynamic Handler JavaScript is not
+declarative metadata. A future workstream (v1.4 alongside §12.7)
+will replace the NOT_SUPPORTED status with a real deploy
+mechanism once a viable path is selected.
+
 **Why this is separate from `scope_access:`.** Scope-level entity
 access (Section 12.3) is a security boundary — a role denied
 `read:` on an entity cannot retrieve those records via any API,
@@ -2684,30 +2704,38 @@ declarative form is the same regardless of target.
 
 ### 12.6 Deploy Ordering
 
-Roles and teams must exist on the target CRM before any
-reference to them — `scope_access:` cross-references, `role:`
-leaf clauses, and `forRoles:` lists all resolve role names at
-deploy time, and panel deploys reference deployed roles. The
-Configure pipeline therefore orders the batch as follows:
+Roles reference entities via `scope_access:` keys, so entities
+must exist on the target CRM before the roles that reference
+them deploy. Section 12.5 role-aware visibility (`role:` clauses
+and `forRoles:` layout variants) is NOT_SUPPORTED on EspoCRM 9.x
+in v1.3 per the §12.5 "Deploy Support" note, so the historical
+"panel deploys reference deployed roles" concern does not apply
+in the shipped pipeline. The Configure pipeline therefore orders
+the batch as follows:
 
-1. **Files declaring `roles:` and/or `teams:` run first.** The
+1. **Files declaring `roles:` and/or `teams:` run last.** The
    loader scans every file in the batch and queues any file
-   that declares either top-level key ahead of files that do
-   not. Within this leading group, teams are deployed before
-   roles (no cross-reference between them at the YAML level —
-   the ordering is purely conventional, since a team has no
+   that declares either top-level key after files that do not.
+   Within this trailing group, teams are deployed before roles
+   (no cross-reference between them at the YAML level — the
+   ordering is purely conventional, since a team has no
    prerequisites and a role's `scope_access: team` value has no
-   team-name binding).
+   team-name binding). Putting roles last lets the role-deploy
+   pre-flight (Prompt E in the audit-v1.2 series) validate
+   every `scope_access:` entity reference against entities
+   already present on the target — entities declared in the
+   same batch are guaranteed to have run first.
 
-2. **Domain files run next**, in the existing batch order
+2. **Domain files run first**, in the existing batch order
    (typically alphabetical, with manual ordering applied when
    relationship dependencies require it).
 
 3. **Per file**, the existing v1.1 step ordering applies:
    EntitySettings → EmailTemplates → DuplicateChecks → SavedViews
-   → Fields/Layouts/Relationships → Workflows. Roles deployed in
-   step 1 are referenced during the Fields/Layouts step when
-   `forRoles:` or `role:` clauses are present.
+   → Fields/Layouts/Relationships → Workflows → Security
+   (teams and roles). The Security step is a no-op for domain
+   files; it does the real work in the trailing security-content
+   files. v1.3 also adds a Filtered tabs step after Security.
 
 **Discovery is content-based, not filename-based.** The recommended
 filename `programs/security.yaml` is a convention; the loader
@@ -2722,13 +2750,12 @@ the repo `CLAUDE.md`).
 
 **Mixing security and entity content.** A file is allowed to
 declare both `entities:` / `relationships:` and `roles:` /
-`teams:`. In this case, the file is queued in the leading group
+`teams:`. In this case, the file is queued in the trailing group
 (because it declares `roles:` or `teams:`), and all of its
-content — including any `entities:` block — deploys ahead of
-files that declare only `entities:`. This may or may not match
-the operator's intent; the recommended pattern is to keep
-security declarations in a dedicated file to avoid the
-ambiguity.
+content — including any `entities:` block — deploys after files
+that declare only `entities:`. This may or may not match the
+operator's intent; the recommended pattern is to keep security
+declarations in a dedicated file to avoid the ambiguity.
 
 **Failure mode if a role reference can't be resolved.** The
 validator catches unresolved role names at pre-flight time

@@ -7,13 +7,20 @@ from typing import Any
 
 from espo_impl.core.api_client import EspoAdminClient, _format_error_detail
 from espo_impl.core.comparator import FieldComparator
-from espo_impl.core.condition_expression import render_condition
+from espo_impl.core.condition_expression import (
+    AllNode,
+    AnyNode,
+    ConditionNode,
+    RoleClause,
+    render_condition,
+)
 from espo_impl.core.formula_parser import render_arithmetic
 from espo_impl.core.models import (
     EntityAction,
     FieldDefinition,
     FieldResult,
     FieldStatus,
+    NotSupportedRoleClauseRecord,
     ProgramFile,
     RunReport,
     RunSummary,
@@ -27,6 +34,24 @@ OutputCallback = Callable[[str, str], None]
 
 class AuthenticationError(Exception):
     """Raised when the API returns 401 Unauthorized."""
+
+
+def _condition_has_role_clauses(node: ConditionNode | None) -> bool:
+    """Return True if the AST contains any RoleClause node.
+
+    Used by the field manager (and layout manager for panel-level
+    visibleWhen) to detect when a condition expression cannot be
+    deployed as EspoCRM Dynamic Logic on 9.x (DEC-6).
+    """
+    if node is None:
+        return False
+    if isinstance(node, RoleClause):
+        return True
+    if isinstance(node, (AllNode, AnyNode)):
+        return any(
+            _condition_has_role_clauses(child) for child in node.children
+        )
+    return False
 
 
 class FieldManager:
@@ -46,6 +71,13 @@ class FieldManager:
         self.client = client
         self.comparator = comparator
         self.output_fn = output_fn
+        # Accumulator for fields whose visibleWhen contained role
+        # clauses — DEC-6: deploy is NOT_SUPPORTED on EspoCRM 9.x,
+        # so the dynamic-logic visible block is omitted and the
+        # field is surfaced in the run report's MANUAL CONFIG block.
+        self._not_supported_role_clauses: list[
+            NotSupportedRoleClauseRecord
+        ] = []
 
     def run(self, program: ProgramFile) -> RunReport:
         """Execute field operations: check -> act for each field.
@@ -451,7 +483,7 @@ class FieldManager:
             self.output_fn(
                 f"[COMPARE] {prefix} ... DIFFERS ({diff_str})", "yellow"
             )
-            payload = self._build_payload(field_def)
+            payload = self._build_payload(field_def, entity)
             act_status, act_body = self.client.update_field(
                 entity, resolved_name, payload
             )
@@ -462,7 +494,7 @@ class FieldManager:
         else:
             # Phase 2: ACT (Create)
             self.output_fn(f"[CHECK]   {prefix} ... NOT FOUND", "white")
-            payload = self._build_payload(field_def)
+            payload = self._build_payload(field_def, entity)
             act_status, act_body = self.client.create_field(entity, payload)
 
             # Handle 409 Conflict — field already exists under c-prefixed name.
@@ -544,10 +576,17 @@ class FieldManager:
             changes=changes,
         )
 
-    def _build_payload(self, field_def: FieldDefinition) -> dict[str, Any]:
+    def _build_payload(
+        self,
+        field_def: FieldDefinition,
+        entity: str = "",
+    ) -> dict[str, Any]:
         """Convert a FieldDefinition to an API payload dict.
 
         :param field_def: Field definition from the program.
+        :param entity: Entity name (used to record NOT_SUPPORTED
+            role-aware visibleWhen items when the AST contains
+            role clauses — DEC-6).
         :returns: Dict suitable for API POST/PUT.
         """
         payload: dict[str, Any] = {
@@ -589,9 +628,22 @@ class FieldManager:
                 field_def.required_when
             )
         if field_def.visible_when is not None:
-            payload["dynamicLogicVisible"] = render_condition(
-                field_def.visible_when
-            )
+            if _condition_has_role_clauses(field_def.visible_when):
+                # DEC-6: EspoCRM 9.x Dynamic Logic has no
+                # role-condition type. Omit the visible block from
+                # the payload so the field still deploys; record the
+                # field so the run report surfaces it as
+                # NOT_SUPPORTED in the MANUAL CONFIG advisory.
+                self._not_supported_role_clauses.append(
+                    NotSupportedRoleClauseRecord(
+                        entity_name=entity,
+                        field_name=field_def.name,
+                    )
+                )
+            else:
+                payload["dynamicLogicVisible"] = render_condition(
+                    field_def.visible_when
+                )
 
         # Formula rendering
         if field_def.formula is not None:
@@ -686,6 +738,9 @@ class FieldManager:
             operation=operation,
             summary=summary,
             results=results,
+            not_supported_role_clauses=list(
+                self._not_supported_role_clauses
+            ),
         )
 
     def _emit_summary(self, results: list[FieldResult]) -> None:
