@@ -355,6 +355,13 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         "decision",
         "planning_item",
         "reference",
+        # v0.8 additions (PI-030 slice B). The new entity types that the
+        # extended close-out payload format can write. Audit chain stays
+        # intact: every record the apply POSTs gets a wrote_record
+        # back-edge, regardless of which entity type the record is.
+        "conversation",
+        "work_ticket",
+        "commit",
     ):
         kinds.add("deposit_event_wrote_record")
     # v0.8 Code Change Lifecycle additions (PI-029, methodology §3.2–§3.4):

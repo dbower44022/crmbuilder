@@ -1,10 +1,30 @@
 #!/usr/bin/env python3
 """Apply a close-out JSON payload to the v2 API.
 
-Reads a single JSON payload file containing any combination of session,
-decisions, planning_items, and references records, and POSTs each to the
+Reads a single JSON payload file and POSTs each section's records to the
 local v2 REST API at http://127.0.0.1:8765. Idempotent on re-run: each
 POST treats HTTP 409 conflict as already-present and continues.
+
+v0.8 (PI-030 slice B) extends the script to handle five new top-level
+payload sections introduced by the Code Change Lifecycle methodology and
+DEC-223 (close-out payload format gains a conversation block):
+
+  session → conversation → work_tickets → planning_items → commits
+         → decisions → references → resolves_planning_items
+         → addresses_planning_items
+
+Per-section shape transforms translate payload entries into POST bodies:
+  - work_tickets[].addresses_planning_item becomes an embedded addresses
+    edge in the work_ticket POST.
+  - commits[].commit_conversation_id is auto-populated from the payload's
+    conversation block (per methodology §4.1).
+  - resolves_planning_items[] entries translate to POST /references with
+    relationship=resolves; slice A's atomic edge+flip fires server-side.
+  - addresses_planning_items[] entries translate to POST /references with
+    relationship=addresses (no status flip).
+
+Sections absent from the payload are skipped (no-op), preserving backward
+compatibility with v0.7 payloads.
 
 v0.7 (governance entity release) integrates deposit_event creation as the
 apply's last step. The script:
@@ -17,7 +37,8 @@ apply's last step. The script:
 3. Captures per-record HTTP outcomes into a ``wrote_records`` accumulator
    (200/201 only) and a ``records_summary`` counter dict (keyed by the
    spec's plural names — ``sessions``, ``decisions``, ``planning_items``,
-   ``references``).
+   ``references``, plus v0.8 ``conversations``, ``work_tickets``,
+   ``commits``).
 4. POSTs a deposit_event at the apply's last step with the captured
    summary, the apply-context provenance, the parent
    ``deposit_event_applies_close_out_payload`` edge (target derived from
@@ -38,19 +59,132 @@ import urllib.error
 import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, NamedTuple, Optional
 
 import crmbuilder_v2
 
 BASE = "http://127.0.0.1:8765"
 
-# Section name → (endpoint, is_singular, entity_type for wrote_record edge,
-# summary key for records_summary).
-_SECTION_ENDPOINTS: list[tuple[str, str, bool, str, str]] = [
-    ("session", "/sessions", True, "session", "sessions"),
-    ("decisions", "/decisions", False, "decision", "decisions"),
-    ("planning_items", "/planning-items", False, "planning_item", "planning_items"),
-    ("references", "/references", False, "reference", "references"),
+
+class _Section(NamedTuple):
+    """A single close-out payload section descriptor.
+
+    ``shape_fn`` is an optional per-entry transform that receives the raw
+    payload entry plus a cross-section ``context`` dict and returns the
+    body to POST. When None, the entry is POSTed as-is (identity).
+    """
+
+    name: str
+    endpoint: str
+    is_singular: bool
+    entity_type: str
+    summary_key: str
+    shape_fn: Optional[Callable[[dict, dict], dict]] = None
+
+
+def _shape_work_ticket(entry: dict, context: dict) -> dict:
+    """Pop ``addresses_planning_item`` and translate to an embedded
+    addresses edge in the work_ticket POST body (atomic with the create).
+
+    The API's embedded references list validates source_type and source_id
+    on every entry, so the work_ticket's own identifier must be present in
+    the entry; otherwise the implicit-source case can't be expressed."""
+    body = {k: v for k, v in entry.items() if k != "addresses_planning_item"}
+    target_pi = entry.get("addresses_planning_item")
+    if target_pi:
+        wt_id = entry.get("work_ticket_identifier")
+        if not wt_id:
+            raise ValueError(
+                "work_ticket entry has addresses_planning_item but no "
+                "work_ticket_identifier — the embedded addresses edge needs "
+                "an explicit source_id. Either include work_ticket_identifier "
+                "in the entry, or omit addresses_planning_item and create the "
+                "edge in a separate references entry after the work_ticket "
+                "has been assigned an identifier."
+            )
+        existing_refs = list(body.get("references") or [])
+        existing_refs.append({
+            "source_type": "work_ticket",
+            "source_id": wt_id,
+            "target_type": "planning_item",
+            "target_id": target_pi,
+            "relationship": "addresses",
+        })
+        body["references"] = existing_refs
+    return body
+
+
+def _shape_commit(entry: dict, context: dict) -> dict:
+    """Inject ``commit_conversation_id`` from the payload's conversation
+    block. Per methodology §4.1 the payload entry omits the FK; the apply
+    derives it from the close-out's owning conversation."""
+    conv_id = context.get("conversation_identifier")
+    if not conv_id:
+        raise ValueError(
+            "commits section present but no conversation block in payload — "
+            "every commit needs commit_conversation_id. Add a conversation "
+            "block per methodology §4.0."
+        )
+    body = dict(entry)
+    body.setdefault("commit_conversation_id", conv_id)
+    return body
+
+
+def _shape_resolves_pi(entry: dict, context: dict) -> dict:
+    """Translate ``{planning_item_identifier: PI-NNN}`` to a full
+    POST /references body with relationship=resolves. The conversation
+    source is derived from the payload's conversation block."""
+    conv_id = context.get("conversation_identifier")
+    if not conv_id:
+        raise ValueError(
+            "resolves_planning_items section present but no conversation "
+            "block in payload — resolves edges flow from the conversation. "
+            "Add a conversation block per methodology §4.0."
+        )
+    target_pi = entry["planning_item_identifier"]
+    return {
+        "source_type": "conversation",
+        "source_id": conv_id,
+        "target_type": "planning_item",
+        "target_id": target_pi,
+        "relationship": "resolves",
+    }
+
+
+def _shape_addresses_pi(entry: dict, context: dict) -> dict:
+    """Translate ``{planning_item_identifier: PI-NNN}`` to a full
+    POST /references body with relationship=addresses. No status flip."""
+    conv_id = context.get("conversation_identifier")
+    if not conv_id:
+        raise ValueError(
+            "addresses_planning_items section present but no conversation "
+            "block in payload — addresses edges flow from the conversation. "
+            "Add a conversation block per methodology §4.0."
+        )
+    target_pi = entry["planning_item_identifier"]
+    return {
+        "source_type": "conversation",
+        "source_id": conv_id,
+        "target_type": "planning_item",
+        "target_id": target_pi,
+        "relationship": "addresses",
+    }
+
+
+# Section descriptors in methodology §4 apply order. The order is the
+# fixed apply ordering: session → conversation → work_tickets →
+# planning_items → commits → decisions → references →
+# resolves_planning_items → addresses_planning_items.
+_SECTIONS: list[_Section] = [
+    _Section("session",                  "/sessions",       True,  "session",        "sessions"),
+    _Section("conversation",             "/conversations",  True,  "conversation",   "conversations"),
+    _Section("work_tickets",             "/work-tickets",   False, "work_ticket",    "work_tickets", _shape_work_ticket),
+    _Section("planning_items",           "/planning-items", False, "planning_item",  "planning_items"),
+    _Section("commits",                  "/commits",        False, "commit",         "commits",       _shape_commit),
+    _Section("decisions",                "/decisions",      False, "decision",       "decisions"),
+    _Section("references",               "/references",     False, "reference",      "references"),
+    _Section("resolves_planning_items",  "/references",     False, "reference",      "references",    _shape_resolves_pi),
+    _Section("addresses_planning_items", "/references",     False, "reference",      "references",    _shape_addresses_pi),
 ]
 
 
@@ -93,9 +227,19 @@ def _log(label: str, status: int, payload: dict) -> bool:
 
 
 def _record_label(section: str, record: dict) -> str:
-    ident = record.get("identifier")
+    # Try plain identifier first, then prefixed variants (v0.8 entity
+    # types use prefixed identifier field names).
+    ident = (
+        record.get("identifier")
+        or record.get("conversation_identifier")
+        or record.get("work_ticket_identifier")
+        or record.get("commit_identifier")
+    )
     if ident:
         return f"POST {section}  {ident}"
+    # resolves_planning_items / addresses_planning_items entries
+    if record.get("planning_item_identifier"):
+        return f"POST {section}  → {record['planning_item_identifier']}"
     src = record.get("source_id")
     tgt = record.get("target_id")
     rel = record.get("relationship")
@@ -181,11 +325,24 @@ def _extract_data(payload: dict) -> dict:
 
 
 def _record_target_id(entity_type: str, response_data: dict) -> str | None:
-    """Extract the addressable identifier from a created record's response."""
-    if entity_type == "reference":
-        # References gained a REF-NNNN identifier in v0.7 (Slice A).
-        return response_data.get("reference_identifier")
-    return response_data.get("identifier")
+    """Extract the addressable identifier from a created record's response.
+
+    Most entities use a plain ``identifier`` field at the row level; the
+    v0.8 entity types (conversation, work_ticket, commit) carry a
+    prefixed field name. Match each known entity type explicitly so the
+    apply doesn't fall through to a missing field.
+    """
+    field_by_type = {
+        "session": "identifier",
+        "decision": "identifier",
+        "planning_item": "identifier",
+        "reference": "reference_identifier",
+        "conversation": "conversation_identifier",
+        "work_ticket": "work_ticket_identifier",
+        "commit": "commit_identifier",
+    }
+    field = field_by_type.get(entity_type, "identifier")
+    return response_data.get(field)
 
 
 def _post_deposit_event(
@@ -342,26 +499,60 @@ def main() -> int:
         ok = True
         total_processed = 0
         wrote_records: list[tuple[str, str]] = []
-        records_summary: dict[str, int] = {
-            key: 0 for _section, _ep, _singular, _entity_type, key in _SECTION_ENDPOINTS
-        }
+        # v0.8: de-dup summary keys — references, resolves_planning_items,
+        # and addresses_planning_items all roll up under "references".
+        records_summary: dict[str, int] = {}
+        for section in _SECTIONS:
+            records_summary.setdefault(section.summary_key, 0)
         first_error: dict | None = None
 
-        for section, endpoint, is_singular, entity_type, summary_key in _SECTION_ENDPOINTS:
-            if section not in payload or not payload[section]:
+        # v0.8 context dict: cross-section values that per-entry shape
+        # functions need. The conversation_identifier from the payload's
+        # conversation block propagates into commits (commit_conversation_id)
+        # and into resolves_/addresses_planning_items (refs source_id).
+        context: dict[str, str] = {}
+        conversation_block = payload.get("conversation")
+        if isinstance(conversation_block, dict):
+            ci = conversation_block.get("conversation_identifier")
+            if isinstance(ci, str):
+                context["conversation_identifier"] = ci
+
+        for section in _SECTIONS:
+            section_name = section.name
+            if section_name not in payload or not payload[section_name]:
                 continue
-            records = [payload[section]] if is_singular else payload[section]
+            records = (
+                [payload[section_name]] if section.is_singular else payload[section_name]
+            )
             print(
-                f"=== {section} ({len(records)} record{'s' if len(records) != 1 else ''}) ==="
+                f"=== {section_name} ({len(records)} record{'s' if len(records) != 1 else ''}) ==="
             )
             for record in records:
-                status, response = _request("POST", endpoint, record)
-                rec_ok = _log(_record_label(section, record), status, response)
+                try:
+                    body = (
+                        record
+                        if section.shape_fn is None
+                        else section.shape_fn(record, context)
+                    )
+                except ValueError as exc:
+                    ok = False
+                    total_processed += 1
+                    print(f"  ✗ {_record_label(section_name, record)} SHAPE ERROR: {exc}", file=sys.stderr)
+                    if first_error is None:
+                        first_error = {
+                            "kind": "shape_error",
+                            "message": str(exc)[:300],
+                            "step": section_name,
+                            "http_status": 0,
+                        }
+                    continue
+                status, response = _request("POST", section.endpoint, body)
+                rec_ok = _log(_record_label(section_name, record), status, response)
                 ok &= rec_ok
                 total_processed += 1
                 if status in (200, 201):
                     response_data = _extract_data(response)
-                    target_id = _record_target_id(entity_type, response_data)
+                    target_id = _record_target_id(section.entity_type, response_data)
                     if target_id:
                         # References are first-class records here but are not
                         # in the deposit_event references' target_type vocab,
@@ -371,9 +562,9 @@ def main() -> int:
                         # also skip the summary bump — the count of references
                         # written lives in the source payload and the
                         # references table itself.
-                        if entity_type != "reference":
-                            wrote_records.append((entity_type, target_id))
-                            records_summary[summary_key] += 1
+                        if section.entity_type != "reference":
+                            wrote_records.append((section.entity_type, target_id))
+                            records_summary[section.summary_key] += 1
                 elif status not in (200, 201, 204, 409) and first_error is None:
                     errors = (
                         response.get("errors") if isinstance(response, dict) else None
@@ -386,7 +577,7 @@ def main() -> int:
                     first_error = {
                         "kind": "http_error" if status > 0 else "connection_failure",
                         "message": err_msg,
-                        "step": section,
+                        "step": section_name,
                         "http_status": status,
                     }
             print()

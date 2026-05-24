@@ -249,6 +249,22 @@ def create_conversation(
     if status is None:
         status = "planned"
     _require_status(status)
+
+    # When the caller provides an explicit identifier, check identifier
+    # conflict BEFORE title conflict. If the identifier already exists, the
+    # title match is incidental (same record), and a 409 ConflictError is
+    # the correct outcome — not a 422 duplicate-title. This makes the
+    # close-out apply idempotent on re-run (PI-030 slice B): a second apply
+    # of the same payload SKIPs the conversation cleanly instead of failing
+    # with a misleading "duplicate title" 422.
+    if identifier is not None:
+        gov.require_identifier_format(
+            identifier, regex=_IDENTIFIER_RE,
+            field="conversation_identifier", example="CONV-001",
+        )
+        if session.get(Conversation, identifier) is not None:
+            raise ConflictError(f"conversation {identifier!r} already exists")
+
     _reject_duplicate_title(session, title)
 
     if identifier is None:
@@ -256,12 +272,6 @@ def create_conversation(
             session, title, purpose, description, notes, status
         )
     else:
-        gov.require_identifier_format(
-            identifier, regex=_IDENTIFIER_RE,
-            field="conversation_identifier", example="CONV-001",
-        )
-        if session.get(Conversation, identifier) is not None:
-            raise ConflictError(f"conversation {identifier!r} already exists")
         row = _new_row(identifier, title, purpose, description, notes, status)
         session.add(row)
         session.flush()

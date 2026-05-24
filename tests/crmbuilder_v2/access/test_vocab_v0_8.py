@@ -72,3 +72,23 @@ def test_relationship_rules_covers_commit_pairs():
     assert ("commit", "session") in vocab.RELATIONSHIP_RULES
     assert ("conversation", "commit") in vocab.RELATIONSHIP_RULES
     assert ("commit", "commit") in vocab.RELATIONSHIP_RULES
+
+
+# ---------------------------------------------------------------------------
+# PI-030 slice B: deposit_event_wrote_record admits v0.8 entity types
+# ---------------------------------------------------------------------------
+
+
+def test_deposit_event_wrote_record_admits_conversation():
+    kinds = vocab._kinds_for_pair("deposit_event", "conversation")
+    assert "deposit_event_wrote_record" in kinds
+
+
+def test_deposit_event_wrote_record_admits_work_ticket():
+    kinds = vocab._kinds_for_pair("deposit_event", "work_ticket")
+    assert "deposit_event_wrote_record" in kinds
+
+
+def test_deposit_event_wrote_record_admits_commit():
+    kinds = vocab._kinds_for_pair("deposit_event", "commit")
+    assert "deposit_event_wrote_record" in kinds
