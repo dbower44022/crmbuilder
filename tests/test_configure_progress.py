@@ -73,6 +73,49 @@ _INVALID_LINK_YAML = """\
             label: "Contributor"
 """
 
+_VALID_YAML_VARIANT = """\
+    version: "1.0"
+    description: "Valid program (variant)"
+    entities:
+      Account:
+        fields:
+          - name: bar
+            type: varchar
+            label: "Bar"
+"""
+
+_SECURITY_ROLES_YAML = """\
+    version: "1.0"
+    description: "Security program with roles only"
+    entities: {}
+    roles:
+      - name: Mentor
+        description: "Mentor role"
+"""
+
+_SECURITY_TEAMS_YAML = """\
+    version: "1.0"
+    description: "Security program with teams only"
+    entities: {}
+    teams:
+      - name: Mentors
+        description: "Mentors team"
+"""
+
+_MIXED_CONTENT_YAML = """\
+    version: "1.0"
+    description: "Mixed entity + security content"
+    entities:
+      Contact:
+        fields:
+          - name: baz
+            type: varchar
+            label: "Baz"
+    roles:
+      - name: Reader
+        description: "Reader role"
+"""
+
 
 @pytest.fixture
 def patched_dialog(monkeypatch):
@@ -234,3 +277,54 @@ def test_validation_tooltip_no_more_line_when_exactly_five(
 
     tooltip = dialog._file_tooltips[file_info.path]
     assert tooltip.split("\n") == errors
+
+
+# ---------------------------------------------------------------------------
+# Multi-file queue ordering tests (Prompt E)
+# ---------------------------------------------------------------------------
+
+
+def test_pending_orders_security_files_last(patched_dialog, tmp_path):
+    """Stable sort puts security-content files at end of queue while
+    preserving alphabetical / selection order within each group."""
+    a = _make_yaml(tmp_path, "a-entities.yaml", _VALID_YAML)
+    m = _make_yaml(tmp_path, "m-security.yaml", _SECURITY_ROLES_YAML)
+    z = _make_yaml(tmp_path, "z-entities.yaml", _VALID_YAML_VARIANT)
+    dialog = patched_dialog([a, m, z])
+
+    queued = [pair[0].name for pair in dialog._pending]
+    assert queued == ["a-entities.yaml", "z-entities.yaml", "m-security.yaml"]
+
+
+def test_pending_all_security(patched_dialog, tmp_path):
+    """When every file is security-content the sort is a no-op."""
+    r = _make_yaml(tmp_path, "roles.yaml", _SECURITY_ROLES_YAML)
+    t = _make_yaml(tmp_path, "teams.yaml", _SECURITY_TEAMS_YAML)
+    dialog = patched_dialog([r, t])
+
+    queued = [pair[0].name for pair in dialog._pending]
+    assert queued == ["roles.yaml", "teams.yaml"]
+
+
+def test_pending_all_entities(patched_dialog, tmp_path):
+    """When no file declares roles or teams the sort is a no-op."""
+    a = _make_yaml(tmp_path, "alpha.yaml", _VALID_YAML)
+    b = _make_yaml(tmp_path, "beta.yaml", _VALID_YAML_VARIANT)
+    dialog = patched_dialog([a, b])
+
+    queued = [pair[0].name for pair in dialog._pending]
+    assert queued == ["alpha.yaml", "beta.yaml"]
+
+
+def test_pending_mixed_content_file_sorts_with_security(
+    patched_dialog, tmp_path,
+):
+    """A file declaring both entities AND roles sorts with the
+    security-content group (last)."""
+    a = _make_yaml(tmp_path, "a-entities.yaml", _VALID_YAML)
+    mixed = _make_yaml(tmp_path, "m-mixed.yaml", _MIXED_CONTENT_YAML)
+    z = _make_yaml(tmp_path, "z-entities.yaml", _VALID_YAML_VARIANT)
+    dialog = patched_dialog([a, mixed, z])
+
+    queued = [pair[0].name for pair in dialog._pending]
+    assert queued == ["a-entities.yaml", "z-entities.yaml", "m-mixed.yaml"]

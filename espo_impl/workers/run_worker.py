@@ -36,21 +36,25 @@ from espo_impl.core.models import (
     InstanceProfile,
     ProgramFile,
     RelationshipStatus,
+    RoleStatus,
     RunReport,
     SavedViewStatus,
     SettingsStatus,
     StepResult,
     StepStatus,
+    TeamStatus,
     WorkflowStatus,
 )
 from espo_impl.core.relationship_manager import (
     RelationshipManager,
     RelationshipManagerError,
 )
+from espo_impl.core.role_manager import RoleManager, RoleManagerError
 from espo_impl.core.saved_view_manager import (
     SavedViewManager,
     SavedViewManagerError,
 )
+from espo_impl.core.team_manager import TeamManager, TeamManagerError
 from espo_impl.core.workflow_manager import (
     WorkflowManager,
     WorkflowManagerError,
@@ -67,6 +71,8 @@ _MANAGER_ERROR_TYPES: tuple[type[Exception], ...] = (
     SavedViewManagerError,
     LayoutManagerError,
     RelationshipManagerError,
+    RoleManagerError,
+    TeamManagerError,
     WorkflowManagerError,
     FilteredTabManagerError,
 )
@@ -83,6 +89,7 @@ _STEP_DISPLAY_NAMES: dict[str, str] = {
     "layouts": "Layouts",
     "relationships": "Relationships",
     "workflows": "Workflows",
+    "security": "Security (teams and roles)",
     "filtered_tabs": "Filtered tabs",
 }
 
@@ -745,7 +752,62 @@ class RunWorker(QThread):
             )
             all_step_results.append(step_result)
 
-            # --- Step 11: Filtered tabs --------------------------------------
+            # --- Step 11: Security ------------------------------------------
+            has_security = bool(
+                self.program.roles or self.program.teams
+            )
+            team_results: list[Any] = []
+            role_results: list[Any] = []
+
+            def _security_body() -> None:
+                self.output_line.emit("", "white")
+                self.output_line.emit(
+                    "=== SECURITY (teams and roles) ===", "white",
+                )
+                # Teams first — no dependencies on entities or roles.
+                if self.program.teams:
+                    team_mgr = TeamManager(client, self.output_line.emit)
+                    team_results.extend(
+                        team_mgr.process_teams(self.program.teams)
+                    )
+                # Roles second — pre-flight runs inside process_roles
+                # and validates scope_access against server state.
+                if self.program.roles:
+                    role_mgr = RoleManager(client, self.output_line.emit)
+                    role_results.extend(
+                        role_mgr.process_roles(self.program.roles)
+                    )
+
+            def _security_failure_check(_: Any) -> str | None:
+                team_errors = sum(
+                    1 for r in team_results
+                    if r.status == TeamStatus.ERROR
+                )
+                role_errors = sum(
+                    1 for r in role_results
+                    if r.status == RoleStatus.ERROR
+                )
+                total = team_errors + role_errors
+                if total == 0:
+                    return None
+                parts: list[str] = []
+                if team_errors:
+                    parts.append(f"{team_errors} team error(s)")
+                if role_errors:
+                    parts.append(f"{role_errors} role error(s)")
+                return ", ".join(parts)
+
+            step_result, _ = self._run_step(
+                "security",
+                has_security,
+                _security_body,
+                failure_check=_security_failure_check,
+            )
+            all_step_results.append(step_result)
+            self._security_team_results = team_results
+            self._security_role_results = role_results
+
+            # --- Step 12: Filtered tabs --------------------------------------
             has_filtered_tabs = any(
                 e.filtered_tabs and e.action != EntityAction.DELETE
                 for e in self.program.entities

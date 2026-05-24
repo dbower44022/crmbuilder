@@ -168,6 +168,67 @@ class RoleManager:
         )
         return payload
 
+    # --- Pre-flight server-state validation ---
+
+    def _fetch_server_scope_set(self) -> frozenset[str]:
+        """Fetch the server's scope list as a wire-name set.
+
+        Used by ``_preflight_scope_access`` to validate that every
+        ``scope_access:`` entity in a YAML role exists on the
+        target.
+
+        :returns: Frozenset of wire-form scope names (e.g.,
+            ``"CEngagement"``, ``"Contact"``) from
+            ``client.get_all_scopes()``.
+        :raises RoleManagerError: On HTTP 401 (authentication) or
+            any other non-200 status that prevents pre-flight from
+            completing. The role-deploy step cannot proceed without
+            server-state context.
+        """
+        status, body = self.client.get_all_scopes()
+        if status == 401:
+            raise RoleManagerError("Authentication failed (HTTP 401)")
+        if status != 200 or body is None:
+            error_msg = (
+                f"HTTP {status}: {_format_error_detail(body)}"
+                if status > 0 else "connection error"
+            )
+            raise RoleManagerError(
+                f"Failed to fetch server scopes for pre-flight: {error_msg}"
+            )
+        return frozenset(body.keys())
+
+    def _preflight_scope_access(
+        self,
+        roles: list[RoleDefinition],
+        server_scope_set: frozenset[str],
+    ) -> dict[str, set[str]]:
+        """Identify scope_access entities that do not resolve on the server.
+
+        Translates each role's ``scope_access`` keys to wire-form via
+        ``get_espo_entity_name`` (so the comparison is apples-to-apples
+        against the server's wire-form scope keys) and identifies any
+        that aren't on the target.
+
+        :param roles: YAML role definitions to check.
+        :param server_scope_set: From ``_fetch_server_scope_set``.
+        :returns: Mapping of role.name to the set of unresolvable
+            entity names (in their natural / YAML form, for the
+            operator's error message). Roles with empty
+            ``scope_access`` or fully-resolving ``scope_access`` are
+            absent from the returned dict.
+        """
+        unresolvable_by_role: dict[str, set[str]] = {}
+        for role_def in roles:
+            unresolvable: set[str] = set()
+            for natural_name in role_def.scope_access.keys():
+                wire_name = get_espo_entity_name(natural_name)
+                if wire_name not in server_scope_set:
+                    unresolvable.add(natural_name)
+            if unresolvable:
+                unresolvable_by_role[role_def.name] = unresolvable
+        return unresolvable_by_role
+
     # --- CHECK→ACT orchestration ---
 
     def _fetch_server_roles(self) -> dict[str, dict[str, Any]]:
@@ -212,24 +273,69 @@ class RoleManager:
     ) -> list[RoleResult]:
         """Process every role in the YAML batch against the server.
 
+        Pre-flight runs before CHECK→ACT: every role's
+        ``scope_access`` entity references are validated against the
+        server's scope list (per DEC for Prompt E). Roles with
+        unresolvable entities are ERRORed and skipped; remaining
+        roles continue to CHECK→ACT.
+
         :param roles: ``program.roles``. Empty list yields empty
             result with no API calls.
         :param dry_run: If True, CHECK is performed and intended
             status is recorded, but no POST or PATCH is issued.
-        :returns: List of RoleResult, one per input role.
-        :raises RoleManagerError: On HTTP 401 or other fatal CHECK
-            errors. Per-role write failures are recorded as ERROR
-            results, not raised.
+        :returns: List of RoleResult, one per input role. Pre-flight
+            rejections appear in the result list with
+            ``RoleStatus.ERROR`` and a descriptive ``error`` message.
+        :raises RoleManagerError: On HTTP 401 from pre-flight or
+            CHECK→ACT, or HTTP error on pre-flight scope-list fetch.
         """
         if not roles:
             return []
 
-        self.output_fn("[ROLE]  Fetching server roles ...", "white")
-        server_roles = self._fetch_server_roles()
+        # --- Pre-flight ----------------------------------------------
+        self.output_fn(
+            "[ROLE]  Fetching server scopes for pre-flight ...", "white",
+        )
+        server_scope_set = self._fetch_server_scope_set()
+        unresolvable_by_role = self._preflight_scope_access(
+            roles, server_scope_set,
+        )
+
+        # CHECK is fetched lazily — only when at least one role passes
+        # pre-flight — so a batch in which every role's scope_access is
+        # unresolvable does not pay the extra GET /Role round-trip.
+        server_roles: dict[str, dict[str, Any]] | None = None
 
         results: list[RoleResult] = []
         for role_def in roles:
-            results.append(self._process_one(role_def, server_roles, dry_run))
+            unresolvable = unresolvable_by_role.get(role_def.name)
+            if unresolvable:
+                entity_list = ", ".join(sorted(unresolvable))
+                error_msg = (
+                    f"scope_access references entity not on target: "
+                    f"{entity_list}; entity may have been declared in "
+                    f"this batch but failed to deploy, or is not "
+                    f"declared anywhere"
+                )
+                self.output_fn(
+                    f"[ROLE]  {role_def.name} ... ERROR — {error_msg}",
+                    "red",
+                )
+                results.append(RoleResult(
+                    name=role_def.name,
+                    status=RoleStatus.ERROR,
+                    error=error_msg,
+                ))
+                continue
+
+            if server_roles is None:
+                self.output_fn(
+                    "[ROLE]  Fetching server roles ...", "white",
+                )
+                server_roles = self._fetch_server_roles()
+            results.append(
+                self._process_one(role_def, server_roles, dry_run),
+            )
         return results
 
     def _process_one(

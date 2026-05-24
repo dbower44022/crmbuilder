@@ -272,6 +272,17 @@ class ConfigureProgressDialog(QDialog):
             self._append_log("")
             self._record_validation_failure(f, errors)
 
+        # Multi-file ordering: security-content files run last (per
+        # Section 12.6 deploy ordering). A file is considered security-
+        # content if it declares any roles or teams; stable sort
+        # preserves intra-group order from the operator's selection.
+        # Files mixing entity and security content sort with security
+        # — conservative for the common case where the entity content
+        # references nothing the security content depends on.
+        self._pending.sort(
+            key=lambda pair: 1 if (pair[1].roles or pair[1].teams) else 0,
+        )
+
         if not self._pending:
             if validation_failures:
                 self._append_log(

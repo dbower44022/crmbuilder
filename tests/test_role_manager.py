@@ -13,18 +13,50 @@ from espo_impl.core.models import (
 from espo_impl.core.role_manager import RoleManager, RoleManagerError
 
 
+def server_response(roles: list[dict]) -> tuple[int, dict]:
+    return (200, {"total": len(roles), "list": roles})
+
+
+def scope_response(*entity_names: str) -> tuple[int, dict[str, dict]]:
+    """Build a (status, body) response for ``client.get_all_scopes``.
+
+    Returns the server-shape ``{scopeName: {entity, isCustom, ...}}``
+    dict — the manager only inspects the keys, so the values can be
+    minimal stubs.
+    """
+    return (
+        200,
+        {name: {"entity": True, "isCustom": False} for name in entity_names},
+    )
+
+
+def install_default_scopes(client: MagicMock) -> None:
+    """Default the client's ``get_all_scopes`` to a permissive set.
+
+    Includes every entity name that any pre-existing test in this
+    module references on the YAML side. Keeps the existing
+    CHECK→ACT tests passing once pre-flight is wired in.
+    """
+    client.get_all_scopes.return_value = scope_response(
+        "Contact",
+        "Account",
+        "CEngagement",
+    )
+
+
 def make_manager(client=None) -> tuple[RoleManager, list]:
     if client is None:
         client = MagicMock()
+    # Default get_all_scopes to a permissive set so existing tests
+    # don't have to set it explicitly. Tests exercising the pre-flight
+    # path itself override this with a more restrictive scope set.
+    if not isinstance(client.get_all_scopes.return_value, tuple):
+        install_default_scopes(client)
     output_log: list[tuple[str, str]] = []
     manager = RoleManager(
         client, lambda msg, color: output_log.append((msg, color)),
     )
     return manager, output_log
-
-
-def server_response(roles: list[dict]) -> tuple[int, dict]:
-    return (200, {"total": len(roles), "list": roles})
 
 
 # =================================================================
@@ -715,3 +747,246 @@ def test_mixed_batch_create_skip_update():
     assert results[2].role_id == "role-upd"
     assert client.create_role.call_count == 1
     assert client.update_role.call_count == 1
+
+
+# =================================================================
+# Pre-flight server-state validation tests (Prompt E)
+# =================================================================
+
+
+def test_preflight_all_resolve():
+    """Every YAML scope_access entity exists on the server — pre-flight
+    is a no-op and every role proceeds to CHECK→ACT."""
+    client = MagicMock()
+    client.get_all_scopes.return_value = scope_response(
+        "Contact", "CEngagement",
+    )
+    client.get_roles.return_value = server_response([])
+    client.create_role.return_value = (201, {"id": "role-new"})
+    manager, _ = make_manager(client)
+    role_def = RoleDefinition(
+        name="Mentor",
+        scope_access={
+            "Contact": ScopeAccess(
+                create=True, read="all", edit="all", delete="all", stream="all",
+            ),
+            "Engagement": ScopeAccess(
+                create=True, read="own", edit="own", delete="no", stream="own",
+            ),
+        },
+    )
+    results = manager.process_roles([role_def])
+    assert len(results) == 1
+    assert results[0].status == RoleStatus.CREATED
+    assert client.get_all_scopes.call_count == 1
+    assert client.get_roles.call_count == 1
+
+
+def test_preflight_one_role_unresolvable():
+    """Server lacks one entity referenced by one role; that role
+    ERRORs; sibling role still proceeds to CHECK→ACT."""
+    client = MagicMock()
+    client.get_all_scopes.return_value = scope_response("Contact")  # no CEngagement
+    client.get_roles.return_value = server_response([])
+    client.create_role.return_value = (201, {"id": "role-new"})
+    manager, _ = make_manager(client)
+    bad_role = RoleDefinition(
+        name="Mentor",
+        scope_access={
+            "Engagement": ScopeAccess(
+                create=True, read="own", edit="own", delete="no", stream="own",
+            ),
+        },
+    )
+    good_role = RoleDefinition(
+        name="Staff",
+        scope_access={
+            "Contact": ScopeAccess(
+                create=False, read="team", edit="no", delete="no", stream="team",
+            ),
+        },
+    )
+    results = manager.process_roles([bad_role, good_role])
+    assert len(results) == 2
+    assert results[0].name == "Mentor"
+    assert results[0].status == RoleStatus.ERROR
+    assert "Engagement" in (results[0].error or "")
+    assert "not on target" in (results[0].error or "")
+    assert results[1].name == "Staff"
+    assert results[1].status == RoleStatus.CREATED
+    # The bad role's payload was never POSTed.
+    assert client.create_role.call_count == 1
+
+
+def test_preflight_role_with_no_scope_access():
+    """A role with empty scope_access trivially passes pre-flight."""
+    client = MagicMock()
+    client.get_all_scopes.return_value = scope_response()  # empty server
+    client.get_roles.return_value = server_response([])
+    client.create_role.return_value = (201, {"id": "role-new"})
+    manager, _ = make_manager(client)
+    role_def = RoleDefinition(name="Admin")  # no scope_access
+    results = manager.process_roles([role_def])
+    assert results[0].status == RoleStatus.CREATED
+
+
+def test_preflight_get_all_scopes_401_raises():
+    """A 401 from get_all_scopes raises RoleManagerError."""
+    client = MagicMock()
+    client.get_all_scopes.return_value = (401, None)
+    manager, _ = make_manager(client)
+    with pytest.raises(RoleManagerError) as exc_info:
+        manager.process_roles([RoleDefinition(name="Mentor")])
+    assert "401" in str(exc_info.value)
+
+
+def test_preflight_get_all_scopes_500_raises():
+    """A 500 from get_all_scopes raises RoleManagerError; pre-flight
+    cannot proceed without server-state context."""
+    client = MagicMock()
+    client.get_all_scopes.return_value = (500, {"message": "boom"})
+    manager, _ = make_manager(client)
+    with pytest.raises(RoleManagerError) as exc_info:
+        manager.process_roles([RoleDefinition(name="Mentor")])
+    assert "pre-flight" in str(exc_info.value)
+
+
+def test_preflight_natural_to_wire_translation():
+    """YAML uses 'Engagement' (natural); server has 'CEngagement'
+    (wire) — pre-flight identifies the match via translation."""
+    client = MagicMock()
+    client.get_all_scopes.return_value = scope_response("CEngagement")
+    client.get_roles.return_value = server_response([])
+    client.create_role.return_value = (201, {"id": "role-new"})
+    manager, _ = make_manager(client)
+    role_def = RoleDefinition(
+        name="Mentor",
+        scope_access={
+            "Engagement": ScopeAccess(
+                create=True, read="own", edit="own", delete="no", stream="own",
+            ),
+        },
+    )
+    results = manager.process_roles([role_def])
+    assert results[0].status == RoleStatus.CREATED
+
+
+def test_preflight_native_entity_match():
+    """YAML uses 'Contact' (native, unchanged) — pre-flight matches."""
+    client = MagicMock()
+    client.get_all_scopes.return_value = scope_response("Contact")
+    client.get_roles.return_value = server_response([])
+    client.create_role.return_value = (201, {"id": "role-new"})
+    manager, _ = make_manager(client)
+    role_def = RoleDefinition(
+        name="Mentor",
+        scope_access={
+            "Contact": ScopeAccess(
+                create=True, read="all", edit="all", delete="all", stream="all",
+            ),
+        },
+    )
+    results = manager.process_roles([role_def])
+    assert results[0].status == RoleStatus.CREATED
+
+
+def test_preflight_mixed_batch_partial_failure():
+    """Three roles, one with unresolvable scope_access; result list
+    preserves YAML declaration order."""
+    client = MagicMock()
+    client.get_all_scopes.return_value = scope_response("Contact")
+    client.get_roles.return_value = server_response([])
+    client.create_role.return_value = (201, {"id": "role-new"})
+    manager, _ = make_manager(client)
+    roles = [
+        RoleDefinition(
+            name="A",
+            scope_access={
+                "Contact": ScopeAccess(
+                    create=True, read="all", edit="all", delete="all",
+                    stream="all",
+                ),
+            },
+        ),
+        RoleDefinition(
+            name="B",
+            scope_access={
+                "Engagement": ScopeAccess(
+                    create=True, read="own", edit="own", delete="no",
+                    stream="own",
+                ),
+            },
+        ),
+        RoleDefinition(
+            name="C",
+            scope_access={
+                "Contact": ScopeAccess(
+                    create=False, read="team", edit="no", delete="no",
+                    stream="team",
+                ),
+            },
+        ),
+    ]
+    results = manager.process_roles(roles)
+    assert [r.name for r in results] == ["A", "B", "C"]
+    assert results[0].status == RoleStatus.CREATED
+    assert results[1].status == RoleStatus.ERROR
+    assert "Engagement" in (results[1].error or "")
+    assert results[2].status == RoleStatus.CREATED
+
+
+def test_preflight_all_unresolvable_skips_get_roles():
+    """If every role fails pre-flight, ``get_roles`` is not called —
+    the manager short-circuits to ERROR results."""
+    client = MagicMock()
+    client.get_all_scopes.return_value = scope_response("Contact")
+    manager, _ = make_manager(client)
+    roles = [
+        RoleDefinition(
+            name="A",
+            scope_access={
+                "Engagement": ScopeAccess(
+                    create=True, read="own", edit="own", delete="no",
+                    stream="own",
+                ),
+            },
+        ),
+        RoleDefinition(
+            name="B",
+            scope_access={
+                "Workshop": ScopeAccess(
+                    create=True, read="own", edit="own", delete="no",
+                    stream="own",
+                ),
+            },
+        ),
+    ]
+    results = manager.process_roles(roles)
+    assert all(r.status == RoleStatus.ERROR for r in results)
+    assert client.get_roles.call_count == 0
+
+
+def test_preflight_error_lists_all_unresolvable_entities():
+    """A single role with multiple unresolvable scope_access entities
+    surfaces every one in the error message (alphabetically sorted)."""
+    client = MagicMock()
+    client.get_all_scopes.return_value = scope_response("Contact")
+    manager, _ = make_manager(client)
+    role_def = RoleDefinition(
+        name="Mentor",
+        scope_access={
+            "Engagement": ScopeAccess(
+                create=True, read="own", edit="own", delete="no", stream="own",
+            ),
+            "Workshop": ScopeAccess(
+                create=True, read="own", edit="own", delete="no", stream="own",
+            ),
+        },
+    )
+    results = manager.process_roles([role_def])
+    assert results[0].status == RoleStatus.ERROR
+    error = results[0].error or ""
+    assert "Engagement" in error
+    assert "Workshop" in error
+    # Alphabetical order in the message.
+    assert error.index("Engagement") < error.index("Workshop")

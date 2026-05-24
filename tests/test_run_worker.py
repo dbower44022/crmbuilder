@@ -22,17 +22,25 @@ from espo_impl.core.models import (
     RelationshipDefinition,
     RelationshipResult,
     RelationshipStatus,
+    RoleDefinition,
+    RoleResult,
+    RoleStatus,
     SavedView,
     SavedViewResult,
     SavedViewStatus,
     StepStatus,
+    TeamDefinition,
+    TeamResult,
+    TeamStatus,
     Workflow,
     WorkflowAction,
     WorkflowResult,
     WorkflowStatus,
     WorkflowTrigger,
 )
+from espo_impl.core.role_manager import RoleManagerError
 from espo_impl.core.saved_view_manager import SavedViewManagerError
+from espo_impl.core.team_manager import TeamManagerError
 from espo_impl.workers.run_worker import (
     RunWorker,
     _check_results_for_errors,
@@ -292,7 +300,8 @@ def test_run_full_all_steps_succeed_step_results_populated():
     expected_steps = {
         "entity_deletions", "entity_creations", "entity_settings",
         "email_templates", "duplicate_checks", "saved_views", "fields",
-        "layouts", "relationships", "workflows", "filtered_tabs",
+        "layouts", "relationships", "workflows", "security",
+        "filtered_tabs",
     }
     assert set(by_name.keys()) == expected_steps
     # No FAILED states.
@@ -1420,6 +1429,293 @@ def test_emit_step_summary_still_renders_skipped_for_skipped():
     assert not any("NO WORK SPECIFIED" in m for m in messages)
 
 
+# ───────────────────────────────────────────────────────────────────────
+# Security step tests (Prompt E)
+# ───────────────────────────────────────────────────────────────────────
+
+
+def _make_program_with_security(teams=None, roles=None) -> ProgramFile:
+    """Build a minimal program carrying teams/roles for Security tests."""
+    program = make_program([
+        make_entity("Engagement", EntityAction.NONE, fields=[
+            FieldDefinition(name="testField", type="varchar", label="Test"),
+        ]),
+    ])
+    program.teams = teams or []
+    program.roles = roles or []
+    return program
+
+
+def test_security_step_skipped_when_no_roles_or_teams():
+    """No security content → NO_WORK status; neither manager
+    instantiated."""
+    program = make_program([
+        make_entity("Engagement", EntityAction.NONE, fields=[
+            FieldDefinition(name="testField", type="varchar", label="Test"),
+        ]),
+    ])
+
+    with patch(
+        "espo_impl.workers.run_worker.TeamManager"
+    ) as mock_team_cls, patch(
+        "espo_impl.workers.run_worker.RoleManager"
+    ) as mock_role_cls:
+        _, _, report, error = run_worker_sync(program, skip_deletes=True)
+
+    assert error is None
+    assert report is not None
+    by_name = _step_results_by_name(report)
+    assert by_name["security"] == StepStatus.NO_WORK
+    assert mock_team_cls.call_count == 0
+    assert mock_role_cls.call_count == 0
+
+
+def test_security_step_teams_then_roles():
+    """When both teams and roles are present, TeamManager runs
+    before RoleManager."""
+    program = _make_program_with_security(
+        teams=[TeamDefinition(name="Mentors")],
+        roles=[RoleDefinition(name="Mentor")],
+    )
+
+    call_order: list[str] = []
+
+    with patch(
+        "espo_impl.workers.run_worker.TeamManager"
+    ) as mock_team_cls, patch(
+        "espo_impl.workers.run_worker.RoleManager"
+    ) as mock_role_cls:
+        def _process_teams(_teams):
+            call_order.append("teams")
+            return [TeamResult(name="Mentors", status=TeamStatus.CREATED)]
+
+        def _process_roles(_roles):
+            call_order.append("roles")
+            return [RoleResult(name="Mentor", status=RoleStatus.CREATED)]
+
+        mock_team_cls.return_value.process_teams.side_effect = _process_teams
+        mock_role_cls.return_value.process_roles.side_effect = _process_roles
+
+        _, _, report, error = run_worker_sync(program, skip_deletes=True)
+
+    assert error is None
+    assert call_order == ["teams", "roles"]
+    by_name = _step_results_by_name(report)
+    assert by_name["security"] == StepStatus.OK
+
+
+def test_security_step_team_errors_aggregate_into_failure_check():
+    """A TeamStatus.ERROR result downgrades the Security step to
+    FAILED with a team-error summary."""
+    program = _make_program_with_security(
+        teams=[
+            TeamDefinition(name="A"),
+            TeamDefinition(name="B"),
+        ],
+    )
+
+    with patch(
+        "espo_impl.workers.run_worker.TeamManager"
+    ) as mock_team_cls:
+        mock_team_cls.return_value.process_teams.return_value = [
+            TeamResult(name="A", status=TeamStatus.ERROR, error="boom"),
+            TeamResult(name="B", status=TeamStatus.CREATED),
+        ]
+
+        _, output_log, report, error = run_worker_sync(
+            program, skip_deletes=True,
+        )
+
+    assert error is None
+    by_name = _step_results_by_name(report)
+    assert by_name["security"] == StepStatus.FAILED
+    failed_entry = next(
+        sr for sr in report.step_results if sr.step_name == "security"
+    )
+    assert "1 team error(s)" in (failed_entry.error or "")
+    messages = [m for m, _ in output_log]
+    assert any("[STEP FAILED] security" in m for m in messages)
+
+
+def test_security_step_role_errors_aggregate_into_failure_check():
+    """A RoleStatus.ERROR result downgrades Security step to FAILED."""
+    program = _make_program_with_security(
+        roles=[RoleDefinition(name="A")],
+    )
+
+    with patch(
+        "espo_impl.workers.run_worker.RoleManager"
+    ) as mock_role_cls:
+        mock_role_cls.return_value.process_roles.return_value = [
+            RoleResult(name="A", status=RoleStatus.ERROR, error="bad"),
+        ]
+
+        _, _, report, error = run_worker_sync(program, skip_deletes=True)
+
+    assert error is None
+    by_name = _step_results_by_name(report)
+    assert by_name["security"] == StepStatus.FAILED
+    failed_entry = next(
+        sr for sr in report.step_results if sr.step_name == "security"
+    )
+    assert "1 role error(s)" in (failed_entry.error or "")
+
+
+def test_security_step_mixed_errors_combined_message():
+    """Both team and role errors → failure_check returns combined
+    message in fixed order (teams, roles)."""
+    program = _make_program_with_security(
+        teams=[TeamDefinition(name="T")],
+        roles=[RoleDefinition(name="R")],
+    )
+
+    with patch(
+        "espo_impl.workers.run_worker.TeamManager"
+    ) as mock_team_cls, patch(
+        "espo_impl.workers.run_worker.RoleManager"
+    ) as mock_role_cls:
+        mock_team_cls.return_value.process_teams.return_value = [
+            TeamResult(name="T", status=TeamStatus.ERROR, error="x"),
+        ]
+        mock_role_cls.return_value.process_roles.return_value = [
+            RoleResult(name="R", status=RoleStatus.ERROR, error="y"),
+        ]
+
+        _, _, report, error = run_worker_sync(program, skip_deletes=True)
+
+    assert error is None
+    by_name = _step_results_by_name(report)
+    assert by_name["security"] == StepStatus.FAILED
+    failed_entry = next(
+        sr for sr in report.step_results if sr.step_name == "security"
+    )
+    msg = failed_entry.error or ""
+    assert "1 team error(s)" in msg
+    assert "1 role error(s)" in msg
+    assert msg.index("team") < msg.index("role")
+
+
+def test_security_step_team_manager_401_aborts():
+    """TeamManagerError with 401 message aborts the run."""
+    program = _make_program_with_security(
+        teams=[TeamDefinition(name="T")],
+    )
+
+    with patch(
+        "espo_impl.workers.run_worker.TeamManager"
+    ) as mock_team_cls:
+        mock_team_cls.return_value.process_teams.side_effect = (
+            TeamManagerError("Authentication failed (HTTP 401)")
+        )
+
+        _, output_log, report, error = run_worker_sync(
+            program, skip_deletes=True,
+        )
+
+    assert error is not None
+    assert report is None
+    messages = [m for m, _ in output_log]
+    assert any("[FATAL]" in m and "security" in m for m in messages)
+
+
+def test_security_step_role_manager_401_aborts():
+    """RoleManagerError with 401 message aborts the run."""
+    program = _make_program_with_security(
+        roles=[RoleDefinition(name="R")],
+    )
+
+    with patch(
+        "espo_impl.workers.run_worker.RoleManager"
+    ) as mock_role_cls:
+        mock_role_cls.return_value.process_roles.side_effect = (
+            RoleManagerError("Authentication failed (HTTP 401)")
+        )
+
+        _, output_log, report, error = run_worker_sync(
+            program, skip_deletes=True,
+        )
+
+    assert error is not None
+    assert report is None
+    messages = [m for m, _ in output_log]
+    assert any("[FATAL]" in m and "security" in m for m in messages)
+
+
+def test_security_step_appears_in_step_summary():
+    """STEP SUMMARY block renders the Security step's display name
+    after the step has run."""
+    program = _make_program_with_security(
+        teams=[TeamDefinition(name="T")],
+    )
+
+    with patch(
+        "espo_impl.workers.run_worker.TeamManager"
+    ) as mock_team_cls:
+        mock_team_cls.return_value.process_teams.return_value = [
+            TeamResult(name="T", status=TeamStatus.CREATED),
+        ]
+
+        _, output_log, report, error = run_worker_sync(
+            program, skip_deletes=True,
+        )
+
+    assert error is None
+    messages = [m for m, _ in output_log]
+    assert any("STEP SUMMARY" in m for m in messages)
+    assert any("Security (teams and roles)" in m for m in messages)
+
+
+def test_security_step_results_stash_on_worker():
+    """_security_team_results and _security_role_results are populated
+    after a successful Security step for Prompt H to consume."""
+    program = _make_program_with_security(
+        teams=[TeamDefinition(name="T")],
+        roles=[RoleDefinition(name="R")],
+    )
+
+    with patch(
+        "espo_impl.workers.run_worker.TeamManager"
+    ) as mock_team_cls, patch(
+        "espo_impl.workers.run_worker.RoleManager"
+    ) as mock_role_cls:
+        team_payload = [TeamResult(name="T", status=TeamStatus.CREATED)]
+        role_payload = [RoleResult(name="R", status=RoleStatus.CREATED)]
+        mock_team_cls.return_value.process_teams.return_value = team_payload
+        mock_role_cls.return_value.process_roles.return_value = role_payload
+
+        client = MagicMock(spec=EspoAdminClient)
+        client.profile = MagicMock(spec=InstanceProfile)
+        client.profile.name = "Test"
+        client.profile.url = "https://test.com"
+        client.profile.api_url = "https://test.com/api/v1"
+        client.check_entity_exists.return_value = (200, True)
+        client.rebuild.return_value = (200, {})
+        client.get_field.return_value = (
+            200, {"type": "varchar", "label": "Test"},
+        )
+
+        output_log: list[tuple[str, str]] = []
+        comparator = FieldComparator()
+        field_mgr = FieldManager(
+            client, comparator, lambda m, c: output_log.append((m, c))
+        )
+
+        worker = RunWorker.__new__(RunWorker)
+        worker.profile = client.profile
+        worker.program = program
+        worker.operation = "run"
+        worker.skip_deletes = True
+        worker.output_line = MagicMock()
+        worker.output_line.emit = lambda m, c: output_log.append((m, c))
+        worker.finished_ok = MagicMock()
+        worker.finished_error = MagicMock()
+
+        worker._run_full(client, field_mgr)
+
+    assert worker._security_team_results == team_payload
+    assert worker._security_role_results == role_payload
+
+
 def test_emit_step_summary_run_complete_message_treats_no_work_as_success():
     """A run with all-NO_WORK steps still prints 'Run completed
     successfully' — NO_WORK is not a failure."""
@@ -1431,7 +1727,8 @@ def test_emit_step_summary_run_complete_message_treats_no_work_as_success():
         for name in (
             "entity_deletions", "entity_creations", "entity_settings",
             "email_templates", "duplicate_checks", "saved_views", "fields",
-            "layouts", "relationships", "workflows", "filtered_tabs",
+            "layouts", "relationships", "workflows", "security",
+            "filtered_tabs",
         )
     ]
 
