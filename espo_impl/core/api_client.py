@@ -640,6 +640,57 @@ class EspoAdminClient:
         payload: dict[str, Any] = {"description": description}
         return self.patch_record("Team", team_id, payload)
 
+    # --- Role management ---
+
+    def get_roles(
+        self,
+    ) -> tuple[int, dict[str, Any] | None]:
+        """List all Role records on the target instance.
+
+        Bulk-fetches up to 200 roles in a single GET. Pagination
+        beyond this is not implemented; documented as a future
+        scaling concern matching ``get_teams``.
+
+        :returns: Tuple of (status_code, response_json or None).
+            Standard EspoCRM list shape ``{"total": N, "list": [...]}``
+            on success.
+        """
+        url = f"{self.profile.api_url}/Role?maxSize=200"
+        return self._request("GET", url)
+
+    def create_role(
+        self, payload: dict[str, Any],
+    ) -> tuple[int, dict[str, Any] | None]:
+        """Create a new Role record.
+
+        Unlike ``create_team``, the payload is variable-shape (it
+        carries the ``data`` JSON blob and the five system-permission
+        columns), so this method takes the full payload dict directly
+        rather than named parameters.
+
+        :param payload: Full Role creation payload. Required keys
+            depend on EspoCRM 9.x's Role record schema; the manager
+            layer is responsible for constructing a valid payload.
+        :returns: Tuple of (status_code, created record or None).
+        """
+        return self.create_record("Role", payload)
+
+    def update_role(
+        self, role_id: str, payload: dict[str, Any],
+    ) -> tuple[int, dict[str, Any] | None]:
+        """PATCH an existing Role record.
+
+        Only the fields present in ``payload`` are updated; other
+        fields are preserved. This is the semantic that lets the
+        manager omit EspoCRM-only permissions (DEC-2) from the
+        update path.
+
+        :param role_id: Server-assigned Role record ID.
+        :param payload: Partial Role update payload.
+        :returns: Tuple of (status_code, response or None).
+        """
+        return self.patch_record("Role", role_id, payload)
+
     # --- Connection test ---
 
     def test_connection(self) -> tuple[bool, str]:

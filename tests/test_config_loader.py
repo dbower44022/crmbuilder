@@ -2853,7 +2853,6 @@ def test_system_permissions_full_block(loader, tmp_path):
               user_permission: all
               export: yes
               mass_update: yes
-              audit_log: yes
               portal: no
     """)
     program = loader.load_program(path)
@@ -2863,7 +2862,6 @@ def test_system_permissions_full_block(loader, tmp_path):
     assert perms.user_permission == "all"
     assert perms.export is True
     assert perms.mass_update is True
-    assert perms.audit_log is True
     assert perms.portal is False
 
 
@@ -2881,7 +2879,6 @@ def test_system_permissions_partial_block(loader, tmp_path):
     assert perms is not None
     assert perms.export is True
     assert perms.mass_update is False
-    assert perms.audit_log is False
     assert perms.portal is False
     assert perms.assignment_permission == "no"
     assert perms.user_permission == "no"
@@ -2913,7 +2910,6 @@ def test_system_permissions_empty_block_yields_defaults(loader, tmp_path):
     assert perms.user_permission == "no"
     assert perms.export is False
     assert perms.mass_update is False
-    assert perms.audit_log is False
     assert perms.portal is False
 
 
@@ -2934,6 +2930,28 @@ def test_system_permissions_unknown_key_rejected(loader, tmp_path):
         match=(
             r"roles \('Mentor'\)\.system_permissions: unknown key\(s\) "
             r"\['foobar'\]"
+        ),
+    ):
+        loader.load_program(path)
+
+
+def test_system_permissions_audit_log_rejected(loader, tmp_path):
+    """DEC-1 (audit-v1.2-D): audit_log dropped from §12.4. Loader
+    must reject it as unknown rather than parsing it silently.
+    """
+    path = _write(tmp_path, "sysperm_audit_log.yaml", """\
+        version: "1.0"
+        description: "audit_log removed in DEC-1"
+        roles:
+          - name: Mentor
+            system_permissions:
+              audit_log: yes
+    """)
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"roles \('Mentor'\)\.system_permissions: unknown key\(s\) "
+            r"\['audit_log'\]"
         ),
     ):
         loader.load_program(path)

@@ -204,7 +204,6 @@ SYSTEM_PERMISSION_SCOPE_KEYS: frozenset[str] = frozenset({
 SYSTEM_PERMISSION_FLAG_KEYS: frozenset[str] = frozenset({
     "export",
     "mass_update",
-    "audit_log",
     "portal",
 })
 VALID_SYSTEM_PERMISSION_KEYS: frozenset[str] = (
@@ -592,8 +591,6 @@ class SystemPermissions:
         ``assignment_permission``.
     :param export: Whether the role may export records.
     :param mass_update: Whether the role may perform bulk updates.
-    :param audit_log: Whether the role may view the platform audit
-        log.
     :param portal: Whether the role may log in via the customer
         portal interface.
     """
@@ -602,7 +599,6 @@ class SystemPermissions:
     user_permission: str = "no"
     export: bool = False
     mass_update: bool = False
-    audit_log: bool = False
     portal: bool = False
 
 
@@ -701,6 +697,42 @@ class TeamResult:
     name: str
     status: TeamStatus
     team_id: str | None = None
+    error: str | None = None
+
+
+class RoleStatus(Enum):
+    """Outcome status for a role operation.
+
+    Uses the 5-value variant: CREATED / UPDATED / SKIPPED / ERROR /
+    NOT_SUPPORTED. No DRIFT because the role manager always
+    reconciles via PATCH; NOT_SUPPORTED reserved for any role whose
+    declarations cannot be translated to EspoCRM (e.g., references
+    to features not implemented in this workstream — currently
+    none, but the slot leaves room for future schema additions).
+    """
+
+    CREATED = "created"
+    UPDATED = "updated"
+    SKIPPED = "skipped"
+    ERROR = "error"
+    NOT_SUPPORTED = "not_supported"
+
+
+@dataclass
+class RoleResult:
+    """Result of processing a single role.
+
+    :param name: Role name from YAML (also the match key).
+    :param status: Outcome status.
+    :param role_id: Server-assigned record ID. Populated after
+        a successful CREATE; available from CHECK on
+        SKIPPED / UPDATED for already-existing roles.
+    :param error: Error message if status is ERROR.
+    """
+
+    name: str
+    status: RoleStatus
+    role_id: str | None = None
     error: str | None = None
 
 

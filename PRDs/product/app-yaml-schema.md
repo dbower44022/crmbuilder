@@ -2495,7 +2495,6 @@ roles:
       user_permission:       team
       export:                no
       mass_update:           no
-      audit_log:             no
       portal:                no
 ```
 
@@ -2507,12 +2506,11 @@ roles:
 | `user_permission` | `all` / `team` / `own` / `no` | Which other users the role may view in the user directory |
 | `export` | `yes` / `no` | Whether the role may export records to CSV / Excel |
 | `mass_update` | `yes` / `no` | Whether the role may perform bulk updates from list views |
-| `audit_log` | `yes` / `no` | Whether the role may view the platform audit log |
 | `portal` | `yes` / `no` | Whether the role may log in via the customer portal interface (when present) |
 
 Scope-style keys (`assignment_permission`, `user_permission`)
 take `all`/`team`/`own`/`no` exactly as in Section 12.3.
-Flag-style keys (`export`, `mass_update`, `audit_log`, `portal`)
+Flag-style keys (`export`, `mass_update`, `portal`)
 take `yes` or `no`. The validator rejects any value outside the
 per-key vocabulary.
 
