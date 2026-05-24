@@ -924,5 +924,50 @@
       "sessions": 1
     },
     "deposit_event_title": "Apply of COP-068, 2026-05-24T05:24:21+00:00"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "0.7.0",
+      "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_069.json",
+      "runner": "claude_code"
+    },
+    "deposit_event_created_at": "2026-05-24T15:33:59.879906",
+    "deposit_event_description": "Applied COP-069. Outcome: failure at step planning_items. Records written before failure: 5 decisions, 1 sessions.",
+    "deposit_event_error_info": {
+      "http_status": 422,
+      "kind": "http_error",
+      "message": "[{\"code\": \"request_validation_error\", \"field\": \"body.item_type\", \"message\": \"Field required\"}]",
+      "step": "planning_items"
+    },
+    "deposit_event_identifier": "DEP-047",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_047.log",
+    "deposit_event_outcome": "failure",
+    "deposit_event_records_summary": {
+      "decisions": 5,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1
+    },
+    "deposit_event_title": "Apply of COP-069, 2026-05-24T15:33:59+00:00"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "0.7.0",
+      "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_069.json",
+      "runner": "claude_code"
+    },
+    "deposit_event_created_at": "2026-05-24T15:35:23.893388",
+    "deposit_event_description": "Applied COP-069. Outcome: success. 1 planning_items.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-048",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_048.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "decisions": 0,
+      "planning_items": 1,
+      "references": 0,
+      "sessions": 0
+    },
+    "deposit_event_title": "Apply of COP-069, 2026-05-24T15:35:23+00:00"
   }
 ]

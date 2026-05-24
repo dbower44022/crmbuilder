@@ -36418,5 +36418,568 @@
     "id": 1522,
     "operation": "insert",
     "timestamp": "2026-05-24T05:24:21.609509"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "Three Claude.ai-sandbox-produced deliverables, all committed at this conversation's close:\n\n1. PRDs/product/crmbuilder-v2/close-out-payloads/ses_069.json — this close-out payload. Five decisions (DEC-216 Phase 1 references-orphan acknowledgement; DEC-217 invariant scope Classes 1+2+3; DEC-218 YAML allowlist mechanism; DEC-219 snapshots-only read mechanism; DEC-220 plain-text output format). One planning item (PI-048 ses_056.json stale blocks vocabulary migration). References: five decided_in edges from each new DEC to SES-069, one decided_in edge for PI-048 to SES-069, two is_about edges from SES-069 to PI-023 and PI-048.\n\n2. PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-apply-close-out-ses-069.md — apply prompt that POSTs the payload to the local V2 API at http://127.0.0.1:8765, captures identifier heads before and after, verifies snapshot regeneration and change_log audit row, commits the snapshot delta.\n\n3. PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-pi-023-workstream-state-reconciliation-utility.md — PI-023 Claude Code prompt that authors crmbuilder-v2/scripts/reconcile.py (full source embedded, ~500 lines, three drift-pattern types, snapshot-only reads, plain-text output, exit 0/1/2), authors PRDs/product/crmbuilder-v2/reconciliation-allowlist.yaml (full source embedded, six allowlist entries), runs the first reconciliation, verifies exit 0 with seven findings all allowlisted, PATCHes PI-022 to Resolved status, commits in two commits per the sandbox convention (commit 1: reconcile.py + allowlist; commit 2: PI-022 transition + snapshot regeneration).",
+      "conversation_reference": "Claude.ai ARCHITECTURE-mode planning conversation opened against the PI-023 kickoff at PRDs/product/crmbuilder-v2/pi-023-workstream-state-reconciliation-utility-kickoff.md. The kickoff itself was authored at the close of the PI-026 supersession conversation (SES-068, commit 7a0f991 on 05-24-26) per the PI-022 program's chain rule. PI-023 is the terminal phase of the PI-022 governance-backfill program. The conversation opened with a routing-correction turn (Doug initially pasted the discharged PI-026 kickoff path; identifier-head verification and predecessor-conversation trace established PI-023 as the actual next planning conversation). After re-orientation against PI-023's kickoff, the four surface-and-settle questions were taken in dependency order (Q2 invariant scope, Q4 allowlist mechanism, Q3 read mechanism, Q1 output format) rather than the kickoff's listed order, each settled with terse approval per the operating-mode convention. The conversation drafted reconcile.py and reconciliation-allowlist.yaml in a sandbox working area and tested both against a stub-patched copy of the current db-export snapshot, surfacing three findings beyond the four anticipated allowlist entries: two were absorbed into the allowlist citing DEC-210 (orphan-session payload files without COP record; ses_001.json's three unresolved references), one was surfaced as a new planning item (PI-048 ses_056.json stale blocks-vs-blocked_by vocabulary). Final reconcile.py test run produced 7 findings, all allowlisted, exit 0 — matching PI-023's acceptance criterion 3.",
+      "created_at": "2026-05-24T15:33:58.189929+00:00",
+      "id": 68,
+      "identifier": "SES-069",
+      "in_flight_at_end": "PI-023's terminal-close status applies once Doug runs (a) the SES-069 close-out apply prompt and (b) the PI-023 Claude Code prompt at his terminal. Sequence: apply prompt first (lands DEC-216..220, PI-048, references); Claude Code prompt second (authors reconcile.py + allowlist, runs the first reconciliation, transitions PI-022 to Resolved, regenerates snapshot). The Claude Code prompt's first reconcile.py invocation is the acceptance test for PI-023; it should produce seven findings, all allowlisted, exit code 0. If it surfaces unallowlisted drift, the Claude Code prompt halts and the operator returns to a Claude.ai conversation to either expand the allowlist or surface additional planning items.\n\nKnown additional planning item surfaced by this conversation: PI-048 (ses_056.json stale blocks-vs-blocked_by vocabulary). PI-048 enters the planning queue at Open status without workstream attachment, eligible for inclusion in a future governance-data-quality workstream lane alongside PI-046 and PI-047. Resolution paths for PI-048 are two: (i) migrate the two stale references in ses_056.json's references array from relationship=blocks to relationship=blocked_by, then remove the allowlist entry once reconcile.py confirms zero unresolved-references findings against ses_056.json; (ii) formally accept stale-vocab in historical close-out payload files as an immutable archival convention, in which case the allowlist entry stays and additional historical payloads with the same pattern get added to its scope.\n\nNo successor kickoff authored at this close. PI-023's close is the terminal close-out of the PI-022 governance-backfill program. The next conversation after PI-023's Claude Code prompt runs is at Doug's discretion. Planning queue at end of this conversation: PI-046 (vocab schema-vs-spec contradiction), PI-047 (ses_030/ses_036 duplicate-session artifact), PI-048 (ses_056.json stale blocks vocabulary) — three governance-data-quality planning items eligible for a future workstream. PI-032 (Code Change Lifecycle reserve-at-apply-time identifier model) remains the structural fix for the parallel-sandbox identifier-collision pattern that has hit four times in the recent backfill program; the SES-068→SES-069 transition does not extend that count because PI-029 slice B's SES-067 was applied before this conversation opened.\n\nPI-022 status transition: from Open at this conversation's close to Resolved when the PI-023 Claude Code prompt's verification step passes. The apply prompt for SES-069 does NOT transition PI-022; only the Claude Code prompt does, and only after reconcile.py verifies exit 0.",
+      "session_date": "2026-05-24",
+      "status": "Complete",
+      "summary": "",
+      "title": "PI-023 workstream-state reconciliation utility planning — four surface-and-settle questions settled (invariant scope, allowlist mechanism, read mechanism, output format), embedded follow-on Phase 1 references-orphan acknowledgement decision authored, one new planning item surfaced (PI-048 ses_056 stale-blocks vocabulary), three Claude.ai deliverables produced (close-out payload, apply prompt, PI-023 Claude Code prompt embedding reconcile.py and reconciliation-allowlist.yaml).",
+      "topics_covered": "Seed prompt: \"PRDs/product/crmbuilder-v2/pi-026-historical-applies-deposit-events-backfill-kickoff.md\" (later corrected to the PI-023 kickoff after state inspection confirmed PI-026 had already been discharged).\n\nThe conversation covered: (1) routing correction — Doug's seed pointed at the discharged PI-026 kickoff; pre-work state inspection established SES-068 as the most recent applied close-out, COP-009..032 and DEP-020..043 already landed for PI-026, the PI-026 supersession at SES-068 having authored the PI-023 kickoff at PRDs/product/crmbuilder-v2/pi-023-workstream-state-reconciliation-utility-kickoff.md as the actual next conversation; (2) orientation against PI-023's kickoff with identifier-head verification (SES head SES-068, DEC head DEC-215, PI head PI-047, COP head COP-068, DEP head DEP-046, references count 817 — matching kickoff anticipations exactly, no parallel-sandbox drift); (3) read-this-first context items including DEC-197 orphan-sessions list, DEC-206 superseded reference-as-wrote_record decision, DEC-215 Option I supersedes-DEC-206 decision, the PI-046 vocab.py schema-vs-spec contradiction (vocab._kinds_for_pair at lines 350-360 admits target_type=\"reference\" but ENTITY_TYPES does not include \"reference\", so RELATIONSHIP_RULES never generates the pair the validator enforces), and the PI-047 ses_030/ses_036 duplicate-session artifact; (4) Q2 (invariant scope) settled as Classes 1+2+3 — file vs record presence, record-claims-vs-record-presence, decision-vs-records consistency with supersedes-edge traversal; Classes 4 and 5 deferred as analytics-adjacent or structurally-redundant relative to existing schema CHECK constraints; (5) Q4 (allowlist mechanism) settled as YAML config file at PRDs/product/crmbuilder-v2/reconciliation-allowlist.yaml with embedded follow-on (i) — author DEC-216 to formally acknowledge the Phase 1 references-orphan pattern that had only been documented in inline script comments; (6) Q3 (read mechanism) settled as snapshots only, overriding the kickoff's proposed REST API default because the Claude.ai sandbox cannot reach the local 127.0.0.1:8765 API; allowed-domains list does not include localhost; reading from snapshots also matches the utility's conceptual purpose of reconciling git-tracked artifacts against database-tracked artifacts (the snapshots being the git-tracked artifact); (7) Q1 (output format) settled as plain text only with exit 0/1 binary signal; JSON and Markdown deferred unless they earn their weight via concrete downstream demand; (8) reconcile.py drafted and tested against the current db-export snapshot in a sandbox working area with stub DEC-216 and PI-048 patched in to simulate the post-apply state; three additional findings surfaced beyond the four anticipated (two absorbed into the allowlist citing DEC-210 for the orphan-session payload files and the ses_001.json unresolved-references pattern, one surfaced as new planning item PI-048 for the ses_056.json stale blocks-relationship vocabulary that the v0.8 methodology rename had migrated to blocked_by); (9) allowlist drift_pattern types extended from the kickoff's two-pattern starting point (records_summary_field, unresolved_payload_references) to three types — adding payload_files_without_cop to handle the orphan-session files-without-COP-record pattern; (10) PI-022 closure timing settled inline as decide-and-announce — PI-022 transitions Open→Resolved when the PI-023 Claude Code prompt's verification step passes (first reconcile.py invocation exits 0), not at this conversation's close, because the conversation only authors the artifact-of-intent (the Claude Code prompt) and not the artifact-itself (reconcile.py at the canonical path)."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-069",
+    "entity_type": "session",
+    "id": 1523,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:33:58.190446"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "(ii) Cite DEC-215 as canonical for both Phase 1 and Option I — rejected because it conflates the supersession trigger with the original-pattern documentation. (iii) Script-and-line-range as canonical — rejected because it breaks the database-record invariant and is fragile to refactors. (iv) Defer the acknowledgement to a separate post-PI-023 conversation — rejected because PI-023's allowlist needs the canonical record to exist at the first reconciliation invocation; deferring would mean either delaying PI-023's first-run acceptance test or shipping reconcile.py with a known-stale allowlist entry.",
+      "consequences": "DEC-216 establishes the precedent that historical patterns documented only in script comments may be elevated to governance decisions retroactively when a downstream consumer (such as PI-023's allowlist) requires a canonical record. The cost is one DEC per such elevation; the benefit is consistent database-record-as-canonical-acknowledgement across the governance graph. Future governance-data-quality work may surface additional similar patterns (e.g., other historical scripts with inline-comment acknowledgements); each such pattern can follow DEC-216's template. PI-023's reconciliation-allowlist.yaml file carries the `phase-1-references-orphan` entry referencing DEC-216; the entry's drift_pattern matches DEP-001..DEP-008 records_summary.references=0 against 8 of 8 records in range. No retroactive modification to backfill_governance_phase_1.py is required — the script's inline comment remains valid context. The 8 reference records that Phase 1 did not link to their producing DEPs continue to exist in the references table; they are not orphans in the references-table sense, only in the wrote_record-edge sense.",
+      "context": "Phase 1 of the PI-022 governance-backfill program authored eight deposit_event records (DEP-001..008) representing the historical applies that landed before the deposit_event entity wiring was complete. Each DEP carries records_summary.references=0 by deliberate design — Phase 1 explicitly chose not to author deposit_event_wrote_record edges with target_type=\"reference\" because the reference-lookup work would have been substantial and the deliverable was scoped to records-level wrote_record edges (sessions, decisions, planning_items). The decision was documented inline in backfill_governance_phase_1.py's docstring and never elevated to a governance decision record. PI-023's reconciliation utility (DEC-217 invariant scope Classes 1+2+3) detects this pattern as Class 3 drift unless the allowlist (DEC-218 mechanism) has an entry covering it. DEC-218's allowlist entries are required to carry either a decided_in DEC reference or a planning_item PI reference as the canonical record of acknowledgement. The Phase 1 references-orphan has neither — only the script comment. The conversation surfaced three resolution paths during Q4 settlement: (i) author a new DEC formally acknowledging the Phase 1 pattern, then have the allowlist entry cite it; (ii) cite DEC-215 (which acknowledges the Phase 1 pattern in its rationale text but whose nominal scope is the Option I PI-026 case); (iii) allow the allowlist entry to cite a script-and-line-range as the canonical reference. DEC-216 is the embodiment of resolution (i).",
+      "created_at": "2026-05-24T15:33:58.304800+00:00",
+      "decision": "The Phase 1 references-orphan is formally acknowledged as a known data-quality artifact of the v2 governance graph: DEP-001..DEP-008 carry records_summary.references=0 by deliberate design of Phase 1 (backfill_governance_phase_1.py); deposit_event_wrote_record edges with target_type=\"reference\" were not authored for these 8 deposit_event records; the corresponding reference records exist in the references table but are not linked to their producing deposit_event via wrote_record edges. This acknowledgement is binding: the pattern is NOT to be retroactively amended (deposit_event has born-terminal lifecycle; the records are immutable per their access-layer contract). The Phase 1 references-orphan is symmetrically mirrored by the Option I references-orphan (DEP-020..043) per DEC-215. PI-023's reconciliation allowlist carries a `phase-1-references-orphan` entry citing DEC-216 as decided_in; future allowlist entries acknowledging similar patterns may cite DEC-216 as a precedent.",
+      "decision_date": "2026-05-24",
+      "id": 214,
+      "identifier": "DEC-216",
+      "rationale": "Resolution path (i) — author a new DEC — is cleanest going forward because every allowlist entry then carries a real database record as its canonical acknowledgement, matching the DEC-218 invariant that the canonical reasoning lives in the database. Path (ii) — cite DEC-215 — works only if DEC-215's rationale is read as scoping both the Option I case (its nominal target) and the Phase 1 precedent (referenced in passing). The allowlist would then carry two entries pointing at the same DEC, which loses the asymmetry that DEC-215 is the supersession trigger for DEC-206 (specifically about Option I) and that the Phase 1 pattern predates the DEC-206/215 sequence entirely. Path (iii) — script-and-line-range as canonical reference — breaks the database-record-as-canonical-acknowledgement invariant and is fragile to script refactors. The cost of path (i) is one extra DEC at PI-023's close; the benefit is a clean database record for every allowlist entry's reasoning, no future ambiguity about scope, and a precedent for surfacing similar historical-pattern acknowledgements as governance records (a pattern likely to recur as additional governance-data-quality artifacts surface across the program).",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Phase 1 references-orphan formally acknowledged — backfill_governance_phase_1.py's deliberate skip of reference wrote_record edges for DEP-001..008 elevated from inline script comment to governance decision so the reconciliation allowlist can cite a canonical database record",
+      "updated_at": "2026-05-24T15:33:58.304802+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-216",
+    "entity_type": "decision",
+    "id": 1524,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:33:58.305166"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Classes 1+2+3+4 — rejected for v1 because the workstream-chain-coherence checks expand the semantic meaning of \"drift\" beyond what the immediate program experience justifies; orphan-CONV detection is an analytics question, not a drift-detection question. Classes 1+2+3+4+5 — rejected for the additional reason that Class 5's identifier-head continuity largely duplicates schema CHECK constraints and apply-prompt capture; the duplication produces noise without proportionate detection value.",
+      "consequences": "reconcile.py v1 covers approximately seven findings against the current snapshot, all allowlisted via six allowlist entries (DEC-216 phase-1 orphan; DEC-215 option-i orphan; DEC-210 orphan-session files-without-cop covering ses_001/046; DEC-210 ses-001 unresolved references; PI-047 ses_030 unresolved references; PI-048 ses_056 stale blocks vocabulary). Future drift patterns within Classes 1+2+3 scope are detected immediately at pre-flight. Drift patterns in Classes 4 or 5 are not caught by reconcile.py; the cost of any such miss is bounded by either the conversation's own pre-flight reasoning catching it or by the next subsequent reconciliation invocation surfacing it (once the scope expands).",
+      "context": "The PI-023 kickoff named five candidate drift classes for the reconciliation utility to check: Class 1 (file vs record presence both directions), Class 2 (record-claims-vs-record-presence), Class 3 (decision-vs-records consistency), Class 4 (workstream chain coherence), Class 5 (identifier-head continuity). The kickoff's proposed default was Classes 1+2+3. The planning conversation surfaced this as Q2 with the eight-element consequential decision template; concrete examples cited the PI-046 vocab contradiction case (covered by Class 3 with supersedes-edge traversal) and the PI-047 ses_030 duplicate-session case (covered by Class 2). Classes 4 and 5 cover analytics-adjacent and structurally-redundant checks respectively.",
+      "created_at": "2026-05-24T15:33:58.414260+00:00",
+      "decision": "PI-023's reconciliation utility implements Classes 1, 2, and 3 in v1. Class 1 checks both directions of file ↔ close_out_payload-record presence (every .json file in close-out-payloads/ has a COP record by file_path match; every COP record's file_path resolves to an extant file). Class 2 checks that every record a payload JSON claims it created (session, decisions, planning_items, references) exists in the snapshots with the claimed identifier; reference claims match the 5-tuple (source_type, source_id, target_type, target_id, relationship) against the references snapshot's relationship_kind column. Class 3 is allowlist-driven: each allowlist entry whose drift_pattern matches a record set is reported as EXPECTED; the script traverses supersedes edges so that allowlist entries citing decisions which are themselves the target of a supersedes edge are flagged as stale. Classes 4 (workstream chain coherence) and 5 (identifier-head continuity) are deferred to a future planning item if drift in those classes ever surfaces as a real cost.",
+      "decision_date": "2026-05-24",
+      "id": 215,
+      "identifier": "DEC-217",
+      "rationale": "Classes 1+2+3 cover every drift pattern that has actually caused rebases or apply-time discoveries in the PI-022 program's history. The SES-066→SES-068 rebase chain was triggered by a Class 3 case (DEC-206 prescribed reference wrote_record edges that the access layer rejected, with DEC-215 ultimately superseding DEC-206). The PI-047 ses_030/ses_036 duplicate-session case is a Class 2 finding. The PI-046 vocab contradiction surfaces in Class 3 once the allowlist entry citing PI-046 is added. Class 4's workstream-chain-coherence concerns are analytics-adjacent and the cost of underscoping them (a future apply leaves a CONV orphaned and reconcile.py misses it) is bounded by the next conversation's pre-flight catching it some other way. Class 5's identifier-head continuity is mostly already enforced by the schema's CHECK constraints and the apply prompts' pre-and-post-apply identifier-head capture; marginal additional value from reconcile.py implementing it is small. The deferral of Classes 4 and 5 keeps v1 focused; if either becomes a real cost, a separate PI can extend reconcile.py's scope.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "PI-023 reconciliation utility invariant scope for v1 — Classes 1+2+3 only (file vs record presence; record-claims-vs-record-presence; decision-vs-records consistency with supersedes-edge traversal); Classes 4 and 5 deferred",
+      "updated_at": "2026-05-24T15:33:58.414263+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-217",
+    "entity_type": "decision",
+    "id": 1525,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:33:58.414682"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Option A (hard-coded constants) — rejected because allowlist mutations would conflate with reconcile.py source changes; the allowlist would not be greppable as a standalone artifact; reviewers would need to read Python source to audit it. Option C (database-driven via new relationship kind) — rejected because it requires schema additions disproportionate to v1's needs (new kind in vocab.py, CHECK constraint extension, Alembic migration, dialog rule updates); the database-record-as-canonical-acknowledgement invariant is already preserved in Option B by the required decided_in/planning_item field.",
+      "consequences": "Adding an allowlist entry is a YAML edit committed to the repo, optionally accompanied by a new DEC or PI if no existing canonical record fits. The allowlist file ships at v1 with six entries covering the seven first-run findings (one entry covers two findings via payload_files list). reconcile.py refuses to run if any allowlist entry references a DEC or PI not in the snapshots (exit code 2), so allowlist edits referencing yet-unapplied governance records fail loudly until the corresponding governance close-out is applied. Future drift_pattern.type additions extend reconcile.py's drift-pattern matching surface; backward compatibility for existing YAML entries is preserved by the type-tagged-dispatch design.",
+      "context": "The reconciliation utility (DEC-217) detects drift findings and needs a mechanism to distinguish 'drift we have formally accepted and are NOT investigating' from 'drift we have not yet seen.' The PI-023 kickoff named three candidate mechanisms: (A) hard-coded Python constants in reconcile.py, (B) YAML config file in the repo, (C) database-driven via a new relationship kind tagging DECs/PIs. The conversation surfaced this as Q4 with the eight-element consequential decision template. Four artifacts at first run need allowlisting: Phase 1 references-orphan (DEP-001..008 records_summary.references=0); Option I references-orphan (DEP-020..043 records_summary.references=0 per DEC-215); vocab schema-vs-spec contradiction (PI-046); ses_030 duplicate-session 4 unresolvable references (PI-047). The embedded follow-on to Q4 was the Phase 1 acknowledgement DEC-216 — Phase 1's only existing acknowledgement is an inline script comment, not a governance record, and DEC-218's entry-shape requires every entry to cite a real DEC or PI.",
+      "created_at": "2026-05-24T15:33:58.558909+00:00",
+      "decision": "The reconciliation allowlist lives at PRDs/product/crmbuilder-v2/reconciliation-allowlist.yaml as a YAML file containing a list of entries. Each entry is a mapping with keys: `name` (string, short slug, unique across the file); `description` (string, one-line human summary); `decided_in` (DEC-NNN string, required if `planning_item` absent); `planning_item` (PI-NNN string, required if `decided_in` absent); `drift_pattern` (mapping with `type` and type-specific keys). The drift_pattern.type field admits three values in v1: `records_summary_field` (matches a deposit_event records_summary subfield against an expected_value across an identifier_range); `unresolved_payload_references` (matches a close-out payload file whose references claims do not all resolve in the references snapshot, with an expected_unresolved_count); `payload_files_without_cop` (matches close-out payload files that have no corresponding close_out_payload record). reconcile.py validates the allowlist at startup: every entry's `decided_in` and `planning_item` identifiers must resolve in the snapshots; every drift_pattern.type must be one of the three known types; configuration errors exit code 2 before any drift checking begins.",
+      "decision_date": "2026-05-24",
+      "id": 216,
+      "identifier": "DEC-218",
+      "rationale": "Option B (YAML config file) wins on auditability (a single greppable file at a known location vs constants buried in source vs DB-tagged records the reviewer queries the API for) and entry cost (YAML edit + commit vs code edit + commit vs governance close-out + schema migration). The required `decided_in` or `planning_item` field keeps the canonical reasoning in the database — YAML carries the pattern match, the database carries the why. Option A is cheaper to implement initially but loses the auditability benefit and conflates allowlist mutations with reconcile.py source changes. Option C is most architecturally consistent (everything in the database) but requires schema additions (new relationship kind in vocab.py, CHECK constraint extension, Alembic migration, dialog rule updates) — well beyond PI-023's scope and disproportionate to v1's needs. The four-then-six allowlist entries that first-run requires are easily expressed in the YAML schema; if the allowlist ever grows past 50 entries or develops complex pattern-composition needs, Option C can be revisited.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "PI-023 reconciliation utility allowlist mechanism — YAML config file at PRDs/product/crmbuilder-v2/reconciliation-allowlist.yaml; each entry carries decided_in (DEC-NNN) or planning_item (PI-NNN) as required canonical-record reference",
+      "updated_at": "2026-05-24T15:33:58.558912+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-218",
+    "entity_type": "decision",
+    "id": 1526,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:33:58.559284"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Option A (REST API only, kickoff default) — rejected because it blocks the Claude.ai sandbox pre-flight use case and offers no countervailing benefit under the current auto-refresh architecture. Option C (both, snapshots primary with API cross-check) — rejected as over-engineered for v1; if refresh-hook bugs ever become a real concern, adding the API cross-check as a future iteration is a small follow-on. The decision intentionally chooses snapshots as the read mechanism rather than allowing reconcile.py to fall back between mechanisms; the simpler architecture pays out in audit clarity (one mechanism, one set of failure modes) and makes the snapshots' role as canonical git-tracked state explicit.",
+      "consequences": "reconcile.py runs in any environment that has the cloned repo on disk: Doug's terminal, the Claude.ai sandbox, a future CI runner. The V2 API can be down, undeployed, or differently-versioned without affecting reconcile.py's output. The snapshot auto-refresh hook in crmbuilder-v2/src/crmbuilder_v2/access/engagement.py becomes a load-bearing component for reconcile.py's correctness; a hook regression would surface as silent reconcile.py inaccuracy. Future PI-023.x iterations may add Option C's snapshot-vs-API cross-check as a separate drift class if that risk materializes. The decision does not preclude future read-mechanism additions; it sets snapshots as the v1 primary.",
+      "context": "The PI-023 kickoff proposed Option A (REST API at http://127.0.0.1:8765) as the default read mechanism for the reconciliation utility, with Option B (db-export JSON snapshots) and Option C (both with cross-check) as alternatives. The kickoff's stated rationale for A was 'the freshness guarantee matters more than the speed cost.' The planning conversation surfaced this as Q3 with the eight-element consequential decision template and recommended overriding the kickoff's default to Option B. The override rationale rested on two grounds: (1) the Claude.ai sandbox where this very planning conversation runs cannot reach the local 127.0.0.1:8765 API — the sandbox is a separate container with an allowed-domains network policy that does not include localhost; Option A would block the Claude.ai pre-flight use case entirely; (2) the snapshots are auto-refreshed transactionally on every API write per the _refresh_snapshot hook in crmbuilder-v2/src/crmbuilder_v2/access/engagement.py, so the kickoff's 'stale snapshot' freshness concern does not materialize under the current architecture.",
+      "created_at": "2026-05-24T15:33:58.668687+00:00",
+      "decision": "reconcile.py reads database state exclusively from the db-export JSON snapshots at PRDs/product/crmbuilder-v2/db-export/. Six snapshot files are required for Class 1+2+3 scope: sessions.json, decisions.json, planning_items.json, references.json, close_out_payloads.json, deposit_events.json. The path resolution defaults to PRDs/product/crmbuilder-v2/db-export/ relative to the repository root (auto-detected by walking up from the script's location until a .git directory is found); --db-export PATH overrides the default. A missing snapshot file is itself a configuration error (exit 2). The script makes no HTTP requests; the V2 API may be down without affecting reconcile.py's behavior. The snapshots are treated as the canonical git-tracked record of database state.",
+      "decision_date": "2026-05-24",
+      "id": 217,
+      "identifier": "DEC-219",
+      "rationale": "The binding constraint is the use case: PI-023's invocation context includes the Claude.ai sandbox pre-flight, and the sandbox cannot reach the local 127.0.0.1:8765 API. Option A would render reconcile.py unusable for half of its intended invocations. The deeper architectural fit is also stronger for B: reconcile.py's purpose is to detect git-vs-database state drift. The git-tracked artifacts are the close-out payload JSON files plus the db-export snapshots. Reading database state via the API instead of via the snapshots would mean reconcile.py never checks whether the snapshots themselves agree with the database — but the snapshots are the artifact operators reason about in PRs and reviews; an undetected snapshot-vs-database drift would propagate silently to every downstream reader. The auto-refresh hook eliminates the kickoff's 'stale snapshot' concern under normal operation. The single remaining cost is that if the API ever gains a derived/computed field that does not make it into the snapshot, reconcile.py will not reconcile against it — but the snapshot generator is intended to be exhaustive over governance state; a snapshot-missing-an-endpoint-field condition is itself a reportable drift class in a future iteration.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "PI-023 reconciliation utility database read mechanism — db-export JSON snapshots only, no V2 REST API dependency; overrides the PI-023 kickoff's proposed REST-API default",
+      "updated_at": "2026-05-24T15:33:58.668690+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-219",
+    "entity_type": "decision",
+    "id": 1527,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:33:58.669059"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Option B (JSON only) — rejected because terminal skimmability is the dominant case and JSON requires jq or similar to read at terminal; exit code already provides the machine signal. Option C (Markdown only) — rejected because plain text reads as well at terminal and Markdown rendering buys nothing for case 1/2 readers. Option D (--format flag) — deferred but not rejected; adding it post-v1 is a small follow-on once a concrete downstream consumer surfaces.",
+      "consequences": "reconcile.py's output is human-readable at terminal without post-processing. Apply prompt pre-flight stanzas that wish to programmatically signal 'proceed' or 'halt' do so via the exit code (0 vs 1 vs 2), not by parsing the text body. Future format additions (JSON, Markdown) can be implemented as additional render functions dispatched on a --format flag without disturbing the v1 default. The format decision binds reconcile.py v1's stable interface for downstream consumers; format changes within plain-text (whitespace adjustments, additional summary fields) should be considered a soft compatibility break that operators may notice in apply-prompt logs.",
+      "context": "The PI-023 kickoff named four candidate output formats: (A) structured plain text, (B) JSON, (C) Markdown, (D) plain text default with --format flag for JSON/Markdown. The kickoff's proposed default was A. The planning conversation surfaced this as Q1 with the eight-element consequential decision template. The use cases identified were: Doug scanning output at his terminal (case 1); Claude.ai pre-flight reading the output and deciding whether to proceed or surface to Doug (case 2); filing as a governance record evidence (case 3, rare). Cases 1 and 2 favor plain text skimmability; case 3 favors Markdown.",
+      "created_at": "2026-05-24T15:33:58.773789+00:00",
+      "decision": "reconcile.py emits structured plain text on stdout. The output structure is: (1) header lines reporting which inputs were loaded successfully (snapshots, payloads, allowlist); (2) one block per drift class in order 1, 2, 3, with a class-header line ('Class N (description):    K findings') followed by zero or more finding lines indented by two spaces; (3) a summary line ('Summary: N findings (X allowlisted, Y unallowlisted drift).'); (4) a closing status line ('No unallowlisted drift.' OR 'Unallowlisted drift present; investigate before proceeding.'). Each finding line is severity-prefixed by EXPECTED or DRIFT (padded to 8 columns for column alignment). EXPECTED findings carry the matching allowlist entry name and its canonical record (DEC-NNN or PI-NNN) before the per-finding summary text. DRIFT findings carry only the per-finding summary text. Exit code: 0 if zero unallowlisted drift findings; 1 if any unallowlisted drift; 2 if configuration errors prevented the drift checks from running.",
+      "decision_date": "2026-05-24",
+      "id": 218,
+      "identifier": "DEC-220",
+      "rationale": "Plain text serves the dominant use case (pre-flight skimmability) with minimum machinery. Exit code 0/1/2 carries the binary machine signal that downstream tooling and apply-prompt pre-flight stanzas need — JSON output would duplicate that signal without adding value at v1. Markdown's filable-as-governance-evidence advantage is real but rare; if a future PI-046 or PI-047 close-out wants to attach a reconcile.py run as evidence, a small follow-on can either render the same data to Markdown or note that the plain-text output is verbatim-quotable as code-block evidence. Option D's --format flag is the right shape if multiple downstream consumers materialize; deferring it until that demand is concrete avoids paying the cost of two more rendering paths now.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "PI-023 reconciliation utility output format — structured plain text on stdout, severity-prefixed (EXPECTED/DRIFT), grouped by drift class, with summary line and exit code 0 (no drift) / 1 (unallowlisted drift) / 2 (configuration error)",
+      "updated_at": "2026-05-24T15:33:58.773791+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-220",
+    "entity_type": "decision",
+    "id": 1528,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:33:58.774148"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T15:33:58.887071+00:00",
+      "id": 822,
+      "reference_identifier": "REF-0818",
+      "relationship": "decided_in",
+      "source_id": "DEC-216",
+      "source_type": "decision",
+      "target_id": "SES-069",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-216 -[decided_in]-> session:SES-069",
+    "entity_type": "reference",
+    "id": 1529,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:33:58.887423"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T15:33:59.039035+00:00",
+      "id": 823,
+      "reference_identifier": "REF-0819",
+      "relationship": "decided_in",
+      "source_id": "DEC-217",
+      "source_type": "decision",
+      "target_id": "SES-069",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-217 -[decided_in]-> session:SES-069",
+    "entity_type": "reference",
+    "id": 1530,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:33:59.039397"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T15:33:59.147244+00:00",
+      "id": 824,
+      "reference_identifier": "REF-0820",
+      "relationship": "decided_in",
+      "source_id": "DEC-218",
+      "source_type": "decision",
+      "target_id": "SES-069",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-218 -[decided_in]-> session:SES-069",
+    "entity_type": "reference",
+    "id": 1531,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:33:59.147671"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T15:33:59.262527+00:00",
+      "id": 825,
+      "reference_identifier": "REF-0821",
+      "relationship": "decided_in",
+      "source_id": "DEC-219",
+      "source_type": "decision",
+      "target_id": "SES-069",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-219 -[decided_in]-> session:SES-069",
+    "entity_type": "reference",
+    "id": 1532,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:33:59.262905"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T15:33:59.406544+00:00",
+      "id": 826,
+      "reference_identifier": "REF-0822",
+      "relationship": "decided_in",
+      "source_id": "DEC-220",
+      "source_type": "decision",
+      "target_id": "SES-069",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "decision:DEC-220 -[decided_in]-> session:SES-069",
+    "entity_type": "reference",
+    "id": 1533,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:33:59.406897"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T15:33:59.515665+00:00",
+      "id": 827,
+      "reference_identifier": "REF-0823",
+      "relationship": "decided_in",
+      "source_id": "PI-048",
+      "source_type": "planning_item",
+      "target_id": "SES-069",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "planning_item:PI-048 -[decided_in]-> session:SES-069",
+    "entity_type": "reference",
+    "id": 1534,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:33:59.516022"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T15:33:59.625872+00:00",
+      "id": 828,
+      "reference_identifier": "REF-0824",
+      "relationship": "is_about",
+      "source_id": "SES-069",
+      "source_type": "session",
+      "target_id": "PI-023",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-069 -[is_about]-> planning_item:PI-023",
+    "entity_type": "reference",
+    "id": 1535,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:33:59.626292"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T15:33:59.769087+00:00",
+      "id": 829,
+      "reference_identifier": "REF-0825",
+      "relationship": "is_about",
+      "source_id": "SES-069",
+      "source_type": "session",
+      "target_id": "PI-048",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-069 -[is_about]-> planning_item:PI-048",
+    "entity_type": "reference",
+    "id": 1536,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:33:59.769456"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T15:33:59.881863+00:00",
+      "id": 830,
+      "reference_identifier": "REF-0826",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-047",
+      "source_type": "deposit_event",
+      "target_id": "COP-069",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-047 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-069",
+    "entity_type": "reference",
+    "id": 1537,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:33:59.882254"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T15:33:59.884249+00:00",
+      "id": 831,
+      "reference_identifier": "REF-0827",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-047",
+      "source_type": "deposit_event",
+      "target_id": "SES-069",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-047 -[deposit_event_wrote_record]-> session:SES-069",
+    "entity_type": "reference",
+    "id": 1538,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:33:59.884747"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T15:33:59.886562+00:00",
+      "id": 832,
+      "reference_identifier": "REF-0828",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-047",
+      "source_type": "deposit_event",
+      "target_id": "DEC-216",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-047 -[deposit_event_wrote_record]-> decision:DEC-216",
+    "entity_type": "reference",
+    "id": 1539,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:33:59.887014"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T15:33:59.888685+00:00",
+      "id": 833,
+      "reference_identifier": "REF-0829",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-047",
+      "source_type": "deposit_event",
+      "target_id": "DEC-217",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-047 -[deposit_event_wrote_record]-> decision:DEC-217",
+    "entity_type": "reference",
+    "id": 1540,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:33:59.889004"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T15:33:59.890526+00:00",
+      "id": 834,
+      "reference_identifier": "REF-0830",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-047",
+      "source_type": "deposit_event",
+      "target_id": "DEC-218",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-047 -[deposit_event_wrote_record]-> decision:DEC-218",
+    "entity_type": "reference",
+    "id": 1541,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:33:59.890881"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T15:33:59.892648+00:00",
+      "id": 835,
+      "reference_identifier": "REF-0831",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-047",
+      "source_type": "deposit_event",
+      "target_id": "DEC-219",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-047 -[deposit_event_wrote_record]-> decision:DEC-219",
+    "entity_type": "reference",
+    "id": 1542,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:33:59.892961"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T15:33:59.894702+00:00",
+      "id": 836,
+      "reference_identifier": "REF-0832",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-047",
+      "source_type": "deposit_event",
+      "target_id": "DEC-220",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-047 -[deposit_event_wrote_record]-> decision:DEC-220",
+    "entity_type": "reference",
+    "id": 1543,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:33:59.895203"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "0.7.0",
+        "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_069.json",
+        "runner": "claude_code"
+      },
+      "deposit_event_created_at": "2026-05-24T15:33:59.879906+00:00",
+      "deposit_event_description": "Applied COP-069. Outcome: failure at step planning_items. Records written before failure: 5 decisions, 1 sessions.",
+      "deposit_event_error_info": {
+        "http_status": 422,
+        "kind": "http_error",
+        "message": "[{\"code\": \"request_validation_error\", \"field\": \"body.item_type\", \"message\": \"Field required\"}]",
+        "step": "planning_items"
+      },
+      "deposit_event_identifier": "DEP-047",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_047.log",
+      "deposit_event_outcome": "failure",
+      "deposit_event_records_summary": {
+        "decisions": 5,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1
+      },
+      "deposit_event_title": "Apply of COP-069, 2026-05-24T15:33:59+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-047",
+    "entity_type": "deposit_event",
+    "id": 1544,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:33:59.895204"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T15:35:23.722460+00:00",
+      "description": "Surfaced during PI-023's planning conversation while testing reconcile.py against the current db-export snapshot. ses_056.json's references array contains two entries with relationship=\"blocks\": (planning_item PI-025 → planning_item PI-024) and (planning_item PI-026 → planning_item PI-025). The v0.8 methodology rename dropped \"blocks\" from the relationship vocabulary in favor of the directionally-renamed \"blocked_by\" (with source/target semantics inverted). The corresponding edges in the references snapshot exist as: (planning_item PI-025 blocked_by PI-024) and (planning_item PI-026 blocked_by PI-025). The references are not missing — they were renamed at vocabulary level. The ses_056.json file on disk was authored before the rename and has not been retroactively migrated. PI-023's reconcile.py classifies the payload's two references as Class 2 (record-claims-vs-record-presence) findings because the (source_type, source_id, target_type, target_id, relationship) 5-tuple lookup against the references snapshot fails — the snapshot stores relationship_kind=\"blocked_by\" with source/target swapped per the directional rename. PI-023's allowlist carries `pi-048-ses-056-stale-blocks-vocabulary` citing PI-048 as the canonical record. Two resolution paths: (i) author a one-off script that walks all close-out payload JSON files in PRDs/product/crmbuilder-v2/close-out-payloads/, finds entries with relationship=\"blocks\" or any other v0.8-renamed relationship kind, rewrites them to the renamed form, and commits the migrated files. The allowlist entry can then be removed from reconciliation-allowlist.yaml. (ii) Author a governance decision formally accepting stale-vocab in historical close-out payload files as an immutable archival convention — historical payloads represent the system's state at their authoring moment; rewriting them later loses fidelity to that moment. In this case the allowlist entry stays, and additional historical payloads with similar patterns get added to its scope (or to similar entries for other renamed kinds). The choice between (i) and (ii) hinges on whether close-out payload files are treated as immutable historical records or as continuously-migrated current-state representations. The vocab.py comment at the `blocks → blocked_by` rename site implies the rename is a one-way migration (the previous kind is 'dropped from the vocabulary'); applied strictly, this argues for (i). PI-048's resolution is deferred to a future workstream alongside PI-046 (vocab schema-vs-spec contradiction) and PI-047 (ses_030/ses_036 duplicate-session); all three are governance-data-quality cleanup planning items eligible for inclusion in a single future workstream lane.",
+      "id": 48,
+      "identifier": "PI-048",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Open",
+      "title": "Migrate stale 'blocks' relationship references in ses_056.json (and any other historical close-out payloads with the same pattern) to the v0.8-renamed 'blocked_by' relationship kind — or formally accept stale-vocab in historical payloads as an immutable archival convention",
+      "updated_at": "2026-05-24T15:35:23.722463+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "PI-048",
+    "entity_type": "planning_item",
+    "id": 1545,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:35:23.722858"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T15:35:23.895527+00:00",
+      "id": 837,
+      "reference_identifier": "REF-0833",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-048",
+      "source_type": "deposit_event",
+      "target_id": "COP-069",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-048 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-069",
+    "entity_type": "reference",
+    "id": 1546,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:35:23.896045"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-24T15:35:23.897724+00:00",
+      "id": 838,
+      "reference_identifier": "REF-0834",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-048",
+      "source_type": "deposit_event",
+      "target_id": "PI-048",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-048 -[deposit_event_wrote_record]-> planning_item:PI-048",
+    "entity_type": "reference",
+    "id": 1547,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:35:23.898017"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "0.7.0",
+        "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_069.json",
+        "runner": "claude_code"
+      },
+      "deposit_event_created_at": "2026-05-24T15:35:23.893388+00:00",
+      "deposit_event_description": "Applied COP-069. Outcome: success. 1 planning_items.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-048",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_048.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "decisions": 0,
+        "planning_items": 1,
+        "references": 0,
+        "sessions": 0
+      },
+      "deposit_event_title": "Apply of COP-069, 2026-05-24T15:35:23+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-048",
+    "entity_type": "deposit_event",
+    "id": 1548,
+    "operation": "insert",
+    "timestamp": "2026-05-24T15:35:23.898497"
   }
 ]

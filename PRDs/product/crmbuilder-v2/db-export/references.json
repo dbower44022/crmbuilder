@@ -8168,5 +8168,175 @@
     "source_type": "deposit_event",
     "target_id": "PI-047",
     "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-24T15:33:58.887071",
+    "id": 822,
+    "reference_identifier": "REF-0818",
+    "relationship_kind": "decided_in",
+    "source_id": "DEC-216",
+    "source_type": "decision",
+    "target_id": "SES-069",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-24T15:33:59.039035",
+    "id": 823,
+    "reference_identifier": "REF-0819",
+    "relationship_kind": "decided_in",
+    "source_id": "DEC-217",
+    "source_type": "decision",
+    "target_id": "SES-069",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-24T15:33:59.147244",
+    "id": 824,
+    "reference_identifier": "REF-0820",
+    "relationship_kind": "decided_in",
+    "source_id": "DEC-218",
+    "source_type": "decision",
+    "target_id": "SES-069",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-24T15:33:59.262527",
+    "id": 825,
+    "reference_identifier": "REF-0821",
+    "relationship_kind": "decided_in",
+    "source_id": "DEC-219",
+    "source_type": "decision",
+    "target_id": "SES-069",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-24T15:33:59.406544",
+    "id": 826,
+    "reference_identifier": "REF-0822",
+    "relationship_kind": "decided_in",
+    "source_id": "DEC-220",
+    "source_type": "decision",
+    "target_id": "SES-069",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-24T15:33:59.515665",
+    "id": 827,
+    "reference_identifier": "REF-0823",
+    "relationship_kind": "decided_in",
+    "source_id": "PI-048",
+    "source_type": "planning_item",
+    "target_id": "SES-069",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-24T15:33:59.625872",
+    "id": 828,
+    "reference_identifier": "REF-0824",
+    "relationship_kind": "is_about",
+    "source_id": "SES-069",
+    "source_type": "session",
+    "target_id": "PI-023",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-24T15:33:59.769087",
+    "id": 829,
+    "reference_identifier": "REF-0825",
+    "relationship_kind": "is_about",
+    "source_id": "SES-069",
+    "source_type": "session",
+    "target_id": "PI-048",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-24T15:33:59.881863",
+    "id": 830,
+    "reference_identifier": "REF-0826",
+    "relationship_kind": "deposit_event_applies_close_out_payload",
+    "source_id": "DEP-047",
+    "source_type": "deposit_event",
+    "target_id": "COP-069",
+    "target_type": "close_out_payload"
+  },
+  {
+    "created_at": "2026-05-24T15:33:59.884249",
+    "id": 831,
+    "reference_identifier": "REF-0827",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-047",
+    "source_type": "deposit_event",
+    "target_id": "SES-069",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-24T15:33:59.886562",
+    "id": 832,
+    "reference_identifier": "REF-0828",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-047",
+    "source_type": "deposit_event",
+    "target_id": "DEC-216",
+    "target_type": "decision"
+  },
+  {
+    "created_at": "2026-05-24T15:33:59.888685",
+    "id": 833,
+    "reference_identifier": "REF-0829",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-047",
+    "source_type": "deposit_event",
+    "target_id": "DEC-217",
+    "target_type": "decision"
+  },
+  {
+    "created_at": "2026-05-24T15:33:59.890526",
+    "id": 834,
+    "reference_identifier": "REF-0830",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-047",
+    "source_type": "deposit_event",
+    "target_id": "DEC-218",
+    "target_type": "decision"
+  },
+  {
+    "created_at": "2026-05-24T15:33:59.892648",
+    "id": 835,
+    "reference_identifier": "REF-0831",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-047",
+    "source_type": "deposit_event",
+    "target_id": "DEC-219",
+    "target_type": "decision"
+  },
+  {
+    "created_at": "2026-05-24T15:33:59.894702",
+    "id": 836,
+    "reference_identifier": "REF-0832",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-047",
+    "source_type": "deposit_event",
+    "target_id": "DEC-220",
+    "target_type": "decision"
+  },
+  {
+    "created_at": "2026-05-24T15:35:23.895527",
+    "id": 837,
+    "reference_identifier": "REF-0833",
+    "relationship_kind": "deposit_event_applies_close_out_payload",
+    "source_id": "DEP-048",
+    "source_type": "deposit_event",
+    "target_id": "COP-069",
+    "target_type": "close_out_payload"
+  },
+  {
+    "created_at": "2026-05-24T15:35:23.897724",
+    "id": 838,
+    "reference_identifier": "REF-0834",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-048",
+    "source_type": "deposit_event",
+    "target_id": "PI-048",
+    "target_type": "planning_item"
   }
 ]

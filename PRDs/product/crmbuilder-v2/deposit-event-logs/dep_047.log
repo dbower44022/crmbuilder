@@ -1,0 +1,29 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_069.json
+Label:  SES-069 PI-023 workstream-state reconciliation utility planning — invariant scope (Classes 1+2+3), YAML allowlist mechanism, snapshots-only read path, plain-text output. Phase 1 references-orphan formally acknowledged (DEC-216). One planning item surfaced (PI-048 stale-blocks vocabulary in ses_056.json) discovered as Class 2 drift during allowlist construction.
+Deposit event: DEP-047
+
+=== session (1 record) ===
+  ✓ POST session  SES-069 (HTTP 201)
+
+=== decisions (5 records) ===
+  ✓ POST decisions  DEC-216 (HTTP 201)
+  ✓ POST decisions  DEC-217 (HTTP 201)
+  ✓ POST decisions  DEC-218 (HTTP 201)
+  ✓ POST decisions  DEC-219 (HTTP 201)
+  ✓ POST decisions  DEC-220 (HTTP 201)
+
+=== planning_items (1 record) ===
+
+=== references (8 records) ===
+  ✓ POST references  DEC-216 decided_in SES-069 (HTTP 201)
+  ✓ POST references  DEC-217 decided_in SES-069 (HTTP 201)
+  ✓ POST references  DEC-218 decided_in SES-069 (HTTP 201)
+  ✓ POST references  DEC-219 decided_in SES-069 (HTTP 201)
+  ✓ POST references  DEC-220 decided_in SES-069 (HTTP 201)
+  ✓ POST references  PI-048 decided_in SES-069 (HTTP 201)
+  ✓ POST references  SES-069 is_about PI-023 (HTTP 201)
+  ✓ POST references  SES-069 is_about PI-048 (HTTP 201)
+
+
+✓ Recorded apply as deposit_event DEP-047 (HTTP 201).
