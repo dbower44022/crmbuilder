@@ -369,9 +369,9 @@
     "identifier": "PI-034",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "audit-v1.2 Prompt A — roles and teams top-level recognition plus raw-passthrough dataclasses",
-    "updated_at": "2026-05-23T15:52:45.766472"
+    "updated_at": "2026-05-25T16:00:50.919947"
   },
   {
     "created_at": "2026-05-23T15:52:45.843356",
@@ -380,9 +380,9 @@
     "identifier": "PI-035",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "audit-v1.2 Prompt B — structured scope_access and system_permissions parsing",
-    "updated_at": "2026-05-23T15:52:45.843358"
+    "updated_at": "2026-05-25T16:04:22.187941"
   },
   {
     "created_at": "2026-05-23T15:52:45.947550",
@@ -391,9 +391,9 @@
     "identifier": "PI-036",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "audit-v1.2 Prompt C — team_manager.py deploy-side CHECK→ACT",
-    "updated_at": "2026-05-23T15:52:45.947552"
+    "updated_at": "2026-05-25T16:04:22.312475"
   },
   {
     "created_at": "2026-05-23T15:52:46.024905",
@@ -402,9 +402,9 @@
     "identifier": "PI-037",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "audit-v1.2 Prompt D — role_manager.py deploy-side CHECK→ACT including scope_access translation",
-    "updated_at": "2026-05-23T15:52:46.024908"
+    "updated_at": "2026-05-25T16:04:22.468010"
   },
   {
     "created_at": "2026-05-23T15:52:46.099809",
@@ -413,9 +413,9 @@
     "identifier": "PI-038",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "audit-v1.2 Prompt E — Section 12.6 deploy ordering and security pipeline step",
-    "updated_at": "2026-05-23T15:52:46.099813"
+    "updated_at": "2026-05-25T16:04:22.598661"
   },
   {
     "created_at": "2026-05-23T15:52:46.171502",
@@ -424,9 +424,9 @@
     "identifier": "PI-039",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "audit-v1.2 Prompt F — role: leaf clause variant in condition_expression.py",
-    "updated_at": "2026-05-23T15:52:46.171505"
+    "updated_at": "2026-05-25T16:04:22.725305"
   },
   {
     "created_at": "2026-05-23T15:52:46.248463",
@@ -435,9 +435,9 @@
     "identifier": "PI-040",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "audit-v1.2 Prompt G — Section 12.5 wiring: role-aware field/panel visibility and role-scoped layouts",
-    "updated_at": "2026-05-23T15:52:46.248465"
+    "updated_at": "2026-05-25T16:04:22.887166"
   },
   {
     "created_at": "2026-05-23T15:52:46.320619",
@@ -446,9 +446,9 @@
     "identifier": "PI-041",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "audit-v1.2 Prompt H — audit-side _discover_roles, _discover_teams, role-aware logic reversal, security.yaml emission",
-    "updated_at": "2026-05-23T15:52:46.320622"
+    "updated_at": "2026-05-25T16:04:23.008594"
   },
   {
     "created_at": "2026-05-23T15:52:46.401245",
@@ -457,9 +457,9 @@
     "identifier": "PI-042",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "audit-v1.2 Prompt I — filtered-tab audit capture",
-    "updated_at": "2026-05-23T15:52:46.401247"
+    "updated_at": "2026-05-25T16:04:23.129325"
   },
   {
     "created_at": "2026-05-23T15:52:46.484849",
@@ -468,9 +468,9 @@
     "identifier": "PI-043",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "audit-v1.2 Prompt J — entity-picker UI and AuditOptions.selected_entities",
-    "updated_at": "2026-05-23T15:52:46.484852"
+    "updated_at": "2026-05-25T16:04:23.283496"
   },
   {
     "created_at": "2026-05-23T15:52:46.585740",
@@ -479,9 +479,9 @@
     "identifier": "PI-044",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "audit-v1.2 Prompt K — feat-audit.md v1.2 and user-guide updates",
-    "updated_at": "2026-05-23T15:52:46.585744"
+    "updated_at": "2026-05-25T16:04:23.404002"
   },
   {
     "created_at": "2026-05-23T21:29:51.535148",
