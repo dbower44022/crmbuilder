@@ -1,0 +1,149 @@
+{
+  "label": "audit-v1.2 prompt-series authoring close-out — Prompts A through K (11 prompts) plus six governance DECs surfaced during prompt kickoffs plus PI-051 v1.4 deferred work",
+  "session": {
+    "identifier": "SES-075",
+    "title": "audit-v1.2 prompt-series authoring (Prompts A–K, 11 prompts implementing v1.2 expansion of CRM Audit feature) — six governance DECs surfaced and resolved during prompt kickoffs (DEC-238 natural-form scope_access keys; DEC-239 audit_log removed from §12.4; DEC-240 three EspoCRM-only PATCH permissions preserved; DEC-241 role_manager pre-flight server-state validation; DEC-242 deploy ordering security-LAST with schema §12.6 corrected; DEC-243 §12.5 NOT_SUPPORTED on EspoCRM 9.x deferred to v1.4); PI-051 opened to track v1.4 deferred §12.5 deploy + §12.7 field-level permissions implementation",
+    "session_date": "2026-05-25",
+    "status": "Complete",
+    "conversation_reference": "Long DETAIL-mode prompt-authoring conversation in the Claude.ai sandbox covering the eleven-prompt audit-v1.2 workstream per the planning doc at `PRDs/product/crmbuilder-automation-PRD/audit-v1.2-planning.md` v1.3. Each prompt was authored in the sandbox and committed-and-pushed from sandbox (per the sandbox push convention); Doug then ran each prompt locally via Claude Code, which performed the implementation against the crmbuilder-v1 codebase. The conversation underwent one transcript compaction during the series (mid-Prompt-J drafting). The session targets the CRMBUILDER engagement per the dogfood-work convention — work on the crmbuilder product itself, not a client implementation. Implementation work targets crmbuilder-v1 (the PySide6 desktop app + EspoCRM deploy infrastructure); governance close-out targets the v2 engagement (where governance records live for all crmbuilder work regardless of which codebase version is touched). Eleven prompt files committed at: `PRDs/product/crmbuilder-automation-PRD/CLAUDE-CODE-PROMPT-audit-v1.2-{A..K}-*.md`. Implementation commits (Claude Code, Doug's local clone): A=84b55c2 loader recognition; B=d1bccac ScopeAccess/SystemPermissions; C=974e580 team_manager; D=4e82b686 role_manager; E=c4aeaf0 security pipeline step; F=0e12a5e role: leaf clause; G=ae7a77ea role-aware visibility NOT_SUPPORTED; H=3a9aacdc audit-side discovery; I=b1ef8652 filtered-tab audit; J=e8f65ee audit dialog UI; K=c8c8e22 documentation v1.1→v1.2.",
+    "topics_covered": "Seed prompt: \"Author the eleven-prompt audit-v1.2 series implementing v1.2 expansion of the CRM Audit feature per PRDs/product/crmbuilder-automation-PRD/audit-v1.2-planning.md v1.3, working through Prompts A through K in DETAIL mode, one at a time, with each prompt's implementation executed locally by Doug via Claude Code between prompt-authoring turns.\" Structured summary of topics covered: (1) Schema-spec realignment — Section 12 (Security configuration) gained five sub-sections covering Roles, Teams, scope-level entity access, system permissions, and role-aware visibility; deploy-ordering §12.6 corrected from security-first to security-last (DEC-242); §12.5 deploy treatment NOT_SUPPORTED on EspoCRM 9.x with documentation update (DEC-243). (2) Loader extensions — `_parse_field` and `_parse_panel` thread `allow_role_clauses=True` and `known_roles` from ProgramContext at visibleWhen call sites; `_parse_layout` dispatches dict (single-block) vs list (variant-form); `_validate_layout_variants` enforces the §12.5.2 coverage rule; variant-form layouts emit NOT_SUPPORTED at deploy. (3) Deploy-side managers — `team_manager.py` (Prompt C) CHECK→ACT pattern; `role_manager.py` (Prompt D) with translation layer (natural-form → wire-form scope_access keys per DEC-238) and three EspoCRM-only PATCH permissions preserved (DEC-240); `audit_log` field removed from §12.4 SystemPermissions (DEC-239); `_preflight_scope_access` server-state validation before CHECK→ACT (DEC-241); new Step 11 Security in `_run_full` between Workflows and Filtered tabs. (4) Condition expression AST — `RoleClause` peer of `LeafClause` with structural distinction; `parse_condition`, `validate_condition`, `render_condition`, `collect_unknown_roles` all extended; `evaluate_condition` intentionally untouched (deploy engine has no current-user context). (5) Audit-side discovery — `_discover_teams`, `_discover_roles`, `_reverse_scope_access`, `_reverse_system_permissions` (inverse of Prompt D's translation); `_discover_filtered_tabs` orchestrating scopes → clientDefs → Report Filters; `_reverse_where_items`/`_reverse_where_item` inverting the deploy-side translation in `filtered_tab_manager.py`; security.yaml emitted to `<output_dir>/security/security.yaml` per DEC-182. (6) Migrations — `_client_v15` adding Role and Team tables; `_client_v16` adding FilteredTab table; both idempotent via CREATE IF NOT EXISTS with Instance-table existence guards. (7) UI — entity-picker QListWidget in `audit_entry.py` populated by pre-flight `get_all_scopes()` on refresh; Security and Filtered tabs checkboxes default-True per DEC-180; overwrite-confirmation QMessageBox per DEC-181 fires when output directory contains existing audit YAML output. (8) Documentation — `feat-audit.md` bumped v1.1→v1.2 with What's New callout, §4.7/§4.8 (security and filtered-tab operations), §5.4 (security YAML output), §6.4 (role-aware visibility validation), §8.1 (UI updates) and §8.4 (overwrite confirmation), §9 file-inventory and architecture-decision extensions, §10 split into Done in v1.2 / Deferred; CLAUDE.md gets high-level v1.2 audit note. (9) EspoCRM 9.x wire-behavior research — Dynamic Logic supports only record-field conditions (EspoCRM dev statement 2020-01: 'It's not planned to implement an ability to check user fields in dynamic logic'); EspoCRM 8.1+ added current-user and current-user-teams conditions but not current-user-role; Layout Sets bind to Teams not Roles; these facts motivate DEC-243's NOT_SUPPORTED treatment. (10) Governance — seven DECs originally tracked; DEC-6 and DEC-7 merged into single DEC-243 at close-out per Doug's call; six DECs land in this payload.",
+    "summary": "Eleven prompts authored in the Claude.ai sandbox per the DETAIL-mode working pattern (one prompt at a time, full discussion, wait for approval before each). Each prompt was 500–850 lines documenting the specific code changes Claude Code would execute; the prompts collectively implement the audit-v1.2 schema extension, deploy-side managers for Roles and Teams, audit-side discovery and reverse-translation, role-aware AST surface with NOT_SUPPORTED deploy treatment, filtered-tab audit, UI extensions, and documentation. Six DECs surfaced and resolved during prompt kickoffs as the design space narrowed. Seven were originally tracked; DEC-6 and DEC-7 (both about §12.5 NOT_SUPPORTED treatment) merged into a single DEC-243 at close-out per Doug's call. Series complete at all eleven prompts implemented; documentation prompt (K) committed locally at c8c8e22, push deferred to Doug per local-clone convention. The audit-v1.2 series substantially expands the v1.1 audit/deploy feature with a complete Security workstream (roles, teams, scope_access, system_permissions) plus filtered-tab audit round-trip; defers the role-aware visibility surface (§12.5) and field-level permissions (§12.7) to v1.4 alongside other security-deferred items.",
+    "artifacts_produced": "Eleven CLAUDE-CODE-PROMPT files in `PRDs/product/crmbuilder-automation-PRD/`: A (loader recognition, 487 lines), B (ScopeAccess/SystemPermissions + ProgramContext, 818 lines), C (team_manager, 643 lines), D (role_manager + translation layer, 778 lines), E (security pipeline step + queue ordering, 626 lines), F (role: leaf clause, 741 lines), G (role-aware visibility NOT_SUPPORTED, 846 lines), H (audit-side discovery, 828 lines), I (filtered-tab audit, 792 lines), J (audit dialog UI, 555 lines), K (documentation, 595 lines). Total prompt-doc volume: 7,709 lines. Implementation work committed by Doug via Claude Code at: 84b55c2 (A), d1bccac (B), 974e580 (C), 4e82b686 (D), c4aeaf0 (E), 0e12a5e (F), ae7a77ea (G), 3a9aacdc (H), b1ef8652 (I), e8f65ee (J), c8c8e22 (K). Approximate implementation deltas: 5,000+ lines of production code across `espo_impl/core/`, `espo_impl/workers/`, `automation/ui/`, `automation/db/`; 150+ new tests; three patches to `PRDs/product/app-yaml-schema.md` (§12.5 Deploy Support sub-section, §12.6 §1 ordering correction, §12.6 lead-in rewrite); feat-audit.md bumped v1.1→v1.2 with substantial content additions; CLAUDE.md high-level v1.2 audit note.",
+    "in_flight_at_end": "Three screenshot TODOs in `PRDs/product/features/feat-audit.md` v1.2 (§8.1 audit-entry view, §8.4 overwrite-confirmation dialog, §6.4 manual-config block) — Claude Code could not capture PySide6 screenshots from the CLI session at K execution time; Doug captures live and fills the placeholders in a small follow-up commit. Doug's Prompt K commit c8c8e22 remains unpushed at the time of this close-out drafting (per the local-clone push convention). Implementation work itself is complete — no in-flight code work."
+  },
+  "decisions": [
+    {
+      "identifier": "DEC-238",
+      "title": "Schema §12.3 scope_access keys use natural-form entity names (e.g., \"Engagement\"), not EspoCRM wire-form (e.g., \"CEngagement\")",
+      "decision_date": "2026-05-25",
+      "status": "Active",
+      "context": "Prompt B kickoff. The schema's `scope_access:` block per role keys per-entity permission objects by entity name. EspoCRM internally identifies custom entities with a C-prefixed wire-form name (`CEngagement` for a YAML-declared `Engagement`). Two options: (A) YAML uses natural-form names matching how operators write entities elsewhere in the schema; deploy translation layer in `role_manager` converts to wire-form. (B) YAML uses wire-form names matching EspoCRM's internal identity directly; no translation needed at deploy time but operators see C-prefixed names in `scope_access:` while writing natural names elsewhere.",
+      "decision": "Natural-form. `scope_access:` keys use the same entity names operators use everywhere else in the schema. `role_manager._translate_data_block` handles natural→wire conversion at deploy time via `get_espo_entity_name`. Audit-side `_reverse_scope_access` inverts via `strip_entity_c_prefix`.",
+      "rationale": "Operator-facing consistency. Mixed-form entity references (natural in `entities:` block, wire-form in `scope_access:`) would create constant friction for operators reading and writing YAML. The translation cost is modest (one helper function on each side) and entirely contained in the deploy/audit boundary. Operators never see C-prefixed names in the YAML.",
+      "alternatives_considered": "Option B (wire-form scope_access keys) — rejected as inconsistent with schema-wide natural-form convention. A hybrid (operator chooses) — rejected as introducing schema-validation complexity for marginal benefit.",
+      "consequences": "`role_manager.py` carries a translation layer (`_translate_data_block`, `_translate_system_permissions`, `_translate_to_payload`). `audit_manager.py` carries the inverse (`_reverse_scope_access`, `_reverse_system_permissions`). The two are formally inverse functions over the deploy/audit boundary."
+    },
+    {
+      "identifier": "DEC-239",
+      "title": "`audit_log` permission removed from §12.4 SystemPermissions; not in v1.3 schema",
+      "decision_date": "2026-05-25",
+      "status": "Active",
+      "context": "Prompt D kickoff. Earlier schema drafts of §12.4 included an `audit_log:` permission alongside `assignment_permission`, `user_permission`, etc. Investigation revealed `audit_log` was based on an EspoCRM 8.0-era column that 9.x no longer manages via the Role record — the column was removed from Role and replaced by a separate AuditLog feature flag at the entity level.",
+      "decision": "Remove `audit_log` from §12.4 SystemPermissions entirely. The v1.3 schema's `system_permissions:` block has five managed keys (assignment_permission, user_permission, export, mass_update, portal). No `audit_log`. role_manager does not write or read this field.",
+      "rationale": "Carrying a vestigial field that EspoCRM 9.x doesn't manage would create confusion (operators set it; nothing happens). Cleanest treatment is to omit it from the schema entirely. Future EspoCRM versions that re-introduce the column can re-add the field in a later schema version.",
+      "alternatives_considered": "Keep `audit_log` as a NOT_SUPPORTED field (operators can declare it but deploy emits warning). Rejected: silent NOT_SUPPORTED bloats the schema without value. Operators don't gain anything from being able to declare a permission that does nothing.",
+      "consequences": "`SystemPermissions` dataclass in `espo_impl/core/models.py` has exactly five fields. role_manager translates only those five. audit_manager reverses only those five. The three EspoCRM-only permissions (per DEC-240) are preserved on PATCH but not in the schema."
+    },
+    {
+      "identifier": "DEC-240",
+      "title": "Three EspoCRM-only Role permissions preserved on PATCH: followerManagementPermission, groupEmailAccountPermission, dataPrivacyPermission",
+      "decision_date": "2026-05-25",
+      "status": "Active",
+      "context": "Prompt D kickoff. EspoCRM 9.x Role records carry three permission columns (`followerManagementPermission`, `groupEmailAccountPermission`, `dataPrivacyPermission`) that are not part of v1.3 schema's `system_permissions:` block. These permissions control EspoCRM-specific features (follower management UI, group email accounts, data-privacy operations) that don't generalize across CRM targets. Two options: (A) Preserve these columns on PATCH operations (don't null them when role_manager updates a role); operators can configure them manually on the target via EspoCRM's admin UI and the configuration survives subsequent deploys. (B) Null them on PATCH (any operator-set values are wiped when role_manager touches the role); operators must re-set after each deploy.",
+      "decision": "Preserve on PATCH. `role_manager._translate_to_payload` reads the three columns from the existing server-side Role record and includes them unchanged in the PATCH payload. CHECK→ACT logic ignores these fields for change detection.",
+      "rationale": "Respecting operator configuration is the right default. Operators who configure these permissions via EspoCRM's UI are making target-specific calls that shouldn't be wiped by a CRM Builder deploy that has nothing to say about them. The cost is three extra fields in the PATCH payload — trivial.",
+      "alternatives_considered": "Option B (null on PATCH) — rejected as hostile to operator workflow. Option C (add the three fields to v1.3 schema) — rejected as conflating EspoCRM-specific features with the cross-CRM permission abstraction; deferred to v1.4 if a real cross-CRM use case emerges.",
+      "consequences": "role_manager's PATCH path is mildly more complex (read-modify-write semantics for the three preserved fields). Audit-side does NOT capture these fields — audited YAML carries only the five schema-managed permissions. Operators reconfigure the three on import if they want them preserved across instances."
+    },
+    {
+      "identifier": "DEC-241",
+      "title": "role_manager performs pre-flight server-state validation of scope_access entity references before CHECK→ACT",
+      "decision_date": "2026-05-25",
+      "status": "Active",
+      "context": "Prompt E kickoff. After the security pipeline step is added (Step 11 in `_run_full`, after Workflows, before Filtered tabs), role_manager could encounter scope_access references to entities that were declared in the batch but failed to deploy at Step 2. Without pre-flight, those references either silently accept (EspoCRM stores the dead reference) or fail with a confusing HTTP error at PATCH time. Two options: (A) Pre-flight check — fetch the server's scope list via `get_all_scopes()` at start of role deploy; validate that every `scope_access:` entity reference resolves on the server; roles with unresolvable references receive `RoleStatus.ERROR` with a clear pre-deploy message; no PATCH attempted. (B) Trust the pipeline — let CHECK→ACT proceed and surface whatever EspoCRM responds with.",
+      "decision": "Option A — pre-flight check. `role_manager.process_roles` invokes `_preflight_scope_access` as the first action; pre-flight-failed roles ERROR with descriptive message; remaining roles proceed to CHECK→ACT.",
+      "rationale": "Matches the planning doc's literal intent (\"produces a clear error rather than a confusing HTTP error from the API\"). One additional HTTP call per security-step invocation; sub-second on local instances. Trade-off acceptable for the operator-experience improvement.",
+      "alternatives_considered": "Option B (trust pipeline) — rejected because EspoCRM's response to a dead-reference scope_access is uncertain (may silently accept, may reject with generic HTTP 400, neither offering useful diagnostic). Option C (pre-flight in the Security step body rather than the manager) — rejected as splitting role-deploy semantics across two places.",
+      "consequences": "Doug's implementation added a lazy-fetch optimization not in the original prompt: `_fetch_server_roles` is skipped if all roles fail pre-flight (no point fetching server-side roles if there's nothing to deploy). role_manager gains `_fetch_server_scope_set` and `_preflight_scope_access` methods; `process_roles` orchestration restructured to invoke pre-flight first and filter roles before CHECK→ACT."
+    },
+    {
+      "identifier": "DEC-242",
+      "title": "Deploy ordering finalized as security-LAST; schema §12.6 corrected",
+      "decision_date": "2026-05-25",
+      "status": "Active",
+      "context": "Prompt G kickoff surfaced a contradiction between two authoritative sources. Schema spec §12.6 §1 said \"Files declaring `roles:` and/or `teams:` run first.\" Planning doc §5 Prompt E said security YAMLs are processed last. Prompt E (commit c4aeaf0) shipped the security-last ordering per the planning doc. Investigation: EspoCRM stores layout metadata as JSON files verbatim and Role records' `data` blobs verbatim; no evidence of write-time reference validation; lazy resolution at view-time appears to work. Prompt D's `_preflight_scope_access` design specifically requires entities to exist on the server before roles deploy — which only works under security-last ordering.",
+      "decision": "Keep security-LAST ordering as Prompt E shipped. Update schema §12.6 to match: §1 changed from \"first\" to \"last\"; §12.6 lead-in rewritten to reflect the entity-before-role dependency direction (scope_access references go from roles to entities, so entities must exist before roles deploy).",
+      "rationale": "Three reinforcing reasons. (1) No evidence EspoCRM validates references at write time — layouts and roles are both metadata-stored verbatim with view-time resolution. (2) Prompt D's pre-flight design (DEC-241) requires security-last; reversing would invalidate it. (3) Schema spec §12.6 was the over-prescription; the planning doc and shipped implementation were correct on the operational substance.",
+      "alternatives_considered": "Security-FIRST per the schema spec — would require revisiting Prompt D's pre-flight to also accept batch-context entity_names (not just server-state); doable but additional code with no operational benefit since lazy resolution works either way. Two-phase deploy (security writes split across phases) — rejected as substantial complexity for marginal benefit.",
+      "consequences": "Schema spec patched at three points in §12.6 during Prompt G execution (commit ae7a77ea). Multi-file queue sort in `configure_progress.py._pending` orders security-content files last. The Security step in `_run_full` runs as Step 11 between Workflows (Step 10) and Filtered tabs (renumbered Step 12)."
+    },
+    {
+      "identifier": "DEC-243",
+      "title": "Section 12.5 (Role-Aware Visibility) deferred to v1.4 — NOT_SUPPORTED on EspoCRM 9.x at deploy; loader validates and audit round-trips; schema §12.5 documentation updated to reflect deferral",
+      "decision_date": "2026-05-25",
+      "status": "Active",
+      "context": "Prompt G kickoff. Investigation of EspoCRM 9.x's Dynamic Logic surface revealed two fundamental gaps blocking direct deploy of §12.5: (1) Dynamic Logic supports only record-field conditions per EspoCRM dev statement (forum 2020-01, position unchanged through 9.x: \"It's not planned to implement an ability to check user fields in dynamic logic. It's built in a way that only fields of the current record can be used.\") EspoCRM 8.1+ added current-user and current-user-teams conditions but not current-user-role; (2) Layout Sets, EspoCRM's per-team alternate-layout mechanism, bind to Teams not Roles. Workarounds that could deploy on EspoCRM 9.x are either out-of-scope for v1.2 (Dynamic Handler JavaScript generation — no REST API path, no audit round-trip, file-system writes to client/custom/src/) or semantically problematic (auto-generated Teams mirroring Roles — conflates Team and Role concepts the schema treats as distinct).",
+      "decision": "Section 12.5 (both 12.5.1 role: leaf clauses and 12.5.2 forRoles layout variants) is NOT_SUPPORTED on EspoCRM 9.x for deploy in v1.3. The YAML schema can still express role-aware visibility intent — loader validates, audit round-trips the parts that are independent of §12.5. Deploy emits NOT_SUPPORTED status; affected fields/layouts surface in the MANUAL CONFIGURATION REQUIRED advisory block (matching the 05-02-26 error-handling series treatment of saved views, duplicate checks, workflows). Schema §12.5 documentation updated to add a \"Deploy Support\" sub-section explaining the gap, the workaround paths operators can take manually (Dynamic Handler JS or Layout Sets + Teams), and the v1.4 deferral alongside §12.7 field-level permissions. Audit-side is NOT_AUDITABLE for §12.5 — manually-configured role-aware visibility (via Dynamic Handler JS) is operator-written code that cannot be reverse-engineered into structured metadata.",
+      "rationale": "Preserving Prompt F's AST work (role: leaf clause parser/validator/renderer) maintains schema honesty — operators can document role-aware visibility intent in YAML and have it round-trip through audit for the deployable parts. Deferring real implementation to v1.4 avoids the JS-handler complexity that doesn't fit v1.2's REST-API-oriented design. The merged DEC (originally tracked as DEC-6 and DEC-7 during the conversation) covers both the technical decision and its documentation consequence — they're tightly related and made at the same time on the same evidence.",
+      "alternatives_considered": "Generate Dynamic Handler JavaScript modules per entity — rejected as scope expansion (file-system writes, no audit round-trip). Translate Roles to auto-generated Teams using the v8.1 current-user-teams condition — rejected as semantically wrong (Teams and Roles are distinct in the schema). Roll back Prompt F entirely until a target CRM supports role-aware Dynamic Logic — rejected because Prompt F's work has documentation/audit-trail value even without deploy.",
+      "consequences": "Walks back the planning doc §3 Decision 2.5 (\"all five parts of Section 12 in scope, including role-aware visibility\") partially: the YAML surface ships in v1.3 but the deploy capability ships in v1.4. Six DECs land in this payload instead of the originally-tracked seven (DEC-6 and DEC-7 merged into DEC-243 per Doug's call at close-out). PI-051 opened to track the v1.4 work scope. CBM operators who need role-aware visibility configure it once manually after deploy; subsequent deploys preserve their configuration (DEC-240's preservation pattern applies to role records; manual layout-level configuration outside CRM Builder is untouched by deploy)."
+    }
+  ],
+  "planning_items": [
+    {
+      "identifier": "PI-051",
+      "title": "audit-v1.4 — Section 12.5 role-aware visibility deploy implementation alongside Section 12.7 field-level permissions",
+      "item_type": "pending_work",
+      "description": "Implement deploy support for Section 12.5 (Role-Aware Visibility) and Section 12.7 (Field-Level Permissions) on EspoCRM 9.x. v1.2 left both sections NOT_SUPPORTED per DEC-243 (12.5) and prior deferrals (12.7). The right implementation path requires real wire-format research; current best candidates are documented in DEC-243 and the schema §12.5 Deploy Support sub-section. \n\nScope items to investigate at PI-051 kickoff: (1) Dynamic Handler JavaScript generation — `client/custom/src/views/<entity>/record/detail.js` generation per entity with role-aware visibility logic; requires file-system writes (no REST API path) and an audit-side reverse-engineering strategy for round-trip; or accept that this surface is NOT_AUDITABLE and stays write-only. (2) Teams-as-proxies-for-Roles translation — auto-generate a Team per Role at deploy; bind users to teams as a separate operator step; use EspoCRM 8.1's current-user-teams Dynamic Logic condition. Requires conflating Team and Role semantics or accepting that operators see auto-generated teams in the EspoCRM admin UI. (3) Upstream EspoCRM feature request — file a Dynamic Logic role-condition feature request and wait. Not actionable as a planning item but worth tracking. (4) Layout Sets + Teams (forRoles variant deploy path) — separate from 12.5.1 deploy; layout-level role scoping can use Layout Sets bound to auto-generated mirror-Teams even if leaf-clause role conditions remain NOT_SUPPORTED.\n\nFor §12.7 (field-level permissions): out of scope for v1.2 because the schema sub-section was deferred from v1.1. v1.4 should consider §12.5 and §12.7 holistically since both are role-keyed permission surfaces with similar deploy mechanics on EspoCRM (probably some combination of role-record fieldOverridesPermission columns and dynamic-logic for visibility).\n\nPredecessors: audit-v1.2 series complete (this close-out). Schema spec §12.5 and §12.6 patched at v1.2; §12.7 sub-section still in draft state from prior work. Successor: actual v1.4 schema-spec revisions plus implementation prompts. No active commitment to a target date — PI-051 enters the backlog at status Open.",
+      "status": "Open"
+    }
+  ],
+  "references": [
+    {
+      "source_type": "decision",
+      "source_id": "DEC-238",
+      "target_type": "session",
+      "target_id": "SES-075",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-239",
+      "target_type": "session",
+      "target_id": "SES-075",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-240",
+      "target_type": "session",
+      "target_id": "SES-075",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-241",
+      "target_type": "session",
+      "target_id": "SES-075",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-242",
+      "target_type": "session",
+      "target_id": "SES-075",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-243",
+      "target_type": "session",
+      "target_id": "SES-075",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-075",
+      "target_type": "planning_item",
+      "target_id": "PI-051",
+      "relationship": "is_about"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-243",
+      "target_type": "planning_item",
+      "target_id": "PI-051",
+      "relationship": "is_about"
+    }
+  ]
+}
