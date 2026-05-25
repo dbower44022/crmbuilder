@@ -1,0 +1,219 @@
+{
+  "label": "PI-030 build closure — first nine-section v0.8 payload acceptance test; ingest slice A/B/C SHAs (70d88e6, 2b5557d, c6ff67a) attributed to CONV-046; resolve PI-030; surface PI-050 helper-evolution; settle six surface-and-settle decisions (DEC-232 through DEC-237); promote Code Change Lifecycle workstream to WS-009 via apply-prompt pre-step; amend methodology §10 (build-closure pattern), §5.5 (parallel-workstream commit enumeration), §4.0 (workstream-edge example fix), §5.3 and §5.7 (cross-refs to §10).",
+  "session": {
+    "identifier": "SES-074",
+    "title": "PI-030 build closure — first nine-section close-out payload acceptance test: ingests the three slice commit SHAs (slice A 70d88e6 references atomic edge+flip + methodology §4.0 conversation block, slice B 2b5557d apply_close_out.py extension for five new payload sections + conversations.py identifier-before-title-conflict reorder, slice C c6ff67a enumerate_commits.py helper), resolves PI-030, surfaces PI-050 (helper-evolution for parallel-workstream commit enumeration), promotes the Code Change Lifecycle workstream to a governance object (WS-009 pre-step in apply prompt), and settles six surface-and-settle questions (build-closure conversation type, parallel-workstream commit scoping, resolves attribution discipline per §9, executor-improvisation governance posture, conversation_purpose convention, workstream-membership requirement and methodology §4.0 example fix). Methodology amendments shipped in this conversation: §10 new section establishing the build-closure pattern, §5.5 clarification on parallel-workstream commit enumeration, §4.0 worked-example fix adding the workstream-membership edge slice A omitted, and §5.3/§5.7 cross-references to §10.",
+    "session_date": "2026-05-25",
+    "status": "Complete",
+    "conversation_reference": "Claude.ai sandbox conversation opened against the build-closure kickoff at `PRDs/product/crmbuilder-v2/pi-030-build-closure-kickoff.md` (committed at 8543f6e). Operating mode: ARCHITECTURE per the kickoff's mode declaration. Six surface-and-settle questions worked through one at a time with the eight-element consequential decision template; Q6 surfaced by Claude during pre-work after discovering the conversation-belongs-to-workstream access-layer requirement that slice A's §4.0 example left out. Pre-work captured identifier heads from the CRMBUILDER db-export snapshots (the V2 API on Doug's local machine is not reachable from the sandbox). Sandbox push convention: Claude commits AND pushes the payload + apply prompt + methodology amendments together; Doug pulls and runs the apply prompt locally via Claude Code.",
+    "topics_covered": "Seed prompt: \"PI-030 build closure — first nine-section close-out conversation — kickoff\". Six surface-and-settle questions worked through in sequence as consequential decisions:\n\n(1) Build-closure conversation-type pattern (DEC-232): Approved option A — a dedicated Claude.ai conversation owns the close-out for build work executed across multiple Claude Code sessions whose own surfaces don't author governance records. The build closure ingests executor commits via the commits section, resolves the upstream planning item, and surfaces any methodology drift the executors discovered. Alternatives B (planner defers its own close), C (per-Claude-Code-session build receipts), D (next planning conversation absorbs the prior build) rejected on closing-too-late, noise-multiplication, and false-attribution grounds respectively. Methodology §10 (new section) authored in this conversation establishes the pattern.\n\n(2) Commit-array scoping under the bootstrap commits.json case + parallel-workstream interleaving (DEC-233): Approved option E — closure curates the three slice SHAs manually rather than invoking enumerate_commits.py. Discovered during pre-work that between slice-A's parent and current HEAD, the main-branch log contains 8 commits NOT owned by PI-030 (audit-v1.2 Prompts G/H/I, PI-045 code-changes apply + step-5 kickoff). The helper's since..HEAD range model assumes a single active workstream per repo; parallel workstreams break it. Option G (--since-sha flag from the kickoff's default) would over-ingest. Helper evolution surfaced as PI-050 (status Open) for future implementation; this conversation's commits array carries exactly three explicit entries per §4.1 shape pulled from git log.\n\n(3) Resolves attribution scope (DEC-234): Approved option I — resolve PI-030 only in this closure; PI-027 (methodology drafting), PI-028 (commit schema spec), PI-029 (commits access layer + REST), and PI-032 (rollout) stay Open for PI-033's retroactive resolution per the existing methodology §9 posture. Pushed back on the kickoff's default J — resolving PI-027/028/029 here would point resolves edges from CONV-046 (this build closure) at planning items whose work was authored by prior conversations the closure didn't conduct, breaking the audit query in §6.1. The §9 retroactive-resolution discipline is an attribution rule, not a mechanism-availability stopgap.\n\n(4) Executor-improvisation governance posture (DEC-235): Approved option N — no governance record for slice B's surgical reorder of conversations.py (identifier-conflict check before title-conflict check). Slice B's commit message documents the rationale verbatim and the test suite (TestPI030NewSections, 12 new tests including full-payload idempotency on re-run) captures the behavior. Pushed back on the kickoff's default L (Resolved-on-arrival PI) on attribution and methodology-creep grounds: the conversation that did the fix was slice B's executor session, not this closure; manufacturing a PI for every executor improvisation is methodology creep.\n\n(5) Build-closure conversation_purpose convention (DEC-236): Decided as a follow-on to Q1 — option O — purpose statement opens with \"Build closure for SES-NNN — \" naming the upstream planner. Grep-discoverable convention; one-line addition to methodology §10. Routine choice; not surfaced through full eight-element template.\n\n(6) Workstream membership for CONV-046 + methodology §4.0 example fix (DEC-237): Surfaced during pre-work by Claude after discovering that the conversations.py access layer requires every live conversation to carry exactly one conversation_belongs_to_workstream edge, and none of the eight existing workstreams (WS-001..WS-008, all status complete) covers PI-030's lineage. Approved option α — apply prompt POSTs /workstreams to create WS-009 \"Code Change Lifecycle workstream\" status in_flight as a pre-step before invoking apply_close_out.py; CONV-046's conversation block embeds the workstream-membership edge to WS-009 alongside the conversation_records_session edge to SES-074. Methodology §4.0's worked example gets a fix in passing — slice A's example showed only the session edge, a latent gap the access layer enforces. Historical conversations from SES-057 (Code Change Lifecycle workstream established), SES-061 (methodology drafted), SES-063 (commit schema spec), SES-067 (PI-029 slice B planning), SES-068 (PI-026 supersession close-out), SES-070 (PI-030 architecture planning) get retroactively assigned to WS-009 by PI-033's Phase 3 backfill.\n\nPre-work findings: all four expected SHAs present on origin/main (70d88e6 slice A, 2b5557d slice B, c6ff67a slice C, 232e967 SES-070 close-out apply); identifier heads SES-072 / DEC-225 / PI-048 / CONV-045 / COP-072 / DEP-051 captured from db-export snapshots; commits.json snapshot absent (bootstrap case for Q2); methodology §4.0 conversation-block amendment confirmed landed per slice A; PI-027/028/029/030/032 all confirmed Open.",
+    "artifacts_produced": "Authored in this conversation:\n- `PRDs/product/crmbuilder-v2/close-out-payloads/ses_073.json` — this close-out payload, the first to use the full nine-section v0.8 format (label, session, conversation, commits, work_tickets, decisions, planning_items, references, resolves_planning_items, addresses_planning_items)\n- `PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-apply-close-out-ses-073.md` — apply prompt with WS-009 workstream-creation pre-step ahead of the standard apply_close_out.py invocation\n- Edits to `PRDs/product/crmbuilder-v2/methodology-code-change-lifecycle.md`: (a) new §10 'Build closure pattern' establishing the conversation-type per DEC-232; (b) §5.5 clarification on parallel-workstream commit enumeration per DEC-233; (c) §4.0 worked-example fix adding the workstream-membership edge per DEC-237; (d) §5.3 and §5.7 cross-references to §10; (e) change-log row and Last Updated bump\n\nThree commits the closure attributes to CONV-046 via commit_conversation_id (authored by Doug + Claude Code executor sessions, ingested here):\n- `70d88e6` v2: PI-030 slice A — POST /references atomic edge+flip for resolves; methodology §4.0 conversation block\n- `2b5557d` v2: PI-030 slice B — apply_close_out.py extensions for five new close-out payload sections\n- `c6ff67a` v2: PI-030 slice C — enumerate_commits.py helper for close-out commit ingestion",
+    "in_flight_at_end": "PI-030 resolves at apply time (atomic edge+flip via slice A's server-side behavior on the resolves_planning_items section). PI-050 surfaces as a new Open planning item — extending enumerate_commits.py with explicit-list mode for parallel-workstream closures; deferred to its own conversation (or PI-033's backfill if PI-033 confronts the same problem first). PI-027 / PI-028 / PI-029 / PI-032 remain Open by deliberate attribution discipline per DEC-234; PI-033's Phase 3 backfill resolves them once it authors the historical CONV records that did the work. WS-009 status in_flight at creation; transitions to complete after PI-031 (commits panel UI), PI-032 (rollout), PI-033 (backfill) all resolve. Methodology document at v1.1 after this conversation's edits."
+  },
+  "conversation": {
+    "conversation_identifier": "CONV-046",
+    "conversation_title": "PI-030 build closure — first nine-section payload acceptance test and methodology §10/§5.5/§4.0 amendments",
+    "conversation_purpose": "Build closure for SES-070 — ingest the three PI-030 slice commit SHAs into governance, resolve PI-030, surface helper-evolution as PI-050, and amend methodology §10/§5.5/§4.0/§5.7 to recognize the build-closure conversation-type pattern and close slice A's latent workstream-edge gap in §4.0's worked example.",
+    "conversation_description": "First Claude.ai conversation to author a close-out payload in the full nine-section v0.8 format. Functions as the functional acceptance test for the PI-030 build (slice A's POST /references atomic edge+flip for resolves; slice B's apply_close_out.py extension for five new payload sections; slice C's enumerate_commits.py helper). Settles six surface-and-settle questions in ARCHITECTURE mode using the eight-element consequential decision template — five anticipated by the kickoff (Q1 build-closure ownership, Q2 commit-array scoping, Q3 resolves attribution, Q4 executor-improvisation governance, Q5 conversation_purpose convention) and one surfaced by Claude during pre-work (Q6 workstream-membership requirement + §4.0 example fix). Three of the six decisions pushed back on the kickoff's defaults (Q2 G→E, Q3 J→I, Q4 L→N) on attribution-correctness and methodology-creep-avoidance grounds. Establishes the build-closure convention going forward: every multi-slice planning item that ships via Claude Code executors gets a dedicated Claude.ai build-closure conversation as its post-execution governance owner.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-046",
+        "target_type": "workstream",
+        "target_id": "WS-009",
+        "relationship": "conversation_belongs_to_workstream"
+      },
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-046",
+        "target_type": "session",
+        "target_id": "SES-074",
+        "relationship": "conversation_records_session"
+      }
+    ]
+  },
+  "commits": [
+    {
+      "commit_sha": "70d88e6ee8b1290707da5604fa5043bfe4c5411f",
+      "commit_message_first_line": "v2: PI-030 slice A — POST /references atomic edge+flip for resolves; methodology §4.0 conversation block",
+      "commit_message_full": "v2: PI-030 slice A — POST /references atomic edge+flip for resolves; methodology §4.0 conversation block\n\nTwo coupled changes preparing v2 governance for PI-030 slice B:\n\n1. references.create() extended: when relationship_kind == 'resolves',\n   the same transaction also calls planning_items.update(target_id,\n   status='Resolved'). Idempotent on already-Resolved targets. Validates\n   the source/target shape via existing vocab/_kinds_for_pair (admits\n   resolves only for conversation → planning_item).\n\n2. methodology-code-change-lifecycle.md amended:\n   - §4 apply-ordering bullet updated to insert 'conversation' between\n     session and work_tickets\n   - §4.0 conversation block added with JSON example and authoring note\n   - Change log row added for the 05-24-26 amendment\n   - Last Updated bumped to 05-24-26 17:30\n\nAuthority: DEC-223 (close-out payload format gains a conversation\nblock; methodology amended) and DEC-224 (POST /references extended\nfor resolves status-flip).\n\nTests: 5 new (4 access-layer, 1 API). Baseline 1481 + 5 = 1486 passed.\n\nCloses the server-side prerequisite for PI-030 slice B's\nresolves_planning_items section handling.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-24T16:52:00-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "8623e1632c921f8e0c8cdb075611ee572eb50c15"
+      ],
+      "commit_files_changed_count": 4
+    },
+    {
+      "commit_sha": "2b5557d4edbe2136ac0dd99dc93d1dc4d11f3994",
+      "commit_message_first_line": "v2: PI-030 slice B — apply_close_out.py extensions for five new close-out payload sections",
+      "commit_message_full": "v2: PI-030 slice B — apply_close_out.py extensions for five new close-out payload sections\n\napply_close_out.py now lands all five new sections introduced by the\nCode Change Lifecycle methodology + DEC-223:\n\n  session → conversation → work_tickets → planning_items → commits\n         → decisions → references → resolves_planning_items\n         → addresses_planning_items\n\nSection shape transforms:\n  - work_tickets[].addresses_planning_item → embedded addresses ref\n    (atomic with work_ticket POST; requires work_ticket_identifier in\n    the entry so the embedded ref's source_id is explicit)\n  - commits[].commit_conversation_id auto-populated from the payload's\n    conversation block\n  - resolves_planning_items[] → POST /references with relationship=resolves\n    (slice A's atomic edge+flip fires server-side)\n  - addresses_planning_items[] → POST /references with relationship=addresses\n\nArchitecture changes in apply_close_out.py:\n  - _SECTION_ENDPOINTS replaced with _SECTIONS (NamedTuple-based; NamedTuple\n    chosen over @dataclass to avoid a Python 3.12 dataclass introspection\n    quirk under the test-loader pattern spec_from_file_location)\n  - Per-section optional shape_fn(entry, context) -> body translation\n  - Context dict threaded through the loop, populated from the payload's\n    conversation block; shape functions read conversation_identifier\n  - _record_target_id extended for the v0.8 entity types' prefixed\n    identifier fields (conversation_identifier, work_ticket_identifier,\n    commit_identifier)\n  - _record_label extended for the prefixed identifiers and the\n    resolves/addresses entries' planning_item_identifier\n  - ValueError from a shape function fails the apply with kind=shape_error\n    captured in deposit_event_error_info; subsequent sections still attempt\n\nvocab.py extended to admit conversation, work_ticket, and commit as\ndeposit_event_wrote_record target_types. The access-layer invariant\nsum(records_summary) == len(wrote_records) holds for the new types\nwithout skipping (the references skip pattern is preserved as the\nDEC-215 Option I documented exception).\n\nconversations.py: surgical fix — when an explicit identifier is provided\nand matches an existing row, raise ConflictError BEFORE the duplicate-\ntitle check fires. Previously the title-duplicate check ran first,\nwhich surfaced a 422 \"duplicate title\" on a re-applied close-out\npayload (because the conversation_title was the same) instead of the\ncorrect 409 \"already exists\". The fix restores apply idempotency on\nre-run for payloads that include a conversation block.\n\nBackward compatibility: payloads without the new sections (v0.7 format)\napply unchanged. Sections absent or empty are skipped (no-op). HTTP 409\nSKIP idempotency preserved across all sections including conversation.\n\nTests: 12 new in test_apply_close_out.py (TestPI030NewSections) covering\nconversation block creation with the records_session edge, commits FK\npropagation, missing-conversation-block shape error, work_ticket embedded\naddresses ref, resolves/addresses translation, section ordering per\nmethodology §4, full-payload idempotency on re-run, v0.7 backward\ncompatibility, the v0.8 audit chain via wrote_record edges, atomic\nconversation+refs rollback on conversation POST failure, and resolves\nidempotency on an already-Resolved planning_item. Plus 3 new in\ntest_vocab_v0_8.py for the new wrote_record target_types. Baseline 1486\n+ 15 = 1501 passed.\n\nAuthority: DEC-221 (full scope), DEC-222 (emit-time helper, full\nrecords in payload), DEC-223 (conversation block), DEC-224 (resolves\nextension).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-24T18:42:09-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "fabf3c0ed15b47ad7ce6a6682603ad6d60bc687d"
+      ],
+      "commit_files_changed_count": 5
+    },
+    {
+      "commit_sha": "c6ff67a25eed8c33151383fd7f9e286dd41a7d80",
+      "commit_message_first_line": "v2: PI-030 slice C — enumerate_commits.py helper for close-out commit ingestion",
+      "commit_message_full": "v2: PI-030 slice C — enumerate_commits.py helper for close-out commit ingestion\n\nNew standalone script that produces the JSON array suitable to paste\ninto a close-out payload's commits section. Sandbox-side use, invoked\nat close-out authoring time per methodology §5.5.\n\nMechanics:\n- Reads db-export/commits.json to find the per-repo last-ingested SHA\n  (highest commit_committed_at value for that repository).\n- Runs git pull --ff-only per repo (skippable via --skip-pull for tests).\n- Enumerates commits via 'git log --reverse <since>..HEAD --format=...'\n  using ASCII control-character separators (US/RS) for safe multi-line\n  commit message parsing. --reverse asks git for chronological order\n  directly, matching CM-NNNN assignment order at apply time.\n- Counts files-changed per SHA via git diff-tree --root (the --root\n  flag ensures the initial commit compares against the empty tree\n  rather than emitting nothing).\n- Emits JSON in commit.md §3.2 shape.\n\nCLI surface:\n- --repos crmbuilder[,ClevelandBusinessMentoring]\n- --engagement-db-export <path>\n- --repo-root <path> + --repo-root-override REPO=PATH for multi-repo\n- --branch main\n- --skip-pull\n- --output <path> (default stdout)\n\nTests: 8 covering happy path, bootstrap (no snapshot), since-snapshot\nfiltering, multi-line message parsing, merge commit parent extraction,\nlowercase SHA normalization, non-git repo error, CLI end-to-end.\n\nAuthority: DEC-222 (emit-time helper, full records in payload),\nmethodology §5.5 (commit enumeration range).",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-24T21:43:10-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "63f13a4ee48313a8e14d8da4a499b43b2a29a8a0"
+      ],
+      "commit_files_changed_count": 2
+    }
+  ],
+  "work_tickets": [],
+  "decisions": [
+    {
+      "identifier": "DEC-232",
+      "title": "Build closure conversation type recognized as the governance owner of code-change work that crosses the Claude.ai → Claude Code planner-executor boundary",
+      "context": "PI-030's three slices were planned at SES-070 (a Claude.ai architecture conversation) and executed across three Claude Code sessions at Doug's terminal (one per slice). The executor sessions produced code commits but no governance records — Claude Code doesn't author payloads. SES-070 is closed and immutable. The methodology §3 schema requires every commit to carry a commit_conversation_id FK to a CONV record. No CONV record exists for any of the three executor sessions. Without a clean answer to which CONV owns the three slice SHAs, the methodology has a structural gap in its first real use — and the gap reappears for every planning item that ships across multiple Claude Code sessions, which is most of them going forward.",
+      "decision": "Build closure conversations are a recognized conversation pattern. A build closure is a Claude.ai conversation that opens after the Claude Code executors are done; its job is to author the close-out payload that ingests the executor commits via the commits section (commit_conversation_id set to the build closure's CONV), flip the originating planning item to Resolved via resolves_planning_items, and record any methodology drift the executors surfaced. The build closure does not author the code; it authors the governance record of the code. Methodology gains a new §10 establishing the pattern, with §5.3 (attribution) and §5.7 (multi-conversation work) cross-referencing §10.",
+      "rationale": "The alternative patterns each fail on at least one structural axis: deferring the planner's close until executors finish (option B) forces planning conversations to sit open through unbounded execution windows and was non-starter retroactively for SES-070 anyway; per-Claude-Code-session build receipts (option C) triples the payload count per multi-slice planning item, requires Claude Code conventions to change, and produces decision-less payloads that exercise none of the close-out machinery; absorbing the prior build into the next planning conversation (option D) conflates planning and closure and creates false attribution chains (PI-031's commits panel UI work would have ended up owning PI-030's commits). The build-closure pattern is a small naming addition that codifies what THIS conversation is doing in practice and sets the convention going forward.",
+      "alternatives_considered": "B — Planner conversation defers its own close until builders finish. C — Each Claude Code session emits its own minimal build-receipt payload. D — First subsequent planning conversation absorbs the prior build. All rejected. Details in topics_covered (1) and in the Q1 discussion of the kickoff prompt.",
+      "consequences": "Every multi-slice planning item executed via Claude Code gets a dedicated build-closure conversation. Total conversation count for such planning items: 1 planner + N executors + 1 closer = N+2. Build closure's commits section enumerates the executor SHAs; commit_conversation_id propagates to the build-closure CONV. Executor sessions themselves don't get CONV records (no governance hooks at Doug's terminal). PI-033's Phase 3 backfill ratifies the same convention for historical commits. The build closure's conversation_purpose opens with 'Build closure for SES-NNN — ' per DEC-236 to make the pattern grep-discoverable.",
+      "decision_date": "2026-05-25",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-233",
+      "title": "Commit-array scoping for build closures uses explicit per-SHA curation when commit ranges interleave with parallel workstreams; enumerate_commits.py extension surfaced as PI-050",
+      "context": "PI-030's three slice SHAs need ingestion as the first-ever commit records in the CRMBUILDER engagement (commits.json snapshot absent at this conversation's open — confirmed during pre-work). The slice C helper enumerate_commits.py's bootstrap behavior is to set log_range = HEAD and emit every commit in repo history (~900). The kickoff's default fix proposed adding a --since-sha flag and invoking with the parent of slice A. Pre-work discovered this doesn't work for THIS closure: between slice-A's parent and current HEAD, the main-branch log contains 8 commits NOT owned by PI-030 (audit-v1.2 Prompts G/H/I, PI-045 code-changes apply, PI-045 step-5 operational kickoff). The helper's since..HEAD range model assumes a single active workstream per repo; parallel workstreams break it.",
+      "decision": "For this closure: commits section carries exactly the three slice SHAs (70d88e6, 2b5557d, c6ff67a) hand-curated from git log in chronological order. The slice C helper enumerate_commits.py is not invoked. For the helper's evolution: a new planning item PI-050 (status Open) is surfaced — 'Extend enumerate_commits.py with explicit-list mode for parallel-workstream closures.' Methodology §5.5 gains a clarification that closures whose commits interleave with parallel workstreams enumerate their owned SHAs explicitly rather than relying on the range-based helper.",
+      "rationale": "Three SHAs hand-curated is trivial (about five minutes of git-log queries). Slice-D-equivalent work to extend the helper now would add scope to a workstream that's structurally complete after slices A/B/C and offers no value to this particular closure (the parallel-workstream finding means even the extended helper wouldn't have produced the right output without further filtering). Surfacing helper evolution as PI-050 defers the actual extension until the next conversation that needs it — most likely PI-033's backfill, which confronts the same parallel-workstream problem at much larger scale and may subsume the PI.",
+      "alternatives_considered": "F — Seed commits.json with a hand-authored baseline row, then run the helper (violates snapshot-is-generated invariant; still hits the parallel-workstream problem). G — Extend helper with --since-sha flag, the kickoff's default (doesn't help: parallel commits sit within the range). G' — Extend helper with --commits SHA1,SHA2 explicit-list flag in this conversation (real cost; scope creep on a structurally complete workstream). H — Defer this closure until PI-033 backfill runs (blocks PI-030 on PI-033, same anti-pattern Q3-H rejected). All rejected.",
+      "consequences": "First-time commit ingestion produces three commit records (CM-0001, CM-0002, CM-0003 — server-assigned client-side at apply time per slice B's _record_target_id implementation) attributed to CONV-046. Helper evolution falls to PI-050 (status Open) which any subsequent conversation can claim. PI-033's backfill scope quietly inherits the same constraint: historical SHAs get attributed to their authoring conversations rather than rolled into closer-in-time closures.",
+      "decision_date": "2026-05-25",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-234",
+      "title": "Build closure resolves only the planning item that motivated its build; upstream Open PIs from before the resolves mechanism stay deferred to PI-033 per methodology §9",
+      "context": "PI-027 (methodology document drafting), PI-028 (commit schema spec), PI-029 (commits access layer + REST) are all still Open at this closure's open. The kickoff's default J proposed resolving all four (PI-027, PI-028, PI-029, PI-030) here on the rationale that methodology §9's retroactive-resolution discipline was a workaround for the mechanism's absence — now that the mechanism exists, deferring is principle without substance. Closer reading of §9 and §5.7 reveals the deferral is doing more work than the kickoff credited.",
+      "decision": "Resolve PI-030 only in this closure. PI-027, PI-028, PI-029, PI-032 stay Open. PI-033's Phase 3 backfill resolves them when it authors retroactive CONV records for the historical conversations that did the work, emitting resolves edges from those proper CONVs to the planning items they completed. Methodology §9 stays intact; no amendment.",
+      "rationale": "Methodology §5.7's 'the final conversation declares resolves_planning_items' implies the resolves edge sources at the conversation that DID the work. This closure (CONV-046) did not author the methodology document, the commit schema spec, or the commits access layer — those were prior conversations whose CONV records don't yet exist. Pointing a resolves edge from CONV-046 to PI-027 misattributes the methodology drafting work to THIS conversation, breaking the audit queries in §6.1 and §6.2 (both walk the commit_conversation_id FK from the resolves source). PI-033 is the structurally correct resolver because it has to author the historical CONV records anyway (per §7.1's Historical commits item); emitting their resolves edges falls out for free. The §9 deferral is an attribution-discipline rule, not a mechanism-availability stopgap. Diagnostic from §9's tail ('PI-022 is the only Resolved planning item, and it has no resolves edge') remains usable through PI-033.",
+      "alternatives_considered": "J — Resolve all four (PI-027/028/029/030) in this closure and amend §9 to declare retroactive-deferral obsolete. Rejected on attribution-correctness grounds: the amendment as proposed ('any closure CAN resolve any PI it can attribute work to') slides past the question of which sense of 'attribute' governs resolves. K — Resolve PI-030 plus PI-029 only (the most tightly coupled pair). Rejected on the same grounds: slice B invoked PI-029's access-layer surface but did not author it; the proper resolving conversation is the implementation conversation at SES-067 area which still has no CONV record.",
+      "consequences": "PI-030 status flips Open → Resolved at apply time via slice A's atomic server-side behavior on the resolves_planning_items section. PI-027, PI-028, PI-029, PI-032 remain Open until PI-033 resolves them. Doug's UI shows 'Open' status on those four tiles for the interim, which is a small psychic cost the rule accepts in exchange for attribution integrity. PI-033's scope unchanged from its prior planning-item description; its backfill quietly inherits the resolves-edge work for these four.",
+      "decision_date": "2026-05-25",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-235",
+      "title": "Executor-improvisation fixes (e.g., slice B's conversations.py identifier-vs-title check reorder) get no governance record; commit log plus test coverage are the trace",
+      "context": "Slice B's Claude Code executor session added an unplanned three-line surgical fix to conversations.py — raising ConflictError on explicit-identifier collision BEFORE the duplicate-title check fires, so that re-applying a payload (which carries the same conversation_title for the same conversation_identifier) returns the correct 409 rather than a misleading 422. The fix was undocumented at the methodology layer when the kickoff was authored. The kickoff's default L proposed surfacing it as a new PI status Resolved-on-arrival, with resolves edge from CONV-046.",
+      "decision": "No governance record. The slice B commit message (2b5557d) documents the reorder rationale verbatim. The test suite — TestPI030NewSections::test_409_skip_idempotent_on_re_run_all_sections and adjacent — exercises the behavior. Anyone investigating the ordering quirk runs git blame on the reordered lines, lands on 2b5557d, reads the explanation. Methodology stays clean of executor-improvisation-noise records.",
+      "rationale": "Same attribution discipline as DEC-234: this closure did not perform the fix; the slice B executor session did. A PI authored here with resolves edge from CONV-046 would carry the same false attribution pattern Q3 just rejected. More broadly: PIs represent intent that drives work, not correction that follows from it; executor sessions make many small mid-stream corrections (typo fixes, import reorders, test assertion tweaks) and surfacing each as a PI is methodology creep that fills the planning-item table with after-the-fact records that didn't motivate any work. The argument for a higher-than-commit-log trace doesn't hold: the methodology has no position on access-layer check ordering, so there's no methodology-level question to anchor a PI to.",
+      "alternatives_considered": "L — Surface as a new PI status Resolved-on-arrival with resolves edge from CONV-046. Rejected (false attribution; methodology creep precedent). M — Surface as a DEC only, no PI. Rejected (decisions describe choices, and this was an executor correction more naturally framed as a PI than a decision — but the PI framing fails on attribution, so neither M nor L survives). N (selected).",
+      "consequences": "Future operators reading the access layer who wonder why conversations.py runs identifier-conflict-before-title-conflict use git blame to land on 2b5557d. Methodology silence on access-layer ordering remains. Precedent established: executor improvisations are governed by commit log plus test coverage, not by retroactive governance records, unless they touch methodology surface directly.",
+      "decision_date": "2026-05-25",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-236",
+      "title": "Build closure conversation_purpose opens with 'Build closure for SES-NNN — ' naming the upstream planner; methodology §10 captures the convention",
+      "context": "DEC-232 established the build-closure conversation type. The conversation_purpose field on every CONV record is free-form one-sentence prose. The build-closure pattern needs a way to identify itself in the conversations corpus without requiring a separate conversation_kind taxonomy field (none exists in the schema).",
+      "decision": "Build closure CONV records open conversation_purpose with the literal string 'Build closure for SES-NNN — ' where SES-NNN is the session identifier of the upstream planner. Methodology §10 names the convention; it's discoverable via grep on the conversations snapshot or via the V2 desktop UI's free-text search.",
+      "rationale": "Convention is one line in methodology §10 and zero code. Grep-discoverable. Establishes the planner→closer chain in the natural field for one-sentence statements of conversational intent. Avoids the alternative of adding a typed enum (conversation_kind) to the schema, which would be a real Alembic migration plus a schema spec amendment for a one-bit distinction. Free-form prose with a leading convention is the right cost for the value.",
+      "alternatives_considered": "P — No convention; conversation_purpose stays fully free-form. Rejected — Q1's pattern needs to be self-identifying somewhere, and the purpose field is the natural home. Schema-level alternatives (typed conversation_kind enum) rejected as overkill for a one-bit distinction.",
+      "consequences": "Every build closure's conversation_purpose follows the convention going forward. Grep on the conversations snapshot for 'Build closure for ' returns all build-closure CONV records. This CONV-046 is the first instance and the methodology §10 worked example.",
+      "decision_date": "2026-05-25",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-237",
+      "title": "Code Change Lifecycle workstream promoted to a governance object (WS-009) via apply-prompt pre-step; methodology §4.0 worked-example fixed to include the workstream-membership edge slice A omitted",
+      "context": "Pre-work discovered that the conversations.py access layer (crmbuilder-v2/src/crmbuilder_v2/access/repositories/conversations.py _validate_edges) requires every live conversation to carry exactly one outbound conversation_belongs_to_workstream edge — missing edge or multiple edges return HTTP 422. None of the eight existing workstreams (WS-001 through WS-008, all status complete) covers PI-030's lineage. SES-057's title explicitly says 'Code Change Lifecycle workstream established' but no WS-NNN record exists for it because workstream-as-governance-entity only arrived in v0.7 after SES-057. Slice A's methodology §4.0 worked example showed only the conversation_records_session edge, omitting the workstream-membership edge that the access layer requires — a latent gap that would surface on the first real apply if not corrected. The close-out payload schema has no workstreams section, so workstream creation cannot happen inside the payload apply itself.",
+      "decision": "Two-part decision. (a) The apply prompt for this closure POSTs /workstreams as a pre-step to create WS-009 'Code Change Lifecycle workstream' status in_flight before invoking apply_close_out.py. WS-009's purpose: 'Bring code-change lifecycle into V2 governance: methodology document, commit entity, payload-section extensions, UI surface, methodology rollout, and historical backfill.' Status transitions to complete after PI-031, PI-032, PI-033 resolve. CONV-046's conversation block carries both the conversation_belongs_to_workstream edge to WS-009 and the conversation_records_session edge to SES-074. (b) Methodology §4.0 worked example is corrected in passing to show both edges; the explanatory paragraph notes the access-layer membership requirement. The §4.0 fix is committed alongside §10 / §5.5 amendments in this conversation's methodology edit; no separate governance record per DEC-235's precedent (latent gap closed in passing; commit log plus this DEC suffice).",
+      "rationale": "Option α (apply-prompt pre-step) is the smallest mechanism: one curl POST in the apply prompt, no schema change. Structurally clean — the workstream pre-exists the conversation that joins it, matching the normal API usage pattern. Promoting the Code Change Lifecycle workstream to a governance object now makes the audit queries in §6.3 ('given a workstream, list every commit it produced') work for PI-030's commits immediately rather than waiting on PI-033's Phase 3 backfill. The methodology §4.0 fix is a slice A artifact correction that doesn't warrant its own governance record per DEC-235's precedent — commit log plus this DEC are the trace.",
+      "alternatives_considered": "β — Defer closure until PI-033 creates WS-009 first. Rejected (blocks PI-030 on PI-033, same anti-pattern Q3-H rejected). γ — Extend close-out payload schema with a workstreams section. Rejected (slice-D-equivalent work; scope creep on a structurally complete workstream; the apply-prompt pre-step achieves the same with a curl call). δ — Attach CONV-046 to a closest-fit existing workstream (e.g., WS-001 'Governance entity schema-design'). Rejected (WS-001's scope was the six v0.7 schema specs — workstream, conversation, reference_book, work_ticket, close_out_payload, deposit_event — not commit; also status complete; misattribution).",
+      "consequences": "WS-009 lands at apply time, status in_flight. CONV-046 belongs to WS-009. PI-033's Phase 3 backfill scope quietly inherits attaching historical conversations (the as-yet-unauthored CONV records for SES-057, SES-061, SES-063, SES-067, SES-068, SES-070) to WS-009 via conversation_belongs_to_workstream edges. Methodology §4.0 worked example now shows the two-edge pattern correctly. Methodology document Last Updated bumps and revision row added for the §4.0 fix and §5.5 clarification alongside the §10 new section.",
+      "decision_date": "2026-05-25",
+      "status": "Active"
+    }
+  ],
+  "planning_items": [
+    {
+      "identifier": "PI-050",
+      "title": "Extend enumerate_commits.py with explicit-list mode for parallel-workstream closures",
+      "description": "Slice C's enumerate_commits.py uses a since..HEAD range model that assumes a single active workstream per repository. The SES-074 build closure (PI-030's first end-to-end use) discovered this assumption breaks when multiple workstreams interleave commits on the main branch: between PI-030 slice A's parent and the closure's HEAD, the crmbuilder main-branch log contained 8 commits NOT owned by PI-030 (audit-v1.2 Prompts G/H/I, PI-045 code-changes apply, PI-045 step-5 operational kickoff). The kickoff's default mitigation (--since-sha flag) doesn't help; parallel commits sit within any since..HEAD range. SES-074 worked around the limitation by hand-curating its three slice SHAs into the payload's commits section per DEC-233.\n\nScope: extend enumerate_commits.py with an explicit-list mode (suggested flag: --commits SHA1,SHA2,...) that emits commit-record JSON for exactly the named SHAs from the working tree, in chronological order. Bypasses the since..HEAD range calculation entirely. CLI surface analogous to the existing single-repo and multi-repo invocation patterns. Tests cover: (a) flag-and-positional mutual exclusion with --since-sha; (b) explicit-list emission order matches git's chronological order regardless of input order; (c) unknown SHA raises a clear error with the offending SHA named; (d) the explicit-list mode honors the same --branch and --repo-root-override flags as the range mode. Methodology §5.5 (already amended in SES-074 to clarify the parallel-workstream case) may gain a sentence pointing at the explicit-list flag once it ships.\n\nThis planning item may be subsumed by PI-033's Phase 4 historical-commits backfill — which confronts the same parallel-workstream problem at much larger scale across both repos — if PI-033 ends up needing the same explicit-list flag and ships it first. Status stays Open until either is built; whichever ships the flag resolves this PI.",
+      "item_type": "pending_work",
+      "status": "Open"
+    }
+  ],
+  "references": [
+    {
+      "source_type": "decision",
+      "source_id": "DEC-232",
+      "target_type": "session",
+      "target_id": "SES-074",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-233",
+      "target_type": "session",
+      "target_id": "SES-074",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-234",
+      "target_type": "session",
+      "target_id": "SES-074",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-235",
+      "target_type": "session",
+      "target_id": "SES-074",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-236",
+      "target_type": "session",
+      "target_id": "SES-074",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-237",
+      "target_type": "session",
+      "target_id": "SES-074",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-074",
+      "target_type": "planning_item",
+      "target_id": "PI-050",
+      "relationship": "is_about"
+    }
+  ],
+  "resolves_planning_items": [
+    {
+      "planning_item_identifier": "PI-030"
+    }
+  ],
+  "addresses_planning_items": [
+    {
+      "planning_item_identifier": "PI-032"
+    }
+  ]
+}

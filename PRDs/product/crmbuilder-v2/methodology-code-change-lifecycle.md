@@ -1,6 +1,6 @@
 # Code Change Lifecycle — Methodology
 
-**Last Updated:** 05-24-26 17:30
+**Last Updated:** 05-25-26 16:00
 **Status:** Draft v1.0
 **Workstream:** Code Change Lifecycle (established in SES-057)
 **Produced by:** SES-061 (PI-027 methodology drafting conversation)
@@ -17,6 +17,8 @@
 ---
 
 ## Change Log
+
+**Version 1.0 amendment (05-25-26 16:00):** SES-074 (PI-030 build closure) — three additive amendments and one example fix, settled by DEC-232, DEC-233, DEC-237. The amendments were originally drafted as SES-073 / DEC-226, DEC-227, DEC-231 at 13:30 the same day and re-keyed +1/+6/+1 (SES-073 → SES-074, DEC-226..DEC-231 → DEC-232..DEC-237, PI-049 → PI-050) after a parallel-sandbox PI-045 step-5 OAuth-rerouting session claimed SES-073/DEC-226/PI-049 via direct-API writes (commits `bfa7053` and `7495a40`). Substantive content unchanged by the re-key. The amendments: (a) new §10 "Build closure pattern" naming the convention that a dedicated Claude.ai conversation owns the close-out for code-change work executed across multiple Claude Code sessions whose surfaces don't author governance records (per DEC-232), with a follow-on naming convention for `conversation_purpose` (per DEC-236); (b) §5.5 clarification on the parallel-workstream case — closures whose owned commits interleave with parallel workstreams' commits on the main branch enumerate their SHAs explicitly rather than relying on the range-based helper, since the `since..HEAD` model assumes a single active workstream per repo (per DEC-233); (c) §4.0 worked-example fix adding the access-layer-mandatory `conversation_belongs_to_workstream` edge that slice A's example omitted (per DEC-237); (d) §5.6 and §5.7 cross-references to §10 for the attribution and multi-conversation-work cases that the build-closure pattern serves. Document version stays at v1.0 — all four amendments are additive and clarifying; no normative change to the seven-stage lifecycle or the audit-query patterns.
 
 **Version 1.0 amendment (05-24-26 17:30):** PI-030 slice A — added §4.0 `conversation` block and updated §4's apply-ordering bullet to insert `conversation` between `session` and `work_tickets`. The amendment was required by DEC-223 (close-out payload format gains a conversation block; methodology amended) to close the gap where sessions from SES-061 forward had no associated conversation records, blocking commits' FK to `commit_conversation_id`. Document version stays at v1.0 — the amendment is additive and clarifying.
 
@@ -183,10 +185,19 @@ Rationale for the order: the conversation must exist before commits can be FK-at
   "conversation_identifier": "CONV-046",
   "conversation_title": "PI-030 architecture planning — close-out payload extensions and apply integration",
   "conversation_purpose": "Settle Q0 (PI-030 scope), Q1 (commit-metadata helper architecture), and Q2 (conversation gap closure). Author the three PI-030 slice prompts.",
+  "conversation_description": "Architecture-mode planning conversation that scopes PI-030 across three slice prompts and amends methodology §4 to introduce the conversation block.",
   "conversation_status": "complete",
-  "conversation_completed_at": "2026-05-24T17:30:00-04:00",
   "references": [
     {
+      "source_type": "conversation",
+      "source_id": "CONV-046",
+      "target_type": "workstream",
+      "target_id": "WS-009",
+      "relationship": "conversation_belongs_to_workstream"
+    },
+    {
+      "source_type": "conversation",
+      "source_id": "CONV-046",
       "target_type": "session",
       "target_id": "SES-070",
       "relationship": "conversation_records_session"
@@ -195,9 +206,9 @@ Rationale for the order: the conversation must exist before commits can be FK-at
 }
 ```
 
-Generates one `conversation` record plus the embedded `conversation_records_session` edge to the session block's identifier in the same atomic POST. Required for any close-out that includes a `commits` section — the commits' `commit_conversation_id` FK targets this conversation. The conversation_identifier is computed client-side via `GET /conversations/next-identifier`. The status is typically `complete` at close-out time, but earlier statuses are admitted for in-flight close-outs that defer some fields to a subsequent edit. Omitting the conversation block when commits are present causes `commit_conversation_id_not_found` errors at apply time.
+Generates one `conversation` record plus the embedded edges to the named workstream and session in the same atomic POST. The `conversation_belongs_to_workstream` edge is **mandatory at the access layer** — `conversations.py:_validate_edges` rejects any live conversation that lacks exactly one outbound edge of this kind with HTTP 422 `missing_workstream_membership_edge` (per DEC-120 and the conversation schema spec §3.3). Required for any close-out that includes a `commits` section — the commits' `commit_conversation_id` FK targets this conversation. The conversation_identifier is computed client-side via `GET /conversations/next-identifier`. The status is typically `complete` at close-out time, but earlier statuses are admitted for in-flight close-outs that defer some fields to a subsequent edit. Omitting the conversation block when commits are present causes `commit_conversation_id_not_found` errors at apply time; omitting the workstream-membership edge causes `missing_workstream_membership_edge` at conversation POST time.
 
-Authoring note: the conversation block was added in PI-030 (the methodology's downstream implementation conversation; see §8) per DEC-223. Prior close-out payloads (ses_001 through approximately ses_069) predate this section and used the v0.7 four-block format; backfill of conversation records for those sessions is PI-024/PI-025 scope.
+Authoring note: the conversation block was added in PI-030 (the methodology's downstream implementation conversation; see §8) per DEC-223. The mandatory workstream-membership edge was added to the worked example in SES-074 per DEC-237 — slice A's original example showed only the session edge, a latent gap the access layer enforces. Prior close-out payloads (ses_001 through approximately ses_069) predate this section and used the v0.7 four-block format; backfill of conversation records for those sessions is PI-024/PI-025 scope. When a close-out's conversation needs to belong to a workstream that doesn't yet exist as a governance object — as PI-030's Code Change Lifecycle workstream did at SES-074's open — the apply prompt POSTs the workstream out-of-band before invoking `apply_close_out.py` (the close-out payload schema has no `workstreams` section by design; workstreams are upstream of conversations).
 
 ### 4.1 `commits` section
 
@@ -300,9 +311,13 @@ When a conversation's `resolves_planning_items` section names it. Apply script g
 
 At close-out authoring time. The helper enumerates commits in the range `<last-ingested-sha-per-repo>..<current-HEAD-per-repo>` for each repo the conversation touched. The "last-ingested SHA" is derived per repo by querying the most recent `commit` record's `commit_sha` for that repository (`GET /commits?commit_repository=<name>&sort=commit_committed_at:desc&limit=1`). The conversation's close-out payload includes the resulting `commits` section. Apply POSTs each commit.
 
+**Parallel-workstream interleaving** (per DEC-233, surfaced in SES-074). The `since..HEAD` range model assumes a single active workstream per repository — i.e., that every commit between the last close-out and the current HEAD is owned by THIS conversation. When multiple workstreams produce commits on the same branch (typical for the crmbuilder repo, where audit work, methodology work, and operational deployment work routinely interleave), the helper's range over-ingests. The closure conversation enumerates its owned SHAs explicitly in the `commits` section rather than invoking the range-based helper, and the over-ingested SHAs stay owned by their actual originating conversations (either ingested by their own closures, or backfilled by PI-033). A future helper extension (PI-050 candidate scope) supports an `--commits SHA1,SHA2,...` explicit-list flag for closures that prefer tool-assisted enumeration over hand-curation; until that ships, the curated array in the payload is the recommended path.
+
 ### 5.6 Attribution
 
 Every commit in the enumerated range is attributed to the close-out's conversation, regardless of who authored it physically. Manual commits Doug made between the previous close-out and this one are rolled into this conversation's set. The simplification is acceptable for the audit-trail use case; if attribution discipline becomes a problem, a future v0.9 adds a `commit_author_kind` field (`claude_ai` / `claude_code` / `manual`).
+
+**Build-closure attribution variant** (see §10). When code is executed across multiple Claude Code sessions that don't author governance records, the dedicated build-closure conversation owns the executor commits via `commit_conversation_id`. The build closure attributes the SHAs to itself even though the closure didn't physically write the code — the closure is the governance owner, the executors are the physical authors. This is consistent with the broad simplification above; the build-closure pattern is a named instance of it.
 
 ### 5.7 Multi-conversation work
 
@@ -312,6 +327,8 @@ When work on a planning item spans multiple conversations and only the final con
 - The final conversation declares `resolves_planning_items` — terminal contribution; status flips.
 
 Audit query "every commit that contributed to PI-NNN" walks both `resolves` and `addresses` edges from `conversation → planning_item`, then joins to `commits` via `commit_conversation_id`.
+
+**Build-closure variant** (see §10). When the multi-conversation work crosses the Claude.ai planner → Claude Code executor boundary, the build-closure conversation is the "final conversation" that declares `resolves_planning_items`. The intervening Claude Code executor sessions produce no governance records and are therefore not in the non-terminal/terminal chain at all — only the planner conversation (which contributes decisions and possibly addresses edges) and the build-closure conversation (which contributes the commits and the resolves edge) appear in the audit chain.
 
 ---
 
@@ -474,3 +491,79 @@ The kickoff for this conversation flagged that PI-027 (this methodology document
 **This methodology adopts option (a).** PI-027 stays `Open` at the end of this conversation's close-out. PI-033's back-fill resolves it once the `resolves_planning_items` payload section ships in PI-030. The honesty of "the methodology specifies a model the schema does not yet support" matters more than the visual neatness of a flipped status. Future readers walking the chain will see PI-027 transition to `Resolved` chronologically alongside every other historical planning item PI-033 retroactively resolves.
 
 The diagnostic that motivated this workstream — "PI-022 is the only Resolved planning item, and it has no `resolves` edge" — would have been impossible to detect under option (b) for PI-027. Adopting (a) keeps the same diagnostic signal usable through this conversation's tail.
+
+---
+
+## 10. Build Closure Pattern
+
+The seven-stage lifecycle in §2 collapses naturally when one Claude.ai conversation does both planning and execution. It also works cleanly when planning and execution are sequential Claude.ai conversations — each authors its own close-out, the chain reads end-to-end. The pattern that needed naming is the third case: when planning happens in a Claude.ai conversation but execution crosses to one or more Claude Code sessions at Doug's terminal. Claude Code sessions produce commits but no governance records — there is no payload, no decisions, no references authored from a Claude Code session. The chain has a gap exactly where the commits live.
+
+Per DEC-232 (SES-074), this gap is closed by a **build closure conversation** — a dedicated Claude.ai conversation that opens after the Claude Code executors are done. Its job is single-purpose:
+
+1. **Ingest the executor commits** via the close-out payload's `commits` section, with `commit_conversation_id` set to the build-closure conversation. The build closure becomes the governance owner of commits it did not physically author.
+2. **Resolve the originating planning item** via the `resolves_planning_items` section. The atomic edge+flip per slice A fires server-side; the planning item transitions Open → Resolved.
+3. **Record any methodology drift the executors surfaced** as decisions (DECs) in the close-out's decisions section, or as new planning items if the drift opens unfinished work.
+
+The build closure does not author the code; it authors the governance record of the code.
+
+### 10.1 When to use the pattern
+
+Trigger conditions: a planning item produces one or more `CLAUDE-CODE-PROMPT-*.md` slice files, each consumed by a separate Claude Code session at Doug's terminal that commits code. The boundary between Claude.ai and Claude Code is the trigger — work that stays within a single Claude.ai conversation, even if it produces multiple commits, doesn't need a separate build closure (the single conversation's own close-out carries the commits per §4.1).
+
+Multi-slice work that crosses the boundary always needs a build closure. Single-slice work that crosses the boundary technically also needs one, but Doug may elect to fold the build closure into the next-opening planning conversation if the executor produced no methodology drift; that fold-in is a per-case judgment, not a fixed rule.
+
+### 10.2 conversation_purpose convention
+
+Per DEC-236 (SES-074), the build closure's `conversation_purpose` field opens with the literal string `"Build closure for SES-NNN — "` where `SES-NNN` is the session identifier of the upstream planner. The convention is grep-discoverable on the conversations snapshot and on the V2 desktop UI's free-text search. Example:
+
+> `"conversation_purpose": "Build closure for SES-070 — ingest the three PI-030 slice commit SHAs into governance, resolve PI-030, surface helper-evolution as PI-050, and amend methodology §10/§5.5/§4.0/§5.7 to recognize the build-closure conversation-type pattern."`
+
+The convention is one line, zero schema cost, and avoids the alternative of adding a typed `conversation_kind` enum to the schema for a one-bit distinction.
+
+### 10.3 Conversation count
+
+A multi-slice planning item executed via Claude Code accumulates conversation records along this shape:
+
+- **1 planner conversation** (Claude.ai, architecture mode, produces the slice prompts as work_tickets and the surface-and-settle decisions)
+- **N executor sessions** (Claude Code, no governance records — they exist physically as terminal sessions but contribute nothing to the governance database)
+- **1 build closure conversation** (Claude.ai, ingests the executor commits, resolves the PI)
+
+The conversation count in the database is therefore `1 planner + 1 closer = 2`, not `N + 2`. Executor sessions are invisible to governance queries; their existence is recoverable only from the commit metadata (author, committed_at) and from Doug's local shell history.
+
+### 10.4 Audit chain through a build closure
+
+The chain reads:
+
+```
+planning_item
+  ←[is_about]— planner session (e.g., SES-070)
+                  ↑[conversation_records_session]
+                  planner conversation (e.g., CONV-040 hypothetical pre-existing)
+
+planning_item
+  ←[resolves]— build-closure conversation (e.g., CONV-046)
+                  ↑[conversation_records_session]
+                  build-closure session (e.g., SES-074)
+
+build-closure conversation
+  ←[commit_conversation_id]— commits (CM-NNNN ... CM-NNNN)
+                                ↑[commit_sha]
+                                physical git commits at the named SHAs
+```
+
+The query "every commit that contributed to PI-NNN" walks the same `resolves`/`addresses` edge from `conversation → planning_item` per §5.7, then joins to `commits` via `commit_conversation_id`. The fact that the conversation that owns the commits did not physically author them is intentional and consistent — the build closure is the governance owner.
+
+### 10.5 Retroactive build closures
+
+Historical work executed across Claude Code sessions before this pattern was named (e.g., PI-029's slice B implementation conversation in the SES-067 area) had no build-closure conversation. PI-033's Phase 3 backfill authors retroactive CONV records for the historical planner conversations and either (a) creates a synthetic build-closure conversation for the executor commits, or (b) attributes the commits to the planner conversation itself when the planner-executor distinction is not meaningful at the historical record's resolution. The choice is per-record; the backfill methodology document at PI-033 close determines the convention.
+
+### 10.6 Worked example
+
+SES-074 is the first build-closure conversation. It records:
+
+- 3 commits authored across three Claude Code sessions (PI-030 slices A, B, C — SHAs `70d88e6`, `2b5557d`, `c6ff67a`) with `commit_conversation_id = CONV-046`.
+- A `resolves` edge from CONV-046 to PI-030 — the planning item flips Open → Resolved at apply time.
+- Six decisions (DEC-232 through DEC-237), of which DEC-232 establishes this section's pattern, DEC-236 establishes the purpose-naming convention in §10.2, and DEC-237 establishes the apply-prompt workstream pre-step pattern used when a build closure's conversation needs to belong to a workstream that doesn't yet exist as a governance object (see §4.0's authoring note).
+- One new planning item (PI-050 — extend `enumerate_commits.py` with explicit-list mode).
+
+The full payload at `close-out-payloads/ses_073.json` and the apply prompt at `prompts/CLAUDE-CODE-PROMPT-apply-close-out-ses-073.md` together form the reference implementation for the pattern.
