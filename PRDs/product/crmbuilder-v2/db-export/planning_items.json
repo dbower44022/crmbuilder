@@ -12,14 +12,14 @@
   },
   {
     "created_at": "2026-05-11T14:51:10.184105",
-    "description": "DEC-043 resolved the SES-010 identifier-asymmetry friction via option (B) — ``GET /<entity>/next-identifier`` helpers for all twelve prefixed entity types. Option (C) — making ``identifier`` optional in POST bodies with server-side auto-assignment on omission — is the cleaner end state but was deferred from v0.4 because it changes existing endpoint contracts (gray-area under the kickoff's 'doesn't alter v0.3's storage shape' rule) and deserves its own design pass. Open design questions: (1) how to disambiguate client-omitted identifier (auto-assign) from client-specified-empty-string identifier (validation error)? (2) does this apply to versioned entity types like charter and status, whose identifiers are version numbers? (3) does the MCP server need any change beyond what the API change implies? Target release: v0.5 or later, depending on scope competition.",
+    "description": "**Explain it like I was 5:** When you want to add a new note to the project's notebook, you have to first peek at the last page to figure out what number to write at the top of yours — and if you forget, the notebook yells at you and won't take it. PI-002 makes the notebook smart enough to pick the next page number itself: you just hand it the note. You can still pick your own page number if you want to.\n\nDEC-043 resolved the SES-010 identifier-asymmetry friction via option (B) — ``GET /<entity>/next-identifier`` helpers for all twelve prefixed entity types. Option (C) — making ``identifier`` optional in POST bodies with server-side auto-assignment on omission — is the cleaner end state but was deferred from v0.4 because it changes existing endpoint contracts (gray-area under the kickoff's 'doesn't alter v0.3's storage shape' rule) and deserves its own design pass. Open design questions: (1) how to disambiguate client-omitted identifier (auto-assign) from client-specified-empty-string identifier (validation error)? (2) does this apply to versioned entity types like charter and status, whose identifiers are version numbers? (3) does the MCP server need any change beyond what the API change implies? Target release: v0.5 or later, depending on scope competition.",
     "id": 2,
     "identifier": "PI-002",
     "item_type": "pending_work",
     "resolution_reference": null,
     "status": "Open",
     "title": "Make `identifier` optional in POST bodies (SES-010 option C)",
-    "updated_at": "2026-05-11T14:51:10.184108"
+    "updated_at": "2026-05-25T19:34:22.196739"
   },
   {
     "created_at": "2026-05-11T14:51:10.213028",
@@ -559,5 +559,16 @@
     "status": "Open",
     "title": "audit-v1.4 — Section 12.5 role-aware visibility deploy implementation alongside Section 12.7 field-level permissions",
     "updated_at": "2026-05-25T15:37:43.754158"
+  },
+  {
+    "created_at": "2026-05-25T19:45:34.444301",
+    "description": "Per DEC-245's architectural pivot away from MCP-via-claude.ai (blocked by upstream Anthropic bug per DEC-244). Scope: build a chat UI that gives Doug Claude conversations with access to the v2 governance database tool surface. Architecture: Python client using the Anthropic SDK with native tools=[...] definitions, calling the REST API at 127.0.0.1:8765 directly. Reuse `crmbuilder_v2.mcp_server.tools` module functions (already wrap httpx → REST API) as the native tool definitions — no rewrite required, their signatures and docstrings can be auto-converted to Anthropic API tool schemas. Loop: read user input → messages.create(tools=...) → execute any tool_use blocks via httpx → feed tool_result back → repeat until Claude responds without further tool calls. Phase 1 (proof of concept, ~30 min): a terminal-based ~50 LOC Python script that demonstrates the loop end-to-end with a handful of tools. Phase 2 (production surface): pick one of (a) terminal-based UI with Rich/Textual, (b) PySide6 chat tab inside the existing CRMBuilder desktop app, (c) Streamlit/Gradio web prototype, (d) custom FastAPI + React/HTMX web app on the existing Cloudflare Tunnel — choice deferred until Phase 1 completes. No MCP HTTP transport involved. MCP server in stdio mode for Claude Desktop continues to work unaffected. Cloudflare Tunnel + Access + Managed OAuth infrastructure preserved on disk (Path B work in commit fc4690c) for future use if/when Anthropic fixes the connector bug.",
+    "id": 52,
+    "identifier": "PI-052",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Chat UI on Anthropic API with native tool definitions — pilot and build",
+    "updated_at": "2026-05-25T19:45:34.444304"
   }
 ]

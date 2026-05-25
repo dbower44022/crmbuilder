@@ -1,0 +1,36 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_077.json
+Label:  SES-077 v2 AI surface integration — claude.ai-web blocked by upstream Anthropic connector bug, chat-UI-on-Anthropic-API pivot. Claude Code conversation conducted at Doug's terminal 2026-05-25 afternoon. Phase 1 of PI-049 (Path B feasibility check per DEC-226) executed end-to-end: Cloudflare Managed OAuth configured on the existing self-hosted CRM Builder MCP Access app, claude.ai/claude.com redirect URIs registered, RFC 8707 compliance + PKCE S256 + DCR endpoint live, OAuth dance completed through user-consent step, then claude.ai never POSTed to the token endpoint — same silent `ofid_*` failure pattern documented in Anthropic GitHub issue #271 and 6 sibling issues across WorkOS, Clerk, Salesforce, M365 IdPs. Strategic pivot: chat UI on Anthropic API with native tool definitions calling REST API at 127.0.0.1:8765 directly, no MCP HTTP transport hop. Records landed: 1 session, 1 conversation, 1 commit (fc4690c — Path B shelving), 0 work_tickets, 2 decisions (DEC-244 empirical finding, DEC-245 architectural pivot), 1 planning_item (PI-052 chat UI build), 8 references including DEC-245 supersedes DEC-226 edge, 0 resolves edges (neither PI is resolved), 2 addresses edges (PI-045, PI-049). WS-010 'v2 AI Surface Integration workstream' created as apply-prompt pre-step per WS-009 precedent.
+Deposit event: DEP-058
+
+=== session (1 record) ===
+  ✓ POST session  SES-077 (HTTP 201)
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CONV-047 (HTTP 201)
+
+=== planning_items (1 record) ===
+  ✓ POST planning_items  PI-052 (HTTP 201)
+
+=== commits (1 record) ===
+
+=== decisions (2 records) ===
+  ✓ POST decisions  DEC-244 (HTTP 201)
+  ✓ POST decisions  DEC-245 (HTTP 201)
+
+=== references (8 records) ===
+  ✓ POST references  DEC-244 decided_in SES-077 (HTTP 201)
+  ✓ POST references  DEC-245 decided_in SES-077 (HTTP 201)
+  ✓ POST references  DEC-244 references DEC-226 (HTTP 201)
+  ✓ POST references  DEC-245 references DEC-244 (HTTP 201)
+  ✓ POST references  DEC-245 supersedes DEC-226 (HTTP 201)
+  ✓ POST references  SES-077 is_about PI-045 (HTTP 201)
+  ✓ POST references  SES-077 is_about PI-049 (HTTP 201)
+  ✓ POST references  SES-077 is_about PI-052 (HTTP 201)
+
+=== addresses_planning_items (2 records) ===
+  ✓ POST addresses_planning_items  → PI-045 (HTTP 201)
+  ✓ POST addresses_planning_items  → PI-049 (HTTP 201)
+
+
+✓ Recorded apply as deposit_event DEP-058 (HTTP 201).

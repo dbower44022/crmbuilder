@@ -1,0 +1,159 @@
+{
+  "label": "SES-077 v2 AI surface integration — claude.ai-web blocked by upstream Anthropic connector bug, chat-UI-on-Anthropic-API pivot. Claude Code conversation conducted at Doug's terminal 2026-05-25 afternoon. Phase 1 of PI-049 (Path B feasibility check per DEC-226) executed end-to-end: Cloudflare Managed OAuth configured on the existing self-hosted CRM Builder MCP Access app, claude.ai/claude.com redirect URIs registered, RFC 8707 compliance + PKCE S256 + DCR endpoint live, OAuth dance completed through user-consent step, then claude.ai never POSTed to the token endpoint — same silent `ofid_*` failure pattern documented in Anthropic GitHub issue #271 and 6 sibling issues across WorkOS, Clerk, Salesforce, M365 IdPs. Strategic pivot: chat UI on Anthropic API with native tool definitions calling REST API at 127.0.0.1:8765 directly, no MCP HTTP transport hop. Records landed: 1 session, 1 conversation, 1 commit (fc4690c — Path B shelving), 0 work_tickets, 2 decisions (DEC-244 empirical finding, DEC-245 architectural pivot), 1 planning_item (PI-052 chat UI build), 8 references including DEC-245 supersedes DEC-226 edge, 0 resolves edges (neither PI is resolved), 2 addresses edges (PI-045, PI-049). WS-010 'v2 AI Surface Integration workstream' created as apply-prompt pre-step per WS-009 precedent.",
+  "session": {
+    "identifier": "SES-077",
+    "title": "v2 AI surface integration — claude.ai-web blocked by upstream Anthropic connector bug (ofid_* pattern across 7+ IdPs), chat-UI-on-Anthropic-API pivot; Path B fully configured + shelved with infrastructure preserved",
+    "session_date": "2026-05-25",
+    "status": "Complete",
+    "conversation_reference": "Claude Code session at Doug's terminal, 2026-05-25 afternoon, opened in /home/doug/Dropbox/Projects/ClevelandBusinessMentors with project context. Conversation began with an apply-close-out task for SES-074 (PI-030 build closure), then pivoted to PI-049 Phase 1 (Path B feasibility) after Doug reported the claude.ai connector ofid_* error. Conversation consumed work_ticket WT-046 (PI-049 kickoff body).",
+    "topics_covered": "SES-074 apply (misapply diagnosis: prompt typo on the payload filename caused ses_073.json no-op-application before ses_074.json was applied correctly; lazy DEP-053/054 + prompt file path fix). PI-049 Phase 1 (Path B feasibility): research on Cloudflare Access SaaS-OIDC vs. Managed OAuth, MCP authorization spec, claude.ai connector OAuth model. Discovery that Cloudflare Access has FIRST-CLASS MCP authorization support via the Managed OAuth feature on self-hosted Access apps — serves spec-compliant Protected Resource Metadata at /.well-known/oauth-protected-resource, team-domain Authorization Server Metadata at /.well-known/oauth-authorization-server with code_challenge_methods_supported: [S256], DCR endpoint, refresh tokens, RFC 8707 audience binding. Dashboard configuration: a SaaS-OIDC application was created and then deleted (wrong pattern); the existing self-hosted CRM Builder MCP Access app already had the Managed OAuth feature with claude.ai/claude.com redirect URIs registered. claude.ai connector registration end-to-end test: OAuth dance succeeded through One-time PIN authentication and user consent screen; then failed with `ofid_64b9bbb2f1378a53` error. MCP server log /tmp/mcp.log confirmed no post-OAuth requests reached the server. Diagnosis: Anthropic GitHub issue #271 + 6 siblings document the same silent failure pattern across WorkOS, Clerk, Salesforce, M365 IdPs — the bug is in claude.ai's connector code path between receiving the authorization code and exchanging it for a token, deterministic, silent, no Anthropic resolution. Strategic reframing: Doug clarified the original goal was a chat UI with v2 governance tools accessible, not specifically claude.ai-web as the surface. Discussion of alternatives: (a) mcp-connector via Anthropic API — programmatic, doesn't help with claude.ai-web UI, helps with building agents/scripts; (b) oauth_anthropic_creds — third claude.ai registration approach where Anthropic holds creds, requires manual review email to mcp-review@anthropic.com, may bypass the bug, unknown timeline; (c) Claude Code / Claude Desktop with stdio MCP — fully working today, what Doug has been using throughout this conversation; (d) custom chat UI on Anthropic API with native tool definitions calling REST API directly — bypasses MCP entirely, smaller and cleaner than any MCP-based remote access. Doug asked sharp clarifying question: why bother with MCP at all if writing the chat UI in Python that talks to the REST API directly? Answer: for one client, in the same language as the server, talking to one backend on localhost, MCP is pure ceremony. The MCP server's tools.py module is reusable as native tool definitions for the Anthropic API; the structured DB, REST API, PySide6 desktop app, methodology work, MCP stdio mode for Claude Desktop are all unaffected. Code disposition: option A (commit-as-shelved single commit, fc4690c) preserves the Path B work — middleware.py deleted, server.py with streamable_http_path='/' added, config.py without mcp_shared_secret — recoverable when/if Anthropic ships connector fix. Documentation pass: this close-out payload + crmbuilder/CLAUDE.md update (new v2-section paragraph recording today's findings).",
+    "summary": "PI-049 Phase 1 Path B feasibility check completed end-to-end and revealed an upstream Anthropic bug in claude.ai's connector OAuth implementation — the bug is between receiving the authorization code and exchanging it for a token, reproducible across 7+ IdPs (Cloudflare being the 7th). Path B infrastructure preserved as-configured on disk and recoverable. Strategic pivot to chat-UI-on-Anthropic-API with native tool definitions calling the REST API directly removes the third-party dependency on claude.ai-web. The original goal (a chat UI with v2 governance tools) is achievable today via a simpler architecture; the months of foundational v2 work (structured DB, REST API, MCP tools, methodology) is unaffected and load-bearing for the new path. Only PI-045 (remote MCP) and PI-049 (OAuth implementation) are shelved-blocked pending Anthropic fix.",
+    "artifacts_produced": "Code commit `fc4690c` (Path B shelving: middleware.py deletion, server.py streamable_http_path + docstring rewrite, config.py mcp_shared_secret removal, test cleanup — 5 files, +37/-321 lines). Cloudflare dashboard state: SaaS-OIDC application created then deleted (was the wrong pattern); existing self-hosted CRM Builder MCP Access app's Managed OAuth feature confirmed active with claude.ai/claude.com redirect URIs registered. Local edit to `crmbuilder/CLAUDE.md` adding a new v2-section paragraph recording today's findings (committed alongside the close-out's snapshot regen). This payload `ses_077.json` and its apply prompt `CLAUDE-CODE-PROMPT-apply-close-out-ses-077.md`. Two new V2 governance decisions DEC-244 (empirical finding) and DEC-245 (architectural pivot). One new planning item PI-052 (chat UI build). New workstream WS-010 (v2 AI Surface Integration). Conversation CONV-047 with reference edges to WS-010, SES-077, WT-046, PI-045, PI-049.",
+    "in_flight_at_end": "PI-052 (Chat UI on Anthropic API with native tools) is the next active workstream. First concrete step: a Python proof-of-concept (~50 LOC) that imports tool functions from `crmbuilder_v2.mcp_server.tools`, converts their signatures/docstrings to Anthropic API tools=[...] schema, runs a chat loop calling messages.create with those tools. Target surface for the chat UI eventually (terminal vs. PySide6 tab vs. Streamlit) deferred. PI-045 and PI-049 stay Open with addressed-by edges to CONV-047 — actively shelved, infrastructure preserved. The CLAUDE.md update committed in this session needs to be pushed to origin (Doug, per push convention). The Path B shelving commit `fc4690c` also needs pushing. The dep_055 snapshot regen + CLAUDE.md commit from this apply will be a separate commit Doug pushes alongside."
+  },
+  "conversation": {
+    "conversation_identifier": "CONV-047",
+    "conversation_title": "v2 AI surface integration — claude.ai connector bug discovery and architectural pivot to chat-UI-on-Anthropic-API",
+    "conversation_purpose": "Resolve PI-049 Phase 1 (Path B feasibility) end-to-end, file the empirical finding (claude.ai connector bug blocking custom MCP integration) as DEC-244, and capture the architectural pivot (chat UI on Anthropic API with native tool definitions, no MCP hop) as DEC-245. Consumes WT-046 (the PI-049 kickoff body authored at SES-073). Companion governance object for the strategic shift that closes today's investigative thread.",
+    "conversation_description": "Claude Code conversation at Doug's terminal opened with a prior task (apply SES-074 close-out) that completed successfully after a prompt-path-typo misapply diagnosis (lazy DEP-053 from the misapply; SES-074 then applied correctly with DEP-054 instead of expected DEP-053). After SES-074 landed, Doug surfaced the claude.ai connector ofid_* error and asked for it to be fixed. Conversation pivoted to PI-049 Phase 1 (Path B feasibility check, timeboxed per WT-046's kickoff): Cloudflare research, dashboard configuration of a SaaS-OIDC application (then deletion when the existing self-hosted Access app's Managed OAuth feature was discovered to be the correct integration), end-to-end OAuth dance test from claude.ai through One-time PIN authentication and consent, observation of the ofid_* failure post-consent, MCP server log confirmation that no post-OAuth requests reached the server, and discovery via WebFetch of Anthropic GitHub issue #271 + 6 sibling issues documenting the same failure pattern across WorkOS / Clerk / Salesforce / M365 / Cloudflare IdPs. Strategic reframing surfaced by Doug's clarifying question 'why bother with MCP if Python can talk to the REST API directly?' — the right answer for a single Python client talking to localhost REST API is native Anthropic API tools, not MCP-via-mcp-connector. Documentation pass produced: Path B shelving commit (fc4690c), CLAUDE.md update, this payload + apply prompt, DEC-244 (empirical finding), DEC-245 (architectural pivot with explicit supersedes edge to DEC-226), PI-052 (chat UI build), WS-010 (workstream housing PI-045/PI-049/PI-052), and CONV-047 with the standard workstream/session/work-ticket edges.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-047",
+        "target_type": "workstream",
+        "target_id": "WS-010",
+        "relationship": "conversation_belongs_to_workstream"
+      },
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-047",
+        "target_type": "session",
+        "target_id": "SES-077",
+        "relationship": "conversation_records_session"
+      },
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-047",
+        "target_type": "work_ticket",
+        "target_id": "WT-046",
+        "relationship": "conversation_opens_against_work_ticket"
+      }
+    ]
+  },
+  "commits": [
+    {
+      "commit_sha": "fc4690c3cfe699cd85d96719e833f54a60701307",
+      "commit_message_first_line": "v2: Path B shelved — Cloudflare Managed OAuth configured but blocked by upstream claude.ai connector bug",
+      "commit_message_full": "v2: Path B shelved — Cloudflare Managed OAuth configured but blocked by upstream claude.ai connector bug\n\nThis commits the local Path B implementation work toward PI-049 / DEC-226 (replace X-CRMBuilder-Secret middleware with OAuth 2.1 + PKCE auth via Cloudflare Access). Path B was configured end-to-end: middleware.py and the X-CRMBuilder-Secret enforcement removed; server.py wires streamable_http_path='/' so user-entered URL matches the PRM resource field exactly (Anthropic connector spec requirement); config.py drops the mcp_shared_secret setting; Cloudflare-side: existing self-hosted CRM Builder MCP Access app has Managed OAuth enabled with claude.ai/claude.com redirect URIs registered, RFC 8707 compliant, PKCE S256, DCR endpoint live; end-to-end OAuth dance succeeds through the consent step. Outcome: claude.ai connector registration FAILS post-consent with the ofid_* reference-ID error pattern documented in Anthropic GitHub issue #271 and 6+ sibling issues across WorkOS, Clerk, Salesforce, M365, and now Cloudflare. The MCP HTTP transport is left in its current OAuth-ready state, preserved as-is so that if Anthropic eventually fixes the connector bug, claude.ai-web integration is immediately available with no further code work. MCP stdio mode for Claude Desktop continues to work unchanged.",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-25T15:35:17-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": ["723bc284c477a6b6c7922295dcad218fb2de1766"],
+      "commit_files_changed_count": 5
+    }
+  ],
+  "work_tickets": [],
+  "planning_items": [
+    {
+      "identifier": "PI-052",
+      "title": "Chat UI on Anthropic API with native tool definitions — pilot and build",
+      "description": "Per DEC-245's architectural pivot away from MCP-via-claude.ai (blocked by upstream Anthropic bug per DEC-244). Scope: build a chat UI that gives Doug Claude conversations with access to the v2 governance database tool surface. Architecture: Python client using the Anthropic SDK with native tools=[...] definitions, calling the REST API at 127.0.0.1:8765 directly. Reuse `crmbuilder_v2.mcp_server.tools` module functions (already wrap httpx → REST API) as the native tool definitions — no rewrite required, their signatures and docstrings can be auto-converted to Anthropic API tool schemas. Loop: read user input → messages.create(tools=...) → execute any tool_use blocks via httpx → feed tool_result back → repeat until Claude responds without further tool calls. Phase 1 (proof of concept, ~30 min): a terminal-based ~50 LOC Python script that demonstrates the loop end-to-end with a handful of tools. Phase 2 (production surface): pick one of (a) terminal-based UI with Rich/Textual, (b) PySide6 chat tab inside the existing CRMBuilder desktop app, (c) Streamlit/Gradio web prototype, (d) custom FastAPI + React/HTMX web app on the existing Cloudflare Tunnel — choice deferred until Phase 1 completes. No MCP HTTP transport involved. MCP server in stdio mode for Claude Desktop continues to work unaffected. Cloudflare Tunnel + Access + Managed OAuth infrastructure preserved on disk (Path B work in commit fc4690c) for future use if/when Anthropic fixes the connector bug.",
+      "item_type": "pending_work",
+      "status": "Open"
+    }
+  ],
+  "decisions": [
+    {
+      "identifier": "DEC-244",
+      "title": "claude.ai connector OAuth flow blocked by upstream Anthropic bug — custom MCP server integration unreachable across 7+ IdPs",
+      "context": "PI-045 step 5 (claude.ai connector registration) and PI-049 (OAuth implementation per DEC-226) reached the integration-test phase today after weeks of foundational work. Path B (Cloudflare Managed OAuth) was configured end-to-end on both sides — the existing self-hosted CRM Builder MCP Access app's Managed OAuth feature provides an MCP-spec-compliant authorization server with PKCE S256 advertised, DCR endpoint live, RFC 8707 audience binding declared compliant, and claude.ai/claude.com redirect URIs registered. The OAuth dance was tested end-to-end from claude.ai's Add Custom Connector form: discovery (PRM at /.well-known/oauth-protected-resource resolved, team-domain ASM resolved correctly with all spec-required fields advertised), DCR (Cloudflare returned 201 with a valid client_id), redirect-to-/authorize, One-time PIN authentication (admin@crmbuilder.ai), and user-consent screen displayed and clicked. Then claude.ai returned the error 'Authorization with the MCP server failed' with reference ID ofid_64b9bbb2f1378a53. The MCP server log /tmp/mcp.log confirmed no post-OAuth requests reached the server. WebFetch of Anthropic GitHub issue #271 documented the identical failure pattern with WorkOS AuthKit, and 6 sibling issues (#155, #164, #171, #184, #215, #217 plus claude-plugins-official#1674) confirmed reproducibility across Clerk, Salesforce Hosted MCP (sandbox + production), M365, and unspecified IdPs. The failure pattern is deterministic and silent: claude.ai receives the authorization code from the redirect successfully (verified via DevTools by the WorkOS user) but never POSTs to the token endpoint. Anthropic GitHub issue #271 is closed with no resolution documented; no official Anthropic response is visible. The bug is in claude.ai's connector implementation between receiving the authorization code and exchanging it for a token, independent of the IdP.",
+      "decision": "Recognize claude.ai's hosted-connector OAuth flow as upstream-broken for custom MCP server integration. PI-045 (remote-MCP access for claude.ai-web) and PI-049 (OAuth implementation that would unblock the connector) are shelved at Open status, blocked by an upstream Anthropic bug with no resolution timeline. The Path B infrastructure that was configured end-to-end (Cloudflare Managed OAuth + claude.ai redirect URIs + server-side streamable_http_path='/' wiring) is preserved as-is on disk; commit fc4690c removes the X-CRMBuilder-Secret middleware that would have conflicted with the OAuth bearer flow. If Anthropic eventually ships a fix, the integration will work immediately with no further server-side code required. The chat-UI goal that originally motivated PI-045 is pursued via a different architecture per DEC-245.",
+      "rationale": "Continuing to push on Path B or pivoting to Path A would not resolve the failure — the bug is in claude.ai's code path between receiving the auth code and exchanging it for a token, on the client side, independent of which authorization server issued the code. Multiple IdPs (WorkOS, Clerk, Salesforce, M365, Cloudflare) all hit identical symptoms. Filing this as a structural blocker now (rather than letting the issue sit unrecognized in the v2 audit chain) preserves the empirical reasoning for future sessions that might re-encounter this wall, and prevents wasted weeks attempting alternative auth-server implementations that cannot reach a different outcome. The Phase 1 timebox per WT-046 was respected — the feasibility check took roughly 60 minutes from PI-049 phase start to definitive failure observation, exactly the bounded investigative cost the kickoff scoped.",
+      "alternatives_considered": "(a) Continue to Path A (server-side OAuth implementation on the v2 MCP server per PI-049 Phase 2's seven sub-deliverables) — rejected because the bug is post-authorization on claude.ai's client side, not on the auth-server side; Path A would hit the same wall after weeks of additional implementation work. (b) Pursue oauth_anthropic_creds (claude.ai's third registration approach where Anthropic holds the credentials, requested by emailing mcp-review@anthropic.com) — deferred as a possible workaround but uncertain whether it routes through a different code path that bypasses the bug, and the manual review process has unknown timeline (days to weeks). (c) Wait for Anthropic to fix — indefinite timeline; Anthropic GitHub issue #271 is closed with no resolution path. (d) File evidence with Anthropic — helpful for future fix prioritization, not unblocking today.",
+      "consequences": "PI-045 and PI-049 are shelved at Open status with addresses edges from CONV-047. Cloudflare Tunnel + Access + Managed OAuth infrastructure (~2 weeks of work across SES-064, SES-065, SES-071, SES-072, SES-073, and today's Phase 1) is preserved as configured-but-dormant. MCP HTTP transport is left in its OAuth-ready state per commit fc4690c (no app-layer middleware; relies on Cloudflare Access edge gating, which itself isn't used in the new architecture). The chat-UI goal moves to DEC-245's architecture. DEC-204's dual-layer security framing remains conceptually valid (Cloudflare Tunnel + Cloudflare Access at the edge) but isn't load-bearing in the new architecture either. DEC-225's Service Token + One-time PIN policies stay in place as defense-in-depth for any future curl/admin access; the Service Token credentials remain valid.",
+      "decision_date": "2026-05-25",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-245",
+      "title": "Chat UI architecture pivot — Python on Anthropic API with native tool definitions calling REST API directly, not remote MCP via claude.ai connector",
+      "context": "The original goal of PI-045 was 'a chat UI with v2 governance tools accessible.' claude.ai-web was chosen as the integration surface because it was an existing, polished chat UI; reaching it from a local MCP server required remote-access infrastructure (PI-045's Cloudflare Tunnel + Access deliverables) and OAuth-based authentication of claude.ai to the MCP server (PI-049 / DEC-226's auth-model swap). With claude.ai's hosted-connector OAuth path now confirmed blocked by an upstream Anthropic bug per DEC-244, that delivery path is unavailable for an indefinite duration. The chat-UI goal itself remains valid and unchanged. Doug clarified during this conversation that 'a chat UI that could interface directly to the v2 storage server' was the goal — not specifically claude.ai-web as the surface.",
+      "decision": "Pivot to a chat-UI-on-Anthropic-API architecture. Build a Python client using the Anthropic SDK with native tools=[...] definitions in the messages.create() call, calling the REST API at 127.0.0.1:8765 directly. Reuse the crmbuilder_v2.mcp_server.tools module functions (which already wrap httpx → REST API calls) as the native tool definitions — their Python signatures + docstrings auto-convert to Anthropic API tool schemas with minimal code. No MCP HTTP transport hop, no Cloudflare Tunnel involvement, no OAuth surface, no remote-access infrastructure. PI-052 captures the build work. UI surface (terminal vs. PySide6 tab vs. Streamlit/Gradio vs. custom FastAPI web app) deferred to a Phase 1 spike that proves the API path works end-to-end (~30 min, ~50 LOC), after which Phase 2 picks a production surface based on what serves Doug's actual workflow.",
+      "rationale": "Doug's question during this conversation — 'if we are using the Claude API, why bother with MCP? Python could just write directly to the crmbuilder API?' — surfaced the unnecessary complexity in the MCP-via-mcp-connector path I had initially proposed. For one client (the chat UI) written in the same language as the server (Python), talking to one backend (the REST API) on localhost, MCP's protocol-standardization value vanishes. Claude doesn't care whether tools come from an MCP-discovery handshake or from a tools=[...] array in the API call body — the inference is identical. The MCP server's tool definitions are reusable as native tool defs with no rewrite. The pivot also removes the third-party dependency on claude.ai's connector OAuth flow that caused today's failure, and removes the operational burden of running Cloudflare Tunnel + Access for an integration that is now unnecessary. The cost is loss of claude.ai-web's polish features (Projects, Artifacts, voice, mobile app); the gain is direct, deterministic integration with no third-party-bug exposure and full UI customization. For Doug's actual use case (administrator working on CBM and v2 governance with structured-data access), the gains likely matter more than the losses — Artifacts isn't needed to read a Decision record, but reliable tool calls are essential.",
+      "alternatives_considered": "(a) Continue with Path A (server-side OAuth on the MCP server): hits the same upstream claude.ai bug as Path B per DEC-244. (b) Use mcp-connector via Anthropic API with the MCP server still doing remote HTTP transport: adds an unnecessary hop (Python → Anthropic → MCP → REST → DB instead of Python → Anthropic + Python → REST → DB), and requires keeping the Cloudflare Tunnel infrastructure operational for an integration that's only consuming it from Anthropic's side. (c) Build a custom integration with claude.ai-web (browser extension, JS bridge, scraping): high effort, fragile, against Anthropic ToS, unmaintainable. (d) Use oauth_anthropic_creds registration to potentially bypass the bug: parallel exploration, doesn't preclude this decision; if it eventually works, Path B re-becomes viable as a secondary route. (e) Wait for Anthropic to fix the connector bug: indefinite timeline; meanwhile the chat-UI goal is delivered today via the simpler architecture.",
+      "consequences": "DEC-226 (swap to OAuth to enable claude.ai connector registration) is superseded by this decision for the chat-UI delivery goal — explicit supersedes edge from DEC-245 to DEC-226. DEC-226's other recognition (Cloudflare Access manages OAuth for self-hosted apps as a first-class feature) remains valuable as documented infrastructure. PI-045 and PI-049 remain shelved per DEC-244 — preserved infrastructure rather than abandoned. The structured DB, REST API at 127.0.0.1:8765, PySide6 desktop app, all governance entities, methodology work, and MCP server in stdio mode for Claude Desktop are unaffected and load-bearing for the new architecture. The MCP server's tools.py module specifically earns its keep both as Claude Desktop's stdio MCP tool surface AND as the native tool definitions source for the new chat UI. The MCP HTTP transport in commit fc4690c's state is dormant but preserved. PI-052 surfaces as the new active workstream, joining PI-045 and PI-049 inside WS-010 (v2 AI Surface Integration workstream) — the workstream that records today's strategic bifurcation: original strategy shelved, new strategy starting.",
+      "decision_date": "2026-05-25",
+      "status": "Active"
+    }
+  ],
+  "references": [
+    {
+      "source_type": "decision",
+      "source_id": "DEC-244",
+      "target_type": "session",
+      "target_id": "SES-077",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-245",
+      "target_type": "session",
+      "target_id": "SES-077",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-244",
+      "target_type": "decision",
+      "target_id": "DEC-226",
+      "relationship": "references"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-245",
+      "target_type": "decision",
+      "target_id": "DEC-244",
+      "relationship": "references"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-245",
+      "target_type": "decision",
+      "target_id": "DEC-226",
+      "relationship": "supersedes"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-077",
+      "target_type": "planning_item",
+      "target_id": "PI-045",
+      "relationship": "is_about"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-077",
+      "target_type": "planning_item",
+      "target_id": "PI-049",
+      "relationship": "is_about"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-077",
+      "target_type": "planning_item",
+      "target_id": "PI-052",
+      "relationship": "is_about"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": [
+    {
+      "planning_item_identifier": "PI-045"
+    },
+    {
+      "planning_item_identifier": "PI-049"
+    }
+  ]
+}

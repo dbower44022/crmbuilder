@@ -133,5 +133,20 @@
     "workstream_status": "in_flight",
     "workstream_superseded_at": null,
     "workstream_updated_at": "2026-05-25T05:36:30.660382"
+  },
+  {
+    "workstream_cancelled_at": null,
+    "workstream_completed_at": null,
+    "workstream_created_at": "2026-05-25T19:45:33.944979",
+    "workstream_deleted_at": null,
+    "workstream_description": "Workstream housing the original-strategy planning items (PI-045 remote-MCP access for claude.ai-web, PI-049 OAuth implementation to unblock the claude.ai connector — both shelved at Open status pending an upstream Anthropic fix per DEC-244) and the pivot-strategy planning item (PI-052 chat UI on Anthropic API with native tool definitions calling REST API directly). The workstream records the bifurcation: original strategy preserved as configured-but-dormant infrastructure (Cloudflare Tunnel + Access + Managed OAuth, server-side wiring in commit fc4690c), new strategy starting from a clean Python + Anthropic SDK foundation. Status stays in_flight until PI-052 resolves with a working chat UI.",
+    "workstream_identifier": "WS-010",
+    "workstream_name": "v2 AI Surface Integration workstream",
+    "workstream_notes": null,
+    "workstream_purpose": "Deliver an AI chat surface with access to v2 governance tools. Originally pursued via claude.ai-web with remote MCP (PI-045) + OAuth (PI-049); pivoted to a Python chat UI on the Anthropic API with native tool definitions per DEC-245 after the claude.ai connector OAuth flow was found upstream-broken per DEC-244.",
+    "workstream_started_at": "2026-05-25T19:45:33.945232",
+    "workstream_status": "in_flight",
+    "workstream_superseded_at": null,
+    "workstream_updated_at": "2026-05-25T19:45:33.945311"
   }
 ]

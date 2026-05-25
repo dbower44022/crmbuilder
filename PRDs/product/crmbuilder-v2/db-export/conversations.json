@@ -780,5 +780,22 @@
     "conversation_superseded_at": null,
     "conversation_title": "PI-030 build closure — first nine-section payload acceptance test and methodology §10/§5.5/§4.0 amendments",
     "conversation_updated_at": "2026-05-25T15:28:34.813548"
+  },
+  {
+    "conversation_cancelled_at": null,
+    "conversation_completed_at": "2026-05-25T19:45:34.276564",
+    "conversation_created_at": "2026-05-25T19:45:34.276300",
+    "conversation_deleted_at": null,
+    "conversation_description": "Claude Code conversation at Doug's terminal opened with a prior task (apply SES-074 close-out) that completed successfully after a prompt-path-typo misapply diagnosis (lazy DEP-053 from the misapply; SES-074 then applied correctly with DEP-054 instead of expected DEP-053). After SES-074 landed, Doug surfaced the claude.ai connector ofid_* error and asked for it to be fixed. Conversation pivoted to PI-049 Phase 1 (Path B feasibility check, timeboxed per WT-046's kickoff): Cloudflare research, dashboard configuration of a SaaS-OIDC application (then deletion when the existing self-hosted Access app's Managed OAuth feature was discovered to be the correct integration), end-to-end OAuth dance test from claude.ai through One-time PIN authentication and consent, observation of the ofid_* failure post-consent, MCP server log confirmation that no post-OAuth requests reached the server, and discovery via WebFetch of Anthropic GitHub issue #271 + 6 sibling issues documenting the same failure pattern across WorkOS / Clerk / Salesforce / M365 / Cloudflare IdPs. Strategic reframing surfaced by Doug's clarifying question 'why bother with MCP if Python can talk to the REST API directly?' — the right answer for a single Python client talking to localhost REST API is native Anthropic API tools, not MCP-via-mcp-connector. Documentation pass produced: Path B shelving commit (fc4690c), CLAUDE.md update, this payload + apply prompt, DEC-244 (empirical finding), DEC-245 (architectural pivot with explicit supersedes edge to DEC-226), PI-052 (chat UI build), WS-010 (workstream housing PI-045/PI-049/PI-052), and CONV-047 with the standard workstream/session/work-ticket edges.",
+    "conversation_identifier": "CONV-047",
+    "conversation_kickoff_drafted_at": null,
+    "conversation_notes": null,
+    "conversation_purpose": "Resolve PI-049 Phase 1 (Path B feasibility) end-to-end, file the empirical finding (claude.ai connector bug blocking custom MCP integration) as DEC-244, and capture the architectural pivot (chat UI on Anthropic API with native tool definitions, no MCP hop) as DEC-245. Consumes WT-046 (the PI-049 kickoff body authored at SES-073). Companion governance object for the strategic shift that closes today's investigative thread.",
+    "conversation_ready_at": null,
+    "conversation_started_at": null,
+    "conversation_status": "complete",
+    "conversation_superseded_at": null,
+    "conversation_title": "v2 AI surface integration — claude.ai connector bug discovery and architectural pivot to chat-UI-on-Anthropic-API",
+    "conversation_updated_at": "2026-05-25T19:45:34.276645"
   }
 ]
