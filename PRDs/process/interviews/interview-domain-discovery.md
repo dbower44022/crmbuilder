@@ -1,7 +1,7 @@
 # CRM Builder — Domain Discovery Interview Guide
 
-**Version:** 1.0
-**Last Updated:** 04-20-26
+**Version:** 1.1
+**Last Updated:** 05-24-26 12:31
 **Purpose:** AI interviewer guide for Phase 2 — Domain Discovery
 **Governing Process:** `PRDs/process/CRM-Builder-Document-Production-Process.docx`
 **See also:** `interview-master-prd.md` — the upstream document this phase validates against. `interview-inventory-reconciliation.md` — the downstream phase that produces the durable inventories from this phase's working artifact.
@@ -22,6 +22,15 @@ domains, candidate entities, candidate personas), probing for detail
 where answers are vague, and maintaining a running capture of
 discoveries that will be consolidated into the Domain Discovery
 Report.
+
+**Charter and Question Library as prerequisite reading.** Generic
+interviewer conduct — communication style, question discipline,
+listening and probing, confirmation cadence, scope-change protocol,
+transcript capture, identifier discipline — is canonically governed
+by the Interviewer Charter at `PRDs/process/conduct/charter.md`.
+Question patterns by intent live in the Question Library at
+`PRDs/process/conduct/question-library.md`. Read both before
+conducting this phase. This guide does not restate Charter content.
 
 **This is the first client-facing phase.** The Master PRD was drafted
 from the administrator's knowledge of the organization in Phase 1.
@@ -119,31 +128,78 @@ here defeats the purpose of the working-artifact stage.
 
 ---
 
-## Critical Rules
+## How to Conduct This Phase
 
-1. **Listen on three tracks simultaneously.** Never run the interview as "first we cover domains, then entities, then personas". The three-track capture model is the single most important rule in this guide.
+Phase-specific rules for Domain Discovery. Generic interviewer
+conduct is governed by the Charter (see How to Use This Guide).
 
-2. **Capture the stakeholder's language verbatim.** Do not translate, canonicalize, or deduplicate during Phase 2. If one stakeholder says "clients" and another says "mentees", both go in as separate candidate entity rows with disambiguation notes. Reconciliation happens in Phase 3.
+1. **Listen on three tracks simultaneously.** Candidate domains,
+candidate entities, and candidate personas. Never run the interview
+as "first we cover domains, then entities, then personas". While the
+stakeholder describes what the organization does, listen for all
+three at the same time and capture each as it surfaces. The
+three-track capture is the value Phase 2 adds.
 
-3. **Apply Rule 2.1 to every candidate domain.** "If this area of work stopped tomorrow, would the mission be in trouble?" If yes → domain. If no → probably a process or cross-domain service. Record the answer for each candidate.
+2. **Capture the stakeholder's language verbatim.** Do not translate,
+canonicalize, or deduplicate during Phase 2. If one stakeholder says
+"clients" and another says "mentees", both go in as separate
+candidate entity rows with disambiguation notes. Do not restate
+their term in a "cleaner" form or match it to a Master PRD term.
+Reconciliation happens in Phase 3.
 
-4. **Apply Rule 2.2 to every candidate persona.** Every persona is either backed by an entity record in the system, or declared External. If the candidate persona is neither obviously backed nor obviously external, capture it with a TBD backing note and raise it in Phase 3.
+3. **Apply Rule 2.1 to every candidate domain.** "If this area of
+work stopped tomorrow, would the mission be in trouble?" If yes →
+domain. If no → probably a process or cross-domain service. Record
+the answer for each candidate.
 
-5. **One stakeholder conversation per session.** Do not attempt to interview two stakeholders with different vantage points in the same conversation — the three-track capture becomes noisy when the sources blur.
+4. **Apply Rule 2.2 to every candidate persona.** Every persona is
+either backed by an entity record in the system, or declared
+External. If the candidate persona is neither obviously backed nor
+obviously external, capture it with a TBD backing note and raise it
+in Phase 3.
 
-6. **No product names, no implementation language.** Phase 2 is pure business discovery. No CRM platform names, no "field", no "workflow", no "record". The client's language only.
+5. **One stakeholder conversation per session.** Do not attempt to
+interview two stakeholders with different vantage points in the same
+conversation — the three-track capture becomes noisy when the
+sources blur.
 
-7. **Do not propose solutions.** The AI may ask clarifying questions about what the work is and why it matters, but must not suggest how a CRM would implement it. Example of what not to do: "that sounds like it could be a custom field on the Mentor entity". Example of what to do: "you mentioned the mentor's focus areas — how does the organization keep track of which areas each mentor covers?"
+6. **No product names, no implementation language.** Phase 2 is pure
+business discovery. No CRM platform names, no "field", no
+"workflow", no "record". The client's language only.
 
-8. **Do not treat the Master PRD as authority.** The Master PRD's domain list, entity list, and persona list are proposals. If the stakeholder describes a domain the Master PRD missed, capture it. If the stakeholder disagrees with a domain the Master PRD proposed, capture the disagreement. Phase 3 reconciles; Phase 2 captures.
+7. **Do not propose solutions.** The AI may ask clarifying questions
+about what the work is and why it matters, but must not suggest how
+a CRM would implement it. Probe for context, not for implementation.
+Example of what not to do: "that sounds like it could be a custom
+field on the Mentor entity"; "would you want this as a drop-down
+field?". Example of what to do: "you mentioned the mentor's focus
+areas — how does the organization keep track of which areas each
+mentor covers?"
 
-9. **Confirmation gates after each topic.** After each topic in the interview structure, present the three-track capture back to the stakeholder and confirm before moving on. Never advance silently (process doc Section 7.3).
+8. **Do not treat the Master PRD as authority.** The Master PRD's
+domain list, entity list, and persona list are proposals. If the
+stakeholder describes a domain the Master PRD missed, capture it.
+If the stakeholder disagrees with a domain the Master PRD proposed,
+capture the disagreement. Do not correct the stakeholder when they
+diverge — capture the divergence in the transcript. Phase 3
+reconciles; Phase 2 captures.
 
-10. **One topic at a time.** When multiple candidate domains or personas need validation questions asked, present them sequentially, not as a batch (process doc Section 7.4).
+9. **Do not deduplicate across sessions.** Two stakeholders using
+different words for the same concept is Phase 3's problem, not
+Phase 2's. Capture both.
 
-11. **Scope-change protocol.** If the interview surfaces a gap in the Master PRD itself — a mission statement that no longer fits, a fundamental scope line that needs to move, a strategic constraint the administrator didn't know about — pause the Phase 2 work and follow the Master PRD revision path (process doc Section 10.5). Do not absorb a Master PRD gap into the Discovery Report silently. See "Handling Discovered Updates to the Master PRD" below.
+10. **Do not assign identifiers.** Phase 2 candidates do not have IDs.
+Phase 3 assigns them when entities and personas become durable.
 
-12. **One deliverable across all Phase 2 sessions.** Every Phase 2 conversation updates the same Domain Discovery Report. Do not produce per-session drafts that then need to be merged; work directly on the single working artifact (process doc Section 7.5).
+11. **Capture-back every 10–15 minutes.** Phase-specific cadence:
+present the three-track capture back to the stakeholder and confirm
+before moving on. The Charter governs general confirmation cadence;
+this is the phase-specific frequency.
+
+12. **One deliverable across all Phase 2 sessions.** Every Phase 2
+conversation updates the same Domain Discovery Report. Do not
+produce per-session drafts that then need to be merged; work
+directly on the single working artifact.
 
 ---
 
@@ -571,28 +627,7 @@ Await explicit confirmation before starting a new session.
 
 ---
 
-## Important AI Behaviors During the Interview
-
-- **Stay on three tracks at all times.** Do not abandon one track because the conversation has drifted toward another. The three-track capture is the value Phase 2 adds.
-
-- **Let the stakeholder use their own words.** Do not restate their term in a "cleaner" form or match it to a Master PRD term. Capture what they said.
-
-- **Probe for context, not for implementation.** "How does the organization keep track of this?" is a probe; "would you want this as a drop-down field?" is a violation of Rule 6.
-
-- **Capture-back frequently.** Every 10–15 minutes. Capture-backs catch misses and drift before they compound.
-
-- **Do not correct the stakeholder when they diverge from the Master PRD.** Capture the divergence in the transcript. The administrator decides what to do with it.
-
-- **Keep the session to 60–75 minutes.** Phase 2 interviews are tiring for stakeholders because they're being asked to describe work they usually do rather than discuss. Stop at 90 minutes regardless.
-
-- **Do not deduplicate across sessions.** Two stakeholders using different words for the same concept is Phase 3's problem, not Phase 2's. Capture both.
-
-- **Do not assign identifiers.** Phase 2 candidates do not have IDs. Phase 3 assigns them when entities and personas become durable.
-
-- **Never mention product names.** Phase 2 is pure business discovery. CRM platform names are forbidden in the Discovery Report.
-
----
-
 ## Changelog
 
+- **1.1** (05-24-26 12:31) — Collapsed `Critical Rules` and `Important AI Behaviors During the Interview` sections into a single `How to Conduct This Phase` section. Phase-specific rules retained (twelve total: three-track listening, verbatim capture, Rule 2.1 / Rule 2.2 application, one-stakeholder-per-session, no-product-names, do-not-propose-solutions, do-not-treat-Master-PRD-as-authority, do-not-deduplicate-across-sessions, do-not-assign-identifiers, 10–15-minute capture-back cadence, one-deliverable-across-sessions). Generic interviewer conduct (confirmation-gates-after-each-topic, one-topic-at-a-time, scope-change-protocol) removed as canonically governed by the Interviewer Charter at `PRDs/process/conduct/charter.md`. Added Charter-and-Question-Library prerequisite-reading paragraph to `How to Use This Guide`. Conforms to `authoring-standards.md` v1.2. Pilot-validation: still pending — first use is the next new implementation.
 - **1.0** (04-20-26) — Initial release. Scoped to Phase 2 Domain Discovery only, per `CRM-Builder-Document-Production-Process.docx` Section 3.2. Captures the three-track listening model (candidate domains, candidate entities, candidate personas surfaced from the same conversation). Encodes Rule 2.1 (Domain Validation Test) and Rule 2.2 (Persona Backing Rule) as explicit interview topics applied to every candidate. Documents the multi-session pattern and saturation test. Structure aligned with `authoring-standards.md` v1.0. Scope-change protocol cross-links to Master PRD revision (process doc Section 10.5). **Not pilot-validated** — CBM and prior implementations predate the Phase 2 / Phase 3 split; first use will be the next new implementation.

@@ -1,7 +1,7 @@
 # CRM Builder — Entity PRD Interview Guide
 
-**Version:** 1.1
-**Last Updated:** 04-21-26
+**Version:** 1.2
+**Last Updated:** 05-24-26 12:31
 **Purpose:** AI interviewer guide for Phase 5 — Entity PRDs
 **Governing Process:** `PRDs/process/CRM-Builder-Document-Production-Process.docx`
 **See also:** `guide-carry-forward-updates.md` — used when this interview discovers that an already-completed process document, Domain Overview, or Entity PRD needs to change.
@@ -21,6 +21,15 @@ proposing a structured model, and working with the administrator to
 confirm or refine it one decision at a time. The AI brings
 consolidation and thoroughness. The administrator brings domain
 knowledge about how the entity should map to the CRM platform.
+
+**Charter and Question Library as prerequisite reading.** Generic
+interviewer conduct — communication style, question discipline,
+listening and probing, confirmation cadence, scope-change protocol,
+transcript capture, identifier discipline — is canonically governed
+by the Interviewer Charter at `PRDs/process/conduct/charter.md`.
+Question patterns by intent live in the Question Library at
+`PRDs/process/conduct/question-library.md`. Read both before
+conducting this phase. This guide does not restate Charter content.
 
 **One entity per conversation.** Each conversation produces exactly
 one Entity PRD. Complex shared entities (Contact, Account) deserve a
@@ -101,29 +110,71 @@ audited, min/max, unique, etc.).
 
 ---
 
-## Critical Rules
+## How to Conduct This Phase
 
-1. **One entity per conversation.** Never attempt to define multiple entities in one session.
+Phase-specific rules for the Entity PRD interview. Generic
+interviewer conduct is governed by the Charter (see How to Use This
+Guide).
 
-2. **Do not invent fields.** The Entity PRD consolidates what the Master PRD, Domain Overviews, and process documents define. If a field seems to be missing, it becomes an open issue or a carry-forward request — the AI does not silently add it.
+1. **Read every input before speaking.** The quality of the
+three-bucket sort depends entirely on having read every process
+document that uses the entity. Do not skip this.
 
-3. **Native fields are documented, not created.** Distinguish clearly between native fields (already on the platform because of the entity type) and custom fields (created via YAML). Duplicate field creation is the most common downstream error and is prevented only here.
+2. **Do not invent fields.** The Entity PRD consolidates what the
+Master PRD, Domain Overviews, and process documents define. If a
+field seems to be missing, it becomes an open issue or a
+carry-forward request — the AI does not silently add it.
 
-4. **Cross-domain consolidation is mandatory.** For entities that span multiple domains (Contact, Account, or any entity whose Entity Inventory row lists more than one source domain), the Entity PRD must include fields from every contributing domain. If a contributing domain has not yet completed its process documents, flag the entity as provisional and list the incomplete domains in Section 8.
+3. **Native fields are documented, not created.** Distinguish clearly
+between native fields (already on the platform because of the entity
+type) and custom fields (created via YAML). Duplicate field creation
+is the single most common configuration defect; it is prevented only
+here. Be thorough with Section 2.
 
-5. **Identifiers are preserved.** Field identifiers assigned in process documents carry forward unchanged. The Entity PRD adds the lowerCamelCase implementation name alongside the PRD identifier — it does not reassign or renumber identifiers.
+4. **Cross-domain consolidation is mandatory.** For entities that span
+multiple domains (Contact, Account, or any entity whose Entity
+Inventory row lists more than one source domain), the Entity PRD
+must include fields from every contributing domain. If a contributing
+domain has not yet completed its process documents, flag the entity
+as provisional and list the incomplete domains in Section 8. Record
+provisional status explicitly.
 
-6. **No product names.** Entity PRDs are business-language documents. Do not mention specific CRM platforms (EspoCRM, Salesforce, HubSpot, etc.) in any section. Native/Custom and Entity Type are platform-neutral classifications and remain permitted.
+5. **Identifiers are preserved; implementation names are added.**
+Field identifiers assigned in process documents carry forward
+unchanged. The Entity PRD adds the lowerCamelCase implementation name
+alongside the PRD identifier — it does not reassign or renumber
+identifiers. The administrator uses business names ("Mentoring Focus
+Areas"); the AI proposes the implementation name
+("mentoringFocusAreas") and confirms.
 
-7. **Batched decisions.** Do not ask about each field individually. Compile the full field inventory, sort fields into three buckets (clearly shared, clearly type-specific, needs discussion), confirm the first two buckets as groups, and resolve the third bucket one question at a time. See the batched-decision procedure in Section 3 below.
+6. **Batched decisions — three-bucket sort.** Do not ask about each
+field individually. Compile the full field inventory, sort fields
+into three buckets (clearly shared, clearly type-specific, needs
+discussion), confirm the first two buckets as groups, and resolve
+the third bucket one question at a time. The batched-decision
+approach is what keeps the session to 45–75 minutes on complex shared
+entities. See the batched-decision procedure in Section 3 below.
 
-8. **One topic at a time.** When multiple items in the needs-discussion bucket are pending, present them sequentially, not as a batch. Await confirmation on each before moving to the next (process doc Section 7.4).
+7. **Cross-reference decisions that affect other Entity PRDs.** A
+decision that creates a requirement for another entity (a
+relationship, a discriminator value, a field that must exist on the
+related entity) must be called out in both Section 9 and in an
+explicit carry-forward request if the other Entity PRD is already
+complete.
 
-9. **Confirmation gates.** After completing each section of the Entity PRD, explicitly state the next section and ask for confirmation before proceeding. Never advance silently (process doc Section 7.3).
+8. **No product names.** Entity PRDs are business-language documents.
+"Native" and "Custom" and the entity-type names (Base, Person,
+Company, Event) are platform-neutral classifications and remain
+permitted. Specific CRM platform names are forbidden in every
+section.
 
-10. **Scope-change protocol.** If the interview surfaces a missing entity, a missing field on an already-defined entity, or a structural problem with the Entity Inventory, pause the session and follow the protocol in "Handling Discovered Updates to Prior Documents" below. Do not absorb scope changes into the current Entity PRD (process doc Section 10).
+9. **Stop at 90 minutes.** Entity PRDs for complex shared entities
+are the session type most likely to run long. Schedule a follow-up
+rather than pushing through fatigue.
 
-11. **One deliverable per conversation.** Every Entity PRD interview produces exactly one committed Word document at the repository path stated above (process doc Section 7.5).
+10. **One deliverable per conversation.** Every Entity PRD interview
+produces exactly one committed Word document at the repository path
+stated above (process doc Section 7.5).
 
 ---
 
@@ -603,27 +654,8 @@ Await explicit confirmation before starting a new session.
 
 ---
 
-## Important AI Behaviors During the Interview
-
-- **Read every input before speaking.** The quality of the three-bucket sort depends entirely on having read every process document that uses the entity. Do not skip this.
-
-- **Propose, then confirm — do not ask open-ended questions about each field.** The batched-decision approach is what keeps the session to 45–75 minutes on complex shared entities.
-
-- **Be thorough with native field identification.** A field created in YAML that already exists natively is the single most common configuration defect. Take time on Section 2.
-
-- **Propose implementation names.** The administrator uses business names ("Mentoring Focus Areas"). The AI proposes the lowerCamelCase implementation name ("mentoringFocusAreas") and confirms.
-
-- **Flag cross-domain dependencies explicitly.** If the Entity PRD references fields from a domain whose process documents are not yet complete, say so. The Entity PRD may need to be updated when those domains are defined. Record the provisional nature in Section 8.
-
-- **Cross-reference decisions that affect other Entity PRDs.** A decision that creates a requirement for another entity (a relationship, a discriminator value, a field that must exist on the related entity) must be called out in both Section 9 and in an explicit carry-forward request if the other Entity PRD is already complete.
-
-- **Never mention product names.** Entity PRDs are business-language documents. "Native" and "Custom" and the entity-type names (Base, Person, Company, Event) are platform-neutral classifications and remain permitted.
-
-- **Stop at 90 minutes.** Entity PRDs for complex shared entities are the session type most likely to run long. Schedule a follow-up rather than pushing through.
-
----
-
 ## Changelog
 
+- **1.2** (05-24-26 12:31) — Collapsed `Critical Rules` and `Important AI Behaviors During the Interview` sections into a single `How to Conduct This Phase` section. Phase-specific rules retained (read-every-input-before-speaking, do-not-invent-fields, native-fields-documented-not-created, cross-domain-consolidation-mandatory, identifiers-preserved-with-implementation-names-added, three-bucket-sort batched-decisions, cross-reference-decisions-that-affect-other-Entity-PRDs, no-product-names, stop-at-90-minutes, one-deliverable-per-conversation). One-entity-per-conversation moved to `How to Use This Guide` as a cardinality rule. Generic interviewer conduct (one-topic-at-a-time, confirmation-gates, scope-change-protocol) removed as canonically governed by the Interviewer Charter at `PRDs/process/conduct/charter.md`. Added Charter-and-Question-Library prerequisite-reading paragraph to `How to Use This Guide`. Conforms to `authoring-standards.md` v1.2. Pilot-validation: pattern applied to all twelve interview/guide files in this directory in the same commit; pilot exercise on next Entity PRD session.
 - **1.1** (04-21-26) — Paired with `guide-domain-overview.md` v1.1. Persona Inventory is no longer a hard input — the Master PRD's Personas section with backing captured in the Master PRD or `CLAUDE.md` is accepted as an equivalent persona source, matching the Domain Overview guide's treatment and the CBM pilot's actual state. Previously-completed related Entity PRDs moved from required to optional inputs. Added explicit framing on Phase 4 → Phase 5 ordering: what earlier methodology called "retroactive" Entity PRDs is now the normal order per process doc Rule 5.1; Entity PRDs record what process definition surfaced rather than guess at it. Pilot-validation status: aligned with CBM MN/MR/CR actual execution (Domain Overview and process documents first, Entity PRDs after); Funding domain Entity PRDs will be the next exercise of this v1.1.
 - **1.0** (04-20-26) — Initial release as `interview-entity-prd.md`, scoped to Phase 5 only. Replaces the legacy `guide-entity-definition.md` v1.3. Archetype changed from hybrid (Phase 2a Entity Discovery + Phase 2b Entity PRDs) to interview archetype for a single phase. Structure aligned with `authoring-standards.md` v1.0. Scope-change protocol cross-linked to `guide-carry-forward-updates.md`. **Not pilot-validated; see v1.1.**

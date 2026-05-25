@@ -1,7 +1,7 @@
 # CRM Builder — Master PRD Interview Guide
 
-**Version:** 1.2
-**Last Updated:** 04-20-26
+**Version:** 1.4
+**Last Updated:** 05-24-26 12:31
 **Purpose:** AI interviewer guide for Phase 1 — Master PRD
 **Governing Process:** `PRDs/process/CRM-Builder-Document-Production-Process.docx`
 **Authoring contract:** `authoring-standards.md` (Section 11 review checklist).
@@ -19,6 +19,15 @@ questions, listening carefully, probing for detail where answers are
 vague, and building a clear picture of the organization's needs. The
 AI should not rush through topics. A good discovery session feels like
 a conversation, not a questionnaire.
+
+**Charter and Question Library as prerequisite reading.** Generic
+interviewer conduct — communication style, question discipline,
+listening and probing, confirmation cadence, scope-change protocol,
+transcript capture, identifier discipline — is canonically governed
+by the Interviewer Charter at `PRDs/process/conduct/charter.md`.
+Question patterns by intent live in the Question Library at
+`PRDs/process/conduct/question-library.md`. Read both before
+conducting this phase. This guide does not restate Charter content.
 
 **Session length:** 60–90 minutes.
 
@@ -81,25 +90,37 @@ The Master PRD also establishes:
 
 ---
 
-## Critical Rules
+## How to Conduct This Phase
 
-**Business language only.** The Master PRD never mentions specific
+Phase-specific rules for the Master PRD interview. Generic interviewer
+conduct is governed by the Charter (see How to Use This Guide).
+
+1. **Business language only.** The Master PRD never mentions specific
 product names or implementation technologies. Write about "the system"
 or "the CRM," never about specific platforms, email services, hosting
 providers, or third-party tools. Integration needs are described by
 function (e.g., "bulk email communication") not by product name.
 
-**One topic at a time.** Discuss and resolve one issue before moving
-to the next. When multiple decisions need to be made, present them
-sequentially and wait for approval on each.
+2. **Identifiers are assigned during the conversation.** Personas use
+`PER-NNN`. Domains use two-letter codes (`MN`, `MR`, etc.). Processes
+use `{DOMAIN}-{PROCESS}` (e.g., `MN-INTAKE`). Confirm each at
+assignment; identifiers are permanent once assigned.
 
-**Identifiers are assigned during the conversation.** As personas
-and domains are established, assign identifiers and confirm them
-with the administrator. Identifiers are permanent once assigned.
+3. **No entity mapping.** The Master PRD does not define entities,
+fields, or data structures. It defines domains, personas, and
+processes at a business level. Entity-level detail comes later in
+Phase 5.
 
-**No entity mapping.** The Master PRD does not define entities, fields,
-or data structures. It defines domains, personas, and processes at a
-business level. Entity-level detail comes later in Phase 2.
+4. **Don't over-engineer.** Resist the temptation to propose data
+structures or field definitions during the interview. The Master PRD
+is a business-level document; entity and field detail comes in
+Phase 5.
+
+5. **Watch for scope discoveries.** If the administrator describes
+something that doesn't fit any of the domains being discussed, flag
+it immediately rather than trying to force it into an existing
+domain. New domains can be added — it's better to discover them now
+than during Phase 2.
 
 ---
 
@@ -731,48 +752,11 @@ Commit the document to the repository at:
 
 ---
 
-## Important AI Behaviors During the Interview
-
-**Listen more than you talk.** The goal is to understand the
-organization, not to explain CRM concepts. Keep questions short
-and give the user space to answer fully.
-
-**Follow threads.** If a user mentions something interesting in
-passing, follow up on it before moving on. The most important
-information often comes from unexpected directions.
-
-**Tolerate ambiguity.** Not every answer will be clear or complete.
-Note ambiguities in the document's open questions rather than
-forcing premature resolution.
-
-**Avoid leading questions.** Don't suggest answers. "What activities
-do you need to track?" is better than "Do you track mentoring
-sessions?"
-
-**Validate understanding.** Periodically reflect back what you've
-heard: "So if I understand correctly..." This catches
-misunderstandings early.
-
-**Don't over-engineer.** Resist the temptation to propose data
-structures or field definitions during the interview. The Master
-PRD is a business-level document. Entity and field detail comes
-in Phase 2.
-
-**Stay curious.** The best discovery sessions feel like a genuine
-conversation between two people trying to solve a problem together.
-
-**Watch for scope discoveries.** If the administrator describes
-something that doesn't fit any of the domains being discussed,
-flag it immediately rather than trying to force it into an
-existing domain. New domains can be added — it's better to
-discover them now than during Phase 2.
-
----
-
 ## Changelog
 
 | Version | Date | Changes |
 |---|---|---|
+| 1.4 | 05-24-26 12:31 | Collapsed `Critical Rules` and `Important AI Behaviors During the Interview` sections into a single `How to Conduct This Phase` section. Phase-specific rules retained (business-language-only, identifier formats for Master PRD, no-entity-mapping, don't-over-engineer, watch-for-scope-discoveries). Generic interviewer conduct (one-topic-at-a-time, listen-more-than-talk, follow-threads, tolerate-ambiguity, avoid-leading-questions, validate-understanding, stay-curious) removed as canonically governed by the Interviewer Charter at `PRDs/process/conduct/charter.md`. Added Charter-and-Question-Library prerequisite-reading paragraph to `How to Use This Guide`. Header version corrected from 1.2 → 1.4 (header had been stuck at 1.2 since the 1.3 changelog entry on 04-11-26). Conforms to `authoring-standards.md` v1.2. Pilot-validation: pattern applied to all twelve interview/guide files in this directory in the same commit; pilot exercise on next Master PRD session. |
 | 1.3 | 04-11-26 | Added Interview Transcript as Section 6 of the Master PRD and Topic 7 of the interview, mirroring Section 11 of the Process Definition guide. Captures all interview Q&A condensed but complete, organized by topic area with inline Decision callouts, so future reviewers can reconstruct the reasoning behind every decision in the document. Updated topic checklist and Document Production block to include the new section and to specify consistent numbered headings across all six sections. |
 | 1.2 | 04-03-26 | Added Cross-Domain Services: new Topic 4 interview section, added to Master PRD contents and output structure, added to summary checklist, added to "also establishes" list. Renumbered Topics 4–5 to 5–6. Fixed Next Steps to correctly reference Phase 2 — Entity Definition (was incorrectly pointing to Process Definition). |
 | 1.1 | 03-30-26 | Updated persona format (Responsibilities + What the CRM Provides, both bulleted). Added implementation tier system (Core, Important, Enhancement, Out of Scope). Added Business Value and Key Capabilities as bulleted lists per process. Updated document production structure to match. |

@@ -1,7 +1,7 @@
 # CRM Builder — Interview and Guide Authoring Standards
 
-**Version:** 1.1
-**Last Updated:** 04-21-26
+**Version:** 1.2
+**Last Updated:** 05-24-26 12:31
 **Purpose:** Authoring contract for every file under `PRDs/process/interviews/`
 **Governing Process:** `PRDs/process/CRM-Builder-Document-Production-Process.docx`
 
@@ -147,13 +147,16 @@ Claude finds and quotes them during a session.
 ```
 1. How to Use This Guide
 2. What the {Deliverable} Must Contain
-3. Critical Rules
+3. How to Conduct This Phase
 4. Before the {Interview|Reconciliation|Generation} Begins
 5. {Body — see 5.2 for Interview, 5.3 for Guide}
 6. Closing / Completion Criteria
-7. Important AI Behaviors During the {Interview|Reconciliation|Generation}
-8. Changelog
+7. Changelog
 ```
+
+The `How to Conduct This Phase` section (item 3) replaces what
+earlier versions of this standards doc named `Critical Rules` and
+`Important AI Behaviors`. See Section 6.3 for content rules.
 
 ### 5.2 Interview body (archetype: interview-*)
 
@@ -209,6 +212,15 @@ This section sets the tone for the entire session. It must state:
 - Whether the session is a **collaborative interview** (AI asks, admin
   answers) or a **synthesis/generation** (AI reads inputs and works,
   admin answers only when asked).
+- **Charter and Question Library as prerequisite reading.** Generic
+  interviewer conduct — communication style, question discipline,
+  listening and probing, confirmation cadence, scope-change protocol,
+  transcript capture, identifier discipline — is canonically governed
+  by the Interviewer Charter at `PRDs/process/conduct/charter.md`.
+  Question patterns by intent live in the Question Library at
+  `PRDs/process/conduct/question-library.md`. Every guide must state
+  in this section that both are required reading before conducting
+  the phase. Guides do not restate Charter content.
 - **One-per-conversation scope.** One process per conversation. One
   domain per reconciliation. One decision per carry-forward. State
   this explicitly for the governed phase.
@@ -236,16 +248,29 @@ This section sets the tone for the entire session. It must state:
   standard" or equivalent, quote it in this section rather than
   paraphrasing. Mismatched paraphrases are a common source of drift.
 
-### 6.3 Critical Rules
+### 6.3 How to Conduct This Phase
 
-- 6–12 numbered or bulleted rules, no more. This section is where
-  Claude looks when it needs to decide whether to stop and ask.
+This section is where Claude looks when it needs to decide whether
+to stop and ask during this phase specifically. Generic interviewer
+conduct (one-question-at-a-time, listen-more-than-talk, avoid leading
+questions, confirmation gates after each topic, scope-change protocol,
+transcript capture format, identifier-first-time-then-numbered-after,
+etc.) is governed by the Interviewer Charter and is **not** restated
+here. See Section 6.1 — the Charter is required reading.
+
+- 3–10 numbered or bulleted rules, no more. Phase-specific only.
 - Rules must be phrased as imperatives ("Never proceed without...",
   "Always cite identifiers when referencing..."), not descriptions.
-- Include one rule restating the scope-change protocol from Section 10
-  of the process doc. Phrased appropriately for the phase.
-- Include one rule restating confirmation-gate discipline from Section
-  7.3 of the process doc.
+- If a rule you would write here is already in the Charter, do not
+  write it. If your guide has nothing genuinely phase-specific to
+  say, this section can be as short as a one-line pointer ("All
+  conduct for this phase follows the Charter; this phase has no
+  phase-specific additions.").
+- Two cross-cutting concerns are NOT canonically in the Charter and
+  do belong in this section when relevant: the one-deliverable
+  contract (Section 7.5 below) and the business-language rule
+  (Section 7.8 below — phase-appropriate phrasing, including the
+  Phase 10 carve-out).
 
 ### 6.4 Before the {Interview|...} Begins
 
@@ -269,17 +294,7 @@ This section sets the tone for the entire session. It must state:
   what inputs it will need, and an explicit confirmation gate before
   advancing.
 
-### 6.6 Important AI Behaviors During the {Interview|...}
-
-- A flat list of behavioral reminders that apply throughout the
-  session. Examples from current guides: "Do not rush", "One topic
-  at a time", "Confirm before assigning an identifier", "Never
-  mention product names".
-- Keep this list short. Rules that require explanation belong in
-  Critical Rules. Rules about single moments in the session belong in
-  that section.
-
-### 6.7 Changelog
+### 6.6 Changelog
 
 - One bullet per version, newest first.
 - Each bullet cites the version, the date, and a one-line summary of
@@ -288,79 +303,85 @@ This section sets the tone for the entire session. It must state:
 
 ---
 
-## 7. Cross-cutting rules every guide must honour
+## 7. Cross-cutting rules — pointers to canonical source
 
-These come from Sections 5, 7, and 10 of the process doc. Every new
-guide must echo them in the phase-appropriate place.
+Each rule below has a canonical source. Where the canonical source
+is the Interviewer Charter, guides reference it via the prerequisite
+line in `How to Use This Guide` rather than restating it. Where the
+canonical source is this standards doc or a phase-specific decision,
+guides state the phase-appropriate form in `How to Conduct This
+Phase`.
 
 ### 7.1 Session start (process doc 7.1)
 
-Ask the implementation → read CLAUDE.md → identify phase/step →
-state and confirm. Claude does not begin the body of the session
-until this confirmation has occurred.
+Canonical source: kickoff protocol at `PRDs/process/conduct/kickoff.md`
+(three-layer pre-session routine and session-type variants). Guides do
+not restate this; they may reprise the implementation → CLAUDE.md →
+phase confirmation script in `Before the X Begins` for ergonomics.
 
 ### 7.2 Context requirements (process doc 7.2)
 
-Each conversation type has defined inputs. Claude does not proceed
-if required inputs are missing. When inputs are missing, Claude says
-which file is missing and stops.
+Canonical source: `How to Use This Guide` Input list per guide.
+Each conversation type has defined inputs; Claude does not proceed
+if required inputs are missing.
 
 ### 7.3 Confirmation gates (process doc 7.3)
 
-After completing any document or step, Claude explicitly states the
-next required step and asks for confirmation. No silent
-advancement.
+Canonical source: Charter Section 6 (Confirmation Cadence). Guides
+do not restate; the Charter governs decision-callout, end-of-section,
+end-of-session, and anti-fatigue rules.
 
 ### 7.4 One topic at a time (process doc 7.4)
 
-When multiple decisions are pending, present them sequentially, not
-as a batch. The gate pattern (Section 5.4 above) is the only
-permitted way to group decisions for single approval.
+Canonical source: Charter Section 4.1 (One question at a time).
+Guides do not restate. The gate pattern (Section 5.4 above) remains
+the only permitted way to group decisions for single approval and
+is described in the guide that uses it.
 
 ### 7.5 One deliverable per conversation (process doc 7.5)
 
-Every conversation produces exactly one committed artifact. Guides
-that produce multiple artifacts (e.g., YAML Generation produces
-YAML + MANUAL-CONFIG + EXCEPTIONS) treat them as one atomic
-deliverable with three parts, produced together.
+Phase-specific. Canonical source: `How to Use This Guide` Output
+statement per guide. Every conversation produces exactly one committed
+artifact. Guides that produce multiple artifacts (e.g., YAML Generation
+produces YAML + MANUAL-CONFIG + EXCEPTIONS) treat them as one atomic
+deliverable with three parts, produced together, and state this in
+`How to Conduct This Phase`.
 
 ### 7.6 Scope-change protocol (process doc Section 10)
 
-Every guide that runs during or after Phase 2 must contain a
-phase-appropriate restatement of the scope-change protocol:
-
-- What triggers a pause (new entity, new field, new process, new
-  domain, structural issue).
-- The default response: stop, fix upstream, resume.
-- A cross-reference to `guide-carry-forward-updates.md` when the
-  fix affects already-written documents.
+Canonical source: Charter Section 8 (Scope-Change Protocol). Guides
+do not restate the protocol itself. A guide may add a phase-specific
+trigger list in `How to Conduct This Phase` if there are phase-unique
+triggers beyond those the Charter covers (e.g., "missing entity
+discovered during this phase" for the Entity PRD guide). Cross-reference
+to `guide-carry-forward-updates.md` belongs in the See-also block at
+the top of the guide.
 
 ### 7.7 Identifier discipline (process doc Section 5)
 
-Every guide whose deliverable contains identifiers (requirements,
-fields, entities, decisions, open issues) must:
-
-- Specify the identifier format used in that deliverable
-  (three-level or four-level per sub-domain rules).
-- Instruct Claude to assign the next available sequential number,
-  never reuse, never renumber.
-- Require administrator confirmation of each identifier.
+Canonical source: Charter Section 10 (Identifier Discipline). Guides
+do not restate the generic discipline. A guide MUST state the
+phase-specific identifier format used in its deliverable
+(three-level or four-level per sub-domain rules) in `How to Conduct
+This Phase` or in the section where identifiers are assigned.
 
 ### 7.8 Business-language rule (process doc PRD Content Rules)
 
-Product names (EspoCRM, WordPress, Constant Contact, etc.) are
-forbidden in every deliverable **except** the CRM Evaluation Report
-produced in Phase 10. Every guide for Phases 1–9 must contain an
-explicit "no product names" rule; the Phase 10 guide must contain the
-explicit carve-out.
+Phase-specific. Product names (EspoCRM, WordPress, Constant Contact,
+etc.) are forbidden in every deliverable **except** the CRM Evaluation
+Report produced in Phase 10. Every guide for Phases 1–9 must contain
+an explicit "no product names" rule in `How to Conduct This Phase`;
+the Phase 10 guide must contain the explicit carve-out.
 
 ### 7.9 Transcript requirement
 
-Interview deliverables include a transcript section. Synthesis and
-generation deliverables do not — they produce the artifact directly
-from the inputs, and the "transcript" is effectively the decisions
-made by applying the guide's rules, captured in a Decisions Made
-section of the deliverable.
+Canonical source: Charter Section 9 (Transcript Capture) for format
+and content. Interview deliverables include a transcript section;
+synthesis/generation deliverables do not (they produce the artifact
+directly from the inputs, and the "transcript" is effectively the
+decisions made by applying the guide's rules, captured in a Decisions
+Made section of the deliverable). Guides state which side of this
+divide they are on in `How to Use This Guide`.
 
 ---
 
@@ -431,13 +452,14 @@ any line on this list is not ready.
 - [ ] Archetype prefix in the filename (`interview-` or `guide-`) matches the body structure.
 - [ ] Required section skeleton from Section 5 is present in the correct order.
 - [ ] `How to Use This Guide` states archetype, phase, deliverable, format, path, cardinality, session length, inputs.
+- [ ] `How to Use This Guide` names the Interviewer Charter and Question Library as required prerequisite reading.
 - [ ] `What the Deliverable Must Contain` has a table and a completeness standard.
-- [ ] `Critical Rules` has 6–12 rules in imperative form.
+- [ ] `How to Conduct This Phase` has only phase-specific rules; generic interviewer conduct is governed by the Charter and is not restated.
 - [ ] `Before the X Begins` echoes the session-start checklist from process doc Section 7.1.
-- [ ] All seven cross-cutting rules from Section 7 above are present in phase-appropriate form.
 - [ ] Identifier format is stated if the deliverable contains identifiers.
-- [ ] Product-name rule is present (either the ban, or the Phase 10 carve-out).
-- [ ] Scope-change protocol is restated and cross-links `guide-carry-forward-updates.md`.
+- [ ] Product-name rule is present in `How to Conduct This Phase` (either the ban, or the Phase 10 carve-out).
+- [ ] One-deliverable contract is reflected in `How to Use This Guide` Output statement.
+- [ ] Cross-reference to `guide-carry-forward-updates.md` is present in the See-also block when the phase can trigger updates to prior documents.
 - [ ] Closing section contains completeness check, summary script, document-production instructions, and next-step script.
 - [ ] Changelog has an entry for this version.
 - [ ] `Last Updated` date reflects the commit date.
@@ -462,6 +484,12 @@ any line on this list is not ready.
 
 {archetype role statement — "skilled business analyst"}
 
+**Charter and Question Library as prerequisite reading.** Read
+`PRDs/process/conduct/charter.md` and
+`PRDs/process/conduct/question-library.md` before conducting this
+phase. Generic interviewer conduct is governed there and is not
+restated in this guide.
+
 **One {unit} per conversation.**
 
 **Session length:** N–M minutes. {Stop rule if any.}
@@ -481,9 +509,11 @@ the implementation's repository at `{path}`.
 
 ---
 
-## Critical Rules
+## How to Conduct This Phase
 
-{6–12 imperative rules}
+{3–10 imperative rules, phase-specific only; no restatement of
+Charter material. Include the no-product-names rule (or the Phase 10
+carve-out) and the phase-specific identifier format if applicable.}
 
 ---
 
@@ -533,12 +563,6 @@ the implementation's repository at `{path}`.
 
 ---
 
-## Important AI Behaviors During the Interview
-
-{flat list of session-wide reminders}
-
----
-
 ## Changelog
 
 - **1.0** (MM-DD-YY) — Initial version.
@@ -563,6 +587,12 @@ the implementation's repository at `{path}`.
 
 {archetype role statement — "executor, not interviewer"}
 
+**Charter and Question Library as prerequisite reading.** Read
+`PRDs/process/conduct/charter.md` and
+`PRDs/process/conduct/question-library.md` before conducting this
+phase. Generic conduct is governed there and is not restated in this
+guide.
+
 **One {unit} per conversation.**
 
 **Session length:** N–M minutes.
@@ -581,9 +611,11 @@ the implementation's repository at `{path}`.
 
 ---
 
-## Critical Rules
+## How to Conduct This Phase
 
-{6–12 imperative rules}
+{3–10 imperative rules, phase-specific only; no restatement of
+Charter material. Include the no-product-names rule (or the Phase 10
+carve-out) and the phase-specific identifier format if applicable.}
 
 ---
 
@@ -609,12 +641,6 @@ the implementation's repository at `{path}`.
 
 ---
 
-## Important AI Behaviors During {Activity}
-
-{flat list of session-wide reminders}
-
----
-
 ## Changelog
 
 - **1.0** (MM-DD-YY) — Initial version.
@@ -624,6 +650,7 @@ the implementation's repository at `{path}`.
 
 ## Changelog
 
+- **1.2** (05-24-26 12:31) — Collapsed redundant `Critical Rules` and `Important AI Behaviors` sections in the section skeleton (Section 5.1) into a single `How to Conduct This Phase` section. Rewrote Section 6.3 to require phase-specific rules only; deleted Section 6.6 (Important AI Behaviors) entirely; renumbered 6.7 → 6.6 (Changelog). Reframed Section 7 from "every guide must echo these rules" to "every guide must reference the Charter as canonical source" — six of the nine cross-cutting rules are canonically governed by `PRDs/process/conduct/charter.md` and are no longer restated per guide; two (one-deliverable contract, business-language rule) remain phase-specific and stay in `How to Conduct This Phase`. Added a Charter-and-Question-Library prerequisite-reading bullet to Section 6.1. Updated the Section 11 review checklist accordingly. Updated the skeletons in Sections 12 and 13 to reflect the new shape.
 - **1.1** (04-21-26) — Added Section 1.1 (resolution order when the `.docx` process doc conflicts with itself) and Section 1.2 (pilot-validation requirement before a guide is treated as authoritative). Triggered by the `guide-domain-overview.md` v1.0 → v1.1 episode: v1.0 over-tightened Section 3.4's Context Passing line into a hard precondition that contradicted Section 3.5 Rule 5.1 and blocked the CBM Funding Domain Overview session. Root cause was authoring from the `.docx` without spot-checking observed pilot practice. The new Section 1.1 gives authors a resolution protocol; Section 1.2 requires a pilot-validation note in the Changelog of every guide.
 - **1.0** (04-20-26) — Initial authoring standards, derived from
   `interview-master-prd.md` v1.2, `interview-process-definition.md`

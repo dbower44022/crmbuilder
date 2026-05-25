@@ -1,7 +1,7 @@
 # CRM Builder — Inventory Reconciliation Interview Guide
 
-**Version:** 1.1
-**Last Updated:** 04-21-26
+**Version:** 1.2
+**Last Updated:** 05-24-26 12:31
 **Purpose:** AI interviewer guide for Phase 3 — Inventory Reconciliation
 **Governing Process:** `PRDs/process/CRM-Builder-Document-Production-Process.docx`
 **See also:** `interview-domain-discovery.md` — the upstream phase whose working artifact this phase reconciles. `interview-entity-prd.md` — the downstream phase that uses the durable Entity Inventory produced here.
@@ -21,6 +21,15 @@ in Phase 2, helping agree on canonical names, resolving duplicates
 and aliases, applying the classification rules one last time, and
 producing the durable inventories the rest of the implementation
 depends on.
+
+**Charter and Question Library as prerequisite reading.** Generic
+interviewer conduct — communication style, question discipline,
+listening and probing, confirmation cadence, scope-change protocol,
+transcript capture, identifier discipline — is canonically governed
+by the Interviewer Charter at `PRDs/process/conduct/charter.md`.
+Question patterns by intent live in the Question Library at
+`PRDs/process/conduct/question-library.md`. Read both before
+conducting this phase. This guide does not restate Charter content.
 
 **This is a client-facing session.** Unlike Phase 2 where the client
 described their work, Phase 3 asks the client to make agreements
@@ -151,33 +160,87 @@ the Persona Inventory on names and existence.
 
 ---
 
-## Critical Rules
+## How to Conduct This Phase
 
-1. **Resolve every candidate.** Every row in the Domain Discovery Report ends this session with one of three outcomes: included (as domain / entity / persona), merged (into another row, captured as an alias), or dropped (with recorded rationale). No candidate is left unresolved.
+Phase-specific rules for Inventory Reconciliation. Generic
+interviewer conduct is governed by the Charter (see How to Use This
+Guide).
 
-2. **Canonical names are administrator-led, client-confirmed.** The administrator proposes the canonical name for each durable item; the client confirms or counter-proposes. The AI facilitates; it does not unilaterally assign canonical names.
+1. **Resolve every candidate.** Every row in the Domain Discovery
+Report ends this session with one of three outcomes: included (as
+domain / entity / persona), merged (into another row, captured as an
+alias), or dropped (with recorded rationale). No candidate is left
+unresolved.
 
-3. **Aliases are preserved.** When a candidate is merged into another row, the candidate's exact term from Phase 2 becomes an alias on the target row. Aliases are how the durable inventory stays traceable to the Phase 2 stakeholder language.
+2. **Canonical names are administrator-led, client-confirmed.** The
+administrator proposes the canonical name for each durable item; the
+client confirms or counter-proposes. The AI facilitates; it does not
+unilaterally assign canonical names. Propose dispositions confidently
+as starting positions — confidence accelerates the session;
+flexibility keeps it honest.
 
-4. **Persona IDs are permanent.** `PER-NNN` IDs assigned this session are never reused, renumbered, or reassigned (process doc Section 5.4). If a persona is dropped later, the ID is marked deprecated; the next new persona gets the next number.
+3. **Aliases are preserved.** When a candidate is merged into another
+row, the candidate's exact term from Phase 2 becomes an alias on the
+target row. Every time the client corrects a canonical name, ask
+"should we preserve {original term} as an alias?" — default to yes.
+Aliases cost nothing and make the durable inventory traceable to the
+Phase 2 stakeholder language.
 
-5. **Persona backing is not TBD.** Every persona in the durable Persona Inventory has exactly one backing: an entity name from the Entity Inventory, or "External". If the backing is genuinely uncertain, the persona is not ready for Phase 3 — send it back to Phase 2 for more discovery.
+4. **Persona IDs are permanent and assigned in confirmation order.**
+`PER-NNN` IDs are assigned in the order candidates are confirmed; do
+not pre-assign. A candidate that ends up merged or dropped should not
+consume an ID number. IDs are never reused, renumbered, or
+reassigned. If a persona is dropped later, the ID is marked
+deprecated; the next new persona gets the next number (process doc
+Section 5.4).
 
-6. **Reconcile domains first, then entities, then personas.** The order matters because persona backing depends on the reconciled entity set, and entity source-domain attribution depends on the reconciled domain list. Do not interleave.
+5. **Persona backing is not TBD.** Every persona in the durable
+Persona Inventory has exactly one backing: an entity name from the
+Entity Inventory, or "External". TBD is a Phase 2 state — force
+resolution here. If the backing is genuinely uncertain, the persona
+is not ready for Phase 3 — send it back to Phase 2 for more
+discovery.
 
-7. **Apply Rule 2.1 as the final domain check.** For every candidate domain that Phase 2 left as "maybe / depends", apply the Domain Validation Test here and force a resolution: domain, process within a domain, or cross-domain service.
+6. **Reconcile domains first, then entities, then personas.** The
+order enforces a dependency: persona backing must cite an entity
+from the reconciled set; entity source-domain attribution depends on
+the reconciled domain list. Do not interleave.
 
-8. **Apply Rule 2.2 as the final persona check.** For every candidate persona that Phase 2 left as TBD backing, resolve here: backed by a specific entity, or External.
+7. **Apply Rule 2.1 as the final domain check.** For every candidate
+domain that Phase 2 left as "maybe / depends", apply the Domain
+Validation Test here and force a resolution: domain, process within a
+domain, or cross-domain service.
 
-9. **No product names.** Even though Phase 3 produces implementation-adjacent artifacts (the Entity Inventory is referenced by Phase 9 YAML Generation), product names are still forbidden. Native/Custom determinations happen in Phase 5, not here.
+8. **Apply Rule 2.2 as the final persona check.** For every candidate
+persona that Phase 2 left as TBD backing, resolve here: backed by a
+specific entity, or External.
 
-10. **Confirmation gates.** After each section (domain reconciliation, entity reconciliation, persona reconciliation, Master PRD update), present the state back to the client and administrator and confirm before proceeding (process doc Section 7.3).
+9. **Read back frequently.** After every section (domain reconciliation,
+entity reconciliation, persona reconciliation, Master PRD update),
+read the reconciled table back to the client and administrator and
+confirm before proceeding. A session that produces an inventory the
+client does not recognize has failed regardless of how structured it
+was.
 
-11. **One topic at a time.** When multiple candidates need a classification decision, present them sequentially, not as a batch (process doc Section 7.4).
+10. **Watch for shared-entity patterns.** Three candidates named
+"{type} Contact" almost always reconcile to one Contact entity with
+a discriminator. Do not capture them as three entities and rely on
+Phase 5 to catch it.
 
-12. **Scope-change protocol.** If the session surfaces a fundamental problem (the Discovery Report missed a whole category of work; the Master PRD's mission statement needs revision; two domains should be merged but the Master PRD treats them as separate), pause and follow the scope-change protocol (process doc Section 10). See "Handling Discovered Gaps" below.
+11. **No product names.** Even though Phase 3 produces
+implementation-adjacent artifacts (the Entity Inventory is referenced
+by Phase 9 YAML Generation), product names are still forbidden.
+Native/Custom determinations happen in Phase 5, not here.
 
-13. **One atomic deliverable.** All three output artifacts are committed together at the end of the session. Do not commit the Entity Inventory before the Persona Inventory, because persona backing depends on the entity set (process doc Section 7.5).
+12. **Stop at 120 minutes.** Phase 3 is cognitively heavy for
+everyone present. Schedule a follow-up rather than pushing through
+fatigue.
+
+13. **One atomic deliverable.** All three output artifacts (Entity
+Inventory, Persona Inventory, Master PRD update) are committed
+together at the end of the session. Do not commit the Entity
+Inventory before the Persona Inventory, because persona backing
+depends on the entity set (process doc Section 7.5).
 
 ---
 
@@ -685,29 +748,8 @@ Await explicit confirmation before closing.
 
 ---
 
-## Important AI Behaviors During the Session
-
-- **Propose dispositions confidently, defer to agreement.** The AI's proposed disposition for each candidate is the starting position, not the final answer. Confidence accelerates the session; flexibility keeps it honest.
-
-- **Read back frequently.** After every section, read the reconciled table back and confirm. A session that produces an inventory the client does not recognize has failed regardless of how structured it was.
-
-- **Preserve the client's original words as aliases.** Every time the client corrects a canonical name, ask "should we preserve {original term} as an alias?" Default to yes. Aliases cost nothing and make the durable inventory traceable.
-
-- **Assign `PER-NNN` IDs in the order candidates are confirmed.** Do not pre-assign. A candidate that ends up merged or dropped should not consume an ID number.
-
-- **Force resolution on TBD backings.** TBD is a Phase 2 state. Every persona in the Persona Inventory has a specific backing. If the answer is genuinely uncertain, the persona is not ready — return it to Phase 2.
-
-- **Watch for shared-entity patterns.** Three candidates named "{type} Contact" almost always reconcile to one Contact entity with a discriminator. Do not capture them as three entities and rely on Phase 5 to catch it.
-
-- **Keep domain, entity, and persona reconciliation in order.** Reconcile domains first, entities second, personas third. The order enforces a dependency: persona backing must cite an entity from the reconciled set.
-
-- **Never mention product names.** Phase 3 is business reconciliation. Native/Custom is Phase 5's concern.
-
-- **Stop at 120 minutes.** Phase 3 is cognitively heavy for everyone present. Schedule a follow-up rather than pushing through fatigue.
-
----
-
 ## Changelog
 
+- **1.2** (05-24-26 12:31) — Collapsed `Critical Rules` and `Important AI Behaviors During the Session` sections into a single `How to Conduct This Phase` section. Thirteen phase-specific rules retained (resolve-every-candidate, canonical-names-admin-led-client-confirmed, aliases-preserved, persona-IDs-permanent-in-confirmation-order, persona-backing-not-TBD, reconcile-domains-then-entities-then-personas, Rule 2.1 final check, Rule 2.2 final check, read-back-frequently, watch-for-shared-entity-patterns, no-product-names, stop-at-120-minutes, one-atomic-deliverable). Generic interviewer conduct (confirmation-gates, one-topic-at-a-time, scope-change-protocol) removed as canonically governed by the Interviewer Charter at `PRDs/process/conduct/charter.md`. Added Charter-and-Question-Library prerequisite-reading paragraph to `How to Use This Guide`. Conforms to `authoring-standards.md` v1.2. Pilot-validation: pending — retrofit path still untested against CBM per v1.1.
 - **1.1** (04-21-26) — Added Implementations in Flight — Retrofit Path section. v1.0 assumed every Phase 3 session reconciles a fresh Domain Discovery Report, which blocks implementations like CBM that predate the Phase 2 / Phase 3 split and do not have a Discovery Report but do have a Master PRD, an Entity Inventory, and persona backing notes in `CLAUDE.md`. The retrofit path adapts the session to take existing artifacts as input and produce the Persona Inventory as the only net-new document. Pilot-validation status: not yet exercised against CBM; CBM is currently not running a formal retrofit Phase 3 because `guide-domain-overview.md` v1.1 accepts Master PRD Personas as a persona source, so the retrofit is only needed when one of the triggering conditions listed in the new section applies.
 - **1.0** (04-20-26) — Initial release. Scoped to Phase 3 Inventory Reconciliation only, per `CRM-Builder-Document-Production-Process.docx` Section 3.3. Produces three atomic outputs: Entity Inventory (durable), Persona Inventory (durable, with PER-NNN IDs), and in-place Master PRD update. Encodes the domain-then-entity-then-persona ordering, shared-entity detection pattern, alias preservation from Phase 2 language, and `PER-NNN` assignment discipline. Structure aligned with `authoring-standards.md` v1.0. **Not pilot-validated; see v1.1 retrofit additions.**
