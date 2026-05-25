@@ -1,0 +1,25 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_078.json
+Label:  PI-002 build closure — make `identifier` optional on POST for the five remaining prefixed-identifier entity types (decision, session, risk, planning_item, topic); identifier-format regex enforcement unified across the explicit-identifier path; CLAUDE.md v2 paragraph rewritten to retire the client-side compute-identifier rule.
+Deposit event: DEP-061
+
+=== session (1 record) ===
+  ✓ POST session  SES-078 (HTTP 201)
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CONV-048 (HTTP 201)
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== references (3 records) ===
+  ✓ POST references  SES-078 is_about PI-002 (HTTP 201)
+  ✓ POST references  SES-078 is_about DEC-043 (HTTP 201)
+  ✓ POST references  SES-078 is_about SES-010 (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-002 (HTTP 201)
+
+✓ All 7 operations complete.
+
+✓ Recorded apply as deposit_event DEP-061 (HTTP 201).

@@ -1,7 +1,7 @@
 # CLAUDE-CODE-PROMPT — Apply SES-078 close-out payload
 
 **Last Updated:** 05-25-26 (drafted at PI-002 build close)
-**Purpose:** Apply the SES-078 close-out payload — PI-002's build closure. Lands SES-078, CONV-048, one commit record (`<COMMIT_SHA_TBD>` for the PI-002 retrofit, assigned CM-NNNN at apply time), zero new decisions, zero new planning items, three `is_about` payload references (SES-078 → PI-002, SES-078 → DEC-043, SES-078 → SES-010), and one `resolves_planning_items` entry that atomically flips PI-002 to Resolved via slice A's server-side atomic edge+flip.
+**Purpose:** Apply the SES-078 close-out payload — PI-002's build closure. Lands SES-078, CONV-048, one commit record (`48a91e358936ae1acfc70d69cf44b60e75bd9cd3` for the PI-002 retrofit, assigned CM-NNNN at apply time), zero new decisions, zero new planning items, three `is_about` payload references (SES-078 → PI-002, SES-078 → DEC-043, SES-078 → SES-010), and one `resolves_planning_items` entry that atomically flips PI-002 to Resolved via slice A's server-side atomic edge+flip.
 
 **Payload file:** `PRDs/product/crmbuilder-v2/close-out-payloads/ses_078.json`
 
@@ -18,7 +18,7 @@
 
 Before running this prompt, the following placeholders in the payload (`ses_078.json`) and in this prompt need to be filled in with concrete values:
 
-1. **`<COMMIT_SHA_TBD>`** — the SHA of the PI-002 commit on `origin/main`. Replace in:
+1. **`48a91e358936ae1acfc70d69cf44b60e75bd9cd3`** — the SHA of the PI-002 commit on `origin/main`. Replace in:
    - `close-out-payloads/ses_078.json` → `commits[0].commit_sha`
    - This prompt's Scope section and the Pre-flight block
 2. **`<COMMIT_DATE_TBD>`** — the ISO 8601 commit timestamp (`git log -1 --format=%cI <SHA>`). Replace in:
@@ -36,7 +36,7 @@ Apply `close-out-payloads/ses_078.json` using `crmbuilder-v2/scripts/apply_close
 
 - **1 session** (SES-078)
 - **1 conversation** (CONV-048, status `complete`, embeds the two required edges atomically: `conversation_belongs_to_workstream` to WS-011, `conversation_records_session` to SES-078)
-- **1 commit** (`<COMMIT_SHA_TBD>` — the PI-002 retrofit — assigned CM-NNNN at apply time with `commit_conversation_id = CONV-048`)
+- **1 commit** (`48a91e358936ae1acfc70d69cf44b60e75bd9cd3` — the PI-002 retrofit — assigned CM-NNNN at apply time with `commit_conversation_id = CONV-048`)
 - **0 work_tickets**
 - **0 decisions**
 - **0 planning_items**
@@ -74,9 +74,9 @@ ls -la ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_078.json
 grep -n 'TBD' ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_078.json || echo "OK: no TBD placeholders remain"
 
 # Confirm the PI-002 commit is on local main
-git cat-file -e <COMMIT_SHA_TBD> 2>/dev/null \
-  && echo "FOUND: <COMMIT_SHA_TBD> — $(git log -1 --format=%s <COMMIT_SHA_TBD>)" \
-  || { echo "MISSING: <COMMIT_SHA_TBD> — HALT (commit + push the PI-002 branch first)"; exit 1; }
+git cat-file -e 48a91e358936ae1acfc70d69cf44b60e75bd9cd3 2>/dev/null \
+  && echo "FOUND: 48a91e358936ae1acfc70d69cf44b60e75bd9cd3 — $(git log -1 --format=%s 48a91e358936ae1acfc70d69cf44b60e75bd9cd3)" \
+  || { echo "MISSING: 48a91e358936ae1acfc70d69cf44b60e75bd9cd3 — HALT (commit + push the PI-002 branch first)"; exit 1; }
 
 # Confirm WS-011 absence (will be created by the pre-step below)
 curl -sf http://127.0.0.1:8765/workstreams/WS-011 >/dev/null 2>&1 \
@@ -178,7 +178,7 @@ curl -s 'http://127.0.0.1:8765/commits?limit=2000' \
   | python3 -c "
 import sys,json
 rows = json.load(sys.stdin)['data']
-pi002 = [r for r in rows if r['commit_sha'].startswith('<COMMIT_SHA_TBD>'[:8])]
+pi002 = [r for r in rows if r['commit_sha'].startswith('48a91e358936ae1acfc70d69cf44b60e75bd9cd3'[:8])]
 if pi002:
     r = pi002[0]
     print('Commit:', r['commit_identifier'], 'conversation:', r.get('commit_conversation_id'))
