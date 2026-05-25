@@ -8508,5 +8508,35 @@
     "source_type": "deposit_event",
     "target_id": "DEC-225",
     "target_type": "decision"
+  },
+  {
+    "created_at": "2026-05-25T01:34:14.861387",
+    "id": 856,
+    "reference_identifier": "REF-0852",
+    "relationship_kind": "is_about",
+    "source_id": "SES-072",
+    "source_type": "session",
+    "target_id": "PI-045",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-25T01:34:14.985049",
+    "id": 857,
+    "reference_identifier": "REF-0853",
+    "relationship_kind": "deposit_event_applies_close_out_payload",
+    "source_id": "DEP-051",
+    "source_type": "deposit_event",
+    "target_id": "COP-072",
+    "target_type": "close_out_payload"
+  },
+  {
+    "created_at": "2026-05-25T01:34:14.987127",
+    "id": 858,
+    "reference_identifier": "REF-0854",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-051",
+    "source_type": "deposit_event",
+    "target_id": "SES-072",
+    "target_type": "session"
   }
 ]
