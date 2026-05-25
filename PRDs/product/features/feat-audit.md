@@ -1,9 +1,34 @@
 # CRM Builder — CRM Audit
 
-**Version:** 1.1
+**Version:** 1.2
 **Status:** Implemented
-**Last Updated:** April 2026
+**Last Updated:** 05-25-26 01:38
 **Depends On:** app-yaml-schema.md, feat-fields.md, feat-layouts.md, feat-relationships.md, feat-entities.md
+
+---
+
+**What's New in v1.2**
+
+- **Security audit** — Roles and Teams are discovered alongside
+  entities, with `scope_access:` and `system_permissions:` per
+  Section 12.1–12.4 of the YAML schema. Emitted to
+  `<output_dir>/security/security.yaml`. See §2.2 and §5.4 for
+  capture and output details
+- **Filtered-tab audit** — EspoCRM's three-artifact filtered-tab
+  pattern (Report Filter + scopes JSON + clientDefs JSON +
+  i18n label patch) is reverse-engineered into structured
+  `filteredTabs:` blocks in the per-entity YAML output. See
+  §2.2 and §4.8
+- **Entity picker** — Operators choose which entities to audit
+  via a scrollable list with Select All / Select None buttons.
+  Pre-flight discovery on dialog open. See §8.1
+- **Section 12.5 role-aware visibility — NOT_AUDITABLE in v1.3.**
+  EspoCRM 9.x Dynamic Logic has no role-condition type;
+  Layout Sets bind to Teams, not Roles. The YAML schema can
+  still express role-aware visibility intent (loader validates,
+  audit round-trips the rest of §12). Deployment of §12.5 is
+  deferred to v1.4 alongside §12.7 field-level permissions.
+  See §6.4 and §10
 
 ---
 
@@ -54,11 +79,25 @@ An audit discovers the following from the source instance:
 | **Detail layouts** | Panels, rows, tabs, field placement, dynamic logic |
 | **List layouts** | Columns and widths |
 | **Relationships** | Link type, link names, labels, related entities |
+| **Role** *(v1.2; Section 12.1)* | Name, description, `scope_access` (per-entity access matrix), `system_permissions` (Section 12.4). Persona metadata is NOT captured (documentation-only in YAML per DEC-178; operators reattach manually after import) |
+| **Team** *(v1.2; Section 12.2)* | Name, description. Team-to-user membership is not captured (runtime data per Section 12.2) |
+| **Filtered tab** *(v1.2)* | Per-entity navigation tabs backed by Report Filter records. Scope name, label, filter criteria, ACL strategy. Tabs without recognizable filter criteria are captured with label and scope but no `filter:` block (operator hand-writes after import) |
 
 System fields (`id`, `createdAt`, `modifiedAt`, `assignedUserId`,
 `createdById`, compound data fields) are excluded automatically. Native
 fields that exist by virtue of entity type (e.g., `firstName`,
 `lastName` on Person entities) are excluded unless explicitly requested.
+
+#### What is NOT captured
+
+The following are intentionally outside the audit's reach in v1.3:
+
+| Object | Reason |
+|--------|--------|
+| Section 12.5 role-aware visibility | EspoCRM 9.x Dynamic Logic has no role-condition type; manually-configured role-aware visibility (via Dynamic Handler JS or Layout Sets + Teams) is operator-written code, not reverse-engineerable structured metadata. Audit log emits a NOT_AUDITABLE advisory per run. Deferred to v1.4 |
+| Section 12.7 field-level permissions | Deferred to v1.4 |
+| Workflows | Existing v1.1 limitation; no public REST API write path |
+| Saved views, duplicate-check rules | Existing v1.1 limitations |
 
 ### 2.3 Reverse Name Mapping
 
@@ -319,6 +358,73 @@ Records are checked for existence before insertion (idempotent).
 A `ConfigurationRun` record is created with `operation: 'audit'` to
 provide an audit trail.
 
+### 4.7 Security Audit (v1.2)
+
+The security audit step runs alongside entity/field/layout discovery
+and emits a single `security/security.yaml` covering everything it
+captured. It walks the source instance's roles and teams and
+translates each into the schema's structured form:
+
+- `client.get_roles()` fetches all Role records via REST
+- `client.get_teams()` fetches all Team records via REST
+- `AuditManager._reverse_scope_access()` translates each Role's
+  `data` field — keyed by EspoCRM wire-name (e.g., `CEngagement`)
+  — to YAML `scope_access` keyed by natural name (e.g.,
+  `Engagement`)
+- `AuditManager._reverse_system_permissions()` reads the five
+  schema-managed permission columns (`assignmentPermission`,
+  `userPermission`, `exportPermission`, `massUpdatePermission`,
+  `portalPermission`) and translates to the schema's
+  `system_permissions:` block
+
+Three EspoCRM-only permissions on the v1.2 preservation list
+(`followerManagementPermission`, `groupEmailAccountPermission`,
+`dataPrivacyPermission`) are NOT captured — the schema has no
+representation for them. They are preserved on subsequent deploys
+(see §9.2).
+
+Output: `<output_dir>/security/security.yaml` containing
+`teams:` and `roles:` blocks. The file is only emitted when
+something was captured (no empty placeholder file).
+
+Per DEC-179, roles with empty `scope_access:` emit an
+informational warning in the audit log; the role is still
+emitted in YAML.
+
+### 4.8 Filtered-Tab Audit (v1.2)
+
+The filtered-tab audit reverse-engineers EspoCRM's three-artifact
+filtered-tab pattern. For each audited entity:
+
+1. `client.get_all_scopes()` (called once at start) enumerates
+   custom tab-scopes (filter: `isCustom: true` AND `tab: true`
+   AND `entity: false`)
+2. `client.get_client_defs(scope_name)` per tab-scope recovers
+   the entity binding and Report Filter ID
+3. `client.list_report_filters(entity_wire_name)` per entity
+   fetches the Report Filter records; HTTP 404 means Advanced
+   Pack is not installed and the audit logs an informational
+   note and continues
+4. `AuditManager._reverse_where_items()` inverts the deploy
+   side's `_to_where_items()` translation: EspoCRM where-items
+   (with `{type, attribute, value}` shape) become parsed
+   condition AST nodes; compound `and`/`or` groups become
+   `AllNode`/`AnyNode`; `currentUser`/`notCurrentUser` map to
+   the `$user` sentinel
+
+Output: per-entity YAML files include a `filteredTabs:` block
+when the entity has any filtered tabs.
+
+Two limitations documented for v1.3:
+
+- Unknown where-item types poison the entire filter — the tab is
+  captured with label and scope but no `filter:` block; operator
+  hand-writes after import. Better than silently dropping
+  conditions and changing the operator's intent
+- Relative-date tokens (Section 11) are not reverse-engineered;
+  post-deploy values are absolute `YYYY-MM-DD` strings; operators
+  manually convert back to relative form if desired
+
 ---
 
 ## 5. Output and Reporting
@@ -379,6 +485,37 @@ Output folder           : programs/audit-20260414-103000/
 | `warning` | Non-fatal issue (e.g., label not found in translation API) |
 | `error` | API call failed; object could not be read |
 
+### 5.4 Security YAML Output (v1.2)
+
+When the security audit captures any roles or teams, the audit
+writes `<output_dir>/security/security.yaml`. Structure:
+
+```yaml
+teams:
+  - name: Mentor Administrators
+    description: Members can manage mentor onboarding
+  - name: System Administrators
+    description: null
+
+roles:
+  - name: Mentor
+    description: Active mentors
+    persona: null  # Always null on capture; operator reattaches
+    scope_access:
+      Engagement:
+        create: true
+        read: own
+        edit: own
+        delete: no
+        stream: own
+    system_permissions:
+      assignment_permission: team
+      user_permission: team
+      export: false
+      mass_update: false
+      portal: false
+```
+
 ---
 
 ## 6. Validation Rules
@@ -396,6 +533,33 @@ The following rules are applied during audit execution:
   not audited
 - Output folder must not exist (timestamp ensures uniqueness); if it
   does, the audit aborts with an error rather than overwriting
+
+### 6.4 Role-Aware Visibility (v1.2)
+
+Section 12.5 role-aware visibility validates at parse time but is
+NOT_SUPPORTED for deploy on EspoCRM 9.x:
+
+- Field-level `visibleWhen:` containing `role:` clauses: loader
+  validates against `ProgramContext.role_names`; deploy emits
+  NOT_SUPPORTED for the dynamic-logic visible block (field still
+  deploys without visibility control)
+- Layout-level `forRoles:` variant form: loader validates the
+  coverage rule (every role in `program.roles` appears in exactly
+  one variant's `forRoles:`); deploy emits NOT_SUPPORTED for the
+  whole layout
+
+The MANUAL CONFIGURATION REQUIRED advisory block at the end of
+each deploy run lists affected fields and layouts so the operator
+can configure them manually post-deploy.
+
+[Screenshot: `PRDs/product/features/feat-audit-v1.2-manual-config-block.png`
+— terminal/log capture of a deploy run with §12.5 NOT_SUPPORTED
+items in the MANUAL CONFIGURATION REQUIRED block. TODO: capture
+manually.]
+
+See `PRDs/product/app-yaml-schema.md` §12.5 "Deploy Support" for
+the workaround paths available to operators (Dynamic Handler JS;
+Layout Sets + Teams).
 
 ---
 
@@ -433,19 +597,38 @@ The Audit entry contains:
 
 1. **Source instance picker** — Dropdown filtered to instances with
    role `source` or `both`. Shows instance name and URL.
-2. **Scope options** — Checkboxes (all checked by default):
+2. **Entity picker (v1.2)** — Scrollable list of all entities
+   discovered on the active instance via a pre-flight
+   `get_all_scopes()` call when the entry is first shown for that
+   instance. Each entity has a checkbox (default checked). Two
+   buttons above the list: **Select All** and **Select None**. When
+   the operator switches to a different instance, the picker
+   re-discovers from the new source. If pre-flight fails (HTTP
+   error), the picker stays empty and the loading label switches
+   to an error message; the audit can still run with default
+   all-entities behavior.
+3. **Scope options** — Checkboxes (all checked by default):
    - Include custom entity fields
    - Include native entity custom fields
    - Include detail layouts
    - Include list layouts
    - Include relationships
-3. **Include native fields checkbox** — Unchecked by default. When
+   - **Security (teams and roles)** *(v1.2; default checked per
+     DEC-180)*
+   - **Filtered tabs** *(v1.2; default checked per DEC-180)*
+4. **Include native fields checkbox** — Unchecked by default. When
    checked, native fields on native entities are included in output.
-4. **Start Audit button** — Initiates the audit. Follows the
-   never-disable pattern: if no source instance is selected, clicking
-   shows an explanatory message.
-5. **Last audit info** — Shows timestamp and output folder of the most
-   recent audit for the selected source instance.
+5. **Start Audit button** — Initiates the audit. Follows the
+   never-disable pattern: if no source instance is selected,
+   clicking shows an explanatory message. If no entities are
+   selected, clicking shows a "no work to do" message and does not
+   launch the progress dialog.
+6. **Last audit info** — Shows timestamp and output folder of the
+   most recent audit for the selected source instance.
+
+[Screenshot: `PRDs/product/features/feat-audit-v1.2-audit-entry.png`
+— full Audit entry view with picker populated and all checkboxes
+visible. TODO: capture manually.]
 
 ### 8.2 Progress Dialog
 
@@ -464,6 +647,29 @@ After a successful audit, the user is offered:
 - **View in Configure** — Switches to the Configure entry where the
   new YAML files are visible in the program list (if a target instance
   is also selected)
+
+### 8.4 Overwrite Confirmation (v1.2)
+
+When the operator clicks **Start Audit** and the output directory
+already contains audit YAML output (any `*.yaml` at the program
+root OR any `security/*.yaml` under the subdirectory), a
+confirmation dialog fires per DEC-181:
+
+> Output directory contains N existing audit YAML file(s); running
+> this audit will overwrite them. Proceed?
+
+Default focus is Cancel; the operator must explicitly choose
+Proceed to continue. Cancel returns to the audit-entry view
+without starting the audit.
+
+Under the current `audit-{timestamp}` naming convention, this
+dialog rarely fires in practice — only on second-runs within the
+same second (timestamp collision). The check is in place for any
+future move to a fixed-name output directory.
+
+[Screenshot: `PRDs/product/features/feat-audit-v1.2-overwrite-dialog.png`
+— overwrite-confirmation QMessageBox with Cancel button focused.
+TODO: capture manually.]
 
 ---
 
@@ -488,6 +694,15 @@ final file inventory and key implementation details.
 | Worker | `espo_impl/workers/audit_worker.py` | `AuditWorker(QThread)` — background thread with `output_line`, `progress`, `finished_ok`, `finished_error` signals |
 | UI | `automation/ui/deployment/audit_entry.py` | `AuditEntry` sidebar widget + `AuditProgressDialog` modal |
 | UI | `automation/ui/deployment/deployment_window.py` | Audit registered as 5th sidebar entry (`_IDX_AUDIT = 4`) |
+| Core | `espo_impl/core/team_manager.py` *(v1.2)* | `TeamManager` CHECK→ACT for team deploy |
+| Core | `espo_impl/core/role_manager.py` *(v1.2)* | `RoleManager` CHECK→ACT for role deploy, including `_preflight_scope_access` per DEC-178 |
+| API | `espo_impl/core/api_client.py` *(v1.2 additions)* | `get_teams()`, `get_roles()` for audit-side discovery; `get_client_defs()`, `list_report_filters()` for filtered-tab discovery; team / role CRUD endpoints for deploy |
+| DB | `automation/db/migrations.py` *(v1.2 additions)* | `_client_v15` adds `Role` / `Team` tables; `_client_v16` adds `FilteredTab` table |
+| Audit | `espo_impl/core/audit_manager.py` *(v1.2 extension)* | `_discover_teams`, `_discover_roles`, `_discover_filtered_tabs`; `_reverse_scope_access`, `_reverse_system_permissions`, `_reverse_where_items` / `_reverse_where_item`; new dataclasses `RoleAuditResult`, `TeamAuditResult`, `FilteredTabAuditResult` (`LayoutVariant` lives in `models.py`) |
+| Pipeline | `espo_impl/workers/run_worker.py` *(v1.2 extension)* | New Step 11 "Security" inserted between Workflows (Step 10) and Filtered tabs (renumbered Step 12); `_emit_manual_config_block` surfaces §12.5 NOT_SUPPORTED items |
+| UI | `automation/ui/deployment/audit_entry.py` *(v1.2 extension)* | Entity-picker `QListWidget`, Select All / Select None, Security / Filtered tabs checkboxes, overwrite-confirmation dialog |
+| UI | `automation/ui/deployment/configure_progress.py` *(v1.2 extension)* | Multi-file queue stable-sort placing security YAMLs last per Section 12.6 |
+| Schema | `PRDs/product/app-yaml-schema.md` *(v1.2 patches)* | §12.5 NOT_SUPPORTED on EspoCRM 9.x (deferred to v1.4); §12.6 deploy ordering corrected to security-last |
 
 ### 9.2 Architecture Decisions
 
@@ -516,6 +731,69 @@ table redefinition pattern (same approach as `_master_v3`) to rebuild
 `frozenset({entity.link, foreign.link})` to ensure each relationship
 pair is recorded exactly once regardless of which side is encountered
 first.
+
+**§12.5 deploy is NOT_SUPPORTED on EspoCRM 9.x (v1.2).** EspoCRM
+9.x Dynamic Logic has no role-condition type; Layout Sets bind to
+Teams not Roles. Section 12.5 role-aware visibility ships at the
+YAML/loader/validator/audit-passthrough surface but not at deploy.
+Operators using EspoCRM 9.x configure role-aware visibility
+manually via Dynamic Handler JavaScript or Layout Sets + Teams.
+Deferred to v1.4 alongside §12.7 field-level permissions.
+
+**Deploy ordering is security-LAST (v1.2).** Files declaring
+`roles:` or `teams:` deploy after files declaring entities so the
+scope_access pre-flight in `role_manager._preflight_scope_access`
+can validate against server state. Earlier drafts of the schema
+spec prescribed security-first; investigation confirmed no
+write-time validation in EspoCRM (references resolve at view-time),
+so the pre-flight design dictates the order. Schema §12.6
+corrected at v1.2.
+
+**Pre-flight server-state validation (DEC-178).** `role_manager`
+fetches the current scope list at the start of role deploy and
+validates that every `scope_access:` entity reference resolves on
+the target. Roles with unresolvable references receive a clear
+pre-deploy error rather than the silent-accept-or-confusing-HTTP-
+error behavior EspoCRM provides at write time.
+
+**`audit_log` removed from §12.4 (DEC-176).** The schema's earlier
+`audit_log:` permission was based on an EspoCRM 8.0 column that
+9.x no longer manages via Role records. Removed entirely from the
+v1.3 schema rather than carrying a vestigial field.
+
+**Three EspoCRM-only permissions preserved on PATCH (DEC-177).**
+`followerManagementPermission`, `groupEmailAccountPermission`, and
+`dataPrivacyPermission` are not in the v1.3 schema but exist on
+the EspoCRM Role record. `role_manager` PATCH operations preserve
+them rather than nulling them out — operators who configure these
+manually on the target retain their settings across deploys.
+
+**Empty-`scope_access` warning (DEC-179).** Roles captured with no
+resolved scope entries (e.g., a role that grants only system
+permissions) are still emitted to YAML, but the audit log emits an
+informational warning so the operator notices and can confirm the
+empty matrix was intentional.
+
+**Default-on security and filtered-tabs (DEC-180).** The new
+`AuditOptions.include_security` and `AuditOptions.include_filtered_tabs`
+booleans default to `True` to keep the audit's identity as
+"capture the full configuration of a source instance for
+round-trip deploy." First v1.2 audit run produces `security.yaml`
+and `filteredTabs:` blocks without operator intervention.
+
+**Overwrite confirmation guard (DEC-181).** When the output
+directory already contains audit YAML output, the entry shows a
+confirmation dialog (default-Cancel) before launching. Trigger
+pattern matches `*.yaml` at the program root OR `security/*.yaml`
+under the subdirectory — covers both per-entity YAMLs and the
+single security YAML.
+
+**Security YAML co-located in `security/` subdirectory (DEC-182).**
+`security.yaml` is emitted to `<output_dir>/security/security.yaml`
+rather than at the program root. Anchoring security-related files
+in a dedicated subdirectory keeps the program root focused on
+per-entity YAMLs and pre-positions for v1.4 §12.7 permission-preset
+files. The deploy-side loader scan covers both root and `security/`.
 
 ### 9.3 Key Classes and Functions
 
@@ -596,13 +874,37 @@ CHECK on first creation.
 
 ## 10. Future Considerations
 
+### Done in v1.2
+
+- **Selective entity audit** — Operators pick which entities to audit
+  via the entity picker (§8.1).
+- **Audit-trail `ConfigurationRun` history** — Every audit run is
+  recorded in `ConfigurationRun` with `operation: 'audit'` (§4.6).
+
+### Deferred
+
+- **Section 12.5 deploy support (v1.4).** Role-aware field/panel
+  visibility and layout-level `forRoles` variants need a real deploy
+  mechanism. Candidates: Dynamic Handler JS generation, Teams-as-
+  proxies-for-Roles, or an EspoCRM upstream feature request for
+  role-condition Dynamic Logic.
+- **Section 12.7 field-level permissions (v1.4).** Field-level
+  read / write / require / hide permissions per role, paired with
+  the §12.5 deferred work.
+- **Diff-aware overwrite confirmation.** The
+  `(instance_id, entity_yaml_name, tab_id)` unique-key triple in the
+  `FilteredTab` client-DB table supports per-file diff rendering
+  before overwrite. Current implementation per DEC-181 is a simple
+  existence check. Candidate enhancement if operator feedback warrants.
+- **Refresh-entity-list button.** The current picker re-discovers
+  scope only when the operator switches instances. A manual refresh
+  button would handle mid-session server-side changes without
+  requiring an instance switch.
 - **Migration workflow** — Select a source instance and a target
-  instance, audit the source, review/edit the YAML, then configure the
-  target. The Audit entry could surface both pickers.
+  instance, audit the source, review/edit the YAML, then configure
+  the target. The Audit entry could surface both pickers.
 - **Differential audit** — Compare a previous audit snapshot to the
   current CRM state and highlight what changed.
-- **Selective entity audit** — Let users pick which entities to audit
-  rather than auditing everything.
 - **Data record export** — Extend the audit to capture record data
   (not just schema), producing CSV or import-ready files.
 - **Audit-to-Configure pipeline** — After auditing, automatically

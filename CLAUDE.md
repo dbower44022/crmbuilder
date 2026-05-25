@@ -261,6 +261,37 @@ same SSH connection and credentials, persisted in the
   the instance picker is fed by `VersionCheckWorker` on every
   `instance_changed` signal.
 
+## Audit Feature (feat-audit.md) — v1.2
+
+The Audit feature discovers entities, fields, layouts,
+relationships, security (roles and teams), and filtered tabs from
+a source instance and emits structured YAML to the timestamped
+`programs/audit-YYYYMMDD-HHMMSS/` directory. Per-entity YAML files
+live at the program root; security captures land in
+`security/security.yaml` under a dedicated subdirectory (DEC-182).
+
+- **Operator chooses entities** via a picker populated by a
+  pre-flight `get_all_scopes()` call when the active source
+  instance is selected. Select All / Select None buttons; default
+  is all-checked. Switching instances re-discovers from the new
+  source.
+- **Security and filtered-tab capture default on** (DEC-180) — the
+  audit's identity is full-configuration round-trip; first v1.2
+  run produces `security.yaml` and `filteredTabs:` blocks without
+  intervention.
+- **Section 12.5 role-aware visibility is NOT_AUDITABLE in v1.3.**
+  EspoCRM 9.x Dynamic Logic has no role-condition type; operators
+  configure it manually on the target via Dynamic Handler JS or
+  Layout Sets + Teams. Schema accepts the structure for v1.4 when
+  a real deploy mechanism lands.
+- **Overwrite-confirmation guard (DEC-181)** fires when the output
+  directory already contains audit YAML (any `*.yaml` at the root
+  OR any `security/*.yaml` under the subdirectory). Default focus
+  is Cancel.
+
+The full feature spec, file inventory, and architecture decisions
+live in `PRDs/product/features/feat-audit.md` §9.
+
 ## YAML Schema v1.1 — Implementation Complete
 
 The YAML program file schema was extended from v1.0 to v1.1
