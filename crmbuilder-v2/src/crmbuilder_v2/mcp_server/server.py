@@ -19,7 +19,6 @@ import httpx
 from mcp.server.fastmcp import FastMCP
 
 from crmbuilder_v2.config import get_settings
-from crmbuilder_v2.mcp_server.middleware import SharedSecretMiddleware
 from crmbuilder_v2.mcp_server.tools import register_tools
 
 
@@ -28,7 +27,6 @@ def build_server(
     *,
     host: str = "127.0.0.1",
     port: int | None = None,
-    shared_secret: str | None = None,
 ) -> FastMCP:
     """Build an MCP server bound to ``http``.
 
@@ -36,16 +34,12 @@ def build_server(
     when ``server.run("streamable-http")`` is invoked the HTTP transport
     binds the right address. They are ignored for stdio transport.
 
-    When ``shared_secret`` is set (HTTP transport only), the FastMCP's
-    ``streamable_http_app`` factory is wrapped so the returned Starlette
-    app has :class:`SharedSecretMiddleware` registered before uvicorn
-    serves it. The installed FastMCP SDK has no constructor
-    ``middleware=`` kwarg and exposes no ``add_middleware`` method on
-    the FastMCP class itself; the Starlette app returned by
-    ``streamable_http_app()`` is the only registration surface, and
-    ``Starlette.add_middleware()`` must be called before the app
-    starts handling requests — which is the case here, since the wrap
-    runs inside ``run_streamable_http_async`` before serving begins.
+    ``streamable_http_path`` is set to ``"/"`` so the MCP transport
+    mounts at the application root. This makes the URL claude.ai users
+    enter — ``https://mcp.crmbuilder.ai`` — match Cloudflare Managed
+    OAuth's emitted Protected Resource Metadata ``resource`` field
+    exactly (DEC-227 / PI-049). Anthropic's connector spec requires
+    exact match between user-entered URL and the PRM ``resource``.
     """
     settings = get_settings()
     resolved_port = port if port is not None else settings.mcp_http_port
@@ -59,29 +53,11 @@ def build_server(
         ),
         host=host,
         port=resolved_port,
+        streamable_http_path="/",
     )
-    if shared_secret:
-        _install_shared_secret_middleware(server, shared_secret)
     client = http or httpx.AsyncClient(base_url=settings.api_base_url, timeout=30.0)
     register_tools(server, client)
     return server
-
-
-def _install_shared_secret_middleware(server: FastMCP, secret: str) -> None:
-    """Wrap ``server.streamable_http_app`` so the Starlette app it
-    returns has :class:`SharedSecretMiddleware` registered.
-
-    See ``build_server`` for the rationale on why wrapping the factory
-    method is the chosen registration path.
-    """
-    original_factory = server.streamable_http_app
-
-    def streamable_http_app_with_middleware(*args, **kwargs):
-        app = original_factory(*args, **kwargs)
-        app.add_middleware(SharedSecretMiddleware, expected_secret=secret)
-        return app
-
-    server.streamable_http_app = streamable_http_app_with_middleware  # type: ignore[method-assign]
 
 
 def main(
@@ -98,25 +74,18 @@ def main(
     ``127.0.0.1`` by the CLI per DEC-202; exposing it as a setting
     would invite a future ``0.0.0.0`` foot-gun.
 
-    The streamable-http transport requires
-    ``CRMBUILDER_V2_MCP_SHARED_SECRET`` to be set in the environment
-    (DEC-204 second-layer auth). Startup hard-fails if it is not.
+    No application-layer auth is enforced here. Cloudflare Access
+    Managed OAuth validates Bearer tokens at the edge before any
+    request reaches the tunnel target (DEC-227 / PI-049). The earlier
+    X-CRMBuilder-Secret middleware was removed when Path B landed —
+    claude.ai's MCP connector UI does not support custom HTTP headers,
+    so a header-based second layer cannot integrate with the connector.
     """
     if transport == "stdio":
         server = build_server()
         server.run("stdio")
     elif transport == "streamable-http":
-        settings = get_settings()
-        if not settings.mcp_shared_secret:
-            raise RuntimeError(
-                "CRMBUILDER_V2_MCP_SHARED_SECRET must be set when "
-                "transport is streamable-http (DEC-204 second-layer auth)"
-            )
-        server = build_server(
-            host=host,
-            port=port,
-            shared_secret=settings.mcp_shared_secret,
-        )
+        server = build_server(host=host, port=port)
         server.run("streamable-http")
     else:
         raise ValueError(f"unknown MCP transport: {transport!r}")
