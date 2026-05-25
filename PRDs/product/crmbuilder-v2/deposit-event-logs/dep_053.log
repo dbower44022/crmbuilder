@@ -1,0 +1,27 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_073.json
+Label:  SES-073 PI-045 step-5 conversation: Service Token rotation completed, mcp-secret persistence completed, end-to-end auth verification through the tunnel completed — then claude.ai connector registration discovered claude.ai's UI supports only OAuth 2.1 (no custom HTTP headers), making the X-CRMBuilder-Secret + Cloudflare Service Token model from DEC-204/225 incompatible. DEC-226 reroutes the auth model to OAuth 2.1 + PKCE with a timeboxed Path B (Cloudflare Access as OIDC IdP) feasibility check before committing to Path A (server-side OAuth). PI-049 created with four-phase implementation scope. WT-046 carries the kickoff body inline (dogfooding the v0.7 governance pattern of database-backed kickoffs). Records originally landed via direct-API POSTs from a small helper script — ses_073.json + this deposit_event backfill the archival audit chain. 1 session, 1 decision, 1 planning item, 1 work_ticket, 7 references.
+Deposit event: DEP-053
+
+=== session (1 record) ===
+  · POST session  SES-073 already present (HTTP 409) — skipping
+
+=== work_tickets (1 record) ===
+
+=== planning_items (1 record) ===
+  · POST planning_items  PI-049 already present (HTTP 409) — skipping
+
+=== decisions (1 record) ===
+  · POST decisions  DEC-226 already present (HTTP 409) — skipping
+
+=== references (7 records) ===
+  · POST references  DEC-226 decided_in SES-073 already present (HTTP 409) — skipping
+  · POST references  DEC-226 references DEC-204 already present (HTTP 409) — skipping
+  · POST references  DEC-226 references DEC-225 already present (HTTP 409) — skipping
+  · POST references  SES-073 is_about PI-045 already present (HTTP 409) — skipping
+  · POST references  SES-073 is_about PI-049 already present (HTTP 409) — skipping
+  · POST references  PI-045 blocked_by PI-049 already present (HTTP 409) — skipping
+  · POST references  WT-046 addresses PI-049 already present (HTTP 409) — skipping
+
+
+✓ Recorded apply as deposit_event DEP-053 (HTTP 201).

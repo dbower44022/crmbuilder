@@ -1055,5 +1055,56 @@
       "work_tickets": 1
     },
     "deposit_event_title": "Apply of COP-073 (direct-API backfill, SES-073)"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "0.7.0",
+      "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_073.json",
+      "runner": "claude_code"
+    },
+    "deposit_event_created_at": "2026-05-25T05:36:41.787137",
+    "deposit_event_description": "Applied COP-073. Outcome: failure at step work_tickets. Records written before failure: no records written.",
+    "deposit_event_error_info": {
+      "http_status": 422,
+      "kind": "http_error",
+      "message": "[{\"code\": \"duplicate\", \"field\": \"work_ticket_title\", \"message\": \"a work_ticket titled 'Kickoff: PI-049 OAuth 2.1 + PKCE implementation for v2 MCP server (timeboxed Path B feasibility first)' already exists\"}]",
+      "step": "work_tickets"
+    },
+    "deposit_event_identifier": "DEP-053",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_053.log",
+    "deposit_event_outcome": "failure",
+    "deposit_event_records_summary": {
+      "commits": 0,
+      "conversations": 0,
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 0,
+      "work_tickets": 0
+    },
+    "deposit_event_title": "Apply of COP-073, 2026-05-25T05:36:41+00:00"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "0.7.0",
+      "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_074.json",
+      "runner": "claude_code"
+    },
+    "deposit_event_created_at": "2026-05-25T15:28:37.369215",
+    "deposit_event_description": "Applied COP-074. Outcome: success. 3 commits, 1 conversations, 6 decisions, 1 planning_items, 1 sessions.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-054",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_054.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "commits": 3,
+      "conversations": 1,
+      "decisions": 6,
+      "planning_items": 1,
+      "references": 0,
+      "sessions": 1,
+      "work_tickets": 0
+    },
+    "deposit_event_title": "Apply of COP-074, 2026-05-25T15:28:37+00:00"
   }
 ]

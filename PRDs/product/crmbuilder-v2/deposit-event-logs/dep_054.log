@@ -1,0 +1,45 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_074.json
+Label:  PI-030 build closure — first nine-section v0.8 payload acceptance test; ingest slice A/B/C SHAs (70d88e6, 2b5557d, c6ff67a) attributed to CONV-046; resolve PI-030; surface PI-050 helper-evolution; settle six surface-and-settle decisions (DEC-232 through DEC-237); promote Code Change Lifecycle workstream to WS-009 via apply-prompt pre-step; amend methodology §10 (build-closure pattern), §5.5 (parallel-workstream commit enumeration), §4.0 (workstream-edge example fix), §5.3 and §5.7 (cross-refs to §10).
+Deposit event: DEP-054
+
+=== session (1 record) ===
+  ✓ POST session  SES-074 (HTTP 201)
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CONV-046 (HTTP 201)
+
+=== planning_items (1 record) ===
+  ✓ POST planning_items  PI-050 (HTTP 201)
+
+=== commits (3 records) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (6 records) ===
+  ✓ POST decisions  DEC-232 (HTTP 201)
+  ✓ POST decisions  DEC-233 (HTTP 201)
+  ✓ POST decisions  DEC-234 (HTTP 201)
+  ✓ POST decisions  DEC-235 (HTTP 201)
+  ✓ POST decisions  DEC-236 (HTTP 201)
+  ✓ POST decisions  DEC-237 (HTTP 201)
+
+=== references (7 records) ===
+  ✓ POST references  DEC-232 decided_in SES-074 (HTTP 201)
+  ✓ POST references  DEC-233 decided_in SES-074 (HTTP 201)
+  ✓ POST references  DEC-234 decided_in SES-074 (HTTP 201)
+  ✓ POST references  DEC-235 decided_in SES-074 (HTTP 201)
+  ✓ POST references  DEC-236 decided_in SES-074 (HTTP 201)
+  ✓ POST references  DEC-237 decided_in SES-074 (HTTP 201)
+  ✓ POST references  SES-074 is_about PI-050 (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-030 (HTTP 201)
+
+=== addresses_planning_items (1 record) ===
+  ✓ POST addresses_planning_items  → PI-032 (HTTP 201)
+
+✓ All 21 operations complete.
+
+✓ Recorded apply as deposit_event DEP-054 (HTTP 201).

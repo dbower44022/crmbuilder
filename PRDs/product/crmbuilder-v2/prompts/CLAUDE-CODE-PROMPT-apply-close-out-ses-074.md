@@ -4,7 +4,7 @@
 **Re-key note:** Originally drafted as SES-073 close-out at 05-25-26 13:30; re-keyed to SES-074 / DEC-232..DEC-237 / PI-050 at 05-25-26 16:00 after a parallel-sandbox PI-045 step-5 OAuth-rerouting session claimed SES-073, DEC-226, and PI-049 via direct-API writes (commits `bfa7053`, `7495a40`). CONV-046, CM-0001..CM-0003, and WS-009 remain as originally written. Identifier-collision contingency anticipated by the build-closure kickoff.
 **Purpose:** Apply the SES-074 close-out payload — the first close-out to use the full nine-section v0.8 payload format, and the functional acceptance test for PI-030's machinery (slice A's POST /references atomic edge+flip, slice B's apply_close_out.py extension for the five new sections, slice C's enumerate_commits.py helper). Lands SES-074 plus CONV-046, three commit records (CM-0001/0002/0003 for slices A/B/C), six decisions (DEC-232–DEC-237), one new planning item (PI-050), seven payload references (six `decided_in` plus one `is_about` to PI-050), one resolves edge that atomically flips PI-030 to Resolved, and one addresses edge to PI-032.
 
-**Payload file:** `PRDs/product/crmbuilder-v2/close-out-payloads/ses_073.json`
+**Payload file:** `PRDs/product/crmbuilder-v2/close-out-payloads/ses_074.json`
 **Predecessors:**
 - SES-072 must have landed (commit `63f13a4`, applied per its apply prompt).
 - The parallel-sandbox PI-045 step-5 OAuth-rerouting work that claimed SES-073/DEC-226/PI-049 (commits `bfa7053` direct-API writes and `7495a40` audit-chain backfill) has landed on `origin/main`; the SES-074 payload was re-keyed from an originally-drafted SES-073 in response, per the identifier-collision contingency named in the build-closure kickoff.
@@ -16,7 +16,7 @@
 
 ## Scope
 
-Apply `close-out-payloads/ses_073.json` using `crmbuilder-v2/scripts/apply_close_out.py`. The payload contains all nine v0.8 sections:
+Apply `close-out-payloads/ses_074.json` using `crmbuilder-v2/scripts/apply_close_out.py`. The payload contains all nine v0.8 sections:
 
 - **1 session** (SES-074)
 - **1 conversation** (CONV-046, status `complete`, embeds the two required edges atomically: `conversation_belongs_to_workstream` to WS-009, `conversation_records_session` to SES-074)
@@ -54,7 +54,7 @@ curl -sf http://127.0.0.1:8765/health
 #   uv run crmbuilder-v2-api &
 
 # Verify the payload file exists
-ls -la ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_073.json
+ls -la ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_074.json
 
 # Confirm slice SHAs on local main (commits ingested by this close-out)
 for sha in 70d88e6 2b5557d c6ff67a; do
@@ -130,7 +130,7 @@ Expected output: `Created: WS-009 - in_flight` on first run; `WS-009 already exi
 ```bash
 cd ~/Dropbox/Projects/crmbuilder/crmbuilder-v2
 uv run python scripts/apply_close_out.py \
-  ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_073.json
+  ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_074.json
 ```
 
 Expected output structure (methodology §4 order: session → conversation → work_tickets → planning_items → commits → decisions → references → resolves_planning_items → addresses_planning_items):

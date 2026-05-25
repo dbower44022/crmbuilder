@@ -118,5 +118,20 @@
     "workstream_status": "complete",
     "workstream_superseded_at": null,
     "workstream_updated_at": "2026-05-23T21:12:02.486393"
+  },
+  {
+    "workstream_cancelled_at": null,
+    "workstream_completed_at": null,
+    "workstream_created_at": "2026-05-25T05:36:30.659762",
+    "workstream_deleted_at": null,
+    "workstream_description": "The workstream established at SES-057 to close the planning_items resolution gap diagnosed by the v0.7 schema-design close-out (PI-022 was the only Resolved planning item and had no resolves edge). Comprises planning items PI-027 (methodology document), PI-028 (commit entity schema spec), PI-029 (commits access layer + REST), PI-030 (close-out payload extension + apply integration + enumerate_commits.py helper), PI-031 (commits panel UI), PI-032 (methodology rollout — close-out template + work_ticket authoring rule in repo CLAUDE.md), and PI-033 (historical backfill of work_tickets, commits, retroactive resolves edges, and the blocks → blocked_by + is_about → addresses kind migrations). PI-050 (extend enumerate_commits.py with explicit-list mode) joins on surface from SES-074. Status remains in_flight until PI-031, PI-032, and PI-033 all resolve.",
+    "workstream_identifier": "WS-009",
+    "workstream_name": "Code Change Lifecycle workstream",
+    "workstream_notes": null,
+    "workstream_purpose": "Bring code-change lifecycle into V2 governance: methodology document, commit entity, payload-section extensions, UI surface, methodology rollout, and historical backfill.",
+    "workstream_started_at": "2026-05-25T05:36:30.660123",
+    "workstream_status": "in_flight",
+    "workstream_superseded_at": null,
+    "workstream_updated_at": "2026-05-25T05:36:30.660382"
   }
 ]
