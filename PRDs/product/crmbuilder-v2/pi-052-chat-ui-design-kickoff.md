@@ -1,5 +1,7 @@
 # Kickoff: PI-052 — Chat UI add-on to the V2 PySide6 desktop app
 
+> **V2 governance anchor:** [WT-047](http://127.0.0.1:8765/work-tickets/WT-047) addresses PI-052 and points at this file via `work_ticket_file_path`. Future sessions discover this kickoff by querying *"what work_tickets address PI-052?"* in the V2 governance DB. A session opening against PI-052 should `get_work_ticket("WT-047")` (or `curl /work-tickets/WT-047`) and follow the file path to here. If this file and WT-047's `work_ticket_description` drift, **this file is the canonical source** (the WT carries a summary plus pointer).
+
 **Status:** Ready. This kickoff is the architectural design conversation for the chat-UI work surfaced by DEC-245 (architectural pivot away from claude.ai-web after the upstream connector bug discovered in DEC-244).
 
 **Session type:** Design + planning. ARCHITECTURE working mode throughout. No code is written in this conversation — the output is a design document, slicing plan, and architectural decisions.
