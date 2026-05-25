@@ -1,0 +1,32 @@
+=== Applying close-out payload ===
+Source: PRDs/product/crmbuilder-v2/close-out-payloads/ses_075.json
+Label:  audit-v1.2 prompt-series authoring close-out — Prompts A through K (11 prompts) plus six governance DECs surfaced during prompt kickoffs plus PI-051 v1.4 deferred work
+Deposit event: DEP-055
+
+=== session (1 record) ===
+  ✓ POST session  SES-075 (HTTP 201)
+
+=== planning_items (1 record) ===
+  ✓ POST planning_items  PI-051 (HTTP 201)
+
+=== decisions (6 records) ===
+  ✓ POST decisions  DEC-238 (HTTP 201)
+  ✓ POST decisions  DEC-239 (HTTP 201)
+  ✓ POST decisions  DEC-240 (HTTP 201)
+  ✓ POST decisions  DEC-241 (HTTP 201)
+  ✓ POST decisions  DEC-242 (HTTP 201)
+  ✓ POST decisions  DEC-243 (HTTP 201)
+
+=== references (8 records) ===
+  ✓ POST references  DEC-238 decided_in SES-075 (HTTP 201)
+  ✓ POST references  DEC-239 decided_in SES-075 (HTTP 201)
+  ✓ POST references  DEC-240 decided_in SES-075 (HTTP 201)
+  ✓ POST references  DEC-241 decided_in SES-075 (HTTP 201)
+  ✓ POST references  DEC-242 decided_in SES-075 (HTTP 201)
+  ✓ POST references  DEC-243 decided_in SES-075 (HTTP 201)
+  ✓ POST references  SES-075 is_about PI-051 (HTTP 201)
+  ✓ POST references  DEC-243 is_about PI-051 (HTTP 201)
+
+✓ All 16 operations complete.
+
+✓ Recorded apply as deposit_event DEP-055 (HTTP 201).

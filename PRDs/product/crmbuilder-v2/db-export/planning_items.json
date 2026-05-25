@@ -548,5 +548,16 @@
     "status": "Open",
     "title": "Extend enumerate_commits.py with explicit-list mode for parallel-workstream closures",
     "updated_at": "2026-05-25T15:28:34.963340"
+  },
+  {
+    "created_at": "2026-05-25T15:37:43.754155",
+    "description": "Implement deploy support for Section 12.5 (Role-Aware Visibility) and Section 12.7 (Field-Level Permissions) on EspoCRM 9.x. v1.2 left both sections NOT_SUPPORTED per DEC-243 (12.5) and prior deferrals (12.7). The right implementation path requires real wire-format research; current best candidates are documented in DEC-243 and the schema §12.5 Deploy Support sub-section. \n\nScope items to investigate at PI-051 kickoff: (1) Dynamic Handler JavaScript generation — `client/custom/src/views/<entity>/record/detail.js` generation per entity with role-aware visibility logic; requires file-system writes (no REST API path) and an audit-side reverse-engineering strategy for round-trip; or accept that this surface is NOT_AUDITABLE and stays write-only. (2) Teams-as-proxies-for-Roles translation — auto-generate a Team per Role at deploy; bind users to teams as a separate operator step; use EspoCRM 8.1's current-user-teams Dynamic Logic condition. Requires conflating Team and Role semantics or accepting that operators see auto-generated teams in the EspoCRM admin UI. (3) Upstream EspoCRM feature request — file a Dynamic Logic role-condition feature request and wait. Not actionable as a planning item but worth tracking. (4) Layout Sets + Teams (forRoles variant deploy path) — separate from 12.5.1 deploy; layout-level role scoping can use Layout Sets bound to auto-generated mirror-Teams even if leaf-clause role conditions remain NOT_SUPPORTED.\n\nFor §12.7 (field-level permissions): out of scope for v1.2 because the schema sub-section was deferred from v1.1. v1.4 should consider §12.5 and §12.7 holistically since both are role-keyed permission surfaces with similar deploy mechanics on EspoCRM (probably some combination of role-record fieldOverridesPermission columns and dynamic-logic for visibility).\n\nPredecessors: audit-v1.2 series complete (this close-out). Schema spec §12.5 and §12.6 patched at v1.2; §12.7 sub-section still in draft state from prior work. Successor: actual v1.4 schema-spec revisions plus implementation prompts. No active commitment to a target date — PI-051 enters the backlog at status Open.",
+    "id": 51,
+    "identifier": "PI-051",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "audit-v1.4 — Section 12.5 role-aware visibility deploy implementation alongside Section 12.7 field-level permissions",
+    "updated_at": "2026-05-25T15:37:43.754158"
   }
 ]
