@@ -16,8 +16,9 @@ from datetime import UTC, datetime
 import pytest
 
 from automation.db.client_schema import get_client_schema_sql
-from automation.db.migrations import _client_v5, _client_v15
+from automation.db.migrations import _client_v5, _client_v15, _client_v16
 from espo_impl.core.audit_db import (
+    _insert_filtered_tab,
     _insert_role,
     _insert_team,
     _serialize_default,
@@ -27,10 +28,12 @@ from espo_impl.core.audit_manager import (
     AuditReport,
     EntityAuditResult,
     FieldAuditResult,
+    FilteredTabAuditResult,
     RoleAuditResult,
     TeamAuditResult,
 )
 from espo_impl.core.audit_utils import EntityClass
+from espo_impl.core.condition_expression import LeafClause
 from espo_impl.core.models import ScopeAccess, SystemPermissions
 
 # ---------------------------------------------------------------------------
@@ -351,3 +354,171 @@ def test_insert_audit_records_skips_security_without_instance_id(security_db):
     assert total == 0
     assert security_db.execute("SELECT COUNT(*) FROM Team").fetchone()[0] == 0
     assert security_db.execute("SELECT COUNT(*) FROM Role").fetchone()[0] == 0
+
+
+# ---------------------------------------------------------------------------
+# FilteredTab insertion (audit-v1.2 Prompt I)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def filtered_tab_db():
+    """Client DB with ConfigurationRun (v5), Role/Team (v15), and
+    FilteredTab (v16) applied."""
+    conn = sqlite3.connect(":memory:")
+    conn.execute("PRAGMA foreign_keys = ON")
+    for stmt in get_client_schema_sql():
+        conn.execute(stmt)
+    _client_v5(conn)
+    _client_v15(conn)
+    _client_v16(conn)
+    conn.commit()
+    yield conn
+    conn.close()
+
+
+def test_insert_filtered_tab_creates_row(filtered_tab_db):
+    instance_id = _make_instance(filtered_tab_db)
+    tab = FilteredTabAuditResult(
+        id="myEngagements",
+        scope="MyEngagements",
+        label="My Engagements",
+        filter=LeafClause(
+            field="assignedUser", op="equals", value="$user",
+        ),
+        nav_order=3,
+        acl="boolean",
+    )
+
+    inserted = _insert_filtered_tab(
+        filtered_tab_db, "Engagement", tab, instance_id,
+    )
+
+    assert inserted is True
+    row = filtered_tab_db.execute(
+        "SELECT instance_id, entity_yaml_name, tab_id, scope, label, "
+        "acl, filter_json, nav_order "
+        "FROM FilteredTab WHERE tab_id = 'myEngagements'"
+    ).fetchone()
+    assert row[0] == instance_id
+    assert row[1] == "Engagement"
+    assert row[2] == "myEngagements"
+    assert row[3] == "MyEngagements"
+    assert row[4] == "My Engagements"
+    assert row[5] == "boolean"
+    payload = json.loads(row[6])
+    assert payload == {
+        "field": "assignedUser", "op": "equals", "value": "$user",
+    }
+    assert row[7] == 3
+
+
+def test_insert_filtered_tab_with_none_filter_stores_null(filtered_tab_db):
+    """A tab with filter=None (unknown where-item type poisoned the
+    filter) stores NULL in filter_json."""
+    instance_id = _make_instance(filtered_tab_db)
+    tab = FilteredTabAuditResult(
+        id="quarterlyOpen",
+        scope="QuarterlyOpen",
+        label="Quarterly Open",
+        filter=None,
+        acl="boolean",
+    )
+
+    assert _insert_filtered_tab(
+        filtered_tab_db, "Engagement", tab, instance_id,
+    ) is True
+
+    row = filtered_tab_db.execute(
+        "SELECT filter_json FROM FilteredTab WHERE tab_id = 'quarterlyOpen'"
+    ).fetchone()
+    assert row[0] is None
+
+
+def test_insert_filtered_tab_skips_duplicate(filtered_tab_db):
+    instance_id = _make_instance(filtered_tab_db)
+    tab = FilteredTabAuditResult(
+        id="myEngagements", scope="MyEngagements", label="X",
+    )
+
+    assert _insert_filtered_tab(
+        filtered_tab_db, "Engagement", tab, instance_id,
+    ) is True
+    assert _insert_filtered_tab(
+        filtered_tab_db, "Engagement", tab, instance_id,
+    ) is False
+
+    count = filtered_tab_db.execute(
+        "SELECT COUNT(*) FROM FilteredTab WHERE tab_id = 'myEngagements'"
+    ).fetchone()[0]
+    assert count == 1
+
+
+def test_insert_audit_records_includes_filtered_tab_count(filtered_tab_db):
+    instance_id = _make_instance(filtered_tab_db)
+    tab = FilteredTabAuditResult(
+        id="myEngagements",
+        scope="MyEngagements",
+        label="My Engagements",
+        filter=LeafClause(
+            field="assignedUser", op="equals", value="$user",
+        ),
+    )
+    entity = EntityAuditResult(
+        yaml_name="Engagement",
+        espo_name="CEngagement",
+        entity_class=EntityClass.CUSTOM,
+        entity_type="Base",
+        label_singular="Engagement",
+        label_plural="Engagements",
+        filtered_tabs=[tab],
+    )
+    report = AuditReport(
+        source_url="https://example.test",
+        source_name="audit-test",
+        timestamp=datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        output_dir="",
+        entities=[entity],
+    )
+
+    total = insert_audit_records(
+        filtered_tab_db, report, instance_id=instance_id,
+    )
+
+    # 1 entity + 1 filtered tab + 1 ConfigurationRun
+    assert total == 3
+    assert filtered_tab_db.execute(
+        "SELECT COUNT(*) FROM FilteredTab WHERE instance_id = ?",
+        (instance_id,),
+    ).fetchone()[0] == 1
+
+
+def test_insert_audit_records_skips_filtered_tab_without_instance_id(
+    filtered_tab_db,
+):
+    """Without an instance_id, filtered tabs have nowhere to FK to and
+    are not inserted (matches the role/team gate)."""
+    tab = FilteredTabAuditResult(
+        id="myEngagements", scope="MyEngagements", label="My Engagements",
+    )
+    entity = EntityAuditResult(
+        yaml_name="Engagement",
+        espo_name="CEngagement",
+        entity_class=EntityClass.CUSTOM,
+        entity_type="Base",
+        label_singular="Engagement",
+        label_plural="Engagements",
+        filtered_tabs=[tab],
+    )
+    report = AuditReport(
+        source_url="https://example.test",
+        source_name="audit-test",
+        timestamp="2026-05-24T07:30:00Z",
+        output_dir="",
+        entities=[entity],
+    )
+
+    insert_audit_records(filtered_tab_db, report, instance_id=None)
+
+    assert filtered_tab_db.execute(
+        "SELECT COUNT(*) FROM FilteredTab"
+    ).fetchone()[0] == 0

@@ -824,6 +824,54 @@ def _client_v15(conn: sqlite3.Connection) -> None:
     )
 
 
+def _client_v16(conn: sqlite3.Connection) -> None:
+    """Add FilteredTab table for audit-v1.2 filtered-tab capture.
+
+    Tables hold the audited filtered-tab records per (instance,
+    entity) pair. The filter AST is stored as JSON; downstream
+    consumers parse it back when needed.
+
+    Idempotent via ``CREATE TABLE IF NOT EXISTS``. Skips silently if
+    the Instance table does not yet exist (same guard as ``_client_v15``).
+
+    See PRDs/product/crmbuilder-automation-PRD/CLAUDE-CODE-PROMPT-audit-v1.2-I-filtered-tab-audit.md.
+    """
+    tables = {
+        row[0]
+        for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )
+    }
+    if "Instance" not in tables:
+        return
+
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS FilteredTab (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            instance_id INTEGER NOT NULL,
+            entity_yaml_name TEXT NOT NULL,
+            tab_id TEXT NOT NULL,
+            scope TEXT NOT NULL,
+            label TEXT NOT NULL,
+            acl TEXT NOT NULL,
+            filter_json TEXT,
+            nav_order INTEGER,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (instance_id) REFERENCES Instance(id)
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_filtered_tab_instance "
+        "ON FilteredTab(instance_id)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_filtered_tab_entity "
+        "ON FilteredTab(instance_id, entity_yaml_name)"
+    )
+
+
 CLIENT_MIGRATIONS: list[tuple[int, Migration]] = [
     (1, _client_v1),
     (2, _client_v2),
@@ -840,6 +888,7 @@ CLIENT_MIGRATIONS: list[tuple[int, Migration]] = [
     (13, _client_v13),
     (14, _client_v14),
     (15, _client_v15),
+    (16, _client_v16),
 ]
 
 

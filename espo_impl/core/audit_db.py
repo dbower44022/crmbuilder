@@ -15,11 +15,13 @@ from espo_impl.core.audit_manager import (
     AuditReport,
     EntityAuditResult,
     FieldAuditResult,
+    FilteredTabAuditResult,
     RelationshipAuditResult,
     RoleAuditResult,
     TeamAuditResult,
 )
 from espo_impl.core.audit_utils import EntityClass
+from espo_impl.core.condition_expression import render_condition
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +103,13 @@ def insert_audit_records(
         for role in report.roles:
             if _insert_role(conn, role, instance_id):
                 total += 1
+        # Filtered tabs (audit-v1.2 Prompt I) — FK to Instance.
+        for entity in report.entities:
+            for tab in entity.filtered_tabs:
+                if _insert_filtered_tab(
+                    conn, entity.yaml_name, tab, instance_id,
+                ):
+                    total += 1
 
     # Insert ConfigurationRun record
     if instance_id is not None:
@@ -577,6 +586,68 @@ def _insert_role(
         return True
     except sqlite3.IntegrityError as exc:
         logger.warning("Failed to insert role %s: %s", role.name, exc)
+        return False
+
+
+def _insert_filtered_tab(
+    conn: sqlite3.Connection,
+    entity_yaml_name: str,
+    tab: FilteredTabAuditResult,
+    instance_id: int,
+) -> bool:
+    """Insert a FilteredTab row, skipping duplicate (instance, entity, tab_id).
+
+    Serializes the parsed filter AST to JSON via
+    :func:`render_condition`. ``filter_json`` is NULL when the audit
+    captured the tab without recovering a filter (an unknown where-
+    item type triggered the all-or-nothing skip in
+    :meth:`AuditManager._reverse_where_items`).
+
+    :param conn: Database connection.
+    :param entity_yaml_name: YAML entity name the tab belongs to.
+    :param tab: Audited filtered-tab result.
+    :param instance_id: Instance row ID for the FK.
+    :returns: True if inserted, False if skipped.
+    """
+    existing = conn.execute(
+        "SELECT id FROM FilteredTab WHERE instance_id = ? AND "
+        "entity_yaml_name = ? AND tab_id = ?",
+        (instance_id, entity_yaml_name, tab.id),
+    ).fetchone()
+    if existing:
+        return False
+
+    filter_json = (
+        json.dumps(render_condition(tab.filter), ensure_ascii=False)
+        if tab.filter is not None
+        else None
+    )
+    now = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    try:
+        conn.execute(
+            "INSERT INTO FilteredTab (instance_id, entity_yaml_name, "
+            "tab_id, scope, label, acl, filter_json, nav_order, "
+            "created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                instance_id,
+                entity_yaml_name,
+                tab.id,
+                tab.scope,
+                tab.label,
+                tab.acl,
+                filter_json,
+                tab.nav_order,
+                now,
+            ),
+        )
+        return True
+    except sqlite3.IntegrityError as exc:
+        logger.warning(
+            "Failed to insert filtered tab %s.%s: %s",
+            entity_yaml_name, tab.id, exc,
+        )
         return False
 
 

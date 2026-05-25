@@ -16,8 +16,16 @@ from espo_impl.core.audit_manager import (
     AuditManager,
     AuditOptions,
     AuditReport,
+    EntityAuditResult,
+    FilteredTabAuditResult,
     RoleAuditResult,
     TeamAuditResult,
+)
+from espo_impl.core.audit_utils import EntityClass
+from espo_impl.core.condition_expression import (
+    AllNode,
+    AnyNode,
+    LeafClause,
 )
 from espo_impl.core.models import ScopeAccess, SystemPermissions
 
@@ -525,3 +533,498 @@ def test_run_audit_emits_not_auditable_advisory(tmp_path: Path):
 
 def test_audit_options_include_security_defaults_true():
     assert AuditOptions().include_security is True
+
+
+# ---------------------------------------------------------------------------
+# Filtered-tab discovery (audit-v1.2 Prompt I)
+# ---------------------------------------------------------------------------
+
+
+def _engagement_entity() -> EntityAuditResult:
+    """A canonical custom entity used by the filtered-tab tests."""
+    return EntityAuditResult(
+        yaml_name="Engagement",
+        espo_name="CEngagement",
+        entity_class=EntityClass.CUSTOM,
+        entity_type="Base",
+        label_singular="Engagement",
+        label_plural="Engagements",
+    )
+
+
+def test_audit_options_include_filtered_tabs_defaults_true():
+    assert AuditOptions().include_filtered_tabs is True
+
+
+def test_discover_filtered_tabs_no_tab_scopes():
+    """When no custom tab scopes exist, no clientDefs / ReportFilter
+    calls are made and no tabs are attached to any entity."""
+    client = _make_client(get_all_scopes=(200, {}))
+    manager, _log = _make_manager(client)
+    report = _empty_report()
+    entity = _engagement_entity()
+
+    manager._discover_filtered_tabs([entity], report)
+
+    assert entity.filtered_tabs == []
+    client.get_client_defs.assert_not_called()
+    client.list_report_filters.assert_not_called()
+
+
+def test_discover_filtered_tabs_one_tab_one_entity():
+    """A single tab scope binding to Engagement reverses into a
+    FilteredTabAuditResult with id, scope, label, and a filter AST."""
+    client = _make_client(
+        get_all_scopes=(200, {
+            "MyEngagements": {
+                "entity": False, "tab": True, "isCustom": True,
+                "acl": "boolean",
+            },
+        }),
+        get_client_defs=(200, {
+            "controller": "record",
+            "entity": "CEngagement",
+            "defaultFilter": "reportFilterABC123",
+        }),
+        list_report_filters=(200, {"total": 1, "list": [
+            {
+                "id": "ABC123",
+                "name": "My Engagements",
+                "entityType": "CEngagement",
+                "data": {
+                    "where": [
+                        {
+                            "type": "currentUser",
+                            "attribute": "assignedUser",
+                        },
+                    ],
+                },
+            },
+        ]}),
+    )
+    manager, _log = _make_manager(client)
+    report = _empty_report()
+    entity = _engagement_entity()
+
+    manager._discover_filtered_tabs([entity], report)
+
+    assert len(entity.filtered_tabs) == 1
+    tab = entity.filtered_tabs[0]
+    assert tab.id == "myEngagements"
+    assert tab.scope == "MyEngagements"
+    assert tab.label == "My Engagements"
+    assert tab.acl == "boolean"
+    # currentUser → LeafClause(field=assignedUser, op=equals, value=$user)
+    assert isinstance(tab.filter, LeafClause)
+    assert tab.filter.field == "assignedUser"
+    assert tab.filter.op == "equals"
+    assert tab.filter.value == "$user"
+
+
+def test_discover_filtered_tabs_advanced_pack_absent():
+    """list_report_filters returns 404 → informational log line, no
+    error recorded, no tabs attached."""
+    client = _make_client(
+        get_all_scopes=(200, {
+            "MyEngagements": {
+                "entity": False, "tab": True, "isCustom": True,
+            },
+        }),
+        get_client_defs=(200, {
+            "entity": "CEngagement",
+            "defaultFilter": "reportFilterABC123",
+        }),
+        list_report_filters=(404, None),
+    )
+    manager, log = _make_manager(client)
+    report = _empty_report()
+    entity = _engagement_entity()
+
+    manager._discover_filtered_tabs([entity], report)
+
+    assert entity.filtered_tabs == []
+    assert report.errors == []
+    assert any(
+        "Advanced Pack not installed" in msg
+        for msg, _color in log
+    )
+
+
+def test_discover_filtered_tabs_report_filter_missing():
+    """Binding exists in clientDefs but the Report Filter ID isn't
+    in the list response — warning recorded, tab not captured."""
+    client = _make_client(
+        get_all_scopes=(200, {
+            "MyEngagements": {
+                "entity": False, "tab": True, "isCustom": True,
+            },
+        }),
+        get_client_defs=(200, {
+            "entity": "CEngagement",
+            "defaultFilter": "reportFilterDOES_NOT_EXIST",
+        }),
+        list_report_filters=(200, {"total": 1, "list": [
+            {"id": "SOMETHING_ELSE", "name": "Other"},
+        ]}),
+    )
+    manager, _log = _make_manager(client)
+    report = _empty_report()
+    entity = _engagement_entity()
+
+    manager._discover_filtered_tabs([entity], report)
+
+    assert entity.filtered_tabs == []
+    assert any(
+        "MyEngagements" in w and "not found" in w
+        for w in report.warnings
+    )
+
+
+def test_discover_filtered_tabs_unknown_where_type():
+    """A where-item with an unknown type (e.g. ``currentQuarter``)
+    poisons the whole filter — the tab IS captured (label + scope)
+    but the filter is None, and a warning is recorded."""
+    client = _make_client(
+        get_all_scopes=(200, {
+            "QuarterlyOpen": {
+                "entity": False, "tab": True, "isCustom": True,
+                "acl": "boolean",
+            },
+        }),
+        get_client_defs=(200, {
+            "entity": "CEngagement",
+            "defaultFilter": "reportFilterXYZ",
+        }),
+        list_report_filters=(200, {"total": 1, "list": [
+            {
+                "id": "XYZ",
+                "name": "Quarterly Open",
+                "data": {
+                    "where": [
+                        {"type": "currentQuarter", "attribute": "createdAt"},
+                    ],
+                },
+            },
+        ]}),
+    )
+    manager, _log = _make_manager(client)
+    report = _empty_report()
+    entity = _engagement_entity()
+
+    manager._discover_filtered_tabs([entity], report)
+
+    assert len(entity.filtered_tabs) == 1
+    tab = entity.filtered_tabs[0]
+    assert tab.scope == "QuarterlyOpen"
+    assert tab.label == "Quarterly Open"
+    assert tab.filter is None
+    assert any(
+        "QuarterlyOpen" in w and "currentQuarter" in w
+        for w in report.warnings
+    )
+    assert any(
+        "QuarterlyOpen" in w and "unknown where-item types" in w
+        for w in report.warnings
+    )
+
+
+def test_reverse_where_item_current_user():
+    manager, _log = _make_manager()
+    report = _empty_report()
+
+    node = manager._reverse_where_item(
+        {"type": "currentUser", "attribute": "assignedUser"},
+        report, "Test",
+    )
+
+    assert isinstance(node, LeafClause)
+    assert node.field == "assignedUser"
+    assert node.op == "equals"
+    assert node.value == "$user"
+
+
+def test_reverse_where_item_not_current_user():
+    manager, _log = _make_manager()
+    report = _empty_report()
+
+    node = manager._reverse_where_item(
+        {"type": "notCurrentUser", "attribute": "createdBy"},
+        report, "Test",
+    )
+
+    assert isinstance(node, LeafClause)
+    assert node.field == "createdBy"
+    assert node.op == "notEquals"
+    assert node.value == "$user"
+
+
+def test_reverse_where_item_is_null():
+    manager, _log = _make_manager()
+    report = _empty_report()
+
+    node = manager._reverse_where_item(
+        {"type": "isNull", "attribute": "closedAt"},
+        report, "Test",
+    )
+
+    assert isinstance(node, LeafClause)
+    assert node.field == "closedAt"
+    assert node.op == "isNull"
+    # isNull leaves the LeafClause value as the sentinel MISSING; no
+    # 'value' should round-trip through render_condition.
+    from espo_impl.core.condition_expression import render_condition
+    assert "value" not in render_condition(node)
+
+
+def test_reverse_where_item_and_compound():
+    manager, _log = _make_manager()
+    report = _empty_report()
+
+    node = manager._reverse_where_item(
+        {
+            "type": "and",
+            "value": [
+                {"type": "equals", "attribute": "status", "value": "Open"},
+                {"type": "currentUser", "attribute": "assignedUser"},
+            ],
+        },
+        report, "Test",
+    )
+
+    assert isinstance(node, AllNode)
+    assert len(node.children) == 2
+    assert isinstance(node.children[0], LeafClause)
+    assert node.children[0].op == "equals"
+    assert isinstance(node.children[1], LeafClause)
+    assert node.children[1].value == "$user"
+
+
+def test_reverse_where_item_or_compound():
+    manager, _log = _make_manager()
+    report = _empty_report()
+
+    node = manager._reverse_where_item(
+        {
+            "type": "or",
+            "value": [
+                {"type": "equals", "attribute": "status", "value": "Open"},
+                {"type": "equals", "attribute": "status", "value": "Pending"},
+            ],
+        },
+        report, "Test",
+    )
+
+    assert isinstance(node, AnyNode)
+    assert len(node.children) == 2
+
+
+def test_reverse_where_item_nested_compound():
+    manager, _log = _make_manager()
+    report = _empty_report()
+
+    node = manager._reverse_where_item(
+        {
+            "type": "and",
+            "value": [
+                {"type": "currentUser", "attribute": "assignedUser"},
+                {
+                    "type": "or",
+                    "value": [
+                        {"type": "equals", "attribute": "status",
+                         "value": "Open"},
+                        {"type": "equals", "attribute": "status",
+                         "value": "Pending"},
+                    ],
+                },
+            ],
+        },
+        report, "Test",
+    )
+
+    assert isinstance(node, AllNode)
+    assert isinstance(node.children[1], AnyNode)
+    assert len(node.children[1].children) == 2
+
+
+def test_reverse_where_items_single_leaf_top_level():
+    """A single-item list unwraps to the bare LeafClause (matches the
+    deploy half's single-leaf wrap behavior in reverse)."""
+    manager, _log = _make_manager()
+    report = _empty_report()
+
+    node = manager._reverse_where_items(
+        [{"type": "equals", "attribute": "status", "value": "Open"}],
+        report, "Test",
+    )
+
+    assert isinstance(node, LeafClause)
+    assert node.field == "status"
+    assert node.value == "Open"
+
+
+def test_reverse_where_items_multi_leaf_top_level():
+    """A multi-item top-level list wraps in an implicit AllNode
+    (the schema's shorthand-list form)."""
+    manager, _log = _make_manager()
+    report = _empty_report()
+
+    node = manager._reverse_where_items(
+        [
+            {"type": "equals", "attribute": "status", "value": "Open"},
+            {"type": "currentUser", "attribute": "assignedUser"},
+        ],
+        report, "Test",
+    )
+
+    assert isinstance(node, AllNode)
+    assert len(node.children) == 2
+
+
+def test_reverse_where_items_empty_returns_none():
+    manager, _log = _make_manager()
+    report = _empty_report()
+
+    assert manager._reverse_where_items(None, report, "T") is None
+    assert manager._reverse_where_items([], report, "T") is None
+
+
+def test_run_audit_writes_filteredTabs_block_in_entity_yaml(tmp_path: Path):
+    """Full run with a filtered tab — per-entity YAML output contains
+    a ``filteredTabs:`` block with the captured tab."""
+    client = _make_client(
+        get_all_scopes=(200, {
+            "CEngagement": {
+                "entity": True, "isCustom": True, "customizable": True,
+                "type": "Base", "stream": False,
+            },
+            "MyEngagements": {
+                "entity": False, "tab": True, "isCustom": True,
+                "acl": "boolean",
+            },
+        }),
+        get_i18n=(200, {
+            "Global": {
+                "scopeNames": {
+                    "CEngagement": "Engagement",
+                    "MyEngagements": "My Engagements",
+                },
+                "scopeNamesPlural": {"CEngagement": "Engagements"},
+            },
+        }),
+        get_entity_field_list=(200, {
+            "name": {"type": "varchar"},
+        }),
+        get_layout=(200, []),
+        get_all_links=(200, {}),
+        get_client_defs=(200, {
+            "entity": "CEngagement",
+            "defaultFilter": "reportFilterABC123",
+        }),
+        list_report_filters=(200, {"total": 1, "list": [
+            {
+                "id": "ABC123",
+                "name": "My Engagements",
+                "entityType": "CEngagement",
+                "data": {
+                    "where": [
+                        {"type": "currentUser", "attribute": "assignedUser"},
+                    ],
+                },
+            },
+        ]}),
+        get_teams=(200, {"total": 0, "list": []}),
+        get_roles=(200, {"total": 0, "list": []}),
+    )
+    manager, _log = _make_manager(client)
+
+    manager.run_audit(tmp_path)
+
+    yaml_path = tmp_path / "Engagement.yaml"
+    assert yaml_path.exists()
+    data = yaml.safe_load(yaml_path.read_text())
+    entity_block = data["entities"]["Engagement"]
+    assert "filteredTabs" in entity_block
+    assert len(entity_block["filteredTabs"]) == 1
+    tab_dict = entity_block["filteredTabs"][0]
+    assert tab_dict["id"] == "myEngagements"
+    assert tab_dict["scope"] == "MyEngagements"
+    assert tab_dict["label"] == "My Engagements"
+    assert tab_dict["acl"] == "boolean"
+    # render_condition emits a leaf as {"field": ..., "op": ..., "value": ...}
+    assert tab_dict["filter"] == {
+        "field": "assignedUser",
+        "op": "equals",
+        "value": "$user",
+    }
+
+
+def test_run_audit_no_filtered_tab_discovery_when_disabled(tmp_path: Path):
+    """include_filtered_tabs=False — no clientDefs / ReportFilter
+    API calls and no filteredTabs block in any YAML."""
+    options = AuditOptions(include_filtered_tabs=False)
+    client = _make_client(
+        get_all_scopes=(200, {
+            "CEngagement": {
+                "entity": True, "isCustom": True, "customizable": True,
+                "type": "Base", "stream": False,
+            },
+        }),
+        get_i18n=(200, {}),
+        get_entity_field_list=(200, {"name": {"type": "varchar"}}),
+        get_layout=(200, []),
+        get_all_links=(200, {}),
+        get_teams=(200, {"total": 0, "list": []}),
+        get_roles=(200, {"total": 0, "list": []}),
+    )
+    manager, _log = _make_manager(client, options)
+
+    manager.run_audit(tmp_path)
+
+    client.get_client_defs.assert_not_called()
+    client.list_report_filters.assert_not_called()
+    yaml_path = tmp_path / "Engagement.yaml"
+    if yaml_path.exists():
+        data = yaml.safe_load(yaml_path.read_text())
+        assert "filteredTabs" not in data["entities"]["Engagement"]
+
+
+def test_filtered_tab_to_yaml_dict_omits_filter_when_none():
+    """When the filter couldn't be recovered, the YAML block has no
+    ``filter:`` key (operator hand-writes it post-import)."""
+    manager, _log = _make_manager()
+    tab = FilteredTabAuditResult(
+        id="quarterlyOpen",
+        scope="QuarterlyOpen",
+        label="Quarterly Open",
+        filter=None,
+        acl="boolean",
+    )
+
+    result = manager._filtered_tab_to_yaml_dict(tab)
+
+    assert result == {
+        "id": "quarterlyOpen",
+        "scope": "QuarterlyOpen",
+        "label": "Quarterly Open",
+        "acl": "boolean",
+    }
+
+
+def test_filtered_tab_to_yaml_dict_includes_nav_order_when_set():
+    manager, _log = _make_manager()
+    tab = FilteredTabAuditResult(
+        id="myEngagements",
+        scope="MyEngagements",
+        label="My Engagements",
+        nav_order=3,
+        filter=LeafClause(
+            field="assignedUser", op="equals", value="$user",
+        ),
+    )
+
+    result = manager._filtered_tab_to_yaml_dict(tab)
+
+    assert result["navOrder"] == 3
+    assert result["filter"] == {
+        "field": "assignedUser", "op": "equals", "value": "$user",
+    }

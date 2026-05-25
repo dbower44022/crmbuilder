@@ -415,6 +415,77 @@ class TestClientV15Migration:
         conn.close()
 
 
+class TestClientV16Migration:
+    """Tests for ``_client_v16`` adding the FilteredTab table."""
+
+    def _create_db_with_instance(self, path: Path) -> sqlite3.Connection:
+        """Create a minimal DB with an Instance table (mimics post-v3)."""
+        conn = sqlite3.connect(str(path))
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute(_SCHEMA_VERSION_TABLE)
+        conn.execute(
+            """
+            CREATE TABLE Instance (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                code TEXT NOT NULL,
+                environment TEXT NOT NULL
+            )
+            """
+        )
+        conn.commit()
+        return conn
+
+    def test_client_v16_creates_filtered_tab_table(
+        self, tmp_path: Path,
+    ) -> None:
+        from automation.db.migrations import _client_v16
+        conn = self._create_db_with_instance(tmp_path / "v16-ft.db")
+        _client_v16(conn)
+        assert _table_exists(conn, "FilteredTab")
+        cols = _col_names(conn, "FilteredTab")
+        expected = {
+            "id", "instance_id", "entity_yaml_name", "tab_id",
+            "scope", "label", "acl", "filter_json", "nav_order",
+            "created_at",
+        }
+        assert expected.issubset(cols)
+        conn.close()
+
+    def test_client_v16_idempotent(self, tmp_path: Path) -> None:
+        from automation.db.migrations import _client_v16
+        conn = self._create_db_with_instance(tmp_path / "v16-idem.db")
+        _client_v16(conn)
+        _client_v16(conn)
+        assert _table_exists(conn, "FilteredTab")
+        conn.close()
+
+    def test_client_v16_no_instance_table_skips(
+        self, tmp_path: Path,
+    ) -> None:
+        from automation.db.migrations import _client_v16
+        conn = sqlite3.connect(str(tmp_path / "v16-skip.db"))
+        conn.execute(_SCHEMA_VERSION_TABLE)
+        conn.commit()
+        _client_v16(conn)
+        assert not _table_exists(conn, "FilteredTab")
+        conn.close()
+
+    def test_filtered_tab_fk_enforced(self, tmp_path: Path) -> None:
+        """Insert a FilteredTab with a bogus instance_id — should fail."""
+        from automation.db.migrations import _client_v16
+        conn = self._create_db_with_instance(tmp_path / "v16-fk.db")
+        _client_v16(conn)
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "INSERT INTO FilteredTab (instance_id, entity_yaml_name, "
+                "tab_id, scope, label, acl, created_at) "
+                "VALUES (9999, 'X', 'a', 'A', 'A', 'boolean', "
+                "'2026-05-24T00:00:00Z')"
+            )
+        conn.close()
+
+
 class TestClientV3Migration:
     """Tests for _client_v3 on a pre-existing v2 database."""
 

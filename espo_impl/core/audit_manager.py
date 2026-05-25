@@ -24,6 +24,14 @@ from espo_impl.core.audit_utils import (
     strip_entity_c_prefix,
     strip_field_c_prefix,
 )
+from espo_impl.core.condition_expression import (
+    OPERATORS,
+    AllNode,
+    AnyNode,
+    ConditionNode,
+    LeafClause,
+    render_condition,
+)
 from espo_impl.core.models import ScopeAccess, SystemPermissions
 
 logger = logging.getLogger(__name__)
@@ -47,6 +55,7 @@ class AuditOptions:
     :param include_relationships: Discover relationships.
     :param include_native_fields: Include native fields (normally excluded).
     :param include_security: Discover roles and teams (DEC-180).
+    :param include_filtered_tabs: Discover filtered tabs (DEC-180).
     """
 
     include_custom_fields: bool = True
@@ -56,6 +65,7 @@ class AuditOptions:
     include_relationships: bool = True
     include_native_fields: bool = False
     include_security: bool = True
+    include_filtered_tabs: bool = True
 
 
 @dataclass
@@ -107,6 +117,7 @@ class EntityAuditResult:
     stream: bool = False
     fields: list[FieldAuditResult] = field(default_factory=list)
     layouts: list[LayoutAuditResult] = field(default_factory=list)
+    filtered_tabs: list["FilteredTabAuditResult"] = field(default_factory=list)
 
 
 @dataclass
@@ -143,6 +154,40 @@ class TeamAuditResult:
 
     name: str
     description: str | None = None
+
+
+@dataclass
+class FilteredTabAuditResult:
+    """Result of auditing a single filtered tab.
+
+    Mirrors the YAML-side :class:`espo_impl.core.models.FilteredTab`
+    shape. The filter AST is captured in parsed form so YAML emission
+    can render it canonically via :func:`render_condition`.
+
+    :param id: Stable identifier (derived from the scope name, lower-
+        camelCased — ``MyEngagements`` → ``myEngagements``).
+    :param scope: PascalCase scope name from EspoCRM metadata
+        (e.g., ``MyEngagements``).
+    :param label: Human-readable label, from i18n
+        ``Global.scopeNames`` when present, falling back to the Report
+        Filter's ``name`` and finally to the scope name.
+    :param filter: Parsed condition AST recovered from the Report
+        Filter's ``data.where``. ``None`` when the filter contained
+        an unknown where-item type (audit warning emitted; the
+        operator hand-writes the missing filter post-import).
+    :param nav_order: Ordinal position if recoverable from tabList
+        metadata; ``None`` otherwise (the deploy half also treats this
+        as optional).
+    :param acl: ACL strategy from ``scopes/<Scope>.json``; defaults to
+        ``"boolean"`` matching the deploy-side default.
+    """
+
+    id: str
+    scope: str
+    label: str
+    filter: ConditionNode | None = None
+    nav_order: int | None = None
+    acl: str = "boolean"
 
 
 @dataclass
@@ -394,6 +439,18 @@ class AuditManager:
             relationships = self._discover_relationships(entities, report)
             self._cb(
                 f"[AUDIT]    Found {len(relationships)} relationships",
+                "cyan",
+            )
+
+        # Step 3.4: Discover filtered tabs per DEC-180
+        if self._options.include_filtered_tabs and entities:
+            self._cb("[AUDIT]    Discovering filtered tabs ...", "cyan")
+            self._discover_filtered_tabs(entities, report)
+            total_tabs = sum(len(e.filtered_tabs) for e in entities)
+            entity_count = sum(1 for e in entities if e.filtered_tabs)
+            self._cb(
+                f"[AUDIT]    Found {total_tabs} filtered tabs across "
+                f"{entity_count} entities",
                 "cyan",
             )
 
@@ -940,6 +997,288 @@ class AuditManager:
         return results
 
     # ------------------------------------------------------------------
+    # Filtered-tab discovery
+    # ------------------------------------------------------------------
+
+    def _discover_filtered_tabs(
+        self,
+        entities: list[EntityAuditResult],
+        report: AuditReport,
+    ) -> None:
+        """Discover filtered tabs on the source instance.
+
+        Walks all scopes to find custom tab-scopes, queries clientDefs
+        for each to recover the entity binding and Report Filter ID,
+        then matches against Report Filter records per audited entity.
+        Mutates each :class:`EntityAuditResult.filtered_tabs` in place.
+
+        HTTP 404 from :meth:`EspoAdminClient.list_report_filters` means
+        the Advanced Pack extension is not installed; the method
+        records an informational log line and skips silently for that
+        entity rather than treating the absence as an error.
+
+        Inverse of
+        :class:`espo_impl.core.filtered_tab_manager.FilteredTabManager`
+        on the deploy side. Per Section 11, relative-date tokens are
+        not reverse-engineered: by the time a filter is deployed the
+        date values are absolute ``YYYY-MM-DD`` strings, and the audit
+        emits them verbatim. Operators who want relative tokens edit
+        the YAML by hand after import.
+
+        :param entities: Audited entities to attach filtered tabs to.
+        :param report: For warning / error accumulation.
+        """
+        status, all_scopes = self._client.get_all_scopes()
+        if status != 200 or not isinstance(all_scopes, dict):
+            report.warnings.append(
+                f"Failed to fetch scopes for filtered-tab discovery "
+                f"(HTTP {status})"
+            )
+            return
+
+        tab_scopes: list[str] = []
+        for scope_name, scope_def in all_scopes.items():
+            if not isinstance(scope_def, dict):
+                continue
+            if (
+                scope_def.get("tab") is True
+                and scope_def.get("isCustom") is True
+                and scope_def.get("entity") is False
+            ):
+                tab_scopes.append(scope_name)
+
+        if not tab_scopes:
+            return
+
+        bindings_by_entity: dict[str, list[tuple[str, str, str]]] = {}
+        for scope_name in tab_scopes:
+            status, client_defs = self._client.get_client_defs(scope_name)
+            if status != 200 or not isinstance(client_defs, dict):
+                report.warnings.append(
+                    f"Failed to fetch clientDefs for scope '{scope_name}' "
+                    f"(HTTP {status}); skipped"
+                )
+                continue
+            entity_wire = client_defs.get("entity")
+            default_filter = client_defs.get("defaultFilter", "")
+            if not isinstance(entity_wire, str) or not entity_wire:
+                continue
+            if (
+                not isinstance(default_filter, str)
+                or not default_filter.startswith("reportFilter")
+            ):
+                continue
+            report_filter_id = default_filter[len("reportFilter"):]
+            acl = "boolean"
+            scope_def = all_scopes.get(scope_name, {})
+            if isinstance(scope_def, dict):
+                acl_val = scope_def.get("acl")
+                if isinstance(acl_val, str) and acl_val:
+                    acl = acl_val
+            bindings_by_entity.setdefault(entity_wire, []).append(
+                (scope_name, report_filter_id, acl),
+            )
+
+        if not bindings_by_entity:
+            return
+
+        for entity in entities:
+            entity_bindings = bindings_by_entity.get(entity.espo_name)
+            if not entity_bindings:
+                continue
+
+            status, body = self._client.list_report_filters(entity.espo_name)
+            if status == 404:
+                self._cb(
+                    "[AUDIT]    Note: Advanced Pack not installed; "
+                    "filtered-tab criteria not auditable.",
+                    "yellow",
+                )
+                continue
+            if status != 200 or not isinstance(body, dict):
+                report.warnings.append(
+                    f"Failed to fetch Report Filters for "
+                    f"'{entity.yaml_name}' (HTTP {status})"
+                )
+                continue
+
+            filters_by_id: dict[str, dict[str, Any]] = {}
+            items = body.get("list")
+            if isinstance(items, list):
+                for rf in items:
+                    if isinstance(rf, dict) and isinstance(rf.get("id"), str):
+                        filters_by_id[rf["id"]] = rf
+
+            for scope_name, report_filter_id, acl in entity_bindings:
+                rf = filters_by_id.get(report_filter_id)
+                if rf is None:
+                    report.warnings.append(
+                        f"Scope '{scope_name}' binds to Report Filter "
+                        f"'{report_filter_id}' but that record was not "
+                        f"found; skipped"
+                    )
+                    continue
+
+                data = rf.get("data") or {}
+                where = data.get("where") if isinstance(data, dict) else None
+                filter_ast = self._reverse_where_items(
+                    where, report, scope_name,
+                )
+
+                label = scope_name
+                rf_name = rf.get("name")
+                if isinstance(rf_name, str) and rf_name:
+                    label = rf_name
+                global_block = (
+                    self._i18n.get("Global", {})
+                    if isinstance(self._i18n, dict) else {}
+                )
+                scope_names = (
+                    global_block.get("scopeNames", {})
+                    if isinstance(global_block, dict) else {}
+                )
+                label_from_i18n = (
+                    scope_names.get(scope_name)
+                    if isinstance(scope_names, dict) else None
+                )
+                if isinstance(label_from_i18n, str) and label_from_i18n:
+                    label = label_from_i18n
+
+                tab_id = (
+                    scope_name[0].lower() + scope_name[1:]
+                    if scope_name else scope_name
+                )
+                entity.filtered_tabs.append(FilteredTabAuditResult(
+                    id=tab_id,
+                    scope=scope_name,
+                    label=label,
+                    filter=filter_ast,
+                    nav_order=None,
+                    acl=acl,
+                ))
+
+    def _reverse_where_items(
+        self,
+        where: list | None,
+        report: AuditReport,
+        context_label: str,
+    ) -> ConditionNode | None:
+        """Reverse-translate a list of EspoCRM where-items to an AST root.
+
+        Inverse of
+        :meth:`espo_impl.core.filtered_tab_manager.FilteredTabManager._to_where_items`.
+
+        Top-level wrapping follows the deploy side's contract: a
+        single-item list unwraps to the bare child (so a single leaf
+        round-trips as :class:`LeafClause` rather than
+        ``AllNode([LeafClause])``); multiple items wrap in an implicit
+        :class:`AllNode` (the schema's shorthand-list form).
+
+        Unknown where-item types poison the whole filter — the method
+        returns ``None`` with a warning so the caller emits the tab
+        without a ``filter:`` block. Partial filters are unsafe.
+
+        :param where: The Report Filter's ``data.where`` list.
+        :param report: For warning accumulation on unknown types.
+        :param context_label: Tab label/scope for warning attribution.
+        :returns: Root AST node, or ``None`` if the list is empty or
+            contained any unknown where-item type.
+        """
+        if not isinstance(where, list) or not where:
+            return None
+
+        converted: list[ConditionNode] = []
+        for item in where:
+            node = self._reverse_where_item(item, report, context_label)
+            if node is None:
+                report.warnings.append(
+                    f"Filtered tab '{context_label}': filter contained "
+                    f"unknown where-item types; filter omitted from YAML "
+                    f"output (tab still captured with label and scope)"
+                )
+                return None
+            converted.append(node)
+
+        if len(converted) == 1:
+            return converted[0]
+        return AllNode(children=converted)
+
+    def _reverse_where_item(
+        self,
+        item: Any,
+        report: AuditReport,
+        context_label: str,
+    ) -> ConditionNode | None:
+        """Reverse-translate a single EspoCRM where-item to an AST node.
+
+        Inverse of
+        :meth:`espo_impl.core.filtered_tab_manager.FilteredTabManager._node_to_where`
+        and ``_leaf_to_where``. Returns ``None`` for any unknown
+        where-item type so the caller can poison the whole filter.
+
+        :param item: Single where-item dict.
+        :param report: For warning accumulation.
+        :param context_label: Tab label/scope for warning attribution.
+        :returns: AST node, or ``None`` when the type is not in the
+            schema's leaf-operator vocabulary.
+        """
+        if not isinstance(item, dict):
+            return None
+
+        item_type = item.get("type")
+        if not isinstance(item_type, str):
+            return None
+
+        if item_type == "and":
+            children_data = item.get("value", [])
+            if not isinstance(children_data, list):
+                return None
+            children: list[ConditionNode] = []
+            for child in children_data:
+                child_node = self._reverse_where_item(
+                    child, report, context_label,
+                )
+                if child_node is None:
+                    return None
+                children.append(child_node)
+            return AllNode(children=children)
+        if item_type == "or":
+            children_data = item.get("value", [])
+            if not isinstance(children_data, list):
+                return None
+            children = []
+            for child in children_data:
+                child_node = self._reverse_where_item(
+                    child, report, context_label,
+                )
+                if child_node is None:
+                    return None
+                children.append(child_node)
+            return AnyNode(children=children)
+
+        attribute = item.get("attribute")
+        if not isinstance(attribute, str) or not attribute:
+            return None
+
+        if item_type == "currentUser":
+            return LeafClause(field=attribute, op="equals", value="$user")
+        if item_type == "notCurrentUser":
+            return LeafClause(field=attribute, op="notEquals", value="$user")
+
+        if item_type in ("isNull", "isNotNull"):
+            return LeafClause(field=attribute, op=item_type)
+
+        if item_type not in OPERATORS:
+            report.warnings.append(
+                f"Filtered tab '{context_label}': unknown where-item "
+                f"type '{item_type}' on attribute '{attribute}'"
+            )
+            return None
+
+        value = item.get("value")
+        return LeafClause(field=attribute, op=item_type, value=value)
+
+    # ------------------------------------------------------------------
     # Security discovery (roles + teams)
     # ------------------------------------------------------------------
 
@@ -1144,7 +1483,7 @@ class AuditManager:
 
         # One file per entity
         for entity in entities:
-            if not entity.fields and not entity.layouts:
+            if not entity.fields and not entity.layouts and not entity.filtered_tabs:
                 continue
 
             yaml_dict = self._build_entity_yaml(entity)
@@ -1230,6 +1569,13 @@ class AuditManager:
                 layout_block[layout_result.layout_type] = layout_result.data
             entity_block["layout"] = layout_block
 
+        # Filtered tabs
+        if entity.filtered_tabs:
+            entity_block["filteredTabs"] = [
+                self._filtered_tab_to_yaml_dict(t)
+                for t in entity.filtered_tabs
+            ]
+
         return {
             "version": "1.0",
             "content_version": "1.0.0",
@@ -1314,6 +1660,29 @@ class AuditManager:
             result["roles"] = [self._role_to_yaml_dict(r) for r in roles]
 
         return result
+
+    def _filtered_tab_to_yaml_dict(
+        self, tab: FilteredTabAuditResult,
+    ) -> dict[str, Any]:
+        """Serialize a FilteredTabAuditResult to its YAML dict form.
+
+        Mirrors the schema's ``filteredTabs:`` entry shape. The
+        ``filter:`` key is omitted when no filter could be recovered
+        (an unknown where-item type triggered the all-or-nothing
+        skip in :meth:`_reverse_where_items`) so the operator hand-
+        writes the missing filter post-import.
+        """
+        tab_dict: dict[str, Any] = {
+            "id": tab.id,
+            "scope": tab.scope,
+            "label": tab.label,
+            "acl": tab.acl,
+        }
+        if tab.nav_order is not None:
+            tab_dict["navOrder"] = tab.nav_order
+        if tab.filter is not None:
+            tab_dict["filter"] = render_condition(tab.filter)
+        return tab_dict
 
     def _team_to_yaml_dict(self, team: TeamAuditResult) -> dict[str, Any]:
         """Serialize a TeamAuditResult to its YAML dict form."""
