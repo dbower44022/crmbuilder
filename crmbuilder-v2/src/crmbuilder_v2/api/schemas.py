@@ -26,7 +26,10 @@ class StatusReplaceIn(_Base):
 
 
 class DecisionCreateIn(_Base):
-    identifier: str
+    """POST /decisions body. ``identifier`` is server-assigned when
+    omitted (PI-002, option C of SES-010)."""
+
+    identifier: str | None = None
     title: str
     decision_date: str
     status: str
@@ -56,7 +59,10 @@ class DecisionUpdateIn(_Base):
 
 
 class SessionCreateIn(_Base):
-    identifier: str
+    """POST /sessions body. ``identifier`` is server-assigned when
+    omitted (PI-002, option C of SES-010)."""
+
+    identifier: str | None = None
     title: str
     session_date: str
     status: str
@@ -71,7 +77,10 @@ class SessionCreateIn(_Base):
 
 
 class RiskCreateIn(_Base):
-    identifier: str
+    """POST /risks body. ``identifier`` is server-assigned when omitted
+    (PI-002, option C of SES-010)."""
+
+    identifier: str | None = None
     title: str
     description: str = ""
     probability: str
@@ -93,7 +102,10 @@ class RiskUpdateIn(_Base):
 
 
 class PlanningItemCreateIn(_Base):
-    identifier: str
+    """POST /planning-items body. ``identifier`` is server-assigned when
+    omitted (PI-002, option C of SES-010)."""
+
+    identifier: str | None = None
     title: str
     item_type: str
     description: str = ""
@@ -113,7 +125,10 @@ class PlanningItemUpdateIn(_Base):
 
 
 class TopicCreateIn(_Base):
-    identifier: str
+    """POST /topics body. ``identifier`` is server-assigned when omitted
+    (PI-002, option C of SES-010)."""
+
+    identifier: str | None = None
     name: str
     description: str = ""
     parent_topic: str | None = None

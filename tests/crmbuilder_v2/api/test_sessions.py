@@ -41,3 +41,28 @@ def test_delete(client):
     client.delete("/sessions/SES-001")
     r = client.get("/sessions/SES-001")
     assert r.status_code == 404
+
+
+# PI-002 — POST without identifier returns 201 with server-assigned value.
+
+
+def test_post_without_identifier_assigns_one(client):
+    r = client.post(
+        "/sessions",
+        json={"title": "Auto", "session_date": "05-25-26", "status": "Complete"},
+    )
+    assert r.status_code == 201, r.json()
+    assert r.json()["data"]["identifier"] == "SES-001"
+
+
+def test_post_with_invalid_identifier_format_returns_422(client):
+    r = client.post(
+        "/sessions",
+        json={
+            "identifier": "SES-1",
+            "title": "Bad",
+            "session_date": "05-25-26",
+            "status": "Complete",
+        },
+    )
+    assert r.status_code == 422, r.json()

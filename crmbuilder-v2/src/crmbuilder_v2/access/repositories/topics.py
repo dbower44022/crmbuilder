@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import re
+
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access._helpers import (
@@ -15,18 +18,40 @@ from crmbuilder_v2.access.exceptions import (
     ConflictError,
     FieldError,
     NotFoundError,
+    UnprocessableError,
     ValidationError,
 )
 from crmbuilder_v2.access.models import Topic
 
 _ENTITY_TYPE = "topic"
 _IDENTIFIER_PREFIX = "TOP"
+_IDENTIFIER_RE = re.compile(r"^TOP-\d{3}$")
+_MAX_AUTOASSIGN_ATTEMPTS = 50
 
 
 def compute_next_identifier(session: Session) -> str:
     """Return the next available ``TOP-NNN`` identifier."""
     identifiers = session.scalars(select(Topic.identifier)).all()
     return next_prefixed_identifier(identifiers, _IDENTIFIER_PREFIX)
+
+
+def _require_identifier_format(identifier: str) -> str:
+    if not isinstance(identifier, str) or not _IDENTIFIER_RE.match(identifier):
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "identifier",
+                    "invalid_format",
+                    r"must match ^TOP-\d{3}$ (e.g. TOP-001)",
+                )
+            ]
+        )
+    return identifier
+
+
+def _increment_identifier(identifier: str) -> str:
+    number = int(identifier.split("-", 1)[1])
+    return f"{_IDENTIFIER_PREFIX}-{number + 1:03d}"
 
 # Direct column updates; ``parent_topic`` is handled separately via its own kwarg.
 _UPDATABLE_FIELDS = frozenset({"name", "description"})
@@ -62,32 +87,76 @@ def list_all(session: Session) -> list[dict]:
     return [_enrich(session, r) for r in rows]
 
 
+def _new_topic_row(
+    identifier: str, name: str, description: str, parent_id: int | None
+) -> Topic:
+    return Topic(
+        identifier=identifier,
+        name=name,
+        description=description,
+        parent_topic_id=parent_id,
+    )
+
+
+def _insert_with_autoassign(
+    session: Session, name: str, description: str, parent_id: int | None
+) -> Topic:
+    """Insert a topic with a server-assigned identifier (PI-002)."""
+    candidate = compute_next_identifier(session)
+    last_error: IntegrityError | None = None
+    for _attempt in range(_MAX_AUTOASSIGN_ATTEMPTS):
+        savepoint = session.begin_nested()
+        row = _new_topic_row(candidate, name, description, parent_id)
+        session.add(row)
+        try:
+            session.flush()
+        except IntegrityError as exc:
+            last_error = exc
+            savepoint.rollback()
+            candidate = _increment_identifier(candidate)
+            continue
+        savepoint.commit()
+        return row
+    raise ConflictError(
+        "could not assign a unique topic identifier after "
+        f"{_MAX_AUTOASSIGN_ATTEMPTS} attempts"
+    ) from last_error
+
+
 def create(
     session: Session,
     *,
-    identifier: str,
+    identifier: str | None = None,
     name: str,
     description: str = "",
     parent_topic: str | None = None,
 ) -> dict:
-    require_string(identifier, field="identifier")
+    """Create a topic.
+
+    ``identifier`` is server-assigned when omitted (``None``). When
+    supplied it must match ``^TOP-\\d{3}$`` and not already exist.
+    """
     require_string(name, field="name")
-    if session.scalar(select(Topic).where(Topic.identifier == identifier)) is not None:
-        raise ConflictError(f"topic {identifier!r} already exists")
     parent_id = _resolve_parent_id(session, parent_topic)
-    row = Topic(
-        identifier=identifier,
-        name=name,
-        description=description or "",
-        parent_topic_id=parent_id,
-    )
-    session.add(row)
-    session.flush()
+
+    if identifier is None:
+        row = _insert_with_autoassign(session, name, description or "", parent_id)
+    else:
+        _require_identifier_format(identifier)
+        if (
+            session.scalar(select(Topic).where(Topic.identifier == identifier))
+            is not None
+        ):
+            raise ConflictError(f"topic {identifier!r} already exists")
+        row = _new_topic_row(identifier, name, description or "", parent_id)
+        session.add(row)
+        session.flush()
+
     after = _enrich(session, row)
     emit(
         session,
         entity_type=_ENTITY_TYPE,
-        entity_identifier=identifier,
+        entity_identifier=row.identifier,
         operation="insert",
         before=None,
         after=after,

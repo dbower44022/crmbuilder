@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import re
+
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access._helpers import (
@@ -16,6 +19,7 @@ from crmbuilder_v2.access.exceptions import (
     ConflictError,
     FieldError,
     NotFoundError,
+    UnprocessableError,
     ValidationError,
 )
 from crmbuilder_v2.access.models import Risk
@@ -27,12 +31,33 @@ from crmbuilder_v2.access.vocab import (
 
 _ENTITY_TYPE = "risk"
 _IDENTIFIER_PREFIX = "RSK"
+_IDENTIFIER_RE = re.compile(r"^RSK-\d{3}$")
+_MAX_AUTOASSIGN_ATTEMPTS = 50
 
 
 def compute_next_identifier(session: Session) -> str:
     """Return the next available ``RSK-NNN`` identifier."""
     identifiers = session.scalars(select(Risk.identifier)).all()
     return next_prefixed_identifier(identifiers, _IDENTIFIER_PREFIX)
+
+
+def _require_identifier_format(identifier: str) -> str:
+    if not isinstance(identifier, str) or not _IDENTIFIER_RE.match(identifier):
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "identifier",
+                    "invalid_format",
+                    r"must match ^RSK-\d{3}$ (e.g. RSK-001)",
+                )
+            ]
+        )
+    return identifier
+
+
+def _increment_identifier(identifier: str) -> str:
+    number = int(identifier.split("-", 1)[1])
+    return f"{_IDENTIFIER_PREFIX}-{number + 1:03d}"
 
 _UPDATABLE_FIELDS = frozenset(
     {"title", "description", "probability", "impact", "response_plan", "status"}
@@ -51,10 +76,63 @@ def list_all(session: Session) -> list[dict]:
     return [to_dict(r) for r in rows]
 
 
+def _new_risk_row(
+    identifier: str,
+    title: str,
+    description: str,
+    probability: str,
+    impact: str,
+    response_plan: str,
+    status: str,
+) -> Risk:
+    return Risk(
+        identifier=identifier,
+        title=title,
+        description=description,
+        probability=probability,
+        impact=impact,
+        response_plan=response_plan,
+        status=status,
+    )
+
+
+def _insert_with_autoassign(
+    session: Session,
+    title: str,
+    description: str,
+    probability: str,
+    impact: str,
+    response_plan: str,
+    status: str,
+) -> Risk:
+    """Insert a risk with a server-assigned identifier, collision-safe (PI-002)."""
+    candidate = compute_next_identifier(session)
+    last_error: IntegrityError | None = None
+    for _attempt in range(_MAX_AUTOASSIGN_ATTEMPTS):
+        savepoint = session.begin_nested()
+        row = _new_risk_row(
+            candidate, title, description, probability, impact, response_plan, status
+        )
+        session.add(row)
+        try:
+            session.flush()
+        except IntegrityError as exc:
+            last_error = exc
+            savepoint.rollback()
+            candidate = _increment_identifier(candidate)
+            continue
+        savepoint.commit()
+        return row
+    raise ConflictError(
+        "could not assign a unique risk identifier after "
+        f"{_MAX_AUTOASSIGN_ATTEMPTS} attempts"
+    ) from last_error
+
+
 def create(
     session: Session,
     *,
-    identifier: str,
+    identifier: str | None = None,
     title: str,
     description: str = "",
     probability: str,
@@ -62,31 +140,47 @@ def create(
     response_plan: str = "",
     status: str,
 ) -> dict:
-    require_string(identifier, field="identifier")
+    """Create a risk.
+
+    ``identifier`` is server-assigned when omitted (``None``). When
+    supplied it must match ``^RSK-\\d{3}$`` and not already exist.
+    """
     require_string(title, field="title")
     require_in(probability, RISK_PROBABILITIES, field="probability")
     require_in(impact, RISK_IMPACTS, field="impact")
     require_in(status, RISK_STATUSES, field="status")
 
-    if session.scalar(select(Risk).where(Risk.identifier == identifier)) is not None:
-        raise ConflictError(f"risk {identifier!r} already exists")
+    if identifier is None:
+        row = _insert_with_autoassign(
+            session,
+            title,
+            description or "",
+            probability,
+            impact,
+            response_plan or "",
+            status,
+        )
+    else:
+        _require_identifier_format(identifier)
+        if session.scalar(select(Risk).where(Risk.identifier == identifier)) is not None:
+            raise ConflictError(f"risk {identifier!r} already exists")
+        row = _new_risk_row(
+            identifier,
+            title,
+            description or "",
+            probability,
+            impact,
+            response_plan or "",
+            status,
+        )
+        session.add(row)
+        session.flush()
 
-    row = Risk(
-        identifier=identifier,
-        title=title,
-        description=description or "",
-        probability=probability,
-        impact=impact,
-        response_plan=response_plan or "",
-        status=status,
-    )
-    session.add(row)
-    session.flush()
     after = to_dict(row)
     emit(
         session,
         entity_type=_ENTITY_TYPE,
-        entity_identifier=identifier,
+        entity_identifier=row.identifier,
         operation="insert",
         before=None,
         after=after,

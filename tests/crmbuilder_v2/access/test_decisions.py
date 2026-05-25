@@ -6,6 +6,7 @@ import pytest
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
+    UnprocessableError,
     ValidationError,
 )
 from crmbuilder_v2.access.repositories import decisions
@@ -203,6 +204,77 @@ def test_supersedes_chain(v2_env):
 def test_supersedes_unknown_target_rejected(v2_env):
     with session_scope() as s, pytest.raises(ValidationError):
         _make(s, identifier="DEC-001", supersedes="DEC-999")
+
+
+# ---------------------------------------------------------------------------
+# PI-002 — identifier is server-assigned when omitted (option C of SES-010)
+# ---------------------------------------------------------------------------
+
+
+def test_create_with_omitted_identifier_assigns_next(v2_env):
+    with session_scope() as s:
+        row = decisions.create(
+            s, title="Auto", decision_date="05-25-26", status="Active"
+        )
+    assert row["identifier"] == "DEC-001"
+    with session_scope() as s:
+        row2 = decisions.create(
+            s, title="Auto2", decision_date="05-25-26", status="Active"
+        )
+    assert row2["identifier"] == "DEC-002"
+
+
+def test_create_with_supplied_identifier_uses_it(v2_env):
+    with session_scope() as s:
+        row = decisions.create(
+            s, identifier="DEC-042", title="Explicit",
+            decision_date="05-25-26", status="Active",
+        )
+    assert row["identifier"] == "DEC-042"
+
+
+def test_create_with_invalid_identifier_format_rejected(v2_env):
+    with session_scope() as s, pytest.raises(UnprocessableError):
+        decisions.create(
+            s, identifier="DEC-1", title="Bad",
+            decision_date="05-25-26", status="Active",
+        )
+
+
+def test_create_with_empty_string_identifier_rejected(v2_env):
+    """Empty string is distinct from omitted (None) — it fails format."""
+    with session_scope() as s, pytest.raises(UnprocessableError):
+        decisions.create(
+            s, identifier="", title="Bad",
+            decision_date="05-25-26", status="Active",
+        )
+
+
+def test_create_explicit_duplicate_identifier_raises_conflict(v2_env):
+    with session_scope() as s:
+        decisions.create(
+            s, identifier="DEC-001", title="First",
+            decision_date="05-25-26", status="Active",
+        )
+    with session_scope() as s, pytest.raises(ConflictError):
+        decisions.create(
+            s, identifier="DEC-001", title="Second",
+            decision_date="05-25-26", status="Active",
+        )
+
+
+def test_autoassign_retries_on_identifier_collision(v2_env, monkeypatch):
+    """Pre-create DEC-001, force compute_next_identifier to return it
+    anyway, and verify the SAVEPOINT-retry helper lands on DEC-002."""
+    with session_scope() as s:
+        decisions.create(
+            s, identifier="DEC-001", title="First",
+            decision_date="05-25-26", status="Active",
+        )
+    monkeypatch.setattr(decisions, "compute_next_identifier", lambda _s: "DEC-001")
+    with session_scope() as s:
+        row = decisions.create(s, title="Second", decision_date="05-25-26", status="Active")
+    assert row["identifier"] == "DEC-002"
 
 
 def test_upsert_idempotent(v2_env):

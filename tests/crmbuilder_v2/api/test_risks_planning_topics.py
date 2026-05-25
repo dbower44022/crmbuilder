@@ -5,7 +5,7 @@ from __future__ import annotations
 
 def test_risks_crud(client):
     body = {
-        "identifier": "RISK-001",
+        "identifier": "RSK-001",
         "title": "Schema design takes longer than budget",
         "probability": "Medium",
         "impact": "High",
@@ -14,10 +14,10 @@ def test_risks_crud(client):
     r = client.post("/risks", json=body)
     assert r.status_code == 201
 
-    r = client.patch("/risks/RISK-001", json={"status": "Mitigated"})
+    r = client.patch("/risks/RSK-001", json={"status": "Mitigated"})
     assert r.json()["data"]["status"] == "Mitigated"
 
-    r = client.delete("/risks/RISK-001")
+    r = client.delete("/risks/RSK-001")
     assert r.status_code == 200
 
 
@@ -39,15 +39,81 @@ def test_planning_items_crud(client):
 
 
 def test_topics_hierarchy(client):
-    client.post("/topics", json={"identifier": "TOPIC-A", "name": "Schema"})
+    client.post("/topics", json={"identifier": "TOP-001", "name": "Schema"})
     r = client.post(
         "/topics",
         json={
-            "identifier": "TOPIC-B",
+            "identifier": "TOP-002",
             "name": "References",
-            "parent_topic": "TOPIC-A",
+            "parent_topic": "TOP-001",
         },
     )
     assert r.status_code == 201
-    r = client.get("/topics/TOPIC-B")
-    assert r.json()["data"]["parent_topic_identifier"] == "TOPIC-A"
+    r = client.get("/topics/TOP-002")
+    assert r.json()["data"]["parent_topic_identifier"] == "TOP-001"
+
+
+# ---------------------------------------------------------------------------
+# PI-002 — POST without identifier returns 201 with server-assigned value
+# ---------------------------------------------------------------------------
+
+
+def test_post_risk_without_identifier_assigns_one(client):
+    r = client.post(
+        "/risks",
+        json={
+            "title": "Auto",
+            "probability": "Medium",
+            "impact": "High",
+            "status": "Open",
+        },
+    )
+    assert r.status_code == 201, r.json()
+    assert r.json()["data"]["identifier"] == "RSK-001"
+
+
+def test_post_risk_with_invalid_format_returns_422(client):
+    r = client.post(
+        "/risks",
+        json={
+            "identifier": "RSK-1",
+            "title": "Bad",
+            "probability": "Medium",
+            "impact": "High",
+            "status": "Open",
+        },
+    )
+    assert r.status_code == 422, r.json()
+
+
+def test_post_planning_item_without_identifier_assigns_one(client):
+    r = client.post(
+        "/planning-items",
+        json={"title": "Auto", "item_type": "open_question", "status": "Open"},
+    )
+    assert r.status_code == 201, r.json()
+    assert r.json()["data"]["identifier"] == "PI-001"
+
+
+def test_post_planning_item_with_invalid_format_returns_422(client):
+    r = client.post(
+        "/planning-items",
+        json={
+            "identifier": "PI-1",
+            "title": "Bad",
+            "item_type": "open_question",
+            "status": "Open",
+        },
+    )
+    assert r.status_code == 422, r.json()
+
+
+def test_post_topic_without_identifier_assigns_one(client):
+    r = client.post("/topics", json={"name": "Auto"})
+    assert r.status_code == 201, r.json()
+    assert r.json()["data"]["identifier"] == "TOP-001"
+
+
+def test_post_topic_with_invalid_format_returns_422(client):
+    r = client.post("/topics", json={"identifier": "TOP-1", "name": "Bad"})
+    assert r.status_code == 422, r.json()
