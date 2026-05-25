@@ -8,7 +8,10 @@ public API.
 
 from __future__ import annotations
 
+import re
+
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access._helpers import (
@@ -22,6 +25,7 @@ from crmbuilder_v2.access.exceptions import (
     ConflictError,
     FieldError,
     NotFoundError,
+    UnprocessableError,
     ValidationError,
 )
 from crmbuilder_v2.access.models import Decision
@@ -29,6 +33,8 @@ from crmbuilder_v2.access.vocab import DECISION_STATUSES
 
 _ENTITY_TYPE = "decision"
 _IDENTIFIER_PREFIX = "DEC"
+_IDENTIFIER_RE = re.compile(r"^DEC-\d{3}$")
+_MAX_AUTOASSIGN_ATTEMPTS = 50
 
 
 def compute_next_identifier(session: Session) -> str:
@@ -39,6 +45,25 @@ def compute_next_identifier(session: Session) -> str:
     """
     identifiers = session.scalars(select(Decision.identifier)).all()
     return next_prefixed_identifier(identifiers, _IDENTIFIER_PREFIX)
+
+
+def _require_identifier_format(identifier: str) -> str:
+    if not isinstance(identifier, str) or not _IDENTIFIER_RE.match(identifier):
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "identifier",
+                    "invalid_format",
+                    r"must match ^DEC-\d{3}$ (e.g. DEC-001)",
+                )
+            ]
+        )
+    return identifier
+
+
+def _increment_identifier(identifier: str) -> str:
+    number = int(identifier.split("-", 1)[1])
+    return f"{_IDENTIFIER_PREFIX}-{number + 1:03d}"
 
 _UPDATABLE_FIELDS = frozenset(
     {
@@ -87,10 +112,91 @@ def list_all(session: Session, *, include_deleted: bool = False) -> list[dict]:
     return [_enrich(session, r) for r in rows]
 
 
+def _new_decision_row(
+    identifier: str,
+    title: str,
+    decision_date: str,
+    status: str,
+    context: str,
+    decision: str,
+    rationale: str,
+    alternatives_considered: str,
+    consequences: str,
+    supersedes_id: int | None,
+    superseded_by_id: int | None,
+) -> Decision:
+    return Decision(
+        identifier=identifier,
+        title=title,
+        decision_date=decision_date,
+        status=status,
+        context=context,
+        decision=decision,
+        rationale=rationale,
+        alternatives_considered=alternatives_considered,
+        consequences=consequences,
+        supersedes_id=supersedes_id,
+        superseded_by_id=superseded_by_id,
+    )
+
+
+def _insert_with_autoassign(
+    session: Session,
+    title: str,
+    decision_date: str,
+    status: str,
+    context: str,
+    decision: str,
+    rationale: str,
+    alternatives_considered: str,
+    consequences: str,
+    supersedes_id: int | None,
+    superseded_by_id: int | None,
+) -> Decision:
+    """Insert a decision with a server-assigned identifier, collision-safe.
+
+    Mirrors the ``domain`` repository's SAVEPOINT-retry pattern (PI-002):
+    a concurrent transaction that committed the same identifier first
+    raises ``IntegrityError`` on flush; the savepoint rolls that INSERT
+    back, the candidate is incremented, and the attempt repeats.
+    """
+    candidate = compute_next_identifier(session)
+    last_error: IntegrityError | None = None
+    for _attempt in range(_MAX_AUTOASSIGN_ATTEMPTS):
+        savepoint = session.begin_nested()
+        row = _new_decision_row(
+            candidate,
+            title,
+            decision_date,
+            status,
+            context,
+            decision,
+            rationale,
+            alternatives_considered,
+            consequences,
+            supersedes_id,
+            superseded_by_id,
+        )
+        session.add(row)
+        try:
+            session.flush()
+        except IntegrityError as exc:
+            last_error = exc
+            savepoint.rollback()
+            candidate = _increment_identifier(candidate)
+            continue
+        savepoint.commit()
+        return row
+    raise ConflictError(
+        "could not assign a unique decision identifier after "
+        f"{_MAX_AUTOASSIGN_ATTEMPTS} attempts"
+    ) from last_error
+
+
 def create(
     session: Session,
     *,
-    identifier: str,
+    identifier: str | None = None,
     title: str,
     decision_date: str,
     status: str,
@@ -102,38 +208,60 @@ def create(
     supersedes: str | None = None,
     superseded_by: str | None = None,
 ) -> dict:
-    require_string(identifier, field="identifier")
+    """Create a decision.
+
+    ``identifier`` is server-assigned when omitted (``None``). When
+    supplied it must match ``^DEC-\\d{3}$`` and not already exist.
+    """
     require_string(title, field="title")
     require_string(decision_date, field="decision_date")
     require_in(status, DECISION_STATUSES, field="status")
 
-    existing = session.scalar(select(Decision).where(Decision.identifier == identifier))
-    if existing is not None:
-        raise ConflictError(f"decision {identifier!r} already exists")
-
     supersedes_id = _resolve_decision_id(session, supersedes)
     superseded_by_id = _resolve_decision_id(session, superseded_by)
 
-    row = Decision(
-        identifier=identifier,
-        title=title,
-        decision_date=decision_date,
-        status=status,
-        context=context or "",
-        decision=decision or "",
-        rationale=rationale or "",
-        alternatives_considered=alternatives_considered or "",
-        consequences=consequences or "",
-        supersedes_id=supersedes_id,
-        superseded_by_id=superseded_by_id,
-    )
-    session.add(row)
-    session.flush()
+    if identifier is None:
+        row = _insert_with_autoassign(
+            session,
+            title,
+            decision_date,
+            status,
+            context or "",
+            decision or "",
+            rationale or "",
+            alternatives_considered or "",
+            consequences or "",
+            supersedes_id,
+            superseded_by_id,
+        )
+    else:
+        _require_identifier_format(identifier)
+        existing = session.scalar(
+            select(Decision).where(Decision.identifier == identifier)
+        )
+        if existing is not None:
+            raise ConflictError(f"decision {identifier!r} already exists")
+        row = _new_decision_row(
+            identifier,
+            title,
+            decision_date,
+            status,
+            context or "",
+            decision or "",
+            rationale or "",
+            alternatives_considered or "",
+            consequences or "",
+            supersedes_id,
+            superseded_by_id,
+        )
+        session.add(row)
+        session.flush()
+
     after = _enrich(session, row)
     emit(
         session,
         entity_type=_ENTITY_TYPE,
-        entity_identifier=identifier,
+        entity_identifier=row.identifier,
         operation="insert",
         before=None,
         after=after,

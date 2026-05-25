@@ -119,13 +119,13 @@ def test_export_failure_rolls_back_db(
         with session_scope() as s:
             decisions.create(
                 s,
-                identifier="DEC-EXPLODE",
+                identifier="DEC-999",
                 title="t",
                 decision_date="05-07-26",
                 status="Active",
             )
 
-    # DB transaction should have rolled back: no DEC-EXPLODE row.
+    # DB transaction should have rolled back: no DEC-999 row.
     with session_scope(export=False) as s:
         rows = decisions.list_all(s)
-    assert all(r["identifier"] != "DEC-EXPLODE" for r in rows)
+    assert all(r["identifier"] != "DEC-999" for r in rows)

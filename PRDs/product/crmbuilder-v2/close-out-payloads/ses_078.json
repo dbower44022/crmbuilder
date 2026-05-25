@@ -1,0 +1,83 @@
+{
+  "label": "PI-002 build closure — make `identifier` optional on POST for the five remaining prefixed-identifier entity types (decision, session, risk, planning_item, topic); identifier-format regex enforcement unified across the explicit-identifier path; CLAUDE.md v2 paragraph rewritten to retire the client-side compute-identifier rule.",
+  "session": {
+    "identifier": "SES-078",
+    "title": "PI-002 build closure — server-side identifier auto-assignment retrofit for decision/session/risk/planning_item/topic; uniform format enforcement on the explicit-identifier path; option-C of SES-010 shipped",
+    "session_date": "2026-05-25",
+    "status": "Complete",
+    "conversation_reference": "Claude Code conversation at Doug's terminal, 2026-05-25 afternoon, opened in /home/doug/Dropbox/Projects/crmbuilder. Conversation began with a plan-then-execute pass against PI-002 (ELI5 prepend to the PI's description; worktree at /home/doug/Dropbox/Projects/crmbuilder-pi002 on branch pi-002-optional-identifier from HEAD 723bc284). The build executed start-to-finish without surface-and-settle questions — PI-002's resolution path was fully specified by DEC-043's option (C) statement and the v0.4+ implementation pattern (`access/repositories/domain.py:_insert_with_autoassign`). One emergent corollary: the explicit-identifier path now enforces the entity-type's `^<PREFIX>-\\d{3}$` regex, which surfaced three legacy test fixtures using malformed prefixes (`RISK-`, `TOPIC-`, `DEC-EXPLODE`) that the old required-but-unvalidated `identifier: str` contract had silently accepted. These were corrected to `RSK-`, `TOP-`, `DEC-999` in passing per the DEC-235 executor-improvisation precedent (commit log + tests as the trace; no DEC).",
+    "topics_covered": "PI-002 plan-then-execute. Plan phase confirmed PI-002's scope is narrower than originally framed: of the twelve prefixed-identifier entity types DEC-043 enumerated, seven (the v0.7 governance entities) already implemented option C, and the v0.4+ methodology entities (domain, entity, process, crm_candidate, engagement) implemented it from the start. The retrofit therefore targets exactly five remaining repositories — decision, session, risk, planning_item, topic — mirroring the `access/repositories/domain.py` SAVEPOINT-retry pattern verbatim. Versioned entities (charter, status) are server-assigned by construction; references use numeric REF-NNNN already auto-assigned; both answer PI-002's open design question (2) negatively. Open design question (1) on omitted-vs-empty-string identifier was answered by mirroring domain.py's regex-format validation: `None` triggers auto-assign, `\"\"` fails the prefix regex and returns 422 — same semantics already shipped for v0.4+ entities. Open design question (3) on MCP server impact: no change required; tools call the underlying API and inherit the optional-identifier contract. Execute phase: 5 repositories retrofitted (`_IDENTIFIER_RE`, `_require_identifier_format`, `_increment_identifier`, `_insert_with_autoassign`, `create()` accepts `identifier: str | None = None`); 5 Pydantic Create schemas flipped (`identifier: str` → `identifier: str | None = None`); 30 new access-layer tests across the 5 entity types (omit-assigns-next, supply-uses-it, invalid-format-rejected, empty-string-rejected, dup-explicit-conflict, autoassign-retry-on-collision); 10 new API smoke tests; one collateral fix in `tests/crmbuilder_v2/access/test_exporter.py` (`DEC-EXPLODE` → `DEC-999`) and legacy fixture corrections in `tests/crmbuilder_v2/access/test_risks.py` (`RISK-001` → `RSK-001`), `tests/crmbuilder_v2/access/test_topics.py` (`TOPIC-NNN` → `TOP-NNN`), and `tests/crmbuilder_v2/api/test_risks_planning_topics.py` (same family). The UI-stub identifier `RISK-001` in `tests/crmbuilder_v2/ui/test_context_menus.py:167` was left alone (UI test populates a stub record dict, never invokes `create()` — format regex doesn't run). CLAUDE.md's v2-section paragraph that previously documented the client-side compute-identifier rule (post-SES-010 historical note) was rewritten to its successor form per PI-002's consequence statement on DEC-043. Test suite: 1549 passed, 3 skipped, 0 failed (was 1548 passed + 1 failed after the initial retrofit, fixed in-loop). Out-of-band: PI-002's description was prepended with an 'Explain it like I was 5' summary via direct API PATCH prior to the build, at Doug's request. Status flip: PI-002 was prematurely flipped to Resolved mid-conversation when Doug noted the DB still showed Open; reverted to Open before this close-out drafted so the apply's resolves edge does the canonical Open → Resolved transition via slice A's atomic edge+flip.",
+    "summary": "PI-002 (DEC-043's option C) shipped. The v2 storage REST API now accepts an omitted or null `identifier` on `POST` for every prefixed-identifier entity type — decision, session, risk, planning_item, and topic join the twelve already-conforming methodology and governance entity types from v0.4+. The access-layer mechanism is the same SAVEPOINT-retry helper proven by the domain repository under concurrency. Backward compatibility is automatic: every existing caller that supplies an explicit identifier continues to work, subject to the format-regex tightening that surfaces a small set of legacy test-fixture prefix corrections (silently accepted before, now properly enforced). CLAUDE.md retires the post-SES-010 'compute client-side' rule. The asymmetry that SES-010 named is resolved; the `GET /<entity>/next-identifier` helpers (DEC-043 option B) remain available for clients that prefer read-then-write.",
+    "artifacts_produced": "Code commit `<COMMIT_SHA_TBD>` on branch `pi-002-optional-identifier` (worktree at /home/doug/Dropbox/Projects/crmbuilder-pi002, branched from `723bc284`): 16 files modified, +1086/-138 lines. Five repositories retrofitted with optional-identifier `create()` plus `_insert_with_autoassign` SAVEPOINT-retry helper: `crmbuilder-v2/src/crmbuilder_v2/access/repositories/{decisions,sessions,risks,planning_items,topics}.py`. Five Pydantic Create schemas flipped to `identifier: str | None = None`: `crmbuilder-v2/src/crmbuilder_v2/api/schemas.py`. Forty new tests (30 access-layer + 10 API smoke) plus four legacy fixture corrections (`RISK-` → `RSK-`, `TOPIC-` → `TOP-`, `DEC-EXPLODE` → `DEC-999`). `CLAUDE.md` v2-section paragraph rewritten to retire the client-side compute-identifier rule. This close-out payload `ses_078.json` and its apply prompt `CLAUDE-CODE-PROMPT-apply-close-out-ses-078.md`. Out-of-band: the live PI-002 record in the v2 DB had its description prepended with an 'Explain it like I was 5' summary via direct API PATCH; that edit lives in the meta DB and travels via the next `apply_close_out.py` snapshot regeneration, not via this build's git diff.",
+    "in_flight_at_end": "PI-002 resolves at apply time via the resolves_planning_items section's atomic edge+flip (slice A's server-side behavior on POST /references with relationship=resolves). WS-011 'V2 storage API refinements' lands at apply time, status in_flight — the workstream hosts PI-002 and future ergonomic refinements that emerge from real v2 API usage. SES-010's friction is now fully discharged: option (A) was the post-SES-010 CLAUDE.md doc-only note (retired in this build), option (B) was DEC-043's helper endpoints (still available), option (C) is what this build shipped. No additional planning items surfaced. The pi-002-optional-identifier branch needs Doug's commit + push from the worktree before this apply runs."
+  },
+  "conversation": {
+    "conversation_identifier": "CONV-048",
+    "conversation_title": "PI-002 build closure — server-side identifier auto-assignment retrofit and CLAUDE.md rule retirement",
+    "conversation_purpose": "Build closure for SES-078 — execute PI-002 (DEC-043 option C: make `identifier` optional on POST for the five remaining prefixed-identifier entity types), retire the post-SES-010 client-side compute-identifier rule in CLAUDE.md, and surface no new planning items.",
+    "conversation_description": "Claude Code conversation at Doug's terminal that planned and executed PI-002 end-to-end without intermediate surface-and-settle questions. Established that PI-002's scope was narrower than originally framed (seven of the twelve prefixed entity types already conformed via the v0.7 governance and v0.4+ methodology builds), executed the retrofit on the five remaining repositories using the established domain.py SAVEPOINT-retry pattern verbatim, wrote 40 new tests, corrected legacy test-fixture prefixes that the old contract had silently accepted, rewrote the CLAUDE.md v2-section paragraph, and produced this close-out payload. Three open design questions on the PI-002 record were answered in-conversation by the existing patterns: (1) omitted-vs-empty-string disambiguation falls out of the prefix-regex format check; (2) versioned entities (charter, status) and numeric-only references are already server-assigned by construction so are out of scope; (3) the MCP server requires no change because tools inherit the API's new optional-identifier contract.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-048",
+        "target_type": "workstream",
+        "target_id": "WS-011",
+        "relationship": "conversation_belongs_to_workstream"
+      },
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-048",
+        "target_type": "session",
+        "target_id": "SES-078",
+        "relationship": "conversation_records_session"
+      }
+    ]
+  },
+  "commits": [
+    {
+      "commit_sha": "<COMMIT_SHA_TBD>",
+      "commit_message_first_line": "v2: PI-002 — make identifier optional on POST for decision/session/risk/planning_item/topic",
+      "commit_message_full": "v2: PI-002 — make identifier optional on POST for decision/session/risk/planning_item/topic\n\nResolves DEC-043's option (C) for the five prefixed-identifier entity\ntypes that hadn't yet adopted server-side auto-assignment. The v0.7\ngovernance entities and v0.4+ methodology entities already implemented\nthe pattern; this commit completes the surface.\n\nPer repository (decisions, sessions, risks, planning_items, topics):\n  - Add _IDENTIFIER_RE prefix-NNN regex\n  - Add _require_identifier_format() returning UnprocessableError (422)\n  - Add _increment_identifier() bumper\n  - Add _insert_with_autoassign() SAVEPOINT-retry helper mirroring\n    access/repositories/domain.py's pattern verbatim\n  - create() now accepts identifier: str | None = None and dispatches\n\nSchemas (api/schemas.py):\n  - DecisionCreateIn, SessionCreateIn, RiskCreateIn, PlanningItemCreateIn,\n    TopicCreateIn: identifier: str -> identifier: str | None = None\n\nThe explicit-identifier path now enforces the entity-type's prefix\nregex (consistent with v0.4+ entities). Three legacy test fixtures\nthat had used wrong-prefix identifiers under the old required-but-\nunvalidated contract (RISK-001 -> RSK-001; TOPIC-NNN -> TOP-NNN;\nDEC-EXPLODE -> DEC-999) are corrected in passing.\n\nCLAUDE.md's v2-section paragraph that previously documented the\nclient-side compute-identifier rule is rewritten to its successor\nform: identifier optional on POST for every prefixed entity type;\nGET /<entity>/next-identifier helpers remain for read-then-write\nclients; charter/status versioned by construction; references\nnumeric-auto-assigned. SES-010's friction is fully discharged.\n\nTests: 30 new access-layer (omit-assigns-next, supply-uses-it,\ninvalid-format-422, empty-string-422, dup-explicit-409, autoassign-\nretry-on-collision) + 10 new API smoke tests across the five\nentity types. Test suite: 1549 passed, 3 skipped.\n\nAuthority: DEC-043 (option C tracked as PI-002), PI-002 (this work).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "<COMMIT_DATE_TBD>",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "723bc284c477a6b6c7922295dcad218fb2de1766"
+      ],
+      "commit_files_changed_count": 16
+    }
+  ],
+  "work_tickets": [],
+  "decisions": [],
+  "planning_items": [],
+  "references": [
+    {
+      "source_type": "session",
+      "source_id": "SES-078",
+      "target_type": "planning_item",
+      "target_id": "PI-002",
+      "relationship": "is_about"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-078",
+      "target_type": "decision",
+      "target_id": "DEC-043",
+      "relationship": "is_about"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-078",
+      "target_type": "session",
+      "target_id": "SES-010",
+      "relationship": "is_about"
+    }
+  ],
+  "resolves_planning_items": [
+    {"planning_item_identifier": "PI-002"}
+  ],
+  "addresses_planning_items": []
+}

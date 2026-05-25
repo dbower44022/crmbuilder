@@ -133,3 +133,28 @@ def test_patch_supersedes_empty_string_clears_link(client):
     assert r.json()["data"]["supersedes_identifier"] is None
     r = client.get("/decisions/DEC-002")
     assert r.json()["data"]["supersedes_identifier"] is None
+
+
+# PI-002 — POST without identifier returns 201 with server-assigned value.
+
+
+def test_post_without_identifier_assigns_one(client):
+    r = client.post(
+        "/decisions",
+        json={"title": "Auto", "decision_date": "05-25-26", "status": "Active"},
+    )
+    assert r.status_code == 201, r.json()
+    assert r.json()["data"]["identifier"] == "DEC-001"
+
+
+def test_post_with_invalid_identifier_format_returns_422(client):
+    r = client.post(
+        "/decisions",
+        json={
+            "identifier": "DEC-1",
+            "title": "Bad",
+            "decision_date": "05-25-26",
+            "status": "Active",
+        },
+    )
+    assert r.status_code == 422, r.json()
