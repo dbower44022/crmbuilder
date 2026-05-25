@@ -9488,5 +9488,45 @@
     "source_type": "work_ticket",
     "target_id": "PI-052",
     "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-25T20:25:17.302438",
+    "id": 954,
+    "reference_identifier": "REF-0950",
+    "relationship_kind": "references",
+    "source_id": "PI-045",
+    "source_type": "planning_item",
+    "target_id": "DEC-244",
+    "target_type": "decision"
+  },
+  {
+    "created_at": "2026-05-25T20:25:17.426734",
+    "id": 955,
+    "reference_identifier": "REF-0951",
+    "relationship_kind": "references",
+    "source_id": "PI-045",
+    "source_type": "planning_item",
+    "target_id": "DEC-245",
+    "target_type": "decision"
+  },
+  {
+    "created_at": "2026-05-25T20:25:17.560304",
+    "id": 956,
+    "reference_identifier": "REF-0952",
+    "relationship_kind": "references",
+    "source_id": "PI-049",
+    "source_type": "planning_item",
+    "target_id": "DEC-244",
+    "target_type": "decision"
+  },
+  {
+    "created_at": "2026-05-25T20:25:17.731187",
+    "id": 957,
+    "reference_identifier": "REF-0953",
+    "relationship_kind": "references",
+    "source_id": "PI-049",
+    "source_type": "planning_item",
+    "target_id": "DEC-245",
+    "target_type": "decision"
   }
 ]

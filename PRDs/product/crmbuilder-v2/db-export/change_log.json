@@ -41202,5 +41202,141 @@
     "id": 1736,
     "operation": "insert",
     "timestamp": "2026-05-25T20:06:09.458818"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-11T14:51:10.184105",
+      "description": "**Explain it like I was 5:** When you want to add a new note to the project's notebook, you have to first peek at the last page to figure out what number to write at the top of yours — and if you forget, the notebook yells at you and won't take it. PI-002 makes the notebook smart enough to pick the next page number itself: you just hand it the note. You can still pick your own page number if you want to.\n\nDEC-043 resolved the SES-010 identifier-asymmetry friction via option (B) — ``GET /<entity>/next-identifier`` helpers for all twelve prefixed entity types. Option (C) — making ``identifier`` optional in POST bodies with server-side auto-assignment on omission — is the cleaner end state but was deferred from v0.4 because it changes existing endpoint contracts (gray-area under the kickoff's 'doesn't alter v0.3's storage shape' rule) and deserves its own design pass. Open design questions: (1) how to disambiguate client-omitted identifier (auto-assign) from client-specified-empty-string identifier (validation error)? (2) does this apply to versioned entity types like charter and status, whose identifiers are version numbers? (3) does the MCP server need any change beyond what the API change implies? Target release: v0.5 or later, depending on scope competition.",
+      "id": 2,
+      "identifier": "PI-002",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Resolved",
+      "title": "Make `identifier` optional in POST bodies (SES-010 option C)",
+      "updated_at": "2026-05-25T20:07:30.279593+00:00"
+    },
+    "before_payload": {
+      "created_at": "2026-05-11T14:51:10.184105",
+      "description": "**Explain it like I was 5:** When you want to add a new note to the project's notebook, you have to first peek at the last page to figure out what number to write at the top of yours — and if you forget, the notebook yells at you and won't take it. PI-002 makes the notebook smart enough to pick the next page number itself: you just hand it the note. You can still pick your own page number if you want to.\n\nDEC-043 resolved the SES-010 identifier-asymmetry friction via option (B) — ``GET /<entity>/next-identifier`` helpers for all twelve prefixed entity types. Option (C) — making ``identifier`` optional in POST bodies with server-side auto-assignment on omission — is the cleaner end state but was deferred from v0.4 because it changes existing endpoint contracts (gray-area under the kickoff's 'doesn't alter v0.3's storage shape' rule) and deserves its own design pass. Open design questions: (1) how to disambiguate client-omitted identifier (auto-assign) from client-specified-empty-string identifier (validation error)? (2) does this apply to versioned entity types like charter and status, whose identifiers are version numbers? (3) does the MCP server need any change beyond what the API change implies? Target release: v0.5 or later, depending on scope competition.",
+      "id": 2,
+      "identifier": "PI-002",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Open",
+      "title": "Make `identifier` optional in POST bodies (SES-010 option C)",
+      "updated_at": "2026-05-25T19:34:22.196739"
+    },
+    "entity_identifier": "PI-002",
+    "entity_type": "planning_item",
+    "id": 1737,
+    "operation": "update",
+    "timestamp": "2026-05-25T20:07:30.279941"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-11T14:51:10.184105",
+      "description": "**Explain it like I was 5:** When you want to add a new note to the project's notebook, you have to first peek at the last page to figure out what number to write at the top of yours — and if you forget, the notebook yells at you and won't take it. PI-002 makes the notebook smart enough to pick the next page number itself: you just hand it the note. You can still pick your own page number if you want to.\n\nDEC-043 resolved the SES-010 identifier-asymmetry friction via option (B) — ``GET /<entity>/next-identifier`` helpers for all twelve prefixed entity types. Option (C) — making ``identifier`` optional in POST bodies with server-side auto-assignment on omission — is the cleaner end state but was deferred from v0.4 because it changes existing endpoint contracts (gray-area under the kickoff's 'doesn't alter v0.3's storage shape' rule) and deserves its own design pass. Open design questions: (1) how to disambiguate client-omitted identifier (auto-assign) from client-specified-empty-string identifier (validation error)? (2) does this apply to versioned entity types like charter and status, whose identifiers are version numbers? (3) does the MCP server need any change beyond what the API change implies? Target release: v0.5 or later, depending on scope competition.",
+      "id": 2,
+      "identifier": "PI-002",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Open",
+      "title": "Make `identifier` optional in POST bodies (SES-010 option C)",
+      "updated_at": "2026-05-25T20:13:27.546921+00:00"
+    },
+    "before_payload": {
+      "created_at": "2026-05-11T14:51:10.184105",
+      "description": "**Explain it like I was 5:** When you want to add a new note to the project's notebook, you have to first peek at the last page to figure out what number to write at the top of yours — and if you forget, the notebook yells at you and won't take it. PI-002 makes the notebook smart enough to pick the next page number itself: you just hand it the note. You can still pick your own page number if you want to.\n\nDEC-043 resolved the SES-010 identifier-asymmetry friction via option (B) — ``GET /<entity>/next-identifier`` helpers for all twelve prefixed entity types. Option (C) — making ``identifier`` optional in POST bodies with server-side auto-assignment on omission — is the cleaner end state but was deferred from v0.4 because it changes existing endpoint contracts (gray-area under the kickoff's 'doesn't alter v0.3's storage shape' rule) and deserves its own design pass. Open design questions: (1) how to disambiguate client-omitted identifier (auto-assign) from client-specified-empty-string identifier (validation error)? (2) does this apply to versioned entity types like charter and status, whose identifiers are version numbers? (3) does the MCP server need any change beyond what the API change implies? Target release: v0.5 or later, depending on scope competition.",
+      "id": 2,
+      "identifier": "PI-002",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Resolved",
+      "title": "Make `identifier` optional in POST bodies (SES-010 option C)",
+      "updated_at": "2026-05-25T20:07:30.279593"
+    },
+    "entity_identifier": "PI-002",
+    "entity_type": "planning_item",
+    "id": 1738,
+    "operation": "update",
+    "timestamp": "2026-05-25T20:13:27.547265"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-25T20:25:17.302438+00:00",
+      "id": 954,
+      "reference_identifier": "REF-0950",
+      "relationship": "references",
+      "source_id": "PI-045",
+      "source_type": "planning_item",
+      "target_id": "DEC-244",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "planning_item:PI-045 -[references]-> decision:DEC-244",
+    "entity_type": "reference",
+    "id": 1739,
+    "operation": "insert",
+    "timestamp": "2026-05-25T20:25:17.302825"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-25T20:25:17.426734+00:00",
+      "id": 955,
+      "reference_identifier": "REF-0951",
+      "relationship": "references",
+      "source_id": "PI-045",
+      "source_type": "planning_item",
+      "target_id": "DEC-245",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "planning_item:PI-045 -[references]-> decision:DEC-245",
+    "entity_type": "reference",
+    "id": 1740,
+    "operation": "insert",
+    "timestamp": "2026-05-25T20:25:17.427143"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-25T20:25:17.560304+00:00",
+      "id": 956,
+      "reference_identifier": "REF-0952",
+      "relationship": "references",
+      "source_id": "PI-049",
+      "source_type": "planning_item",
+      "target_id": "DEC-244",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "planning_item:PI-049 -[references]-> decision:DEC-244",
+    "entity_type": "reference",
+    "id": 1741,
+    "operation": "insert",
+    "timestamp": "2026-05-25T20:25:17.560722"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-25T20:25:17.731187+00:00",
+      "id": 957,
+      "reference_identifier": "REF-0953",
+      "relationship": "references",
+      "source_id": "PI-049",
+      "source_type": "planning_item",
+      "target_id": "DEC-245",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "planning_item:PI-049 -[references]-> decision:DEC-245",
+    "entity_type": "reference",
+    "id": 1742,
+    "operation": "insert",
+    "timestamp": "2026-05-25T20:25:17.731671"
   }
 ]
