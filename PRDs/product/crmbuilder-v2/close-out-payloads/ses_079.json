@@ -1,0 +1,330 @@
+{
+  "label": "SES-079 close-out — WS-012 establishing conversation: parallel agent orchestrator architecture (six decisions DEC-246 through DEC-251) plus ten-PI roadmap (PI-053 through PI-062). Bootstrap track (PI-053 exec_summary field, PI-054 exec_summary backfill, PI-055 area field, PI-056 claimed_by/claimed_at, PI-059 conversation_orchestrates_conversation kind) and orchestrator track (PI-057 identifier reservation API, PI-058 ready-batches API, PI-060 driver script, PI-061 child kickoff template, PI-062 area backfill). All ten dependencies declared via blocked_by edges. WS-012 created out-of-band via apply-prompt pre-step.",
+  "session": {
+    "identifier": "SES-079",
+    "title": "Parallel agent orchestrator architecture — WS-012 establishing planning conversation",
+    "session_date": "2026-05-25",
+    "status": "Complete",
+    "conversation_reference": "Claude.ai conversation on 2026-05-25, opened against project-default Architecture-mode operating context. Seed prompt: 'What changes should we make to the v2 process to allow a claude code orchestrator to spin up multiple agents to process all open PI's'. Six surface-and-settle questions worked through using the consequential-decision template; mid-conversation pull-and-survey of the repo surfaced that the workstream entity and several proposed reference kinds already shipped in v0.7 and v0.8, prompting a revision of the plan before close-out.",
+    "topics_covered": "Seed prompt: \"What changes should we make to the v2 process to allow a claude code orchestrator to spin up multiple agents to process all open PI's\". The conversation worked through six consequential decisions: (Q1) unit of parallelism for the orchestrator — area-level chosen over per-PI and file-set; (Q2) area as multi-valued JSON set rather than scalar, to honestly represent cross-cutting work items; (Q3) close-out shape — per-agent CONV+SES pairs plus an orchestrator CONV+SES pair, with new conversation_orchestrates_conversation reference kind for the supervisor/child relationship; (Q4) scheduling — static waves over dynamic dispatch for v1, with dynamic as a future upgrade; (Q5) executive summary as a structured field on planning_items / decisions / sessions, with 200-800 char length constraint and required at the access layer; (Q6) workstream organization — single workstream WS-012 holding both orchestrator work and exec-summary work, rather than separate workstreams. The pre-close-out pull of the repo surfaced that the workstream entity already exists in v0.7, that blocked_by is the existing PI-dependency relationship (not the depends_on I'd planned), and that the v0.8 close-out payload format has nine sections. Plan was revised to drop the workstream-entity bring-up PIs (already done), use blocked_by for PI dependencies, and target the WS-012 identifier. Doug approved the revised plan; this close-out implements it. Conversation operated in ARCHITECTURE mode end-to-end; no code changes produced; planning artifact orchestrator-planning.md committed alongside this close-out's payload and apply prompt.",
+    "artifacts_produced": "- PRDs/product/crmbuilder-v2/orchestrator-planning.md (v1.0, workstream planning doc for WS-012)\n- PRDs/product/crmbuilder-v2/close-out-payloads/ses_077.json (this payload)\n- PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-apply-close-out-ses-077.md (apply prompt with WS-012 pre-step)\n- WS-012 workstream record (created out-of-band by apply prompt pre-step)",
+    "in_flight_at_end": "- All ten planning items PI-053 through PI-062 land as Open status pending Claude Code execution.\n- WS-012 created as in_flight; will complete when all ten PIs resolve and an orchestrator run dispatches at least two concurrent agents end-to-end.\n- Wave 1 of WS-012 (PI-053, PI-055, PI-056, PI-057, PI-059) is fully unblocked and can be dispatched in any order at Doug's next code-change session.\n- The orchestrator itself cannot run until Wave 3 (PI-060) lands, so the workstream's own implementation proceeds via manual Claude Code dispatch — recursive dispatch is the post-PI-060 acceptance test, not a bootstrap requirement.",
+    "summary": "Architecture-mode planning conversation that established WS-012 (parallel agent orchestrator and executive summary) as a new workstream. Six consequential decisions taken on orchestrator architecture (area-level parallelism with multi-valued areas, per-agent conversation+session pairs supervised by an orchestrator conversation+session pair, static-wave scheduling), governance metadata (executive_summary as required structured field across PI/DEC/SES), and workstream organization (single workstream covering both orchestrator and exec-summary tracks). Plan was revised mid-conversation after a repo pull surfaced that the workstream entity and several reference kinds already shipped in v0.7/v0.8, dropping three obsolete PIs from the original eleven-PI plan and renaming depends_on to the existing blocked_by kind. Ten planning items (PI-053 through PI-062) land in two tracks (bootstrap and orchestrator) with dependencies declared via blocked_by; first orchestrator test run is the workstream's own acceptance test."
+  },
+  "conversation": {
+    "conversation_identifier": "CONV-049",
+    "conversation_title": "Parallel agent orchestrator architecture and WS-012 establishment",
+    "conversation_purpose": "Architect a parallel agent orchestrator that dispatches Claude Code subagents to process the open planning-item backlog concurrently. Establish a new workstream (WS-012) covering the orchestrator and the executive-summary structured-field extension it depends on.",
+    "conversation_description": "Architecture-mode planning conversation opened against the open-ended seed prompt 'What changes should we make to the v2 process to allow a claude code orchestrator to spin up multiple agents to process all open PIs'. Worked through six consequential decisions using the eight-element template — five about orchestrator architecture (parallelism unit, area cardinality, close-out shape, scheduling model, workstream organization) and one about a cross-cutting governance metadata extension (executive_summary structured field on PI/DEC/SES). Pre-close-out repo pull surfaced that the workstream entity and several proposed reference kinds already shipped in v0.7/v0.8, prompting a plan revision: dropped two workstream-entity bring-up PIs (already implemented), renamed depends_on to the existing blocked_by reference kind, and targeted WS-012 (next available). Final close-out lands ten planning items (PI-053 through PI-062) in two tracks (bootstrap: schema + vocab + backfill; orchestrator proper: APIs + driver + child template), six decisions (DEC-246 through DEC-251), one workstream (WS-012 created out-of-band by the apply prompt's pre-step), and a planning artifact (orchestrator-planning.md).",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-049",
+        "target_type": "workstream",
+        "target_id": "WS-012",
+        "relationship": "conversation_belongs_to_workstream"
+      },
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-049",
+        "target_type": "session",
+        "target_id": "SES-079",
+        "relationship": "conversation_records_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [
+    {
+      "identifier": "PI-053",
+      "title": "Add executive_summary field to planning_items, decisions, sessions",
+      "item_type": "pending_work",
+      "description": "Audience-facing summary: Adds a required 'executive summary' field to every planning item, decision, and session record. Today these records carry only implementer-facing description text, so a product manager or executive reading the governance log has to parse engineering detail to extract the gist. With this field in place, governance records become legible to non-technical reviewers without losing the technical content for implementers.\n\nTechnical scope: Add 'executive_summary' column to the planning_items, decisions, and sessions tables via a single Alembic migration. Type TEXT NOT NULL with a CHECK constraint enforcing length between 200 and 800 characters. Update the access-layer validators in planning_items.py, decisions.py, and sessions.py to require the field on create and update. Update the Pydantic models in the API to include the field. Update the snapshot regenerator to include executive_summary in db-export JSON output for all three tables. The migration runs against existing rows — see PI-054 for the backfill of populated values; the NOT NULL constraint must be deferred to the post-backfill migration in PI-054, or the column added as nullable here and made NOT NULL in PI-054.",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-054",
+      "title": "Backfill executive_summary on existing planning items, decisions, sessions",
+      "item_type": "pending_work",
+      "description": "Audience-facing summary: Writes an audience-facing summary on every existing governance record so the new field is populated retroactively. Without this, the new executive_summary field would be empty on every record created before PI-053 landed, defeating the purpose of having it.\n\nTechnical scope: AI-assisted backfill pass over all ~51 existing planning_items, ~243 existing decisions, and ~76 existing sessions in the CRMBUILDER engagement. For each record, generate a 200-800 character PM/exec-readable summary by reading the existing description/context/decision/rationale/summary fields and rewriting them for a non-technical audience. Spot-check at minimum 10 records per type before bulk-applying. Submit summaries via API PATCH (or directly via the access layer) one record at a time so the change_log captures the audit trail. Finalize the NOT NULL constraint on the column (if PI-053 deferred it) after all rows are populated.",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-055",
+      "title": "Add area field to planning_items (multi-valued JSON, vocabulary-checked)",
+      "item_type": "pending_work",
+      "description": "Audience-facing summary: Lets each planning item declare which areas of the codebase or methodology it touches. The orchestrator uses these area labels to figure out which planning items are safe to run in parallel without two agents editing the same files at the same time. Without this field, parallel dispatch is unsafe.\n\nTechnical scope: Add 'area' column to the planning_items table via Alembic migration. Type JSON NOT NULL with a CHECK constraint enforcing json_array_length >= 1 and every element in the registered vocabulary. Register a new vocabulary 'area' in crmbuilder-v2/src/crmbuilder_v2/access/vocab.py with the initial seventeen values listed in orchestrator-planning.md §2.1 (v2-storage, v2-access, v2-api, v2-mcp, v2-ui, cbm-mn, cbm-mr, cbm-cr, cbm-fu, cbm-services, methodology-interviews, methodology-process, methodology-templates, methodology-product, infrastructure, v1-automation, v1-espo, v1-programs). Update the planning_items access-layer validator to enforce the vocabulary on create and update. Update the API Pydantic model. Update the snapshot regenerator. NOT NULL constraint is deferred until PI-062 backfills existing rows; add the column as JSON nullable here, tighten to NOT NULL in PI-062.",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-056",
+      "title": "Add claimed_by and claimed_at fields to planning_items",
+      "item_type": "pending_work",
+      "description": "Audience-facing summary: Lets the orchestrator mark a planning item as 'currently being worked on by a specific agent' so two agents never grab the same item at once. The fields are null when a planning item is available, populated when an agent claims it, and cleared when the agent's work resolves or is rolled back.\n\nTechnical scope: Add 'claimed_by' (nullable foreign-key-style string column referencing either a conversation_identifier or a session_identifier — to be decided in this PI) and 'claimed_at' (nullable timestamp) columns to the planning_items table via Alembic migration. Update the access-layer validators to enforce 'both fields set or both null'. Decide whether claimed_by references the conversation entity (semantically the conversation holds the claim) or the session entity (simpler to write at start-of-work). Update API Pydantic model and snapshot regenerator. Add a small access-layer helper claim_planning_item(identifier, claimant) that sets the pair atomically with optimistic concurrency (fail if already claimed). No backfill needed — existing rows stay null.",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-057",
+      "title": "Implement identifier reservation API endpoint",
+      "item_type": "pending_work",
+      "description": "Audience-facing summary: Lets the orchestrator atomically reserve a block of identifiers (for example, the next five session IDs) at the start of a run, so child agents don't race to claim the next available number when they finish their work. Small API addition with outsized impact on orchestrator safety — without it, two child agents finishing close in time could collide on the next-SES identifier.\n\nTechnical scope: Add 'POST /identifiers/reserve' endpoint accepting {entity_type, count} and returning {reserved: [list of identifiers], head_after}. Atomic advancement of the engagement-scoped identifier head, with the reserved block held server-side under the requesting conversation's claim. A subsequent POST of a record with an identifier in the reserved block consumes the reservation. Stale reservations (no record posted within a configurable TTL, default 1 hour) auto-release. Update API documentation. Add access-layer tests. Supports the standard prefixed identifier types (SES, DEC, PI, CONV, RISK, TOPIC, CHA, STAT, and any other client-computed identifier kinds).",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-058",
+      "title": "Implement orchestration ready-batches API endpoint",
+      "item_type": "pending_work",
+      "description": "Audience-facing summary: The single API call the orchestrator makes at the start of every run to figure out what's safe to dispatch. Returns the open planning items grouped by dependency depth (planning items at depth 0 have no unresolved dependencies; depth 1 depends on depth 0; etc.) with each item's area set attached. Without this, the orchestrator would have to make many separate calls and run the topological sort itself.\n\nTechnical scope: Add 'GET /orchestration/ready-batches' endpoint scoped to the active engagement. Returns {batches: [{depth: 0, items: [{identifier, title, executive_summary, area, claimed_by}, ...]}, {depth: 1, items: [...]}, ...]}. Computes the dependency graph by reading blocked_by references where source_type=planning_item and target_type=planning_item and source.status=Open. Resolved items are filtered out. Already-claimed items appear in their batch but with claimed_by populated so the orchestrator can skip them. Topological sort handles cycles by surfacing them as a separate 'cyclic' bucket with a warning rather than failing. Optional query parameters: area (filter to just specific areas), max_depth (cut off the sort early).",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-059",
+      "title": "Register conversation_orchestrates_conversation reference kind",
+      "item_type": "pending_work",
+      "description": "Audience-facing summary: Adds the relationship type that connects the orchestrator's supervising conversation to each of its child agents' conversations. Without it, the governance timeline can't show the parent-child structure of a parallel run, and audit queries can't walk from an orchestrator session to its children.\n\nTechnical scope: Add 'conversation_orchestrates_conversation' to REFERENCE_RELATIONSHIPS in crmbuilder-v2/src/crmbuilder_v2/access/vocab.py. Extend the _kinds_for_pair logic to allow the (conversation, conversation) source/target pair with this new kind. Alembic migration to extend the refs.relationship_kind CHECK constraint to include the new kind. Update the V2 desktop UI's references-create dialog to expose the new option in the cascading filter (this is automatic from the vocab/rules update — no UI code changes needed; flagged here as a verification step). Per CLAUDE.md, adding a relationship kind requires updating REFERENCE_RELATIONSHIPS, _kinds_for_pair, and the CHECK constraint together.",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-060",
+      "title": "Build orchestrator driver script",
+      "item_type": "pending_work",
+      "description": "Audience-facing summary: The orchestrator itself — a Python script that runs at the developer's terminal, reads the open planning-item backlog via the ready-batches API, plans the wave structure, spawns parallel child agents (one per area-disjoint cluster), monitors them, and produces its own close-out payload referencing each child's close-out. The largest deliverable in this workstream and the proof that the rest of the foundation works.\n\nTechnical scope: Python script under crmbuilder-v2/scripts/orchestrator/run.py. Pre-flight: clean git status, current engagement set, API health check, no other orchestrator currently running (file lock under ~/.crmbuilder-v2/). Main loop: GET /orchestration/ready-batches → reserve identifiers via POST /identifiers/reserve (one SES + one CONV per child + one for the orchestrator itself) → POST workstream-membership and records_session edges for the orchestrator's own conversation → for each area-disjoint cluster in the current wave, create a child branch, write a kickoff file from the template (PI-061) with the agent's assigned identifiers and PI list embedded, spawn a Claude Code subagent against the branch → poll until all agents in the wave complete or fail → on completion, ingest each child's close-out payload reference and create the conversation_orchestrates_conversation edge → advance to next wave. On any failure: halt, log the failure context, leave claimed_by populated for forensic review. Produces a final close-out payload referencing every child's CONV via conversation_orchestrates_conversation.",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-061",
+      "title": "Build child agent kickoff prompt template",
+      "item_type": "pending_work",
+      "description": "Audience-facing summary: The standardized kickoff prompt that each child agent receives when the orchestrator dispatches it. Tells the agent which planning items it owns, which branch to work on, which session/conversation identifiers it was pre-allocated, which areas it's claimed, and how to produce its close-out payload at the end. Without this template, every orchestrator run would invent kickoff prompts ad hoc and the agents would have inconsistent behavior.\n\nTechnical scope: Template file at PRDs/product/crmbuilder-v2/orchestrator/child-agent-kickoff-template.md with placeholder substitution markers ({{session_identifier}}, {{conversation_identifier}}, {{planning_items}}, {{areas_claimed}}, {{branch_name}}, etc.). Body sections: operating mode (DETAIL by default for code work), engagement and workstream context, pre-allocated identifiers, planning items in scope (full descriptions from the ready-batches response), areas claimed (and the conflict rule explaining the agent must not touch other areas), close-out payload requirements (the agent produces its own ses_NNN.json and apply prompt at the engagement's close-out-payloads directory), branch and commit conventions (branch name, commit message prefix). The template is rendered by the orchestrator driver (PI-060) at dispatch time and written into the working directory of the spawned Claude Code subagent.",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-062",
+      "title": "Backfill area field on currently-open planning items",
+      "item_type": "pending_work",
+      "description": "Audience-facing summary: Assigns area labels to every currently-open planning item so the orchestrator can categorize them when it dispatches. Without this backfill, open items have null areas and the orchestrator can't include them in any batch.\n\nTechnical scope: AI-assisted pass over the ~33 currently-open planning items in the CRMBUILDER engagement (count as of SES-079; rerun against current open list at PI execution time). For each open PI, read its title and description, infer the affected area(s) from the language (file paths, subsystem names, methodology vs. product framing, etc.), and propose a multi-valued area set. Spot-check at least the first 10 with Doug before bulk-applying. PATCH each PI via API. After backfill, tighten the area column's NOT NULL constraint (deferred from PI-055). Closed/Resolved PIs do not need backfill — area is meaningful only for open work the orchestrator might dispatch. The backfill is one-shot; future PIs declare area at authoring time.",
+      "status": "Open"
+    }
+  ],
+  "commits": [],
+  "decisions": [
+    {
+      "identifier": "DEC-246",
+      "title": "Orchestrator uses area-level parallelism, not per-PI or file-set parallelism",
+      "decision_date": "2026-05-25",
+      "status": "Active",
+      "context": "Designing a Claude Code orchestrator that processes open planning items concurrently raised the question of what each child agent is handed. Three viable models surfaced: (A) per-PI parallelism, where each child agent takes one planning item and runs to completion — maximum throughput but high conflict surface because two agents working on the same subsystem could trample each other's files; (B) area-level parallelism, where planning items are tagged with an area label corresponding to a region of the codebase or methodology, and the orchestrator dispatches one agent per area's queue — natural isolation aligned with module boundaries, less parallelism within a hot area; (C) file-affected-set parallelism, where every planning item declares the exact files it will touch and the orchestrator computes a conflict graph — theoretically optimal but requires authoring discipline (an 'affects' declaration on every PI) that the existing PI corpus does not yet carry.",
+      "decision": "Adopt area-level parallelism. Planning items carry an 'area' field; the orchestrator partitions ready work by area set and dispatches one agent per area-disjoint cluster. Conflict detection is reduced to area-set intersection.",
+      "rationale": "Area boundaries match the codebase's existing module boundaries (v2-access, v2-api, v2-ui, methodology-process, cbm-mn, etc.); the labeling discipline is bounded (a finite registered vocabulary, not a free-text file list); conflicts within a single agent's queue are by definition serialized; and the conflict-detection logic in the orchestrator stays simple. The throughput cost relative to per-PI is bounded because hot areas tend to have serial dependencies anyway (UI slices A → B → C). The complexity cost relative to file-set parallelism is significant: file-set requires authoring infrastructure (the affects declaration) and the orchestrator carrying a conflict graph; area requires only a vocabulary and a set-intersection check.",
+      "alternatives_considered": "(A) Per-PI parallelism — rejected on conflict-surface grounds. Two agents working on the same subsystem could trample each other's files; building real file-level conflict detection adds substantial complexity to the orchestrator and to every API write the children make.\n(C) File-affected-set parallelism — rejected on metadata-discipline grounds. The existing PI corpus has no 'affects' declarations; backfilling them retroactively is itself a substantial workstream, and forward-going discipline is harder to enforce than a vocabulary check. Reconsider once the orchestrator has runs under its belt and we know whether area-level's lost parallelism is worth the climb to file-set.",
+      "consequences": "Planning items gain a new required field 'area' (PI-055) with a registered vocabulary mapped to filesystem topology. The vocabulary itself becomes a maintained list in vocab.py with the initial seventeen values. New area labels require an explicit code change to extend the vocabulary. Backfill of currently-open planning items is required before the orchestrator can dispatch (PI-062). Hot areas with many open PIs run serially within that area; cross-area parallelism is the only parallelism available."
+    },
+    {
+      "identifier": "DEC-247",
+      "title": "Area field is multi-valued (JSON array set), not scalar",
+      "decision_date": "2026-05-25",
+      "status": "Active",
+      "context": "Given area-level parallelism (DEC-246), the area field needs a cardinality decision. Some planning items genuinely cross subsystem boundaries — for example, a refactor that touches both the v2-access layer and the v2-api Pydantic models. Two options: (A) scalar area — each PI picks one 'primary' area and the rest is author discretion; (B) multi-valued area — each PI declares the set of areas it touches and the orchestrator's conflict-detection rule uses set intersection.",
+      "decision": "Multi-valued area. The area field is a JSON array (set, not list) of vocabulary values with a CHECK constraint enforcing at least one element and every element in the registered vocabulary. The orchestrator's conflict rule: two planning items conflict iff their area sets intersect.",
+      "rationale": "Forcing a scalar primary area on cross-cutting items would oversimplify their scope and create silent conflict risk — a 'primary v2-access' item that also touches v2-api would not conflict with a 'primary v2-api' item under scalar rules, but in practice both agents would edit api/envelope.py and conflict. Multi-valued labeling lets PIs be honest about their scope; the conflict-detection logic in the orchestrator absorbs the small complexity of set intersection (vs. equality) in exchange for correctness. PI authoring discipline shifts only slightly — 'what areas does this touch' is a marginally harder question than 'which bucket', not a categorically different one.",
+      "alternatives_considered": "(A) Scalar area — rejected on honest-labeling grounds. The cost of mislabeled cross-cutting items (silent parallel conflicts) is higher than the cost of slightly more orchestrator logic.",
+      "consequences": "Schema: 'area' column is JSON, not TEXT. CHECK constraint enforces json_array_length >= 1 and vocabulary membership of every element. Orchestrator's ready-batches query (PI-058) returns area sets; the driver (PI-060) computes pairwise intersection to detect conflicts within a wave. PI authoring requires thinking about all touched areas, not just the primary one."
+    },
+    {
+      "identifier": "DEC-248",
+      "title": "Orchestrator run produces per-agent conversation+session pairs plus an orchestrator conversation+session pair",
+      "decision_date": "2026-05-25",
+      "status": "Active",
+      "context": "When the orchestrator finishes a parallel run with N child agents, what governance records should the timeline show? Three viable models: (A) one session/conversation pair per agent — each agent is its own governance unit, the orchestrator is also its own pair, and the orchestrator's records reference children via a new edge kind; (B) one consolidated pair for the whole run — agents return their work to the orchestrator, which assembles a single mega-payload; (C) one pair per planning item — finest granularity, every PI completion is its own session. The decision affects how SES and CONV records relate, how many close-out payloads each orchestrator run produces, and how audit queries walk the work-attribution graph.",
+      "decision": "One conversation+session pair per child agent, plus one conversation+session pair for the orchestrator. The orchestrator's conversation references each child's conversation via a new reference kind 'conversation_orchestrates_conversation' (added by PI-059). Each child produces its own close-out payload; the orchestrator produces its own close-out payload after all children settle, with the orchestrates edges declared in its payload's references section.",
+      "rationale": "A session is the unit of coherent work by one worker (the operative semantics established through SES-001 onward and reinforced by the v0.8 conversation-records-session pairing). An agent is one worker. Per-agent pairs preserve those semantics. Consolidating (option B) would lose the per-agent boundary and bundle multiple workers' work into one record, breaking audit queries that walk from a planning item through the conversation that resolved it. Per-PI (option C) would inflate the SES/CONV count without adding signal — a child agent typically works multiple PIs in a coherent session; splitting that into N sessions creates governance noise. The new conversation_orchestrates_conversation reference kind is a small vocabulary extension (one row in REFERENCE_RELATIONSHIPS, one rule update) that buys parent/child structure across the whole timeline.",
+      "alternatives_considered": "(B) Consolidated orchestrator-only pair — rejected on attribution-loss grounds. Walking from a planning item to 'the conversation that resolved it' should land on the agent's conversation, not on a mega-conversation that contains it as a sub-block.\n(C) Per-PI pair — rejected on noise grounds. Most agents will handle multiple coherent PIs in a single dispatch; splitting them would balloon SES/CONV counts.",
+      "consequences": "PI-059 adds the conversation_orchestrates_conversation reference kind. The orchestrator driver (PI-060) pre-allocates identifiers for itself plus all children at run start via the identifier-reservation API (PI-057). Each child agent's close-out payload follows the standard v0.8 shape. The orchestrator's close-out payload is structurally identical to a normal close-out but its references section contains N conversation_orchestrates_conversation edges (one per child) and typically no decisions or new planning items of its own — its work is supervision."
+    },
+    {
+      "identifier": "DEC-249",
+      "title": "Orchestrator uses static-wave scheduling for v1; dynamic dispatch is a future upgrade",
+      "decision_date": "2026-05-25",
+      "status": "Active",
+      "context": "With ready batches computed by depth, the orchestrator can dispatch in two ways. (A) Static waves: compute the topological sort once at run start, dispatch all items at depth N concurrently, wait for the entire wave to finish before starting depth N+1. (B) Dynamic dispatch: maintain a running-agent registry and a ready queue; when any agent completes, recompute the ready set and dispatch newly-unblocked work immediately, regardless of which depth other agents are still in. Dynamic gives higher throughput when planning items vary significantly in duration; static is simpler to implement.",
+      "decision": "Static-wave scheduling for v1 of the orchestrator. Compute topological depth at run start, dispatch wave N concurrently, await all wave-N completions before dispatching wave N+1. Dynamic dispatch is a candidate upgrade once orchestrator runs reveal real cost from wave-join idle time.",
+      "rationale": "Current open backlog has modest dependency depth (typically 2-3 levels) and modest wave size (3-6 PIs per level). The throughput cost from wave joins — slowest PI in wave N holds up wave N+1 — is bounded by those numbers. The complexity cost of dynamic dispatch is significant: the orchestrator becomes a small state machine with a running-agent registry, an event loop, and failure-handling logic for the case where an agent fails mid-wave (does dynamic dispatch retry, requeue, abort?). Static-wave's driver is a serial Python script with clear failure semantics (halt on any failure, surface for human review). Build the simple version first; observe whether the cost is actually real before adding the machinery.",
+      "alternatives_considered": "(B) Dynamic dispatch from day one — rejected on premature-optimization grounds. The throughput model requires real data to evaluate; building the state machine now costs implementation time that could go to landing PI-053 through PI-062. Revisit after the first few orchestrator runs.",
+      "consequences": "The orchestrator driver (PI-060) is a serial dispatch loop: compute waves, for each wave spawn all child agents in parallel, await all, advance. Failure in any agent halts the orchestrator at the failed wave boundary; the human re-runs after investigation. No automated retry. No partial-wave dispatch. Future PI to add dynamic dispatch is deferred and not in WS-012 scope."
+    },
+    {
+      "identifier": "DEC-250",
+      "title": "executive_summary becomes a required structured field on planning_items, decisions, and sessions",
+      "decision_date": "2026-05-25",
+      "status": "Active",
+      "context": "Governance records (planning items, decisions, sessions) are read by two audiences: implementers who need technical detail, and product managers/executives who need to understand what is happening at the project level. Today these records carry only implementer-facing description text. The audience separation lives in author discipline, not in the data model. Two ways to enforce the separation: (A) markdown convention inside the existing description field — authors lead with a '## Executive Summary' heading followed by audience-facing prose, then a technical section; (B) a structured executive_summary field at the schema level — separate column, validated length, queryable independently, displayable on its own in list views and dashboards.",
+      "decision": "Add executive_summary as a structured field on planning_items, decisions, and sessions. Type TEXT NOT NULL with CHECK length BETWEEN 200 AND 800 characters. Required at the access layer. Applies to all three record types (PI, DEC, SES).",
+      "rationale": "The audience separation is a real structural property of the record — implementer vs. non-technical reviewer — and structural properties belong in the schema, not in convention. A structured field is queryable (a 'show me open work in PM-readable form' query is a single SELECT, not a regex over description text); displayable independently (lists can show summary without description); and validated (length constraints enforce the brevity the audience needs). The cost is real — every new PI/DEC/SES requires a thoughtful 200-800 char summary written for non-technical audiences, which is real authoring work, plus backfill of every existing record. But the audience legibility is what motivated the field in the first place; convention would let it drift.",
+      "alternatives_considered": "(A) Markdown convention in description — rejected on drift grounds. Conventions in long-form text fields decay over time as authors get rushed. Schema-enforced fields don't.",
+      "consequences": "PI-053 adds the field on all three tables. PI-054 backfills every existing record. Every new PI/DEC/SES authoring goes through the field's length validator. The new field carries forward to db-export snapshots, API responses, MCP server outputs, and any UI list views. Backfill is a one-time AI-assisted pass with human spot-check; the orchestrator (when it ships) will use the field when logging which agent is working on what."
+    },
+    {
+      "identifier": "DEC-251",
+      "title": "Executive-summary work bundles into WS-012 alongside orchestrator work; no separate workstream",
+      "decision_date": "2026-05-25",
+      "status": "Active",
+      "context": "Mid-conversation, the planned workstream organization included a separate umbrella workstream for governance platform extensions (executive_summary work, plus workstream-entity bring-up if it didn't exist). The pre-close-out repo pull surfaced that the workstream entity already shipped in v0.7, collapsing the umbrella's content to just executive_summary work. Question: does executive_summary work get its own workstream, or bundle into WS-012 (orchestrator) since the orchestrator is its first real consumer?",
+      "decision": "Bundle executive_summary work into WS-012 as part of the bootstrap track (PI-053, PI-054). WS-012's name reflects both content areas: 'Parallel agent orchestrator and executive summary'.",
+      "rationale": "With workstream-entity bring-up off the table, executive_summary is the only residual content for a separate platform-extensions workstream. Two-PI workstreams add governance bookkeeping (workstream identifier, planning doc, status tracking) without proportionate clarity benefit. The orchestrator is the first real consumer of the field — its dispatch logs need the summary for PM-readable visibility — so the dependency direction is natural: WS-012 needs executive_summary, so executive_summary lives in WS-012. Single workstream, two tracks (bootstrap and orchestrator proper), clear dependency flow.",
+      "alternatives_considered": "Separate workstream for executive_summary work — rejected on workstream-proliferation grounds. Two-PI workstreams are too small to justify the per-workstream overhead.",
+      "consequences": "WS-012's purpose statement covers both areas. The planning doc orchestrator-planning.md explicitly carves out the bootstrap track. Wave 1 of WS-012 implementation includes PI-053 (exec summary field) alongside PI-055 (area field) and other foundation work. The workstream completes when all ten PIs resolve and the first orchestrator dispatch succeeds end-to-end."
+    }
+  ],
+  "references": [
+    {
+      "source_type": "decision",
+      "source_id": "DEC-246",
+      "target_type": "session",
+      "target_id": "SES-079",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-247",
+      "target_type": "session",
+      "target_id": "SES-079",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-248",
+      "target_type": "session",
+      "target_id": "SES-079",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-249",
+      "target_type": "session",
+      "target_id": "SES-079",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-250",
+      "target_type": "session",
+      "target_id": "SES-079",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-251",
+      "target_type": "session",
+      "target_id": "SES-079",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-054",
+      "target_type": "planning_item",
+      "target_id": "PI-053",
+      "relationship": "blocked_by"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-058",
+      "target_type": "planning_item",
+      "target_id": "PI-055",
+      "relationship": "blocked_by"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-058",
+      "target_type": "planning_item",
+      "target_id": "PI-056",
+      "relationship": "blocked_by"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-061",
+      "target_type": "planning_item",
+      "target_id": "PI-055",
+      "relationship": "blocked_by"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-061",
+      "target_type": "planning_item",
+      "target_id": "PI-059",
+      "relationship": "blocked_by"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-062",
+      "target_type": "planning_item",
+      "target_id": "PI-055",
+      "relationship": "blocked_by"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-060",
+      "target_type": "planning_item",
+      "target_id": "PI-053",
+      "relationship": "blocked_by"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-060",
+      "target_type": "planning_item",
+      "target_id": "PI-054",
+      "relationship": "blocked_by"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-060",
+      "target_type": "planning_item",
+      "target_id": "PI-055",
+      "relationship": "blocked_by"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-060",
+      "target_type": "planning_item",
+      "target_id": "PI-056",
+      "relationship": "blocked_by"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-060",
+      "target_type": "planning_item",
+      "target_id": "PI-057",
+      "relationship": "blocked_by"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-060",
+      "target_type": "planning_item",
+      "target_id": "PI-058",
+      "relationship": "blocked_by"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-060",
+      "target_type": "planning_item",
+      "target_id": "PI-059",
+      "relationship": "blocked_by"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-060",
+      "target_type": "planning_item",
+      "target_id": "PI-061",
+      "relationship": "blocked_by"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-060",
+      "target_type": "planning_item",
+      "target_id": "PI-062",
+      "relationship": "blocked_by"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": []
+}
