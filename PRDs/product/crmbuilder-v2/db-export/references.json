@@ -9188,5 +9188,75 @@
     "source_type": "session",
     "target_id": "PI-044",
     "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-25T17:19:02.252344",
+    "id": 924,
+    "reference_identifier": "REF-0920",
+    "relationship_kind": "resolves",
+    "source_id": "SES-076",
+    "source_type": "session",
+    "target_id": "PI-001",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-25T17:19:02.403212",
+    "id": 925,
+    "reference_identifier": "REF-0921",
+    "relationship_kind": "resolves",
+    "source_id": "SES-076",
+    "source_type": "session",
+    "target_id": "PI-024",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-25T17:19:02.522367",
+    "id": 926,
+    "reference_identifier": "REF-0922",
+    "relationship_kind": "resolves",
+    "source_id": "SES-076",
+    "source_type": "session",
+    "target_id": "PI-025",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-25T17:19:02.678469",
+    "id": 927,
+    "reference_identifier": "REF-0923",
+    "relationship_kind": "resolves",
+    "source_id": "SES-076",
+    "source_type": "session",
+    "target_id": "PI-026",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-25T17:19:02.796738",
+    "id": 928,
+    "reference_identifier": "REF-0924",
+    "relationship_kind": "deposit_event_applies_close_out_payload",
+    "source_id": "DEP-056",
+    "source_type": "deposit_event",
+    "target_id": "COP-076",
+    "target_type": "close_out_payload"
+  },
+  {
+    "created_at": "2026-05-25T17:19:25.532741",
+    "id": 929,
+    "reference_identifier": "REF-0925",
+    "relationship_kind": "deposit_event_applies_close_out_payload",
+    "source_id": "DEP-057",
+    "source_type": "deposit_event",
+    "target_id": "COP-076",
+    "target_type": "close_out_payload"
+  },
+  {
+    "created_at": "2026-05-25T17:19:25.535235",
+    "id": 930,
+    "reference_identifier": "REF-0926",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-057",
+    "source_type": "deposit_event",
+    "target_id": "SES-076",
+    "target_type": "session"
   }
 ]

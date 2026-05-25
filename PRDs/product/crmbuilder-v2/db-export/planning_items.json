@@ -6,9 +6,9 @@
     "identifier": "PI-001",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Full styling design pass per DEC-024",
-    "updated_at": "2026-05-16T05:28:44.964964"
+    "updated_at": "2026-05-25T17:19:02.253281"
   },
   {
     "created_at": "2026-05-11T14:51:10.184105",
@@ -259,9 +259,9 @@
     "identifier": "PI-024",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "PI-022 Phase 2 — backfill prior workstreams",
-    "updated_at": "2026-05-23T00:02:29.695515"
+    "updated_at": "2026-05-25T17:19:02.403973"
   },
   {
     "created_at": "2026-05-23T00:02:29.763507",
@@ -270,9 +270,9 @@
     "identifier": "PI-025",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "PI-022 Phase 3 — backfill prior conversations",
-    "updated_at": "2026-05-23T00:02:29.763510"
+    "updated_at": "2026-05-25T17:19:02.523182"
   },
   {
     "created_at": "2026-05-23T00:02:29.863137",
@@ -281,9 +281,9 @@
     "identifier": "PI-026",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "PI-022 Phase 4 — backfill historical applies as deposit_events",
-    "updated_at": "2026-05-23T00:02:29.863141"
+    "updated_at": "2026-05-25T17:19:02.679154"
   },
   {
     "created_at": "2026-05-23T05:32:48.198169",

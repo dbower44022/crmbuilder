@@ -40046,5 +40046,349 @@
     "id": 1686,
     "operation": "insert",
     "timestamp": "2026-05-25T16:04:23.404375"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-09T15:26:22.897413",
+      "description": "Full styling design pass per DEC-024. Originally deferred four times (DEC-024 → DEC-026 → DEC-037 → DEC-042) on the CBM-redo-friction trigger principle. **Reopened as a parallel workstream by DEC-076 (05-16-26)** because the trigger condition (CBM-redo Phase 1 surfacing visual friction on the four v0.4 methodology panels) cannot fire in v0.5's timeframe — CBM redo waits on v0.5 (DEC-075) plus the paper-test (DEC-077) plus Phase 1 itself, and the four-deferral pattern with progressively-elaborate trigger conditions that never fire has become an anti-pattern. The pass establishes a coherent visual language for the v2 desktop application: design tokens (palette with semantic naming, typography scale, spacing scale, radius/border/elevation tokens, density target), visual decisions for major component classes (panels, sidebar, buttons, form controls, dialogs, tables), and implementation across all governance and methodology panels. **Workstream structure (per `PRDs/product/crmbuilder-v2/styling-workstream-plan.md`):** two conversations — Conversation 1 produces the design pass document at `PRDs/product/crmbuilder-v2/styling-design-pass.md`; Conversation 2 produces the styling PRD, implementation plan, and slice build prompts. Strawman five build slices follow (foundation; governance panel retrofit; methodology panel retrofit; dialog and form-control polish; closeout). **Boundary discipline with v0.5 (per DEC-076):** styling owns the visual layer (QSS, design tokens, panel chrome, sidebar visuals, About dialog, hover/focus/disabled states); v0.5 owns the data/routing layer (config, ActiveEngagementContext, alembic, API routing, engagement entity). One coupling point: v0.5's engagement panel inherits whatever tokens are current at slice land time; either order ships fine. **Version-bundling question** (v0.5 vs. v0.6) deferred to the styling workstream's Conversation 2.",
+      "id": 1,
+      "identifier": "PI-001",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Resolved",
+      "title": "Full styling design pass per DEC-024",
+      "updated_at": "2026-05-25T17:19:02.253281+00:00"
+    },
+    "before_payload": {
+      "created_at": "2026-05-09T15:26:22.897413",
+      "description": "Full styling design pass per DEC-024. Originally deferred four times (DEC-024 → DEC-026 → DEC-037 → DEC-042) on the CBM-redo-friction trigger principle. **Reopened as a parallel workstream by DEC-076 (05-16-26)** because the trigger condition (CBM-redo Phase 1 surfacing visual friction on the four v0.4 methodology panels) cannot fire in v0.5's timeframe — CBM redo waits on v0.5 (DEC-075) plus the paper-test (DEC-077) plus Phase 1 itself, and the four-deferral pattern with progressively-elaborate trigger conditions that never fire has become an anti-pattern. The pass establishes a coherent visual language for the v2 desktop application: design tokens (palette with semantic naming, typography scale, spacing scale, radius/border/elevation tokens, density target), visual decisions for major component classes (panels, sidebar, buttons, form controls, dialogs, tables), and implementation across all governance and methodology panels. **Workstream structure (per `PRDs/product/crmbuilder-v2/styling-workstream-plan.md`):** two conversations — Conversation 1 produces the design pass document at `PRDs/product/crmbuilder-v2/styling-design-pass.md`; Conversation 2 produces the styling PRD, implementation plan, and slice build prompts. Strawman five build slices follow (foundation; governance panel retrofit; methodology panel retrofit; dialog and form-control polish; closeout). **Boundary discipline with v0.5 (per DEC-076):** styling owns the visual layer (QSS, design tokens, panel chrome, sidebar visuals, About dialog, hover/focus/disabled states); v0.5 owns the data/routing layer (config, ActiveEngagementContext, alembic, API routing, engagement entity). One coupling point: v0.5's engagement panel inherits whatever tokens are current at slice land time; either order ships fine. **Version-bundling question** (v0.5 vs. v0.6) deferred to the styling workstream's Conversation 2.",
+      "id": 1,
+      "identifier": "PI-001",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Open",
+      "title": "Full styling design pass per DEC-024",
+      "updated_at": "2026-05-16T05:28:44.964964"
+    },
+    "entity_identifier": "PI-001",
+    "entity_type": "planning_item",
+    "id": 1687,
+    "operation": "update",
+    "timestamp": "2026-05-25T17:19:02.253632"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-25T17:19:02.252344+00:00",
+      "id": 924,
+      "reference_identifier": "REF-0920",
+      "relationship": "resolves",
+      "source_id": "SES-076",
+      "source_type": "session",
+      "target_id": "PI-001",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-076 -[resolves]-> planning_item:PI-001",
+    "entity_type": "reference",
+    "id": 1688,
+    "operation": "insert",
+    "timestamp": "2026-05-25T17:19:02.253634"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T00:02:29.695511",
+      "description": "Backfill the workstreams that pre-date PI-022 Phase 1: methodology entity schema-design (the UI v0.4 workstream that produced domain/entity/process/crm_candidate); user-interface version 0.5 engagement management; user-interface version 0.6 styling; multi-tenancy routing fix; Cleveland Business Mentors paper test; catalog ingestion; the v0.7 release itself (this conversation's workstream — though WS-001 is already created). Each becomes a workstream record with the appropriate lifecycle timestamps, plus the conversations that belong to it (Phase 3 work in PI-025). Continues the discharge of PI-022 from Phase 1.",
+      "id": 24,
+      "identifier": "PI-024",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Resolved",
+      "title": "PI-022 Phase 2 — backfill prior workstreams",
+      "updated_at": "2026-05-25T17:19:02.403973+00:00"
+    },
+    "before_payload": {
+      "created_at": "2026-05-23T00:02:29.695511",
+      "description": "Backfill the workstreams that pre-date PI-022 Phase 1: methodology entity schema-design (the UI v0.4 workstream that produced domain/entity/process/crm_candidate); user-interface version 0.5 engagement management; user-interface version 0.6 styling; multi-tenancy routing fix; Cleveland Business Mentors paper test; catalog ingestion; the v0.7 release itself (this conversation's workstream — though WS-001 is already created). Each becomes a workstream record with the appropriate lifecycle timestamps, plus the conversations that belong to it (Phase 3 work in PI-025). Continues the discharge of PI-022 from Phase 1.",
+      "id": 24,
+      "identifier": "PI-024",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Open",
+      "title": "PI-022 Phase 2 — backfill prior workstreams",
+      "updated_at": "2026-05-23T00:02:29.695515"
+    },
+    "entity_identifier": "PI-024",
+    "entity_type": "planning_item",
+    "id": 1689,
+    "operation": "update",
+    "timestamp": "2026-05-25T17:19:02.404303"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-25T17:19:02.403212+00:00",
+      "id": 925,
+      "reference_identifier": "REF-0921",
+      "relationship": "resolves",
+      "source_id": "SES-076",
+      "source_type": "session",
+      "target_id": "PI-024",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-076 -[resolves]-> planning_item:PI-024",
+    "entity_type": "reference",
+    "id": 1690,
+    "operation": "insert",
+    "timestamp": "2026-05-25T17:19:02.404304"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T00:02:29.763507",
+      "description": "Backfill the conversations that pre-date PI-022 Phase 1: SES-001 through SES-046 (52 prior session records) plus SES-053 (the parallel-workstream conversation outside the governance workstream). Each becomes a conversation record at status `complete` with the appropriate workstream membership edge (from Phase 2), a session edge to its SES record, and (where reconstructable from session-record in_flight_at_end text) a conversation_succeeds_conversation chain. Where reconstructable, also create the kickoff-prompt work_ticket records and link them via conversation_opens_against_work_ticket. Continues the discharge of PI-022 after PI-024.",
+      "id": 25,
+      "identifier": "PI-025",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Resolved",
+      "title": "PI-022 Phase 3 — backfill prior conversations",
+      "updated_at": "2026-05-25T17:19:02.523182+00:00"
+    },
+    "before_payload": {
+      "created_at": "2026-05-23T00:02:29.763507",
+      "description": "Backfill the conversations that pre-date PI-022 Phase 1: SES-001 through SES-046 (52 prior session records) plus SES-053 (the parallel-workstream conversation outside the governance workstream). Each becomes a conversation record at status `complete` with the appropriate workstream membership edge (from Phase 2), a session edge to its SES record, and (where reconstructable from session-record in_flight_at_end text) a conversation_succeeds_conversation chain. Where reconstructable, also create the kickoff-prompt work_ticket records and link them via conversation_opens_against_work_ticket. Continues the discharge of PI-022 after PI-024.",
+      "id": 25,
+      "identifier": "PI-025",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Open",
+      "title": "PI-022 Phase 3 — backfill prior conversations",
+      "updated_at": "2026-05-23T00:02:29.763510"
+    },
+    "entity_identifier": "PI-025",
+    "entity_type": "planning_item",
+    "id": 1691,
+    "operation": "update",
+    "timestamp": "2026-05-25T17:19:02.523567"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-25T17:19:02.522367+00:00",
+      "id": 926,
+      "reference_identifier": "REF-0922",
+      "relationship": "resolves",
+      "source_id": "SES-076",
+      "source_type": "session",
+      "target_id": "PI-025",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-076 -[resolves]-> planning_item:PI-025",
+    "entity_type": "reference",
+    "id": 1692,
+    "operation": "insert",
+    "timestamp": "2026-05-25T17:19:02.523568"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-23T00:02:29.863137",
+      "description": "Backfill deposit_event records for the ~38 prior close-out payload files at PRDs/product/crmbuilder-v2/close-out-payloads/ses_001.json through ses_046.json (excluding ses_047..055 which Phase 1 covered). Each becomes a deposit_event with `_outcome = 'success'`, a placeholder dep_NNN-historical.log, `_records_summary` reconstructed from the payload's section counts, `wrote_record` back-references where reconstructable, and `_apply_context.runner = 'backfill_script'`. Each transitions its target close_out_payload (from Phase 3) to `applied`. Final phase of PI-022; discharges the planning item once complete.",
+      "id": 26,
+      "identifier": "PI-026",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Resolved",
+      "title": "PI-022 Phase 4 — backfill historical applies as deposit_events",
+      "updated_at": "2026-05-25T17:19:02.679154+00:00"
+    },
+    "before_payload": {
+      "created_at": "2026-05-23T00:02:29.863137",
+      "description": "Backfill deposit_event records for the ~38 prior close-out payload files at PRDs/product/crmbuilder-v2/close-out-payloads/ses_001.json through ses_046.json (excluding ses_047..055 which Phase 1 covered). Each becomes a deposit_event with `_outcome = 'success'`, a placeholder dep_NNN-historical.log, `_records_summary` reconstructed from the payload's section counts, `wrote_record` back-references where reconstructable, and `_apply_context.runner = 'backfill_script'`. Each transitions its target close_out_payload (from Phase 3) to `applied`. Final phase of PI-022; discharges the planning item once complete.",
+      "id": 26,
+      "identifier": "PI-026",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Open",
+      "title": "PI-022 Phase 4 — backfill historical applies as deposit_events",
+      "updated_at": "2026-05-23T00:02:29.863141"
+    },
+    "entity_identifier": "PI-026",
+    "entity_type": "planning_item",
+    "id": 1693,
+    "operation": "update",
+    "timestamp": "2026-05-25T17:19:02.679436"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-25T17:19:02.678469+00:00",
+      "id": 927,
+      "reference_identifier": "REF-0923",
+      "relationship": "resolves",
+      "source_id": "SES-076",
+      "source_type": "session",
+      "target_id": "PI-026",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-076 -[resolves]-> planning_item:PI-026",
+    "entity_type": "reference",
+    "id": 1694,
+    "operation": "insert",
+    "timestamp": "2026-05-25T17:19:02.679437"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-25T17:19:02.796738+00:00",
+      "id": 928,
+      "reference_identifier": "REF-0924",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-056",
+      "source_type": "deposit_event",
+      "target_id": "COP-076",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-056 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-076",
+    "entity_type": "reference",
+    "id": 1695,
+    "operation": "insert",
+    "timestamp": "2026-05-25T17:19:02.797121"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "0.7.0",
+        "invocation": "crmbuilder-v2/scripts/apply_close_out.py PRDs/product/crmbuilder-v2/close-out-payloads/ses_076.json",
+        "runner": "claude_code"
+      },
+      "deposit_event_created_at": "2026-05-25T17:19:02.794613+00:00",
+      "deposit_event_description": "Applied COP-076. Outcome: failure at step session. Records written before failure: no records written.",
+      "deposit_event_error_info": {
+        "http_status": 422,
+        "kind": "http_error",
+        "message": "[{\"code\": \"request_validation_error\", \"field\": \"body.in_flight_at_end\", \"message\": \"Input should be a valid string\"}]",
+        "step": "session"
+      },
+      "deposit_event_identifier": "DEP-056",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_056.log",
+      "deposit_event_outcome": "failure",
+      "deposit_event_records_summary": {
+        "commits": 0,
+        "conversations": 0,
+        "decisions": 0,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 0,
+        "work_tickets": 0
+      },
+      "deposit_event_title": "Apply of COP-076, 2026-05-25T17:19:02+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-056",
+    "entity_type": "deposit_event",
+    "id": 1696,
+    "operation": "insert",
+    "timestamp": "2026-05-25T17:19:02.797122"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "PRDs/product/crmbuilder-v2/pi-cleanup/PI-CLEANUP-PROPOSAL.md (commits 80ad3fa keyword-scan version then 6f4076c artifact-evidence revision). PRDs/product/crmbuilder-v2/close-out-payloads/ses_076.json (this payload). PRDs/product/crmbuilder-v2/deposit-event-logs/dep_056.log (apply transcript, written by apply_close_out.py).",
+      "conversation_reference": "Claude Code session at Doug's terminal on 2026-05-25, opened against PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-pi-cleanup-A-review-open-items.md. Phase A produced the artifact-evidence audit at PRDs/product/crmbuilder-v2/pi-cleanup/PI-CLEANUP-PROPOSAL.md (commits 80ad3fa then 6f4076c after methodology correction); Doug approved 'go ahead and apply all' RESOLVE recommendations; phase B authored this payload and applied it.",
+      "created_at": "2026-05-25T17:19:25.368027+00:00",
+      "id": 75,
+      "identifier": "SES-076",
+      "in_flight_at_end": "",
+      "session_date": "2026-05-25",
+      "status": "Complete",
+      "summary": "",
+      "title": "pi-cleanup phase B — apply four missed status flips identified by artifact-evidence audit (PI-001, PI-024, PI-025, PI-026)",
+      "topics_covered": "Re-ran the pi-cleanup audit after Doug correctly flagged that the first version's keyword-scan against PI descriptions was structurally wrong: PI descriptions are immutable scope statements written at PI-creation time, not status fields, so they never get updated when work lands. The corrected method extracts the concrete artifacts each PI's description specifies (ORM models, alembic migrations, vocab entries, methodology document sections, snapshot record counts, file existence) and checks them against current codebase / snapshot state. Five parallel general-purpose subagents verified 36 of the 37 Open PIs across V2 schema/access/API, V1 deploy engine, methodology + governance content, V2 desktop UI panels, and governance backfill + deployment + auth scopes; the 37th (PI-001) was verified inline. Revised tally: 4 RESOLVE / 6 NEEDS-INPUT / 27 KEEP. Four RESOLVEs were missed-flip cases — substantive work landed in prior workstreams but no resolves edge was authored and no status update happened. PI-001 (full styling design pass per DEC-024): six v0.6 build slices A-F shipped across SES-037..SES-043 on 2026-05-18; status v16 payload narrates 'PI-001 is discharged' verbatim but the planning_item record was never flipped. PI-024 (PI-022 phase 2 — backfill prior workstreams): workstreams.json has 9 records covering the 7 prior workstreams the description lists, plus WS-001 (the v0.7 release itself) and WS-009 (Code Change Lifecycle); apply commit 7eec15d2 landed the records before the PI-022 umbrella closed. PI-025 (phase 3 — backfill prior conversations): conversations.json has 46 CONV records, all status 'complete', matching the orchestrator's target (37 + 8 Phase 1 + CONV-046 ad-hoc) after DEC-197 descoped 16 orphan sessions; apply commit af11e649 landed them. PI-026 (phase 4 — backfill historical applies as deposit_events): deposit_events.json has 32 historical-tagged records (DEP-001..008 from Phase 1 + DEP-020..043 from Phase 4), matching the DEC-210 24-payload scope tightening exactly; apply commit 944495e1 landed them with matching dep_NNN-historical.log placeholders. The PI-022 umbrella close commit b34391ff incorrectly characterized 'Phase 2 deferred' even though the backfill scripts had been applied days prior — a documented integrity drift this cleanup repairs. The six NEEDS-INPUT items (PI-023, PI-027, PI-028, PI-029, PI-032, PI-047) were deliberately not resolved in this pass: each requires a judgment call (stay-Open contracts for PI-027 / PI-028 pending PI-033 backfill; the missing StorageClient methods on PI-029; the unmet root CLAUDE.md cross-reference on PI-032; the file-vs-DB divergence on PI-047; the design redesign on PI-023). The 27 KEEPs all verified as positively not done — concrete artifact missing in each case (no ORM column, no vocab entry, no methodology section, no UI panel, no migration). Pattern surfaced by the corrected audit: the PI-022 backfill program's individual phases finished before the umbrella closed, so the umbrella-level close commit lost track of its own children's state. Same shape as PI-001: substantive work ships, governance bookkeeping misses the final flip."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-076",
+    "entity_type": "session",
+    "id": 1697,
+    "operation": "insert",
+    "timestamp": "2026-05-25T17:19:25.368383"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-25T17:19:25.532741+00:00",
+      "id": 929,
+      "reference_identifier": "REF-0925",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-057",
+      "source_type": "deposit_event",
+      "target_id": "COP-076",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-057 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-076",
+    "entity_type": "reference",
+    "id": 1698,
+    "operation": "insert",
+    "timestamp": "2026-05-25T17:19:25.533304"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-25T17:19:25.535235+00:00",
+      "id": 930,
+      "reference_identifier": "REF-0926",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-057",
+      "source_type": "deposit_event",
+      "target_id": "SES-076",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-057 -[deposit_event_wrote_record]-> session:SES-076",
+    "entity_type": "reference",
+    "id": 1699,
+    "operation": "insert",
+    "timestamp": "2026-05-25T17:19:25.535575"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "0.7.0",
+        "invocation": "crmbuilder-v2/scripts/apply_close_out.py PRDs/product/crmbuilder-v2/close-out-payloads/ses_076.json",
+        "runner": "claude_code"
+      },
+      "deposit_event_created_at": "2026-05-25T17:19:25.530300+00:00",
+      "deposit_event_description": "Applied COP-076. Outcome: success. 1 sessions.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-057",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_057.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "commits": 0,
+        "conversations": 0,
+        "decisions": 0,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1,
+        "work_tickets": 0
+      },
+      "deposit_event_title": "Apply of COP-076, 2026-05-25T17:19:25+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-057",
+    "entity_type": "deposit_event",
+    "id": 1700,
+    "operation": "insert",
+    "timestamp": "2026-05-25T17:19:25.536146"
   }
 ]

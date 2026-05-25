@@ -1129,5 +1129,56 @@
       "work_tickets": 0
     },
     "deposit_event_title": "Apply of COP-075, 2026-05-25T15:37:45+00:00"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "0.7.0",
+      "invocation": "crmbuilder-v2/scripts/apply_close_out.py PRDs/product/crmbuilder-v2/close-out-payloads/ses_076.json",
+      "runner": "claude_code"
+    },
+    "deposit_event_created_at": "2026-05-25T17:19:02.794613",
+    "deposit_event_description": "Applied COP-076. Outcome: failure at step session. Records written before failure: no records written.",
+    "deposit_event_error_info": {
+      "http_status": 422,
+      "kind": "http_error",
+      "message": "[{\"code\": \"request_validation_error\", \"field\": \"body.in_flight_at_end\", \"message\": \"Input should be a valid string\"}]",
+      "step": "session"
+    },
+    "deposit_event_identifier": "DEP-056",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_056.log",
+    "deposit_event_outcome": "failure",
+    "deposit_event_records_summary": {
+      "commits": 0,
+      "conversations": 0,
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 0,
+      "work_tickets": 0
+    },
+    "deposit_event_title": "Apply of COP-076, 2026-05-25T17:19:02+00:00"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "0.7.0",
+      "invocation": "crmbuilder-v2/scripts/apply_close_out.py PRDs/product/crmbuilder-v2/close-out-payloads/ses_076.json",
+      "runner": "claude_code"
+    },
+    "deposit_event_created_at": "2026-05-25T17:19:25.530300",
+    "deposit_event_description": "Applied COP-076. Outcome: success. 1 sessions.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-057",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_057.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "commits": 0,
+      "conversations": 0,
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1,
+      "work_tickets": 0
+    },
+    "deposit_event_title": "Apply of COP-076, 2026-05-25T17:19:25+00:00"
   }
 ]

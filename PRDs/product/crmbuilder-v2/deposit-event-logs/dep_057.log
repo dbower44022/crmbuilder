@@ -1,0 +1,17 @@
+=== Applying close-out payload ===
+Source: PRDs/product/crmbuilder-v2/close-out-payloads/ses_076.json
+Label:  pi-cleanup phase B — apply four missed status flips approved from the artifact-evidence audit (PI-001 styling design pass + PI-024/025/026 PI-022 backfill phases 2/3/4)
+Deposit event: DEP-057
+
+=== session (1 record) ===
+  ✓ POST session  SES-076 (HTTP 201)
+
+=== references (4 records) ===
+  · POST references  SES-076 resolves PI-001 already present (HTTP 409) — skipping
+  · POST references  SES-076 resolves PI-024 already present (HTTP 409) — skipping
+  · POST references  SES-076 resolves PI-025 already present (HTTP 409) — skipping
+  · POST references  SES-076 resolves PI-026 already present (HTTP 409) — skipping
+
+✓ All 5 operations complete.
+
+✓ Recorded apply as deposit_event DEP-057 (HTTP 201).
