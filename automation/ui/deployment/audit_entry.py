@@ -13,11 +13,14 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QDialog,
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QListWidget,
+    QListWidgetItem,
     QMessageBox,
     QProgressBar,
     QPushButton,
@@ -74,6 +77,10 @@ class AuditEntry(QWidget):
         self._project_folder: str | None = None
         self._output_entry = None
         self._worker = None
+        # Tracks which instance the entity-picker was populated for, so
+        # we only re-fetch the scope list when the active instance
+        # changes. Reset whenever the operator switches instances.
+        self._picker_populated_for_instance_id: int | None = None
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -117,6 +124,38 @@ class AuditEntry(QWidget):
         info_layout.addWidget(self._instance_label)
         content_layout.addWidget(info_group)
 
+        # Entity picker (DEC-181)
+        picker_group = QGroupBox("Entities to Audit")
+        picker_layout = QVBoxLayout(picker_group)
+
+        picker_button_row = QHBoxLayout()
+        self._btn_select_all = QPushButton("Select All")
+        self._btn_select_all.clicked.connect(self._on_select_all_entities)
+        picker_button_row.addWidget(self._btn_select_all)
+
+        self._btn_select_none = QPushButton("Select None")
+        self._btn_select_none.clicked.connect(self._on_select_none_entities)
+        picker_button_row.addWidget(self._btn_select_none)
+
+        picker_button_row.addStretch()
+        picker_layout.addLayout(picker_button_row)
+
+        self._entity_picker = QListWidget()
+        self._entity_picker.setMinimumHeight(180)
+        self._entity_picker.setSelectionMode(
+            QListWidget.SelectionMode.NoSelection
+        )
+        picker_layout.addWidget(self._entity_picker)
+
+        self._picker_loading_label = QLabel("Loading entities...")
+        self._picker_loading_label.setStyleSheet(
+            "font-size: 12px; color: #757575; padding: 4px;"
+        )
+        self._picker_loading_label.setVisible(False)
+        picker_layout.addWidget(self._picker_loading_label)
+
+        content_layout.addWidget(picker_group)
+
         # Scope options
         scope_group = QGroupBox("Audit Scope")
         scope_layout = QVBoxLayout(scope_group)
@@ -146,6 +185,15 @@ class AuditEntry(QWidget):
         )
         self._cb_include_native.setChecked(False)
         scope_layout.addWidget(self._cb_include_native)
+
+        # DEC-180: default-True for both new checkboxes.
+        self._cb_security = QCheckBox("Security (roles and teams)")
+        self._cb_security.setChecked(True)
+        scope_layout.addWidget(self._cb_security)
+
+        self._cb_filtered_tabs = QCheckBox("Filtered tabs")
+        self._cb_filtered_tabs.setChecked(True)
+        scope_layout.addWidget(self._cb_filtered_tabs)
 
         content_layout.addWidget(scope_group)
 
@@ -215,8 +263,123 @@ class AuditEntry(QWidget):
             f"Environment: {instance.environment}"
         )
 
+        # Populate the entity picker once per instance (DEC-181)
+        if self._picker_populated_for_instance_id != instance.id:
+            self._populate_entity_picker(instance)
+            self._picker_populated_for_instance_id = instance.id
+
         # Update last audit info
         self._update_last_audit_info()
+
+    def _populate_entity_picker(self, instance: InstanceRow) -> None:
+        """Pre-flight discovery to populate the entity-picker list.
+
+        Synchronously fetches the scope list from the active instance
+        (sub-second on local EspoCRM instances per the planning doc)
+        and adds a checkable item per discovered entity scope. Filters
+        non-entity scopes (tab-only, metadata-only) out of the picker.
+
+        Shows a brief loading state during the call. On API failure
+        the picker stays empty and the loading label switches to an
+        error message; the audit-entry UI remains usable and the
+        operator can still run with default-all-entities behavior by
+        leaving the picker empty (``_get_selected_entities`` returns
+        ``None`` for an empty picker).
+
+        :param instance: Active instance whose scopes are to be loaded.
+        """
+        # Defer imports so the module loads cheaply in test contexts
+        # that never call this method.
+        from espo_impl.core.api_client import EspoAdminClient
+        from espo_impl.core.models import InstanceProfile
+
+        self._entity_picker.clear()
+        self._picker_loading_label.setText("Loading entities...")
+        self._picker_loading_label.setVisible(True)
+        QApplication.processEvents()
+
+        if self._conn is None:
+            self._picker_loading_label.setText(
+                "No database connection; cannot load entities."
+            )
+            return
+
+        detail = load_instance_detail(self._conn, instance.id)
+        if (
+            not detail or not detail.url
+            or not detail.username or not detail.password
+        ):
+            self._picker_loading_label.setText(
+                "Instance is missing URL or credentials; cannot load "
+                "entities."
+            )
+            return
+
+        profile = InstanceProfile(
+            name=detail.name,
+            url=detail.url,
+            api_key=detail.username,
+            auth_method="basic",
+            secret_key=detail.password,
+        )
+        client = EspoAdminClient(profile)
+        status, all_scopes = client.get_all_scopes()
+        if status != 200 or not isinstance(all_scopes, dict):
+            self._picker_loading_label.setText(
+                f"Could not load entities (HTTP {status}). Audit can "
+                f"still run; all entities will be audited by default."
+            )
+            return
+
+        entity_names = sorted(
+            name for name, scope_def in all_scopes.items()
+            if isinstance(scope_def, dict)
+            and scope_def.get("entity") is True
+        )
+
+        for name in entity_names:
+            item = QListWidgetItem(name)
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            item.setCheckState(Qt.CheckState.Checked)
+            self._entity_picker.addItem(item)
+
+        self._picker_loading_label.setVisible(False)
+
+    def _on_select_all_entities(self) -> None:
+        """Check every entity in the picker."""
+        for i in range(self._entity_picker.count()):
+            self._entity_picker.item(i).setCheckState(Qt.CheckState.Checked)
+
+    def _on_select_none_entities(self) -> None:
+        """Uncheck every entity in the picker."""
+        for i in range(self._entity_picker.count()):
+            self._entity_picker.item(i).setCheckState(Qt.CheckState.Unchecked)
+
+    def _get_selected_entities(self) -> set[str] | None:
+        """Return the set of checked entity names, or ``None`` when all
+        are checked or the picker is empty.
+
+        Returning ``None`` when all items are checked preserves the
+        existing audit-everything semantic without inserting a no-op
+        filter step. Returning ``None`` when the picker is empty
+        (population failed or never ran) defers to the audit manager's
+        default (audit all discovered entities) so a degraded UI does
+        not silently neuter the audit.
+
+        :returns: Set of EspoCRM wire-name entities the operator
+            wishes to audit, or ``None`` to audit everything.
+        """
+        total = self._entity_picker.count()
+        if total == 0:
+            return None
+        selected: set[str] = set()
+        for i in range(total):
+            item = self._entity_picker.item(i)
+            if item.checkState() == Qt.CheckState.Checked:
+                selected.add(item.text())
+        if len(selected) == total:
+            return None
+        return selected
 
     def _update_last_audit_info(self) -> None:
         """Query and display the most recent audit for this instance."""
@@ -294,6 +457,45 @@ class AuditEntry(QWidget):
         timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d-%H%M%S")
         output_dir = Path(self._project_folder) / "programs" / f"audit-{timestamp}"
 
+        # Per DEC-181: warn before overwriting an existing output
+        # directory that already contains audit YAML output. The
+        # timestamp-based directory naming makes a collision rare in
+        # practice — only second-runs within the same second trigger
+        # this — but the dialog protects the operator if a future
+        # change adopts a fixed output-directory name.
+        if output_dir.exists():
+            existing_yaml = (
+                list(output_dir.glob("*.yaml"))
+                + list(output_dir.glob("security/*.yaml"))
+            )
+            if existing_yaml:
+                reply = QMessageBox.warning(
+                    self,
+                    "Overwrite Existing Audit Output?",
+                    (
+                        f"Output directory contains {len(existing_yaml)} "
+                        f"existing audit YAML file(s); running this audit "
+                        f"will overwrite them. Proceed?"
+                    ),
+                    QMessageBox.StandardButton.Cancel
+                    | QMessageBox.StandardButton.Yes,
+                    QMessageBox.StandardButton.Cancel,
+                )
+                if reply != QMessageBox.StandardButton.Yes:
+                    return
+
+        # Per DEC-181: detect a no-entities-selected picker state and
+        # block the run with a clear message rather than launching a
+        # progress dialog that audits nothing.
+        selected = self._get_selected_entities()
+        if selected is not None and not selected:
+            QMessageBox.information(
+                self, "No Entities Selected",
+                "No entities are selected for audit. Check at least "
+                "one entity in the picker, or use 'Select All'.",
+            )
+            return
+
         # Build audit options from checkboxes
         from espo_impl.core.audit_manager import AuditOptions
 
@@ -304,6 +506,9 @@ class AuditEntry(QWidget):
             include_list_layouts=self._cb_list_layouts.isChecked(),
             include_relationships=self._cb_relationships.isChecked(),
             include_native_fields=self._cb_include_native.isChecked(),
+            include_security=self._cb_security.isChecked(),
+            include_filtered_tabs=self._cb_filtered_tabs.isChecked(),
+            selected_entities=selected,
         )
 
         # Build InstanceProfile from database detail

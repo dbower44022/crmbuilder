@@ -1028,3 +1028,85 @@ def test_filtered_tab_to_yaml_dict_includes_nav_order_when_set():
     assert result["filter"] == {
         "field": "assignedUser", "op": "equals", "value": "$user",
     }
+
+
+# ---------------------------------------------------------------------------
+# selected_entities filtering (audit-v1.2 Prompt J — DEC-181)
+# ---------------------------------------------------------------------------
+
+
+def _three_entity_scopes() -> dict[str, dict[str, Any]]:
+    """Fixture returning the all-scopes dict used by the selected-
+    entities filter tests: one native (Contact), one native (Account),
+    and one custom (CEngagement)."""
+    return {
+        "Contact": {
+            "entity": True, "isCustom": False, "customizable": True,
+            "type": "Person", "stream": False,
+        },
+        "Account": {
+            "entity": True, "isCustom": False, "customizable": True,
+            "type": "Company", "stream": False,
+        },
+        "CEngagement": {
+            "entity": True, "isCustom": True, "customizable": True,
+            "type": "Base", "stream": False,
+        },
+    }
+
+
+def test_audit_options_selected_entities_defaults_none():
+    """The new field default preserves the existing audit-everything
+    behavior for any code path that doesn't opt in to picker filtering."""
+    assert AuditOptions().selected_entities is None
+
+
+def test_discover_entities_with_selected_entities_filters():
+    """A non-None selected_entities set restricts the discovery output
+    to the named subset; other classification rules still apply."""
+    options = AuditOptions(selected_entities={"Contact"})
+    client = _make_client(
+        get_all_scopes=(200, _three_entity_scopes()),
+        get_i18n=(200, {}),
+    )
+    manager, _log = _make_manager(client, options)
+    report = _empty_report()
+
+    entities = manager._discover_entities(report)
+
+    assert {e.espo_name for e in entities} == {"Contact"}
+
+
+def test_discover_entities_with_none_selected_entities_audits_all():
+    """selected_entities=None (default) preserves the legacy behavior:
+    every classified entity is included."""
+    client = _make_client(
+        get_all_scopes=(200, _three_entity_scopes()),
+        get_i18n=(200, {}),
+    )
+    manager, _log = _make_manager(client)
+    report = _empty_report()
+
+    entities = manager._discover_entities(report)
+
+    assert {e.espo_name for e in entities} == {
+        "Contact", "Account", "CEngagement",
+    }
+
+
+def test_discover_entities_with_empty_set_audits_nothing():
+    """selected_entities=set() (a deliberately empty selection)
+    excludes every entity. The picker UI prevents an operator from
+    starting an audit in this state, but the audit_manager itself
+    honors the empty-set semantic — it is NOT the same as None."""
+    options = AuditOptions(selected_entities=set())
+    client = _make_client(
+        get_all_scopes=(200, _three_entity_scopes()),
+        get_i18n=(200, {}),
+    )
+    manager, _log = _make_manager(client, options)
+    report = _empty_report()
+
+    entities = manager._discover_entities(report)
+
+    assert entities == []

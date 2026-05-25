@@ -56,6 +56,11 @@ class AuditOptions:
     :param include_native_fields: Include native fields (normally excluded).
     :param include_security: Discover roles and teams (DEC-180).
     :param include_filtered_tabs: Discover filtered tabs (DEC-180).
+    :param selected_entities: Optional set of EspoCRM wire-name entities
+        (e.g. ``{"Contact", "CEngagement"}``) to restrict the audit to.
+        ``None`` means audit every discovered entity (existing behavior);
+        a non-None set filters discovery to that subset post-
+        classification. Per DEC-181.
     """
 
     include_custom_fields: bool = True
@@ -66,6 +71,7 @@ class AuditOptions:
     include_native_fields: bool = False
     include_security: bool = True
     include_filtered_tabs: bool = True
+    selected_entities: set[str] | None = None
 
 
 @dataclass
@@ -557,6 +563,17 @@ class AuditManager:
                 continue
 
             if entity_class == EntityClass.NATIVE and not self._options.include_native_custom_fields:
+                continue
+
+            # Per DEC-181: operator may restrict the audit to a subset
+            # of entities chosen in the UI picker. Filter is applied
+            # post-classification so the entity-type rules above still
+            # gate the picker's selections (e.g., a SYSTEM scope the
+            # operator somehow named is still skipped).
+            if (
+                self._options.selected_entities is not None
+                and scope_name not in self._options.selected_entities
+            ):
                 continue
 
             yaml_name = get_yaml_entity_name(scope_name)
