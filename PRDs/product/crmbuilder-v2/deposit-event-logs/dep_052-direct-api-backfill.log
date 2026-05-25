@@ -1,0 +1,16 @@
+# DEP-052 direct-API-backfill placeholder
+# SES-073's records (DEC-226, PI-049, SES-073, WT-046, 7 reference
+# edges) were written via direct POSTs from the helper script
+# /tmp/write_pi045_dead_end_records.py rather than via
+# scripts/apply_close_out.py. This deposit_event retroactively
+# captures the audit chain — same shape as scripts/
+# backfill_pi_026_historical_applies_deposit_events.py applied to
+# the 24 pre-v0.7 historical applies. The records_summary counts
+# reflect the archival ses_073.json payload's record sections; the
+# wrote_record edges target only the four atomic record types
+# (sessions, decisions, planning_items, work_tickets) because
+# target_type='reference' is rejected by the request validator per
+# PI-026's finding even though _kinds_for_pair speculatively admits
+# it for the deposit_event_wrote_record kind.
+#
+# Backfilled by /tmp/backfill_ses_073_audit_chain.py on 2026-05-25T04:50:10.118505+00:00.

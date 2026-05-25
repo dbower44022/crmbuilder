@@ -37909,5 +37909,132 @@
     "id": 1591,
     "operation": "insert",
     "timestamp": "2026-05-25T04:36:39.951605"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-25T04:50:31.559837+00:00",
+      "id": 866,
+      "reference_identifier": "REF-0862",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-052",
+      "source_type": "deposit_event",
+      "target_id": "COP-073",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-052 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-073",
+    "entity_type": "reference",
+    "id": 1592,
+    "operation": "insert",
+    "timestamp": "2026-05-25T04:50:31.560225"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-25T04:50:31.561814+00:00",
+      "id": 867,
+      "reference_identifier": "REF-0863",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-052",
+      "source_type": "deposit_event",
+      "target_id": "SES-073",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-052 -[deposit_event_wrote_record]-> session:SES-073",
+    "entity_type": "reference",
+    "id": 1593,
+    "operation": "insert",
+    "timestamp": "2026-05-25T04:50:31.562143"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-25T04:50:31.563982+00:00",
+      "id": 868,
+      "reference_identifier": "REF-0864",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-052",
+      "source_type": "deposit_event",
+      "target_id": "DEC-226",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-052 -[deposit_event_wrote_record]-> decision:DEC-226",
+    "entity_type": "reference",
+    "id": 1594,
+    "operation": "insert",
+    "timestamp": "2026-05-25T04:50:31.564463"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-25T04:50:31.566477+00:00",
+      "id": 869,
+      "reference_identifier": "REF-0865",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-052",
+      "source_type": "deposit_event",
+      "target_id": "PI-049",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-052 -[deposit_event_wrote_record]-> planning_item:PI-049",
+    "entity_type": "reference",
+    "id": 1595,
+    "operation": "insert",
+    "timestamp": "2026-05-25T04:50:31.566809"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-25T04:50:31.568375+00:00",
+      "id": 870,
+      "reference_identifier": "REF-0866",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-052",
+      "source_type": "deposit_event",
+      "target_id": "WT-046",
+      "target_type": "work_ticket"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-052 -[deposit_event_wrote_record]-> work_ticket:WT-046",
+    "entity_type": "reference",
+    "id": 1596,
+    "operation": "insert",
+    "timestamp": "2026-05-25T04:50:31.568592"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "direct_api_backfill",
+        "invocation": "Direct POSTs via /tmp/write_pi045_dead_end_records.py on 2026-05-25 (records); /tmp/backfill_ses_073_audit_chain.py on 2026-05-25 (deposit_event + COP lazy-create).",
+        "runner": "backfill_script"
+      },
+      "deposit_event_created_at": "2026-05-25T04:50:31.557749+00:00",
+      "deposit_event_description": "Backfilled deposit_event for SES-073. Records (SES-073, DEC-226, PI-049, WT-046, 7 reference edges) were written via direct POSTs from /tmp/write_pi045_dead_end_records.py to dogfood the v0.7 database-backed kickoff pattern, rather than via scripts/apply_close_out.py. This deposit_event retroactively closes the audit chain — same shape as PI-026 Phase 4's 24-payload sweep applied to a single conversation. Records summary: 1 session, 1 decision, 1 planning item, 1 work_ticket, 7 references.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-052",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_052-direct-api-backfill.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "commits": 0,
+        "conversations": 0,
+        "decisions": 1,
+        "planning_items": 1,
+        "references": 0,
+        "sessions": 1,
+        "work_tickets": 1
+      },
+      "deposit_event_title": "Apply of COP-073 (direct-API backfill, SES-073)"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-052",
+    "entity_type": "deposit_event",
+    "id": 1597,
+    "operation": "insert",
+    "timestamp": "2026-05-25T04:50:31.568987"
   }
 ]
