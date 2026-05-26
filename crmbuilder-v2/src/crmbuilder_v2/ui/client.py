@@ -790,6 +790,151 @@ class StorageClient:
         )
 
     # ------------------------------------------------------------------
+    # Personas (methodology entity — v0.5+)
+    # ------------------------------------------------------------------
+
+    def list_personas(
+        self, *, include_deleted: bool = False
+    ) -> list[dict[str, Any]]:
+        """Return all personas as a list of dicts.
+
+        Shape matches ``crmbuilder_v2/api/routers/persona.py``. With
+        ``include_deleted=True`` soft-deleted personas are included;
+        otherwise the API filters them out. Per ``persona.md`` §3.5.1.
+        """
+        path = "/personas"
+        if include_deleted:
+            path = "/personas?include_deleted=true"
+        result = self._request("GET", path)
+        if not isinstance(result, list):
+            return []
+        return result
+
+    def get_persona(self, identifier: str) -> dict[str, Any]:
+        """Return a single persona by identifier (e.g. ``"PER-001"``).
+
+        Raises ``NotFoundError`` if the persona does not exist (or is
+        soft-deleted — the API 404s soft-deleted rows by default).
+        Per ``persona.md`` §3.5.1.
+        """
+        result = self._request("GET", f"/personas/{identifier}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for get_persona",
+            )
+        return result
+
+    def create_persona(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /personas. Returns the created record dict.
+
+        The body uses the parent-prefixed field names
+        (``persona_name``, ``persona_role_summary``, optional
+        ``persona_responsibilities`` / ``persona_notes`` /
+        ``persona_status``). ``persona_identifier`` is server-assigned
+        when omitted. Domain affiliations and entity realizations are
+        NOT inlined — attach them afterwards via ``create_reference``
+        with the ``persona_scopes_to_domain`` /
+        ``persona_realized_as_entity`` kinds. Per ``persona.md`` §3.5.4.
+
+        Raises ``RequestShapeError`` on 422 (identifier-format /
+        name-uniqueness / status-enum), ``ConflictError`` on 409
+        (explicit-identifier collision).
+        """
+        result = self._request("POST", "/personas", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for create_persona",
+            )
+        return result
+
+    def update_persona(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PUT /personas/{identifier} — full record replace.
+
+        The body is the full record; ``persona_identifier`` in the
+        body must match the path. Raises ``NotFoundError`` on 404,
+        ``RequestShapeError`` on 422 (identifier mismatch, validation,
+        or invalid status transition). Per ``persona.md`` §3.5.1.
+        """
+        result = self._request(
+            "PUT", f"/personas/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for update_persona",
+            )
+        return result
+
+    def patch_persona(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PATCH /personas/{identifier} — partial update.
+
+        Body should contain only the changed fields. Raises
+        ``NotFoundError`` on 404, ``RequestShapeError`` on 422
+        (validation or invalid status transition).
+        Per ``persona.md`` §3.5.1.
+        """
+        result = self._request(
+            "PATCH", f"/personas/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for patch_persona",
+            )
+        return result
+
+    def delete_persona(self, identifier: str) -> Any:
+        """DELETE /personas/{identifier}. Soft-deletes; idempotent.
+
+        Returns the API's response data. Raises ``NotFoundError`` on
+        404. Outbound ``persona_scopes_to_domain`` and
+        ``persona_realized_as_entity`` references persist per
+        ``persona.md`` §3.4.6.
+        """
+        return self._request("DELETE", f"/personas/{identifier}")
+
+    def restore_persona(self, identifier: str) -> dict[str, Any]:
+        """POST /personas/{identifier}/restore. Clears the soft-delete.
+
+        Raises ``NotFoundError`` on 404, ``RequestShapeError`` on 422
+        (the record is not soft-deleted). Per ``persona.md`` §3.5.1.
+        """
+        result = self._request(
+            "POST", f"/personas/{identifier}/restore"
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for restore_persona",
+            )
+        return result
+
+    def next_persona_identifier(self) -> str:
+        """GET /personas/next-identifier. Returns the next ``PER-NNN``.
+
+        Per ``persona.md`` §3.5.2.
+        """
+        result = self._request("GET", "/personas/next-identifier")
+        if isinstance(result, dict) and isinstance(result.get("next"), str):
+            return result["next"]
+        raise ServerError(
+            status_code=200,
+            errors=[],
+            message="Expected {'next': str} body for next_persona_identifier",
+        )
+
+    # ------------------------------------------------------------------
     # Processes (methodology entity — UI v0.4 slice D)
     # ------------------------------------------------------------------
 

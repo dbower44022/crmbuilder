@@ -41,11 +41,13 @@ EXPECTED_ENTRIES = (
     "Close-Out Payloads",
     "Deposit Events",
     # Methodology group — Domains landed in UI v0.4 slice B,
-    # Entities in slice C, Processes in slice D, CRM Candidates in slice E.
+    # Entities in slice C, Processes in slice D, CRM Candidates in slice E,
+    # Personas in v0.5+ (PI-003).
     "Domains",
     "Entities",
     "Processes",
     "CRM Candidates",
+    "Personas",
 )
 
 

@@ -227,6 +227,56 @@ class EntityPatchIn(_Base):
     entity_status: str | None = None
 
 
+# ---------- Personas (methodology entity, v0.5+) ----------
+
+
+class PersonaCreateIn(_Base):
+    """POST /personas body. ``persona_identifier`` is server-assigned
+    when omitted; ``persona_status`` defaults to ``candidate``
+    server-side.
+
+    Domain affiliations and entity realization are NOT inlined here —
+    per ``persona.md`` §3.5.4 they attach via separate
+    ``POST /references`` calls with the ``persona_scopes_to_domain``
+    or ``persona_realized_as_entity`` relationship kinds."""
+
+    persona_name: str
+    persona_role_summary: str
+    persona_responsibilities: str | None = None
+    persona_notes: str | None = None
+    persona_status: str | None = None
+    persona_identifier: str | None = None
+
+
+class PersonaReplaceIn(_Base):
+    """PUT /personas/{identifier} body — full record replace.
+
+    ``persona_identifier`` is optional; when present it must match the
+    path identifier (mismatch → 422). Per ``persona.md`` §3.5 the
+    ``persona_status`` is required on a full replace."""
+
+    persona_identifier: str | None = None
+    persona_name: str
+    persona_role_summary: str
+    persona_responsibilities: str | None = None
+    persona_notes: str | None = None
+    persona_status: str
+
+
+class PersonaPatchIn(_Base):
+    """PATCH /personas/{identifier} body — partial update.
+
+    Routers consume this with ``model_dump(exclude_unset=True)`` so an
+    explicit ``persona_notes: null`` (clear the field) is distinguished
+    from an omitted ``persona_notes`` (leave unchanged)."""
+
+    persona_name: str | None = None
+    persona_role_summary: str | None = None
+    persona_responsibilities: str | None = None
+    persona_notes: str | None = None
+    persona_status: str | None = None
+
+
 # ---------- Processes (methodology entity, UI v0.4 slice D) ----------
 
 

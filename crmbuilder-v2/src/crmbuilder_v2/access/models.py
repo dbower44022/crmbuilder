@@ -48,6 +48,7 @@ from crmbuilder_v2.access.vocab import (
     DOMAIN_STATUSES,
     ENTITY_STATUSES,
     ENTITY_TYPES,
+    PERSONA_STATUSES,
     PLANNING_ITEM_STATUSES,
     PLANNING_ITEM_TYPES,
     PROCESS_CLASSIFICATIONS,
@@ -349,6 +350,59 @@ class Entity(Base):
         ),
         Index("ix_entities_entity_status", "entity_status"),
         Index("ix_entities_entity_deleted_at", "entity_deleted_at"),
+    )
+
+
+class Persona(Base):
+    """Methodology entity — one human role or actor in the client's organization.
+
+    Fifth methodology entity type (v0.5+, PI-003). Per ``persona.md``
+    §3.2 the schema follows the parent-prefix field-naming convention:
+    every column is prefixed ``persona_``. The primary key is the
+    prefixed-string identifier ``persona_identifier`` (format
+    ``PER-NNN``) — there is no integer surrogate ``id`` column.
+
+    No FK column — ``persona_scopes_to_domain`` and
+    ``persona_realized_as_entity`` live in the ``refs`` table.
+    """
+
+    __tablename__ = "personas"
+
+    persona_identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    persona_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    persona_role_summary: Mapped[str] = mapped_column(Text, nullable=False)
+    persona_responsibilities: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    persona_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    persona_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    persona_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    persona_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    persona_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^PER-\d{3}$`` expressed as a SQLite GLOB pattern.
+        CheckConstraint(
+            "persona_identifier GLOB 'PER-[0-9][0-9][0-9]'",
+            name="ck_persona_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("persona_status", PERSONA_STATUSES),
+            name="ck_persona_status",
+        ),
+        Index("ix_personas_persona_status", "persona_status"),
+        Index("ix_personas_persona_deleted_at", "persona_deleted_at"),
     )
 
 

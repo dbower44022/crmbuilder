@@ -43522,5 +43522,181 @@
     "id": 1844,
     "operation": "update",
     "timestamp": "2026-05-26T02:50:18.588109"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "persona_created_at": "2026-05-26T03:12:29.590332+00:00",
+      "persona_deleted_at": null,
+      "persona_identifier": "PER-001",
+      "persona_name": "Smoke Test Persona",
+      "persona_notes": null,
+      "persona_responsibilities": null,
+      "persona_role_summary": "smoke-test record",
+      "persona_status": "candidate",
+      "persona_updated_at": "2026-05-26T03:12:29.590335+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "PER-001",
+    "entity_type": "persona",
+    "id": 1845,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:12:29.591320"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "domain_created_at": "2026-05-26T03:12:39.747468+00:00",
+      "domain_deleted_at": null,
+      "domain_description": "smoke test",
+      "domain_identifier": "DOM-002",
+      "domain_name": "SmokeTest Domain",
+      "domain_notes": null,
+      "domain_purpose": "smoke",
+      "domain_status": "candidate",
+      "domain_updated_at": "2026-05-26T03:12:39.747471+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DOM-002",
+    "entity_type": "domain",
+    "id": 1846,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:12:39.748080"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T03:12:39.955524+00:00",
+      "id": 1028,
+      "reference_identifier": "REF-1024",
+      "relationship": "persona_scopes_to_domain",
+      "source_id": "PER-001",
+      "source_type": "persona",
+      "target_id": "DOM-002",
+      "target_type": "domain"
+    },
+    "before_payload": null,
+    "entity_identifier": "persona:PER-001 -[persona_scopes_to_domain]-> domain:DOM-002",
+    "entity_type": "reference",
+    "id": 1847,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:12:39.956068"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "persona_created_at": "2026-05-26T03:12:29.590332",
+      "persona_deleted_at": "2026-05-26T03:12:40.086779+00:00",
+      "persona_identifier": "PER-001",
+      "persona_name": "Smoke Test Persona",
+      "persona_notes": null,
+      "persona_responsibilities": null,
+      "persona_role_summary": "smoke-test record",
+      "persona_status": "candidate",
+      "persona_updated_at": "2026-05-26T03:12:40.087314+00:00"
+    },
+    "before_payload": {
+      "persona_created_at": "2026-05-26T03:12:29.590332",
+      "persona_deleted_at": null,
+      "persona_identifier": "PER-001",
+      "persona_name": "Smoke Test Persona",
+      "persona_notes": null,
+      "persona_responsibilities": null,
+      "persona_role_summary": "smoke-test record",
+      "persona_status": "candidate",
+      "persona_updated_at": "2026-05-26T03:12:29.590335"
+    },
+    "entity_identifier": "PER-001",
+    "entity_type": "persona",
+    "id": 1848,
+    "operation": "update",
+    "timestamp": "2026-05-26T03:12:40.087720"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "domain_created_at": "2026-05-26T03:12:39.747468",
+      "domain_deleted_at": "2026-05-26T03:12:40.250994+00:00",
+      "domain_description": "smoke test",
+      "domain_identifier": "DOM-002",
+      "domain_name": "SmokeTest Domain",
+      "domain_notes": null,
+      "domain_purpose": "smoke",
+      "domain_status": "candidate",
+      "domain_updated_at": "2026-05-26T03:12:40.251297+00:00"
+    },
+    "before_payload": {
+      "domain_created_at": "2026-05-26T03:12:39.747468",
+      "domain_deleted_at": null,
+      "domain_description": "smoke test",
+      "domain_identifier": "DOM-002",
+      "domain_name": "SmokeTest Domain",
+      "domain_notes": null,
+      "domain_purpose": "smoke",
+      "domain_status": "candidate",
+      "domain_updated_at": "2026-05-26T03:12:39.747471"
+    },
+    "entity_identifier": "DOM-002",
+    "entity_type": "domain",
+    "id": 1849,
+    "operation": "update",
+    "timestamp": "2026-05-26T03:12:40.251653"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": null,
+    "before_payload": {
+      "created_at": "2026-05-26T02:48:37.893614",
+      "id": 1024,
+      "reference_identifier": "REF-1020",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-063",
+      "source_type": "deposit_event",
+      "target_id": "DEC-259",
+      "target_type": "decision"
+    },
+    "entity_identifier": "deposit_event:DEP-063 -[deposit_event_wrote_record]-> decision:DEC-259",
+    "entity_type": "reference",
+    "id": 1850,
+    "operation": "delete",
+    "timestamp": "2026-05-26T03:12:50.819610"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T03:13:15.609042+00:00",
+      "id": 1029,
+      "reference_identifier": "REF-1025",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-063",
+      "source_type": "deposit_event",
+      "target_id": "DEC-259",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-063 -[deposit_event_wrote_record]-> decision:DEC-259",
+    "entity_type": "reference",
+    "id": 1851,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:13:15.609444"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": null,
+    "before_payload": {
+      "created_at": "2026-05-26T03:12:39.955524",
+      "id": 1028,
+      "reference_identifier": "REF-1024",
+      "relationship": "persona_scopes_to_domain",
+      "source_id": "PER-001",
+      "source_type": "persona",
+      "target_id": "DOM-002",
+      "target_type": "domain"
+    },
+    "entity_identifier": "persona:PER-001 -[persona_scopes_to_domain]-> domain:DOM-002",
+    "entity_type": "reference",
+    "id": 1852,
+    "operation": "delete",
+    "timestamp": "2026-05-26T03:13:15.749916"
   }
 ]

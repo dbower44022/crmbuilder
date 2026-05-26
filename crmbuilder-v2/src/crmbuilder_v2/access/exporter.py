@@ -41,6 +41,7 @@ from crmbuilder_v2.access.models import (
     DepositEvent,
     Domain,
     Entity,
+    Persona,
     PlanningItem,
     Process,
     Reference,
@@ -69,6 +70,8 @@ _EXPORT_TABLES: list[tuple[str, type]] = [
     ("entities", Entity),
     ("processes", Process),
     ("crm_candidates", CrmCandidate),
+    # v0.5+ methodology entity (PI-003, persona.md).
+    ("personas", Persona),
     # Governance entities (UI v0.7), in workstream order.
     ("workstreams", Workstream),
     ("conversations", Conversation),

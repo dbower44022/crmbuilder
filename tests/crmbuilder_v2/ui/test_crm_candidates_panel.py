@@ -96,7 +96,12 @@ def _wait_rows(qtbot, panel: CrmCandidatesPanel, count: int) -> None:
 
 def test_crm_candidates_is_fourth_methodology_entry():
     methodology = dict(SIDEBAR_GROUPS)["Methodology"]
-    assert methodology == ("Domains", "Entities", "Processes", "CRM Candidates")
+    # CRM Candidates remains position #4 in the Methodology group;
+    # v0.5+ appends "Personas" at position #5 per PI-003.
+    assert methodology[:4] == (
+        "Domains", "Entities", "Processes", "CRM Candidates"
+    )
+    assert methodology[3] == "CRM Candidates"
 
 
 def test_sidebar_renders_crm_candidates_under_methodology(qtbot):

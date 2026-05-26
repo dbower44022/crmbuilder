@@ -57,6 +57,19 @@ ENTITY_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "deferred": frozenset({"confirmed"}),
 }
 
+# Methodology entity `persona` lifecycle (v0.5+, persona.md §3.4).
+# Mirrors `domain` / `entity` exactly — three-status propose-verify
+# lifecycle with one-way gate out of `candidate`.
+PERSONA_STATUSES: frozenset[str] = frozenset(
+    {"candidate", "confirmed", "deferred"}
+)
+
+PERSONA_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "candidate": frozenset({"confirmed", "deferred"}),
+    "confirmed": frozenset({"deferred"}),
+    "deferred": frozenset({"confirmed"}),
+}
+
 # Methodology entity `crm_candidate` lifecycle (UI v0.4 slice E, DEC-062).
 # Four-status lifecycle per ``crm_candidate.md`` section 3.4. ``active``
 # is the starter status; ``selected``, ``declined``, ``removed`` are
@@ -242,6 +255,13 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         "resolves",
         "addresses",
         "blocked_by",
+        # v0.5+ persona additions (PI-003, persona.md §3.3.1):
+        #   - `persona_scopes_to_domain` (persona → domain; many-to-many).
+        #   - `persona_realized_as_entity` (persona → entity; conceptually
+        #     optional and most often single-target, but the references
+        #     mechanism permits multi-target).
+        "persona_scopes_to_domain",
+        "persona_realized_as_entity",
     }
 )
 
@@ -285,6 +305,8 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         # Code Change Lifecycle workstream. See
         # governance-schema-specs/commit.md v1.0.
         "commit",
+        # v0.5+ methodology entity (PI-003). See persona.md.
+        "persona",
     }
 )
 
@@ -311,6 +333,11 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
       target must be a planning_item (v0.8, methodology §3.3).
     * ``blocked_by`` — source and target must both be planning_item;
       replaces the prior ``blocks`` kind (v0.8, methodology §3.4).
+    * ``persona_scopes_to_domain`` — source must be a persona, target
+      must be a domain (v0.5+, persona.md §3.3.1; many-to-many).
+    * ``persona_realized_as_entity`` — source must be a persona, target
+      must be an entity (v0.5+, persona.md §3.3.1; optional and most
+      often single-target but mechanism permits multi-target).
 
     The ruleset is permissive by design: every pair has at least the
     two generic kinds, so the dialog never produces an empty kind list
@@ -372,6 +399,11 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         kinds.add("addresses")
     if source_type == "planning_item" and target_type == "planning_item":
         kinds.add("blocked_by")
+    # v0.5+ persona additions (PI-003, persona.md §3.3.1):
+    if source_type == "persona" and target_type == "domain":
+        kinds.add("persona_scopes_to_domain")
+    if source_type == "persona" and target_type == "entity":
+        kinds.add("persona_realized_as_entity")
     return frozenset(kinds)
 
 

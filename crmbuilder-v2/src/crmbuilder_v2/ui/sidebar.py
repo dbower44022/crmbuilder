@@ -49,6 +49,7 @@ from crmbuilder_v2.ui.styling import t
 # Ordered sidebar sections: (group title, ordered entry labels). The
 # Methodology group gained "Domains" in v0.4 slice B, "Entities" in
 # slice C, "Processes" in slice D, and "CRM Candidates" in slice E.
+# v0.5+ adds "Personas" (PI-003).
 SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # v0.5 slice A: empty Engagements group container above Governance.
     # Slice C populates with the single "Engagements" entry.
@@ -76,7 +77,7 @@ SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ),
     (
         "Methodology",
-        ("Domains", "Entities", "Processes", "CRM Candidates"),
+        ("Domains", "Entities", "Processes", "CRM Candidates", "Personas"),
     ),
 )
 
