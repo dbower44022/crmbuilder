@@ -1,0 +1,78 @@
+{
+  "label": "PI-052 Slice A build closure — terminal proof-of-concept Anthropic-API chat loop (chat_spike.py, ~131 LOC) per DEC-261 slicing plan and DEC-257 (streaming deferred). Three hand-defined read-only governance tools (get_current_status, get_current_charter, list_recent_sessions) dispatched via blocking httpx against the local REST API. Throwaway code — Slice B is the first slice with production code. Build executed in this Claude Code conversation against WT-048 (the Slice-A kickoff body authored under SES-080 / CONV-050). Records landed: 1 session (SES-087), 1 conversation (CONV-057), 1 commit (b519df0… → CM-0008 lazy), 0 new work_tickets, 0 new planning items, 0 decisions (per kickoff: Slice A is execution against DEC-261, no architectural decisions expected — the loop composed exactly as the design doc predicted), 4 payload references (1 is_about + 3 already in conversation embedded edges), 1 addresses edge (CONV-057 → PI-052). WT-048 consumed at apply close via PATCH (apply_close_out.py does not auto-transition; pattern matches SES-080 close-out apply). PI-052 remains Open — resolves on Slice D close. Identifier rebasing per the parallel-sandbox-collision discipline: kickoff anticipated SES-081, but SES-081 through SES-086 were consumed by parallel PI-003/PI-004 work; rebased to SES-087.",
+  "session": {
+    "identifier": "SES-087",
+    "title": "PI-052 Slice A build — terminal proof-of-concept Anthropic-API chat loop with three read-only governance tools",
+    "session_date": "2026-05-26",
+    "status": "Complete",
+    "conversation_reference": "Claude Code build-execution conversation at Doug's terminal, 2026-05-26, opened in /home/doug/Dropbox/Projects/ClevelandBusinessMentors (followed by chdir-via-absolute-path operations into ~/Dropbox/Projects/crmbuilder/crmbuilder-v2 for the actual build work). Opened against WT-048 (the PI-052 Slice A kickoff body authored under SES-080). The conversation continued from the SES-080 apply session — Doug confirmed Slice A complete after manually running chat_spike.py against the live Anthropic API with all three tools exercised (get_current_status, get_current_charter, list_recent_sessions) plus the multi-tool turn case. Build-execution working mode throughout; no architectural decisions surfaced.",
+    "topics_covered": "(1) Read WT-048's work_ticket_file_path canonical kickoff body. (2) Verified WT-048 status=ready, sessions head, ANTHROPIC_API_KEY absence in current env (manual-run gate). (3) Read crmbuilder-v2/src/crmbuilder_v2/mcp_server/tools.py to confirm endpoint paths for the three tools (get_current_status → /status, get_current_charter → /charter, list_recent_sessions → /orientation/recent-sessions?limit=N). (4) Smoke-checked the three live REST endpoints return the expected envelope shapes. (5) Authored chat_spike.py at crmbuilder-v2/scripts/chat_spike.py — 131 LOC blocking chat loop with hand-defined JSON Schema tool definitions, httpx.Client against 127.0.0.1:8765, model=claude-opus-4-7, max_tokens=8192, inner while loop on stop_reason==tool_use, stderr tool-call echo, Ctrl+C and EOF clean exit. (6) Verified Python syntax + tested the no-API-key error path returns exit 1. (7) Smoke-tested the three local dispatch functions against the live REST API — all three returned correct envelope-unwrapped shapes (status dict, charter dict, sessions list with default-3 and explicit-limit). (8) Committed as b519df0 with the kickoff's recommended commit message format. (9) Doug ran chat_spike.py with ANTHROPIC_API_KEY set; confirmed all acceptance criteria including the multi-tool turn case. (10) Authored this close-out payload.",
+    "summary": "PI-052 Slice A shipped. Foundational architecture validated: Anthropic SDK + native tools=[...] + blocking httpx against the local REST API compose into a working chat loop in ~130 LOC of pure Python, with no surprises in tool-use block shape, no surprises in the multi-turn tool dispatch protocol, and no surprises in the envelope-unwrap path. The lesson from DEC-244 (verify end-to-end before building infrastructure) holds: if the spike had not worked, DEC-257's threading model and DEC-261's downstream slices would have been built on a foundation that doesn't exist. It worked. Slice B (PySide6 MVP tab, streaming on, one tool wired through dispatcher) is unblocked. The script lives at crmbuilder-v2/scripts/chat_spike.py as a reference; it is throwaway code, not maintained going forward — Slice C does the refactor to mcp_server.tools.",
+    "artifacts_produced": "Code commit b519df0835b150e7f8e0fcd44196206c349bfd52 on branch main: 1 file changed, 131 insertions. New: crmbuilder-v2/scripts/chat_spike.py. This close-out payload ses_087.json. Deposit event log dep_069.log.",
+    "in_flight_at_end": "PI-052 remains Open. WT-048 transitions ready → consumed via the conversation_opens_against_work_ticket edge from CONV-057 (PATCH after apply per the SES-080 apply pattern — apply_close_out.py does not auto-transition). Slice B kickoff (chat_spike's PySide6-tab successor) to be authored in a future session at pi-052-slice-b-pyside6-tab-mvp-kickoff.md against a future WT identifier."
+  },
+  "conversation": {
+    "conversation_identifier": "CONV-057",
+    "conversation_title": "PI-052 Slice A build — chat_spike.py terminal proof-of-concept under WT-048",
+    "conversation_purpose": "Implement chat_spike.py per the Slice A kickoff body at pi-052-slice-a-terminal-spike-kickoff.md: ~80 LOC blocking Python script validating Anthropic SDK + native tools + httpx against the local REST API. No PySide6, no streaming, no caching, no persistence. Three read-only governance tools.",
+    "conversation_description": "Claude Code build-execution conversation at Doug's terminal, 2026-05-26. Opened in the ClevelandBusinessMentors working directory but operated against the crmbuilder repo throughout (the WT-048 kickoff file path is in the crmbuilder repo). Conversation flow: read WT-048 kickoff body, verify endpoint paths in mcp_server.tools, smoke-check the three live REST endpoints, author chat_spike.py at 131 LOC (slightly over the kickoff's ~80 LOC target but within reasonable spike scope; the extra lines are the JSON Schema TOOLS list, the dispatch helper, and the exception handling), syntax-check, test no-key error path, smoke-test the three dispatch functions against live API, commit as b519df0. Doug ran chat_spike.py with ANTHROPIC_API_KEY set and confirmed all acceptance criteria pass including the multi-tool turn case. No architectural surprises — the loop composed exactly as DEC-261's slicing plan predicted, so no new DECs surface from this slice.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-057",
+        "target_type": "workstream",
+        "target_id": "WS-010",
+        "relationship": "conversation_belongs_to_workstream"
+      },
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-057",
+        "target_type": "session",
+        "target_id": "SES-087",
+        "relationship": "conversation_records_session"
+      },
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-057",
+        "target_type": "work_ticket",
+        "target_id": "WT-048",
+        "relationship": "conversation_opens_against_work_ticket"
+      }
+    ]
+  },
+  "commits": [
+    {
+      "commit_sha": "b519df0835b150e7f8e0fcd44196206c349bfd52",
+      "commit_message_first_line": "v2: PI-052 Slice A — terminal proof-of-concept for Anthropic-API chat loop with three read-only governance tools",
+      "commit_message_full": "v2: PI-052 Slice A — terminal proof-of-concept for Anthropic-API chat loop with three read-only governance tools\n\nWT-048. Per DEC-261 (slicing plan) and DEC-257 (streaming on for the\nproduction UI — explicitly deferred for this spike), this is the\nfoundational architecture validation: a ~130 LOC Python script that runs\na blocking chat loop with three hand-defined tools (get_current_status,\nget_current_charter, list_recent_sessions), validating that the\nAnthropic SDK + native tools=[...] + httpx against the local REST API\ncompose into a working chat loop before any PySide6 code lands.\n\nNo PySide6, no streaming, no caching, no persistence. Slice B is the\nfirst slice with production code. The script is throwaway —\ncommitted as a reference but not maintained.\n\nImplementation notes:\n- ANTHROPIC_API_KEY env required; prints to stderr and exits 1 if missing\n  (no keyring path per DEC-254 — Slice B adds that).\n- Three tools defined inline as JSON Schema in the TOOLS list. No reuse\n  of mcp_server.tools (Slice C does the refactor per design Appendix A).\n- httpx.Client (blocking) against http://127.0.0.1:8765 with 30s timeout.\n- Multi-tool turn handled in the inner while loop — collects every\n  tool_use block in one assistant message, dispatches each, appends a\n  single tool_result message with the full batch.\n- Tool call echo to stderr (one line per call: → name(args)).\n- Final assistant text printed to stdout once stop_reason != tool_use.\n- Ctrl+C and EOF both exit cleanly with code 0.\n- Tool errors caught and returned as is_error tool_result blocks so the\n  assistant sees them rather than the script crashing.\n\nSmoke-tested the three dispatch paths against the live REST API\n(returned status singleton, charter singleton, recent sessions list\nwith default-3 and explicit limit=2). The live Anthropic chat loop\ntest (ANTHROPIC_API_KEY required) is Doug's manual gate per the\nkickoff acceptance criteria.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-26T00:19:27-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "1c98021e5c5a386a51db0c0af8f0559a9e65a3f8"
+      ],
+      "commit_files_changed_count": 1
+    }
+  ],
+  "work_tickets": [],
+  "planning_items": [],
+  "decisions": [],
+  "references": [
+    {
+      "source_type": "session",
+      "source_id": "SES-087",
+      "target_type": "planning_item",
+      "target_id": "PI-052",
+      "relationship": "is_about"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": [
+    {
+      "planning_item_identifier": "PI-052"
+    }
+  ]
+}

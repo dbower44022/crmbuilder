@@ -1,0 +1,67 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_087.json
+Label:  PI-052 Slice A build closure — terminal proof-of-concept Anthropic-API chat loop (chat_spike.py, ~131 LOC) per DEC-261 slicing plan and DEC-257 (streaming deferred). Three hand-defined read-only governance tools (get_current_status, get_current_charter, list_recent_sessions) dispatched via blocking httpx against the local REST API. Throwaway code — Slice B is the first slice with production code. Build executed in this Claude Code conversation against WT-048 (the Slice-A kickoff body authored under SES-080 / CONV-050). Records landed: 1 session (SES-087), 1 conversation (CONV-057), 1 commit (b519df0… → CM-0008 lazy), 0 new work_tickets, 0 new planning items, 0 decisions (per kickoff: Slice A is execution against DEC-261, no architectural decisions expected — the loop composed exactly as the design doc predicted), 4 payload references (1 is_about + 3 already in conversation embedded edges), 1 addresses edge (CONV-057 → PI-052). WT-048 consumed at apply close via PATCH (apply_close_out.py does not auto-transition; pattern matches SES-080 close-out apply). PI-052 remains Open — resolves on Slice D close. Identifier rebasing per the parallel-sandbox-collision discipline: kickoff anticipated SES-081, but SES-081 through SES-086 were consumed by parallel PI-003/PI-004 work; rebased to SES-087.
+Deposit event: DEP-069
+
+=== Apply run 1 (initial) ===
+
+=== session (1 record) ===
+  ✓ POST session  SES-087 (HTTP 201)
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CONV-057 (HTTP 201)
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== references (1 record) ===
+  ✓ POST references  SES-087 is_about PI-052 (HTTP 201)
+
+=== addresses_planning_items (1 record) ===
+Traceback (most recent call last):
+  File "/home/doug/Dropbox/Projects/crmbuilder/crmbuilder-v2/scripts/apply_close_out.py", line 632, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/doug/Dropbox/Projects/crmbuilder/crmbuilder-v2/scripts/apply_close_out.py", line 535, in main
+    else section.shape_fn(record, context)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/doug/Dropbox/Projects/crmbuilder/crmbuilder-v2/scripts/apply_close_out.py", line 164, in _shape_addresses_pi
+    target_pi = entry["planning_item_identifier"]
+                ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyError: 'planning_item_identifier'
+
+[Payload corrected: addresses_planning_items entries reshaped from the full
+references-edge schema to the {planning_item_identifier: ...} shorthand
+that apply_close_out.py's _shape_addresses_pi expects.]
+
+=== Apply run 2 (idempotent re-run after payload fix) ===
+
+=== session (1 record) ===
+  · POST session  SES-087 already present (HTTP 409) — skipping
+
+=== conversation (1 record) ===
+  · POST conversation  CONV-057 already present (HTTP 409) — skipping
+
+=== commits (1 record) ===
+  · POST commits  <unidentified record> already present (HTTP 409) — skipping
+
+=== references (1 record) ===
+  · POST references  SES-087 is_about PI-052 already present (HTTP 409) — skipping
+
+=== addresses_planning_items (1 record) ===
+  ✓ POST addresses_planning_items  → PI-052 (HTTP 201)
+
+✓ All 5 operations complete.
+
+✓ Recorded apply as deposit_event DEP-069 (HTTP 201).
+
+=== Post-apply manual transition ===
+
+PATCH /work-tickets/WT-048 {"work_ticket_status": "consumed"}
+  → status: consumed (apply_close_out.py does not auto-transition;
+    pattern matches SES-080 close-out apply)
+
+[Reconstructed log — original captured stdout was not persisted to disk
+through the parallel-sandbox merge resolution that immediately followed
+the apply. Live-DB state is authoritative: SES-087, CONV-057, CM-0008
+(SHA b519df0…), and the four edges above are all present in the DB.]
