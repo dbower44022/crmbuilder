@@ -1,5 +1,7 @@
 # Master CRMBuilder PRD
 
+> **DISCUSSION DRAFT — NOT YET APPROVED.** This file is an authored proposal that has not been reviewed or approved. Every substantive structural and content choice is open for discussion. Treat this as a working artifact to react to, not a canonical specification.
+
 | Field | Value |
 |-------|-------|
 | Version | 0.1 (draft) |
