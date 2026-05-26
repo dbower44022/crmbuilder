@@ -1,5 +1,7 @@
 # CRM Builder — Domain Overview Guide
 
+> **Status: Transitional.** This document is being consolidated into the Master CRMBuilder PRD at `specifications/master-crmbuilder-PRD.md` (in development). Once the Master CRMBuilder PRD covers this content, this document will be archived. Continue to use this as reference until that supersession is explicit.
+
 **Version:** 1.1
 **Last Updated:** 04-21-26
 **Purpose:** AI guide for Phase 4a — Domain Overview (including Sub-Domain Overview)

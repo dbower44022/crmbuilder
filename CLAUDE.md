@@ -2,6 +2,28 @@
 
 This file provides guidance to Claude Code when working in this repository.
 
+## Current direction: Master CRMBuilder PRD consolidation
+
+The active work in this repo is consolidating into a single canonical **Master CRMBuilder PRD** at `specifications/master-crmbuilder-PRD.md`. That document defines the entire process for using the V2 storage system to capture the complete definition of a product — from initial requirements through deployed, functional application.
+
+**Current focus:** CRMBuilder dogfood. The Master CRMBuilder PRD is being authored by running its own process against CRMBuilder itself. CBM (Cleveland Business Mentors) is the validation case for the next phase, after the process is defined on CRMBuilder.
+
+**Approach:** Iterative. Draft enough Master CRMBuilder PRD content to make the next phase runnable → execute that phase against CRMBuilder → discover gaps → refine the PRD → continue.
+
+**Documents being consolidated and superseded:**
+- The 13-phase Document Production Process (`PRDs/process/CRM-Builder-Document-Production-Process.docx`)
+- The interview and guide documents (`PRDs/process/interviews/`)
+- The three conduct documents (`PRDs/process/conduct/`)
+- The V2 user process guide (`PRDs/process/v2-user-process-guide.md`)
+- The L1/L2 automation PRDs (`PRDs/product/crmbuilder-automation-PRD/crmbuilder-automation-l1-PRD.docx` and `-l2-PRD.docx`)
+- Other V1/V2 product PRDs as their content is folded in
+
+Each carries a transitional status header pointing to the Master CRMBuilder PRD as the future source of truth. Until that PRD covers a topic, the corresponding existing document remains the reference.
+
+**Format rule (05-26-26):** All PRDs and internal documents in MD going forward. No new Word documents for internal use. Customer-facing deliverables remain format-flexible (Word, PDF, etc.) per case.
+
+Sections below this one describe the existing federated V1/V2 state and are retained as orientation until the Master CRMBuilder PRD subsumes them.
+
 ## Project
 
 This is the **CRM Builder** — a PySide6 desktop application that covers

@@ -1,5 +1,7 @@
 # CRMBuilder User Process Guide (v2)
 
+> **Status: Transitional.** This document is being consolidated into the Master CRMBuilder PRD at `specifications/master-crmbuilder-PRD.md` (in development). Once the Master CRMBuilder PRD covers this content, this document will be archived. Continue to use this as reference until that supersession is explicit.
+
 *An Engagement Playbook for Consultants Using the v2 Governance Stack*
 
 | Field | Value |

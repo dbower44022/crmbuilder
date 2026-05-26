@@ -1,5 +1,7 @@
 # CRM Builder — Interview and Guide Authoring Standards
 
+> **Status: Transitional.** This document is being consolidated into the Master CRMBuilder PRD at `specifications/master-crmbuilder-PRD.md` (in development). Once the Master CRMBuilder PRD covers this content, this document will be archived. Continue to use this as reference until that supersession is explicit.
+
 **Version:** 1.2
 **Last Updated:** 05-24-26 12:31
 **Purpose:** Authoring contract for every file under `PRDs/process/interviews/`
