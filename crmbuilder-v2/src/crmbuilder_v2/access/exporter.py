@@ -52,6 +52,7 @@ from crmbuilder_v2.access.models import (
     Requirement,
     Risk,
     Status,
+    TestSpec,
     Topic,
     WorkTicket,
     Workstream,
@@ -84,6 +85,9 @@ _EXPORT_TABLES: list[tuple[str, type]] = [
     ("requirements", Requirement),
     # v0.5+ methodology entity (PI-004 cohort, manual_config.md).
     ("manual_configs", ManualConfig),
+    # v0.5+ methodology entity (PI-004 cohort closer, test_spec.md;
+    # resolves PI-004).
+    ("test_specs", TestSpec),
     # Governance entities (UI v0.7), in workstream order.
     ("workstreams", Workstream),
     ("conversations", Conversation),

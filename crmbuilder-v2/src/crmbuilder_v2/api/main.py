@@ -53,6 +53,7 @@ from crmbuilder_v2.api.routers import (
     risks,
     sessions,
     status,
+    test_specs,
     topics,
     work_tickets,
     workstreams,
@@ -156,6 +157,7 @@ def create_app() -> FastAPI:
     # PI-004 methodology cohort (v0.5+).
     app.include_router(requirements.router)
     app.include_router(manual_configs.router)
+    app.include_router(test_specs.router)
     app.include_router(references.router)
     app.include_router(orientation.router)
     app.include_router(catalog.router)

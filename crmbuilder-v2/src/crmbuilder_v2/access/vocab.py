@@ -164,6 +164,37 @@ MANUAL_CONFIG_CATEGORIES: frozenset[str] = frozenset(
     }
 )
 
+# Methodology entity `test_spec` lifecycle (PI-004 cohort closer, v0.5+).
+# Three-status methodology lifecycle mirroring ``domain`` / ``entity``
+# exactly per ``test_spec.md`` §3.4.1 — propose-verify one-way gate out
+# of ``candidate``. The execution-outcome axis (TEST_SPEC_RUN_OUTCOMES
+# below) is a SEPARATE field with unrestricted transitions per
+# §3.4.2-3.4.3 — see the dual-axis rationale in the spec.
+TEST_SPEC_STATUSES: frozenset[str] = frozenset(
+    {"candidate", "confirmed", "deferred"}
+)
+
+TEST_SPEC_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "candidate": frozenset({"confirmed", "deferred"}),
+    "confirmed": frozenset({"deferred"}),
+    "deferred": frozenset({"confirmed"}),
+}
+
+# Execution-outcome enum for ``test_spec`` — the snapshot of the most
+# recent verification run's result per ``test_spec.md`` §3.4.2.
+# **Intentionally NO ``TEST_SPEC_RUN_OUTCOME_TRANSITIONS`` map.**
+# Outcomes are observational (records what happened on the last run),
+# not decisional, so any value may move to any other value freely. This
+# is the principal asymmetry that justifies the dual-axis state pattern
+# per §3.4.3: methodology lifecycle benefits from a propose-verify gate;
+# execution outcome benefits from frictionless update. The §3.4.4
+# cross-field invariant (``last_run_at`` populated whenever outcome is
+# a run state; cleared on move back to ``not_run``) lives at the
+# repository layer in ``repositories/test_spec.py``, not in this map.
+TEST_SPEC_RUN_OUTCOMES: frozenset[str] = frozenset(
+    {"not_run", "passing", "failing", "skipped"}
+)
+
 # Methodology entity `crm_candidate` lifecycle (UI v0.4 slice E, DEC-062).
 # Four-status lifecycle per ``crm_candidate.md`` section 3.4. ``active``
 # is the starter status; ``selected``, ``declined``, ``removed`` are
@@ -384,6 +415,18 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         "manual_config_touches_entity",
         "manual_config_touches_field",
         "manual_config_realizes_requirement",
+        # v0.5+ test_spec additions (PI-004 cohort closer, test_spec.md
+        # §3.3.1). Three outbound kinds registered here. The inbound
+        # ``requirement_verified_by_test_spec`` kind is registered above
+        # in the requirement block (per CLAUDE.md line 48's once-per-kind
+        # rule); this build only activates its previously-dormant
+        # ``_kinds_for_pair`` clause. All three target entity types
+        # (``entity`` v0.4, ``field`` PI-004 first slice, ``process``
+        # v0.4) are live, so every ``test_spec_*`` clause in
+        # ``_kinds_for_pair`` activates unconditionally.
+        "test_spec_exercises_process",
+        "test_spec_touches_entity",
+        "test_spec_touches_field",
     }
 )
 
@@ -435,6 +478,9 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         "requirement",
         # v0.5+ methodology entity (PI-004 cohort). See manual_config.md.
         "manual_config",
+        # v0.5+ methodology entity (PI-004 cohort closer; resolves
+        # PI-004). See test_spec.md.
+        "test_spec",
     }
 )
 
@@ -493,6 +539,13 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
       manual_config, target must be a requirement (v0.5+,
       manual_config.md §3.3.1; clause active because ``requirement`` is
       live as of PI-004 cohort).
+    * ``test_spec_touches_entity`` — source must be a test_spec, target
+      must be an entity (v0.5+, test_spec.md §3.3.1; many-to-many).
+    * ``test_spec_touches_field`` — source must be a test_spec, target
+      must be a field (v0.5+, test_spec.md §3.3.1; many-to-many).
+    * ``test_spec_exercises_process`` — source must be a test_spec,
+      target must be a process (v0.5+, test_spec.md §3.3.1; many-to-
+      many).
 
     The ruleset is permissive by design: every pair has at least the
     two generic kinds, so the dialog never produces an empty kind list
@@ -582,11 +635,12 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         kinds.add("requirement_touches_field")
     if source_type == "requirement" and target_type == "process":
         kinds.add("requirement_realized_by_process")
-    # TODO(PI-004 sibling: test_spec) — activate when ``test_spec``
-    # lands in ENTITY_TYPES. See methodology-schema-specs/test_spec.md
-    # build prompt.
-    # if source_type == "requirement" and target_type == "test_spec":
-    #     kinds.add("requirement_verified_by_test_spec")
+    # Activated by the test_spec PI-004 cohort closer build — now that
+    # ``test_spec`` is live in ENTITY_TYPES this clause is no longer
+    # dormant. The kind itself is still registered above in the
+    # requirement block (once-per-kind rule).
+    if source_type == "requirement" and target_type == "test_spec":
+        kinds.add("requirement_verified_by_test_spec")
     # v0.5+ manual_config additions (PI-004 cohort, manual_config.md
     # §3.3.1). Four outbound kinds. All four target types
     # (``domain`` / ``entity`` / ``field`` / ``requirement``) are live
@@ -600,6 +654,16 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         kinds.add("manual_config_touches_field")
     if source_type == "manual_config" and target_type == "requirement":
         kinds.add("manual_config_realizes_requirement")
+    # v0.5+ test_spec additions (PI-004 cohort closer, test_spec.md
+    # §3.3.1). Three outbound kinds. All three target types
+    # (``entity`` / ``field`` / ``process``) are live in ENTITY_TYPES,
+    # so every clause activates unconditionally.
+    if source_type == "test_spec" and target_type == "entity":
+        kinds.add("test_spec_touches_entity")
+    if source_type == "test_spec" and target_type == "field":
+        kinds.add("test_spec_touches_field")
+    if source_type == "test_spec" and target_type == "process":
+        kinds.add("test_spec_exercises_process")
     return frozenset(kinds)
 
 

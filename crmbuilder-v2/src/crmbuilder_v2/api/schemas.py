@@ -553,6 +553,95 @@ class ManualConfigPatchIn(_Base):
     manual_config_completed_by: str | None = None
 
 
+# ---------- Test Specs (methodology entity, PI-004 cohort closer, v0.5+) ----
+
+
+class TestSpecCreateIn(_Base):
+    """POST /test-specs body. ``test_spec_identifier`` is server-assigned
+    when omitted; ``test_spec_status`` defaults to ``candidate`` server-
+    side; ``test_spec_last_run_outcome`` defaults to ``not_run``.
+
+    Reference attachments are NOT inlined — per ``test_spec.md`` §3.5.4
+    they attach via separate ``POST /references`` calls. POST with
+    ``test_spec_last_run_outcome`` in ``{passing, failing, skipped}``
+    triggers the §3.4.4 cross-field invariant: ``test_spec_last_run_at``
+    is server-defaulted to ``now()`` if omitted, or honored if supplied
+    non-null. The router consumes the body with ``exclude_unset=True``
+    so an explicit ``test_spec_last_run_at: null`` (which would violate
+    the invariant in a run state) can be distinguished from omission."""
+
+    test_spec_name: str
+    test_spec_description: str
+    test_spec_steps: str
+    test_spec_expected: str
+    test_spec_setup: str | None = None
+    test_spec_notes: str | None = None
+    test_spec_status: str | None = None
+    test_spec_last_run_outcome: str | None = None
+    test_spec_last_run_at: datetime | None = None
+    test_spec_last_run_notes: str | None = None
+    test_spec_identifier: str | None = None
+
+
+class TestSpecReplaceIn(_Base):
+    """PUT /test-specs/{identifier} body — full record replace.
+
+    ``test_spec_identifier`` is optional; when present it must match
+    the path identifier (mismatch → 422). ``test_spec_status`` and
+    ``test_spec_last_run_outcome`` are required on a full replace; the
+    §3.4.4 cross-field invariant fires against the post-write outcome
+    value."""
+
+    test_spec_identifier: str | None = None
+    test_spec_name: str
+    test_spec_description: str
+    test_spec_steps: str
+    test_spec_expected: str
+    test_spec_setup: str | None = None
+    test_spec_notes: str | None = None
+    test_spec_status: str
+    test_spec_last_run_outcome: str
+    test_spec_last_run_at: datetime | None = None
+    test_spec_last_run_notes: str | None = None
+
+
+class TestSpecPatchIn(_Base):
+    """PATCH /test-specs/{identifier} body — partial update.
+
+    Routers consume this with ``model_dump(exclude_unset=True)`` so an
+    explicit ``test_spec_last_run_at: null`` (clear the field) is
+    distinguished from an omitted ``test_spec_last_run_at`` (leave
+    unchanged). **Load-bearing for §3.4.4** — the cross-field invariant
+    treats explicit-null and omitted differently when the outcome is a
+    run state. Methodology-status transitions are restricted; outcome
+    transitions are unrestricted per §3.4.2."""
+
+    test_spec_name: str | None = None
+    test_spec_description: str | None = None
+    test_spec_setup: str | None = None
+    test_spec_steps: str | None = None
+    test_spec_expected: str | None = None
+    test_spec_notes: str | None = None
+    test_spec_status: str | None = None
+    test_spec_last_run_outcome: str | None = None
+    test_spec_last_run_at: datetime | None = None
+    test_spec_last_run_notes: str | None = None
+
+
+class TestSpecRecordRunIn(_Base):
+    """POST /test-specs/{identifier}/record-run body — convenience endpoint.
+
+    Per ``test_spec.md`` §3.8.1 (resolved affirmatively for v0.5+).
+    Atomic update of outcome + last_run_at + last_run_notes; ``outcome``
+    is required, ``notes`` and ``at`` are optional. When ``outcome`` is
+    ``not_run`` the server clears ``last_run_at`` and ``last_run_notes``
+    regardless of supplied values (per §3.4.4)."""
+
+    outcome: str
+    notes: str | None = None
+    at: datetime | None = None
+
+
 # ---------- Engagements (methodology entity, UI v0.5 slice B) ----------
 
 

@@ -65,6 +65,8 @@ from crmbuilder_v2.access.vocab import (
     RISK_PROBABILITIES,
     RISK_STATUSES,
     SESSION_STATUSES,
+    TEST_SPEC_RUN_OUTCOMES,
+    TEST_SPEC_STATUSES,
     WORK_TICKET_KINDS,
     WORK_TICKET_STATUSES,
     WORKSTREAM_STATUSES,
@@ -726,6 +728,119 @@ class ManualConfig(Base):
         Index(
             "ix_manual_configs_manual_config_deleted_at",
             "manual_config_deleted_at",
+        ),
+    )
+
+
+class TestSpec(Base):
+    """Methodology entity — one verification specification (test).
+
+    Ninth methodology entity type (v0.5+, PI-004 cohort closer) per
+    ``test_spec.md`` v1.0. Hosts the verification-spec content (setup
+    / steps / expected) plus a snapshot of the most recent execution
+    outcome. Parent-prefix field naming convention (DEC-046); primary
+    key is the prefixed-string identifier ``test_spec_identifier``
+    (``TST-NNN``) — no integer surrogate ``id`` column.
+
+    **Dual-axis state per §3.4.3 — two enums on this row, not one.**
+
+    * ``test_spec_status`` ∈ ``{candidate, confirmed, deferred}`` — the
+      methodology lifecycle. Restricted transitions per
+      :data:`TEST_SPEC_STATUS_TRANSITIONS` (one-way propose-verify gate;
+      same shape as ``domain`` and ``entity``).
+    * ``test_spec_last_run_outcome`` ∈ ``{not_run, passing, failing,
+      skipped}`` — the snapshot of the most recent execution result.
+      **Unrestricted transitions** — outcomes are observational, not
+      decisional; any value may move to any other. The §3.4.4
+      cross-field invariant (``last_run_at`` populated whenever outcome
+      is a run state; cleared back to null when outcome resets to
+      ``not_run``) is enforced at the access layer, not in SQL.
+
+    **Snapshot-only execution shape (§3.8.3 deferred).** Only the most
+    recent run's outcome / timestamp / notes are captured on this row.
+    Full historical execution log is a v0.6+ planning item (separate
+    ``test_run`` entity type with a ``test_run_executes_test_spec``
+    edge or FK pointer).
+
+    The three outbound relationship kinds (``test_spec_touches_entity``,
+    ``test_spec_touches_field``, ``test_spec_exercises_process``) live
+    in the ``refs`` table per §3.3.1 — no FK columns on this table. The
+    inbound ``requirement_verified_by_test_spec`` kind is registered by
+    ``requirement.md``, not here, per the once-per-kind rule
+    (CLAUDE.md line 48).
+    """
+
+    __tablename__ = "test_specs"
+
+    test_spec_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    test_spec_name: Mapped[str] = mapped_column(
+        String(255), nullable=False
+    )
+    test_spec_description: Mapped[str] = mapped_column(
+        Text, nullable=False
+    )
+    test_spec_setup: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    test_spec_steps: Mapped[str] = mapped_column(Text, nullable=False)
+    test_spec_expected: Mapped[str] = mapped_column(Text, nullable=False)
+    test_spec_notes: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    test_spec_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    test_spec_last_run_outcome: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="not_run"
+    )
+    test_spec_last_run_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    test_spec_last_run_notes: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    test_spec_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    test_spec_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    test_spec_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^TST-\d{3}$`` expressed as a SQLite GLOB pattern.
+        CheckConstraint(
+            "test_spec_identifier GLOB 'TST-[0-9][0-9][0-9]'",
+            name="ck_test_spec_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("test_spec_status", TEST_SPEC_STATUSES),
+            name="ck_test_spec_status",
+        ),
+        CheckConstraint(
+            _check_in(
+                "test_spec_last_run_outcome", TEST_SPEC_RUN_OUTCOMES
+            ),
+            name="ck_test_spec_last_run_outcome",
+        ),
+        Index(
+            "ix_test_specs_test_spec_status",
+            "test_spec_status",
+        ),
+        Index(
+            "ix_test_specs_test_spec_last_run_outcome",
+            "test_spec_last_run_outcome",
+        ),
+        Index(
+            "ix_test_specs_test_spec_deleted_at",
+            "test_spec_deleted_at",
         ),
     )
 
