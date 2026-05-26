@@ -1,0 +1,51 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_080.json
+Label:  SES-080 PI-052 chat-UI design + slicing session. Claude Code conversation conducted at Doug's terminal 2026-05-25 evening, opened against work_ticket WT-047 (the PI-052 kickoff body at `PRDs/product/crmbuilder-v2/pi-052-chat-ui-design-kickoff.md`). ARCHITECTURE working mode throughout, no implementation code written. Output is the canonical design document at `PRDs/product/crmbuilder-v2/pi-052-chat-ui-design.md` (840 lines) plus this triple-artifact close-out + the Slice-A kickoff body WT-048 for the first implementation session. Records landed: 1 session (SES-080), 1 conversation (CONV-050), 0 commits, 1 work_ticket (WT-048 = Slice-A terminal-spike kickoff body, status ready), 11 decisions (DEC-252 production UI surface, DEC-253 tool surface scope, DEC-254 auth model, DEC-255 tool-call confirmation policy, DEC-256 persistence model, DEC-257 streaming, DEC-258 multi-conv UX, DEC-259 cost visibility, DEC-260 model selection, DEC-261 slicing plan, DEC-262 hybrid kickoff pattern), 0 new planning items (PI-053+ candidates noted in the design doc but not adopted), references threading the audit chain (11 decided_in + 2 references to DEC-245 + 3 references to existing decisions + 1 is_about + 1 supersedes-relationship for DEC-262 supersedes-prior pattern), 1 resolves edge (none — PI-052 stays Open until the chat UI ships), 1 addresses edge (PI-052). Note: kickoff anticipated SES-078 but SES-078 was consumed in flight by the parallel PI-002 build closure conversation — this session is SES-080 by the recent parallel-sandbox rebasing pattern. WT-047 is consumed by CONV-050.
+Deposit event: DEP-063
+
+=== session (1 record) ===
+  ✓ POST session  SES-080 (HTTP 201)
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CONV-050 (HTTP 201)
+
+=== work_tickets (1 record) ===
+  ✓ POST work_tickets  WT-048 (HTTP 201)
+
+=== decisions (11 records) ===
+  ✓ POST decisions  DEC-252 (HTTP 201)
+  ✓ POST decisions  DEC-253 (HTTP 201)
+  ✓ POST decisions  DEC-254 (HTTP 201)
+  ✓ POST decisions  DEC-255 (HTTP 201)
+  ✓ POST decisions  DEC-256 (HTTP 201)
+  ✓ POST decisions  DEC-257 (HTTP 201)
+  ✓ POST decisions  DEC-258 (HTTP 201)
+  ✓ POST decisions  DEC-259 (HTTP 201)
+  ✓ POST decisions  DEC-260 (HTTP 201)
+  ✓ POST decisions  DEC-261 (HTTP 201)
+  ✓ POST decisions  DEC-262 (HTTP 201)
+
+=== references (16 records) ===
+  ✓ POST references  DEC-252 decided_in SES-080 (HTTP 201)
+  ✓ POST references  DEC-253 decided_in SES-080 (HTTP 201)
+  ✓ POST references  DEC-254 decided_in SES-080 (HTTP 201)
+  ✓ POST references  DEC-255 decided_in SES-080 (HTTP 201)
+  ✓ POST references  DEC-256 decided_in SES-080 (HTTP 201)
+  ✓ POST references  DEC-257 decided_in SES-080 (HTTP 201)
+  ✓ POST references  DEC-258 decided_in SES-080 (HTTP 201)
+  ✓ POST references  DEC-259 decided_in SES-080 (HTTP 201)
+  ✓ POST references  DEC-260 decided_in SES-080 (HTTP 201)
+  ✓ POST references  DEC-261 decided_in SES-080 (HTTP 201)
+  ✓ POST references  DEC-262 decided_in SES-080 (HTTP 201)
+  ✓ POST references  DEC-252 references DEC-245 (HTTP 201)
+  ✓ POST references  DEC-261 references DEC-245 (HTTP 201)
+  ✓ POST references  DEC-253 references DEC-255 (HTTP 201)
+  ✓ POST references  DEC-259 references DEC-260 (HTTP 201)
+  ✓ POST references  SES-080 is_about PI-052 (HTTP 201)
+
+=== addresses_planning_items (1 record) ===
+  ✓ POST addresses_planning_items  → PI-052 (HTTP 201)
+
+✓ All 31 operations complete.
+
+✓ Recorded apply as deposit_event DEP-063 (HTTP 201).

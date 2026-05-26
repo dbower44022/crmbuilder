@@ -817,6 +817,23 @@
   },
   {
     "conversation_cancelled_at": null,
+    "conversation_completed_at": "2026-05-26T02:48:33.571107",
+    "conversation_created_at": "2026-05-26T02:48:33.570844",
+    "conversation_deleted_at": null,
+    "conversation_description": "Claude Code conversation at Doug's terminal opened with the prompt 'Open pi-052 and execute and then closeout'. The conversation read the kickoff body at `PRDs/product/crmbuilder-v2/pi-052-chat-ui-design-kickoff.md` (anchored in the V2 governance DB by work_ticket WT-047), fetched V2 governance context via `curl http://127.0.0.1:8765/...` per the kickoff Tier 1–2 reads (current status, DEC-244, DEC-245, PI-052, SES-077), inspected the v2 codebase per Tier 3 (mcp_server/tools.py — 44 FastMCP-registered functions all wrapping httpx → REST; api/main.py FastAPI surface; ui/main_window.py + app.py + sidebar.py — PySide6 sidebar+stack pattern; config.py — pydantic-settings), then proceeded through the design+planning in a single turn (no follow-up questions to Doug; this was an ARCHITECTURE-mode design conversation operating under Auto Mode where the kickoff's question framing is the spec). All ten kickoff open questions Q1–Q10 settled, plus the four kickoff goal-list strategic choices (tool surface scope, auth, model selection, slicing plan), plus the one methodology question from the kickoff body about file-vs-WT-inline kickoffs. Eleven DEC-NNN candidates issued (DEC-252..DEC-262). Three questions deferred: Q4 follows from DEC-255, Q6 deferred to Slice C with its own DEC then, Q7 surfaced as candidate PI-053 not adopted in v1. The design document at `PRDs/product/crmbuilder-v2/pi-052-chat-ui-design.md` is the load-bearing artifact — 840 lines, sixteen sections, an Appendix A diff sketch for the mcp_server.tools refactor that makes both FastMCP and the chat dispatcher share a single tool_definitions() source. The Slice-A kickoff body at `pi-052-slice-a-terminal-spike-kickoff.md` becomes WT-048 for the first implementation session. Identifier note: the kickoff anticipated SES-078, but SES-078 was consumed in flight by the parallel PI-002 build closure conversation that landed before this session opened; per the recent parallel-sandbox rebasing pattern this session is SES-080.",
+    "conversation_identifier": "CONV-050",
+    "conversation_kickoff_drafted_at": null,
+    "conversation_notes": null,
+    "conversation_purpose": "Execute work_ticket WT-047 (the PI-052 chat-UI design kickoff body): conduct the architectural design + planning session per the kickoff's Goals 1–10 and Open Questions Q1–Q10, settle the ten kickoff questions as DEC-NNN candidates, produce the triple-artifact close-out (design doc + payload + apply prompt) plus the Slice-1 work-ticket per the kickoff's deliverable-shape section.",
+    "conversation_ready_at": null,
+    "conversation_started_at": null,
+    "conversation_status": "complete",
+    "conversation_superseded_at": null,
+    "conversation_title": "PI-052 chat-UI design + slicing — architecture session producing pi-052-chat-ui-design.md and the Slice-A spike WT-048",
+    "conversation_updated_at": "2026-05-26T02:48:33.571211"
+  },
+  {
+    "conversation_cancelled_at": null,
     "conversation_completed_at": "2026-05-26T02:32:42.438657",
     "conversation_created_at": "2026-05-26T02:32:42.438353",
     "conversation_deleted_at": null,
