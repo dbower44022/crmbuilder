@@ -47,6 +47,7 @@ from crmbuilder_v2.access.models import (
     Reference,
     ReferenceBook,
     ReferenceBookVersion,
+    Requirement,
     Risk,
     Status,
     Topic,
@@ -72,6 +73,8 @@ _EXPORT_TABLES: list[tuple[str, type]] = [
     ("crm_candidates", CrmCandidate),
     # v0.5+ methodology entity (PI-003, persona.md).
     ("personas", Persona),
+    # v0.5+ methodology entity (PI-004 cohort, requirement.md).
+    ("requirements", Requirement),
     # Governance entities (UI v0.7), in workstream order.
     ("workstreams", Workstream),
     ("conversations", Conversation),

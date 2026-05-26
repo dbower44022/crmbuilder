@@ -790,6 +790,148 @@ class StorageClient:
         )
 
     # ------------------------------------------------------------------
+    # Requirements (methodology entity — PI-004 cohort, v0.5+)
+    # ------------------------------------------------------------------
+
+    def list_requirements(
+        self, *, include_deleted: bool = False
+    ) -> list[dict[str, Any]]:
+        """Return all requirements as a list of dicts.
+
+        Shape matches ``crmbuilder_v2/api/routers/requirements.py``.
+        With ``include_deleted=True`` soft-deleted requirements are
+        included; otherwise the API filters them out. Per
+        ``requirement.md`` §3.5.1.
+        """
+        path = "/requirements"
+        if include_deleted:
+            path = "/requirements?include_deleted=true"
+        result = self._request("GET", path)
+        if not isinstance(result, list):
+            return []
+        return result
+
+    def get_requirement(self, identifier: str) -> dict[str, Any]:
+        """Return a single requirement by identifier (e.g. ``"REQ-001"``).
+
+        Raises ``NotFoundError`` if the requirement does not exist (or
+        is soft-deleted — the API 404s soft-deleted rows by default).
+        Per ``requirement.md`` §3.5.1.
+        """
+        result = self._request("GET", f"/requirements/{identifier}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for get_requirement",
+            )
+        return result
+
+    def create_requirement(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /requirements. Returns the created record dict.
+
+        The body uses the parent-prefixed field names
+        (``requirement_name``, ``requirement_description``,
+        ``requirement_acceptance_summary``, optional
+        ``requirement_priority`` / ``requirement_notes`` /
+        ``requirement_status``). ``requirement_identifier`` is
+        server-assigned when omitted. References (all five outbound
+        kinds) are NOT inlined — attach them afterwards via
+        ``create_reference``. Per ``requirement.md`` §3.5.5.
+
+        Raises ``RequestShapeError`` on 422 (identifier-format /
+        name-uniqueness / priority-enum / status-enum),
+        ``ConflictError`` on 409 (explicit-identifier collision).
+        """
+        result = self._request("POST", "/requirements", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for create_requirement",
+            )
+        return result
+
+    def update_requirement(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PUT /requirements/{identifier} — full record replace.
+
+        The body is the full record; ``requirement_identifier`` in the
+        body must match the path. Raises ``NotFoundError`` on 404,
+        ``RequestShapeError`` on 422.
+        """
+        result = self._request(
+            "PUT", f"/requirements/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for update_requirement",
+            )
+        return result
+
+    def patch_requirement(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PATCH /requirements/{identifier} — partial update.
+
+        Body should contain only the changed fields. Raises
+        ``NotFoundError`` on 404, ``RequestShapeError`` on 422
+        (validation or invalid status transition).
+        """
+        result = self._request(
+            "PATCH", f"/requirements/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for patch_requirement",
+            )
+        return result
+
+    def delete_requirement(self, identifier: str) -> Any:
+        """DELETE /requirements/{identifier}. Soft-deletes; idempotent.
+
+        Returns the API's response data. Raises ``NotFoundError`` on
+        404. Outbound references (all five kinds) persist per
+        ``requirement.md`` §3.4.7.
+        """
+        return self._request("DELETE", f"/requirements/{identifier}")
+
+    def restore_requirement(self, identifier: str) -> dict[str, Any]:
+        """POST /requirements/{identifier}/restore. Clears the soft-delete.
+
+        Raises ``NotFoundError`` on 404, ``RequestShapeError`` on 422
+        (the record is not soft-deleted).
+        """
+        result = self._request(
+            "POST", f"/requirements/{identifier}/restore"
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for restore_requirement",
+            )
+        return result
+
+    def next_requirement_identifier(self) -> str:
+        """GET /requirements/next-identifier. Returns the next ``REQ-NNN``."""
+        result = self._request("GET", "/requirements/next-identifier")
+        if isinstance(result, dict) and isinstance(result.get("next"), str):
+            return result["next"]
+        raise ServerError(
+            status_code=200,
+            errors=[],
+            message=(
+                "Expected {'next': str} body for next_requirement_identifier"
+            ),
+        )
+
+    # ------------------------------------------------------------------
     # Personas (methodology entity — v0.5+)
     # ------------------------------------------------------------------
 

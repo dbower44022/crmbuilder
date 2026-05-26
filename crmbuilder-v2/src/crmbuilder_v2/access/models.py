@@ -57,6 +57,8 @@ from crmbuilder_v2.access.vocab import (
     REFERENCE_BOOK_KINDS,
     REFERENCE_BOOK_STATUSES,
     REFERENCE_RELATIONSHIPS,
+    REQUIREMENT_PRIORITIES,
+    REQUIREMENT_STATUSES,
     RISK_IMPACTS,
     RISK_PROBABILITIES,
     RISK_STATUSES,
@@ -428,6 +430,79 @@ class Field(Base):
         Index("ix_fields_field_status", "field_status"),
         Index("ix_fields_field_type", "field_type"),
         Index("ix_fields_field_deleted_at", "field_deleted_at"),
+    )
+
+
+class Requirement(Base):
+    """Methodology entity — one testable statement of what the CRM must do.
+
+    PI-004 cohort deliverable per ``requirement.md`` v1.0. Parent-prefix
+    field naming; primary key is the prefixed-string identifier
+    ``requirement_identifier`` (``REQ-NNN``). All five outbound
+    relationships (domain affiliation, entity coverage, field coverage,
+    process realization, test-spec verification) live in ``refs`` as
+    distinct relationship kinds, not FK columns.
+
+    Priority transitions are unconstrained — any of the four MoSCoW
+    values may freely follow any other (spec §3.2.3 / §3.4.3). Status
+    transitions use the one-way propose-verify gate inherited from
+    ``domain`` and ``entity``.
+    """
+
+    __tablename__ = "requirements"
+
+    requirement_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    requirement_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    requirement_description: Mapped[str] = mapped_column(Text, nullable=False)
+    requirement_acceptance_summary: Mapped[str] = mapped_column(
+        Text, nullable=False
+    )
+    requirement_priority: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="should"
+    )
+    requirement_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    requirement_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    requirement_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    requirement_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    requirement_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^REQ-\d{3}$`` expressed as a SQLite GLOB pattern.
+        CheckConstraint(
+            "requirement_identifier GLOB 'REQ-[0-9][0-9][0-9]'",
+            name="ck_requirement_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("requirement_status", REQUIREMENT_STATUSES),
+            name="ck_requirement_status",
+        ),
+        CheckConstraint(
+            _check_in("requirement_priority", REQUIREMENT_PRIORITIES),
+            name="ck_requirement_priority",
+        ),
+        Index(
+            "ix_requirements_requirement_status", "requirement_status"
+        ),
+        Index(
+            "ix_requirements_requirement_priority", "requirement_priority"
+        ),
+        Index(
+            "ix_requirements_requirement_deleted_at",
+            "requirement_deleted_at",
+        ),
     )
 
 

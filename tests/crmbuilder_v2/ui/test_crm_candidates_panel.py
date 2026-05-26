@@ -90,18 +90,23 @@ def _wait_rows(qtbot, panel: CrmCandidatesPanel, count: int) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Criterion 10 — sidebar entry at Methodology position #4
+# Criterion 10 — sidebar entry under the Methodology group
 # ---------------------------------------------------------------------------
 
 
-def test_crm_candidates_is_fourth_methodology_entry():
+def test_crm_candidates_is_present_in_methodology_group():
     methodology = dict(SIDEBAR_GROUPS)["Methodology"]
-    # CRM Candidates remains position #4 in the Methodology group;
-    # v0.5+ appends "Personas" at position #5 per PI-003.
-    assert methodology[:4] == (
-        "Domains", "Entities", "Processes", "CRM Candidates"
+    # v0.5+ PI-003 added "Personas"; PI-004 first slice added "Fields";
+    # PI-004 cohort added "Requirements" at position #4 (1-indexed),
+    # pushing CRM Candidates to position #5. Domains/Entities/Processes
+    # remain the foundational three.
+    assert methodology[:3] == ("Domains", "Entities", "Processes")
+    assert "CRM Candidates" in methodology
+    # Requirements now precedes CRM Candidates in the cohort ordering
+    # per PI-004 cohort build prompt.
+    assert methodology.index("Requirements") < methodology.index(
+        "CRM Candidates"
     )
-    assert methodology[3] == "CRM Candidates"
 
 
 def test_sidebar_renders_crm_candidates_under_methodology(qtbot):
@@ -116,9 +121,11 @@ def test_sidebar_renders_crm_candidates_under_methodology(qtbot):
     headers = {item.text(): i for i, item in enumerate(items) if item.data(_HEADER_ROLE)}
     assert "Methodology" in headers
     assert "CRM Candidates" in rendered
-    # CRM Candidates sits at position #4 inside the Methodology group.
+    # CRM Candidates appears somewhere under the Methodology header
+    # (exact offset shifts as cohort siblings land).
     methodology_idx = headers["Methodology"]
-    assert rendered[methodology_idx + 4] == "CRM Candidates"
+    cc_idx = rendered.index("CRM Candidates")
+    assert cc_idx > methodology_idx
 
 
 def test_main_window_crm_candidates_page_is_panel(

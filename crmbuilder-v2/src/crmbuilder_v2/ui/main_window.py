@@ -49,6 +49,7 @@ from crmbuilder_v2.ui.panels.planning_items import PlanningItemsPanel
 from crmbuilder_v2.ui.panels.processes import ProcessesPanel
 from crmbuilder_v2.ui.panels.reference_books import ReferenceBooksPanel
 from crmbuilder_v2.ui.panels.references import ReferencesPanel
+from crmbuilder_v2.ui.panels.requirements import RequirementsPanel
 from crmbuilder_v2.ui.panels.risks import RisksPanel
 from crmbuilder_v2.ui.panels.sessions import SessionsPanel
 from crmbuilder_v2.ui.panels.status import StatusPanel
@@ -88,6 +89,8 @@ ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
     "crm_candidate": "CRM Candidates",
     "persona": "Personas",
     "field": "Fields",
+    # PI-004 methodology cohort (v0.5+).
+    "requirement": "Requirements",
     # v0.5 slice C: meta-DB engagement registry.
     "engagement": "Engagements",
     # v0.7 governance entities.
@@ -157,6 +160,8 @@ class MainWindow(QMainWindow):
                 page = EntitiesPanel(self._client)
             elif entry == "Processes":
                 page = ProcessesPanel(self._client)
+            elif entry == "Requirements":
+                page = RequirementsPanel(self._client)
             elif entry == "CRM Candidates":
                 page = CrmCandidatesPanel(self._client)
             elif entry == "Personas":

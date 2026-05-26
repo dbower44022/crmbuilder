@@ -79,8 +79,13 @@ def test_personas_is_fifth_methodology_entry():
     assert methodology[0] == "Domains"
     assert methodology[1] == "Entities"
     assert methodology[2] == "Processes"
-    assert methodology[3] == "CRM Candidates"
-    assert methodology[4] == "Personas"
+    # PI-004 cohort inserted "Requirements" at position #4, pushing
+    # CRM Candidates to #5 and Personas to #6. Personas remains
+    # present and follows CRM Candidates.
+    assert "Personas" in methodology
+    assert methodology.index("Personas") > methodology.index(
+        "CRM Candidates"
+    )
 
 
 def test_sidebar_renders_personas_under_methodology(qtbot):

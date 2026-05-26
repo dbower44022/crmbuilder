@@ -335,6 +335,57 @@ class FieldPatchIn(_Base):
     field_status: str | None = None
 
 
+# ---------- Requirements (methodology entity, PI-004 cohort, v0.5+) ----------
+
+
+class RequirementCreateIn(_Base):
+    """POST /requirements body. ``requirement_identifier`` server-assigned
+    when omitted; ``requirement_priority`` defaults to ``should``;
+    ``requirement_status`` defaults to ``candidate`` server-side.
+    Reference attachments are NOT inlined — per ``requirement.md``
+    section 3.5.5 they attach via separate ``POST /references`` calls."""
+
+    requirement_name: str
+    requirement_description: str
+    requirement_acceptance_summary: str
+    requirement_priority: str | None = None
+    requirement_notes: str | None = None
+    requirement_status: str | None = None
+    requirement_identifier: str | None = None
+
+
+class RequirementReplaceIn(_Base):
+    """PUT /requirements/{identifier} body — full record replace.
+
+    ``requirement_identifier`` is optional; when present it must match
+    the path identifier (mismatch → 422). Per ``requirement.md`` §3.5
+    ``requirement_priority`` and ``requirement_status`` are required on
+    a full replace."""
+
+    requirement_identifier: str | None = None
+    requirement_name: str
+    requirement_description: str
+    requirement_acceptance_summary: str
+    requirement_priority: str
+    requirement_notes: str | None = None
+    requirement_status: str
+
+
+class RequirementPatchIn(_Base):
+    """PATCH /requirements/{identifier} body — partial update.
+
+    Routers consume this with ``model_dump(exclude_unset=True)`` so an
+    explicit ``requirement_notes: null`` (clear) is distinguished from
+    an omitted ``requirement_notes`` (leave unchanged)."""
+
+    requirement_name: str | None = None
+    requirement_description: str | None = None
+    requirement_acceptance_summary: str | None = None
+    requirement_priority: str | None = None
+    requirement_notes: str | None = None
+    requirement_status: str | None = None
+
+
 # ---------- Processes (methodology entity, UI v0.4 slice D) ----------
 
 

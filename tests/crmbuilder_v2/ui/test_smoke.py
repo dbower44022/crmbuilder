@@ -42,10 +42,13 @@ EXPECTED_ENTRIES = (
     "Deposit Events",
     # Methodology group — Domains landed in UI v0.4 slice B,
     # Entities in slice C, Processes in slice D, CRM Candidates in slice E,
-    # Personas in v0.5+ (PI-003), Fields in v0.5+ (PI-004 first slice).
+    # Personas in v0.5+ (PI-003), Fields in v0.5+ (PI-004 first slice),
+    # Requirements in v0.5+ (PI-004 cohort, between Processes and CRM
+    # Candidates).
     "Domains",
     "Entities",
     "Processes",
+    "Requirements",
     "CRM Candidates",
     "Personas",
     "Fields",

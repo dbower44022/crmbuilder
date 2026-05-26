@@ -102,6 +102,31 @@ FIELD_TYPES: frozenset[str] = frozenset(
     }
 )
 
+# Methodology entity `requirement` lifecycle (PI-004 cohort, v0.5+).
+# Three-status propose-verify mirroring ``domain`` / ``entity`` per
+# ``requirement.md`` section 3.4.
+REQUIREMENT_STATUSES: frozenset[str] = frozenset(
+    {"candidate", "confirmed", "deferred"}
+)
+
+# Same one-way propose-verify gate as ``domain`` / ``entity``: once out
+# of ``candidate``, never regress; ``confirmed`` / ``deferred`` move
+# freely between each other.
+REQUIREMENT_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "candidate": frozenset({"confirmed", "deferred"}),
+    "confirmed": frozenset({"deferred"}),
+    "deferred": frozenset({"confirmed"}),
+}
+
+# MoSCoW priority enum per ``requirement.md`` section 3.2.3. Default
+# starter value is ``should`` — consultants must affirmatively escalate
+# to ``must``. ``wont`` (priority) is distinct from ``deferred``
+# (status): see spec §3.2.3 and §3.4.3 for the distinction. Priority
+# transitions are unconstrained — any-to-any movement permitted.
+REQUIREMENT_PRIORITIES: frozenset[str] = frozenset(
+    {"must", "should", "could", "wont"}
+)
+
 # Methodology entity `crm_candidate` lifecycle (UI v0.4 slice E, DEC-062).
 # Four-status lifecycle per ``crm_candidate.md`` section 3.4. ``active``
 # is the starter status; ``selected``, ``declined``, ``removed`` are
@@ -299,6 +324,20 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         #     at the source side per DEC-249). Cardinality enforced at
         #     the access layer, not the schema layer.
         "field_belongs_to_entity",
+        # v0.5+ requirement additions (PI-004 cohort, requirement.md
+        # §3.3.1). Five outbound kinds declared by ``requirement``.
+        # Three target live entity types (``domain``, ``entity``,
+        # ``process``, and now ``field`` post PI-004 first slice); one
+        # targets a sibling cohort entity type not yet live
+        # (``test_spec``) whose CHECK admittance lands here proactively
+        # per requirement.md §3.3.1. The ``_kinds_for_pair`` clause for
+        # ``(requirement, test_spec)`` is left as a TODO until that
+        # sibling lands.
+        "requirement_scopes_to_domain",
+        "requirement_touches_entity",
+        "requirement_touches_field",
+        "requirement_realized_by_process",
+        "requirement_verified_by_test_spec",
     }
 )
 
@@ -346,6 +385,8 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         "persona",
         # v0.5+ methodology entity (PI-004 first slice). See field.md.
         "field",
+        # v0.5+ methodology entity (PI-004 cohort). See requirement.md.
+        "requirement",
     }
 )
 
@@ -380,6 +421,18 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
     * ``field_belongs_to_entity`` — source must be a field, target must
       be an entity (v0.5+, field.md §3.3.1; mandatory 1:1 at source,
       access-layer cardinality enforcement per DEC-249).
+    * ``requirement_scopes_to_domain`` — source must be a requirement,
+      target must be a domain (v0.5+, requirement.md §3.3.1; many-to-many).
+    * ``requirement_touches_entity`` — source must be a requirement,
+      target must be an entity (v0.5+, requirement.md §3.3.1).
+    * ``requirement_touches_field`` — source must be a requirement,
+      target must be a field (v0.5+, requirement.md §3.3.1).
+    * ``requirement_realized_by_process`` — source must be a requirement,
+      target must be a process (v0.5+, requirement.md §3.3.1).
+    * ``requirement_verified_by_test_spec`` — held as a TODO; activates
+      when the ``test_spec`` sibling entity type lands. CHECK admits
+      the kind already; the ``_kinds_for_pair`` clause uncomments at
+      sibling-build time.
 
     The ruleset is permissive by design: every pair has at least the
     two generic kinds, so the dialog never produces an empty kind list
@@ -449,6 +502,31 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
     # v0.5+ field additions (PI-004 first slice, field.md §3.3.1):
     if source_type == "field" and target_type == "entity":
         kinds.add("field_belongs_to_entity")
+    # v0.5+ requirement additions (PI-004 cohort, requirement.md
+    # §3.3.1). Four pairs are active because their target entity types
+    # are live in ENTITY_TYPES; the fifth pair targets ``test_spec``,
+    # which is a PI-004 sibling not yet built — its clause is held as
+    # a TODO. The refs.relationship_kind CHECK admits all five kinds
+    # proactively (migration 0015); these clauses gate the cascading
+    # ReferenceCreateDialog + RELATIONSHIP_RULES precomputation. A
+    # clause for an unregistered target_type would be skipped by the
+    # outer ``ENTITY_TYPES × ENTITY_TYPES`` comprehension anyway, but
+    # leaving an active clause for a missing type is a tripping hazard
+    # if the sibling later lands and its build forgets to revisit this
+    # file — keep the TODO comment explicit.
+    if source_type == "requirement" and target_type == "domain":
+        kinds.add("requirement_scopes_to_domain")
+    if source_type == "requirement" and target_type == "entity":
+        kinds.add("requirement_touches_entity")
+    if source_type == "requirement" and target_type == "field":
+        kinds.add("requirement_touches_field")
+    if source_type == "requirement" and target_type == "process":
+        kinds.add("requirement_realized_by_process")
+    # TODO(PI-004 sibling: test_spec) — activate when ``test_spec``
+    # lands in ENTITY_TYPES. See methodology-schema-specs/test_spec.md
+    # build prompt.
+    # if source_type == "requirement" and target_type == "test_spec":
+    #     kinds.add("requirement_verified_by_test_spec")
     return frozenset(kinds)
 
 
