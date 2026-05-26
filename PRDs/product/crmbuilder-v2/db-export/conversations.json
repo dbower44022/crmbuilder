@@ -970,6 +970,23 @@
   },
   {
     "conversation_cancelled_at": null,
+    "conversation_completed_at": "2026-05-26T19:35:52.269583",
+    "conversation_created_at": "2026-05-26T19:35:52.269278",
+    "conversation_deleted_at": null,
+    "conversation_description": "Open-ended architecture review conversation in the Claude.ai sandbox. Started without a specific deliverable target. Evolved into wide-ranging consolidation of project documentation and conceptual modeling. Doug repeatedly pulled the AI back from racing ahead, enforcing one-thing-at-a-time discussion. Major content threads: documentation consolidation strategy under a single Master CRMBuilder PRD at a new specifications/ directory; MD-format-for-internal-docs rule; three-category conceptual model (Process Management Tools/Data, Deliverables, Process Support Knowledge/Tools); Phase 1 redesign as client-led intake; Skills concept and loading mechanism; Session/Conversation entity restructure as cruft; cross-engagement reference store architecture gap; client-provided information storage architecture gap; engagement-level vs session-level setup distinction. Conversation produced five commits to crmbuilder main branch substantively reshaping the methodology document landscape, plus 13 Planning Items and ten Decisions bundled in this close-out. Conversation experienced two rounds of identifier-collision recovery: first SES-085 → SES-087 after Claude Code applied PI-004 manual_config/test_spec close-outs in parallel; second SES-087 → SES-089 after Claude Code applied PI-052 Slice A and PI-005 process schema growth close-outs during the amendment authoring period. Identifier-capture protocol lesson recorded as DEC-300. The close-out is folded in place (one session, one conversation per current V2's one-chat-equals-one-session model) rather than split — under the redesigned model captured by DEC-299 and PI-073, the architecture-review and collision-recovery work would have been two distinct conversations within the same session, but that model isn't implemented yet.",
+    "conversation_identifier": "CONV-059",
+    "conversation_kickoff_drafted_at": null,
+    "conversation_notes": null,
+    "conversation_purpose": "Review the high-level CRMBuilder project architecture; identify documentation gaps; establish consolidation direction; surface and capture architectural decisions and planning items that emerge from the review.",
+    "conversation_ready_at": null,
+    "conversation_started_at": null,
+    "conversation_status": "complete",
+    "conversation_superseded_at": null,
+    "conversation_title": "Strategic architecture review and Master CRMBuilder PRD consolidation direction-setting",
+    "conversation_updated_at": "2026-05-26T19:35:52.269678"
+  },
+  {
+    "conversation_cancelled_at": null,
     "conversation_completed_at": "2026-05-26T15:37:13.137426",
     "conversation_created_at": "2026-05-26T15:37:13.137170",
     "conversation_deleted_at": null,

@@ -1,0 +1,54 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_089.json
+Label:  Architecture review session: consolidate V1+V2 CRMBuilder documentation under a single Master CRMBuilder PRD at the new specifications/ directory; adopt MD-format-for-internal-docs rule; establish CRMBuilder dogfood as first client and CBM as validation; adopt discovery-driven authoring; establish a three-category conceptual model (Process Management Tools/Data, Deliverables, Process Support Knowledge/Tools); redesign Phase 1 as client-led intake; create glossary.md with five terms (Engagement, Skill, Pattern, Inventory, Client); surface 13 Planning Items covering V2 architectural cleanup (Session/Conversation entity restructure, cross-engagement reference store, client-input storage, engagement-setup and skill-trigger mechanisms, library buildouts, tooling, manifest, iterative drafting, header retirement, glossary V2 migration); record ten architectural Decisions (nine on consolidation direction; one on the sandbox close-out identifier-capture protocol surfaced by TWO rounds of mid-session identifier collision and recovery — initial SES-085→SES-087 after PI-004 manual_config/test_spec parallel applies, then SES-087→SES-089 after PI-052 Slice A and PI-005 parallel applies during amendment authoring).
+Deposit event: DEP-074
+
+=== session (1 record) ===
+  ✓ POST session  SES-089 (HTTP 201)
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CONV-059 (HTTP 201)
+
+=== planning_items (13 records) ===
+  ✓ POST planning_items  PI-061 (HTTP 201)
+  ✓ POST planning_items  PI-062 (HTTP 201)
+  ✓ POST planning_items  PI-063 (HTTP 201)
+  ✓ POST planning_items  PI-064 (HTTP 201)
+  ✓ POST planning_items  PI-065 (HTTP 201)
+  ✓ POST planning_items  PI-066 (HTTP 201)
+  ✓ POST planning_items  PI-067 (HTTP 201)
+  ✓ POST planning_items  PI-068 (HTTP 201)
+  ✓ POST planning_items  PI-069 (HTTP 201)
+  ✓ POST planning_items  PI-070 (HTTP 201)
+  ✓ POST planning_items  PI-071 (HTTP 201)
+  ✓ POST planning_items  PI-072 (HTTP 201)
+  ✓ POST planning_items  PI-073 (HTTP 201)
+
+=== commits (5 records) ===
+
+=== decisions (10 records) ===
+  ✓ POST decisions  DEC-291 (HTTP 201)
+  ✓ POST decisions  DEC-292 (HTTP 201)
+  ✓ POST decisions  DEC-293 (HTTP 201)
+  ✓ POST decisions  DEC-294 (HTTP 201)
+  ✓ POST decisions  DEC-295 (HTTP 201)
+  ✓ POST decisions  DEC-296 (HTTP 201)
+  ✓ POST decisions  DEC-297 (HTTP 201)
+  ✓ POST decisions  DEC-298 (HTTP 201)
+  ✓ POST decisions  DEC-299 (HTTP 201)
+  ✓ POST decisions  DEC-300 (HTTP 201)
+
+=== references (10 records) ===
+  ✓ POST references  DEC-291 decided_in SES-089 (HTTP 201)
+  ✓ POST references  DEC-292 decided_in SES-089 (HTTP 201)
+  ✓ POST references  DEC-293 decided_in SES-089 (HTTP 201)
+  ✓ POST references  DEC-294 decided_in SES-089 (HTTP 201)
+  ✓ POST references  DEC-295 decided_in SES-089 (HTTP 201)
+  ✓ POST references  DEC-296 decided_in SES-089 (HTTP 201)
+  ✓ POST references  DEC-297 decided_in SES-089 (HTTP 201)
+  ✓ POST references  DEC-298 decided_in SES-089 (HTTP 201)
+  ✓ POST references  DEC-299 decided_in SES-089 (HTTP 201)
+  ✓ POST references  DEC-300 decided_in SES-089 (HTTP 201)
+
+
+✓ Recorded apply as deposit_event DEP-074 (HTTP 201).

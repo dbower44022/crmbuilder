@@ -36,29 +36,74 @@
   },
   "commits": [
     {
-      "commit_sha": "09f8f62d",
+      "commit_sha": "09f8f62d4a766b5b7a5ca24e29234bbe71f293cb",
       "commit_message_first_line": "Set Master CRMBuilder PRD as direction; mark methodology docs transitional",
-      "commit_message_full": "Set Master CRMBuilder PRD as direction; mark methodology docs transitional\n\n- Insert 'Current direction' section at top of CLAUDE.md naming the Master CRMBuilder PRD at specifications/master-crmbuilder-PRD.md as the consolidating source of truth.\n- Add transitional status header to 17 methodology MD files (3 conduct, 13 interviews/guides, 1 v2 user process guide) pointing readers to the Master CRMBuilder PRD as the future authoritative reference.\n- Add sibling STATUS.md alongside the 13-phase CRM-Builder-Document-Production-Process.docx (the .docx itself is untouched per the MD-only-going-forward rule).\n- Record the 05-26-26 format rule: all PRDs and internal documents in MD going forward; customer-facing deliverables remain format-flexible per case."
+      "commit_message_full": "Set Master CRMBuilder PRD as direction; mark methodology docs transitional\n\n- Insert 'Current direction' section at top of CLAUDE.md naming the Master CRMBuilder PRD at specifications/master-crmbuilder-PRD.md as the consolidating source of truth.\n- Add transitional status header to 17 methodology MD files (3 conduct, 13 interviews/guides, 1 v2 user process guide) pointing readers to the Master CRMBuilder PRD as the future authoritative reference.\n- Add sibling STATUS.md alongside the 13-phase CRM-Builder-Document-Production-Process.docx (the .docx itself is untouched per the MD-only-going-forward rule).\n- Record the 05-26-26 format rule: all PRDs and internal documents in MD going forward; customer-facing deliverables remain format-flexible per case.",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-26T04:13:09+00:00",
+      "commit_parent_shas": [
+        "2f09a3757929d634547a7ca38d502b65249e61a6"
+      ],
+      "commit_files_changed_count": 19,
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main"
     },
     {
-      "commit_sha": "cfaec293",
+      "commit_sha": "cfaec2933cf3f9d6355e49ee31a61e9f3bb3c0e5",
       "commit_message_first_line": "Initial draft of Master CRMBuilder PRD at specifications/master-crmbuilder-PRD.md",
-      "commit_message_full": "Initial draft of Master CRMBuilder PRD at specifications/master-crmbuilder-PRD.md\n\nv0.1 \u2014 minimum-viable initial content sufficient to run Phase 1 (Business Context Capture) against CRMBuilder dogfood. Contents:\n\n- Part I \u2014 Orientation: what this PRD is, the client concept (CRMBuilder dogfood + CBM validation), the two-layer mental model (governance vs methodology)\n- Part II \u2014 The V2 Process Guide: phase sequence overview (13 phases, only Phase 1 drafted; Phases 2-13 are placeholders to be drafted iteratively), the full Phase 1 spec (purpose, inputs, conduct rules, phase-specific rules, activity, captured V2 records, output, completion criteria), the 'what to do first' mini-guide for Phase 1\n- Part III \u2014 Iterative Drafting: explicit list of sections to be drafted in subsequent versions, notes on source materials drawn upon, known gaps at v0.1\n\nPhase 1 spec synthesizes content from PRDs/process/interviews/interview-master-prd.md v1.4 (existing strategic-vision interview guide) and PRDs/process/v2-user-process-guide.md v0.1 (existing V2-aligned process guide). Both remain as transitional reference until subsumed.\n\nIncludes a sparse-checkout addition for specifications/ to make the file visible to the local clone."
+      "commit_message_full": "Initial draft of Master CRMBuilder PRD at specifications/master-crmbuilder-PRD.md\n\nv0.1 \u2014 minimum-viable initial content sufficient to run Phase 1 (Business Context Capture) against CRMBuilder dogfood. Contents:\n\n- Part I \u2014 Orientation: what this PRD is, the client concept (CRMBuilder dogfood + CBM validation), the two-layer mental model (governance vs methodology)\n- Part II \u2014 The V2 Process Guide: phase sequence overview (13 phases, only Phase 1 drafted; Phases 2-13 are placeholders to be drafted iteratively), the full Phase 1 spec (purpose, inputs, conduct rules, phase-specific rules, activity, captured V2 records, output, completion criteria), the 'what to do first' mini-guide for Phase 1\n- Part III \u2014 Iterative Drafting: explicit list of sections to be drafted in subsequent versions, notes on source materials drawn upon, known gaps at v0.1\n\nPhase 1 spec synthesizes content from PRDs/process/interviews/interview-master-prd.md v1.4 (existing strategic-vision interview guide) and PRDs/process/v2-user-process-guide.md v0.1 (existing V2-aligned process guide). Both remain as transitional reference until subsumed.\n\nIncludes a sparse-checkout addition for specifications/ to make the file visible to the local clone.",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-26T04:19:40+00:00",
+      "commit_parent_shas": [
+        "09f8f62d4a766b5b7a5ca24e29234bbe71f293cb"
+      ],
+      "commit_files_changed_count": 1,
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main"
     },
     {
-      "commit_sha": "e9d30e0b",
+      "commit_sha": "e9d30e0be6b91c0af7e40abc815fa8639a8a4e79",
       "commit_message_first_line": "Mark Master CRMBuilder PRD as discussion draft pending review",
-      "commit_message_full": "Mark Master CRMBuilder PRD as discussion draft pending review\n\nAdds prominent 'DISCUSSION DRAFT \u2014 NOT YET APPROVED' marker at the top of specifications/master-crmbuilder-PRD.md. Every substantive structural and content choice in v0.1 is unilateral and open for revision through discussion with Doug."
+      "commit_message_full": "Mark Master CRMBuilder PRD as discussion draft pending review\n\nAdds prominent 'DISCUSSION DRAFT \u2014 NOT YET APPROVED' marker at the top of specifications/master-crmbuilder-PRD.md. Every substantive structural and content choice in v0.1 is unilateral and open for revision through discussion with Doug.",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-26T04:23:09+00:00",
+      "commit_parent_shas": [
+        "cfaec2933cf3f9d6355e49ee31a61e9f3bb3c0e5"
+      ],
+      "commit_files_changed_count": 1,
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main"
     },
     {
-      "commit_sha": "d9337607",
+      "commit_sha": "d9337607031f1b8e98e7c99988296cff0ba1069b",
       "commit_message_first_line": "Create specifications/glossary.md; seed with Engagement (TERM-001)",
-      "commit_message_full": "Create specifications/glossary.md; seed with Engagement (TERM-001)\n\nFirst glossary entry per the where-do-term-definitions-live decision authored in this session. Glossary lives in MD per Option A; a Planning Item captured separately tracks the future migration to V2 records with desktop UI access (Option C as the architectural endpoint).\n\nFile includes:\n- Header table with status and future-state pointer\n- Change log\n- Contribution guidance (entry format, identifier numbering convention)\n- Engagement entry (TERM-001): definition, scope, examples, distinguishing notes vs Client/Session/Project, related terms"
+      "commit_message_full": "Create specifications/glossary.md; seed with Engagement (TERM-001)\n\nFirst glossary entry per the where-do-term-definitions-live decision authored in this session. Glossary lives in MD per Option A; a Planning Item captured separately tracks the future migration to V2 records with desktop UI access (Option C as the architectural endpoint).\n\nFile includes:\n- Header table with status and future-state pointer\n- Change log\n- Contribution guidance (entry format, identifier numbering convention)\n- Engagement entry (TERM-001): definition, scope, examples, distinguishing notes vs Client/Session/Project, related terms",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-26T04:32:47+00:00",
+      "commit_parent_shas": [
+        "e9d30e0be6b91c0af7e40abc815fa8639a8a4e79"
+      ],
+      "commit_files_changed_count": 1,
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main"
     },
     {
-      "commit_sha": "794d5f41",
+      "commit_sha": "794d5f41cff6373afbe7b1dde95e5c74fc27ab9d",
       "commit_message_first_line": "Expand glossary to v0.2: add Skill, Pattern, Inventory, Client (TERM-002 through TERM-005)",
-      "commit_message_full": "Expand glossary to v0.2: add Skill, Pattern, Inventory, Client (TERM-002 through TERM-005)\n\nFour glossary entries added per session discussion:\n\n- Skill (TERM-002): reusable domain-specific knowledge file, loaded contextually on client defining statements\n- Pattern (TERM-003): reusable structural template for a business domain or org type\n- Inventory (TERM-004): reference list of typical items for a domain or org type\n- Client (TERM-005): organization whose product is being defined through the CRMBuilder process\n\nAll four are Category 3 (Process Support Knowledge/Tools) reference content except Client (which is a fundamental engagement concept). Each entry follows the approved format (identifier, definition, scope, examples, distinguishing notes, related terms). Identifiers assigned in creation order; file renders alphabetically.\n\nChange log bumped to v0.2. Last Updated 05-26-26 14:00."
+      "commit_message_full": "Expand glossary to v0.2: add Skill, Pattern, Inventory, Client (TERM-002 through TERM-005)\n\nFour glossary entries added per session discussion:\n\n- Skill (TERM-002): reusable domain-specific knowledge file, loaded contextually on client defining statements\n- Pattern (TERM-003): reusable structural template for a business domain or org type\n- Inventory (TERM-004): reference list of typical items for a domain or org type\n- Client (TERM-005): organization whose product is being defined through the CRMBuilder process\n\nAll four are Category 3 (Process Support Knowledge/Tools) reference content except Client (which is a fundamental engagement concept). Each entry follows the approved format (identifier, definition, scope, examples, distinguishing notes, related terms). Identifiers assigned in creation order; file renders alphabetically.\n\nChange log bumped to v0.2. Last Updated 05-26-26 14:00.",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-26T05:25:49+00:00",
+      "commit_parent_shas": [
+        "e96e40919ba3bb6483013e2de3fd81dfa2cddf53"
+      ],
+      "commit_files_changed_count": 1,
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main"
     }
   ],
   "work_tickets": [],
