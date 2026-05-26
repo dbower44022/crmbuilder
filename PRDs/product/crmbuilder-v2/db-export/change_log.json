@@ -42395,5 +42395,25 @@
     "id": 1792,
     "operation": "insert",
     "timestamp": "2026-05-26T02:32:44.599983"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:42:27.200822+00:00",
+      "description": "**Explain it like I was 5:** Every time the project writes something to its notebook, the project also makes a photocopy of the page so people without a notebook can read it. The notebook recently learned how to track code-change records (CM-NNNN rows), but nobody told the photocopier — so those new pages never get photocopied. People without the notebook can't see them.\n\nDiscovered during the SES-078 (PI-002) close-out apply on 2026-05-25: CM-0005 was created in the v2 DB as part of the close-out, but `PRDs/product/crmbuilder-v2/db-export/commits.json` was not regenerated and does not exist on disk. Root cause: `crmbuilder-v2/src/crmbuilder_v2/access/exporter.py` defines `_EXPORT_TABLES` (the ordered list of `(filename, model)` pairs the snapshot builder iterates) and that list does not include the `Commit` model. Every other v0.7 governance entity (workstream, conversation, reference_book, reference_book_versions, work_ticket, close_out_payload, deposit_event) is in the list; Commit was missed when the model landed in v0.7. Engagement is correctly handled by the separate `meta_exporter.py` writing to `db-export/meta/engagements.json` — not affected.\n\nImpact: file-fallback Tier 2 readers (Claude sessions without MCP connectivity per CLAUDE.md's session orientation protocol) cannot see commit records. CM-0001..CM-0005 (existing commit records, including PI-002's build commit and PI-030's slice A/B/C commits) are queryable only via the live REST API. PI-031's commits panel UI reads from the API and is not affected; PI-033's historical backfill writes via the API and is not affected.\n\nFix scope (single-line patch + test + backfill):\n  1. Add `(\"commits\", Commit)` to `_EXPORT_TABLES` in `crmbuilder-v2/src/crmbuilder_v2/access/exporter.py`, alongside the v0.7 governance entities (between `deposit_events` and `references` is the natural position).\n  2. Add `Commit` to the model imports if not already present.\n  3. Extend `tests/crmbuilder_v2/access/test_exporter.py` to assert `commits.json` is written when a Commit row exists.\n  4. One-shot backfill: trigger a write that regenerates the snapshot to produce `commits.json` containing CM-0001..CM-0005 (and any commits added between this PI's creation and its build) and commit it.\n\nRelated observation surfaced alongside this PI: the `crmbuilder-v2-api` server process is long-running and does not hot-reload on code changes; operators must restart the API for newly-merged changes to take effect. Surfaced during PI-002's close-out when the next planning_item POST (this PI) was attempted via the new optional-identifier path and the still-running pre-PI-002 server rejected with `body.identifier — Field required`. Not blocking; not separately filed (known property of any long-running uvicorn process; no autoreload in production deployments by design).\n\nThis PI belongs to WS-009 (Code Change Lifecycle workstream) — natural home alongside PI-031/PI-032/PI-033.",
+      "id": 53,
+      "identifier": "PI-053",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Open",
+      "title": "Add Commit model to access/exporter.py _EXPORT_TABLES so commits.json regenerates with the rest of the engagement snapshot",
+      "updated_at": "2026-05-26T02:42:27.200825+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "PI-053",
+    "entity_type": "planning_item",
+    "id": 1793,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:42:27.201175"
   }
 ]
