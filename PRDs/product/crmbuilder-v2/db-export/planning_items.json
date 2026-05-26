@@ -50,9 +50,9 @@
     "identifier": "PI-005",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Process schema growth beyond Phase 1 thin shape (full process definition)",
-    "updated_at": "2026-05-26T05:35:03.154412"
+    "updated_at": "2026-05-26T06:53:29.562353"
   },
   {
     "created_at": "2026-05-11T18:50:11.689468",

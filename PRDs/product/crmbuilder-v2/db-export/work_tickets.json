@@ -753,7 +753,7 @@
   },
   {
     "work_ticket_cancelled_at": null,
-    "work_ticket_consumed_at": null,
+    "work_ticket_consumed_at": "2026-05-26T06:22:14.889376",
     "work_ticket_created_at": "2026-05-26T02:48:33.750670",
     "work_ticket_deleted_at": null,
     "work_ticket_description": "Implementation kickoff for PI-052 Slice A per the slicing plan in `PRDs/product/crmbuilder-v2/pi-052-chat-ui-design.md` §10. Scope: write a standalone Python script at `crmbuilder-v2/scripts/chat_spike.py` (~80 LOC) that demonstrates the Anthropic API chat loop end-to-end with three read-only tools (`get_current_status`, `get_current_charter`, `list_recent_sessions`) hand-defined inline (no refactor of `mcp_server.tools` in this slice — that's Slice C). Validates the architecture before any UI work lands. Full kickoff body at `PRDs/product/crmbuilder-v2/pi-052-slice-a-terminal-spike-kickoff.md` (`work_ticket_file_path`). Reads on session open: this WT, the file_path kickoff body, the canonical design doc `pi-052-chat-ui-design.md` (especially §1 Architecture overview, §7 Tool execution loop, §10 Slice A acceptance, §12 Error recovery matrix). Anticipated session at close: SES-081. Decision settled at session end: confirmation that the loop architecture works; this resolves no DEC by itself but unblocks Slice B (WT-049) which lands the PySide6 chat tab MVP. PI-052 stays Open through Slices A–C; resolves on Slice D close. WT-048 consumed when its implementation conversation lands.",
@@ -762,10 +762,10 @@
     "work_ticket_kind": "kickoff_prompt",
     "work_ticket_notes": null,
     "work_ticket_ready_at": "2026-05-26T02:48:33.750902",
-    "work_ticket_status": "ready",
+    "work_ticket_status": "consumed",
     "work_ticket_superseded_at": null,
     "work_ticket_title": "Kickoff: PI-052 Slice A — terminal proof-of-concept Python script for the Anthropic-API chat loop with native tool definitions (~80 LOC, three read tools, no streaming, no caching)",
-    "work_ticket_updated_at": "2026-05-26T02:48:33.750977"
+    "work_ticket_updated_at": "2026-05-26T06:22:14.889798"
   },
   {
     "work_ticket_cancelled_at": null,

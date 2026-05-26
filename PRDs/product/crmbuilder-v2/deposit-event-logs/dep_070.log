@@ -1,0 +1,25 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_088.json
+Label:  PI-005 build closure — process v2 schema growth executed end-to-end: migration 0018 adds six TEXT NULL columns (process_steps/triggers/outcomes/edge_cases/frequency/duration_estimate) and extends refs.relationship_kind CHECK with three new process-source kinds (process_performed_by_persona, process_touches_field, process_touches_entity); access layer + REST schemas + UI panel/Edit dialog all grow accordingly; 22 new tests; CRMBUILDER engagement DB migrated to head 0018 and API restarted; v0.4-record PROC-001 survives intact with NULL for all six new columns. PI-005 resolves on apply.
+Deposit event: DEP-070
+
+=== session (1 record) ===
+  ✓ POST session  SES-088 (HTTP 201)
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CONV-058 (HTTP 201)
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== references (3 records) ===
+  ✓ POST references  SES-088 is_about PI-005 (HTTP 201)
+  ✓ POST references  SES-088 is_about SES-081 (HTTP 201)
+  ✓ POST references  SES-088 is_about DEC-039 (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-005 (HTTP 201)
+
+✓ All 7 operations complete.
+
+✓ Recorded apply as deposit_event DEP-070 (HTTP 201).
