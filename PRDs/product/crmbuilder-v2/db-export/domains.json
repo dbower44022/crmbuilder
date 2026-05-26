@@ -1,14 +1,14 @@
 [
   {
     "domain_created_at": "2026-05-18T23:23:35.880019",
-    "domain_deleted_at": null,
+    "domain_deleted_at": "2026-05-26T03:47:03.200424",
     "domain_description": "fdsafsafsad",
     "domain_identifier": "DOM-001",
     "domain_name": "Test Domain",
     "domain_notes": "",
     "domain_purpose": "Test domain Createion",
     "domain_status": "candidate",
-    "domain_updated_at": "2026-05-18T23:23:35.880024"
+    "domain_updated_at": "2026-05-26T03:47:03.200689"
   },
   {
     "domain_created_at": "2026-05-26T03:12:39.747468",
@@ -20,5 +20,16 @@
     "domain_purpose": "smoke",
     "domain_status": "candidate",
     "domain_updated_at": "2026-05-26T03:12:40.251297"
+  },
+  {
+    "domain_created_at": "2026-05-26T04:55:05.040718",
+    "domain_deleted_at": "2026-05-26T04:56:12.827885",
+    "domain_description": "smoke for req build",
+    "domain_identifier": "DOM-003",
+    "domain_name": "REQ smoke domain",
+    "domain_notes": null,
+    "domain_purpose": "smoke for req build",
+    "domain_status": "candidate",
+    "domain_updated_at": "2026-05-26T04:56:12.828182"
   }
 ]

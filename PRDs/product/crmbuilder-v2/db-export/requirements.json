@@ -1,0 +1,14 @@
+[
+  {
+    "requirement_acceptance_summary": "A mentor record carries at least one availability window after registration.",
+    "requirement_created_at": "2026-05-26T04:53:59.720756",
+    "requirement_deleted_at": "2026-05-26T04:56:12.647013",
+    "requirement_description": "When a mentor registers, capture their weekly windows.",
+    "requirement_identifier": "REQ-001",
+    "requirement_name": "Capture mentor availability slots",
+    "requirement_notes": null,
+    "requirement_priority": "must",
+    "requirement_status": "confirmed",
+    "requirement_updated_at": "2026-05-26T04:56:12.647315"
+  }
+]

@@ -1,0 +1,29 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_084.json
+Label:  PI-004 cohort — `requirement` methodology entity type end-to-end (migration, access, REST, UI, tests). Second of the four PI-004 sibling builds (others: field shipped under SES-083, manual_config and test_spec remain). Migration 0015 adds the requirements table with the MoSCoW priority enum and extends refs/change_log CHECKs to admit `requirement` and all five new `requirement_*` relationship kinds proactively. Access/repositories/requirement.py + Requirement model + REQUIREMENT_STATUSES/PRIORITIES/STATUS_TRANSITIONS vocab + five new REFERENCE_RELATIONSHIPS kinds + four active `_kinds_for_pair` clauses (requirement → domain/entity/field/process; the fifth, (requirement, test_spec), is held as a TODO comment awaiting that PI-004 sibling). Eight REST endpoints (no atomicity deviation — references are decomposed); eight ui/client.py methods; Requirements sidebar entry at Methodology position #4 (between Processes and CRM Candidates per the build prompt spec); RequirementsPanel with the five-column master pane (Identifier/Name/Priority/Status/Updated per AC-11) + acceptance-summary editor + title-cased Priority combo; CRUD dialogs; 70 new tests. WT-051 was created in SES-081 but not transitioned by this apply (pre-existing pattern shared with SES-082/SES-083; consumes manually post-apply if desired). PI-004 is ADDRESSED (not resolved) — two siblings remain (manual_config, test_spec); the last sibling's build-closure session resolves PI-004 per DEC-232 / SES-074 pattern. The exporter gained the `requirements` entry (Requirement model in _EXPORT_TABLES); field is still missing from the exporter (pre-existing gap from SES-083's build, not addressed here).
+Deposit event: DEP-066
+
+=== session (1 record) ===
+  ✓ POST session  SES-084 (HTTP 201)
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CONV-054 (HTTP 201)
+
+=== decisions (5 records) ===
+  ✓ POST decisions  DEC-274 (HTTP 201)
+  ✓ POST decisions  DEC-275 (HTTP 201)
+  ✓ POST decisions  DEC-276 (HTTP 201)
+  ✓ POST decisions  DEC-277 (HTTP 201)
+  ✓ POST decisions  DEC-278 (HTTP 201)
+
+=== references (3 records) ===
+  ✓ POST references  SES-084 is_about PI-004 (HTTP 201)
+  ✓ POST references  SES-084 is_about SES-081 (HTTP 201)
+  ✓ POST references  SES-084 is_about WT-051 (HTTP 201)
+
+=== addresses_planning_items (1 record) ===
+  ✓ POST addresses_planning_items  → PI-004 (HTTP 201)
+
+✓ All 11 operations complete.
+
+✓ Recorded apply as deposit_event DEP-066 (HTTP 201).
