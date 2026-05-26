@@ -1,0 +1,32 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_082.json
+Label:  PI-003 build — `persona` methodology entity type end-to-end (migration, access, REST, UI, tests). First of the six v0.5+ methodology-entity build sessions kicked off by SES-081's design phase (WT-049 consumed). Migration 0013 adds the personas table and extends refs/change_log CHECKs; access/repositories/persona.py + Persona model + PERSONA_STATUSES vocab + persona_scopes_to_domain / persona_realized_as_entity reference kinds + _kinds_for_pair clauses; eight REST endpoints; eight ui/client.py methods; sidebar entry; PersonasPanel + dialogs; 76 new tests. PI-003 resolves at apply time via the resolves_planning_items section.
+Deposit event: DEP-064
+
+=== session (1 record) ===
+  ✓ POST session  SES-082 (HTTP 201)
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CONV-052 (HTTP 201)
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (5 records) ===
+  ✓ POST decisions  DEC-263 (HTTP 201)
+  ✓ POST decisions  DEC-264 (HTTP 201)
+  ✓ POST decisions  DEC-265 (HTTP 201)
+  ✓ POST decisions  DEC-266 (HTTP 201)
+  ✓ POST decisions  DEC-267 (HTTP 201)
+
+=== references (3 records) ===
+  ✓ POST references  SES-082 is_about PI-003 (HTTP 201)
+  ✓ POST references  SES-082 is_about SES-081 (HTTP 201)
+  ✓ POST references  SES-082 is_about WT-049 (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-003 (HTTP 201)
+
+✓ All 12 operations complete.
+
+✓ Recorded apply as deposit_event DEP-064 (HTTP 201).

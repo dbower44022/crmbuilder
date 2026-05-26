@@ -43698,5 +43698,582 @@
     "id": 1852,
     "operation": "delete",
     "timestamp": "2026-05-26T03:13:15.749916"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "Code commit `d6fd7c1dde3ef56deadc72e9a9fb9378ef660527` on branch main: ~3,100 lines added across 19 files. New: `crmbuilder-v2/migrations/versions/0013_v0_8_create_personas_table.py`, `crmbuilder-v2/src/crmbuilder_v2/access/repositories/persona.py`, `crmbuilder-v2/src/crmbuilder_v2/api/routers/persona.py`, `crmbuilder-v2/src/crmbuilder_v2/ui/panels/persona.py`, `crmbuilder-v2/src/crmbuilder_v2/ui/dialogs/persona_crud.py`, `crmbuilder-v2/src/crmbuilder_v2/ui/dialogs/_persona_schema.py`, `tests/crmbuilder_v2/access/test_persona.py` (38 tests), `tests/crmbuilder_v2/api/test_personas_api.py` (22 tests), `tests/crmbuilder_v2/ui/test_personas_panel.py` (16 tests). Modified: `crmbuilder-v2/src/crmbuilder_v2/access/models.py` (Persona class added + PERSONA_STATUSES import), `crmbuilder-v2/src/crmbuilder_v2/access/vocab.py` (PERSONA_STATUSES + PERSONA_STATUS_TRANSITIONS + 'persona' in ENTITY_TYPES + 2 kinds in REFERENCE_RELATIONSHIPS + 2 clauses in _kinds_for_pair + docstring), `crmbuilder-v2/src/crmbuilder_v2/access/exporter.py` (Persona import + personas table entry), `crmbuilder-v2/src/crmbuilder_v2/api/schemas.py` (3 Pydantic schemas), `crmbuilder-v2/src/crmbuilder_v2/api/main.py` (router import + include), `crmbuilder-v2/src/crmbuilder_v2/ui/client.py` (8 client methods), `crmbuilder-v2/src/crmbuilder_v2/ui/sidebar.py` (Personas entry at Methodology #5), `crmbuilder-v2/src/crmbuilder_v2/ui/main_window.py` (panel import + dispatch + entity-type map), `crmbuilder-v2/src/crmbuilder_v2/ui/refresh.py` (personas.json filename mapping), plus four constant-list test updates: `tests/crmbuilder_v2/access/test_exporter.py`, `tests/crmbuilder_v2/ui/test_crm_candidates_panel.py`, `tests/crmbuilder_v2/ui/test_smoke.py` (two tests). This close-out payload `ses_082.json` and its apply prompt `CLAUDE-CODE-PROMPT-apply-close-out-ses-082.md`. Migration applied to live engagement DB before commit; deposit-event log `dep_NNN.log` lands at apply time.",
+      "conversation_reference": "Claude Code build-agent session at Doug's terminal, 2026-05-25 evening, opened in /home/doug/Dropbox/Projects/crmbuilder. Orchestrated from a parent session that dispatched this agent to execute `PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-build-persona.md` (~596 lines, authored by SES-081 / CONV-051 / WT-049). The build prompt is self-contained — 14 numbered implementation steps mirroring the v0.4 slice-C entity build pattern line-by-line, with persona-specific substitutions per `methodology-schema-specs/persona.md` v1.0. The agent executed the prompt in DETAIL mode without surface-and-settle questions: the spec is canonical for what to build and the prompt is canonical for how. Pre-flight identifier capture detected SES-082 (since SES-080/SES-081 had applied) and DEC-263..267 as safe (DEC head was 245 at SES-081-close, 246-251 claimed by staged-but-unapplied ses_079.json, 252-262 claimed by already-applied ses_080.json). The build mutates the LIVE V2 governance DB shared with parallel agents; no test isolation was available, but the build's scope is purely additive — new tables, new vocab entries, new endpoints — so no collision potential existed against the parallel ses_079 / ses_080 workstreams.",
+      "created_at": "2026-05-26T03:23:25.496147+00:00",
+      "id": 80,
+      "identifier": "SES-082",
+      "in_flight_at_end": "PI-003 resolves at apply time via the resolves_planning_items section's atomic edge+flip (slice A's server-side behavior on POST /references with relationship=resolves). WT-049 transitions ready → consumed via the conversation_opens_against_work_ticket edge at apply time. The PI-003 v0.6+ deferred items called out in persona.md §3.8.3 (persona authority / membership cardinality / realization mechanism reconsideration) are deliberately deferred and not authored by this build. The five remaining build prompts WT-050..054 (PI-004 four-sibling cohort + PI-005 process-v2) await execution by future Claude Code sessions per SES-081's orchestration plan. Recommended next: field (PI-004 portion) as the second foundational v0.5+ entity, followed by requirement / manual_config / test_spec which depend on field, then process-v2 last.",
+      "session_date": "2026-05-25",
+      "status": "Complete",
+      "summary": "PI-003 (`persona` methodology entity type) shipped end-to-end. The v2 storage layer now hosts persona records — human roles and actors performed in the client's organization, surfaced in Phase 2 or Phase 3 of the evolved methodology. The build mirrors the v0.4 slice-C entity pattern verbatim with persona-specific adjustments per `persona.md` v1.0: three-status propose-verify lifecycle (candidate / confirmed / deferred) with one-way gate, case-insensitive name uniqueness, two outgoing reference kinds (`persona_scopes_to_domain` to domains; `persona_realized_as_entity` to entities — the first methodology entity to surface two outgoing kinds at the panel level), references-over-FK posture per DEC-053, soft-delete-with-restore via the standard mechanism, parent-prefix field naming, REST-via-`{data, meta, errors}`-envelope. The PersonasPanel adopts the v0.4 DEC-067 create-then-attach flow for cross-entity-type consistency. PI-003's deferred-since-DEC-039 status is resolved.",
+      "title": "PI-003 build — `persona` methodology entity type end-to-end (migration, access, REST, UI, tests)",
+      "topics_covered": "Execution of all 14 build steps for the persona methodology entity per the build prompt: (1) Alembic migration 0013 creating the `personas` table (9 columns, 2 CHECK constraints, 2 indexes) and extending `refs.source_type` / `refs.target_type` / `refs.relationship_kind` / `change_log.entity_type` CHECKs in a single recopy; (2) `Persona` SQLAlchemy model in `access/models.py` mirroring `Entity` line-by-line with `persona_*` prefix; (3) `PersonaCreateIn` / `PersonaReplaceIn` / `PersonaPatchIn` Pydantic schemas; (4) vocab.py additions — `PERSONA_STATUSES`, `PERSONA_STATUS_TRANSITIONS`, `'persona'` added to `ENTITY_TYPES`, `'persona_scopes_to_domain'` and `'persona_realized_as_entity'` added to `REFERENCE_RELATIONSHIPS`, two clauses added to `_kinds_for_pair`, docstring updated; (5) `access/repositories/persona.py` repository with the eight functions plus helpers and SAVEPOINT-retry auto-assign; (6) `api/routers/persona.py` with the eight endpoints; (7) main.py router registration; (8) eight client methods in ui/client.py; (9) sidebar entry appended to Methodology group at position #5; (10) main_window dispatch + ENTITY_TYPE_TO_SIDEBAR_LABEL entry; (11) `PersonasPanel` panel mirroring `EntitiesPanel` with two key adjustments — Role summary placeholder, Responsibilities collapsible expanded-by-default per spec §3.6.3, and ReferencesSection rendering two outgoing kinds; (12) `PersonaCreateDialog` / `PersonaEditDialog` / `PersonaDeleteDialog` + `_persona_schema.py` mirroring entity_crud.py with the v0.4 DEC-067 create-then-attach precedent adopted unchanged; (13) 76 new tests across three files — 38 in tests/crmbuilder_v2/access/test_persona.py (criteria 1–5, 7, 8 plus two persona-specific assertions: outbound references survive soft-delete per §3.4.6; status independent of affiliation/realization per §3.4.3), 22 in tests/crmbuilder_v2/api/test_personas_api.py (criteria 6, 7, vocab integration through /references POST surface), 16 in tests/crmbuilder_v2/ui/test_personas_panel.py (criteria 9–12 plus vocab criterion 13 mirror); (14) full test suite re-run. Four pre-existing tests required updates (test_exporter expected-files set, test_crm_candidates sidebar tuple equality, two test_smoke EXPECTED_ENTRIES tuples) — these are constant-list tests that need to be updated whenever a new methodology entity is added; updates applied in passing per the v0.4 slice-C precedent. Test suite: 1542 → 1618 passed (3 skipped), +76 tests, 0 regressions. Migration applied to the live engagement DB; API server restarted; smoke-test confirmed POST /personas returns 201 with PER-001 auto-assigned and vocab integration via POST /references with `persona_scopes_to_domain` succeeds."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-082",
+    "entity_type": "session",
+    "id": 1853,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:25.496727"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T03:23:25.681188+00:00",
+      "id": 1030,
+      "reference_identifier": "REF-1026",
+      "relationship": "conversation_belongs_to_workstream",
+      "source_id": "CONV-052",
+      "source_type": "conversation",
+      "target_id": "WS-003",
+      "target_type": "workstream"
+    },
+    "before_payload": null,
+    "entity_identifier": "conversation:CONV-052 -[conversation_belongs_to_workstream]-> workstream:WS-003",
+    "entity_type": "reference",
+    "id": 1854,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:25.681800"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T03:23:25.683898+00:00",
+      "id": 1031,
+      "reference_identifier": "REF-1027",
+      "relationship": "conversation_records_session",
+      "source_id": "CONV-052",
+      "source_type": "conversation",
+      "target_id": "SES-082",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "conversation:CONV-052 -[conversation_records_session]-> session:SES-082",
+    "entity_type": "reference",
+    "id": 1855,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:25.684645"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T03:23:25.686661+00:00",
+      "id": 1032,
+      "reference_identifier": "REF-1028",
+      "relationship": "conversation_opens_against_work_ticket",
+      "source_id": "CONV-052",
+      "source_type": "conversation",
+      "target_id": "WT-049",
+      "target_type": "work_ticket"
+    },
+    "before_payload": null,
+    "entity_identifier": "conversation:CONV-052 -[conversation_opens_against_work_ticket]-> work_ticket:WT-049",
+    "entity_type": "reference",
+    "id": 1856,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:25.687042"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "conversation_cancelled_at": null,
+      "conversation_completed_at": "2026-05-26T03:23:25.678427+00:00",
+      "conversation_created_at": "2026-05-26T03:23:25.678104+00:00",
+      "conversation_deleted_at": null,
+      "conversation_description": "Claude Code build-agent conversation at Doug's terminal, dispatched by a parent orchestrator session to execute the persona build prompt authored under SES-081 (WT-049). The agent followed the build prompt's 14 numbered steps in order, mirroring the v0.4 slice-C entity build pattern line-by-line with persona-specific substitutions per persona.md v1.0. Pre-flight identifier capture detected the heads (SES-081, DEC-262, CONV-051, PI-053, WS-011 — DEC head jumped during execution from 245 to 262 as ses_080.json applied in parallel). The agent re-keyed nothing because SES-082 / CONV-052 / DEC-263..267 cleared both the API head and the staged-payload set (ses_079.json still unapplied claims SES-079/CONV-049/DEC-246..251). Four pre-existing constant-list tests broke from the build's additive scope (exporter expected-files set; sidebar tuple equality assertions in three places); each was updated in passing per the v0.4 slice-C precedent. One smoke-test side effect: a cleanup curl DELETE against `/references/1024` removed the wrong reference (id 1024 vs reference_identifier REF-1024); the affected DEP-063 → DEC-259 deposit_event_wrote_record edge was POST'd back. The numerical reference_identifier REF-1020 was retired in the process — replaced semantically by REF-1025 for the same edge.",
+      "conversation_identifier": "CONV-052",
+      "conversation_kickoff_drafted_at": null,
+      "conversation_notes": null,
+      "conversation_purpose": "Execute `CLAUDE-CODE-PROMPT-build-persona.md` end-to-end: land the persona methodology entity vertical slice (migration + access + REST + UI + tests) and resolve PI-003 via this close-out's resolves_planning_items entry.",
+      "conversation_ready_at": null,
+      "conversation_started_at": null,
+      "conversation_status": "complete",
+      "conversation_superseded_at": null,
+      "conversation_title": "PI-003 build — persona methodology entity end-to-end execution under SES-081's orchestration plan",
+      "conversation_updated_at": "2026-05-26T03:23:25.678685+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "CONV-052",
+    "entity_type": "conversation",
+    "id": 1857,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:25.688062"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "commit_author_email": "doug@dougbower.com",
+      "commit_author_name": "Doug Bower",
+      "commit_branch": "main",
+      "commit_committed_at": "2026-05-25T23:22:54-04:00",
+      "commit_conversation_id": "CONV-052",
+      "commit_created_at": "2026-05-26T03:23:25.820728+00:00",
+      "commit_deleted_at": null,
+      "commit_files_changed_count": 19,
+      "commit_identifier": "CM-0006",
+      "commit_message_first_line": "v2: PI-003 — persona methodology entity type end-to-end (migration, access, REST, UI, tests)",
+      "commit_message_full": "v2: PI-003 — persona methodology entity type end-to-end (migration, access, REST, UI, tests)\n\nResolves PI-003 (deferred from v0.4 minimum-viable inventory per\nDEC-039). Lands the `persona` methodology entity type per\n`methodology-schema-specs/persona.md` v1.0 — the fifth methodology\nentity type after domain / entity / process / crm_candidate.\n\nMigration 0013 (forward + reverse):\n  - Creates the `personas` table: 9 columns, 2 CHECK constraints,\n    2 indexes.\n  - Extends `refs.source_type` / `refs.target_type` to admit\n    'persona'.\n  - Extends `refs.relationship_kind` to admit\n    'persona_scopes_to_domain' and 'persona_realized_as_entity'.\n  - Extends `change_log.entity_type` to admit 'persona'.\n\nAccess layer:\n  - `Persona` SQLAlchemy model mirroring `Entity` with persona_*\n    prefix; no FK columns (references-over-FK per DEC-053).\n  - `access/repositories/persona.py` — 8 module-level functions\n    (list / get / next_identifier / create / update / patch /\n    delete / restore) plus helpers; SAVEPOINT-retry auto-assign\n    for race-free concurrent creates.\n  - Vocab additions: PERSONA_STATUSES + PERSONA_STATUS_TRANSITIONS\n    (three-status propose-verify with one-way gate, mirroring\n    domain/entity); 'persona' in ENTITY_TYPES; two new kinds in\n    REFERENCE_RELATIONSHIPS; two clauses in _kinds_for_pair.\n\nREST API:\n  - `api/routers/persona.py` — 8 endpoints with `{data, meta,\n    errors}` envelope discipline; status_transition_handler\n    handles dedicated invalid-transition body shape.\n  - 3 Pydantic schemas (PersonaCreateIn / Replace / Patch).\n  - main.py wiring.\n\nUI:\n  - 8 client methods in ui/client.py.\n  - Sidebar entry 'Personas' at Methodology position #5.\n  - main_window dispatch + ENTITY_TYPE_TO_SIDEBAR_LABEL entry.\n  - `PersonasPanel` mirroring EntitiesPanel; first methodology\n    panel to render two outgoing reference kinds in its\n    ReferencesSection. Responsibilities collapsible expanded by\n    default per spec §3.6.3 (client-facing content); Notes\n    collapsed by default (consultant scratchpad).\n  - `PersonaCreateDialog` / `PersonaEditDialog` /\n    `PersonaDeleteDialog` + `_persona_schema.py` mirroring\n    entity_crud.py; adopts v0.4 DEC-067 create-then-attach flow\n    for cross-entity-type consistency.\n  - personas.json filename routes to 'Personas' panel in the\n    file-watch refresh service.\n  - Exporter writes personas.json snapshots alongside the v0.4\n    methodology-entity files.\n\nTests: 76 new tests across 3 files (38 access / 22 API / 16 UI),\ncovering persona.md §3.7 acceptance criteria 1–14 (criterion 12\nUI dialogs end-to-end; criterion 13 vocab + _kinds_for_pair\nintegration through the references POST surface). Plus 4\nconstant-list test updates (test_exporter, test_smoke ×2,\ntest_crm_candidates) per the v0.4 slice-C precedent.\n\nTest suite: 1542 → 1618 passed, 3 skipped, 0 regressions.\n\nAuthority: PI-003 (deferred per DEC-039 from v0.4 minimum-viable\ninventory); persona.md v1.0 (authored under SES-081 / CONV-051 /\nWT-049 as part of SES-081's design-phase orchestration of\nPI-003/PI-004/PI-005). Build prompt:\nCLAUDE-CODE-PROMPT-build-persona.md.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+      "commit_parent_shas": [
+        "2f09a3757929d634547a7ca38d502b65249e61a6"
+      ],
+      "commit_repository": "crmbuilder",
+      "commit_sha": "d6fd7c1dde3ef56deadc72e9a9fb9378ef660527",
+      "commit_updated_at": "2026-05-26T03:23:25.820730+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "CM-0006",
+    "entity_type": "commit",
+    "id": 1858,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:25.821384"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "PSN (three-letter, ambiguous between persona/person/poison). PRS (also persona-like, but reads weakly). Sticking with PERSONA-NNN (longer than the established three-letter posture; rejected for consistency).",
+      "consequences": "Persona records are addressed as PER-001, PER-002, etc. The cross-entity-type identifier pattern is uniform: every prefixed methodology and governance entity in v0.5+ uses the same 3-letter + dash + 3-digit shape, and the same server-side auto-assignment helpers apply.",
+      "context": "PI-003 build of the `persona` methodology entity type per persona.md v1.0 (§3.1). The methodology-entity-schema-spec-guide §3.1 establishes a soft-3-letter prefix posture; the v2 prefix set already includes DEC, SES, RSK, PI, TOP, REF, CHR, STA, DOM, ENT, PROC, CRM, WS, CONV, RB, WT, COP, DEP, CM, FLD, REQ, MCF, TST.",
+      "created_at": "2026-05-26T03:23:25.982787+00:00",
+      "decision": "Adopt `PER` as the persona identifier prefix with format `PER-NNN` (3-digit zero-padded). Server-side identifier auto-assignment on POST omission per PI-002; `GET /personas/next-identifier` helper available per DEC-043. Explicit-identifier POST validated against `^PER-\\d{3}$` with collision returning 409 and malformation returning 422.",
+      "decision_date": "2026-05-25",
+      "id": 250,
+      "identifier": "DEC-263",
+      "rationale": "PER reads unambiguously as 'persona', has no collision with the existing v2 prefix set, and matches the soft-3-letter posture established by domain (DOM) and entity (ENT). The format and auto-assignment semantics are uniform with every other prefixed-identifier entity type in v2 (PI-002 / DEC-043 confluence).",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "`persona` identifier prefix and format",
+      "updated_at": "2026-05-26T03:23:25.982791+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-263",
+    "entity_type": "decision",
+    "id": 1859,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:25.983338"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Include `persona_purpose` parallel to `domain_purpose` (rejected — would duplicate role_summary or invent methodology content). Include `persona_authority` with a 3-or-4-value enum (rejected — premature; CRM-engine coupling unsettled). Add storage-level length caps to role_summary / responsibilities (rejected — easy to add via migration if CBM-redo surfaces pathological-input need).",
+      "consequences": "The personas table is small (9 columns). The schema is additive; growth happens via Alembic migrations adding columns when CBM-redo signal motivates them. Three v0.6+ PIs are anticipated for the deferred classification work (persona authority / membership cardinality / realization mechanism reconsideration) per persona.md §3.8.3.",
+      "context": "PI-003 build per persona.md §3.2. The thin-shape posture established by entity.md is the precedent: ship the minimum-viable column set that hosts Phase 2 / early Phase 3 persona-surfacing work; grow additively as CBM-redo signal reveals what `persona` needs to carry.",
+      "created_at": "2026-05-26T03:23:26.111618+00:00",
+      "decision": "Persona carries five substantive fields plus inherited timestamps: `persona_name` (required, case-insensitive unique within the engagement), `persona_role_summary` (required, plain text), `persona_responsibilities` (optional, plain text), `persona_notes` (optional, plain text consultant scratchpad), `persona_status` (required enum). No `persona_purpose` field. No authority/access-boundary classification. No storage-level length caps. Parent-prefix field naming per DEC-046.",
+      "decision_date": "2026-05-25",
+      "id": 251,
+      "identifier": "DEC-264",
+      "rationale": "Reflects the actual Phase 2 / Phase 3 surfacing pattern from the evolved methodology's research: role name + role summary captures the surfacing reality without inventing a separate persona_purpose artifact (the role summary already explains what the role does). Optional responsibilities and notes accommodate the cases where the consultant decomposes the summary or captures pattern-library rationale. Authority/access-boundary classification belongs to a later release once the methodology surfaces the required granularity and once integration with CRM-engine role models is understood.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "`persona` field inventory and validation under v0.5+ thin shape",
+      "updated_at": "2026-05-26T03:23:26.111621+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-264",
+    "entity_type": "decision",
+    "id": 1860,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:26.111949"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Add a separate `rejected` status (rejected — duplicates soft-delete). Add an `archived` status (rejected — soft-delete + show-deleted toggle already covers this). Cascade status from affiliated domains (rejected — couples lifecycles that should be independent; persona Program Manager is confirmed regardless of which specific domains it ends up in).",
+      "consequences": "The persona-status code path is byte-for-byte identical with domain and entity. The access layer's `_check_transition` consults only the persona's own status. Status changes never query the refs table or the affiliated/realization records. UI status combo restricts to valid successors via the schema's `compute_options` callback.",
+      "context": "PI-003 build per persona.md §3.4. The domain (DEC-047) and entity (DEC-052) precedents established the three-status propose-verify lifecycle as the pattern for methodology entities surfaced by the consultant and verified by the client.",
+      "created_at": "2026-05-26T03:23:26.238875+00:00",
+      "decision": "Persona adopts the three-status propose-verify lifecycle exactly: candidate (default starter) → confirmed or deferred (one-way gate, no regression to candidate); confirmed ↔ deferred allowed in both directions to support mid-engagement scope changes. No archived status — soft-delete covers the retained-for-record use case. Rejection of a candidate is handled by soft-delete, not by a status value. `persona_status` is independent of any affiliated domain's status and of the realization entity's status (lifecycles managed separately).",
+      "decision_date": "2026-05-25",
+      "id": 252,
+      "identifier": "DEC-265",
+      "rationale": "Cross-entity-type consistency: personas, like domains and entities, are surfaced by the consultant (typically as candidates), verified by the client (transition to confirmed or deferred), and may be rejected entirely (soft-delete). The independence-from-affiliation-status rule keeps lifecycles tractable when a persona scopes to multiple domains at different lifecycle positions and realizes as an entity at a different position.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "`persona` status lifecycle: three-status propose-verify with one-way gate",
+      "updated_at": "2026-05-26T03:23:26.238878+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-265",
+    "entity_type": "decision",
+    "id": 1861,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:26.239223"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Single-value FK `persona_realized_as_entity_identifier` column on personas (rejected — locks out the multi-realization case and creates a schema-shape inconsistency between affiliations and realization). Inline-affiliation field on persona create/update bodies (rejected — would break the v2 decomposed-references discipline DEC-006 establishes). Force the realization to be single-target via access-layer validation (rejected — premature; if CBM-redo surfaces friction with multi-target, PI-XXX-C / persona.md §3.8.3 records the reconsideration option).",
+      "consequences": "The PersonasPanel is the first methodology panel to surface two outgoing reference kinds in its ReferencesSection. The references-create cascading dialog already drives its filtering from RELATIONSHIP_RULES so no UI changes were needed for the dialog itself — the two new kinds appear automatically once the vocab and `_kinds_for_pair` clauses land. Inverse queries are trivial: `GET /references?target_type=domain&target_id=DOM-NNN&relationship_kind=persona_scopes_to_domain` returns all personas scoped to that domain, and similarly for entity realization.",
+      "context": "PI-003 build per persona.md §3.3.1. The DEC-053 references-over-FK precedent established that many-to-many methodology affiliations live in the universal references table rather than as FK columns on the source-entity table.",
+      "created_at": "2026-05-26T03:23:26.405659+00:00",
+      "decision": "Both `persona_scopes_to_domain` (persona → domain, many-to-many) and `persona_realized_as_entity` (persona → entity, conceptually optional and most often single-target but mechanism permits multi-target) are implemented via the references entity at v2's `refs` table. Two new vocabulary entries registered in `REFERENCE_RELATIONSHIPS`; two new clauses added to `_kinds_for_pair` enforcing the (persona, domain) and (persona, entity) source/target constraints; Alembic migration 0013 extends the `refs.relationship_kind` CHECK constraint to include both new values. Zero-affiliation and zero-realization explicitly permitted. Duplicate `(source_id, target_id, relationship_kind)` tuples rejected by the references-table uniqueness constraint.",
+      "decision_date": "2026-05-25",
+      "id": 253,
+      "identifier": "DEC-266",
+      "rationale": "Personas legitimately scope to multiple domains (a Program Manager spans MN/MR/FU at CBM); a single-value FK would break that. Personas mostly realize as at most one entity, but the references mechanism permits the few that need multi-realization without validation overhead and without forcing a schema change later. Cross-entity-type consistency with `entity_scopes_to_domain` (DEC-053) keeps the audit/reverse-query story uniform.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "`persona`-to-`domain` affiliation and `persona`-to-`entity` realization mechanisms; new vocab kinds registered",
+      "updated_at": "2026-05-26T03:23:26.405662+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-266",
+    "entity_type": "decision",
+    "id": 1862,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:26.406006"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Create-with-attach flow with multi-select for domains and single-select for entity realization (rejected for the consistency rationale above; the spec recorded both as equivalent and the v0.4 build chose create-then-attach). Shortcut endpoints `/personas/{id}/scopes` and `/personas/{id}/realizes` (rejected — would break decomposed-references discipline). Adding inline-affiliation fields to the create body (rejected — same reason).",
+      "consequences": "PersonaCreateDialog matches EntityCreateDialog line-by-line in structure. The user gesture to author a persona with domain affiliations and entity realization is two-step (create record, then add references from the detail pane), matching the existing v0.4 entity pattern exactly. The ReferencesSection 'Add reference' affordance is the single UI control surfacing both reference kinds (the cascading dialog filters by source/target type and offers the relationship kinds from `_kinds_for_pair`).",
+      "context": "PI-003 build per persona.md §3.5–3.6. The spec left the create-dialog domain-affiliation and entity-realization flow as an open question for the v0.5+ build to settle (§3.8.1); both create-then-attach and create-with-attach are spec-equivalent.",
+      "created_at": "2026-05-26T03:23:26.533062+00:00",
+      "decision": "Adopt the v0.4 DEC-067 create-then-attach flow unchanged for the PersonaCreateDialog: the dialog creates the persona record only, with no domain-affiliation multi-select and no entity-realization single-select; the user attaches `persona_scopes_to_domain` and `persona_realized_as_entity` references from the detail pane's ReferencesSection 'Add reference' affordance after the persona record exists. Standard endpoint set with no deviations (eight endpoints from persona.md §3.5.1); decomposed reference handling (no shortcut endpoints for affiliation or realization); default ListDetailPanel UI under the existing Methodology sidebar group at position #5; four master-pane columns (Identifier / Name / Status / Updated) per spec §3.6.2; detail pane renders fields in §3.2 order with Responsibilities collapsible expanded-by-default (client-facing content) and Notes collapsed-by-default (consultant scratchpad); 14 testable acceptance criteria per spec §3.7.",
+      "decision_date": "2026-05-25",
+      "id": 254,
+      "identifier": "DEC-267",
+      "rationale": "Cross-entity-type consistency is the primary driver: the v0.4 entity build (slice C, DEC-067) adopted create-then-attach and users have already internalized the affordance. Forcing two different flows for two adjacent methodology entity types creates cognitive overhead with no clear payoff. The decomposed reference handling matches the v2 references-first discipline (DEC-006) and the standard endpoint set keeps the API surface uniform with the seven prior methodology and governance entity types.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "`persona` API surface, UI defaults, and create-dialog flow choice for v0.5+",
+      "updated_at": "2026-05-26T03:23:26.533065+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-267",
+    "entity_type": "decision",
+    "id": 1863,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:26.533466"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T03:23:26.705376+00:00",
+      "id": 1033,
+      "reference_identifier": "REF-1029",
+      "relationship": "is_about",
+      "source_id": "SES-082",
+      "source_type": "session",
+      "target_id": "PI-003",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-082 -[is_about]-> planning_item:PI-003",
+    "entity_type": "reference",
+    "id": 1864,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:26.705745"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T03:23:26.840325+00:00",
+      "id": 1034,
+      "reference_identifier": "REF-1030",
+      "relationship": "is_about",
+      "source_id": "SES-082",
+      "source_type": "session",
+      "target_id": "SES-081",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-082 -[is_about]-> session:SES-081",
+    "entity_type": "reference",
+    "id": 1865,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:26.840736"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T03:23:26.974534+00:00",
+      "id": 1035,
+      "reference_identifier": "REF-1031",
+      "relationship": "is_about",
+      "source_id": "SES-082",
+      "source_type": "session",
+      "target_id": "WT-049",
+      "target_type": "work_ticket"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-082 -[is_about]-> work_ticket:WT-049",
+    "entity_type": "reference",
+    "id": 1866,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:26.974890"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-11T14:51:10.213028",
+      "description": "DEC-039 deferred persona from v0.4's minimum-viable inventory because evolved Phase 1's interview guide v0.2 explicitly excludes persona elicitation in Phase 1 — persona context comes from pre-engagement reading of operational role definitions, used as consultant background rather than captured as records. Phase 2 or 3 of the evolved methodology may surface persona records (actors performing processes, role-based access boundaries). The persona entity type design should follow the workstream pattern (one Claude.ai conversation produces the schema spec, design-only, separate from build). Target release: v0.5+, conditional on CBM redo Phase 2 or 3 surfacing need.",
+      "id": 3,
+      "identifier": "PI-003",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Resolved",
+      "title": "Persona entity type for v0.5+ (deferred from v0.4 minimum-viable inventory)",
+      "updated_at": "2026-05-26T03:23:27.146722+00:00"
+    },
+    "before_payload": {
+      "created_at": "2026-05-11T14:51:10.213028",
+      "description": "DEC-039 deferred persona from v0.4's minimum-viable inventory because evolved Phase 1's interview guide v0.2 explicitly excludes persona elicitation in Phase 1 — persona context comes from pre-engagement reading of operational role definitions, used as consultant background rather than captured as records. Phase 2 or 3 of the evolved methodology may surface persona records (actors performing processes, role-based access boundaries). The persona entity type design should follow the workstream pattern (one Claude.ai conversation produces the schema spec, design-only, separate from build). Target release: v0.5+, conditional on CBM redo Phase 2 or 3 surfacing need.",
+      "id": 3,
+      "identifier": "PI-003",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Open",
+      "title": "Persona entity type for v0.5+ (deferred from v0.4 minimum-viable inventory)",
+      "updated_at": "2026-05-11T14:51:10.213031"
+    },
+    "entity_identifier": "PI-003",
+    "entity_type": "planning_item",
+    "id": 1867,
+    "operation": "update",
+    "timestamp": "2026-05-26T03:23:27.147459"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T03:23:27.145719+00:00",
+      "id": 1036,
+      "reference_identifier": "REF-1032",
+      "relationship": "resolves",
+      "source_id": "CONV-052",
+      "source_type": "conversation",
+      "target_id": "PI-003",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "conversation:CONV-052 -[resolves]-> planning_item:PI-003",
+    "entity_type": "reference",
+    "id": 1868,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:27.147461"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T03:23:27.289426+00:00",
+      "id": 1037,
+      "reference_identifier": "REF-1033",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-064",
+      "source_type": "deposit_event",
+      "target_id": "COP-082",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-064 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-082",
+    "entity_type": "reference",
+    "id": 1869,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:27.289874"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T03:23:27.291791+00:00",
+      "id": 1038,
+      "reference_identifier": "REF-1034",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-064",
+      "source_type": "deposit_event",
+      "target_id": "SES-082",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-064 -[deposit_event_wrote_record]-> session:SES-082",
+    "entity_type": "reference",
+    "id": 1870,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:27.292226"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T03:23:27.294133+00:00",
+      "id": 1039,
+      "reference_identifier": "REF-1035",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-064",
+      "source_type": "deposit_event",
+      "target_id": "CONV-052",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-064 -[deposit_event_wrote_record]-> conversation:CONV-052",
+    "entity_type": "reference",
+    "id": 1871,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:27.294506"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T03:23:27.296588+00:00",
+      "id": 1040,
+      "reference_identifier": "REF-1036",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-064",
+      "source_type": "deposit_event",
+      "target_id": "CM-0006",
+      "target_type": "commit"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-064 -[deposit_event_wrote_record]-> commit:CM-0006",
+    "entity_type": "reference",
+    "id": 1872,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:27.297132"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T03:23:27.299447+00:00",
+      "id": 1041,
+      "reference_identifier": "REF-1037",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-064",
+      "source_type": "deposit_event",
+      "target_id": "DEC-263",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-064 -[deposit_event_wrote_record]-> decision:DEC-263",
+    "entity_type": "reference",
+    "id": 1873,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:27.299996"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T03:23:27.301922+00:00",
+      "id": 1042,
+      "reference_identifier": "REF-1038",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-064",
+      "source_type": "deposit_event",
+      "target_id": "DEC-264",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-064 -[deposit_event_wrote_record]-> decision:DEC-264",
+    "entity_type": "reference",
+    "id": 1874,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:27.302259"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T03:23:27.304007+00:00",
+      "id": 1043,
+      "reference_identifier": "REF-1039",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-064",
+      "source_type": "deposit_event",
+      "target_id": "DEC-265",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-064 -[deposit_event_wrote_record]-> decision:DEC-265",
+    "entity_type": "reference",
+    "id": 1875,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:27.304335"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T03:23:27.306005+00:00",
+      "id": 1044,
+      "reference_identifier": "REF-1040",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-064",
+      "source_type": "deposit_event",
+      "target_id": "DEC-266",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-064 -[deposit_event_wrote_record]-> decision:DEC-266",
+    "entity_type": "reference",
+    "id": 1876,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:27.306332"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T03:23:27.308090+00:00",
+      "id": 1045,
+      "reference_identifier": "REF-1041",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-064",
+      "source_type": "deposit_event",
+      "target_id": "DEC-267",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-064 -[deposit_event_wrote_record]-> decision:DEC-267",
+    "entity_type": "reference",
+    "id": 1877,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:27.308297"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "0.7.0",
+        "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_082.json",
+        "runner": "claude_code"
+      },
+      "deposit_event_created_at": "2026-05-26T03:23:27.287136+00:00",
+      "deposit_event_description": "Applied COP-082. Outcome: success. 1 commits, 1 conversations, 5 decisions, 1 sessions.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-064",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_064.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "commits": 1,
+        "conversations": 1,
+        "decisions": 5,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1,
+        "work_tickets": 0
+      },
+      "deposit_event_title": "Apply of COP-082, 2026-05-26T03:23:27+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-064",
+    "entity_type": "deposit_event",
+    "id": 1878,
+    "operation": "insert",
+    "timestamp": "2026-05-26T03:23:27.308892"
   }
 ]

@@ -848,5 +848,22 @@
     "conversation_superseded_at": null,
     "conversation_title": "PI-003 / PI-004 / PI-005 orchestrated design phase — six methodology-schema specs and six build prompts",
     "conversation_updated_at": "2026-05-26T02:32:42.438749"
+  },
+  {
+    "conversation_cancelled_at": null,
+    "conversation_completed_at": "2026-05-26T03:23:25.678427",
+    "conversation_created_at": "2026-05-26T03:23:25.678104",
+    "conversation_deleted_at": null,
+    "conversation_description": "Claude Code build-agent conversation at Doug's terminal, dispatched by a parent orchestrator session to execute the persona build prompt authored under SES-081 (WT-049). The agent followed the build prompt's 14 numbered steps in order, mirroring the v0.4 slice-C entity build pattern line-by-line with persona-specific substitutions per persona.md v1.0. Pre-flight identifier capture detected the heads (SES-081, DEC-262, CONV-051, PI-053, WS-011 — DEC head jumped during execution from 245 to 262 as ses_080.json applied in parallel). The agent re-keyed nothing because SES-082 / CONV-052 / DEC-263..267 cleared both the API head and the staged-payload set (ses_079.json still unapplied claims SES-079/CONV-049/DEC-246..251). Four pre-existing constant-list tests broke from the build's additive scope (exporter expected-files set; sidebar tuple equality assertions in three places); each was updated in passing per the v0.4 slice-C precedent. One smoke-test side effect: a cleanup curl DELETE against `/references/1024` removed the wrong reference (id 1024 vs reference_identifier REF-1024); the affected DEP-063 → DEC-259 deposit_event_wrote_record edge was POST'd back. The numerical reference_identifier REF-1020 was retired in the process — replaced semantically by REF-1025 for the same edge.",
+    "conversation_identifier": "CONV-052",
+    "conversation_kickoff_drafted_at": null,
+    "conversation_notes": null,
+    "conversation_purpose": "Execute `CLAUDE-CODE-PROMPT-build-persona.md` end-to-end: land the persona methodology entity vertical slice (migration + access + REST + UI + tests) and resolve PI-003 via this close-out's resolves_planning_items entry.",
+    "conversation_ready_at": null,
+    "conversation_started_at": null,
+    "conversation_status": "complete",
+    "conversation_superseded_at": null,
+    "conversation_title": "PI-003 build — persona methodology entity end-to-end execution under SES-081's orchestration plan",
+    "conversation_updated_at": "2026-05-26T03:23:25.678685"
   }
 ]
