@@ -11248,5 +11248,55 @@
     "source_type": "deposit_event",
     "target_id": "CM-0009",
     "target_type": "commit"
+  },
+  {
+    "created_at": "2026-05-26T06:57:16.766707",
+    "id": 1132,
+    "reference_identifier": "REF-1128",
+    "relationship_kind": "deposit_event_applies_close_out_payload",
+    "source_id": "DEP-071",
+    "source_type": "deposit_event",
+    "target_id": "COP-088",
+    "target_type": "close_out_payload"
+  },
+  {
+    "created_at": "2026-05-26T06:57:16.769060",
+    "id": 1133,
+    "reference_identifier": "REF-1129",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-071",
+    "source_type": "deposit_event",
+    "target_id": "DEC-288",
+    "target_type": "decision"
+  },
+  {
+    "created_at": "2026-05-26T06:57:16.771200",
+    "id": 1134,
+    "reference_identifier": "REF-1130",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-071",
+    "source_type": "deposit_event",
+    "target_id": "DEC-289",
+    "target_type": "decision"
+  },
+  {
+    "created_at": "2026-05-26T06:57:16.773418",
+    "id": 1135,
+    "reference_identifier": "REF-1131",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-071",
+    "source_type": "deposit_event",
+    "target_id": "DEC-290",
+    "target_type": "decision"
+  },
+  {
+    "created_at": "2026-05-26T06:58:25.041510",
+    "id": 1136,
+    "reference_identifier": "REF-1132",
+    "relationship_kind": "deposit_event_applies_close_out_payload",
+    "source_id": "DEP-072",
+    "source_type": "deposit_event",
+    "target_id": "COP-088",
+    "target_type": "close_out_payload"
   }
 ]

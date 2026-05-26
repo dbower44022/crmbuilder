@@ -1,0 +1,23 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_088.json
+Label:  PI-005 satisfier — process v2 schema growth end-to-end (migration + access + REST + UI + tests). Final of the three PI-003/004/005 design-phase planning items; PI-003 (persona) shipped under SES-082, PI-004 (the four-sibling cohort) shipped under SES-086, and this session RESOLVES PI-005 via slice A's atomic edge+flip behavior — the `resolves_planning_items` section below flips PI-005 from Open to Resolved at apply time. NOT a new entity type — this build grows the existing `process` methodology entity additively per `methodology-schema-specs/process-v2.md` v2.0. Migration 0018 adds six new TEXT NULL columns to the existing `processes` table (`process_steps`, `process_triggers`, `process_outcomes`, `process_edge_cases`, `process_frequency`, `process_duration_estimate` per spec §3.2.2) — Phase 3 detailed-process content, plain text in v0.6+ with structured JSON shapes deferred to v0.7+. Three new outbound vocabulary kinds registered in `vocab.py` and admitted in the `refs.relationship_kind` CHECK: `process_performed_by_persona` (process → persona; persona is live as of PI-003), `process_touches_field` (process → field; field is live as of PI-004 first slice), `process_touches_entity` (process → entity; promoted from v0.4-anticipated to live registration). All three `_kinds_for_pair` clauses ship active because all three target types are live in `ENTITY_TYPES`. No data backfill — existing v0.4 process records acquire NULL for all six new columns and continue to validate as legal v2 records (acceptance criterion 3). No status change — `process_classification` enum and the four-value lifecycle preserved verbatim. Master pane unchanged per spec §3.6.2 (column growth deferred to v0.7+). Detail pane grows by inserting a 'Phase 3 — Detailed Process Definition' group with six CollapsibleSection widgets between the v0.4 classification-rationale row and the Internal notes section per spec §3.6.3; each section's body collapses by default when its column is NULL/empty. Edit dialog includes editors for the six new fields via the new `include_phase3` keyword on `process_fields()`; Create dialog unchanged per spec §3.6.4 (Phase 3 content is post-create work). Migration 0018 fully reversible per spec §4.5 — downgrade drops the six columns and reverts the CHECK with a guarded DELETE of any rows holding the new kinds (lossy recovery posture documented). Test suite: 1854 baseline → 1876 (+22 new, 0 regressions), 3 skipped pre-existing.
+Deposit event: DEP-071
+
+=== session (1 record) ===
+  · POST session  SES-088 already present (HTTP 409) — skipping
+
+=== conversation (1 record) ===
+  · POST conversation  CONV-058 already present (HTTP 409) — skipping
+
+=== commits (1 record) ===
+
+=== decisions (3 records) ===
+  ✓ POST decisions  DEC-288 (HTTP 201)
+  ✓ POST decisions  DEC-289 (HTTP 201)
+  ✓ POST decisions  DEC-290 (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  · POST resolves_planning_items  → PI-005 already present (HTTP 409) — skipping
+
+
+✓ Recorded apply as deposit_event DEP-071 (HTTP 201).
