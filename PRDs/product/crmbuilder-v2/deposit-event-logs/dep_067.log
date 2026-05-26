@@ -1,0 +1,29 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_085.json
+Label:  PI-004 cohort — `manual_config` methodology entity type end-to-end (migration, access, REST, UI, tests). Third of the four PI-004 sibling builds (others: field shipped under SES-083, requirement shipped under SES-084, test_spec remains). Migration 0016 creates the `manual_configs` table with the seven-value category enum and the four-status lifecycle (candidate / confirmed / deferred / completed — explicit deviation from the cross-spec three-status default per manual_config.md §3.4.2), extends `refs.source_type` / `refs.target_type` / `refs.relationship_kind` to admit `manual_config` and all four new `manual_config_*` kinds. Access/repositories/manual_config.py + ManualConfig model + MANUAL_CONFIG_STATUSES/CATEGORIES/STATUS_TRANSITIONS vocab + four new REFERENCE_RELATIONSHIPS kinds + four `_kinds_for_pair` clauses (all four targets — domain/entity/field/requirement — live as of PI-004 first slice and cohort builds). Eight REST endpoints with a new dedicated error body shape `{error: 'completed_status_requires_completion_fields', missing: [...]}` enforced via a new `CompletedStatusRequiresCompletionFieldsError` exception class and matching `completed_status_requires_completion_fields_handler` registered before `AccessLayerError` per the spec §3.5.3 cross-field invariant. Eight ui/client.py methods; Manual Configs sidebar entry at Methodology tail position (after Fields). ManualConfigPanel with the five-column master pane (Identifier/Name/Category/Status/Updated per AC-12) + detail-pane conditional reveal of completion fields when status is `completed` per AC-13 / §3.6.3. CRUD dialogs with status-combo-driven Mark-Completed UX per §3.6.5 (dedicated 'Mark Completed' button alternative deferred to v0.6+ per §3.8.1). 76 new tests. In-passing cleanup: added the missing `fields` entry to the access-layer `_EXPORT_TABLES` list (pre-existing SES-083 gap noted in SES-084's payload as unaddressed). PI-004 is ADDRESSED (not resolved) — one sibling (test_spec) remains; the last sibling's build-closure session resolves PI-004 per DEC-232 / SES-074 pattern.
+Deposit event: DEP-067
+
+=== session (1 record) ===
+  ✓ POST session  SES-085 (HTTP 201)
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CONV-055 (HTTP 201)
+
+=== decisions (5 records) ===
+  ✓ POST decisions  DEC-279 (HTTP 201)
+  ✓ POST decisions  DEC-280 (HTTP 201)
+  ✓ POST decisions  DEC-281 (HTTP 201)
+  ✓ POST decisions  DEC-282 (HTTP 201)
+  ✓ POST decisions  DEC-283 (HTTP 201)
+
+=== references (3 records) ===
+  ✓ POST references  SES-085 is_about PI-004 (HTTP 201)
+  ✓ POST references  SES-085 is_about SES-081 (HTTP 201)
+  ✓ POST references  SES-085 is_about WT-052 (HTTP 201)
+
+=== addresses_planning_items (1 record) ===
+  ✓ POST addresses_planning_items  → PI-004 (HTTP 201)
+
+✓ All 11 operations complete.
+
+✓ Recorded apply as deposit_event DEP-067 (HTTP 201).

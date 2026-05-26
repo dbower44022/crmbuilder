@@ -899,5 +899,22 @@
     "conversation_superseded_at": null,
     "conversation_title": "PI-004 cohort `requirement` build — methodology entity end-to-end execution under SES-081's orchestration plan",
     "conversation_updated_at": "2026-05-26T05:04:53.536588"
+  },
+  {
+    "conversation_cancelled_at": null,
+    "conversation_completed_at": "2026-05-26T05:37:48.644270",
+    "conversation_created_at": "2026-05-26T05:37:48.643899",
+    "conversation_deleted_at": null,
+    "conversation_description": "Claude Code build-agent conversation at Doug's terminal, dispatched by a parent orchestrator session to execute the manual_config build prompt authored under SES-081 (WT-053). The agent followed the build prompt's 17 numbered steps in order, mirroring the requirement-build pattern with manual_config-specific extensions per manual_config.md v1.0. Pre-flight identifier capture detected the heads (SES-084, DEC-278, CONV-054, WT-054); no parallel-sandbox collision. The build's scope was purely additive (new table, new vocab, new endpoints, new dedicated error class+handler), so no collision potential against parallel workstreams. The build prompt instructed that both `field` and `requirement` are now live in ENTITY_TYPES; all four `_kinds_for_pair` clauses activated unconditionally with no TODO comments remaining for this entity. The cross-field invariant on transition into `completed` per §3.5.3 — the new and unique-to-this-spec validation surface — required a new `CompletedStatusRequiresCompletionFieldsError` exception class paired with a dedicated `completed_status_requires_completion_fields_handler` that preserves the v2 envelope shape while carrying the `missing` list. Two pre-existing constant-list tests broke from the additive scope (test_smoke.py EXPECTED_ENTRIES, test_exporter.py expected files set); updated in passing. In-passing cleanup: added the missing `('fields', Field)` entry to access-layer `_EXPORT_TABLES` that was a pre-existing SES-083 gap. Live API smoke verification confirmed all three pivotal acceptance-criteria surfaces: POST candidate creates MCF-001 with default status `candidate`; PATCH candidate→confirmed→completed with `completed_by` succeeds and server-defaults `completed_at` to now; PATCH confirmed→completed without `completed_by` returns HTTP 422 with the dedicated error body within the v2 envelope. Smoke artifacts (MCF-001, MCF-002) soft-deleted at session end per precedent.",
+    "conversation_identifier": "CONV-055",
+    "conversation_kickoff_drafted_at": null,
+    "conversation_notes": null,
+    "conversation_purpose": "Execute `CLAUDE-CODE-PROMPT-build-manual_config.md` end-to-end: land the manual_config methodology entity vertical slice (migration + access + REST + UI + tests) per manual_config.md v1.0; address PI-004 with an `addresses` edge (do NOT resolve — one sibling remains: test_spec).",
+    "conversation_ready_at": null,
+    "conversation_started_at": null,
+    "conversation_status": "complete",
+    "conversation_superseded_at": null,
+    "conversation_title": "PI-004 cohort `manual_config` build — methodology entity end-to-end execution under SES-081's orchestration plan",
+    "conversation_updated_at": "2026-05-26T05:37:48.644554"
   }
 ]
