@@ -17,12 +17,55 @@ from crmbuilder_v2.access._helpers import require_in, require_string, to_dict
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
+    FieldError,
     NotFoundError,
+    UnprocessableError,
 )
 from crmbuilder_v2.access.models import Reference
 from crmbuilder_v2.access.vocab import ENTITY_TYPES, REFERENCE_RELATIONSHIPS
 
 _ENTITY_TYPE = "reference"
+
+
+def _guard_field_belongs_to_entity_delete(
+    session: Session,
+    row: Reference,
+    skip: bool,
+) -> None:
+    """Reject deletion of the only live ``field_belongs_to_entity`` edge
+    of a live field.
+
+    Per ``field.md`` §3.3.1 a live field MUST have exactly one
+    outgoing edge of this kind. The ``delete_field`` repository path
+    passes ``skip=True`` to bypass this check when soft-deleting the
+    field and the edge together atomically; UI / REST callers that
+    DELETE the edge directly via ``/references/{ref_id}`` go through
+    the guard.
+    """
+    if skip or row.relationship_kind != "field_belongs_to_entity":
+        return
+    # Imported locally to avoid a module-load cycle.
+    from crmbuilder_v2.access.models import Field
+
+    source = session.get(Field, row.source_id)
+    if source is None or source.field_deleted_at is not None:
+        # Source already gone or soft-deleted; permit the orphan-edge
+        # cleanup (this is the path delete_field would take if it
+        # bypassed the guard; we also allow it for any post-hoc
+        # cleanup that may surface in the future).
+        return
+    raise UnprocessableError(
+        [
+            FieldError(
+                "relationship",
+                "cardinality_violation",
+                f"field {row.source_id} requires exactly one live "
+                "field_belongs_to_entity edge; cannot delete this edge "
+                "while the field is live (delete the field instead, or "
+                "soft-delete it first)",
+            )
+        ]
+    )
 
 
 def next_reference_identifier(session: Session) -> str:
@@ -210,6 +253,30 @@ def create(
     if existing is not None:
         raise ConflictError(f"reference already exists: {_identifier(existing)}")
 
+    # PI-004 first slice (field.md §3.3.1 / §3.7 criterion 16):
+    # `field_belongs_to_entity` is 1:1 mandatory at the source side.
+    # Reject a second outgoing edge of this kind from the same field.
+    if relationship == "field_belongs_to_entity":
+        existing_count = session.scalar(
+            select(func.count(Reference.id)).where(
+                Reference.source_type == "field",
+                Reference.source_id == source_id,
+                Reference.relationship_kind == "field_belongs_to_entity",
+            )
+        )
+        if existing_count and existing_count > 0:
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "relationship",
+                        "cardinality_violation",
+                        f"field {source_id} already has a "
+                        "field_belongs_to_entity edge; delete the existing "
+                        "edge first",
+                    )
+                ]
+            )
+
     row = Reference(
         reference_identifier=next_reference_identifier(session),
         source_type=source_type,
@@ -245,17 +312,30 @@ def create(
     return after
 
 
-def delete_by_id(session: Session, ref_id: int) -> dict:
+def delete_by_id(
+    session: Session,
+    ref_id: int,
+    *,
+    _skip_cardinality_check: bool = False,
+) -> dict:
     """Hard-delete a reference by integer primary key.
 
     Mirrors :func:`delete` but addresses the row by ``id`` instead of
     by the full tuple. Used by the v0.3 ``DELETE /references/{id}``
     REST endpoint (added in slice C) so the UI can issue a delete
     using the integer id surfaced on every reference row.
+
+    ``_skip_cardinality_check`` is an internal flag used by
+    repository-to-repository calls (notably ``field.delete_field``)
+    that need to bypass the field-cardinality guard while atomically
+    soft-deleting both the field and its mandatory edge. The flag is
+    intentionally underscore-prefixed and not exposed at the REST
+    layer.
     """
     row = session.get(Reference, ref_id)
     if row is None:
         raise NotFoundError(_ENTITY_TYPE, str(ref_id))
+    _guard_field_belongs_to_entity_delete(session, row, _skip_cardinality_check)
     before = _row_dict(row)
     identifier = _identifier(row)
     session.delete(row)
@@ -279,7 +359,13 @@ def delete(
     target_type: str,
     target_id: str,
     relationship: str,
+    _skip_cardinality_check: bool = False,
 ) -> dict:
+    """Hard-delete a reference by the full tuple.
+
+    ``_skip_cardinality_check`` is an internal flag — see
+    :func:`delete_by_id` for the motivation.
+    """
     row = session.scalar(
         select(Reference).where(
             and_(
@@ -296,6 +382,7 @@ def delete(
             _ENTITY_TYPE,
             f"{source_type}:{source_id} -[{relationship}]-> {target_type}:{target_id}",
         )
+    _guard_field_belongs_to_entity_delete(session, row, _skip_cardinality_check)
     before = _row_dict(row)
     identifier = _identifier(row)
     session.delete(row)

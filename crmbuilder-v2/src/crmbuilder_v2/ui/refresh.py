@@ -52,6 +52,8 @@ _FILENAME_TO_ENTITY_TYPE: dict[str, str] = {
     "crm_candidates.json": "crm_candidate",
     # v0.5+ methodology entity (PI-003, persona.md).
     "personas.json": "persona",
+    # v0.5+ methodology entity (PI-004 first slice, field.md).
+    "fields.json": "field",
 }
 
 # v0.5 slice A: file-watch entries that live one level below the

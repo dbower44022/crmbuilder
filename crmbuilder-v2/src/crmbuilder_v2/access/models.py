@@ -48,6 +48,8 @@ from crmbuilder_v2.access.vocab import (
     DOMAIN_STATUSES,
     ENTITY_STATUSES,
     ENTITY_TYPES,
+    FIELD_STATUSES,
+    FIELD_TYPES,
     PERSONA_STATUSES,
     PLANNING_ITEM_STATUSES,
     PLANNING_ITEM_TYPES,
@@ -350,6 +352,82 @@ class Entity(Base):
         ),
         Index("ix_entities_entity_status", "entity_status"),
         Index("ix_entities_entity_deleted_at", "entity_deleted_at"),
+    )
+
+
+class Field(Base):
+    """Methodology entity — one attribute on one CRM-modeled entity.
+
+    Sixth methodology entity type (v0.5+, PI-004 first slice). Per
+    ``field.md`` §3.2 the schema follows the parent-prefix
+    field-naming convention: every column is prefixed ``field_``. The
+    primary key is the prefixed-string identifier ``field_identifier``
+    (format ``FLD-NNN``) — there is no integer surrogate ``id`` column.
+
+    Parent-entity affiliation is captured via the ``refs`` table as a
+    ``field_belongs_to_entity`` edge, NOT an FK column on this table
+    (per DEC-249). The 1:1-mandatory cardinality is enforced by the
+    access layer rather than the schema layer.
+
+    ``field_previous_parent_entity_identifier`` is the stash column
+    supporting the §3.4.6 soft-delete/restore atomicity story: on
+    DELETE the access layer hard-deletes the
+    ``field_belongs_to_entity`` edge (refs has no ``deleted_at``
+    column) and stashes the target entity's identifier here; on
+    POST /restore the column value is read to recreate the edge
+    atomically with clearing ``field_deleted_at``.
+    """
+
+    __tablename__ = "fields"
+
+    field_identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    field_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    field_description: Mapped[str] = mapped_column(Text, nullable=False)
+    field_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    field_required: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    field_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    field_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    field_previous_parent_entity_identifier: Mapped[str | None] = (
+        mapped_column(String(32), nullable=True)
+    )
+    field_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    field_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    field_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^FLD-\d{3}$`` expressed as a SQLite GLOB pattern.
+        CheckConstraint(
+            "field_identifier GLOB 'FLD-[0-9][0-9][0-9]'",
+            name="ck_field_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("field_status", FIELD_STATUSES),
+            name="ck_field_status",
+        ),
+        CheckConstraint(
+            _check_in("field_type", FIELD_TYPES),
+            name="ck_field_type",
+        ),
+        CheckConstraint(
+            "field_required IN (0, 1)",
+            name="ck_field_required_boolean",
+        ),
+        Index("ix_fields_field_status", "field_status"),
+        Index("ix_fields_field_type", "field_type"),
+        Index("ix_fields_field_deleted_at", "field_deleted_at"),
     )
 
 

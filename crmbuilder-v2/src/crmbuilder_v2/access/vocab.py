@@ -70,6 +70,38 @@ PERSONA_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "deferred": frozenset({"confirmed"}),
 }
 
+# Methodology entity `field` lifecycle (v0.5+, PI-004 first slice).
+# Mirrors `domain` / `entity` exactly — three-status propose-verify
+# lifecycle with one-way gate out of `candidate` per ``field.md`` §3.4.
+FIELD_STATUSES: frozenset[str] = frozenset(
+    {"candidate", "confirmed", "deferred"}
+)
+
+FIELD_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "candidate": frozenset({"confirmed", "deferred"}),
+    "confirmed": frozenset({"deferred"}),
+    "deferred": frozenset({"confirmed"}),
+}
+
+# `field_type` enum (v0.5+, PI-004 first slice). 11-value vocabulary
+# per ``field.md`` §3.2.3. Richer types (`formula`, `link`, `address`,
+# `phone`, `url`) deferred to v0.6+ per PI-054.
+FIELD_TYPES: frozenset[str] = frozenset(
+    {
+        "text",
+        "long_text",
+        "enum",
+        "multi_enum",
+        "date",
+        "datetime",
+        "money",
+        "boolean",
+        "number",
+        "reference",
+        "derived",
+    }
+)
+
 # Methodology entity `crm_candidate` lifecycle (UI v0.4 slice E, DEC-062).
 # Four-status lifecycle per ``crm_candidate.md`` section 3.4. ``active``
 # is the starter status; ``selected``, ``declined``, ``removed`` are
@@ -262,6 +294,11 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         #     mechanism permits multi-target).
         "persona_scopes_to_domain",
         "persona_realized_as_entity",
+        # v0.5+ field additions (PI-004 first slice, field.md §3.3.1):
+        #   - `field_belongs_to_entity` (field → entity; mandatory 1:1
+        #     at the source side per DEC-249). Cardinality enforced at
+        #     the access layer, not the schema layer.
+        "field_belongs_to_entity",
     }
 )
 
@@ -307,6 +344,8 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         "commit",
         # v0.5+ methodology entity (PI-003). See persona.md.
         "persona",
+        # v0.5+ methodology entity (PI-004 first slice). See field.md.
+        "field",
     }
 )
 
@@ -338,6 +377,9 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
     * ``persona_realized_as_entity`` — source must be a persona, target
       must be an entity (v0.5+, persona.md §3.3.1; optional and most
       often single-target but mechanism permits multi-target).
+    * ``field_belongs_to_entity`` — source must be a field, target must
+      be an entity (v0.5+, field.md §3.3.1; mandatory 1:1 at source,
+      access-layer cardinality enforcement per DEC-249).
 
     The ruleset is permissive by design: every pair has at least the
     two generic kinds, so the dialog never produces an empty kind list
@@ -404,6 +446,9 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         kinds.add("persona_scopes_to_domain")
     if source_type == "persona" and target_type == "entity":
         kinds.add("persona_realized_as_entity")
+    # v0.5+ field additions (PI-004 first slice, field.md §3.3.1):
+    if source_type == "field" and target_type == "entity":
+        kinds.add("field_belongs_to_entity")
     return frozenset(kinds)
 
 

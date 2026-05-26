@@ -277,6 +277,64 @@ class PersonaPatchIn(_Base):
     persona_status: str | None = None
 
 
+# ---------- Fields (methodology entity, v0.5+ PI-004 first slice) ----------
+
+
+class FieldCreateIn(_Base):
+    """POST /fields body.
+
+    ``field_identifier`` is server-assigned when omitted;
+    ``field_status`` defaults to ``candidate`` server-side;
+    ``field_required`` defaults to ``False`` server-side.
+    ``field_belongs_to_entity_identifier`` is REQUIRED — the access
+    layer creates the field row, the ``field_belongs_to_entity`` edge,
+    and the change-log emit in one transaction per ``field.md`` §3.5.4.
+    This is the one deviation from the cross-spec decomposed-references
+    default."""
+
+    field_name: str
+    field_description: str
+    field_type: str
+    field_belongs_to_entity_identifier: str
+    field_required: bool | None = None
+    field_notes: str | None = None
+    field_status: str | None = None
+    field_identifier: str | None = None
+
+
+class FieldReplaceIn(_Base):
+    """PUT /fields/{identifier} body — full record replace.
+
+    Does NOT accept ``field_belongs_to_entity_identifier`` — re-parenting
+    requires explicit edge management per ``field.md`` §3.5.4 (DELETE
+    the old edge, POST the new edge). PI-053 tracks the future
+    convenience endpoint."""
+
+    field_identifier: str | None = None
+    field_name: str
+    field_description: str
+    field_type: str
+    field_required: bool
+    field_notes: str | None = None
+    field_status: str
+
+
+class FieldPatchIn(_Base):
+    """PATCH /fields/{identifier} body — partial update.
+
+    Routers consume this with ``model_dump(exclude_unset=True)`` so an
+    explicit ``field_notes: null`` (clear) is distinguished from an
+    omitted ``field_notes`` (leave unchanged). Does NOT accept
+    ``field_belongs_to_entity_identifier`` for the same reason as PUT."""
+
+    field_name: str | None = None
+    field_description: str | None = None
+    field_type: str | None = None
+    field_required: bool | None = None
+    field_notes: str | None = None
+    field_status: str | None = None
+
+
 # ---------- Processes (methodology entity, UI v0.4 slice D) ----------
 
 

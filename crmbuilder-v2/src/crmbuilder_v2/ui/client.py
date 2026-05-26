@@ -935,6 +935,168 @@ class StorageClient:
         )
 
     # ------------------------------------------------------------------
+    # Fields (methodology entity — v0.5+, PI-004 first slice)
+    # ------------------------------------------------------------------
+
+    def list_fields(
+        self,
+        *,
+        entity_identifier: str | None = None,
+        include_deleted: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Return all fields as a list of dicts.
+
+        Shape matches ``crmbuilder_v2/api/routers/field.py``. With
+        ``include_deleted=True`` soft-deleted fields are included;
+        otherwise the API filters them out. With
+        ``entity_identifier`` supplied, only fields whose live
+        ``field_belongs_to_entity`` edge points to the supplied
+        entity are returned (spec §3.5.5).
+        """
+        params = []
+        if entity_identifier is not None:
+            params.append(f"entity_identifier={entity_identifier}")
+        if include_deleted:
+            params.append("include_deleted=true")
+        path = "/fields"
+        if params:
+            path = path + "?" + "&".join(params)
+        result = self._request("GET", path)
+        if not isinstance(result, list):
+            return []
+        return result
+
+    def get_field(self, identifier: str) -> dict[str, Any]:
+        """Return a single field by identifier (e.g. ``"FLD-001"``).
+
+        Raises ``NotFoundError`` if the field does not exist (or is
+        soft-deleted — the API 404s soft-deleted rows by default).
+        Per ``field.md`` §3.5.1.
+        """
+        result = self._request("GET", f"/fields/{identifier}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for get_field",
+            )
+        return result
+
+    def create_field(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /fields. Returns the created record dict.
+
+        The body uses the parent-prefixed field names (``field_name``,
+        ``field_description``, ``field_type``,
+        ``field_belongs_to_entity_identifier``, optional
+        ``field_required`` / ``field_notes`` / ``field_status``).
+        ``field_identifier`` is server-assigned when omitted.
+
+        **Atomic POST per ``field.md`` §3.5.4**: the
+        ``field_belongs_to_entity_identifier`` body key is REQUIRED;
+        the access layer creates the field row, the
+        ``field_belongs_to_entity`` edge, and the change-log emit in
+        one transaction.
+
+        Raises ``RequestShapeError`` on 422 (identifier-format /
+        per-entity name uniqueness / status-enum / type-enum /
+        invalid-parent-entity), ``ConflictError`` on 409
+        (explicit-identifier collision).
+        """
+        result = self._request("POST", "/fields", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for create_field",
+            )
+        return result
+
+    def update_field(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PUT /fields/{identifier} — full record replace.
+
+        The body is the full record; ``field_identifier`` in the body
+        must match the path. Does NOT accept
+        ``field_belongs_to_entity_identifier`` — re-parenting requires
+        explicit edge management per ``field.md`` §3.5.4. Raises
+        ``NotFoundError`` on 404, ``RequestShapeError`` on 422.
+        """
+        result = self._request(
+            "PUT", f"/fields/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for update_field",
+            )
+        return result
+
+    def patch_field(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PATCH /fields/{identifier} — partial update.
+
+        Body should contain only the changed fields. Does NOT accept
+        ``field_belongs_to_entity_identifier``. Raises
+        ``NotFoundError`` on 404, ``RequestShapeError`` on 422
+        (validation or invalid status transition).
+        """
+        result = self._request(
+            "PATCH", f"/fields/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for patch_field",
+            )
+        return result
+
+    def delete_field(self, identifier: str) -> Any:
+        """DELETE /fields/{identifier}. Soft-deletes; idempotent.
+
+        Returns the API's response data. Raises ``NotFoundError`` on
+        404. Atomically detaches the outgoing
+        ``field_belongs_to_entity`` edge per ``field.md`` §3.4.6.
+        """
+        return self._request("DELETE", f"/fields/{identifier}")
+
+    def restore_field(self, identifier: str) -> dict[str, Any]:
+        """POST /fields/{identifier}/restore. Clears the soft-delete.
+
+        Atomically restores the previously-attached
+        ``field_belongs_to_entity`` edge. Raises ``NotFoundError`` on
+        404, ``RequestShapeError`` on 422 (record not soft-deleted, or
+        previously-attached parent entity itself soft-deleted).
+        """
+        result = self._request(
+            "POST", f"/fields/{identifier}/restore"
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for restore_field",
+            )
+        return result
+
+    def next_field_identifier(self) -> str:
+        """GET /fields/next-identifier. Returns the next ``FLD-NNN``.
+
+        Per ``field.md`` §3.5.2.
+        """
+        result = self._request("GET", "/fields/next-identifier")
+        if isinstance(result, dict) and isinstance(result.get("next"), str):
+            return result["next"]
+        raise ServerError(
+            status_code=200,
+            errors=[],
+            message="Expected {'next': str} body for next_field_identifier",
+        )
+
+    # ------------------------------------------------------------------
     # Processes (methodology entity — UI v0.4 slice D)
     # ------------------------------------------------------------------
 

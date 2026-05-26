@@ -38,6 +38,7 @@ from crmbuilder_v2.api.routers import (
     domains,
     engagements,
     entities,
+    field,
     health,
     orientation,
     persona,
@@ -143,6 +144,7 @@ def create_app() -> FastAPI:
     app.include_router(processes.router)
     app.include_router(crm_candidates.router)
     app.include_router(persona.router)
+    app.include_router(field.router)
     app.include_router(references.router)
     app.include_router(orientation.router)
     app.include_router(catalog.router)
