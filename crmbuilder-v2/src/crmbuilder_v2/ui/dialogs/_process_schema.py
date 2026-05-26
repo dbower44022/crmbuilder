@@ -155,8 +155,68 @@ def _content_fields(client: StorageClient) -> list[FieldSchema]:
     ]
 
 
+# Phase 3 detailed-process-definition fields (v0.8, PI-005,
+# ``process-v2.md`` §3.2.2). Spec'd as multi-line plain-text editors;
+# each carries a placeholder per spec §3.6.3.
+_PHASE3_FIELDS_SPECS: list[tuple[str, str, str]] = [
+    (
+        "process_steps",
+        "Steps",
+        "Numbered or bulleted list of process steps in execution order",
+    ),
+    (
+        "process_triggers",
+        "Triggers",
+        "What initiates this process",
+    ),
+    (
+        "process_outcomes",
+        "Outcomes",
+        (
+            "What success looks like — state changes, records created, "
+            "communications sent"
+        ),
+    ),
+    (
+        "process_edge_cases",
+        "Edge Cases",
+        "Known exceptions, error paths, retry semantics",
+    ),
+    (
+        "process_frequency",
+        "Frequency",
+        "How often this process runs",
+    ),
+    (
+        "process_duration_estimate",
+        "Duration",
+        "Typical wall-clock duration",
+    ),
+]
+
+
+def _phase3_fields() -> list[FieldSchema]:
+    """Phase 3 detailed-process fields (v0.8, PI-005, process-v2.md §3.6.4).
+
+    Included in the Edit dialog only; the Create dialog omits these per
+    spec §3.6.4 — Phase 3 content is post-create work.
+    """
+    return [
+        FieldSchema(
+            key=key,
+            label=label,
+            widget="text",
+            placeholder=placeholder,
+        )
+        for key, label, placeholder in _PHASE3_FIELDS_SPECS
+    ]
+
+
 def process_fields(
-    client: StorageClient, *, include_identifier: bool
+    client: StorageClient,
+    *,
+    include_identifier: bool,
+    include_phase3: bool = False,
 ) -> list[FieldSchema]:
     """Return a fresh copy of the process field schema.
 
@@ -165,9 +225,16 @@ def process_fields(
     it because the identifier is server-assigned. The schema is built
     per-call because the domain-FK picker's ``compute_options`` closes
     over ``client``.
+
+    ``include_phase3`` appends the six Phase 3 content-field editors
+    (v0.8, PI-005, ``process-v2.md`` §3.6.4) — used by the Edit
+    dialog; the Create dialog omits them so Phase 3 content is authored
+    post-create per spec §3.6.4.
     """
     fields: list[FieldSchema] = []
     if include_identifier:
         fields.append(deepcopy(_IDENTIFIER_FIELD))
     fields.extend(_content_fields(client))
+    if include_phase3:
+        fields.extend(_phase3_fields())
     return fields

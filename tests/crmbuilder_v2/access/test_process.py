@@ -30,6 +30,8 @@ from crmbuilder_v2.access.repositories import domain, process, references
 from sqlalchemy import inspect
 
 # Expected ``processes`` columns and their SQLite affinities (criterion 1).
+# v0.8 (PI-005, process-v2.md §3.2.2) grew the table from ten to sixteen
+# columns with six new TEXT-NULL Phase 3 content fields.
 _EXPECTED_COLUMNS = {
     "process_identifier": "VARCHAR",
     "process_name": "VARCHAR",
@@ -38,10 +40,27 @@ _EXPECTED_COLUMNS = {
     "process_classification": "VARCHAR",
     "process_classification_rationale": "TEXT",
     "process_notes": "TEXT",
+    # v0.8 Phase 3 content fields (PI-005).
+    "process_steps": "TEXT",
+    "process_triggers": "TEXT",
+    "process_outcomes": "TEXT",
+    "process_edge_cases": "TEXT",
+    "process_frequency": "TEXT",
+    "process_duration_estimate": "TEXT",
     "process_created_at": "DATETIME",
     "process_updated_at": "DATETIME",
     "process_deleted_at": "DATETIME",
 }
+
+# v0.8 (PI-005) Phase 3 content fields — names used by parametrized tests.
+_PHASE3_FIELDS = (
+    "process_steps",
+    "process_triggers",
+    "process_outcomes",
+    "process_edge_cases",
+    "process_frequency",
+    "process_duration_estimate",
+)
 
 
 def _seed_domain(s, name: str = "Mentoring") -> str:
@@ -55,7 +74,12 @@ def _seed_domain(s, name: str = "Mentoring") -> str:
 # ---------------------------------------------------------------------------
 
 
-def test_processes_table_has_ten_columns_with_correct_types(v2_env):
+def test_processes_table_has_expected_columns_with_correct_types(v2_env):
+    """The processes table has the expected v0.8 column set.
+
+    v0.4 shipped ten columns; v0.8 (PI-005, process-v2.md §3.2.2)
+    added six Phase 3 content fields for a total of sixteen.
+    """
     inspector = inspect(get_engine())
     assert "processes" in inspector.get_table_names()
     columns = {c["name"]: c for c in inspector.get_columns("processes")}
@@ -71,6 +95,12 @@ def test_processes_table_has_ten_columns_with_correct_types(v2_env):
     assert columns["process_domain_identifier"]["nullable"] is False
     # No process_status column per DEC-056.
     assert "process_status" not in columns
+    # v0.8 Phase 3 content fields are all nullable TEXT (PI-005,
+    # process-v2.md §3.2.2 — acceptance criterion 1).
+    for field in _PHASE3_FIELDS:
+        assert columns[field]["nullable"] is True, field
+        assert str(columns[field]["type"]).upper().startswith("TEXT"), field
+        assert columns[field]["default"] is None, field
 
 
 # ---------------------------------------------------------------------------
@@ -603,3 +633,452 @@ def test_soft_delete_does_not_cascade_handoff_references(v2_env):
             s, entity_type="process", entity_id="PROC-002"
         )
         assert len(from_target["as_target"]) == 1
+
+
+# ---------------------------------------------------------------------------
+# v0.8 process v2 schema growth — PI-005, process-v2.md §3.7
+# ---------------------------------------------------------------------------
+
+
+def test_v04_records_survive_intact_with_null_phase3_fields(v2_env):
+    """A record authored with only v0.4-required fields reads with all
+    six Phase 3 fields as None.
+
+    Satisfies ``process-v2.md`` §3.7 acceptance criterion 3.
+    """
+    with session_scope() as s:
+        dom = _seed_domain(s)
+        process.create_process(
+            s, name="v0.4 record", domain_identifier=dom, purpose="p"
+        )
+    with session_scope() as s:
+        record = process.get_process(s, "PROC-001")
+    assert record is not None
+    for field in _PHASE3_FIELDS:
+        assert record.get(field) is None, field
+
+
+def test_create_with_phase3_fields_persists(v2_env):
+    """POST with all six Phase 3 fields populated round-trips on GET.
+
+    Satisfies ``process-v2.md`` §3.7 acceptance criterion 5.
+    """
+    with session_scope() as s:
+        dom = _seed_domain(s)
+        process.create_process(
+            s,
+            name="Phase 3 populated",
+            domain_identifier=dom,
+            purpose="p",
+            steps="1. Step one. 2. Step two.",
+            triggers="On-demand trigger",
+            outcomes="Outcome record created",
+            edge_cases="Duplicate detected — flag for review",
+            frequency="Quarterly",
+            duration_estimate="10 minutes active",
+        )
+    with session_scope() as s:
+        record = process.get_process(s, "PROC-001")
+    assert record is not None
+    assert record["process_steps"] == "1. Step one. 2. Step two."
+    assert record["process_triggers"] == "On-demand trigger"
+    assert record["process_outcomes"] == "Outcome record created"
+    assert (
+        record["process_edge_cases"]
+        == "Duplicate detected — flag for review"
+    )
+    assert record["process_frequency"] == "Quarterly"
+    assert record["process_duration_estimate"] == "10 minutes active"
+
+
+@pytest.mark.parametrize("field", _PHASE3_FIELDS)
+def test_patch_individual_phase3_field(v2_env, field):
+    """PATCH of a single Phase 3 field updates only that field.
+
+    Satisfies ``process-v2.md`` §3.7 acceptance criterion 4. The
+    other five Phase 3 fields and all v0.4 fields are untouched.
+    """
+    with session_scope() as s:
+        dom = _seed_domain(s)
+        process.create_process(
+            s,
+            name="patch-target",
+            domain_identifier=dom,
+            purpose="orig purpose",
+            classification="mission_critical",
+            classification_rationale="orig rationale",
+            notes="orig notes",
+        )
+    # Strip the "process_" prefix to get the patch_process kwarg key.
+    patch_key = field[len("process_"):]
+    with session_scope() as s:
+        process.patch_process(s, "PROC-001", **{patch_key: "new value"})
+    with session_scope() as s:
+        record = process.get_process(s, "PROC-001")
+    assert record is not None
+    assert record[field] == "new value"
+    # The other five Phase 3 fields are still None.
+    for other in _PHASE3_FIELDS:
+        if other == field:
+            continue
+        assert record[other] is None, other
+    # v0.4 fields are untouched.
+    assert record["process_purpose"] == "orig purpose"
+    assert record["process_classification"] == "mission_critical"
+    assert record["process_classification_rationale"] == "orig rationale"
+    assert record["process_notes"] == "orig notes"
+
+
+def test_patch_phase3_field_to_none_clears(v2_env):
+    """PATCH ``steps`` to None clears the column from a populated state.
+
+    Satisfies ``process-v2.md`` §3.5.2 storage-vs-render distinction.
+    """
+    with session_scope() as s:
+        dom = _seed_domain(s)
+        process.create_process(
+            s,
+            name="clear-target",
+            domain_identifier=dom,
+            purpose="p",
+            steps="original steps",
+        )
+    with session_scope() as s:
+        process.patch_process(s, "PROC-001", steps=None)
+    with session_scope() as s:
+        record = process.get_process(s, "PROC-001")
+    assert record is not None
+    assert record["process_steps"] is None
+
+
+def test_patch_phase3_field_to_empty_string_preserves_empty(v2_env):
+    """PATCH ``steps`` to "" stores the empty string (distinct from None).
+
+    Satisfies ``process-v2.md`` §3.5.2 storage-vs-render distinction.
+    """
+    with session_scope() as s:
+        dom = _seed_domain(s)
+        process.create_process(
+            s,
+            name="empty-target",
+            domain_identifier=dom,
+            purpose="p",
+            steps="original steps",
+        )
+    with session_scope() as s:
+        process.patch_process(s, "PROC-001", steps="")
+    with session_scope() as s:
+        record = process.get_process(s, "PROC-001")
+    assert record is not None
+    assert record["process_steps"] == ""
+
+
+def test_put_omitting_phase3_fields_clears_them(v2_env):
+    """PUT replacing the record without the Phase 3 fields clears them.
+
+    Per ``process-v2.md`` §3.5.2 PUT is full-replace semantics — an
+    omitted-from-body Phase 3 value is interpreted as ``None`` and
+    clears the column.
+    """
+    with session_scope() as s:
+        dom = _seed_domain(s)
+        process.create_process(
+            s,
+            name="put-target",
+            domain_identifier=dom,
+            purpose="p",
+            classification="mission_critical",
+            steps="initial steps",
+            triggers="initial triggers",
+            outcomes="initial outcomes",
+            edge_cases="initial edge cases",
+            frequency="initial frequency",
+            duration_estimate="initial duration",
+        )
+    # PUT a fresh body omitting all six Phase 3 fields — they default
+    # to None in the function signature and the access layer clears
+    # the corresponding columns.
+    with session_scope() as s:
+        process.update_process(
+            s,
+            "PROC-001",
+            name="put-target",
+            domain_identifier=dom,
+            purpose="p",
+            classification="mission_critical",
+        )
+    with session_scope() as s:
+        record = process.get_process(s, "PROC-001")
+    assert record is not None
+    for field in _PHASE3_FIELDS:
+        assert record[field] is None, field
+
+
+def test_vocab_admits_new_process_v2_kinds():
+    """Vocab module registers the three new v0.8 process-source kinds.
+
+    Satisfies ``process-v2.md`` §3.7 acceptance criteria 6, 7, 8 — the
+    vocab portion (CHECK and round-trip portions are exercised by
+    separate tests).
+    """
+    from crmbuilder_v2.access.vocab import (
+        ENTITY_TYPES,
+        REFERENCE_RELATIONSHIPS,
+        _kinds_for_pair,
+    )
+
+    assert "process_performed_by_persona" in REFERENCE_RELATIONSHIPS
+    assert "process_touches_field" in REFERENCE_RELATIONSHIPS
+    assert "process_touches_entity" in REFERENCE_RELATIONSHIPS
+
+    # The (process, entity) clause activates immediately (entity is in
+    # ENTITY_TYPES since v0.4).
+    assert "entity" in ENTITY_TYPES
+    assert "process_touches_entity" in _kinds_for_pair("process", "entity")
+
+    # The (process, persona) and (process, field) clauses activate the
+    # moment persona/field are registered in ENTITY_TYPES (both PI-003
+    # and PI-004 land before this build).
+    if "persona" in ENTITY_TYPES:
+        assert "process_performed_by_persona" in _kinds_for_pair(
+            "process", "persona"
+        )
+    if "field" in ENTITY_TYPES:
+        assert "process_touches_field" in _kinds_for_pair(
+            "process", "field"
+        )
+
+
+def test_refs_check_admits_new_process_v2_kinds(v2_env):
+    """The refs.relationship_kind CHECK admits the three new v0.8 kinds.
+
+    Direct DB insert with each new kind succeeds; insert with an
+    invented (unregistered) kind raises IntegrityError from the CHECK.
+    """
+    from sqlalchemy import text
+    from sqlalchemy.exc import IntegrityError
+
+    with session_scope() as s:
+        dom = _seed_domain(s)
+        process.create_process(
+            s, name="check-test", domain_identifier=dom, purpose="p"
+        )
+        # Create an entity to be the target of process_touches_entity.
+        from crmbuilder_v2.access.repositories import entity as entity_repo
+
+        entity_repo.create_entity(
+            s, name="check-entity", description="for CHECK test"
+        )
+
+    # Direct INSERT with each new kind — these should all succeed
+    # (the CHECK admits them; the source/target type CHECKs also admit
+    # process / entity).
+    with session_scope() as s:
+        s.execute(
+            text(
+                "INSERT INTO refs "
+                "(source_type, source_id, target_type, target_id, "
+                "relationship_kind, created_at) "
+                "VALUES ('process', 'PROC-001', 'entity', 'ENT-001', "
+                "'process_touches_entity', CURRENT_TIMESTAMP)"
+            )
+        )
+
+    # Direct INSERT with an invented kind — the CHECK rejects it.
+    with session_scope() as s:
+        with pytest.raises(IntegrityError):
+            s.execute(
+                text(
+                    "INSERT INTO refs "
+                    "(source_type, source_id, target_type, target_id, "
+                    "relationship_kind, created_at) "
+                    "VALUES ('process', 'PROC-001', 'entity', "
+                    "'ENT-002', 'process_eats_entity', "
+                    "CURRENT_TIMESTAMP)"
+                )
+            )
+
+
+def test_process_touches_entity_roundtrip(v2_env):
+    """POST /references with process_touches_entity round-trips.
+
+    Satisfies ``process-v2.md`` §3.7 acceptance criterion 8.
+    """
+    from crmbuilder_v2.access.repositories import entity as entity_repo
+
+    with session_scope() as s:
+        dom = _seed_domain(s)
+        process.create_process(
+            s, name="rt-process", domain_identifier=dom, purpose="p"
+        )
+        entity_repo.create_entity(
+            s, name="rt-entity", description="round-trip target"
+        )
+        references.create(
+            s,
+            source_type="process",
+            source_id="PROC-001",
+            target_type="entity",
+            target_id="ENT-001",
+            relationship="process_touches_entity",
+        )
+    with session_scope() as s:
+        outbound = references.list_touching(
+            s, entity_type="process", entity_id="PROC-001"
+        )
+        inbound = references.list_touching(
+            s, entity_type="entity", entity_id="ENT-001"
+        )
+    assert any(
+        r["relationship"] == "process_touches_entity"
+        for r in outbound["as_source"]
+    )
+    assert any(
+        r["relationship"] == "process_touches_entity"
+        for r in inbound["as_target"]
+    )
+
+
+def test_process_performed_by_persona_roundtrip(v2_env):
+    """POST /references with process_performed_by_persona round-trips.
+
+    Satisfies ``process-v2.md`` §3.7 acceptance criterion 6.
+    """
+    from sqlalchemy import inspect as sa_inspect
+
+    if "personas" not in sa_inspect(get_engine()).get_table_names():
+        pytest.skip("persona entity not yet built")
+
+    from crmbuilder_v2.access.repositories import persona as persona_repo
+
+    with session_scope() as s:
+        dom = _seed_domain(s)
+        process.create_process(
+            s, name="rt-process", domain_identifier=dom, purpose="p"
+        )
+        persona_repo.create_persona(
+            s, name="rt-persona", role_summary="round-trip persona"
+        )
+        references.create(
+            s,
+            source_type="process",
+            source_id="PROC-001",
+            target_type="persona",
+            target_id="PER-001",
+            relationship="process_performed_by_persona",
+        )
+    with session_scope() as s:
+        outbound = references.list_touching(
+            s, entity_type="process", entity_id="PROC-001"
+        )
+        inbound = references.list_touching(
+            s, entity_type="persona", entity_id="PER-001"
+        )
+    assert any(
+        r["relationship"] == "process_performed_by_persona"
+        for r in outbound["as_source"]
+    )
+    assert any(
+        r["relationship"] == "process_performed_by_persona"
+        for r in inbound["as_target"]
+    )
+
+
+def test_process_touches_field_roundtrip(v2_env):
+    """POST /references with process_touches_field round-trips.
+
+    Satisfies ``process-v2.md`` §3.7 acceptance criterion 7.
+    """
+    from sqlalchemy import inspect as sa_inspect
+
+    if "fields" not in sa_inspect(get_engine()).get_table_names():
+        pytest.skip("field entity not yet built")
+
+    from crmbuilder_v2.access.repositories import (
+        entity as entity_repo,
+        field as field_repo,
+    )
+
+    with session_scope() as s:
+        dom = _seed_domain(s)
+        process.create_process(
+            s, name="rt-process", domain_identifier=dom, purpose="p"
+        )
+        entity_repo.create_entity(
+            s, name="rt-entity", description="parent for field"
+        )
+        field_repo.create_field(
+            s,
+            field_belongs_to_entity_identifier="ENT-001",
+            name="rt_field",
+            description="round-trip field",
+            type="text",
+        )
+        references.create(
+            s,
+            source_type="process",
+            source_id="PROC-001",
+            target_type="field",
+            target_id="FLD-001",
+            relationship="process_touches_field",
+        )
+    with session_scope() as s:
+        outbound = references.list_touching(
+            s, entity_type="process", entity_id="PROC-001"
+        )
+        inbound = references.list_touching(
+            s, entity_type="field", entity_id="FLD-001"
+        )
+    assert any(
+        r["relationship"] == "process_touches_field"
+        for r in outbound["as_source"]
+    )
+    assert any(
+        r["relationship"] == "process_touches_field"
+        for r in inbound["as_target"]
+    )
+
+
+def test_requirement_realized_by_process_inbound_renders(v2_env):
+    """A requirement_realized_by_process inbound edge surfaces on the process.
+
+    Satisfies ``process-v2.md`` §3.7 acceptance criterion 9. Guards on
+    the existence of the requirements table — the kind was registered
+    by PI-004's requirement build proactively, but the test is only
+    meaningful when a requirement record can be created.
+    """
+    from sqlalchemy import inspect as sa_inspect
+
+    if "requirements" not in sa_inspect(get_engine()).get_table_names():
+        pytest.skip("requirement entity not yet built")
+
+    from crmbuilder_v2.access.repositories import requirement as req_repo
+
+    with session_scope() as s:
+        dom = _seed_domain(s)
+        process.create_process(
+            s, name="rt-process", domain_identifier=dom, purpose="p"
+        )
+        req_repo.create_requirement(
+            s,
+            name="rt-req",
+            description="round-trip requirement",
+            acceptance_summary="round-trip acceptance",
+        )
+        references.create(
+            s,
+            source_type="requirement",
+            source_id="REQ-001",
+            target_type="process",
+            target_id="PROC-001",
+            relationship="requirement_realized_by_process",
+        )
+    with session_scope() as s:
+        inbound = references.list_touching(
+            s, entity_type="process", entity_id="PROC-001"
+        )
+    assert any(
+        r["relationship"] == "requirement_realized_by_process"
+        for r in inbound["as_target"]
+    )
+

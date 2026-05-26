@@ -84,6 +84,15 @@ _PATCHABLE_FIELDS = frozenset(
         "classification",
         "classification_rationale",
         "notes",
+        # v0.8 process v2 schema growth (PI-005, process-v2.md §3.2.2).
+        # Six new Phase 3 content fields, all plain TEXT nullable, no
+        # validation logic at this layer.
+        "steps",
+        "triggers",
+        "outcomes",
+        "edge_cases",
+        "frequency",
+        "duration_estimate",
     }
 )
 
@@ -262,6 +271,13 @@ def _new_process_row(
     classification: str,
     classification_rationale: str | None,
     notes: str | None,
+    *,
+    steps: str | None = None,
+    triggers: str | None = None,
+    outcomes: str | None = None,
+    edge_cases: str | None = None,
+    frequency: str | None = None,
+    duration_estimate: str | None = None,
 ) -> Process:
     return Process(
         process_identifier=identifier,
@@ -271,6 +287,12 @@ def _new_process_row(
         process_classification=classification,
         process_classification_rationale=classification_rationale,
         process_notes=notes,
+        process_steps=steps,
+        process_triggers=triggers,
+        process_outcomes=outcomes,
+        process_edge_cases=edge_cases,
+        process_frequency=frequency,
+        process_duration_estimate=duration_estimate,
     )
 
 
@@ -282,6 +304,13 @@ def _insert_with_autoassign(
     classification: str,
     classification_rationale: str | None,
     notes: str | None,
+    *,
+    steps: str | None = None,
+    triggers: str | None = None,
+    outcomes: str | None = None,
+    edge_cases: str | None = None,
+    frequency: str | None = None,
+    duration_estimate: str | None = None,
 ) -> Process:
     """Insert a process with a server-assigned identifier, collision-safe.
 
@@ -304,6 +333,12 @@ def _insert_with_autoassign(
             classification,
             classification_rationale,
             notes,
+            steps=steps,
+            triggers=triggers,
+            outcomes=outcomes,
+            edge_cases=edge_cases,
+            frequency=frequency,
+            duration_estimate=duration_estimate,
         )
         session.add(row)
         try:
@@ -334,6 +369,12 @@ def create_process(
     classification_rationale: str | None = None,
     notes: str | None = None,
     identifier: str | None = None,
+    steps: str | None = None,
+    triggers: str | None = None,
+    outcomes: str | None = None,
+    edge_cases: str | None = None,
+    frequency: str | None = None,
+    duration_estimate: str | None = None,
 ) -> dict:
     """Create a process.
 
@@ -343,6 +384,12 @@ def create_process(
     ``domain`` record. ``classification`` defaults to ``unclassified``
     but may be set to any valid enum value on create (e.g. importing
     already-classified processes).
+
+    The six Phase 3 content fields (``steps``, ``triggers``,
+    ``outcomes``, ``edge_cases``, ``frequency``,
+    ``duration_estimate``) are optional per ``process-v2.md`` §3.6.4
+    — Phase 3 content may be authored at create time or after via
+    PATCH. All six default to ``None`` (stored as NULL).
     """
     name = _require_nonempty(name, field="process_name")
     purpose = _require_nonempty(purpose, field="process_purpose")
@@ -361,6 +408,12 @@ def create_process(
             classification,
             classification_rationale,
             notes,
+            steps=steps,
+            triggers=triggers,
+            outcomes=outcomes,
+            edge_cases=edge_cases,
+            frequency=frequency,
+            duration_estimate=duration_estimate,
         )
     else:
         _require_identifier_format(identifier)
@@ -374,6 +427,12 @@ def create_process(
             classification,
             classification_rationale,
             notes,
+            steps=steps,
+            triggers=triggers,
+            outcomes=outcomes,
+            edge_cases=edge_cases,
+            frequency=frequency,
+            duration_estimate=duration_estimate,
         )
         session.add(row)
         session.flush()
@@ -401,6 +460,12 @@ def update_process(
     classification: str | None = None,
     classification_rationale: str | None = None,
     notes: str | None = None,
+    steps: str | None = None,
+    triggers: str | None = None,
+    outcomes: str | None = None,
+    edge_cases: str | None = None,
+    frequency: str | None = None,
+    duration_estimate: str | None = None,
 ) -> dict:
     """Full-replace update (PUT).
 
@@ -411,6 +476,12 @@ def update_process(
     ``classification_rationale`` and ``notes`` are replaced wholesale
     (``None`` clears them). A ``domain_identifier`` change is
     FK-validated; a ``classification`` change is transition-validated.
+
+    The six Phase 3 content fields are replaced wholesale under PUT
+    semantics per ``process-v2.md`` §3.5.2 — omitting any of them from
+    the request body clears the corresponding column to NULL. To
+    preserve an existing Phase 3 value without re-supplying it, use
+    PATCH instead.
     """
     row = _get_row(session, identifier)
     if process_identifier is not None and process_identifier != identifier:
@@ -443,6 +514,14 @@ def update_process(
     row.process_purpose = purpose
     row.process_classification_rationale = classification_rationale
     row.process_notes = notes
+    # v0.8 PUT-replace of the six Phase 3 content fields. Omitted-
+    # from-body values arrive as None and clear the column.
+    row.process_steps = steps
+    row.process_triggers = triggers
+    row.process_outcomes = outcomes
+    row.process_edge_cases = edge_cases
+    row.process_frequency = frequency
+    row.process_duration_estimate = duration_estimate
     session.flush()
 
     after = to_dict(row)
@@ -461,9 +540,18 @@ def patch_process(session: Session, identifier: str, **fields) -> dict:
     """Partial update (PATCH). Only the supplied fields are touched.
 
     Recognised keys: ``name``, ``domain_identifier``, ``purpose``,
-    ``classification``, ``classification_rationale``, ``notes``. A
+    ``classification``, ``classification_rationale``, ``notes``,
+    and (v0.8, PI-005, ``process-v2.md`` §3.2.2) the six Phase 3
+    content fields ``steps``, ``triggers``, ``outcomes``,
+    ``edge_cases``, ``frequency``, ``duration_estimate``. A
     ``domain_identifier`` change is FK-validated; a ``classification``
     change is transition-validated.
+
+    Per ``process-v2.md`` §3.5.2, each of the six new fields is
+    independently PATCH-able: PATCH-to-``None`` clears the column;
+    PATCH-to-``""`` stores the empty string; PATCH-to-non-empty stores
+    the supplied value. The other five new fields and all v0.4 fields
+    are untouched when only one is PATCH-ed.
     """
     unknown = set(fields) - _PATCHABLE_FIELDS
     if unknown:
@@ -505,6 +593,20 @@ def patch_process(session: Session, identifier: str, **fields) -> dict:
         ]
     if "notes" in fields:
         row.process_notes = fields["notes"]
+    # v0.8 PATCH-ability for the six Phase 3 content fields. None clears
+    # the column; "" stores empty string; non-empty stores the value.
+    if "steps" in fields:
+        row.process_steps = fields["steps"]
+    if "triggers" in fields:
+        row.process_triggers = fields["triggers"]
+    if "outcomes" in fields:
+        row.process_outcomes = fields["outcomes"]
+    if "edge_cases" in fields:
+        row.process_edge_cases = fields["edge_cases"]
+    if "frequency" in fields:
+        row.process_frequency = fields["frequency"]
+    if "duration_estimate" in fields:
+        row.process_duration_estimate = fields["duration_estimate"]
 
     session.flush()
     after = to_dict(row)

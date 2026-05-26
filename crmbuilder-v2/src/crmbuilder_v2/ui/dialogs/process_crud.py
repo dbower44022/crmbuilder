@@ -111,7 +111,10 @@ class ProcessCreateDialog(EntityCrudDialog):
 
 
 class ProcessEditDialog(EntityCrudDialog):
-    """Modal edit-process dialog. Per ``process.md`` section 3.6.5."""
+    """Modal edit-process dialog. Per ``process.md`` section 3.6.5 and
+    ``process-v2.md`` §3.6.5 — grows by including editors for the six
+    Phase 3 content fields (v0.8, PI-005) in addition to the v0.4
+    fields."""
 
     def __init__(
         self,
@@ -123,7 +126,9 @@ class ProcessEditDialog(EntityCrudDialog):
         title = f"Edit {identifier}" if identifier else "Edit process"
         super().__init__(
             client,
-            process_fields(client, include_identifier=True),
+            process_fields(
+                client, include_identifier=True, include_phase3=True
+            ),
             mode="edit",
             title=title,
             update_method=client.patch_process,

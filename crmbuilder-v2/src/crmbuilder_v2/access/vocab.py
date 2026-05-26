@@ -427,6 +427,17 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         "test_spec_exercises_process",
         "test_spec_touches_entity",
         "test_spec_touches_field",
+        # v0.8 process v2 schema growth (PI-005, process-v2.md §3.3.2).
+        # Three new outgoing kinds from ``process`` to other methodology
+        # entity types. All three target types are live in ENTITY_TYPES
+        # by the time this build lands (``persona`` PI-003, ``field``
+        # PI-004 first slice, ``entity`` v0.4) so every clause in
+        # ``_kinds_for_pair`` activates unconditionally. The
+        # ``process_touches_entity`` kind promotes the v0.4-anticipated
+        # relationship from ``process.md`` §3.3.2 to a live registration.
+        "process_performed_by_persona",
+        "process_touches_field",
+        "process_touches_entity",
     }
 )
 
@@ -546,6 +557,16 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
     * ``test_spec_exercises_process`` — source must be a test_spec,
       target must be a process (v0.5+, test_spec.md §3.3.1; many-to-
       many).
+    * ``process_performed_by_persona`` — source must be a process,
+      target must be a persona (v0.8, PI-005, process-v2.md §3.3.2;
+      many-to-many).
+    * ``process_touches_field`` — source must be a process, target
+      must be a field (v0.8, PI-005, process-v2.md §3.3.2; many-to-
+      many).
+    * ``process_touches_entity`` — source must be a process, target
+      must be an entity (v0.8, PI-005, process-v2.md §3.3.2; promotes
+      the v0.5+ anticipation from process.md §3.3.2 to a live
+      registration; many-to-many).
 
     The ruleset is permissive by design: every pair has at least the
     two generic kinds, so the dialog never produces an empty kind list
@@ -664,6 +685,17 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         kinds.add("test_spec_touches_field")
     if source_type == "test_spec" and target_type == "process":
         kinds.add("test_spec_exercises_process")
+    # v0.8 process v2 schema growth additions (PI-005, process-v2.md
+    # §3.3.2). Three new outgoing kinds from ``process``. All three
+    # target types are live in ENTITY_TYPES (``persona`` PI-003,
+    # ``field`` PI-004 first slice, ``entity`` v0.4), so every clause
+    # activates unconditionally.
+    if source_type == "process" and target_type == "persona":
+        kinds.add("process_performed_by_persona")
+    if source_type == "process" and target_type == "field":
+        kinds.add("process_touches_field")
+    if source_type == "process" and target_type == "entity":
+        kinds.add("process_touches_entity")
     return frozenset(kinds)
 
 

@@ -247,6 +247,9 @@ def test_detail_pane_renders_fields_in_order(qtbot, process_client):
         if w.objectName().startswith("process_")
         and w.objectName().endswith(("_value", "_toggle"))
     ]
+    # v0.8 (PI-005) — the Phase 3 detailed-process section value
+    # widgets render between the v0.4 classification-rationale row
+    # and the Internal notes section per process-v2.md §3.6.3.
     assert ordered == [
         "process_identifier_value",
         "process_name_value",
@@ -254,6 +257,12 @@ def test_detail_pane_renders_fields_in_order(qtbot, process_client):
         "process_purpose_value",
         "process_classification_value",
         "process_classification_rationale_value",
+        "process_steps_value",
+        "process_triggers_value",
+        "process_outcomes_value",
+        "process_edge_cases_value",
+        "process_frequency_value",
+        "process_duration_estimate_value",
         "process_notes_toggle",
         "process_notes_value",
     ]

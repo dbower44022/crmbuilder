@@ -398,7 +398,15 @@ class ProcessCreateIn(_Base):
 
     Handoffs are NOT inlined here — per ``process.md`` section 3.5.5
     they attach via separate ``POST /references`` calls with the
-    ``process_hands_off_to_process`` relationship kind."""
+    ``process_hands_off_to_process`` relationship kind.
+
+    The six Phase 3 content fields (``process_steps``,
+    ``process_triggers``, ``process_outcomes``, ``process_edge_cases``,
+    ``process_frequency``, ``process_duration_estimate``) are optional
+    at create time per ``process-v2.md`` §3.6.4 — the desktop Create
+    dialog omits them entirely; the REST endpoint accepts them so API
+    callers may pre-populate Phase 3 content when it is already in
+    hand at create time."""
 
     process_name: str
     process_domain_identifier: str
@@ -406,6 +414,12 @@ class ProcessCreateIn(_Base):
     process_classification: str | None = None
     process_classification_rationale: str | None = None
     process_notes: str | None = None
+    process_steps: str | None = None
+    process_triggers: str | None = None
+    process_outcomes: str | None = None
+    process_edge_cases: str | None = None
+    process_frequency: str | None = None
+    process_duration_estimate: str | None = None
     process_identifier: str | None = None
 
 
@@ -413,7 +427,12 @@ class ProcessReplaceIn(_Base):
     """PUT /processes/{identifier} body — full record replace.
 
     ``process_identifier`` is optional; when present it must match the
-    path identifier (mismatch → 422)."""
+    path identifier (mismatch → 422).
+
+    The six Phase 3 content fields follow PUT semantics per
+    ``process-v2.md`` §3.5.2 — omitting any of them from the body
+    clears the corresponding column to NULL. To preserve an existing
+    Phase 3 value without re-supplying it, use PATCH instead."""
 
     process_identifier: str | None = None
     process_name: str
@@ -422,6 +441,12 @@ class ProcessReplaceIn(_Base):
     process_classification: str
     process_classification_rationale: str | None = None
     process_notes: str | None = None
+    process_steps: str | None = None
+    process_triggers: str | None = None
+    process_outcomes: str | None = None
+    process_edge_cases: str | None = None
+    process_frequency: str | None = None
+    process_duration_estimate: str | None = None
 
 
 class ProcessPatchIn(_Base):
@@ -429,7 +454,15 @@ class ProcessPatchIn(_Base):
 
     Routers consume this with ``model_dump(exclude_unset=True)`` so an
     explicit ``process_notes: null`` (clear the field) is distinguished
-    from an omitted ``process_notes`` (leave unchanged)."""
+    from an omitted ``process_notes`` (leave unchanged).
+
+    Per ``process-v2.md`` §3.5.2, each of the six Phase 3 content
+    fields (``process_steps``, ``process_triggers``,
+    ``process_outcomes``, ``process_edge_cases``, ``process_frequency``,
+    ``process_duration_estimate``) is independently PATCH-able:
+    explicit ``null`` clears the column; ``""`` stores empty string;
+    non-empty stores the value; omitting the key leaves the column
+    unchanged."""
 
     process_name: str | None = None
     process_domain_identifier: str | None = None
@@ -437,6 +470,12 @@ class ProcessPatchIn(_Base):
     process_classification: str | None = None
     process_classification_rationale: str | None = None
     process_notes: str | None = None
+    process_steps: str | None = None
+    process_triggers: str | None = None
+    process_outcomes: str | None = None
+    process_edge_cases: str | None = None
+    process_frequency: str | None = None
+    process_duration_estimate: str | None = None
 
 
 # ---------- CRM Candidates (methodology entity, UI v0.4 slice E) ----------

@@ -82,6 +82,12 @@ def create(body: ProcessCreateIn):
                 classification_rationale=body.process_classification_rationale,
                 notes=body.process_notes,
                 identifier=body.process_identifier,
+                steps=body.process_steps,
+                triggers=body.process_triggers,
+                outcomes=body.process_outcomes,
+                edge_cases=body.process_edge_cases,
+                frequency=body.process_frequency,
+                duration_estimate=body.process_duration_estimate,
             )
         )
 
@@ -100,6 +106,12 @@ def replace(identifier: str, body: ProcessReplaceIn):
                 classification=body.process_classification,
                 classification_rationale=body.process_classification_rationale,
                 notes=body.process_notes,
+                steps=body.process_steps,
+                triggers=body.process_triggers,
+                outcomes=body.process_outcomes,
+                edge_cases=body.process_edge_cases,
+                frequency=body.process_frequency,
+                duration_estimate=body.process_duration_estimate,
             )
         )
 

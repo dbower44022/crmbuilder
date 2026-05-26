@@ -326,3 +326,149 @@ def test_concurrent_posts_get_distinct_identifiers(v2_env):
     assert failures == []
     assert len(identifiers) == 8
     assert len(set(identifiers)) == 8
+
+
+# ---------------------------------------------------------------------------
+# v0.8 process v2 schema growth — PI-005, process-v2.md §3.7
+# ---------------------------------------------------------------------------
+
+
+_PHASE3_FIELDS = (
+    "process_steps",
+    "process_triggers",
+    "process_outcomes",
+    "process_edge_cases",
+    "process_frequency",
+    "process_duration_estimate",
+)
+
+
+def test_post_with_phase3_fields_persists_and_get_returns(client):
+    """POST a process with all six Phase 3 fields populated; GET returns them.
+
+    Satisfies ``process-v2.md`` §3.7 acceptance criterion 5 (REST surface).
+    """
+    dom = _make_domain(client)
+    response = client.post(
+        "/processes",
+        json={
+            "process_name": "Phase 3 record",
+            "process_domain_identifier": dom,
+            "process_purpose": "p",
+            "process_steps": "1. one 2. two",
+            "process_triggers": "trigger text",
+            "process_outcomes": "outcome text",
+            "process_edge_cases": "edge case text",
+            "process_frequency": "weekly",
+            "process_duration_estimate": "5 minutes",
+        },
+    )
+    assert response.status_code == 201, response.text
+    identifier = response.json()["data"]["process_identifier"]
+    got = client.get(f"/processes/{identifier}")
+    assert got.status_code == 200
+    data = got.json()["data"]
+    assert data["process_steps"] == "1. one 2. two"
+    assert data["process_triggers"] == "trigger text"
+    assert data["process_outcomes"] == "outcome text"
+    assert data["process_edge_cases"] == "edge case text"
+    assert data["process_frequency"] == "weekly"
+    assert data["process_duration_estimate"] == "5 minutes"
+
+
+def test_get_v04_record_returns_null_phase3_fields(client):
+    """A POST without Phase 3 fields is GET-able with all six as None.
+
+    Satisfies ``process-v2.md`` §3.7 acceptance criterion 3 (REST view).
+    """
+    record = _make(client)
+    identifier = record["process_identifier"]
+    got = client.get(f"/processes/{identifier}")
+    data = got.json()["data"]
+    for field in _PHASE3_FIELDS:
+        assert data[field] is None, field
+
+
+def test_patch_phase3_null_clears_via_api(client):
+    """PATCH process_steps to JSON null clears the column via the REST API.
+
+    Satisfies ``process-v2.md`` §3.5.2 (REST surface).
+    """
+    dom = _make_domain(client)
+    posted = client.post(
+        "/processes",
+        json={
+            "process_name": "Patch target",
+            "process_domain_identifier": dom,
+            "process_purpose": "p",
+            "process_steps": "initial steps",
+        },
+    )
+    identifier = posted.json()["data"]["process_identifier"]
+    patched = client.patch(
+        f"/processes/{identifier}", json={"process_steps": None}
+    )
+    assert patched.status_code == 200, patched.text
+    assert patched.json()["data"]["process_steps"] is None
+
+
+def test_patch_phase3_empty_string_stored_via_api(client):
+    """PATCH process_steps to "" stores empty string via the REST API.
+
+    Satisfies ``process-v2.md`` §3.5.2 (REST surface).
+    """
+    dom = _make_domain(client)
+    posted = client.post(
+        "/processes",
+        json={
+            "process_name": "Empty target",
+            "process_domain_identifier": dom,
+            "process_purpose": "p",
+            "process_steps": "initial steps",
+        },
+    )
+    identifier = posted.json()["data"]["process_identifier"]
+    patched = client.patch(
+        f"/processes/{identifier}", json={"process_steps": ""}
+    )
+    assert patched.status_code == 200, patched.text
+    assert patched.json()["data"]["process_steps"] == ""
+
+
+def test_put_omitting_phase3_clears_via_api(client):
+    """PUT replacing the record without Phase 3 fields clears all six.
+
+    Satisfies ``process-v2.md`` §3.5.2 (REST PUT semantics).
+    """
+    dom = _make_domain(client)
+    posted = client.post(
+        "/processes",
+        json={
+            "process_name": "PUT target",
+            "process_domain_identifier": dom,
+            "process_purpose": "p",
+            "process_steps": "initial steps",
+            "process_triggers": "initial triggers",
+            "process_outcomes": "initial outcomes",
+            "process_edge_cases": "initial edge cases",
+            "process_frequency": "initial frequency",
+            "process_duration_estimate": "initial duration",
+        },
+    )
+    identifier = posted.json()["data"]["process_identifier"]
+    # PUT without any of the six Phase 3 fields. Their absence means
+    # the schema defaults each to None, which the access layer
+    # interprets as a clear.
+    replaced = client.put(
+        f"/processes/{identifier}",
+        json={
+            "process_name": "PUT target",
+            "process_domain_identifier": dom,
+            "process_purpose": "p",
+            "process_classification": "unclassified",
+        },
+    )
+    assert replaced.status_code == 200, replaced.text
+    data = replaced.json()["data"]
+    for field in _PHASE3_FIELDS:
+        assert data[field] is None, field

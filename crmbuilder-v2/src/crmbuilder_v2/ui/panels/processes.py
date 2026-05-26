@@ -77,6 +77,46 @@ _LONG_TEXT_MIN_HEIGHT = 80
 _READ_ONLY_STYLE = "color: #444; background: #f4f4f4;"
 _PURPOSE_PLACEHOLDER = "One sentence — what does this process do?"
 
+# Phase 3 detailed-process sections (v0.8, PI-005, process-v2.md §3.6.3).
+# Six collapsible sub-sections rendered below the v0.4 classification-
+# rationale row and above the Internal notes section. Each entry is
+# (field_key, label, placeholder).
+_PHASE3_SECTION_SPECS: list[tuple[str, str, str]] = [
+    (
+        "process_steps",
+        "Steps",
+        "Numbered or bulleted list of process steps in execution order",
+    ),
+    (
+        "process_triggers",
+        "Triggers",
+        "What initiates this process",
+    ),
+    (
+        "process_outcomes",
+        "Outcomes",
+        (
+            "What success looks like — state changes, records created, "
+            "communications sent"
+        ),
+    ),
+    (
+        "process_edge_cases",
+        "Edge Cases",
+        "Known exceptions, error paths, retry semantics",
+    ),
+    (
+        "process_frequency",
+        "Frequency",
+        "How often this process runs",
+    ),
+    (
+        "process_duration_estimate",
+        "Duration",
+        "Typical wall-clock duration",
+    ),
+]
+
 
 def _heading_label(text: str) -> QLabel:
     label = QLabel(text)
@@ -346,6 +386,28 @@ class ProcessesPanel(ListDetailPanel):
         rationale_value.setObjectName("process_classification_rationale_value")
         rationale_row.addRow("Classification rationale", rationale_value)
         outer.addLayout(rationale_row)
+
+        # v0.8 Phase 3 detailed-process sections (PI-005, process-v2.md
+        # §3.6.3). Always visible group header; each of the six
+        # sub-sections defaults expanded when its column has non-
+        # whitespace content and collapsed when it is NULL or empty.
+        outer.addWidget(_separator())
+        phase3_header = QLabel("Phase 3 — Detailed Process Definition")
+        phase3_header.setObjectName("phase3_sections_header")
+        phase3_font = QFont(phase3_header.font())
+        phase3_font.setBold(True)
+        phase3_header.setFont(phase3_font)
+        outer.addWidget(phase3_header)
+        for field_key, label, placeholder in _PHASE3_SECTION_SPECS:
+            raw_value = record.get(field_key)
+            value = raw_value if isinstance(raw_value, str) else ""
+            body = _read_only_text(value, placeholder=placeholder)
+            body.setObjectName(f"{field_key}_value")
+            section = CollapsibleSection(
+                label, body, expanded=bool(value.strip())
+            )
+            section.setObjectName(f"{field_key}_section")
+            outer.addWidget(section)
 
         # Field 7: process_notes under a collapsible "Internal notes"
         # header, collapsed by default. v0.6 slice C: replaces the flat

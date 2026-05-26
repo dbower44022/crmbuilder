@@ -580,6 +580,14 @@ class Process(Base):
     access layer, not via a SQL FOREIGN KEY constraint, matching v2's
     soft-FK convention). Process-to-process handoffs live in the
     ``refs`` table as ``process_hands_off_to_process`` references.
+
+    As of v0.8 (PI-005, ``process-v2.md`` §3.2.2) the schema also
+    carries six Phase 3 content fields — ``process_steps``,
+    ``process_triggers``, ``process_outcomes``, ``process_edge_cases``,
+    ``process_frequency``, ``process_duration_estimate``. All six are
+    plain TEXT, nullable, default NULL; existing v0.4 records acquired
+    NULL on migration. No CHECK constraints — the methodology defers
+    structured representations to v0.7+ per spec §3.2.2.
     """
 
     __tablename__ = "processes"
@@ -597,6 +605,18 @@ class Process(Base):
         Text, nullable=True
     )
     process_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Phase 3 content fields (v0.8, PI-005, process-v2.md §3.2.2). All
+    # six are plain TEXT, nullable, default NULL; existing v0.4 records
+    # acquired NULL on migration. No CHECK constraints — the
+    # methodology defers structured representations to v0.7+.
+    process_steps: Mapped[str | None] = mapped_column(Text, nullable=True)
+    process_triggers: Mapped[str | None] = mapped_column(Text, nullable=True)
+    process_outcomes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    process_edge_cases: Mapped[str | None] = mapped_column(Text, nullable=True)
+    process_frequency: Mapped[str | None] = mapped_column(Text, nullable=True)
+    process_duration_estimate: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
     process_created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
