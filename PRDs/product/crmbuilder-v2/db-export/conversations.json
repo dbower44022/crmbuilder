@@ -814,5 +814,22 @@
     "conversation_superseded_at": null,
     "conversation_title": "PI-002 build closure — server-side identifier auto-assignment retrofit and CLAUDE.md rule retirement",
     "conversation_updated_at": "2026-05-25T20:26:57.012611"
+  },
+  {
+    "conversation_cancelled_at": null,
+    "conversation_completed_at": "2026-05-26T02:32:42.438657",
+    "conversation_created_at": "2026-05-26T02:32:42.438353",
+    "conversation_deleted_at": null,
+    "conversation_description": "Claude Code orchestrator session that surface-and-settled the scope against PI-003 (persona), PI-004 (the field/requirement/manual_config/test_spec cohort), and PI-005 (process schema growth), then dispatched two waves of parallel agents — five design agents in parallel (later joined by the process-v2 design agent) producing six methodology-schema specs at ~450–515 lines each, followed by six build-prompt agents in parallel producing six CLAUDE-CODE-PROMPT-build-<entity>.md files at ~400–600 lines each. The conversation kept the three PIs `Open` because each PI's resolution depends on its corresponding entity being built (migration + access + REST + UI + tests), which is multi-day work that cannot complete in one orchestrator session. The build prompts are authored as `kickoff_prompt` work_tickets (WT-049..054) per the v2 session lifecycle documented in CLAUDE.md, so each future Claude Code session can open against its WT, consume the build prompt, and close out atomically — the typical v2 workstream cadence. Identifier-prefix non-collision analysis assigned PER/FLD/REQ/MCF/TST for the five new entities; process keeps PROC. Cross-spec relationship-kind registration discipline applied: each kind registered once on its source side, sibling entity types referenced as anticipated inbound until they land. Build-closure pattern documented for the PI-004 four-sibling cohort: the LAST sibling to ship runs a runtime query of `addresses` edges on PI-004 to detect that the other three have landed, then resolves PI-004 in the same payload. Close-out identifiers re-keyed to SES-081 / CONV-051 / WT-049..054 after ses_079.json and ses_080.json were discovered staged-but-unapplied in git.",
+    "conversation_identifier": "CONV-051",
+    "conversation_kickoff_drafted_at": null,
+    "conversation_notes": null,
+    "conversation_purpose": "Orchestrate the design phase for three Open methodology-evolution planning items by dispatching parallel agents to produce a complete, build-ready schema specification per entity plus a self-contained build prompt per entity, while keeping the three PIs `Open` (resolution deferred to the respective build sessions). The conversation does not produce any code; it produces design + prompt artifacts that enable six future Claude Code sessions to land the entities incrementally with proper close-out discipline.",
+    "conversation_ready_at": null,
+    "conversation_started_at": null,
+    "conversation_status": "complete",
+    "conversation_superseded_at": null,
+    "conversation_title": "PI-003 / PI-004 / PI-005 orchestrated design phase — six methodology-schema specs and six build prompts",
+    "conversation_updated_at": "2026-05-26T02:32:42.438749"
   }
 ]

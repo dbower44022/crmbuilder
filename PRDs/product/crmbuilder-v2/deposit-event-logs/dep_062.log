@@ -1,0 +1,34 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_081.json
+Label:  PI-003 / PI-004 / PI-005 design phase — six methodology-schema specs authored (persona, field, requirement, manual_config, test_spec, process-v2) and six matching build prompts authored as kickoff_prompt work_tickets for future Claude Code sessions to execute. PIs advance from `Open` to `Open` (no resolution); each future build session resolves its respective PI atomically via apply_close_out.py. Identifiers re-keyed to SES-081 / CONV-051 / WT-049..054 after ses_079.json (parallel-sandbox orchestrator-architecture work) and ses_080.json (parallel-sandbox PI-052 chat-UI design) were discovered staged-but-unapplied during this session's close-out per the v2 concurrent-sandbox collision-contingency pattern.
+Deposit event: DEP-062
+
+=== session (1 record) ===
+  ✓ POST session  SES-081 (HTTP 201)
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CONV-051 (HTTP 201)
+
+=== work_tickets (6 records) ===
+  ✓ POST work_tickets  WT-049 (HTTP 201)
+  ✓ POST work_tickets  WT-050 (HTTP 201)
+  ✓ POST work_tickets  WT-051 (HTTP 201)
+  ✓ POST work_tickets  WT-052 (HTTP 201)
+  ✓ POST work_tickets  WT-053 (HTTP 201)
+  ✓ POST work_tickets  WT-054 (HTTP 201)
+
+=== references (5 records) ===
+  ✓ POST references  SES-081 is_about PI-003 (HTTP 201)
+  ✓ POST references  SES-081 is_about PI-004 (HTTP 201)
+  ✓ POST references  SES-081 is_about PI-005 (HTTP 201)
+  ✓ POST references  SES-081 is_about DEC-039 (HTTP 201)
+  ✓ POST references  SES-081 is_about WS-003 (HTTP 201)
+
+=== addresses_planning_items (3 records) ===
+  ✓ POST addresses_planning_items  → PI-003 (HTTP 201)
+  ✓ POST addresses_planning_items  → PI-004 (HTTP 201)
+  ✓ POST addresses_planning_items  → PI-005 (HTTP 201)
+
+✓ All 16 operations complete.
+
+✓ Recorded apply as deposit_event DEP-062 (HTTP 201).

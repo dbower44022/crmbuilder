@@ -41690,5 +41690,710 @@
     "id": 1758,
     "operation": "insert",
     "timestamp": "2026-05-25T20:26:57.910853"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "Six methodology-schema specs at `PRDs/product/crmbuilder-v2/methodology-schema-specs/`: `persona.md` (453 lines, PER prefix, 5 fields, 3-status lifecycle, 2 outgoing references — `persona_scopes_to_domain` and `persona_realized_as_entity`), `field.md` (515 lines, FLD prefix, 7 fields including `field_type` 11-value enum and boolean `field_required`, 3-status lifecycle, 1 outgoing reference `field_belongs_to_entity` with mandatory atomic POST cardinality), `requirement.md` (481 lines, REQ prefix, 7 fields including `requirement_priority` MoSCoW enum, 3-status lifecycle, 5 outgoing reference kinds spanning domain/entity/field/process/test_spec), `manual_config.md` (513 lines, MCF prefix, 8 fields including operator-completion metadata, 4-status lifecycle with `completed` terminal value and cross-field completion-fields-required invariant, 4 outgoing reference kinds), `test_spec.md` (496 lines, TST prefix, dual-axis state — 3-status methodology lifecycle plus 4-value execution-outcome field with auto-managed `last_run_at` cross-field invariant, 3 outgoing reference kinds plus 1 anticipated inbound, color-cued master-pane Last Run column UI deviation), `process-v2.md` (451 lines, growth spec for the existing `process` entity — 6 new TEXT NULL columns for Phase-3 content with collapsible-section UI rendering, 3 new outgoing reference kinds — `process_performed_by_persona`, `process_touches_field`, `process_touches_entity` promoted from anticipated to registered). Six build prompts at `PRDs/product/crmbuilder-v2/prompts/`: `CLAUDE-CODE-PROMPT-build-persona.md`, `CLAUDE-CODE-PROMPT-build-field.md`, `CLAUDE-CODE-PROMPT-build-requirement.md`, `CLAUDE-CODE-PROMPT-build-manual_config.md`, `CLAUDE-CODE-PROMPT-build-test_spec.md`, `CLAUDE-CODE-PROMPT-build-process-v2.md` — each instructing a future Claude Code session to land migration + model + vocab + repository + Pydantic schemas + REST router + main.py registration + UI client + sidebar entry + main_window dispatch + panel + dialogs + tests + verification + close-out payload + apply, including per-prompt PI-resolution discipline (PI-003 resolves on persona build session close; PI-005 resolves on process-v2 build session close; PI-004 resolves on the LAST of the four PI-004-sibling build sessions to land via runtime build-closure detection on `addresses` edges). This close-out payload `ses_081.json` and its apply prompt `CLAUDE-CODE-PROMPT-apply-close-out-ses-081.md`. No code committed in this session — design and prompt artifacts only.",
+      "conversation_reference": "Claude Code orchestrator session at Doug's terminal, 2026-05-25 evening, opened in /home/doug/Dropbox/Projects/crmbuilder. The conversation began with Doug asking Claude Code to act as an orchestrator for agents to execute all work related to PI-003, PI-004, and PI-005, and to ensure all three PIs are properly closed out at the end including DB updates and a JSON file written to git. The orchestrator surface-and-settled the scope before dispatching agents: PI-003/004/005 are explicitly deferred and conditional on CBM-paper-test surfacing real need; together they represent six new methodology entity types plus a major process schema growth; full end-to-end build (migrations + access + REST + MCP + UI + tests) is realistically a multi-day workstream that cannot complete in one session. The orchestrator presented four options (commit specs + per-entity build prompts; full parallel build; minimum-viable-backend-only; persona-pilot-then-decide) and Doug chose the per-entity-build-prompts approach: commit the six design specs as a milestone, then author one CLAUDE-CODE-PROMPT-build-<entity>.md per entity so each future Claude Code session executes its entity end-to-end with its own close-out atomically resolving the relevant PI. At close-out time the orchestrator discovered ses_079.json (parallel-sandbox WS-012 orchestrator-architecture work; claims SES-079 / CONV-049 / PI-053..062 / DEC-246..251) and ses_080.json (parallel-sandbox PI-052 chat-UI design work; claims SES-080 / CONV-050 / WT-048 / DEC-252..262) staged-but-unapplied in git and re-keyed this session's identifiers to SES-081 / CONV-051 / WT-049..054 per the SES-077 re-keying precedent.",
+      "created_at": "2026-05-26T02:32:42.245768+00:00",
+      "id": 78,
+      "identifier": "SES-081",
+      "in_flight_at_end": "PI-003, PI-004, PI-005 remain `Open` at this session's close. Their resolution paths are wired: this session's `addresses_planning_items` edges advance each PI; six future Claude Code sessions consume the six build prompts (WT-049..054) and atomically resolve their respective PIs via slice A's `resolves` reference behavior. Recommended execution sequence per dependencies: persona (PI-003) and field (PI-004 portion) first — they're independent foundational entities; requirement, manual_config, test_spec next — they depend on field/persona for their cross-references; process-v2 last — it depends on persona and field for `process_performed_by_persona` and `process_touches_field` edges. The four PI-004 siblings may run in any order; the last to ship runs the build-closure detection and resolves PI-004. WS-003 (Methodology entity schema design) is the natural workstream affiliation for this and the six successor sessions — even though WS-003 is `complete` against its v0.4 four-entity scope, the v0.5+ extension work is a coherent continuation. No new planning items surfaced from the design phase; each spec's section 3.8 enumerates spec-deferred questions categorized as [v0.5+ build] / [CBM redo] / [v0.6+] — those become PIs in the respective build sessions' close-outs as needed. Ses_079.json (orchestrator architecture, claims SES-079) and ses_080.json (PI-052 chat-UI, claims SES-080) remain staged-but-unapplied alongside this payload; whichever session applies first claims its identifier and the other two need no re-keying because each was authored against an explicit identifier set already non-conflicting with the others.",
+      "session_date": "2026-05-25",
+      "status": "Complete",
+      "summary": "Six methodology-entity schema specs and six matching build prompts authored to satisfy PI-003, PI-004, and PI-005 incrementally across six future Claude Code sessions. The design phase landed 2,909 lines of new spec documentation under `PRDs/product/crmbuilder-v2/methodology-schema-specs/` and an estimated 2,400–3,600 lines of build-prompt documentation under `PRDs/product/crmbuilder-v2/prompts/`. The three PIs remain `Open` at this session's close and advance via the `addresses` edges this session creates; resolution flips to `Resolved` happen in the future build sessions' close-outs. The six build prompts are recorded as `kickoff_prompt` work_tickets (WT-049..054) anchored to their target PIs, completing the v2 session-lifecycle pattern documented in CLAUDE.md: every unit of work has a planning_item, an addressing kickoff work_ticket pointing to a canonical kickoff `.md` file, and a future session that consumes the WT and lands the implementation.",
+      "title": "Methodology-schema design phase for PI-003 / PI-004 / PI-005 — six schema specs + six build prompts",
+      "topics_covered": "Orchestration scope-setting against three Open methodology-evolution PIs (PI-003 persona, PI-004 the four-entity cohort field/requirement/manual_config/test_spec, PI-005 process schema growth). Identifier-prefix non-collision analysis against the full v2 prefix set (DEC/SES/RSK/PI/TOP/REF/CHR/STA/DOM/ENT/PROC/CRM/WS/CONV/RB/WT/COP/DEP/CM) — assigned PER (persona), FLD (field), REQ (requirement), MCF (manual_config), TST (test_spec); process keeps PROC. Cross-spec relationship-kind registration discipline (once-per-kind on the source side; sibling entity types referenced as anticipated inbound until they land). Six parallel design agents dispatched, each producing a ~450–515-line spec following the methodology-entity-schema-spec-guide template. Six parallel build-prompt agents dispatched, each producing a ~400–600-line CLAUDE-CODE-PROMPT-build-<entity>.md following the existing pi-029-A build-prompt structural template. Build-closure pattern documented for the PI-004 four-sibling cohort (the LAST sibling to ship is the resolver — uses runtime query of `addresses` edges on PI-004 to detect that the other three siblings have landed before flipping `resolves_planning_items`). Process-v2 growth additive-migration story documented (six new TEXT NULL columns via ALTER TABLE; three new relationship kinds; no status change; no data backfill; v0.4 records survive intact). PI-003 and PI-005 each ship via a single build session that resolves the PI atomically; PI-004 ships via four sibling build sessions, the last of which resolves PI-004 via runtime build-closure detection. Per-spec design decisions captured inline in each spec's section 3.9.1 as DEC-XXX placeholders (NOT authored to the v2 governance DB in this session; each build session's close-out authors its spec's decisions with definitive DEC-NNN numbers)."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-081",
+    "entity_type": "session",
+    "id": 1759,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:42.246213"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:42.441192+00:00",
+      "id": 968,
+      "reference_identifier": "REF-0964",
+      "relationship": "conversation_belongs_to_workstream",
+      "source_id": "CONV-051",
+      "source_type": "conversation",
+      "target_id": "WS-003",
+      "target_type": "workstream"
+    },
+    "before_payload": null,
+    "entity_identifier": "conversation:CONV-051 -[conversation_belongs_to_workstream]-> workstream:WS-003",
+    "entity_type": "reference",
+    "id": 1760,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:42.441967"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:42.444462+00:00",
+      "id": 969,
+      "reference_identifier": "REF-0965",
+      "relationship": "conversation_records_session",
+      "source_id": "CONV-051",
+      "source_type": "conversation",
+      "target_id": "SES-081",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "conversation:CONV-051 -[conversation_records_session]-> session:SES-081",
+    "entity_type": "reference",
+    "id": 1761,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:42.445324"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "conversation_cancelled_at": null,
+      "conversation_completed_at": "2026-05-26T02:32:42.438657+00:00",
+      "conversation_created_at": "2026-05-26T02:32:42.438353+00:00",
+      "conversation_deleted_at": null,
+      "conversation_description": "Claude Code orchestrator session that surface-and-settled the scope against PI-003 (persona), PI-004 (the field/requirement/manual_config/test_spec cohort), and PI-005 (process schema growth), then dispatched two waves of parallel agents — five design agents in parallel (later joined by the process-v2 design agent) producing six methodology-schema specs at ~450–515 lines each, followed by six build-prompt agents in parallel producing six CLAUDE-CODE-PROMPT-build-<entity>.md files at ~400–600 lines each. The conversation kept the three PIs `Open` because each PI's resolution depends on its corresponding entity being built (migration + access + REST + UI + tests), which is multi-day work that cannot complete in one orchestrator session. The build prompts are authored as `kickoff_prompt` work_tickets (WT-049..054) per the v2 session lifecycle documented in CLAUDE.md, so each future Claude Code session can open against its WT, consume the build prompt, and close out atomically — the typical v2 workstream cadence. Identifier-prefix non-collision analysis assigned PER/FLD/REQ/MCF/TST for the five new entities; process keeps PROC. Cross-spec relationship-kind registration discipline applied: each kind registered once on its source side, sibling entity types referenced as anticipated inbound until they land. Build-closure pattern documented for the PI-004 four-sibling cohort: the LAST sibling to ship runs a runtime query of `addresses` edges on PI-004 to detect that the other three have landed, then resolves PI-004 in the same payload. Close-out identifiers re-keyed to SES-081 / CONV-051 / WT-049..054 after ses_079.json and ses_080.json were discovered staged-but-unapplied in git.",
+      "conversation_identifier": "CONV-051",
+      "conversation_kickoff_drafted_at": null,
+      "conversation_notes": null,
+      "conversation_purpose": "Orchestrate the design phase for three Open methodology-evolution planning items by dispatching parallel agents to produce a complete, build-ready schema specification per entity plus a self-contained build prompt per entity, while keeping the three PIs `Open` (resolution deferred to the respective build sessions). The conversation does not produce any code; it produces design + prompt artifacts that enable six future Claude Code sessions to land the entities incrementally with proper close-out discipline.",
+      "conversation_ready_at": null,
+      "conversation_started_at": null,
+      "conversation_status": "complete",
+      "conversation_superseded_at": null,
+      "conversation_title": "PI-003 / PI-004 / PI-005 orchestrated design phase — six methodology-schema specs and six build prompts",
+      "conversation_updated_at": "2026-05-26T02:32:42.438749+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "CONV-051",
+    "entity_type": "conversation",
+    "id": 1762,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:42.446341"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:42.573443+00:00",
+      "id": 970,
+      "reference_identifier": "REF-0966",
+      "relationship": "addresses",
+      "source_id": "WT-049",
+      "source_type": "work_ticket",
+      "target_id": "PI-003",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "work_ticket:WT-049 -[addresses]-> planning_item:PI-003",
+    "entity_type": "reference",
+    "id": 1763,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:42.573833"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "work_ticket_cancelled_at": null,
+      "work_ticket_consumed_at": null,
+      "work_ticket_created_at": "2026-05-26T02:32:42.571123+00:00",
+      "work_ticket_deleted_at": null,
+      "work_ticket_description": "Execute the full vertical slice for the `persona` methodology entity per `PRDs/product/crmbuilder-v2/methodology-schema-specs/persona.md`: Alembic migration creating the `personas` table and extending refs/change_log CHECKs; `Persona` SQLAlchemy model in `access/models.py`; vocab.py additions (PERSONA_STATUSES, PERSONA_STATUS_TRANSITIONS, ENTITY_TYPES, REFERENCE_RELATIONSHIPS, _kinds_for_pair clauses for (persona, domain) and (persona, entity)); `access/repositories/persona.py` with eight module-level functions mirroring `entity.py` including SAVEPOINT-retry identifier auto-assignment per PI-002; Pydantic schemas in `api/schemas.py`; FastAPI router at `api/routers/persona.py` registered in `api/main.py`; UI client methods in `ui/client.py`; sidebar entry under Methodology group; main_window dispatch; `ui/panels/persona.py` mirroring `entities.py`; CRUD dialogs at `ui/dialogs/persona_crud.py` and `ui/dialogs/_persona_schema.py`; access-layer tests at `tests/crmbuilder_v2/access/test_persona.py`; API tests at `tests/crmbuilder_v2/api/test_personas.py`; UI smoke test. Verification: migration forward; API smoke for list+create+update+delete+restore; full test suite green. Close-out: nine-section payload with `resolves_planning_items: [{\"planning_item_identifier\": \"PI-003\"}]` atomically flipping PI-003 to Resolved; apply via `scripts/apply_close_out.py`; commit code + payload + apply prompt + regenerated db-export snapshots + new dep_NNN.log in one commit prefixed `v2: PI-003 —`.",
+      "work_ticket_file_path": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-build-persona.md",
+      "work_ticket_identifier": "WT-049",
+      "work_ticket_kind": "kickoff_prompt",
+      "work_ticket_notes": null,
+      "work_ticket_ready_at": "2026-05-26T02:32:42.571342+00:00",
+      "work_ticket_status": "ready",
+      "work_ticket_superseded_at": null,
+      "work_ticket_title": "Build persona methodology entity end-to-end (PI-003)",
+      "work_ticket_updated_at": "2026-05-26T02:32:42.571420+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "WT-049",
+    "entity_type": "work_ticket",
+    "id": 1764,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:42.574276"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:42.730962+00:00",
+      "id": 971,
+      "reference_identifier": "REF-0967",
+      "relationship": "addresses",
+      "source_id": "WT-050",
+      "source_type": "work_ticket",
+      "target_id": "PI-004",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "work_ticket:WT-050 -[addresses]-> planning_item:PI-004",
+    "entity_type": "reference",
+    "id": 1765,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:42.731386"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "work_ticket_cancelled_at": null,
+      "work_ticket_consumed_at": null,
+      "work_ticket_created_at": "2026-05-26T02:32:42.728500+00:00",
+      "work_ticket_deleted_at": null,
+      "work_ticket_description": "Execute the full vertical slice for the `field` methodology entity per `PRDs/product/crmbuilder-v2/methodology-schema-specs/field.md`. Most urgent of the four PI-004 siblings because `entity` (shipped thin in v0.4) gains real utility only when fields can attach. Key deviations from the standard entity pattern: atomic POST cardinality — `POST /fields` requires `field_belongs_to_entity_identifier` in the body so row + edge land in one transaction preserving the live-edge invariant; per-entity-scoped `field_name` uniqueness (Contact.status and Mentor.status both valid); `field_type` enum validation against an 11-value vocabulary (text/long_text/enum/multi_enum/date/datetime/money/boolean/number/reference/derived); cardinality enforcement at references-repo DELETE for `field_belongs_to_entity` edges on live fields (422 with `cardinality_violation`). All standard layers per the persona pattern. Close-out: `addresses_planning_items: [{\"planning_item_identifier\": \"PI-004\"}]`. `resolves_planning_items: []` unless this is the LAST PI-004 sibling to land (verify via runtime query of `addresses` edges on PI-004).",
+      "work_ticket_file_path": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-build-field.md",
+      "work_ticket_identifier": "WT-050",
+      "work_ticket_kind": "kickoff_prompt",
+      "work_ticket_notes": null,
+      "work_ticket_ready_at": "2026-05-26T02:32:42.728755+00:00",
+      "work_ticket_status": "ready",
+      "work_ticket_superseded_at": null,
+      "work_ticket_title": "Build field methodology entity end-to-end (PI-004 — field portion, most urgent)",
+      "work_ticket_updated_at": "2026-05-26T02:32:42.728835+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "WT-050",
+    "entity_type": "work_ticket",
+    "id": 1766,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:42.731905"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:42.855823+00:00",
+      "id": 972,
+      "reference_identifier": "REF-0968",
+      "relationship": "addresses",
+      "source_id": "WT-051",
+      "source_type": "work_ticket",
+      "target_id": "PI-004",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "work_ticket:WT-051 -[addresses]-> planning_item:PI-004",
+    "entity_type": "reference",
+    "id": 1767,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:42.856248"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "work_ticket_cancelled_at": null,
+      "work_ticket_consumed_at": null,
+      "work_ticket_created_at": "2026-05-26T02:32:42.853343+00:00",
+      "work_ticket_deleted_at": null,
+      "work_ticket_description": "Execute the full vertical slice for the `requirement` methodology entity per `PRDs/product/crmbuilder-v2/methodology-schema-specs/requirement.md`. Registers five outgoing relationship kinds: requirement_scopes_to_domain, requirement_touches_entity, requirement_touches_field, requirement_realized_by_process, requirement_verified_by_test_spec. Caveat: kinds targeting `field` and `test_spec` are conditional on those sibling entity types being in ENTITY_TYPES at build time — if absent, register the kind in REFERENCE_RELATIONSHIPS and the refs CHECK extension but leave the `_kinds_for_pair` clauses with TODO comments. `requirement_priority` MoSCoW enum (must/should/could/wont), default `should`. Global case-insensitive name uniqueness. Five-column master pane including Priority. All standard layers per the persona pattern. Close-out: `addresses_planning_items: [{\"planning_item_identifier\": \"PI-004\"}]`. `resolves_planning_items: []` unless this is the LAST PI-004 sibling to land.",
+      "work_ticket_file_path": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-build-requirement.md",
+      "work_ticket_identifier": "WT-051",
+      "work_ticket_kind": "kickoff_prompt",
+      "work_ticket_notes": null,
+      "work_ticket_ready_at": "2026-05-26T02:32:42.853596+00:00",
+      "work_ticket_status": "ready",
+      "work_ticket_superseded_at": null,
+      "work_ticket_title": "Build requirement methodology entity end-to-end (PI-004 — requirement portion)",
+      "work_ticket_updated_at": "2026-05-26T02:32:42.853688+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "WT-051",
+    "entity_type": "work_ticket",
+    "id": 1768,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:42.856693"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:42.978985+00:00",
+      "id": 973,
+      "reference_identifier": "REF-0969",
+      "relationship": "addresses",
+      "source_id": "WT-052",
+      "source_type": "work_ticket",
+      "target_id": "PI-004",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "work_ticket:WT-052 -[addresses]-> planning_item:PI-004",
+    "entity_type": "reference",
+    "id": 1769,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:42.979380"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "work_ticket_cancelled_at": null,
+      "work_ticket_consumed_at": null,
+      "work_ticket_created_at": "2026-05-26T02:32:42.976665+00:00",
+      "work_ticket_deleted_at": null,
+      "work_ticket_description": "Execute the full vertical slice for the `manual_config` methodology entity per `PRDs/product/crmbuilder-v2/methodology-schema-specs/manual_config.md`. Four-status lifecycle (candidate/confirmed/deferred/completed) — the `completed` value is a deliberate deviation from the standard three-status pattern per spec §3.4.2. Cross-field invariant: when status transitions to `completed`, both `manual_config_completed_at` and `manual_config_completed_by` must be populated (server-set `completed_at` to now() if omitted; reject if `completed_by` omitted with 422 `completed_status_requires_completion_fields`). Seven-value `manual_config_category` enum (saved_view/duplicate_check/workflow/deferred_options_enum/role_permission/dynamic_logic/other). Four outgoing reference kinds. Five-column master pane including Category. Detail pane reveals completion fields conditionally on status. All standard layers per the persona pattern. Close-out: `addresses_planning_items: [{\"planning_item_identifier\": \"PI-004\"}]`. Build-closure detection: if all three sibling PI-004 entities (FLD/REQ/TST) are already addressed by completed sessions, set `resolves_planning_items: [{\"planning_item_identifier\": \"PI-004\"}]`.",
+      "work_ticket_file_path": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-build-manual_config.md",
+      "work_ticket_identifier": "WT-052",
+      "work_ticket_kind": "kickoff_prompt",
+      "work_ticket_notes": null,
+      "work_ticket_ready_at": "2026-05-26T02:32:42.976883+00:00",
+      "work_ticket_status": "ready",
+      "work_ticket_superseded_at": null,
+      "work_ticket_title": "Build manual_config methodology entity end-to-end (PI-004 — manual_config portion)",
+      "work_ticket_updated_at": "2026-05-26T02:32:42.976961+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "WT-052",
+    "entity_type": "work_ticket",
+    "id": 1770,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:42.979889"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:43.140755+00:00",
+      "id": 974,
+      "reference_identifier": "REF-0970",
+      "relationship": "addresses",
+      "source_id": "WT-053",
+      "source_type": "work_ticket",
+      "target_id": "PI-004",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "work_ticket:WT-053 -[addresses]-> planning_item:PI-004",
+    "entity_type": "reference",
+    "id": 1771,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:43.141176"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "work_ticket_cancelled_at": null,
+      "work_ticket_consumed_at": null,
+      "work_ticket_created_at": "2026-05-26T02:32:43.138167+00:00",
+      "work_ticket_deleted_at": null,
+      "work_ticket_description": "Execute the full vertical slice for the `test_spec` methodology entity per `PRDs/product/crmbuilder-v2/methodology-schema-specs/test_spec.md`. Dual-axis state: `test_spec_status` ∈ {candidate, confirmed, deferred} (methodology lifecycle, propose-verify gate) plus separate `test_spec_last_run_outcome` ∈ {not_run, passing, failing, skipped} (execution result, unrestricted transitions). Cross-field invariant: when `last_run_outcome` moves from `not_run` to any other value, `test_spec_last_run_at` must be populated (server auto-sets if omitted); when transitioning back to `not_run`, server auto-clears `last_run_at` and `last_run_notes`. Three outgoing reference kinds plus one anticipated inbound (registered on the requirement side). Recommended convenience endpoint `POST /test-specs/{id}/record-run` for atomic outcome+at+notes update. Color-cued Last Run master-pane column (passing=green/failing=red/not_run=gray/skipped=amber). All standard layers per the persona pattern. Close-out: `addresses_planning_items: [{\"planning_item_identifier\": \"PI-004\"}]`. Build-closure detection: if all three sibling PI-004 entities (FLD/REQ/MCF) are already addressed by completed sessions, set `resolves_planning_items: [{\"planning_item_identifier\": \"PI-004\"}]`.",
+      "work_ticket_file_path": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-build-test_spec.md",
+      "work_ticket_identifier": "WT-053",
+      "work_ticket_kind": "kickoff_prompt",
+      "work_ticket_notes": null,
+      "work_ticket_ready_at": "2026-05-26T02:32:43.138437+00:00",
+      "work_ticket_status": "ready",
+      "work_ticket_superseded_at": null,
+      "work_ticket_title": "Build test_spec methodology entity end-to-end (PI-004 — test_spec portion)",
+      "work_ticket_updated_at": "2026-05-26T02:32:43.138548+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "WT-053",
+    "entity_type": "work_ticket",
+    "id": 1772,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:43.141636"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:43.272192+00:00",
+      "id": 975,
+      "reference_identifier": "REF-0971",
+      "relationship": "addresses",
+      "source_id": "WT-054",
+      "source_type": "work_ticket",
+      "target_id": "PI-005",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "work_ticket:WT-054 -[addresses]-> planning_item:PI-005",
+    "entity_type": "reference",
+    "id": 1773,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:43.272573"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "work_ticket_cancelled_at": null,
+      "work_ticket_consumed_at": null,
+      "work_ticket_created_at": "2026-05-26T02:32:43.269843+00:00",
+      "work_ticket_deleted_at": null,
+      "work_ticket_description": "Execute the growth slice for the existing `process` methodology entity per `PRDs/product/crmbuilder-v2/methodology-schema-specs/process-v2.md`. NOT a new entity — grows the existing process entity additively. Six new TEXT NULL columns via ALTER TABLE: process_steps, process_triggers, process_outcomes, process_edge_cases, process_frequency, process_duration_estimate. Three new relationship kinds in vocab.py: process_performed_by_persona (depends on PI-003 persona type), process_touches_field (depends on PI-004 field type), process_touches_entity (promoted from anticipated to registered). No data backfill — existing v0.4 process records get NULL for new columns; UI treats NULL as 'Phase 3 content not yet authored' with collapsed sections. No status change — process_classification enum preserved. Migration fully reversible. Recommended ordering: after persona and field land; safe to execute earlier (CHECK extension is forward-compatible). Tests cover migration forward+backward, v0.4 record survival, PATCH-ability of new fields, reference round-trip (skip if sibling tables absent). Close-out: `resolves_planning_items: [{\"planning_item_identifier\": \"PI-005\"}]` — this session resolves PI-005 atomically.",
+      "work_ticket_file_path": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-build-process-v2.md",
+      "work_ticket_identifier": "WT-054",
+      "work_ticket_kind": "kickoff_prompt",
+      "work_ticket_notes": null,
+      "work_ticket_ready_at": "2026-05-26T02:32:43.270060+00:00",
+      "work_ticket_status": "ready",
+      "work_ticket_superseded_at": null,
+      "work_ticket_title": "Build process v2 schema growth end-to-end (PI-005)",
+      "work_ticket_updated_at": "2026-05-26T02:32:43.270137+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "WT-054",
+    "entity_type": "work_ticket",
+    "id": 1774,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:43.272973"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:43.439219+00:00",
+      "id": 976,
+      "reference_identifier": "REF-0972",
+      "relationship": "is_about",
+      "source_id": "SES-081",
+      "source_type": "session",
+      "target_id": "PI-003",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-081 -[is_about]-> planning_item:PI-003",
+    "entity_type": "reference",
+    "id": 1775,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:43.439581"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:43.569548+00:00",
+      "id": 977,
+      "reference_identifier": "REF-0973",
+      "relationship": "is_about",
+      "source_id": "SES-081",
+      "source_type": "session",
+      "target_id": "PI-004",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-081 -[is_about]-> planning_item:PI-004",
+    "entity_type": "reference",
+    "id": 1776,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:43.569929"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:43.691555+00:00",
+      "id": 978,
+      "reference_identifier": "REF-0974",
+      "relationship": "is_about",
+      "source_id": "SES-081",
+      "source_type": "session",
+      "target_id": "PI-005",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-081 -[is_about]-> planning_item:PI-005",
+    "entity_type": "reference",
+    "id": 1777,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:43.691919"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:43.856528+00:00",
+      "id": 979,
+      "reference_identifier": "REF-0975",
+      "relationship": "is_about",
+      "source_id": "SES-081",
+      "source_type": "session",
+      "target_id": "DEC-039",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-081 -[is_about]-> decision:DEC-039",
+    "entity_type": "reference",
+    "id": 1778,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:43.856883"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:43.979156+00:00",
+      "id": 980,
+      "reference_identifier": "REF-0976",
+      "relationship": "is_about",
+      "source_id": "SES-081",
+      "source_type": "session",
+      "target_id": "WS-003",
+      "target_type": "workstream"
+    },
+    "before_payload": null,
+    "entity_identifier": "session:SES-081 -[is_about]-> workstream:WS-003",
+    "entity_type": "reference",
+    "id": 1779,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:43.979519"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:44.107170+00:00",
+      "id": 981,
+      "reference_identifier": "REF-0977",
+      "relationship": "addresses",
+      "source_id": "CONV-051",
+      "source_type": "conversation",
+      "target_id": "PI-003",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "conversation:CONV-051 -[addresses]-> planning_item:PI-003",
+    "entity_type": "reference",
+    "id": 1780,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:44.107576"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:44.266841+00:00",
+      "id": 982,
+      "reference_identifier": "REF-0978",
+      "relationship": "addresses",
+      "source_id": "CONV-051",
+      "source_type": "conversation",
+      "target_id": "PI-004",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "conversation:CONV-051 -[addresses]-> planning_item:PI-004",
+    "entity_type": "reference",
+    "id": 1781,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:44.267378"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:44.401794+00:00",
+      "id": 983,
+      "reference_identifier": "REF-0979",
+      "relationship": "addresses",
+      "source_id": "CONV-051",
+      "source_type": "conversation",
+      "target_id": "PI-005",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "conversation:CONV-051 -[addresses]-> planning_item:PI-005",
+    "entity_type": "reference",
+    "id": 1782,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:44.402190"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:44.582612+00:00",
+      "id": 984,
+      "reference_identifier": "REF-0980",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-062",
+      "source_type": "deposit_event",
+      "target_id": "COP-081",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-062 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-081",
+    "entity_type": "reference",
+    "id": 1783,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:44.583052"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:44.584857+00:00",
+      "id": 985,
+      "reference_identifier": "REF-0981",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-062",
+      "source_type": "deposit_event",
+      "target_id": "SES-081",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-062 -[deposit_event_wrote_record]-> session:SES-081",
+    "entity_type": "reference",
+    "id": 1784,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:44.585229"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:44.587031+00:00",
+      "id": 986,
+      "reference_identifier": "REF-0982",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-062",
+      "source_type": "deposit_event",
+      "target_id": "CONV-051",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-062 -[deposit_event_wrote_record]-> conversation:CONV-051",
+    "entity_type": "reference",
+    "id": 1785,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:44.587372"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:44.589106+00:00",
+      "id": 987,
+      "reference_identifier": "REF-0983",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-062",
+      "source_type": "deposit_event",
+      "target_id": "WT-049",
+      "target_type": "work_ticket"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-062 -[deposit_event_wrote_record]-> work_ticket:WT-049",
+    "entity_type": "reference",
+    "id": 1786,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:44.589455"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:44.591208+00:00",
+      "id": 988,
+      "reference_identifier": "REF-0984",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-062",
+      "source_type": "deposit_event",
+      "target_id": "WT-050",
+      "target_type": "work_ticket"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-062 -[deposit_event_wrote_record]-> work_ticket:WT-050",
+    "entity_type": "reference",
+    "id": 1787,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:44.591534"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:44.593214+00:00",
+      "id": 989,
+      "reference_identifier": "REF-0985",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-062",
+      "source_type": "deposit_event",
+      "target_id": "WT-051",
+      "target_type": "work_ticket"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-062 -[deposit_event_wrote_record]-> work_ticket:WT-051",
+    "entity_type": "reference",
+    "id": 1788,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:44.593523"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:44.595270+00:00",
+      "id": 990,
+      "reference_identifier": "REF-0986",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-062",
+      "source_type": "deposit_event",
+      "target_id": "WT-052",
+      "target_type": "work_ticket"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-062 -[deposit_event_wrote_record]-> work_ticket:WT-052",
+    "entity_type": "reference",
+    "id": 1789,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:44.595615"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:44.597364+00:00",
+      "id": 991,
+      "reference_identifier": "REF-0987",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-062",
+      "source_type": "deposit_event",
+      "target_id": "WT-053",
+      "target_type": "work_ticket"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-062 -[deposit_event_wrote_record]-> work_ticket:WT-053",
+    "entity_type": "reference",
+    "id": 1790,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:44.597685"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T02:32:44.599404+00:00",
+      "id": 992,
+      "reference_identifier": "REF-0988",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-062",
+      "source_type": "deposit_event",
+      "target_id": "WT-054",
+      "target_type": "work_ticket"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-062 -[deposit_event_wrote_record]-> work_ticket:WT-054",
+    "entity_type": "reference",
+    "id": 1791,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:44.599650"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "0.7.0",
+        "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_081.json",
+        "runner": "claude_code"
+      },
+      "deposit_event_created_at": "2026-05-26T02:32:44.580222+00:00",
+      "deposit_event_description": "Applied COP-081. Outcome: success. 1 conversations, 1 sessions, 6 work_tickets.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-062",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_062.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "commits": 0,
+        "conversations": 1,
+        "decisions": 0,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1,
+        "work_tickets": 6
+      },
+      "deposit_event_title": "Apply of COP-081, 2026-05-26T02:32:44+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-062",
+    "entity_type": "deposit_event",
+    "id": 1792,
+    "operation": "insert",
+    "timestamp": "2026-05-26T02:32:44.599983"
   }
 ]
