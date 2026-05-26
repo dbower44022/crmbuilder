@@ -865,5 +865,22 @@
     "conversation_superseded_at": null,
     "conversation_title": "PI-003 build — persona methodology entity end-to-end execution under SES-081's orchestration plan",
     "conversation_updated_at": "2026-05-26T03:23:25.678685"
+  },
+  {
+    "conversation_cancelled_at": null,
+    "conversation_completed_at": "2026-05-26T04:13:30.684160",
+    "conversation_created_at": "2026-05-26T04:13:30.683852",
+    "conversation_deleted_at": null,
+    "conversation_description": "Claude Code build-agent conversation at Doug's terminal, dispatched by a parent orchestrator session to execute the field build prompt authored under SES-081 (WT-050). The agent followed the build prompt's 18 numbered steps in order, mirroring the persona-build pattern with field-specific extensions per field.md v1.0. Pre-flight identifier capture detected the heads (SES-082, DEC-267, CONV-052, PI-053, WS-011); the spec's planned DEC-246..251 / PI-053..059 / SES-079 numbers were already claimed by parallel sandbox / unapplied-staged work, so the build re-keyed forward to DEC-268..273 / PI-054..060 / SES-083 / CONV-053. The build's scope was purely additive (new table, new vocab, new endpoints) plus internal-only extensions to refs-repo (the `_skip_cardinality_check` flag is not exposed at REST), so no collision potential against parallel workstreams. One pre-existing constant-list test broke from the additive scope (`test_smoke.py::test_sidebar_entries_constant` / `test_main_window_constructs` expected the pre-field SIDEBAR_ENTRIES tuple); updated in passing per the v0.4 slice-C precedent. The smoke-test cleanup was careful with reference IDs: only used identifier-based DELETE for FLD-001 / ENT-001 / ENT-002, never numeric reference IDs (the persona-build's REF-1024 mishap was a salient cautionary tale). Live API smoke verification confirmed all six §3.7 acceptance-criteria surfaces (atomic POST, both cardinality-violation surfaces, soft-delete/restore round-trip with edge, per-entity filter, server-assigned identifier).",
+    "conversation_identifier": "CONV-053",
+    "conversation_kickoff_drafted_at": null,
+    "conversation_notes": null,
+    "conversation_purpose": "Execute `CLAUDE-CODE-PROMPT-build-field.md` end-to-end: land the field methodology entity vertical slice (migration + access + REST + UI + tests) per field.md v1.0; address PI-004 with an `addresses` edge (do NOT resolve — last sibling resolves per DEC-232 / SES-074 pattern).",
+    "conversation_ready_at": null,
+    "conversation_started_at": null,
+    "conversation_status": "complete",
+    "conversation_superseded_at": null,
+    "conversation_title": "PI-004 first slice build — field methodology entity end-to-end execution under SES-081's orchestration plan",
+    "conversation_updated_at": "2026-05-26T04:13:30.684404"
   }
 ]

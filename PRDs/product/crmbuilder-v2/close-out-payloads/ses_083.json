@@ -1,0 +1,205 @@
+{
+  "label": "PI-004 first slice — `field` methodology entity type end-to-end (migration, access, REST, UI, tests). First of the four PI-004 sibling builds (others: requirement, manual_config, test_spec). WT-050 consumed. Migration 0014 adds the fields table (with a `field_previous_parent_entity_identifier` stash column supporting the §3.4.6 soft-delete/restore atomicity story) and extends refs/change_log CHECKs; access/repositories/field.py + Field model + FIELD_STATUSES/FIELD_TYPES vocab + field_belongs_to_entity reference kind + _kinds_for_pair clause + access-layer cardinality guards on references-repo (POST 2nd-edge / DELETE only-edge); eight REST endpoints with atomic-POST; eight ui/client.py methods; Fields sidebar entry at Methodology position #6 (re-keyed from spec's planned #5 because persona shipped first); FieldsPanel + dialogs (Create includes parent-entity picker; Edit shows parent read-only); 41 new tests. PI-004 is ADDRESSED (not resolved) — resolution waits for the last sibling per DEC-232 / SES-074 build-closure pattern. Identifier re-keying: spec's planned DEC-246..251 / PI-053..059 / SES-079 are claimed by parallel-sandbox or unapplied-staged work; this build uses DEC-268..273 / PI-054..060 / SES-083.",
+  "session": {
+    "identifier": "SES-083",
+    "title": "PI-004 first slice — `field` methodology entity type end-to-end (migration, access, REST, UI, tests)",
+    "session_date": "2026-05-26",
+    "status": "Complete",
+    "conversation_reference": "Claude Code build-agent session at Doug's terminal, 2026-05-26 early hours, opened in /home/doug/Dropbox/Projects/crmbuilder. Orchestrated from a parent session that dispatched this agent to execute `PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-build-field.md` (1122 lines, authored by SES-081 / CONV-051 / WT-050). The build prompt is self-contained — 18 numbered implementation steps mirroring the persona-build pattern with field-specific extensions for atomic POST, per-entity name scoping, type-enum validation, and references-repo cardinality guards. The agent executed the prompt in DETAIL mode without surface-and-settle questions: the spec is canonical for what to build and the prompt is canonical for how. Pre-flight identifier capture detected next SES-083, DEC-268, PI-054, CONV-053, WT-055; the spec's planned DEC-246..251 / PI-053..059 / SES-079 were already claimed by parallel sandbox / unapplied-staged sessions. The build mutates the LIVE V2 governance DB shared with parallel agents; the build's scope is purely additive — new table, new vocab entries, new endpoints, plus extensions to refs-repo with internal-only `_skip_cardinality_check` flag — so no collision potential against the parallel workstreams.",
+    "topics_covered": "Execution of all 18 build steps for the field methodology entity per the build prompt: (1) Alembic migration 0014 creating the `fields` table (11 columns including the `field_previous_parent_entity_identifier` stash supporting §3.4.6 soft-delete/restore atomicity, 4 CHECK constraints, 3 indexes) and extending `refs.source_type` / `refs.target_type` / `refs.relationship_kind` / `change_log.entity_type` CHECKs in a single recopy; (2) `Field` SQLAlchemy model in `access/models.py` mirroring `Entity` with `field_*` prefix and adding the stash column; (3) vocab.py additions — `FIELD_STATUSES`, `FIELD_STATUS_TRANSITIONS`, `FIELD_TYPES` (11 values), `'field'` added to `ENTITY_TYPES`, `'field_belongs_to_entity'` added to `REFERENCE_RELATIONSHIPS`, one clause added to `_kinds_for_pair`, docstring updated; (4) `FieldCreateIn` / `FieldReplaceIn` / `FieldPatchIn` Pydantic schemas — CreateIn declares the REQUIRED `field_belongs_to_entity_identifier` body key per §3.5.4, Replace/Patch do NOT accept it; (5) `access/repositories/field.py` repository with the eight functions plus helpers — `_require_live_entity` surfaces the §3.5.4 422 shapes, `_reject_duplicate_name_within_entity` queries refs to scope uniqueness per entity, `create_field` does the atomic row+edge+emit in one transaction, `delete_field` stashes the parent and hard-deletes the edge via the `_skip_cardinality_check=True` flag, `restore_field` reads the stash and recreates the edge atomically; (6) references-repo cardinality guards — `_guard_field_belongs_to_entity_delete` helper plus a create-time block rejecting a second edge from the same source field, both surfaces returning 422 with `cardinality_violation`; (7) `api/routers/field.py` with the eight endpoints including the `?entity_identifier=` filter; (8) main.py router registration; (9) eight client methods in ui/client.py with the `entity_identifier` and `include_deleted` query params; (10) sidebar entry appended to Methodology group at position #6 (re-keyed from spec's planned #5 — persona shipped first); (11) main_window dispatch + ENTITY_TYPE_TO_SIDEBAR_LABEL entry; (12) `FieldsPanel` panel mirroring `PersonasPanel` with field-specific adjustments — parent-entity rendered at detail-pane position #3 outside the generic ReferencesSection (mandatory 1:1 affiliation is conceptually part of the field's identity per §3.6.3), required field as read-only disabled checkbox, master-pane entity-grouping deferred to follow-on slice with TODO comment per §3.6.2; (13) `FieldCreateDialog` / `FieldEditDialog` / `FieldDeleteDialog` + `_field_schema.py` — CreateDialog includes a parent-entity combo picker populated from live entities, EditDialog excludes it (reparenting per §3.6.5 deferred to follow-on slice), `field_required` modelled as string combo over (\"false\",\"true\") with dialog-side coercion to Python bool because the EntityCrudDialog base supports only string-valued widgets; (14) 41 new tests across three files — 26 in tests/crmbuilder_v2/access/test_field.py (criteria 1, 3–5, 7–9, 15, 16 plus internal `_skip_cardinality_check` smoke), 10 in tests/crmbuilder_v2/api/test_field_api.py (criteria 7, 9 plus envelope-on-422 and both cardinality-violation surfaces), 5 in tests/crmbuilder_v2/ui/test_field_panel.py (criteria 10, 12, 14 mirror); (15) live API smoke verification — atomic POST creates row + edge in one round-trip (FLD-001 + REF-1042 → ENT-001), DELETE /references/{id} on only-edge rejected with cardinality_violation, POST /references for second edge rejected with cardinality_violation, soft-delete/restore round-trip preserves both row and edge atomically, smoke artifacts cleaned up by soft-delete (FLD-001, ENT-001, ENT-002 left soft-deleted following the persona-build precedent); (16) test suite: 1618 → 1659 passed (3 skipped), +41 tests, 0 regressions; (17) close-out authoring with re-keyed identifiers (DEC-268..273, PI-054..060, SES-083, CONV-053); (18) build commit landed as `8445933070381...` on branch main, 19 files, ~3381 lines added.",
+    "summary": "PI-004 first slice (`field` methodology entity type) shipped end-to-end. The v2 storage layer now hosts field records — one attribute on one CRM-modeled entity, surfaced in evolved-methodology Phase 3 iteration build conversations and feeding the downstream YAML deploy spec. The build mirrors the v0.4 slice-C entity / v0.5+ persona pattern with two bounded field-specific deviations per `field.md` v1.0: (1) atomic POST — `POST /fields` requires `field_belongs_to_entity_identifier` in the body so row + edge land in one transaction preserving the live-edge invariant on the mandatory 1:1 affiliation (DEC-271); (2) per-entity-scoped `field_name` uniqueness — `Contact.status` and `Mentor.status` are both valid because the uniqueness key is `(parent_entity_identifier, lower(field_name))`, not `field_name` alone (DEC-269). Plus an 11-value `field_type` enum vocabulary (text/long_text/enum/multi_enum/date/datetime/money/boolean/number/reference/derived; DEC-271). The references repository gains 1:1-mandatory cardinality enforcement on the `field_belongs_to_entity` kind via two new guards: POST-second-edge rejected with 422 `cardinality_violation`; DELETE-only-edge-of-live-field rejected with 422 `cardinality_violation` (the internal `_skip_cardinality_check=True` flag enables the legitimate `delete_field` repo-to-repo path that atomically soft-deletes the row and the edge together). Master-pane primary grouping by parent entity per §3.6.2 is deferred to a follow-on slice — v1 ships flat with a TODO. 'Move to entity' reparenting affordance per §3.6.5 also deferred. PI-004 is ADDRESSED here (not resolved); the last sibling (requirement / manual_config / test_spec) resolves it per the DEC-232 / SES-074 build-closure pattern.",
+    "artifacts_produced": "Code commit `8445933070381...` on branch main: ~3,381 lines added across 19 files. New: `crmbuilder-v2/migrations/versions/0014_v0_8_create_fields_table.py`, `crmbuilder-v2/src/crmbuilder_v2/access/repositories/field.py`, `crmbuilder-v2/src/crmbuilder_v2/api/routers/field.py`, `crmbuilder-v2/src/crmbuilder_v2/ui/panels/field.py`, `crmbuilder-v2/src/crmbuilder_v2/ui/dialogs/field_crud.py`, `crmbuilder-v2/src/crmbuilder_v2/ui/dialogs/_field_schema.py`, `tests/crmbuilder_v2/access/test_field.py` (26 tests), `tests/crmbuilder_v2/api/test_field_api.py` (10 tests), `tests/crmbuilder_v2/ui/test_field_panel.py` (5 tests). Modified: `crmbuilder-v2/src/crmbuilder_v2/access/models.py` (Field class added + FIELD_STATUSES/FIELD_TYPES imports), `crmbuilder-v2/src/crmbuilder_v2/access/vocab.py` (FIELD_STATUSES + FIELD_STATUS_TRANSITIONS + FIELD_TYPES + 'field' in ENTITY_TYPES + 'field_belongs_to_entity' in REFERENCE_RELATIONSHIPS + 1 clause in _kinds_for_pair + docstring), `crmbuilder-v2/src/crmbuilder_v2/access/repositories/references.py` (cardinality guards on create + delete/delete_by_id + `_guard_field_belongs_to_entity_delete` helper + `_skip_cardinality_check` kwarg), `crmbuilder-v2/src/crmbuilder_v2/api/schemas.py` (3 Pydantic schemas), `crmbuilder-v2/src/crmbuilder_v2/api/main.py` (router import + include), `crmbuilder-v2/src/crmbuilder_v2/ui/client.py` (8 client methods), `crmbuilder-v2/src/crmbuilder_v2/ui/sidebar.py` (Fields entry at Methodology #6), `crmbuilder-v2/src/crmbuilder_v2/ui/main_window.py` (panel import + dispatch + entity-type map), `crmbuilder-v2/src/crmbuilder_v2/ui/refresh.py` (fields.json filename mapping), `tests/crmbuilder_v2/ui/test_smoke.py` (EXPECTED_ENTRIES tuple constant updated to include 'Fields'). This close-out payload `ses_083.json` and its apply prompt `CLAUDE-CODE-PROMPT-apply-close-out-ses-083.md`. Migration applied to live engagement DB CRMBUILDER.db before commit; API server restarted; deposit-event log `dep_NNN.log` lands at apply time.",
+    "in_flight_at_end": "PI-004 remains Open with an addresses-edge from CONV-053; resolution waits for the last sibling (requirement / manual_config / test_spec) to ship its build-closure session per DEC-232 / SES-074 pattern. WT-050 transitions ready → consumed via the conversation_opens_against_work_ticket edge at apply time. The seven follow-on PIs from field.md §3.8.3 (PI-054 re-parenting UX, PI-055 richer type vocab, PI-056 default_value + filters, PI-057 richer required-ness, PI-058 field-to-field dependencies, PI-059 derived-field lineage per DEC-038, PI-060 entity-soft-delete cascade posture) are authored Open. Master-pane entity-grouping deviation per §3.6.2 and the 'Move to entity' affordance per §3.6.5 remain v0.5 follow-on candidates. The four remaining PI-004 sibling builds (requirement, manual_config, test_spec) await execution by future Claude Code sessions per SES-081's orchestration plan."
+  },
+  "conversation": {
+    "conversation_identifier": "CONV-053",
+    "conversation_title": "PI-004 first slice build — field methodology entity end-to-end execution under SES-081's orchestration plan",
+    "conversation_purpose": "Execute `CLAUDE-CODE-PROMPT-build-field.md` end-to-end: land the field methodology entity vertical slice (migration + access + REST + UI + tests) per field.md v1.0; address PI-004 with an `addresses` edge (do NOT resolve — last sibling resolves per DEC-232 / SES-074 pattern).",
+    "conversation_description": "Claude Code build-agent conversation at Doug's terminal, dispatched by a parent orchestrator session to execute the field build prompt authored under SES-081 (WT-050). The agent followed the build prompt's 18 numbered steps in order, mirroring the persona-build pattern with field-specific extensions per field.md v1.0. Pre-flight identifier capture detected the heads (SES-082, DEC-267, CONV-052, PI-053, WS-011); the spec's planned DEC-246..251 / PI-053..059 / SES-079 numbers were already claimed by parallel sandbox / unapplied-staged work, so the build re-keyed forward to DEC-268..273 / PI-054..060 / SES-083 / CONV-053. The build's scope was purely additive (new table, new vocab, new endpoints) plus internal-only extensions to refs-repo (the `_skip_cardinality_check` flag is not exposed at REST), so no collision potential against parallel workstreams. One pre-existing constant-list test broke from the additive scope (`test_smoke.py::test_sidebar_entries_constant` / `test_main_window_constructs` expected the pre-field SIDEBAR_ENTRIES tuple); updated in passing per the v0.4 slice-C precedent. The smoke-test cleanup was careful with reference IDs: only used identifier-based DELETE for FLD-001 / ENT-001 / ENT-002, never numeric reference IDs (the persona-build's REF-1024 mishap was a salient cautionary tale). Live API smoke verification confirmed all six §3.7 acceptance-criteria surfaces (atomic POST, both cardinality-violation surfaces, soft-delete/restore round-trip with edge, per-entity filter, server-assigned identifier).",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-053",
+        "target_type": "workstream",
+        "target_id": "WS-003",
+        "relationship": "conversation_belongs_to_workstream"
+      },
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-053",
+        "target_type": "session",
+        "target_id": "SES-083",
+        "relationship": "conversation_records_session"
+      },
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-053",
+        "target_type": "work_ticket",
+        "target_id": "WT-050",
+        "relationship": "conversation_opens_against_work_ticket"
+      }
+    ]
+  },
+  "commits": [
+    {
+      "commit_sha": "84459330703814418c9bdc9e8ec33aca33495335",
+      "commit_message_first_line": "v2: PI-004 first slice — `field` methodology entity type end-to-end per field.md v1.0",
+      "commit_message_full": "v2: PI-004 first slice — `field` methodology entity type end-to-end per field.md v1.0\n\nLands the `field` methodology entity type. First of four PI-004\nsibling builds (others: requirement, manual_config, test_spec;\npersona shipped earlier under PI-003).\n\nMigration 0014:\n- fields table with 11 columns per field.md §3.2 plus the\n  `field_previous_parent_entity_identifier` stash column supporting\n  the §3.4.6 soft-delete/restore atomicity story (the refs table\n  has no `deleted_at` column so the access layer hard-deletes the\n  edge and stashes the parent's identifier on delete; restore reads\n  the column to recreate the edge atomically).\n- 4 CHECK constraints (identifier format, status enum, type enum,\n  required-boolean) + 3 indexes.\n- refs.source_type / refs.target_type CHECK extended to admit 'field'.\n- refs.relationship_kind CHECK extended to admit 'field_belongs_to_entity'.\n- change_log.entity_type CHECK extended to admit 'field'.\n\nvocab.py:\n- FIELD_STATUSES + FIELD_STATUS_TRANSITIONS (mirrors entity per spec\n  §3.4 / will-be-DEC-26X).\n- FIELD_TYPES (11 values per spec §3.2.3 / will-be-DEC-27X).\n- 'field' in ENTITY_TYPES; 'field_belongs_to_entity' in\n  REFERENCE_RELATIONSHIPS.\n- _kinds_for_pair((field, entity)) returns\n  {field_belongs_to_entity, is_about, references} per spec §3.3.1.\n\nrepositories/field.py:\n- Atomic POST: field row + field_belongs_to_entity edge + change-log\n  emit in one transaction per spec §3.5.4.\n- Per-entity-scoped name uniqueness via refs lookup per spec §3.2.3\n  (Contact.status and Mentor.status both valid).\n- SAVEPOINT-retry identifier auto-assignment per PI-002.\n- Status transition validation per FIELD_STATUS_TRANSITIONS.\n- field_type enum validation per FIELD_TYPES.\n- Soft-delete and restore round-trip row + edge atomically per\n  spec §3.4.6; the parent-entity identifier stashed in the row's\n  `field_previous_parent_entity_identifier` column between delete\n  and restore.\n\nrepositories/references.py:\n- Cardinality guard on create: second field_belongs_to_entity edge\n  for a live field rejected with 422 cardinality_violation.\n- Cardinality guard on delete/delete_by_id: deletion of the only\n  live field_belongs_to_entity edge of a live field rejected with\n  422 cardinality_violation. Internal `_skip_cardinality_check=True`\n  flag used by repositories/field.delete_field for atomic row+edge\n  soft-delete.\n\nAPI:\n- FieldCreateIn requires field_belongs_to_entity_identifier;\n  Replace/Patch do NOT accept it (per spec §3.5.4 — reparenting\n  requires explicit edge management; future PI tracks convenience\n  endpoint).\n- 8 endpoints: GET list (with ?entity_identifier= filter per\n  §3.5.5), GET next-identifier, GET by id, POST, PUT, PATCH, DELETE,\n  POST /restore.\n\nUI:\n- Fields entry in Methodology sidebar at position #6 (after\n  Personas; the spec's planned position #5 was claimed by persona\n  which shipped first).\n- FieldsPanel as plain ListDetailPanel (master-pane entity grouping\n  per spec §3.6.2 deferred to follow-on slice with TODO comment).\n- FieldCreateDialog includes parent-entity combo picker;\n  FieldEditDialog shows parent as read-only label ('Move to entity'\n  per §3.6.5 deferred to follow-on slice).\n- FieldDeleteDialog edge-text confirmation per §3.6.6.\n- field_required modelled as combo over (\"false\",\"true\") with\n  dialog-side coercion to Python bool (the EntityCrudDialog base\n  supports only string-valued widgets).\n\nTests: 41 new tests across access (26) / API (10) / UI smoke (5)\nincluding atomic-POST correctness, both cardinality-violation\nsurfaces, per-entity name scoping, status transitions, type\nvalidation, soft-delete/restore atomicity, vocab registration,\nfilter-by-entity, server-assigned identifier, explicit-identifier\ncollision, and panel render smoke. Plus 1 constant-list update in\ntest_smoke.py per the v0.4 slice-C precedent.\n\nTest suite: 1618 → 1659 passed, 3 skipped, 0 regressions.\n\nAddresses PI-004 (does NOT resolve; the last sibling's\nbuild-closure session resolves per DEC-232 / SES-074 pattern —\nfield is the first of the four PI-004 sibling builds).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-26T00:09:14-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": ["3af99a74b75cbb1421634bee12fe5ddd64768148"],
+      "commit_files_changed_count": 19
+    }
+  ],
+  "work_tickets": [],
+  "planning_items": [
+    {
+      "identifier": "PI-054",
+      "title": "Re-parenting UX flow for `field`",
+      "description": "Per field.md §3.6.5 / §3.8.3 the Edit dialog's 'Move to entity' affordance is deferred — v1 ships with parent-entity displayed as a read-only label and no edit affordance. PI-054 decides between (a) sub-dialog opened from Edit, (b) bare reference picker, and (c) POST /fields/{id}/reparent convenience endpoint. Includes the access-layer atomic-edge-swap logic.",
+      "item_type": "pending_work",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-055",
+      "title": "Richer `field_type` vocabulary for v0.6+",
+      "description": "Per field.md §3.8.3. Covers `formula`, `link`, `address`, `phone`, `url` and the question of whether `derived` should split into a distinct entity type per DEC-038 once lineage tracing lands. Gated on CBM-redo signal.",
+      "item_type": "pending_work",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-056",
+      "title": "`field_default_value` and additional list filters",
+      "description": "Per field.md §3.8.3. Captures the default-value-at-methodology-level question and the server-side list-filters general expansion (`?field_status=`, `?field_type=`) in one combined item. Surfaced by the same real-use signal pattern.",
+      "item_type": "pending_work",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-057",
+      "title": "Richer required-ness rules for `field`",
+      "description": "Per field.md §3.8.3. Covers conditional required-ness mirroring the deploy-side `requiredWhen:` mechanism. Gated on CBM-redo signal and on PI-058 prerequisite analysis.",
+      "item_type": "pending_work",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-058",
+      "title": "Field-to-field dependencies (`field_depends_on_field`)",
+      "description": "Per field.md §3.8.3. Tracks the methodology-level dependency-capture references-edge mechanism. Likely lands as part of the same v0.6 release as PI-057.",
+      "item_type": "pending_work",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-059",
+      "title": "Derived-field lineage tracing per DEC-038",
+      "description": "Per field.md §3.8.3. Realizes DEC-038's posture in concrete schema-and-references shape. Covers `derived_field_derived_from_field` and `derived_field_traverses_relationship` edge kinds (working names) and the access-layer lineage-graph traversal logic.",
+      "item_type": "pending_work",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-060",
+      "title": "Entity-soft-delete cascade posture for inbound `field` rows",
+      "description": "Per field.md §3.8.3. Decides whether soft-deleting an entity should cascade-soft-delete its inbound `field_belongs_to_entity` edges' source fields (strict-consistency) or leave them in place (restore-friendly; v0.5 default). Posture decision affects every methodology entity-to-child relationship subsequently introduced.",
+      "item_type": "pending_work",
+      "status": "Open"
+    }
+  ],
+  "decisions": [
+    {
+      "identifier": "DEC-268",
+      "title": "`field` identifier prefix and format",
+      "decision_date": "2026-05-26",
+      "status": "Active",
+      "context": "PI-004 first slice build of the `field` methodology entity type per field.md v1.0 (§3.1). The methodology-entity-schema-spec-guide §3.1 establishes a soft-3-letter prefix posture; the v2 prefix set already includes DEC, SES, RSK, PI, TOP, REF, CHR, STA, DOM, ENT, PROC, CRM, WS, CONV, RB, WT, COP, DEP, CM, PER.",
+      "decision": "Adopt `FLD` as the field identifier prefix with format `FLD-NNN` (3-digit zero-padded). Server-side identifier auto-assignment on POST omission per PI-002; `GET /fields/next-identifier` helper available per DEC-043. Explicit-identifier POST validated against `^FLD-\\d{3}$` with collision returning 409 and malformation returning 422.",
+      "rationale": "Three letters, reads unambiguously as 'field', no collision against the existing prefix space. Adheres to the soft-3-letter prefix posture established in domain.md §3.1.",
+      "alternatives_considered": "FIELD (four letters; longer than convention). F (one letter; collides with potential future formula entity type).",
+      "consequences": "Field records are addressed as FLD-001, FLD-002, etc. Standard endpoint set with `GET /fields/next-identifier` helper per DEC-043. PI-002 server-assignment applies."
+    },
+    {
+      "identifier": "DEC-269",
+      "title": "`field` field inventory, validation, and per-entity name uniqueness under minimum-viable v0.5 scope",
+      "decision_date": "2026-05-26",
+      "status": "Active",
+      "context": "PI-004 first slice build per field.md §3.2 / §3.9.1. Define the substantive fields and validation rules for v0.5.",
+      "decision": "Field carries seven substantive fields plus inherited timestamps plus one stash column for soft-delete/restore atomicity: `field_identifier` (server-assigned), `field_name` (required), `field_description` (required), `field_type` (required enum), `field_required` (required boolean, default false), `field_notes` (optional consultant scratchpad), `field_status` (required enum, default candidate); `field_previous_parent_entity_identifier` (nullable stash supporting §3.4.6). One description field (no field_label). No field_default_value. Methodology-level required-ness as a Boolean. No storage-level length caps. Per-parent-entity case-insensitive `field_name` uniqueness on the `(parent_entity_identifier, lower(field_name))` pair — the same `field_name` value may appear on multiple parent entities (Contact.status and Mentor.status are both valid). Parent-prefix field naming per DEC-046.",
+      "rationale": "Thinnest shape that faithfully hosts Phase 3 iteration build surfacing without preempting downstream YAML deploy decisions. Per-entity scoping makes common attribute names (email_address, phone_number) reusable across entity types via twin records — the CBM history's pattern of repeating common fields across multiple entity types makes per-entity scoping the only sane discipline.",
+      "alternatives_considered": "Engagement-global uniqueness (rejected; would force renames for natural repeats). field_default_value at methodology level (deferred per PI-056). Conditional required-ness (deferred per PI-057). field_label (deploy-side concern).",
+      "consequences": "Twin-record pattern for cross-entity attribute reuse in v0.5. The access-layer name-collision check queries the refs table first to resolve the parent entity, then checks for case-insensitive collisions among siblings. The stash column is only meaningful while the field row is soft-deleted; it is cleared on restore."
+    },
+    {
+      "identifier": "DEC-270",
+      "title": "`field` status lifecycle: three-status propose-verify with one-way gate, independent of parent-entity status",
+      "decision_date": "2026-05-26",
+      "status": "Active",
+      "context": "PI-004 first slice build per field.md §3.4 / §3.9.1. The domain (DEC-047) / entity (DEC-052) / persona (DEC-265) precedents established the three-status propose-verify lifecycle as the methodology-entity pattern.",
+      "decision": "Field adopts the three-status propose-verify lifecycle exactly: candidate (default starter) → confirmed or deferred (one-way gate, no regression to candidate); confirmed ↔ deferred allowed in both directions to support mid-engagement scope changes. No archived status — soft-delete covers the retained-for-record use case. Rejection of a candidate is handled by soft-delete, not by a status value. `field_status` is independent of the parent entity's status — lifecycles managed separately.",
+      "rationale": "Cross-entity-type consistency: fields, like domains and entities and personas, are surfaced by the consultant (typically as candidates), verified by the client (transition to confirmed or deferred), and may be rejected entirely (soft-delete). The independence-from-parent-entity-status rule matters because a field's lifecycle position is meaningful even when its parent entity is candidate (consultant sketches a candidate entity along with its candidate fields, with the goal of verifying both in the same conversation) and conversely the parent entity may be confirmed while individual fields are still being negotiated.",
+      "alternatives_considered": "Cascade from parent-entity status (rejected; field-level negotiation is independent). Distinct lifecycle (rejected; inheriting the workstream pattern wins for consistency).",
+      "consequences": "Status-transition validation in the access layer mirrors entity / domain / persona exactly. Status edit affordance in UI never consults parent-entity status."
+    },
+    {
+      "identifier": "DEC-271",
+      "title": "`field`-to-`entity` affiliation mechanism and `field_belongs_to_entity` vocabulary registration with access-layer cardinality enforcement",
+      "decision_date": "2026-05-26",
+      "status": "Active",
+      "context": "PI-004 first slice build per field.md §3.3.1 / §3.9.1. The mandatory 1:1 affiliation between field and entity needs a mechanism. DEC-006 / DEC-053 / DEC-266 established the references-over-FK posture for methodology cross-edges.",
+      "decision": "Many-to-one (1:1 mandatory at source side) via the references entity, NOT a direct FK column. Register `field_belongs_to_entity` in REFERENCE_RELATIONSHIPS and as the only kind in `_kinds_for_pair((field, entity))`. Extend `refs.relationship_kind` CHECK in Alembic migration. Access-layer cardinality enforcement on three surfaces: (1) POST /fields atomicity — row + edge + change-log emit in one transaction; (2) references.create rejects a second `field_belongs_to_entity` edge on a live field with 422 `cardinality_violation`; (3) references.delete / delete_by_id rejects deleting the only `field_belongs_to_entity` edge of a live field with 422 `cardinality_violation`. Internal `_skip_cardinality_check=True` kwarg (not exposed at REST) on references-repo delete paths enables the legitimate `delete_field` repo-to-repo call that atomically soft-deletes the row and the edge together.",
+      "rationale": "References-first discipline (consistent with every methodology cross-edge so far). Uniform edge-query semantics. Future-edge friction avoidance (process_touches_field under PI-005; field_depends_on_field under PI-058; derived-field lineage under PI-059 all reuse the references store). Soft-delete consistency. Cardinality enforcement as access-layer logic localizes complexity to one place — direct FK column would push the same logic into the schema migration and distribute complexity across more surfaces.",
+      "alternatives_considered": "Direct FK column `field_entity_identifier` on the fields table (rejected; local wins on cardinality + uniqueness declarability, workstream-wide cost on discipline / query uniformity / future-edge friction). Decomposed POST (POST row first, POST edge separately; rejected per the transient-invalid-state argument in field.md §3.5.4).",
+      "consequences": "Per-entity name uniqueness check must query refs first to resolve the parent entity. Cardinality (1:1 mandatory at source) enforced in access layer on three surfaces. The references-repo's `_skip_cardinality_check` flag is an internal contract between repositories and is never exposed via REST. Soft-deleted fields temporarily violate the live-edge invariant (the edge is gone; the row carries the stash); they are not live, so the invariant only applies to live fields."
+    },
+    {
+      "identifier": "DEC-272",
+      "title": "`field_type` vocabulary for v0.5 and POST atomicity for the mandatory parent-entity edge",
+      "decision_date": "2026-05-26",
+      "status": "Active",
+      "context": "PI-004 first slice build per field.md §3.2.3 / §3.5.4 / §3.9.1.",
+      "decision": "11-value enum: text / long_text / enum / multi_enum / date / datetime / money / boolean / number / reference / derived. POST /fields REQUIRES `field_belongs_to_entity_identifier` body key; access layer creates field row + edge + change-log emit in one transaction. PUT and PATCH do NOT accept the key — reparenting requires explicit DELETE-then-POST edge management (PI-054 tracks the future convenience endpoint).",
+      "rationale": "Vocabulary narrower than deploy-side YAML schema's type list — methodology cares about value-shape, not platform rendering. Richer types (`formula`, `link`, `address`, `phone`, `url`) deferred per PI-055. POST atomicity avoids the transient-invalid-state window that decomposed POST creates for the 1:1 mandatory relationship.",
+      "alternatives_considered": "Mirror the deploy-side YAML type list (rejected; over-specifies for methodology layer). Decomposed POST (POST row first, POST edge separately; rejected per the transient-invalid-state argument).",
+      "consequences": "FieldCreateIn schema requires `field_belongs_to_entity_identifier`; FieldReplaceIn/FieldPatchIn do NOT accept it. Re-parenting requires explicit DELETE-then-POST edge management (PI-054 tracks the convenience endpoint). The 11-value type vocabulary is registered in FIELD_TYPES; the Field ORM model's CHECK constraint enforces it at the schema layer too."
+    },
+    {
+      "identifier": "DEC-273",
+      "title": "`field` API surface, UI defaults, master-pane grouping deviation deferred, sidebar position re-keyed, acceptance criteria for v0.5",
+      "decision_date": "2026-05-26",
+      "status": "Active",
+      "context": "PI-004 first slice build per field.md §3.5 / §3.6 / §3.7 / §3.9.1. The spec's planned sidebar position #5 was claimed by persona (PI-003) which shipped first.",
+      "decision": "Standard endpoint set with the POST atomicity deviation (DEC-272) and the `?entity_identifier=ENT-NNN` list filter. Decomposed reference handling beyond the parent-entity edge. Default ListDetailPanel UI under Methodology sidebar at position #6 (re-keyed from spec's planned #5 because persona shipped first). Master-pane primary grouping by parent entity per §3.6.2 — DEFERRED to a follow-on slice; v1 ships flat with a TODO comment in panels/field.py. 'Move to entity' reparenting affordance per §3.6.5 also DEFERRED with a TODO. Parent entity rendered at detail-pane position #3 outside the generic ReferencesSection per §3.6.3 (the mandatory 1:1 affiliation is conceptually part of the field's identity, not a peer relationship). `field_required` modelled as a string combo over (\"false\",\"true\") in the UI with dialog-side coercion to Python bool because the EntityCrudDialog base supports only string-valued widgets. 17 testable acceptance criteria; 14 covered by 41 new tests, 3 covered only by live API smoke or follow-on slice (criterion 11 master-pane entity grouping, criterion 13 partial — CRUD dialogs covered at smoke not full E2E, criterion 17 sample CBM-redo records).",
+      "rationale": "Eight endpoints match the cross-spec default with the bounded atomic-POST deviation already decided in DEC-272. Master-pane entity grouping is the right scan affordance at CBM-redo scale but adds enough UI complexity to warrant a separate slice. Detail-pane rendering of parent entity outside ReferencesSection reflects that the mandatory 1:1 affiliation is conceptually part of the field's identity. Position #6 re-key reflects pragmatic reality of parallel-sandbox sequencing (persona shipped first, claimed #5).",
+      "alternatives_considered": "Ship entity-grouping in the first slice (rejected on complexity/time grounds; deferred per the same v0.5 PI-054). Render parent entity inside ReferencesSection (rejected on identity-vs-peer distinction). Force position #5 by reordering personas (rejected; persona shipped first and renaming positions just to honor a spec written before persona is gratuitous churn).",
+      "consequences": "Follow-on slice tracks master-pane entity grouping. PI-054 tracks the 'Move to entity' affordance. PI-056 tracks future server-side filter expansion. The sidebar's Methodology group now contains six entries: Domains, Entities, Processes, CRM Candidates, Personas, Fields."
+    }
+  ],
+  "references": [
+    {
+      "source_type": "session",
+      "source_id": "SES-083",
+      "target_type": "planning_item",
+      "target_id": "PI-004",
+      "relationship": "is_about"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-083",
+      "target_type": "session",
+      "target_id": "SES-081",
+      "relationship": "is_about"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-083",
+      "target_type": "work_ticket",
+      "target_id": "WT-050",
+      "relationship": "is_about"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": [
+    {"planning_item_identifier": "PI-004"}
+  ]
+}

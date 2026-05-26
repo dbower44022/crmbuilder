@@ -581,5 +581,82 @@
     "status": "Open",
     "title": "Add Commit model to access/exporter.py _EXPORT_TABLES so commits.json regenerates with the rest of the engagement snapshot",
     "updated_at": "2026-05-26T02:42:27.200825"
+  },
+  {
+    "created_at": "2026-05-26T04:13:30.825964",
+    "description": "Per field.md §3.6.5 / §3.8.3 the Edit dialog's 'Move to entity' affordance is deferred — v1 ships with parent-entity displayed as a read-only label and no edit affordance. PI-054 decides between (a) sub-dialog opened from Edit, (b) bare reference picker, and (c) POST /fields/{id}/reparent convenience endpoint. Includes the access-layer atomic-edge-swap logic.",
+    "id": 54,
+    "identifier": "PI-054",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Re-parenting UX flow for `field`",
+    "updated_at": "2026-05-26T04:13:30.825968"
+  },
+  {
+    "created_at": "2026-05-26T04:13:31.016173",
+    "description": "Per field.md §3.8.3. Covers `formula`, `link`, `address`, `phone`, `url` and the question of whether `derived` should split into a distinct entity type per DEC-038 once lineage tracing lands. Gated on CBM-redo signal.",
+    "id": 55,
+    "identifier": "PI-055",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Richer `field_type` vocabulary for v0.6+",
+    "updated_at": "2026-05-26T04:13:31.016175"
+  },
+  {
+    "created_at": "2026-05-26T04:13:31.177340",
+    "description": "Per field.md §3.8.3. Captures the default-value-at-methodology-level question and the server-side list-filters general expansion (`?field_status=`, `?field_type=`) in one combined item. Surfaced by the same real-use signal pattern.",
+    "id": 56,
+    "identifier": "PI-056",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "`field_default_value` and additional list filters",
+    "updated_at": "2026-05-26T04:13:31.177345"
+  },
+  {
+    "created_at": "2026-05-26T04:13:31.320734",
+    "description": "Per field.md §3.8.3. Covers conditional required-ness mirroring the deploy-side `requiredWhen:` mechanism. Gated on CBM-redo signal and on PI-058 prerequisite analysis.",
+    "id": 57,
+    "identifier": "PI-057",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Richer required-ness rules for `field`",
+    "updated_at": "2026-05-26T04:13:31.320736"
+  },
+  {
+    "created_at": "2026-05-26T04:13:31.497866",
+    "description": "Per field.md §3.8.3. Tracks the methodology-level dependency-capture references-edge mechanism. Likely lands as part of the same v0.6 release as PI-057.",
+    "id": 58,
+    "identifier": "PI-058",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Field-to-field dependencies (`field_depends_on_field`)",
+    "updated_at": "2026-05-26T04:13:31.497869"
+  },
+  {
+    "created_at": "2026-05-26T04:13:31.648726",
+    "description": "Per field.md §3.8.3. Realizes DEC-038's posture in concrete schema-and-references shape. Covers `derived_field_derived_from_field` and `derived_field_traverses_relationship` edge kinds (working names) and the access-layer lineage-graph traversal logic.",
+    "id": 59,
+    "identifier": "PI-059",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Derived-field lineage tracing per DEC-038",
+    "updated_at": "2026-05-26T04:13:31.648729"
+  },
+  {
+    "created_at": "2026-05-26T04:13:31.838002",
+    "description": "Per field.md §3.8.3. Decides whether soft-deleting an entity should cascade-soft-delete its inbound `field_belongs_to_entity` edges' source fields (strict-consistency) or leave them in place (restore-friendly; v0.5 default). Posture decision affects every methodology entity-to-child relationship subsequently introduced.",
+    "id": 60,
+    "identifier": "PI-060",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Entity-soft-delete cascade posture for inbound `field` rows",
+    "updated_at": "2026-05-26T04:13:31.838004"
   }
 ]
