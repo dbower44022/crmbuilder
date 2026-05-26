@@ -1,0 +1,139 @@
+{
+  "label": "PI-003 / PI-004 / PI-005 design phase — six methodology-schema specs authored (persona, field, requirement, manual_config, test_spec, process-v2) and six matching build prompts authored as kickoff_prompt work_tickets for future Claude Code sessions to execute. PIs advance from `Open` to `Open` (no resolution); each future build session resolves its respective PI atomically via apply_close_out.py. Identifiers re-keyed to SES-081 / CONV-051 / WT-049..054 after ses_079.json (parallel-sandbox orchestrator-architecture work) and ses_080.json (parallel-sandbox PI-052 chat-UI design) were discovered staged-but-unapplied during this session's close-out per the v2 concurrent-sandbox collision-contingency pattern.",
+  "session": {
+    "identifier": "SES-081",
+    "title": "Methodology-schema design phase for PI-003 / PI-004 / PI-005 — six schema specs + six build prompts",
+    "session_date": "2026-05-25",
+    "status": "Complete",
+    "conversation_reference": "Claude Code orchestrator session at Doug's terminal, 2026-05-25 evening, opened in /home/doug/Dropbox/Projects/crmbuilder. The conversation began with Doug asking Claude Code to act as an orchestrator for agents to execute all work related to PI-003, PI-004, and PI-005, and to ensure all three PIs are properly closed out at the end including DB updates and a JSON file written to git. The orchestrator surface-and-settled the scope before dispatching agents: PI-003/004/005 are explicitly deferred and conditional on CBM-paper-test surfacing real need; together they represent six new methodology entity types plus a major process schema growth; full end-to-end build (migrations + access + REST + MCP + UI + tests) is realistically a multi-day workstream that cannot complete in one session. The orchestrator presented four options (commit specs + per-entity build prompts; full parallel build; minimum-viable-backend-only; persona-pilot-then-decide) and Doug chose the per-entity-build-prompts approach: commit the six design specs as a milestone, then author one CLAUDE-CODE-PROMPT-build-<entity>.md per entity so each future Claude Code session executes its entity end-to-end with its own close-out atomically resolving the relevant PI. At close-out time the orchestrator discovered ses_079.json (parallel-sandbox WS-012 orchestrator-architecture work; claims SES-079 / CONV-049 / PI-053..062 / DEC-246..251) and ses_080.json (parallel-sandbox PI-052 chat-UI design work; claims SES-080 / CONV-050 / WT-048 / DEC-252..262) staged-but-unapplied in git and re-keyed this session's identifiers to SES-081 / CONV-051 / WT-049..054 per the SES-077 re-keying precedent.",
+    "topics_covered": "Orchestration scope-setting against three Open methodology-evolution PIs (PI-003 persona, PI-004 the four-entity cohort field/requirement/manual_config/test_spec, PI-005 process schema growth). Identifier-prefix non-collision analysis against the full v2 prefix set (DEC/SES/RSK/PI/TOP/REF/CHR/STA/DOM/ENT/PROC/CRM/WS/CONV/RB/WT/COP/DEP/CM) — assigned PER (persona), FLD (field), REQ (requirement), MCF (manual_config), TST (test_spec); process keeps PROC. Cross-spec relationship-kind registration discipline (once-per-kind on the source side; sibling entity types referenced as anticipated inbound until they land). Six parallel design agents dispatched, each producing a ~450–515-line spec following the methodology-entity-schema-spec-guide template. Six parallel build-prompt agents dispatched, each producing a ~400–600-line CLAUDE-CODE-PROMPT-build-<entity>.md following the existing pi-029-A build-prompt structural template. Build-closure pattern documented for the PI-004 four-sibling cohort (the LAST sibling to ship is the resolver — uses runtime query of `addresses` edges on PI-004 to detect that the other three siblings have landed before flipping `resolves_planning_items`). Process-v2 growth additive-migration story documented (six new TEXT NULL columns via ALTER TABLE; three new relationship kinds; no status change; no data backfill; v0.4 records survive intact). PI-003 and PI-005 each ship via a single build session that resolves the PI atomically; PI-004 ships via four sibling build sessions, the last of which resolves PI-004 via runtime build-closure detection. Per-spec design decisions captured inline in each spec's section 3.9.1 as DEC-XXX placeholders (NOT authored to the v2 governance DB in this session; each build session's close-out authors its spec's decisions with definitive DEC-NNN numbers).",
+    "summary": "Six methodology-entity schema specs and six matching build prompts authored to satisfy PI-003, PI-004, and PI-005 incrementally across six future Claude Code sessions. The design phase landed 2,909 lines of new spec documentation under `PRDs/product/crmbuilder-v2/methodology-schema-specs/` and an estimated 2,400–3,600 lines of build-prompt documentation under `PRDs/product/crmbuilder-v2/prompts/`. The three PIs remain `Open` at this session's close and advance via the `addresses` edges this session creates; resolution flips to `Resolved` happen in the future build sessions' close-outs. The six build prompts are recorded as `kickoff_prompt` work_tickets (WT-049..054) anchored to their target PIs, completing the v2 session-lifecycle pattern documented in CLAUDE.md: every unit of work has a planning_item, an addressing kickoff work_ticket pointing to a canonical kickoff `.md` file, and a future session that consumes the WT and lands the implementation.",
+    "artifacts_produced": "Six methodology-schema specs at `PRDs/product/crmbuilder-v2/methodology-schema-specs/`: `persona.md` (453 lines, PER prefix, 5 fields, 3-status lifecycle, 2 outgoing references — `persona_scopes_to_domain` and `persona_realized_as_entity`), `field.md` (515 lines, FLD prefix, 7 fields including `field_type` 11-value enum and boolean `field_required`, 3-status lifecycle, 1 outgoing reference `field_belongs_to_entity` with mandatory atomic POST cardinality), `requirement.md` (481 lines, REQ prefix, 7 fields including `requirement_priority` MoSCoW enum, 3-status lifecycle, 5 outgoing reference kinds spanning domain/entity/field/process/test_spec), `manual_config.md` (513 lines, MCF prefix, 8 fields including operator-completion metadata, 4-status lifecycle with `completed` terminal value and cross-field completion-fields-required invariant, 4 outgoing reference kinds), `test_spec.md` (496 lines, TST prefix, dual-axis state — 3-status methodology lifecycle plus 4-value execution-outcome field with auto-managed `last_run_at` cross-field invariant, 3 outgoing reference kinds plus 1 anticipated inbound, color-cued master-pane Last Run column UI deviation), `process-v2.md` (451 lines, growth spec for the existing `process` entity — 6 new TEXT NULL columns for Phase-3 content with collapsible-section UI rendering, 3 new outgoing reference kinds — `process_performed_by_persona`, `process_touches_field`, `process_touches_entity` promoted from anticipated to registered). Six build prompts at `PRDs/product/crmbuilder-v2/prompts/`: `CLAUDE-CODE-PROMPT-build-persona.md`, `CLAUDE-CODE-PROMPT-build-field.md`, `CLAUDE-CODE-PROMPT-build-requirement.md`, `CLAUDE-CODE-PROMPT-build-manual_config.md`, `CLAUDE-CODE-PROMPT-build-test_spec.md`, `CLAUDE-CODE-PROMPT-build-process-v2.md` — each instructing a future Claude Code session to land migration + model + vocab + repository + Pydantic schemas + REST router + main.py registration + UI client + sidebar entry + main_window dispatch + panel + dialogs + tests + verification + close-out payload + apply, including per-prompt PI-resolution discipline (PI-003 resolves on persona build session close; PI-005 resolves on process-v2 build session close; PI-004 resolves on the LAST of the four PI-004-sibling build sessions to land via runtime build-closure detection on `addresses` edges). This close-out payload `ses_081.json` and its apply prompt `CLAUDE-CODE-PROMPT-apply-close-out-ses-081.md`. No code committed in this session — design and prompt artifacts only.",
+    "in_flight_at_end": "PI-003, PI-004, PI-005 remain `Open` at this session's close. Their resolution paths are wired: this session's `addresses_planning_items` edges advance each PI; six future Claude Code sessions consume the six build prompts (WT-049..054) and atomically resolve their respective PIs via slice A's `resolves` reference behavior. Recommended execution sequence per dependencies: persona (PI-003) and field (PI-004 portion) first — they're independent foundational entities; requirement, manual_config, test_spec next — they depend on field/persona for their cross-references; process-v2 last — it depends on persona and field for `process_performed_by_persona` and `process_touches_field` edges. The four PI-004 siblings may run in any order; the last to ship runs the build-closure detection and resolves PI-004. WS-003 (Methodology entity schema design) is the natural workstream affiliation for this and the six successor sessions — even though WS-003 is `complete` against its v0.4 four-entity scope, the v0.5+ extension work is a coherent continuation. No new planning items surfaced from the design phase; each spec's section 3.8 enumerates spec-deferred questions categorized as [v0.5+ build] / [CBM redo] / [v0.6+] — those become PIs in the respective build sessions' close-outs as needed. Ses_079.json (orchestrator architecture, claims SES-079) and ses_080.json (PI-052 chat-UI, claims SES-080) remain staged-but-unapplied alongside this payload; whichever session applies first claims its identifier and the other two need no re-keying because each was authored against an explicit identifier set already non-conflicting with the others."
+  },
+  "conversation": {
+    "conversation_identifier": "CONV-051",
+    "conversation_title": "PI-003 / PI-004 / PI-005 orchestrated design phase — six methodology-schema specs and six build prompts",
+    "conversation_purpose": "Orchestrate the design phase for three Open methodology-evolution planning items by dispatching parallel agents to produce a complete, build-ready schema specification per entity plus a self-contained build prompt per entity, while keeping the three PIs `Open` (resolution deferred to the respective build sessions). The conversation does not produce any code; it produces design + prompt artifacts that enable six future Claude Code sessions to land the entities incrementally with proper close-out discipline.",
+    "conversation_description": "Claude Code orchestrator session that surface-and-settled the scope against PI-003 (persona), PI-004 (the field/requirement/manual_config/test_spec cohort), and PI-005 (process schema growth), then dispatched two waves of parallel agents — five design agents in parallel (later joined by the process-v2 design agent) producing six methodology-schema specs at ~450–515 lines each, followed by six build-prompt agents in parallel producing six CLAUDE-CODE-PROMPT-build-<entity>.md files at ~400–600 lines each. The conversation kept the three PIs `Open` because each PI's resolution depends on its corresponding entity being built (migration + access + REST + UI + tests), which is multi-day work that cannot complete in one orchestrator session. The build prompts are authored as `kickoff_prompt` work_tickets (WT-049..054) per the v2 session lifecycle documented in CLAUDE.md, so each future Claude Code session can open against its WT, consume the build prompt, and close out atomically — the typical v2 workstream cadence. Identifier-prefix non-collision analysis assigned PER/FLD/REQ/MCF/TST for the five new entities; process keeps PROC. Cross-spec relationship-kind registration discipline applied: each kind registered once on its source side, sibling entity types referenced as anticipated inbound until they land. Build-closure pattern documented for the PI-004 four-sibling cohort: the LAST sibling to ship runs a runtime query of `addresses` edges on PI-004 to detect that the other three have landed, then resolves PI-004 in the same payload. Close-out identifiers re-keyed to SES-081 / CONV-051 / WT-049..054 after ses_079.json and ses_080.json were discovered staged-but-unapplied in git.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-051",
+        "target_type": "workstream",
+        "target_id": "WS-003",
+        "relationship": "conversation_belongs_to_workstream"
+      },
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-051",
+        "target_type": "session",
+        "target_id": "SES-081",
+        "relationship": "conversation_records_session"
+      }
+    ]
+  },
+  "commits": [],
+  "work_tickets": [
+    {
+      "work_ticket_identifier": "WT-049",
+      "work_ticket_kind": "kickoff_prompt",
+      "work_ticket_title": "Build persona methodology entity end-to-end (PI-003)",
+      "work_ticket_description": "Execute the full vertical slice for the `persona` methodology entity per `PRDs/product/crmbuilder-v2/methodology-schema-specs/persona.md`: Alembic migration creating the `personas` table and extending refs/change_log CHECKs; `Persona` SQLAlchemy model in `access/models.py`; vocab.py additions (PERSONA_STATUSES, PERSONA_STATUS_TRANSITIONS, ENTITY_TYPES, REFERENCE_RELATIONSHIPS, _kinds_for_pair clauses for (persona, domain) and (persona, entity)); `access/repositories/persona.py` with eight module-level functions mirroring `entity.py` including SAVEPOINT-retry identifier auto-assignment per PI-002; Pydantic schemas in `api/schemas.py`; FastAPI router at `api/routers/persona.py` registered in `api/main.py`; UI client methods in `ui/client.py`; sidebar entry under Methodology group; main_window dispatch; `ui/panels/persona.py` mirroring `entities.py`; CRUD dialogs at `ui/dialogs/persona_crud.py` and `ui/dialogs/_persona_schema.py`; access-layer tests at `tests/crmbuilder_v2/access/test_persona.py`; API tests at `tests/crmbuilder_v2/api/test_personas.py`; UI smoke test. Verification: migration forward; API smoke for list+create+update+delete+restore; full test suite green. Close-out: nine-section payload with `resolves_planning_items: [{\"planning_item_identifier\": \"PI-003\"}]` atomically flipping PI-003 to Resolved; apply via `scripts/apply_close_out.py`; commit code + payload + apply prompt + regenerated db-export snapshots + new dep_NNN.log in one commit prefixed `v2: PI-003 —`.",
+      "work_ticket_status": "ready",
+      "work_ticket_file_path": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-build-persona.md",
+      "addresses_planning_item": "PI-003"
+    },
+    {
+      "work_ticket_identifier": "WT-050",
+      "work_ticket_kind": "kickoff_prompt",
+      "work_ticket_title": "Build field methodology entity end-to-end (PI-004 — field portion, most urgent)",
+      "work_ticket_description": "Execute the full vertical slice for the `field` methodology entity per `PRDs/product/crmbuilder-v2/methodology-schema-specs/field.md`. Most urgent of the four PI-004 siblings because `entity` (shipped thin in v0.4) gains real utility only when fields can attach. Key deviations from the standard entity pattern: atomic POST cardinality — `POST /fields` requires `field_belongs_to_entity_identifier` in the body so row + edge land in one transaction preserving the live-edge invariant; per-entity-scoped `field_name` uniqueness (Contact.status and Mentor.status both valid); `field_type` enum validation against an 11-value vocabulary (text/long_text/enum/multi_enum/date/datetime/money/boolean/number/reference/derived); cardinality enforcement at references-repo DELETE for `field_belongs_to_entity` edges on live fields (422 with `cardinality_violation`). All standard layers per the persona pattern. Close-out: `addresses_planning_items: [{\"planning_item_identifier\": \"PI-004\"}]`. `resolves_planning_items: []` unless this is the LAST PI-004 sibling to land (verify via runtime query of `addresses` edges on PI-004).",
+      "work_ticket_status": "ready",
+      "work_ticket_file_path": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-build-field.md",
+      "addresses_planning_item": "PI-004"
+    },
+    {
+      "work_ticket_identifier": "WT-051",
+      "work_ticket_kind": "kickoff_prompt",
+      "work_ticket_title": "Build requirement methodology entity end-to-end (PI-004 — requirement portion)",
+      "work_ticket_description": "Execute the full vertical slice for the `requirement` methodology entity per `PRDs/product/crmbuilder-v2/methodology-schema-specs/requirement.md`. Registers five outgoing relationship kinds: requirement_scopes_to_domain, requirement_touches_entity, requirement_touches_field, requirement_realized_by_process, requirement_verified_by_test_spec. Caveat: kinds targeting `field` and `test_spec` are conditional on those sibling entity types being in ENTITY_TYPES at build time — if absent, register the kind in REFERENCE_RELATIONSHIPS and the refs CHECK extension but leave the `_kinds_for_pair` clauses with TODO comments. `requirement_priority` MoSCoW enum (must/should/could/wont), default `should`. Global case-insensitive name uniqueness. Five-column master pane including Priority. All standard layers per the persona pattern. Close-out: `addresses_planning_items: [{\"planning_item_identifier\": \"PI-004\"}]`. `resolves_planning_items: []` unless this is the LAST PI-004 sibling to land.",
+      "work_ticket_status": "ready",
+      "work_ticket_file_path": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-build-requirement.md",
+      "addresses_planning_item": "PI-004"
+    },
+    {
+      "work_ticket_identifier": "WT-052",
+      "work_ticket_kind": "kickoff_prompt",
+      "work_ticket_title": "Build manual_config methodology entity end-to-end (PI-004 — manual_config portion)",
+      "work_ticket_description": "Execute the full vertical slice for the `manual_config` methodology entity per `PRDs/product/crmbuilder-v2/methodology-schema-specs/manual_config.md`. Four-status lifecycle (candidate/confirmed/deferred/completed) — the `completed` value is a deliberate deviation from the standard three-status pattern per spec §3.4.2. Cross-field invariant: when status transitions to `completed`, both `manual_config_completed_at` and `manual_config_completed_by` must be populated (server-set `completed_at` to now() if omitted; reject if `completed_by` omitted with 422 `completed_status_requires_completion_fields`). Seven-value `manual_config_category` enum (saved_view/duplicate_check/workflow/deferred_options_enum/role_permission/dynamic_logic/other). Four outgoing reference kinds. Five-column master pane including Category. Detail pane reveals completion fields conditionally on status. All standard layers per the persona pattern. Close-out: `addresses_planning_items: [{\"planning_item_identifier\": \"PI-004\"}]`. Build-closure detection: if all three sibling PI-004 entities (FLD/REQ/TST) are already addressed by completed sessions, set `resolves_planning_items: [{\"planning_item_identifier\": \"PI-004\"}]`.",
+      "work_ticket_status": "ready",
+      "work_ticket_file_path": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-build-manual_config.md",
+      "addresses_planning_item": "PI-004"
+    },
+    {
+      "work_ticket_identifier": "WT-053",
+      "work_ticket_kind": "kickoff_prompt",
+      "work_ticket_title": "Build test_spec methodology entity end-to-end (PI-004 — test_spec portion)",
+      "work_ticket_description": "Execute the full vertical slice for the `test_spec` methodology entity per `PRDs/product/crmbuilder-v2/methodology-schema-specs/test_spec.md`. Dual-axis state: `test_spec_status` ∈ {candidate, confirmed, deferred} (methodology lifecycle, propose-verify gate) plus separate `test_spec_last_run_outcome` ∈ {not_run, passing, failing, skipped} (execution result, unrestricted transitions). Cross-field invariant: when `last_run_outcome` moves from `not_run` to any other value, `test_spec_last_run_at` must be populated (server auto-sets if omitted); when transitioning back to `not_run`, server auto-clears `last_run_at` and `last_run_notes`. Three outgoing reference kinds plus one anticipated inbound (registered on the requirement side). Recommended convenience endpoint `POST /test-specs/{id}/record-run` for atomic outcome+at+notes update. Color-cued Last Run master-pane column (passing=green/failing=red/not_run=gray/skipped=amber). All standard layers per the persona pattern. Close-out: `addresses_planning_items: [{\"planning_item_identifier\": \"PI-004\"}]`. Build-closure detection: if all three sibling PI-004 entities (FLD/REQ/MCF) are already addressed by completed sessions, set `resolves_planning_items: [{\"planning_item_identifier\": \"PI-004\"}]`.",
+      "work_ticket_status": "ready",
+      "work_ticket_file_path": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-build-test_spec.md",
+      "addresses_planning_item": "PI-004"
+    },
+    {
+      "work_ticket_identifier": "WT-054",
+      "work_ticket_kind": "kickoff_prompt",
+      "work_ticket_title": "Build process v2 schema growth end-to-end (PI-005)",
+      "work_ticket_description": "Execute the growth slice for the existing `process` methodology entity per `PRDs/product/crmbuilder-v2/methodology-schema-specs/process-v2.md`. NOT a new entity — grows the existing process entity additively. Six new TEXT NULL columns via ALTER TABLE: process_steps, process_triggers, process_outcomes, process_edge_cases, process_frequency, process_duration_estimate. Three new relationship kinds in vocab.py: process_performed_by_persona (depends on PI-003 persona type), process_touches_field (depends on PI-004 field type), process_touches_entity (promoted from anticipated to registered). No data backfill — existing v0.4 process records get NULL for new columns; UI treats NULL as 'Phase 3 content not yet authored' with collapsed sections. No status change — process_classification enum preserved. Migration fully reversible. Recommended ordering: after persona and field land; safe to execute earlier (CHECK extension is forward-compatible). Tests cover migration forward+backward, v0.4 record survival, PATCH-ability of new fields, reference round-trip (skip if sibling tables absent). Close-out: `resolves_planning_items: [{\"planning_item_identifier\": \"PI-005\"}]` — this session resolves PI-005 atomically.",
+      "work_ticket_status": "ready",
+      "work_ticket_file_path": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-build-process-v2.md",
+      "addresses_planning_item": "PI-005"
+    }
+  ],
+  "decisions": [],
+  "planning_items": [],
+  "references": [
+    {
+      "source_type": "session",
+      "source_id": "SES-081",
+      "target_type": "planning_item",
+      "target_id": "PI-003",
+      "relationship": "is_about"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-081",
+      "target_type": "planning_item",
+      "target_id": "PI-004",
+      "relationship": "is_about"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-081",
+      "target_type": "planning_item",
+      "target_id": "PI-005",
+      "relationship": "is_about"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-081",
+      "target_type": "decision",
+      "target_id": "DEC-039",
+      "relationship": "is_about"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-081",
+      "target_type": "workstream",
+      "target_id": "WS-003",
+      "relationship": "is_about"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": [
+    {"planning_item_identifier": "PI-003"},
+    {"planning_item_identifier": "PI-004"},
+    {"planning_item_identifier": "PI-005"}
+  ]
+}
