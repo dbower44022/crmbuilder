@@ -44,6 +44,7 @@ from crmbuilder_v2.ui.panels.domains import DomainsPanel
 from crmbuilder_v2.ui.panels.engagements import EngagementsPanel
 from crmbuilder_v2.ui.panels.entities import EntitiesPanel
 from crmbuilder_v2.ui.panels.field import FieldsPanel
+from crmbuilder_v2.ui.panels.manual_config import ManualConfigPanel
 from crmbuilder_v2.ui.panels.persona import PersonasPanel
 from crmbuilder_v2.ui.panels.planning_items import PlanningItemsPanel
 from crmbuilder_v2.ui.panels.processes import ProcessesPanel
@@ -91,6 +92,7 @@ ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
     "field": "Fields",
     # PI-004 methodology cohort (v0.5+).
     "requirement": "Requirements",
+    "manual_config": "Manual Configs",
     # v0.5 slice C: meta-DB engagement registry.
     "engagement": "Engagements",
     # v0.7 governance entities.
@@ -168,6 +170,8 @@ class MainWindow(QMainWindow):
                 page = PersonasPanel(self._client)
             elif entry == "Fields":
                 page = FieldsPanel(self._client)
+            elif entry == "Manual Configs":
+                page = ManualConfigPanel(self._client)
             elif entry == "Engagements":
                 page = EngagementsPanel(
                     self._client,

@@ -41,6 +41,8 @@ from crmbuilder_v2.access.models import (
     DepositEvent,
     Domain,
     Entity,
+    Field,
+    ManualConfig,
     Persona,
     PlanningItem,
     Process,
@@ -73,8 +75,15 @@ _EXPORT_TABLES: list[tuple[str, type]] = [
     ("crm_candidates", CrmCandidate),
     # v0.5+ methodology entity (PI-003, persona.md).
     ("personas", Persona),
+    # v0.5+ methodology entity (PI-004 first slice, field.md). Was
+    # missing in the original PI-004-first-slice exporter list; added
+    # here in passing as a small in-scope cleanup alongside the
+    # manual_config registration.
+    ("fields", Field),
     # v0.5+ methodology entity (PI-004 cohort, requirement.md).
     ("requirements", Requirement),
+    # v0.5+ methodology entity (PI-004 cohort, manual_config.md).
+    ("manual_configs", ManualConfig),
     # Governance entities (UI v0.7), in workstream order.
     ("workstreams", Workstream),
     ("conversations", Conversation),

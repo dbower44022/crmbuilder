@@ -127,6 +127,43 @@ REQUIREMENT_PRIORITIES: frozenset[str] = frozenset(
     {"must", "should", "could", "wont"}
 )
 
+# Methodology entity `manual_config` lifecycle (PI-004 cohort, v0.5+).
+# **Four-status lifecycle** per ``manual_config.md`` §3.4 — explicit
+# deviation from the cross-spec three-status default. Adds a terminal
+# ``completed`` reachable only from ``confirmed``; once completed,
+# soft-delete-and-restore-and-redo is the only path back. The
+# additional cross-field invariant (both ``manual_config_completed_at``
+# and ``manual_config_completed_by`` populated on transition into
+# ``completed``) is enforced at the repository layer per §3.5.3, not by
+# this map.
+MANUAL_CONFIG_STATUSES: frozenset[str] = frozenset(
+    {"candidate", "confirmed", "deferred", "completed"}
+)
+
+MANUAL_CONFIG_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "candidate": frozenset({"confirmed", "deferred"}),
+    "confirmed": frozenset({"deferred", "completed"}),
+    "deferred": frozenset({"confirmed"}),
+    "completed": frozenset(),
+}
+
+# Seven-value ``manual_config_category`` enum per ``manual_config.md``
+# §3.2.3. Aligned with the historical deploy-pipeline NOT_SUPPORTED
+# categories and the v1.1 YAML schema's ``optionsDeferred`` flag.
+# ``other`` is a generic bucket — free-text sub-classification is
+# deferred to a v0.6+ planning item per §3.8.3.
+MANUAL_CONFIG_CATEGORIES: frozenset[str] = frozenset(
+    {
+        "saved_view",
+        "duplicate_check",
+        "workflow",
+        "deferred_options_enum",
+        "role_permission",
+        "dynamic_logic",
+        "other",
+    }
+)
+
 # Methodology entity `crm_candidate` lifecycle (UI v0.4 slice E, DEC-062).
 # Four-status lifecycle per ``crm_candidate.md`` section 3.4. ``active``
 # is the starter status; ``selected``, ``declined``, ``removed`` are
@@ -338,6 +375,15 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         "requirement_touches_field",
         "requirement_realized_by_process",
         "requirement_verified_by_test_spec",
+        # v0.5+ manual_config additions (PI-004 cohort, manual_config.md
+        # §3.3.1). Four outbound kinds. All four target entity types are
+        # live (``domain`` v0.4, ``entity`` v0.4, ``field`` PI-004 first
+        # slice, ``requirement`` PI-004 cohort) so every clause in
+        # ``_kinds_for_pair`` activates unconditionally.
+        "manual_config_scopes_to_domain",
+        "manual_config_touches_entity",
+        "manual_config_touches_field",
+        "manual_config_realizes_requirement",
     }
 )
 
@@ -387,6 +433,8 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         "field",
         # v0.5+ methodology entity (PI-004 cohort). See requirement.md.
         "requirement",
+        # v0.5+ methodology entity (PI-004 cohort). See manual_config.md.
+        "manual_config",
     }
 )
 
@@ -433,6 +481,18 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
       when the ``test_spec`` sibling entity type lands. CHECK admits
       the kind already; the ``_kinds_for_pair`` clause uncomments at
       sibling-build time.
+    * ``manual_config_scopes_to_domain`` — source must be a manual_config,
+      target must be a domain (v0.5+, manual_config.md §3.3.1;
+      many-to-many; zero-affiliation permitted).
+    * ``manual_config_touches_entity`` — source must be a manual_config,
+      target must be an entity (v0.5+, manual_config.md §3.3.1).
+    * ``manual_config_touches_field`` — source must be a manual_config,
+      target must be a field (v0.5+, manual_config.md §3.3.1; clause
+      active because ``field`` is live as of PI-004 first slice).
+    * ``manual_config_realizes_requirement`` — source must be a
+      manual_config, target must be a requirement (v0.5+,
+      manual_config.md §3.3.1; clause active because ``requirement`` is
+      live as of PI-004 cohort).
 
     The ruleset is permissive by design: every pair has at least the
     two generic kinds, so the dialog never produces an empty kind list
@@ -527,6 +587,19 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
     # build prompt.
     # if source_type == "requirement" and target_type == "test_spec":
     #     kinds.add("requirement_verified_by_test_spec")
+    # v0.5+ manual_config additions (PI-004 cohort, manual_config.md
+    # §3.3.1). Four outbound kinds. All four target types
+    # (``domain`` / ``entity`` / ``field`` / ``requirement``) are live
+    # as of the PI-004 first slice and cohort builds, so every clause
+    # activates unconditionally — no TODOs needed.
+    if source_type == "manual_config" and target_type == "domain":
+        kinds.add("manual_config_scopes_to_domain")
+    if source_type == "manual_config" and target_type == "entity":
+        kinds.add("manual_config_touches_entity")
+    if source_type == "manual_config" and target_type == "field":
+        kinds.add("manual_config_touches_field")
+    if source_type == "manual_config" and target_type == "requirement":
+        kinds.add("manual_config_realizes_requirement")
     return frozenset(kinds)
 
 

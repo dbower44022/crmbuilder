@@ -10,6 +10,7 @@ import crmbuilder_v2
 from crmbuilder_v2.access.exceptions import (
     AccessLayerError,
     ClassificationTransitionError,
+    CompletedStatusRequiresCompletionFieldsError,
     InvalidDomainReferenceError,
     SelectedCandidateConflictError,
     StatusTransitionError,
@@ -18,6 +19,7 @@ from crmbuilder_v2.access.meta_db import bootstrap_meta_db, init_meta_db_pool
 from crmbuilder_v2.api.errors import (
     access_layer_handler,
     classification_transition_handler,
+    completed_status_requires_completion_fields_handler,
     engagement_export_dir_handler,
     invalid_domain_reference_handler,
     request_validation_handler,
@@ -40,6 +42,7 @@ from crmbuilder_v2.api.routers import (
     entities,
     field,
     health,
+    manual_configs,
     orientation,
     persona,
     planning_items,
@@ -91,6 +94,10 @@ def create_app() -> FastAPI:
     app.add_exception_handler(
         SelectedCandidateConflictError,
         selected_candidate_conflict_handler,
+    )
+    app.add_exception_handler(
+        CompletedStatusRequiresCompletionFieldsError,
+        completed_status_requires_completion_fields_handler,
     )
     app.add_exception_handler(AccessLayerError, access_layer_handler)
     app.add_exception_handler(RequestValidationError, request_validation_handler)
@@ -148,6 +155,7 @@ def create_app() -> FastAPI:
     app.include_router(field.router)
     # PI-004 methodology cohort (v0.5+).
     app.include_router(requirements.router)
+    app.include_router(manual_configs.router)
     app.include_router(references.router)
     app.include_router(orientation.router)
     app.include_router(catalog.router)

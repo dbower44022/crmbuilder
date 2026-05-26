@@ -932,6 +932,153 @@ class StorageClient:
         )
 
     # ------------------------------------------------------------------
+    # Manual Configs (methodology entity — PI-004 cohort, v0.5+)
+    # ------------------------------------------------------------------
+
+    def list_manual_configs(
+        self, *, include_deleted: bool = False
+    ) -> list[dict[str, Any]]:
+        """Return all manual_configs as a list of dicts.
+
+        Shape matches ``crmbuilder_v2/api/routers/manual_configs.py``.
+        With ``include_deleted=True`` soft-deleted manual_configs are
+        included; otherwise the API filters them out. Per
+        ``manual_config.md`` §3.5.1.
+        """
+        path = "/manual-configs"
+        if include_deleted:
+            path = "/manual-configs?include_deleted=true"
+        result = self._request("GET", path)
+        if not isinstance(result, list):
+            return []
+        return result
+
+    def get_manual_config(self, identifier: str) -> dict[str, Any]:
+        """Return a single manual_config by identifier (e.g. ``"MCF-001"``).
+
+        Raises ``NotFoundError`` if the manual_config does not exist (or
+        is soft-deleted — the API 404s soft-deleted rows by default).
+        Per ``manual_config.md`` §3.5.1.
+        """
+        result = self._request("GET", f"/manual-configs/{identifier}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for get_manual_config",
+            )
+        return result
+
+    def create_manual_config(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /manual-configs. Returns the created record dict.
+
+        The body uses the parent-prefixed field names
+        (``manual_config_name``, ``manual_config_category``,
+        ``manual_config_description``, ``manual_config_instructions``,
+        optional ``manual_config_notes`` / ``manual_config_status`` /
+        ``manual_config_completed_at`` / ``manual_config_completed_by``).
+        ``manual_config_identifier`` is server-assigned when omitted.
+        References (all four outbound kinds) are NOT inlined — attach
+        them afterwards via ``create_reference``. Per
+        ``manual_config.md`` §3.5.4.
+
+        Raises ``RequestShapeError`` on 422 (identifier-format /
+        name-uniqueness / category-enum / status-enum / completed-
+        fields-required), ``ConflictError`` on 409 (explicit-identifier
+        collision).
+        """
+        result = self._request("POST", "/manual-configs", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for create_manual_config",
+            )
+        return result
+
+    def update_manual_config(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PUT /manual-configs/{identifier} — full record replace.
+
+        The body is the full record; ``manual_config_identifier`` in
+        the body must match the path. Raises ``NotFoundError`` on 404,
+        ``RequestShapeError`` on 422 (validation, status transition,
+        or completion-field-population invariant).
+        """
+        result = self._request(
+            "PUT", f"/manual-configs/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for update_manual_config",
+            )
+        return result
+
+    def patch_manual_config(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PATCH /manual-configs/{identifier} — partial update.
+
+        Body should contain only the changed fields. Raises
+        ``NotFoundError`` on 404, ``RequestShapeError`` on 422
+        (validation, invalid status transition, or the §3.5.3 cross-
+        field invariant on transition into ``completed``).
+        """
+        result = self._request(
+            "PATCH", f"/manual-configs/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for patch_manual_config",
+            )
+        return result
+
+    def delete_manual_config(self, identifier: str) -> Any:
+        """DELETE /manual-configs/{identifier}. Soft-deletes; idempotent.
+
+        Returns the API's response data. Raises ``NotFoundError`` on
+        404. Outbound references (all four kinds) persist per
+        ``manual_config.md`` §3.4.6.
+        """
+        return self._request("DELETE", f"/manual-configs/{identifier}")
+
+    def restore_manual_config(self, identifier: str) -> dict[str, Any]:
+        """POST /manual-configs/{identifier}/restore. Clears the soft-delete.
+
+        Raises ``NotFoundError`` on 404, ``RequestShapeError`` on 422
+        (the record is not soft-deleted).
+        """
+        result = self._request(
+            "POST", f"/manual-configs/{identifier}/restore"
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for restore_manual_config",
+            )
+        return result
+
+    def next_manual_config_identifier(self) -> str:
+        """GET /manual-configs/next-identifier. Returns the next ``MCF-NNN``."""
+        result = self._request("GET", "/manual-configs/next-identifier")
+        if isinstance(result, dict) and isinstance(result.get("next"), str):
+            return result["next"]
+        raise ServerError(
+            status_code=200,
+            errors=[],
+            message=(
+                "Expected {'next': str} body for "
+                "next_manual_config_identifier"
+            ),
+        )
+
+    # ------------------------------------------------------------------
     # Personas (methodology entity — v0.5+)
     # ------------------------------------------------------------------
 

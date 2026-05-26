@@ -44,7 +44,7 @@ EXPECTED_ENTRIES = (
     # Entities in slice C, Processes in slice D, CRM Candidates in slice E,
     # Personas in v0.5+ (PI-003), Fields in v0.5+ (PI-004 first slice),
     # Requirements in v0.5+ (PI-004 cohort, between Processes and CRM
-    # Candidates).
+    # Candidates), Manual Configs in v0.5+ (PI-004 cohort, tail of group).
     "Domains",
     "Entities",
     "Processes",
@@ -52,6 +52,7 @@ EXPECTED_ENTRIES = (
     "CRM Candidates",
     "Personas",
     "Fields",
+    "Manual Configs",
 )
 
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -482,6 +483,74 @@ class CrmCandidatePatchIn(_Base):
     crm_candidate_fit_reason: str | None = None
     crm_candidate_notes: str | None = None
     crm_candidate_status: str | None = None
+
+
+# ---------- Manual Configs (methodology entity, PI-004 cohort, v0.5+) -------
+
+
+class ManualConfigCreateIn(_Base):
+    """POST /manual-configs body. ``manual_config_identifier`` is
+    server-assigned when omitted; ``manual_config_status`` defaults to
+    ``candidate`` server-side. Reference attachments are NOT inlined —
+    per ``manual_config.md`` §3.5.4 they attach via separate
+    ``POST /references`` calls.
+
+    POST with ``manual_config_status='completed'`` (importing an already-
+    performed config) triggers the §3.5.3 cross-field invariant: both
+    ``manual_config_completed_at`` (server-defaulted to ``now()`` when
+    omitted) and ``manual_config_completed_by`` (must be supplied) are
+    required, or the request fails with a dedicated 422 envelope body
+    identifying the missing field(s)."""
+
+    manual_config_name: str
+    manual_config_category: str
+    manual_config_description: str
+    manual_config_instructions: str
+    manual_config_notes: str | None = None
+    manual_config_status: str | None = None
+    manual_config_completed_at: datetime | None = None
+    manual_config_completed_by: str | None = None
+    manual_config_identifier: str | None = None
+
+
+class ManualConfigReplaceIn(_Base):
+    """PUT /manual-configs/{identifier} body — full record replace.
+
+    ``manual_config_identifier`` is optional; when present it must
+    match the path identifier (mismatch → 422). Per ``manual_config.md``
+    §3.5 ``manual_config_status`` is required on a full replace; the
+    cross-field invariant of §3.5.3 fires when the post-write status
+    is ``completed``."""
+
+    manual_config_identifier: str | None = None
+    manual_config_name: str
+    manual_config_category: str
+    manual_config_description: str
+    manual_config_instructions: str
+    manual_config_notes: str | None = None
+    manual_config_status: str
+    manual_config_completed_at: datetime | None = None
+    manual_config_completed_by: str | None = None
+
+
+class ManualConfigPatchIn(_Base):
+    """PATCH /manual-configs/{identifier} body — partial update.
+
+    Routers consume this with ``model_dump(exclude_unset=True)`` so an
+    explicit ``manual_config_notes: null`` (clear the field) is
+    distinguished from an omitted ``manual_config_notes`` (leave
+    unchanged). Transitioning ``manual_config_status`` into
+    ``completed`` triggers the §3.5.3 cross-field invariant against
+    the post-merge values."""
+
+    manual_config_name: str | None = None
+    manual_config_category: str | None = None
+    manual_config_description: str | None = None
+    manual_config_instructions: str | None = None
+    manual_config_notes: str | None = None
+    manual_config_status: str | None = None
+    manual_config_completed_at: datetime | None = None
+    manual_config_completed_by: str | None = None
 
 
 # ---------- Engagements (methodology entity, UI v0.5 slice B) ----------

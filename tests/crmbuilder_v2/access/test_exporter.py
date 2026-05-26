@@ -21,14 +21,19 @@ def test_bootstrap_creates_all_export_files(v2_env, export_dir: Path):
         "topics.json",
         # Methodology entity snapshots — domains landed in UI v0.4
         # slice B, entities in slice C, processes in slice D,
-        # crm_candidates in slice E, personas in v0.5+ (PI-003), and
-        # requirements in v0.5+ (PI-004 cohort).
+        # crm_candidates in slice E, personas in v0.5+ (PI-003),
+        # fields in v0.5+ (PI-004 first slice; exporter registration
+        # added retroactively in the PI-004 cohort manual_config
+        # build's in-scope cleanup), requirements in v0.5+ (PI-004
+        # cohort), and manual_configs in v0.5+ (PI-004 cohort).
         "domains.json",
         "entities.json",
         "processes.json",
         "crm_candidates.json",
         "personas.json",
+        "fields.json",
         "requirements.json",
+        "manual_configs.json",
         # Governance entity snapshots (UI v0.7).
         "workstreams.json",
         "conversations.json",

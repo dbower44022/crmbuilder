@@ -147,6 +147,37 @@ class SelectedCandidateConflictError(AccessLayerError):
         )
 
 
+class CompletedStatusRequiresCompletionFieldsError(AccessLayerError):
+    """A ``manual_config`` transition into ``completed`` is missing one
+    or both completion fields.
+
+    Raised by the ``manual_config`` repository on POST, PATCH/PUT
+    operations that would result in ``manual_config_status =
+    'completed'`` without both ``manual_config_completed_at`` and
+    ``manual_config_completed_by`` populated in the same write. Carries
+    the list of missing field names. The API layer renders this as HTTP
+    422 with the dedicated body shape per ``manual_config.md`` §3.5.3 —
+    ``{"data": null, "meta": {}, "errors": [{"error":
+    "completed_status_requires_completion_fields", "missing": [...]}]}``
+    — keeping the v2 envelope so clients can introspect a uniform error
+    shape across endpoints.
+
+    ``completed_at`` is server-defaultable to ``now()`` when omitted on
+    transition into ``completed``; only ``completed_by`` (the operator
+    identity) is rejected when missing.
+    """
+
+    http_status = 422
+    code = "completed_status_requires_completion_fields"
+
+    def __init__(self, missing: list[str]):
+        self.missing = list(missing)
+        super().__init__(
+            "manual_config status 'completed' requires completion "
+            f"fields: missing={self.missing}"
+        )
+
+
 class NotFoundError(AccessLayerError):
     """Requested entity does not exist."""
 

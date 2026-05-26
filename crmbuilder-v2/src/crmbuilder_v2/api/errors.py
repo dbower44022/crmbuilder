@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from crmbuilder_v2.access.exceptions import (
     AccessLayerError,
     ClassificationTransitionError,
+    CompletedStatusRequiresCompletionFieldsError,
     InvalidDomainReferenceError,
     SelectedCandidateConflictError,
     StatusTransitionError,
@@ -107,6 +108,30 @@ def invalid_domain_reference_handler(
             "domain_identifier": exc.domain_identifier,
         },
     )
+
+
+def completed_status_requires_completion_fields_handler(
+    _request: Request, exc: CompletedStatusRequiresCompletionFieldsError
+) -> JSONResponse:
+    """Render a ``manual_config`` cross-field invariant violation.
+
+    Uses the v2 envelope shape (``{"data": null, "meta": {}, "errors":
+    [...]}``) per ``manual_config.md`` §3.5.3 with the dedicated
+    ``completed_status_requires_completion_fields`` error code and the
+    ``missing`` list. Registered as a more-specific handler than
+    :func:`access_layer_handler` so Starlette routes
+    ``CompletedStatusRequiresCompletionFieldsError`` here by exact
+    class match.
+    """
+    body = err(
+        [
+            {
+                "error": "completed_status_requires_completion_fields",
+                "missing": exc.missing,
+            }
+        ]
+    )
+    return JSONResponse(status_code=exc.http_status, content=body)
 
 
 def selected_candidate_conflict_handler(

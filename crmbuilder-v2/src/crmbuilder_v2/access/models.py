@@ -50,6 +50,8 @@ from crmbuilder_v2.access.vocab import (
     ENTITY_TYPES,
     FIELD_STATUSES,
     FIELD_TYPES,
+    MANUAL_CONFIG_CATEGORIES,
+    MANUAL_CONFIG_STATUSES,
     PERSONA_STATUSES,
     PLANNING_ITEM_STATUSES,
     PLANNING_ITEM_TYPES,
@@ -627,6 +629,104 @@ class Process(Base):
             "process_domain_identifier",
         ),
         Index("ix_processes_process_deleted_at", "process_deleted_at"),
+    )
+
+
+class ManualConfig(Base):
+    """Methodology entity — one discrete CRM-config item the deploy cannot apply.
+
+    Eighth methodology entity type (v0.5+, PI-004 cohort) per
+    ``manual_config.md`` v1.0. Captures the items the operator must
+    configure by hand in the live CRM after deploy (saved views,
+    duplicate checks, workflows, deferred-options enums, role
+    permissions, dynamic logic, other). Parent-prefix field naming
+    convention (DEC-046); primary key is the prefixed-string
+    identifier ``manual_config_identifier`` (``MCF-NNN``) — no integer
+    surrogate ``id`` column.
+
+    **Four-status lifecycle, not three.** Spec §3.4 deviates from the
+    cross-spec `candidate / confirmed / deferred` default by adding a
+    terminal `completed` reachable only from `confirmed`. Completion-
+    field nullability is conditional on status, enforced at the access
+    layer per spec §3.5.3 (cross-field invariant: both
+    ``manual_config_completed_at`` and ``manual_config_completed_by``
+    required when status transitions into ``completed``; storage
+    permits null on either to keep the conditional out of SQLite).
+
+    The four outbound relationship kinds (``manual_config_scopes_to_domain``,
+    ``manual_config_touches_entity``, ``manual_config_touches_field``,
+    ``manual_config_realizes_requirement``) live in the ``refs`` table
+    per §3.3.1 — no FK columns on this table.
+    """
+
+    __tablename__ = "manual_configs"
+
+    manual_config_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    manual_config_name: Mapped[str] = mapped_column(
+        String(255), nullable=False
+    )
+    manual_config_category: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    manual_config_description: Mapped[str] = mapped_column(
+        Text, nullable=False
+    )
+    manual_config_instructions: Mapped[str] = mapped_column(
+        Text, nullable=False
+    )
+    manual_config_notes: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    manual_config_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    manual_config_completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    manual_config_completed_by: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    manual_config_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    manual_config_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    manual_config_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^MCF-\d{3}$`` expressed as a SQLite GLOB pattern.
+        CheckConstraint(
+            "manual_config_identifier GLOB 'MCF-[0-9][0-9][0-9]'",
+            name="ck_manual_config_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("manual_config_status", MANUAL_CONFIG_STATUSES),
+            name="ck_manual_config_status",
+        ),
+        CheckConstraint(
+            _check_in("manual_config_category", MANUAL_CONFIG_CATEGORIES),
+            name="ck_manual_config_category",
+        ),
+        Index(
+            "ix_manual_configs_manual_config_status",
+            "manual_config_status",
+        ),
+        Index(
+            "ix_manual_configs_manual_config_category",
+            "manual_config_category",
+        ),
+        Index(
+            "ix_manual_configs_manual_config_deleted_at",
+            "manual_config_deleted_at",
+        ),
     )
 
 
