@@ -39,9 +39,9 @@
     "identifier": "PI-004",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Additional methodology entity types for v0.5+: field, requirement, manual_config, test_spec",
-    "updated_at": "2026-05-11T14:51:10.242099"
+    "updated_at": "2026-05-26T06:17:45.376213"
   },
   {
     "created_at": "2026-05-11T14:51:10.271856",

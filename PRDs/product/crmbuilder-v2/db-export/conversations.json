@@ -916,5 +916,22 @@
     "conversation_superseded_at": null,
     "conversation_title": "PI-004 cohort `manual_config` build — methodology entity end-to-end execution under SES-081's orchestration plan",
     "conversation_updated_at": "2026-05-26T05:37:48.644554"
+  },
+  {
+    "conversation_cancelled_at": null,
+    "conversation_completed_at": "2026-05-26T06:17:44.093807",
+    "conversation_created_at": "2026-05-26T06:17:44.093443",
+    "conversation_deleted_at": null,
+    "conversation_description": "Claude Code build-agent conversation at Doug's terminal, dispatched by a parent orchestrator session to execute the test_spec build prompt authored under SES-081 (WT-053). The agent followed the build prompt's 17 numbered steps in order, mirroring the manual_config-build pattern with test_spec-specific extensions per test_spec.md v1.0. Pre-flight identifier capture detected the heads (SES-085, DEC-283, CONV-055, WT-054); no parallel-sandbox collision. PI-004 addresses-edge count at session-open was 8 (4 conversations + 4 work_tickets), with three of the four conversations representing the prior sibling builds (CONV-053 field, CONV-054 requirement, CONV-055 manual_config) plus the design conversation (CONV-051) — confirming this session is the PI-004 closer. The build's scope was purely additive (new table, new vocab, new endpoints) with one non-additive edit: the previously-dormant `(requirement, test_spec)` clause in `_kinds_for_pair` was activated by uncommenting the TODO block — the kind itself was already in REFERENCE_RELATIONSHIPS via SES-084's requirement build per CLAUDE.md line 48's once-per-kind rule. The dual-axis state pattern (methodology-lifecycle restricted, execution-outcome unrestricted) is the first v2 entity to ship with two independent enum axes; the spec frames it explicitly as a v0.5+ convention candidate for any future verification-like entity. The §3.4.4 cross-field invariant on `last_run_at` is enforced at the access layer via `_apply_outcome_invariant`; the API layer routes the explicit-null-vs-omitted signal via Pydantic's `model_dump(exclude_unset=True)`. The convenience POST /test-specs/{id}/record-run endpoint shipped per §3.8.1 (resolved affirmatively for v0.5+). Two pre-existing constant-list tests broke from the additive scope (test_smoke.py EXPECTED_ENTRIES, test_exporter.py expected files set); updated in passing. Live API smoke verification confirmed all six end-to-end checks; smoke artifact TST-001 soft-deleted at session end per precedent.",
+    "conversation_identifier": "CONV-056",
+    "conversation_kickoff_drafted_at": null,
+    "conversation_notes": null,
+    "conversation_purpose": "Execute `CLAUDE-CODE-PROMPT-build-test_spec.md` end-to-end: land the test_spec methodology entity vertical slice (migration + access + REST + UI + tests) per test_spec.md v1.0. **RESOLVE PI-004** by emitting a `resolves` edge from this session to PI-004 — this is the fourth and final PI-004 cohort sibling; the build-closure detection in the build prompt confirmed three prior addresses-edges (CONV-053 field, CONV-054 requirement, CONV-055 manual_config) on PI-004 so this session takes the closer role per DEC-232 / SES-074 pattern.",
+    "conversation_ready_at": null,
+    "conversation_started_at": null,
+    "conversation_status": "complete",
+    "conversation_superseded_at": null,
+    "conversation_title": "PI-004 cohort closer — `test_spec` build — methodology entity end-to-end execution under SES-081's orchestration plan",
+    "conversation_updated_at": "2026-05-26T06:17:44.094062"
   }
 ]

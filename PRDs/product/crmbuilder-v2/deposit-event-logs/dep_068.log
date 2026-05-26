@@ -1,0 +1,31 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_086.json
+Label:  PI-004 cohort closer — `test_spec` methodology entity type end-to-end (migration, access, REST, UI, tests). Fourth and final of the four PI-004 sibling builds (others: field shipped under SES-083, requirement shipped under SES-084, manual_config shipped under SES-085). **This session RESOLVES PI-004** via slice A's atomic edge+flip behavior — the `resolves_planning_items` section below carries one entry that flips PI-004 from Open → Resolved at apply time. Migration 0017 creates the `test_specs` table with the three-status methodology lifecycle (candidate/confirmed/deferred, mirroring entity/domain per DEC-047) AND the four-value execution-outcome enum (not_run/passing/failing/skipped) on the same row — the dual-axis state pattern per test_spec.md §3.4.3, the first v2 entity to ship with two independent enum axes. Methodology status uses the propose-verify gate (one-way out of `candidate`); execution outcome uses UNRESTRICTED transitions (observational, not decisional, per §3.4.2). Server enforces the §3.4.4 cross-field invariant — `last_run_at` auto-populated when outcome moves to a run state, auto-cleared (along with `last_run_notes`) on move back to `not_run`, explicit-null `last_run_at` in a run state rejected with 422. Three new outbound reference kinds (test_spec_touches_entity, test_spec_touches_field, test_spec_exercises_process) registered in vocab.py and admitted in the refs CHECK; the previously-dormant `(requirement, test_spec)` clause in `_kinds_for_pair` is activated by this build (the `requirement_verified_by_test_spec` kind itself was already in REFERENCE_RELATIONSHIPS via SES-084's requirement build). Nine REST endpoints — the eight standard plus POST /test-specs/{id}/record-run convenience per spec §3.8.1 (resolved affirmatively for v0.5+). UI ships the five-column master pane (Identifier/Name/Status/Last Run/Updated) with the color-cued Last Run column (passing green, failing red, not_run gray, skipped amber — UI deviation per §3.6.2 justified by verification-health-at-a-glance), the three-section detail pane (identity-and-methodology / Test body / Last run + collapsible Internal notes + ReferencesSection), and the Record Run convenience-modal sub-dialog (transient — uses deleteLater() per project_qt_worker_widget_gc_hazard.md). 49 new tests across access (26) + API (13) + UI (10). In-passing: test_smoke.py EXPECTED_ENTRIES + test_exporter.py expected files set extended; refresh.py filename mapping updated. Test suite: 1805 baseline → 1854 (+49 new, 0 regressions), 3 skipped pre-existing. Resolves PI-004 per DEC-232 / SES-074 build-closure pattern: this is the closer; the cohort's `resolves` edge fires from this session to PI-004 atomically.
+Deposit event: DEP-068
+
+=== session (1 record) ===
+  ✓ POST session  SES-086 (HTTP 201)
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CONV-056 (HTTP 201)
+
+=== decisions (4 records) ===
+  ✓ POST decisions  DEC-284 (HTTP 201)
+  ✓ POST decisions  DEC-285 (HTTP 201)
+  ✓ POST decisions  DEC-286 (HTTP 201)
+  ✓ POST decisions  DEC-287 (HTTP 201)
+
+=== references (3 records) ===
+  ✓ POST references  SES-086 is_about PI-004 (HTTP 201)
+  ✓ POST references  SES-086 is_about SES-081 (HTTP 201)
+  ✓ POST references  SES-086 is_about WT-053 (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-004 (HTTP 201)
+
+=== addresses_planning_items (1 record) ===
+  ✓ POST addresses_planning_items  → PI-004 (HTTP 201)
+
+✓ All 11 operations complete.
+
+✓ Recorded apply as deposit_event DEP-068 (HTTP 201).

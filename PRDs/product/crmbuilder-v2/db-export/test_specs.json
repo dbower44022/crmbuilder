@@ -1,0 +1,18 @@
+[
+  {
+    "test_spec_created_at": "2026-05-26T06:11:02.518540",
+    "test_spec_deleted_at": "2026-05-26T06:11:10.332076",
+    "test_spec_description": "smoke",
+    "test_spec_expected": "works",
+    "test_spec_identifier": "TST-001",
+    "test_spec_last_run_at": "2026-05-26T06:11:03.063408",
+    "test_spec_last_run_notes": "step 4 timeout",
+    "test_spec_last_run_outcome": "failing",
+    "test_spec_name": "smoke",
+    "test_spec_notes": null,
+    "test_spec_setup": null,
+    "test_spec_status": "confirmed",
+    "test_spec_steps": "do",
+    "test_spec_updated_at": "2026-05-26T06:11:10.332837"
+  }
+]
