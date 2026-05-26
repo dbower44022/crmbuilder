@@ -11838,5 +11838,15 @@
     "source_type": "deposit_event",
     "target_id": "CM-0015",
     "target_type": "commit"
+  },
+  {
+    "created_at": "2026-05-26T19:55:57.694373",
+    "id": 1191,
+    "reference_identifier": "REF-1187",
+    "relationship_kind": "addresses",
+    "source_id": "WT-055",
+    "source_type": "work_ticket",
+    "target_id": "PI-052",
+    "target_type": "planning_item"
   }
 ]

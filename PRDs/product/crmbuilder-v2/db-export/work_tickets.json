@@ -862,5 +862,21 @@
     "work_ticket_superseded_at": null,
     "work_ticket_title": "Build process v2 schema growth end-to-end (PI-005)",
     "work_ticket_updated_at": "2026-05-26T02:32:43.270137"
+  },
+  {
+    "work_ticket_cancelled_at": null,
+    "work_ticket_consumed_at": null,
+    "work_ticket_created_at": "2026-05-26T19:55:57.285672",
+    "work_ticket_deleted_at": null,
+    "work_ticket_description": "Second implementation slice of PI-052 per DEC-261 slicing plan. Slice A shipped under SES-087 (commit b519df0, chat_spike.py terminal proof-of-concept). Slice B is the PySide6 chat-tab MVP — full tab structure, ONE tool wired (get_current_status), streaming on via AsyncAnthropic.messages.stream(), QThread + private asyncio loop per DEC-257, in-memory only (no persistence — Slice C), mode toggle and model picker visible but inert (Slice C wires them), API-key bootstrap (env → keyring → modal). NEW files: ui/panels/chat.py, ui/chat/{__init__,controller,worker,session,tools,widgets,auth}.py. TOUCHED: ui/sidebar.py (add AI group with Chat entry, above Engagements), ui/main_window.py (panel dispatch), pyproject.toml (keyring runtime dep). Full kickoff body lives in PRDs/product/crmbuilder-v2/pi-052-slice-b-pyside6-tab-mvp-kickoff.md (per DEC-262 hybrid kickoff pattern — file is canonical when this summary and the file drift). Acceptance criteria checklist of 11 items in the kickoff. Build executes in 6 phases (skeleton, auth, worker+controller skeleton, live streaming, tool dispatch, cancellation), each a natural test checkpoint. No DECs expected unless Qt+asyncio bridging surfaces architectural revisions against DEC-257.",
+    "work_ticket_file_path": "PRDs/product/crmbuilder-v2/pi-052-slice-b-pyside6-tab-mvp-kickoff.md",
+    "work_ticket_identifier": "WT-055",
+    "work_ticket_kind": "kickoff_prompt",
+    "work_ticket_notes": null,
+    "work_ticket_ready_at": "2026-05-26T19:55:57.519185",
+    "work_ticket_status": "ready",
+    "work_ticket_superseded_at": null,
+    "work_ticket_title": "Kickoff: PI-052 Slice B — PySide6 chat tab MVP, one tool wired, streaming on, in-memory only",
+    "work_ticket_updated_at": "2026-05-26T19:55:57.519578"
   }
 ]
