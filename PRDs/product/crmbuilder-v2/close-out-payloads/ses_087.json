@@ -1,0 +1,326 @@
+{
+  "label": "Architecture review session: consolidate V1+V2 CRMBuilder documentation under a single Master CRMBuilder PRD at the new specifications/ directory; adopt MD-format-for-internal-docs rule; establish CRMBuilder dogfood as first client and CBM as validation; adopt discovery-driven authoring; establish a three-category conceptual model (Process Management Tools/Data, Deliverables, Process Support Knowledge/Tools); redesign Phase 1 as client-led intake; create glossary.md with five terms (Engagement, Skill, Pattern, Inventory, Client); surface 13 Planning Items covering V2 architectural cleanup (Session/Conversation entity restructure, cross-engagement reference store, client-input storage, engagement-setup and skill-trigger mechanisms, library buildouts, tooling, manifest, iterative drafting, header retirement, glossary V2 migration); record nine architectural Decisions.",
+  "session": {
+    "identifier": "SES-087",
+    "title": "Architecture review \u2014 Master CRMBuilder PRD consolidation, three-category conceptual model, Phase 1 redesign, 13 new PIs and 5 glossary terms",
+    "session_date": "2026-05-26",
+    "status": "Complete",
+    "conversation_reference": "Claude.ai sandbox conversation conducted on 2026-05-26. Open-ended architecture review of the CRMBuilder project. Started with no specific deliverable target and evolved into a wide-ranging consolidation of project documentation, conceptual modeling, and methodology phase redesign. Substantive content commits landed in the crmbuilder repo as the conversation progressed (CLAUDE.md direction-setting section, transitional headers on 17 methodology documents, Master CRMBuilder PRD v0.1 discussion-draft, glossary.md v0.2). The conversation produced governance content (decisions, planning items) bundled into this close-out per the SES-046-through-SES-052 precedent.",
+    "topics_covered": "Seed prompt: \"I would like to cover a high level project architecture review\"\n\nStructured walkthrough of the architecture review:\n\n(1) Inventory of documentation candidates for 'definitive V2 functionality and processes' \u2014 finding no single canonical document; surfacing the documentation gap as the root issue.\n\n(2) Decision tree on consolidation strategy: V3 fresh-start vs Master PRD under current names vs reserved V3 for future architectural milestone. Selected Option B \u2014 author a CRMBuilder Master PRD under current names with the consolidation work as the active task.\n\n(3) Storage location decision: new top-level specifications/ directory at the repo root, broad scope (all documents defining process and functionality), subdirectories permitted for horizontal/vertical segregation, _archive/ for superseded content.\n\n(4) Format rule: all PRDs and internal documents in MD going forward; customer-facing deliverables remain format-flexible (Word, PDF, etc.) per case.\n\n(5) Master CRMBuilder PRD scope debate: confirmed end-to-end (EVERYTHING from initial requirements capture through deployed functional application \u2014 engine selection, deployment, configuration, verification all in scope).\n\n(6) Client model: CRMBuilder is the first client (dogfood); CBM is the second client (validation, with existing document-based CBM artifacts as benchmark).\n\n(7) Discovery-driven authoring: draft minimal Master CRMBuilder PRD content sufficient to run the next phase against CRMBuilder, run, discover gaps, refine. Iterative.\n\n(8) CLAUDE.md and methodology document updates: added 'Current direction' section to crmbuilder/CLAUDE.md naming the Master CRMBuilder PRD at specifications/master-crmbuilder-PRD.md as the consolidating source of truth; added transitional status headers to 17 methodology MD files (3 conduct, 13 interview/guide, 1 v2 user process guide); added sibling STATUS.md for the .docx 13-phase document. Commit 09f8f62d.\n\n(9) Authored Master CRMBuilder PRD v0.1 at specifications/master-crmbuilder-PRD.md \u2014 Part I Orientation, Part II V2 Process Guide (Phase 1 detailed as 'Business Context Capture', Phases 2-13 placeholders), Part III Iterative Drafting notes. Commit cfaec293.\n\n(10) Recognized the v0.1 PRD was authored unilaterally without discussing the structural and content choices. Reset to discussion mode; added DISCUSSION DRAFT \u2014 NOT YET APPROVED marker. Commit e9d30e0b.\n\n(11) Glossary architecture: where to store term definitions. Option A (MD file at specifications/glossary.md) selected as the immediate approach; Option C (V2 records with desktop UI access) recognized as the architectural endpoint; a Planning Item captured the V2 migration.\n\n(12) First glossary entry: Engagement (TERM-001). Format approved: term, identifier, definition, scope, examples, distinguishing notes, related terms. Commit d9337607.\n\n(13) Phase 1 substantive redesign discussion: Phase 1 is client-led intake (client brings what they consider relevant; consultant synthesizes; not overly broad, not strictly focused), with Skills loaded contextually based on client defining statements. Inverts the existing consultant-led structured-interview model.\n\n(14) Three-category conceptual model introduced: Process Management Tools/Data (what we use to drive the process \u2014 Status, Decisions, Sessions, Planning Items), Deliverables (what the process produces \u2014 Entities, Processes, Requirements, Code commits), Process Support Knowledge/Tools (reference knowledge that helps guide the process \u2014 Skills, Patterns, Inventories, conduct documents, interview guides). Categorization by ROLE, not abstract industry domain.\n\n(15) Skills concept introduced as Category 3 reference knowledge: domain-specific knowledge files loaded contextually based on client defining statements (e.g., 'charitable foundation CRM' triggers loading the charitable-foundation Skill). Storage: V2 endpoint architecturally; MD scaffold in the immediate term pending the cross-engagement reference store architecture PI.\n\n(16) Architectural question surfaced: V2's engagement-partitioned storage doesn't naturally host cross-engagement reference content (glossary, Skills, Patterns, Inventories). PI captured to resolve.\n\n(17) Client-provided information storage question surfaced: files, URLs, social media references, credentials, transcripts, recordings, email threads, verbally-captured context. Different storage shapes likely needed. PI captured to resolve.\n\n(18) Engagement-level vs Session-level setup distinction: engagement-level is one-time (client identification, stakeholder roster, communication arrangement); session-level is per-occurrence (scheduling, invitation, content prep, recording infrastructure). Engagement-level setup PI captured.\n\n(19) Session vs Conversation entity confusion: current V2 has Conversation (lifecycle of a single chat) and Session (after-the-fact completion record) in 1:0..1 relationship with names that collide with everyday English. Redesigned model: Session is medium-agnostic discrete unit of communication (chat, email, phone, video, in_person), Conversation is focused topical sub-unit within a session (one session contains 1..N conversations), conversations are session-scoped, cross-session continuity expressed via conversation_follows_from and conversation_relates_to edges. Detailed PI captured.\n\n(20) Expanded glossary to v0.2 with four additional terms: Skill (TERM-002), Pattern (TERM-003), Inventory (TERM-004), Client (TERM-005). Commit 794d5f41.\n\n(21) Captured 13 Planning Items total: glossary V2 migration, cross-engagement reference store architecture, build out Skills library, build out Pattern library, build out Inventory library, define Skill trigger/loading mechanism, tooling for cross-engagement reference content, specifications/ directory README/manifest, iterative drafting of Master CRMBuilder PRD remaining phases, retire transitional headers when content is consolidated, architecture for storing client-provided information (engagement-scoped inputs), Engagement Level Setup process and V2 records, and the detailed Session/Conversation entity redesign PI.\n\n(22) Recorded nine architectural Decisions covering the consolidation direction, directory structure, format rule, master PRD scope, client model, conceptual model, Phase 1 redesign, glossary scaffolding, and session/conversation redesign direction.\n\nRepeated cycles of 'race ahead, get pulled back' from Doug throughout \u2014 the conversation evolved a clearer pattern of one-thing-at-a-time discussion as it progressed.",
+    "summary": "Strategic-direction architecture review session for the CRMBuilder project. Established a unified direction for consolidating V1 and V2 documentation under a single Master CRMBuilder PRD at a new specifications/ directory, with all internal docs in MD format and customer-facing deliverables remaining format-flexible. Adopted a discovery-driven iterative authoring model (draft enough to run a phase, run, refine), with CRMBuilder dogfood as the first client and CBM as validation. Established a three-category conceptual model (Process Management Tools/Data, Deliverables, Process Support Knowledge/Tools) that gives a home to all V2 records and methodology artifacts. Redesigned Phase 1 as client-led intake (rather than the existing consultant-led structured interview) with contextually-loaded Skills knowledge files. Surfaced the Session/Conversation entity model as cruft \u2014 redesigned conceptually as a medium-agnostic Session containing topical Conversation sub-units. Authored crmbuilder/CLAUDE.md direction-setting section, transitional headers on 17 methodology documents, Master CRMBuilder PRD v0.1 (discussion draft), and glossary.md v0.2 with five terms. Captured 13 Planning Items for V2 architectural cleanup work and nine architectural Decisions.",
+    "artifacts_produced": "Five commits to crmbuilder main branch: 09f8f62d (CLAUDE.md direction-setting section + transitional headers on 17 methodology MD files + STATUS.md sibling for the 13-phase docx), cfaec293 (Master CRMBuilder PRD v0.1 at specifications/master-crmbuilder-PRD.md), e9d30e0b (DISCUSSION DRAFT marker on Master CRMBuilder PRD), d9337607 (glossary.md v0.1 with Engagement TERM-001), 794d5f41 (glossary.md v0.2 with Skill TERM-002, Pattern TERM-003, Inventory TERM-004, Client TERM-005). New directories: specifications/ (added to sparse-checkout). New files: specifications/master-crmbuilder-PRD.md (218 lines), specifications/glossary.md (138 lines), PRDs/process/CRM-Builder-Document-Production-Process.STATUS.md. Modified files: crmbuilder/CLAUDE.md (Current direction section), 17 methodology MD files (transitional headers). This close-out payload ses_085.json and its apply prompt CLAUDE-CODE-PROMPT-apply-close-out-ses-085.md.",
+    "in_flight_at_end": "The Master CRMBuilder PRD v0.1 at specifications/master-crmbuilder-PRD.md is marked DISCUSSION DRAFT \u2014 NOT YET APPROVED; every substantive structural and content choice in it remains open. Phase 1's specific structure within the PRD (currently named 'Business Context Capture' with broad scope) is in particular tension with the client-led-intake reframe discussed in session and may need rewriting. The eight placeholder PIs (Build out Skills library, Pattern library, Inventory library, Define Skill trigger mechanism, Tooling for cross-engagement reference content, specifications/ README, iterative drafting of remaining phases, retire transitional headers) are placeholders pending deeper discussion. The three detailed PIs (Resolve cross-engagement reference store, Architecture for storing client-provided information, Define Engagement Level Setup process, Redesign Session and Conversation entities) carry substantive scope but are still in 'evaluate and decide' state when worked. The session/conversation entity restructure PI is particularly significant as it requires schema migration of existing V2 records. The chosen workstream membership for this conversation (WS-011 V2 storage API refinements) is provisional \u2014 none of the existing workstreams was a perfect fit for the strategic-direction work in this session; a new workstream for Master CRMBuilder PRD consolidation may be warranted."
+  },
+  "conversation": {
+    "conversation_identifier": "CONV-057",
+    "conversation_title": "Strategic architecture review and Master CRMBuilder PRD consolidation direction-setting",
+    "conversation_purpose": "Review the high-level CRMBuilder project architecture; identify documentation gaps; establish consolidation direction; surface and capture architectural decisions and planning items that emerge from the review.",
+    "conversation_description": "Open-ended architecture review conversation in the Claude.ai sandbox. Started without a specific deliverable target. Evolved into wide-ranging consolidation of project documentation and conceptual modeling. Doug repeatedly pulled the AI back from racing ahead, enforcing one-thing-at-a-time discussion. Major content threads: documentation consolidation strategy under a single Master CRMBuilder PRD at a new specifications/ directory; MD-format-for-internal-docs rule; three-category conceptual model (Process Management Tools/Data, Deliverables, Process Support Knowledge/Tools); Phase 1 redesign as client-led intake; Skills concept and loading mechanism; Session/Conversation entity restructure as cruft; cross-engagement reference store architecture gap; client-provided information storage architecture gap; engagement-level vs session-level setup distinction. Conversation produced five commits to crmbuilder main branch substantively reshaping the methodology document landscape, plus 13 Planning Items and nine Decisions bundled in this close-out.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-057",
+        "target_type": "workstream",
+        "target_id": "WS-011",
+        "relationship": "conversation_belongs_to_workstream"
+      },
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-057",
+        "target_type": "session",
+        "target_id": "SES-087",
+        "relationship": "conversation_records_session"
+      }
+    ]
+  },
+  "commits": [
+    {
+      "commit_sha": "09f8f62d",
+      "commit_message_first_line": "Set Master CRMBuilder PRD as direction; mark methodology docs transitional",
+      "commit_message_full": "Set Master CRMBuilder PRD as direction; mark methodology docs transitional\n\n- Insert 'Current direction' section at top of CLAUDE.md naming the Master CRMBuilder PRD at specifications/master-crmbuilder-PRD.md as the consolidating source of truth.\n- Add transitional status header to 17 methodology MD files (3 conduct, 13 interviews/guides, 1 v2 user process guide) pointing readers to the Master CRMBuilder PRD as the future authoritative reference.\n- Add sibling STATUS.md alongside the 13-phase CRM-Builder-Document-Production-Process.docx (the .docx itself is untouched per the MD-only-going-forward rule).\n- Record the 05-26-26 format rule: all PRDs and internal documents in MD going forward; customer-facing deliverables remain format-flexible per case."
+    },
+    {
+      "commit_sha": "cfaec293",
+      "commit_message_first_line": "Initial draft of Master CRMBuilder PRD at specifications/master-crmbuilder-PRD.md",
+      "commit_message_full": "Initial draft of Master CRMBuilder PRD at specifications/master-crmbuilder-PRD.md\n\nv0.1 \u2014 minimum-viable initial content sufficient to run Phase 1 (Business Context Capture) against CRMBuilder dogfood. Contents:\n\n- Part I \u2014 Orientation: what this PRD is, the client concept (CRMBuilder dogfood + CBM validation), the two-layer mental model (governance vs methodology)\n- Part II \u2014 The V2 Process Guide: phase sequence overview (13 phases, only Phase 1 drafted; Phases 2-13 are placeholders to be drafted iteratively), the full Phase 1 spec (purpose, inputs, conduct rules, phase-specific rules, activity, captured V2 records, output, completion criteria), the 'what to do first' mini-guide for Phase 1\n- Part III \u2014 Iterative Drafting: explicit list of sections to be drafted in subsequent versions, notes on source materials drawn upon, known gaps at v0.1\n\nPhase 1 spec synthesizes content from PRDs/process/interviews/interview-master-prd.md v1.4 (existing strategic-vision interview guide) and PRDs/process/v2-user-process-guide.md v0.1 (existing V2-aligned process guide). Both remain as transitional reference until subsumed.\n\nIncludes a sparse-checkout addition for specifications/ to make the file visible to the local clone."
+    },
+    {
+      "commit_sha": "e9d30e0b",
+      "commit_message_first_line": "Mark Master CRMBuilder PRD as discussion draft pending review",
+      "commit_message_full": "Mark Master CRMBuilder PRD as discussion draft pending review\n\nAdds prominent 'DISCUSSION DRAFT \u2014 NOT YET APPROVED' marker at the top of specifications/master-crmbuilder-PRD.md. Every substantive structural and content choice in v0.1 is unilateral and open for revision through discussion with Doug."
+    },
+    {
+      "commit_sha": "d9337607",
+      "commit_message_first_line": "Create specifications/glossary.md; seed with Engagement (TERM-001)",
+      "commit_message_full": "Create specifications/glossary.md; seed with Engagement (TERM-001)\n\nFirst glossary entry per the where-do-term-definitions-live decision authored in this session. Glossary lives in MD per Option A; a Planning Item captured separately tracks the future migration to V2 records with desktop UI access (Option C as the architectural endpoint).\n\nFile includes:\n- Header table with status and future-state pointer\n- Change log\n- Contribution guidance (entry format, identifier numbering convention)\n- Engagement entry (TERM-001): definition, scope, examples, distinguishing notes vs Client/Session/Project, related terms"
+    },
+    {
+      "commit_sha": "794d5f41",
+      "commit_message_first_line": "Expand glossary to v0.2: add Skill, Pattern, Inventory, Client (TERM-002 through TERM-005)",
+      "commit_message_full": "Expand glossary to v0.2: add Skill, Pattern, Inventory, Client (TERM-002 through TERM-005)\n\nFour glossary entries added per session discussion:\n\n- Skill (TERM-002): reusable domain-specific knowledge file, loaded contextually on client defining statements\n- Pattern (TERM-003): reusable structural template for a business domain or org type\n- Inventory (TERM-004): reference list of typical items for a domain or org type\n- Client (TERM-005): organization whose product is being defined through the CRMBuilder process\n\nAll four are Category 3 (Process Support Knowledge/Tools) reference content except Client (which is a fundamental engagement concept). Each entry follows the approved format (identifier, definition, scope, examples, distinguishing notes, related terms). Identifiers assigned in creation order; file renders alphabetically.\n\nChange log bumped to v0.2. Last Updated 05-26-26 14:00."
+    }
+  ],
+  "work_tickets": [],
+  "planning_items": [
+    {
+      "identifier": "PI-061",
+      "title": "Add Glossary data structure and UI to V2 (migrate from specifications/glossary.md)",
+      "description": "Starting state: specifications/glossary.md serves as the canonical store for term definitions across the Master CRMBuilder PRD and supporting documents. This is Option A from the where-do-term-definitions-live decision authored in this session.\n\nTarget state: V2 holds term definitions as records in a new entity type (working name: term). The PySide6 desktop UI exposes CRUD over terms. Documents reference terms by identifier (TERM-NNN). The MD file specifications/glossary.md becomes either a rendered artifact generated from V2 records, or is retired in favor of the V2 UI as the canonical human-readable view.\n\nScope when this PI is worked:\n- V2 schema: terms table with identifier, name, definition, scope, examples, what-it-is-not, version, status, created_at/updated_at. Universal-references support is automatic via the existing references table.\n- API: standard CRUD endpoints per the V2 envelope pattern.\n- MCP tool surface: get_term, list_terms, create_term, update_term, delete_term (or whatever vocabulary aligns with existing tools).\n- Desktop UI: new Terms entry in the sidebar with list/detail view and CRUD.\n- Migration: one-time port of existing glossary.md entries into V2 records.\n- Rendering: glossary.md generation from V2 records, or retirement of the MD file once the desktop UI is the working surface.\n\nDependent on PI-062 (cross-engagement reference store architecture) \u2014 terms are cross-engagement content.\n\nWhy deferred: the immediate need is fully solved by the MD glossary. V2 schema work is non-trivial and shouldn't block Phase 1 execution.",
+      "item_type": "pending_work",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-062",
+      "title": "Resolve V2 cross-engagement reference store architecture",
+      "description": "Starting state: V2's storage system is engagement-partitioned. Each engagement has its own database holding governance records (decisions, sessions, planning items, references, work tickets) and methodology records (entities, processes, personas). There is no cross-engagement or global store for shared reference knowledge.\n\nProblem: Several emerging content types are cross-engagement by nature:\n- Glossary terms (TERM-NNN) \u2014 same definitions apply across all engagements\n- Skills (domain-specific knowledge files loaded contextually based on client defining statements)\n- Patterns (industry-typical structures, e.g., nonprofit mentoring, charitable foundation)\n- Inventories (reference inventories of typical entities/personas for common domain types)\n- Possibly: authoring standards, identifier conventions, rendering templates\n\nThese belong in V2 per the 'database is single source of truth' principle, but don't fit the engagement-partitioned model as it exists.\n\nTarget state: an architectural decision and implementation for where cross-engagement reference content lives in V2. Options to evaluate when this PI is worked:\n- A new global/shared V2 store alongside per-engagement databases\n- A reserved 'master' engagement holding shared content; others reference it\n- An extension to the existing model that supports cross-engagement reads\n- A separate reference data tier with its own schema and access patterns\n\nScope when worked:\n- Architectural decision recorded selecting one of the above approaches\n- V2 schema changes to implement the selected approach\n- API endpoints, MCP tool surface, desktop UI for the new store\n- Migration of existing MD-scaffolded content (glossary, future skills) into the new store\n- Established pattern for adding new cross-engagement reference content\n\nDependencies:\n- Once resolved, supersedes the temporary MD scaffolding approach for glossary, skills, and similar Category 3 content\n- PI-061 (glossary V2 migration) is dependent on this PI\n\nWhy deferred: immediate needs are met by MD scaffolds. The architectural decision is significant and shouldn't be made under time pressure.",
+      "item_type": "pending_work",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-063",
+      "title": "Build out Skills library",
+      "description": "Author the initial set of Skills (domain-specific knowledge files loaded contextually based on client defining statements). Initial coverage candidates include charitable foundation, social marketing, nonprofit mentoring, and other common CRM domains. Placeholder for future discussion of Skill structure, prioritization, authoring approach, and trigger conditions. Skills are Category 3 (Process Support Knowledge/Tools) reference content per the conceptual model established in this session.",
+      "item_type": "pending_work",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-064",
+      "title": "Build out Pattern library",
+      "description": "Formalize and expand any existing pattern library work in the repo. Define how Patterns relate to Skills and Inventories \u2014 potentially merging or distinguishing the concepts. Patterns are Category 3 (Process Support Knowledge/Tools) reference content per the conceptual model established in this session. Working hypothesis from the Pattern glossary entry (TERM-003): a Pattern is a reusable structural template describing the typical shape of a business domain or organizational type.",
+      "item_type": "pending_work",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-065",
+      "title": "Build out Inventory library",
+      "description": "Author reference inventories for typical entities, personas, and processes by domain type (e.g., typical personas for a nonprofit, typical entities for a membership organization). Inventories are Category 3 (Process Support Knowledge/Tools) reference content per the conceptual model established in this session. Working hypothesis from the Inventory glossary entry (TERM-004): an Inventory is a reference list of typical items for a given domain or organizational type, serving as a checklist or starting set when capturing a specific client's content.",
+      "item_type": "pending_work",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-066",
+      "title": "Define Skill trigger/loading mechanism",
+      "description": "Define how the AI recognizes 'defining statements' from the client and loads the appropriate Skill(s) \u2014 indexing, matching, content loading. Mechanism may also apply to Pattern and Inventory loading. Per the Phase 1 client-led intake redesign discussed in this session, the AI is expected to load contextually-relevant Skills as the client speaks; this PI captures the mechanism design and implementation.",
+      "item_type": "pending_work",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-067",
+      "title": "Tooling for cross-engagement reference content",
+      "description": "Build UI surfaces (likely in the PySide6 desktop application) for authoring and managing Skills, Patterns, Inventories, glossary terms, and other Category 3 (Process Support Knowledge/Tools) content. Dependent on PI-062 (cross-engagement reference store architecture). Placeholder for future definition.",
+      "item_type": "pending_work",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-068",
+      "title": "Create specifications/ directory README/manifest",
+      "description": "Create the entry-point README.md for the new specifications/ directory at the crmbuilder repo root. The manifest names the current canonical L1/L2/L3 documents, supersession history, and how to read the document set. Goal: 'where is the definitive document for X?' is answerable by reading specifications/README.md first. Smaller task than the V2 architectural PIs but captured here so it doesn't get forgotten as the specifications/ directory grows.",
+      "item_type": "pending_work",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-069",
+      "title": "Iterative drafting of Master CRMBuilder PRD remaining phases",
+      "description": "Continue authoring the Master CRMBuilder PRD at specifications/master-crmbuilder-PRD.md beyond Phase 1, one phase at a time, using the discovery-driven approach (draft enough to run, run, refine). Covers Phases 2-13 plus the structural / storage / deliverables / deployment sections not yet drafted at v0.1. Note: v0.1 is currently marked DISCUSSION DRAFT \u2014 NOT YET APPROVED; Phase 1's existing draft also needs revision per the client-led-intake reframe discussed in session. Open-ended; resolved when the PRD is sufficiently complete to cover an end-to-end engagement against CRMBuilder dogfood.",
+      "item_type": "pending_work",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-070",
+      "title": "Retire transitional headers when content is consolidated",
+      "description": "As content from the existing methodology documents (13-phase Document Production Process, interview guides, conduct documents, V2 user process guide) is fully subsumed into the Master CRMBuilder PRD, the transitional status headers on those documents (added in commit 09f8f62d) should be replaced with archival headers \u2014 or the documents moved to specifications/_archive/. Placeholder for the explicit supersession mechanism: how do we mark the moment a methodology document is fully superseded, and what's the cleanup ritual?",
+      "item_type": "pending_work",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-071",
+      "title": "Architecture for storing client-provided information (engagement-scoped inputs)",
+      "description": "Decide how V2 stores all forms of client-provided information captured during an engagement: files (PDFs, Word, Excel, images), URLs (websites, documentation sites), social media handles, existing system credentials and API keys, conversation transcripts and recordings, email threads, and verbally-captured context.\n\nThe existing reference_book entity may cover some of these; others (credentials, large files, social handles) may need different storage shapes and access patterns. Distinct from PI-062 (cross-engagement reference store architecture, which addresses shared content like Skills, Patterns, Inventories); this PI is about engagement-scoped client inputs.\n\nPlaceholder for future definition.",
+      "item_type": "pending_work",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-072",
+      "title": "Define Engagement Level Setup process and V2 records",
+      "description": "Define the one-time engagement initialization process and the V2 records that hold its outputs. Engagement-level setup precedes Phase 1 and covers identifying the client organization, building the roster of stakeholders who will participate across the engagement, capturing their roles and contact information, and establishing the communication arrangement (channels, cadences, primary points of contact).\n\nLikely V2 schema additions: stakeholder records (or contact records), communication channel records, possibly an engagement-setup checklist or status. Depends on PI-062 (cross-engagement reference store architecture) where applicable (e.g., contact records could be engagement-scoped or might leverage a person/contact concept that spans engagements).\n\nDistinct from session-level prep (per-session activities like scheduling, content prep, recording infrastructure), which is addressed by PI-073 (Session/Conversation entity redesign) and may warrant follow-on PIs.\n\nPlaceholder for future definition.",
+      "item_type": "pending_work",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-073",
+      "title": "Redesign Session and Conversation entities \u2014 medium-agnostic communication container with topical sub-units",
+      "description": "CURRENT STATE (to be replaced):\n\nV2 currently has two governance entity types in a 1:0..1 relationship:\n- conversation (introduced by Decision 119, V0.7 governance entity release): represents the lifecycle of a single Claude.ai chat through states planned -> kickoff_drafted -> ready -> in_flight -> complete (or cancelled, superseded). One Claude.ai chat = one conversation record.\n- session: an append-only completion record written when a conversation closes. Captures identifier, title, topics_covered, artifacts_produced, conversation_reference.\n\nThese names collide with everyday English (Claude.ai's 'conversation' is a chat window; 'session' is too generic), and the 1:0..1 relationship is a strong indicator that they're really one concept split for historical reasons.\n\nTARGET STATE:\n\nA redesigned two-entity model where the entities are NOT 1:0..1 but 1:N, and the names match everyday English:\n- session (redesigned): a discrete unit of communication in any medium. One Claude.ai chat = one session. One email = one session. One phone call = one session. One Zoom meeting = one session. One in-person meeting = one session. Medium-agnostic with a medium-type classifier and medium-specific metadata (subject + thread ID for email; URL for chat; dial-in for phone; location for in-person).\n- conversation (redesigned): a focused topical discussion that takes place WITHIN a session. One session contains one or more conversations. Each conversation has its own lifecycle (planned, started, concluded, not-started).\n\nConversations are session-scoped \u2014 they do not span sessions. Cross-session topical continuity is expressed via explicit reference edges:\n- conversation_follows_from: a new conversation in a new session continues a topic from a prior conversation in a prior session.\n- conversation_relates_to: a conversation is relevant to another conversation without being a direct successor (related topics, prior context).\n\nEach conversation links to its outputs (decisions, planning items, references, entity work, etc.) via the universal references table.\n\nOPEN DESIGN QUESTIONS to resolve when worked:\n1. Session-level sequencing. In an email thread, individual emails are clearly in sequence. Should sessions ALSO carry predecessor/successor links (session_follows_from), or is session sequencing implicit through the conversation follows_from chains within them?\n2. Handling of planned-but-not-started conversations at session close. When a session planned three topical conversations but only got to two, the third has not been started. Two candidate handlings: (a) The unstarted conversation record exists in not_started state and gets either rescheduled or marked deferred. (b) The unstarted conversation never gets a conversation record; it stays as a Planning Item that becomes a conversation when a future session picks it up.\n3. Medium-specific metadata schema. What fields are universal vs medium-specific? Candidate: shared base fields plus a JSON or sub-record for medium-specific data.\n4. Migration of existing V2 records. Current V2 conversation records become sessions under the new model; current V2 session records become session completion data. Topical breakdown within existing chats would need to be either reconstructed or accepted as single-conversation sessions for historical records.\n\nSCOPE WHEN WORKED:\n- Architectural decision recording the redesigned model.\n- Schema spec updates for session and conversation.\n- V2 schema migration: rename existing entities, add new fields (medium, sequencing links), add new entity if a new sub-unit table is needed.\n- API endpoint updates per V2 envelope pattern.\n- MCP tool surface updates.\n- Desktop UI updates (conversation panel as sub-unit within session view).\n- Migration of existing records to the new shape.\n- Documentation updates throughout (CLAUDE.md, working conventions, PRD references to the old model).\n\nWhy deferred: substantive architectural change with downstream impact on V2 schema, code, and existing records. Captured here so it gets proper attention; immediate work continues using current V2 with the understanding that this PI is in queue.",
+      "item_type": "pending_work",
+      "status": "Open"
+    }
+  ],
+  "decisions": [
+    {
+      "identifier": "DEC-288",
+      "title": "Consolidate V1 and V2 CRMBuilder documentation under a single Master CRMBuilder PRD",
+      "decision_date": "2026-05-26",
+      "status": "Active",
+      "context": "CRMBuilder documentation was federated across many locations: PRDs/product/CRMBuilder-PRD.md (product-wide v4.1), PRDs/product/crmbuilder-automation-PRD/ (L1/L2 docx PRDs for the automation vision), PRDs/product/crmbuilder-v2/ (component PRDs at v0.1 for storage-system, governance-entity, catalog-ingestion), PRDs/process/ (methodology documents), PRDs/process/interviews/ (phase-specific interview guides), and PRDs/process/conduct/ (conduct rules). No single canonical document covered V2 functionality and processes as a whole. CLAUDE.md (765 lines) had absorbed substantive specification content (V2 session lifecycle, envelope contracts, deposit_event semantics) by default because no PRD owned it.",
+      "decision": "Author a single consolidating Master CRMBuilder PRD that covers V1 deployment + V2 governance/methodology as one product. The Master CRMBuilder PRD becomes the canonical source of truth for the CRMBuilder process; existing methodology documents become subordinate references that are retired as their content is subsumed.",
+      "rationale": "The documentation problem (no cohesive product definition) is a real gap that solves with a document; renaming the product to 'V3' would package three independent moves (PRD authoring, codebase reorganization, major-version declaration) that don't have to travel together and is premature labeling for what's essentially documentation work.",
+      "alternatives_considered": "Option A \u2014 Start CRMBuilder V3 as a clean re-articulation with new top-level identity, eventual directory reorganization, and migrating in-flight V2 work. Rejected because the V3 label only earns its keep if all three moves happen at once, and the dominant cost is documentation. Option C \u2014 Reserve V3 for a future architectural milestone (e.g., first non-EspoCRM engine). Reasonable middle path but adds little value over Option B today. Status quo (accept federation) \u2014 rejected; documentation gap is real and impedes new contributors.",
+      "consequences": "Existing methodology documents marked transitional; new Master CRMBuilder PRD becomes the consolidating reference. CLAUDE.md shrinks back to orientation as PRD content lands. Internal documents in MD format going forward (per DEC-290). The Master CRMBuilder PRD's scope is end-to-end (per DEC-291)."
+    },
+    {
+      "identifier": "DEC-289",
+      "title": "New specifications/ directory at repo root for all internal documents defining process and functionality",
+      "decision_date": "2026-05-26",
+      "status": "Active",
+      "context": "The Master CRMBuilder PRD and its supporting documents need a home. The existing PRDs/ directory has accumulated a mix of formal PRDs and operational artifacts (close-out payloads, db-exports, deposit-event logs, Claude Code prompts, session kickoffs, schema specs).",
+      "decision": "Create a new top-level specifications/ directory at the crmbuilder repo root. Broad scope: all documents defining process and functionality go in specifications/. Subdirectories permitted to segregate horizontal/vertical details to support the overall PRDs. Existing PRDs/ directory remains as the operational artifacts home.",
+      "rationale": "Clean separation between specifications (what we're building and how the process works) and operational artifacts (the workstream by-products of building it). Subdirectories provide structure within specifications/ without forcing a flat namespace. Broad scope avoids ambiguity about which documents belong where.",
+      "alternatives_considered": "Narrow scope \u2014 only formal PRDs move to specifications/, methodology and architecture analyses stay in PRDs/. Rejected; the question 'where is the definitive document for X?' should be answerable consistently. Reorganize PRDs/ in place \u2014 rejected; too disruptive to operational tooling that points at PRDs/ paths.",
+      "consequences": "Master CRMBuilder PRD lands at specifications/master-crmbuilder-PRD.md. Glossary lands at specifications/glossary.md. Future L3 component PRDs and process PRDs land in subdirectories under specifications/. A README/manifest for specifications/ is captured as PI-068 to make the directory's contents navigable."
+    },
+    {
+      "identifier": "DEC-290",
+      "title": "MD format for all PRDs and internal documents; customer-facing deliverables remain format-flexible",
+      "decision_date": "2026-05-26",
+      "status": "Active",
+      "context": "Prior methodology established Word documents as the canonical format for stakeholder-facing content with no MD for client deliverables. With the consolidation into the Master CRMBuilder PRD and the broader V2-canonical model (records as source of truth, documents as renders), the format rule needs revisiting.",
+      "decision": "All PRDs and internal documents in MD format going forward. Customer-facing deliverables remain format-flexible (Word, PDF, etc.) per case. Existing Word documents (e.g., the 13-phase Document Production Process .docx) remain as legacy content; new content authored fresh is MD.",
+      "rationale": "MD composes naturally with git tooling, AI-readable, supports cross-document links cleanly, and aligns with the V2 rendering pipeline that will eventually generate format-flexible client deliverables from V2 records. Customer-facing format choice depends on stakeholder expectations and use case, which is best decided per case.",
+      "alternatives_considered": "Keep Word as canonical for stakeholder-facing \u2014 rejected; Word friction in collaborative authoring and AI tooling. MD everywhere including customer-facing \u2014 rejected; clients sometimes need polished Word/PDF deliverables.",
+      "consequences": "Master CRMBuilder PRD authored in MD. Existing methodology .docx files remain as legacy until consolidated. The sibling STATUS.md pattern (PRDs/process/CRM-Builder-Document-Production-Process.STATUS.md) marks legacy .docx files as transitional without modifying them. Memory updated to supersede the prior Word-canonical rule."
+    },
+    {
+      "identifier": "DEC-291",
+      "title": "Master CRMBuilder PRD scope is end-to-end \u2014 requirements capture through deployed functional application",
+      "decision_date": "2026-05-26",
+      "status": "Active",
+      "context": "The Master CRMBuilder PRD's scope needed definition. Candidate scopes ranged from narrow (requirements capture only) to broad (full engagement arc through deployment).",
+      "decision": "Master CRMBuilder PRD scope is end-to-end. EVERYTHING from initial requirements capture through deployed, fully functional application. Engine selection, deployment, configuration, verification, and whatever else is necessary to get there are all in scope.",
+      "rationale": "A single canonical document covering the full engagement arc is the most useful reference. The phase-by-phase iterative authoring approach lets the PRD evolve without requiring all phases to be drafted at once.",
+      "alternatives_considered": "Narrow scope (requirements capture only, with deployment specified in a separate document). Rejected; fragments the canonical reference and reintroduces the same federation problem the consolidation is trying to solve.",
+      "consequences": "Master CRMBuilder PRD covers: V2 storage mechanics, capture process, captured content shape, deployment process, and a process guide. Drafted iteratively phase by phase using the discovery-driven model (per DEC-292's iteration approach)."
+    },
+    {
+      "identifier": "DEC-292",
+      "title": "CRMBuilder is first client (dogfood); CBM is second client (validation against existing artifacts)",
+      "decision_date": "2026-05-26",
+      "status": "Active",
+      "context": "The Master CRMBuilder PRD needs to be authored against a real engagement to validate process and surface gaps. Choice: which engagement to exercise first.",
+      "decision": "CRMBuilder is the first client of the new process \u2014 dogfood. CRMBuilder uses its own process to define itself in V2. Cleveland Business Mentors is the second client \u2014 validation. CBM exercises the full end-to-end process after CRMBuilder dogfood has matured the methodology; the existing document-based CBM artifacts serve as benchmark for whether the new process matches and exceeds the prior approach. Discovery-driven authoring throughout: draft minimal Master CRMBuilder PRD content sufficient to run the next phase, execute the phase, discover gaps, refine, continue.",
+      "rationale": "CRMBuilder dogfood is faster to start (the CRMBUILDER engagement already exists in V2 with substantial governance content) and tests the capture side cleanly. CBM is the canonical case but starting fresh requires re-capturing content currently held as Word documents; better to mature the process on CRMBuilder first. The benchmark comparison (new CBM run vs existing CBM artifacts) provides a real test that the new process is at least as good as the old.",
+      "alternatives_considered": "CBM first \u2014 rejected; CBM is far along in V1 methodology and the redo would be slower than CRMBuilder dogfood. Both in parallel \u2014 rejected; doubles work and Doug emphasized one thing at a time. Define from first principles without exercising against any client \u2014 rejected; the discovery-driven approach requires actual execution to surface gaps.",
+      "consequences": "CRMBuilder dogfood drives initial Master CRMBuilder PRD authoring. CBM redo happens after the process is sufficiently defined. The iterative authoring model means the PRD evolves phase by phase, with gaps discovered during execution refining back into the document."
+    },
+    {
+      "identifier": "DEC-293",
+      "title": "Three-category conceptual model for what V2 holds: Process Management Tools/Data, Deliverables, Process Support Knowledge/Tools",
+      "decision_date": "2026-05-26",
+      "status": "Active",
+      "context": "Earlier framing used a 'two-layer mental model' (governance vs methodology, lifted from v2-user-process-guide.md). The labels were abstract industry terms requiring the reader to already know what 'governance' and 'methodology' mean. Doug surfaced a clearer functional categorization.",
+      "decision": "Adopt a three-category conceptual model based on functional ROLE: (1) Process Management Tools and Data \u2014 what we use to drive and manage the process (Status, Decisions, Sessions, Planning Items, etc.). (2) Deliverables \u2014 what the process produces as its output (Entities, Processes, Requirements, Code commits, etc.). (3) Process Support Knowledge/Tools \u2014 reference knowledge that helps guide the process (Skills, Patterns, Inventories, conduct documents, interview guides, etc.).",
+      "rationale": "Self-evident categorization from labels; no prior vocabulary required. Categorizes by ROLE not by abstract industry domain. Gives a home for previously-orphan artifacts (conduct documents, interview guides, pattern library work) as Category 3.",
+      "alternatives_considered": "Two-layer mental model (governance vs methodology) \u2014 rejected; abstract industry terms require pre-existing vocabulary. Inline categorization in each document \u2014 rejected; inconsistent and drift-prone. Four+ categories with sub-divisions \u2014 deferred; three categories is the minimum-viable starting point.",
+      "consequences": "All V2 records and methodology artifacts classify into one of the three categories. Boundary cases (decisions could arguably be in both Category 1 and Category 2, client-provided source materials don't fit any of the three cleanly) are noted and deferred. The 'two-layer mental model' section in the Master CRMBuilder PRD v0.1 draft needs revision to reflect this new categorization."
+    },
+    {
+      "identifier": "DEC-294",
+      "title": "Phase 1 of the methodology is client-led intake, not consultant-driven structured interview",
+      "decision_date": "2026-05-26",
+      "status": "Active",
+      "context": "The existing methodology's Phase 1 (called 'Master PRD' in PRDs/process/interviews/interview-master-prd.md v1.4) was a structured consultant-led interview with six fixed sections (organization overview, personas, key business domains, cross-domain services, system scope, interview transcript). Doug surfaced a different model when discussing what Phase 1 should accomplish.",
+      "decision": "Phase 1 is client-led intake. The client brings what they consider relevant to the problem they're trying to solve (files, URLs, social media references, prior systems documentation, organizational context, verbal description). The consultant (or AI in consultant role) synthesizes the provided content to build sufficient understanding to guide subsequent phases. Phase 1 is not overly broad; not strictly focused. Skills (Category 3 reference knowledge) are loaded contextually based on client defining statements as the conversation progresses.",
+      "rationale": "Inverts agenda authority from consultant to client. Avoids leading the client into pre-shaped categories. Permits the conversation to reveal the actual domain shape rather than fitting client content into a fixed template. Aligns with the discovery-driven authoring model: capture what's relevant, refine the process based on what was actually needed.",
+      "alternatives_considered": "Existing structured-interview Phase 1 \u2014 rejected; too consultant-led. Narrow strategic-vision-only Phase 1 \u2014 rejected; too restrictive; misses domain-relevant content. Pure unstructured conversation with no Skills loading \u2014 rejected; loses the guidance benefit of accumulated reference knowledge.",
+      "consequences": "Phase 1 specification in the Master CRMBuilder PRD needs revision from the v0.1 draft (which inherited the structured-interview model from interview-master-prd.md). Conduct rules from PRDs/process/conduct/charter.md remain applicable for how the consultant behaves; the content agenda shifts to client-led. Skills library buildout (PI-063) and Skill trigger mechanism (PI-066) are prerequisites for the contextual-loading aspect of this redesigned Phase 1."
+    },
+    {
+      "identifier": "DEC-295",
+      "title": "Glossary as canonical store for term definitions; initial implementation as specifications/glossary.md with future V2 migration captured as PI",
+      "decision_date": "2026-05-26",
+      "status": "Active",
+      "context": "Documents in the Master CRMBuilder PRD and supporting methodology use specialized vocabulary (Engagement, Domain, Persona, Skill, Pattern, Inventory, Client, etc.) without consistent definitions. The 'V2 database is single source of truth' principle suggests definitions should ultimately live in V2 records.",
+      "decision": "Establish a glossary as the canonical store for term definitions. Initial implementation is an MD file at specifications/glossary.md (Option A). Eventual V2 migration to a 'term' (or similar) entity type with desktop UI access is the architectural endpoint (Option C); the migration work is captured as PI-061 (which depends on PI-062, the cross-engagement reference store architecture, since terms are cross-engagement content). Each glossary entry follows a standard format: term name, identifier (TERM-NNN, assigned in creation order), definition, scope, examples, distinguishing notes, related terms.",
+      "rationale": "Solves the immediate vocabulary gap with available tooling (MD files in the repo). Defers V2 schema work to a separate PI; maintains the V2-as-source-of-truth direction. The TERM-NNN identifier preserves traceability across the eventual MD-to-V2 migration.",
+      "alternatives_considered": "Option B \u2014 definitions as V2 records directly. Deferred; requires V2 schema work first that shouldn't block immediate vocabulary capture. Option D \u2014 inline definitions in each document. Rejected; drift risk; no single canonical reference. Option E \u2014 definitions section inside the Master CRMBuilder PRD itself. Rejected; bloats the PRD and forces other documents to reach back into it.",
+      "consequences": "Five initial glossary entries authored in this session: Engagement (TERM-001), Skill (TERM-002), Pattern (TERM-003), Inventory (TERM-004), Client (TERM-005). Glossary expands as terms surface in discussion (per the 'add as discussed' rule rather than upfront comprehensive). PI-061 tracks the V2 migration."
+    },
+    {
+      "identifier": "DEC-296",
+      "title": "Session and Conversation entities to be redesigned: Session is medium-agnostic communication unit; Conversation is focused topical sub-unit within Session",
+      "decision_date": "2026-05-26",
+      "status": "Active",
+      "context": "V2's current Session and Conversation entities exist in a 1:0..1 relationship with names that collide with everyday English. The Session table predates V0.7; Conversation was introduced by Decision 119 in the V0.7 governance entity release to track non-complete lifecycle states (planned, kickoff_drafted, ready, in_flight) that the append-only Session table couldn't represent. The result is a code smell: two entities split for historical reasons, names confusing.",
+      "decision": "Redesign Session and Conversation as a 1:N hierarchy where the names match everyday English: Session is a discrete unit of communication in any medium (one Claude.ai chat, one email, one phone call, one Zoom meeting, one in-person meeting) with a medium-type classifier and medium-specific metadata. Conversation is a focused topical discussion within a session (one session contains 1..N conversations). Conversations are session-scoped (do not span sessions). Cross-session topical continuity is expressed via conversation_follows_from and conversation_relates_to reference edges. Implementation of the redesign captured as PI-073.",
+      "rationale": "Names match everyday English usage; reduces the conceptual redundancy of the current 1:0..1 split; generalizes across communication media (not just Claude.ai chats but also email threads, phone calls, in-person meetings); cleanly separates discrete units of communication from focused topical discussions within them.",
+      "alternatives_considered": "Keep current 1:0..1 design \u2014 rejected; names are confusing and the split is cruft. Rename entities but keep 1:0..1 \u2014 rejected; doesn't solve the conceptual redundancy. Merge into a single entity with state-based lifecycle \u2014 rejected; loses the session-as-container useful structure that emerged in discussion (a session may contain multiple topical conversations, with different outcomes per topic).",
+      "consequences": "PI-073 captures the implementation scope: V2 schema migration, API endpoint updates, MCP tool surface updates, desktop UI updates, migration of existing records to the new shape, documentation updates throughout. The redesign is significant work and is deferred pending the PI being worked. In the meantime, the conceptual model (Session = communication unit, Conversation = topical sub-unit) governs how future documentation describes these entities even before the V2 schema catches up."
+    }
+  ],
+  "references": [
+    {
+      "source_type": "decision",
+      "source_id": "DEC-288",
+      "target_type": "session",
+      "target_id": "SES-087",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-289",
+      "target_type": "session",
+      "target_id": "SES-087",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-290",
+      "target_type": "session",
+      "target_id": "SES-087",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-291",
+      "target_type": "session",
+      "target_id": "SES-087",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-292",
+      "target_type": "session",
+      "target_id": "SES-087",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-293",
+      "target_type": "session",
+      "target_id": "SES-087",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-294",
+      "target_type": "session",
+      "target_id": "SES-087",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-295",
+      "target_type": "session",
+      "target_id": "SES-087",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-296",
+      "target_type": "session",
+      "target_id": "SES-087",
+      "relationship": "decided_in"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": []
+}
