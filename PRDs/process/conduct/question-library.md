@@ -1,5 +1,7 @@
 # CRM Builder — Interview Question Library
 
+> **Status: Transitional.** This document is being consolidated into the Master CRMBuilder PRD at `specifications/master-crmbuilder-PRD.md` (in development). Once the Master CRMBuilder PRD covers this content, this document will be archived. Continue to use this as reference until that supersession is explicit.
+
 **Version:** 1.1
 **Last Updated:** 05-15-26 19:10
 **Purpose:** Annotated good/bad question examples organized by question intent. Provides the worked illustrations that `conduct/charter.md` references but does not contain.

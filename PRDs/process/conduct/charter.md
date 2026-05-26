@@ -1,5 +1,7 @@
 # CRM Builder — Interviewer Charter
 
+> **Status: Transitional.** This document is being consolidated into the Master CRMBuilder PRD at `specifications/master-crmbuilder-PRD.md` (in development). Once the Master CRMBuilder PRD covers this content, this document will be archived. Continue to use this as reference until that supersession is explicit.
+
 **Version:** 1.2
 **Last Updated:** 05-15-26 19:00
 **Purpose:** Global conduct rules for any AI conducting a stakeholder-facing session under this methodology.

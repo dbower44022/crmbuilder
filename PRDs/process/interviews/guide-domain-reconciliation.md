@@ -1,5 +1,7 @@
 # CRM Builder — Domain Reconciliation Guide
 
+> **Status: Transitional.** This document is being consolidated into the Master CRMBuilder PRD at `specifications/master-crmbuilder-PRD.md` (in development). Once the Master CRMBuilder PRD covers this content, this document will be archived. Continue to use this as reference until that supersession is explicit.
+
 **Version:** 1.6
 **Last Updated:** 05-05-26 17:02
 **Purpose:** AI guide for Phase 3 — Domain Reconciliation
