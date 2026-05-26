@@ -53,6 +53,7 @@ from crmbuilder_v2.access.exceptions import (
 )
 from crmbuilder_v2.access.models import Entity
 from crmbuilder_v2.access.vocab import (
+    ENTITY_KINDS,
     ENTITY_STATUS_TRANSITIONS,
     ENTITY_STATUSES,
 )
@@ -67,8 +68,11 @@ _IDENTIFIER_RE = re.compile(r"^ENT-\d{3}$")
 _MAX_AUTOASSIGN_ATTEMPTS = 50
 
 # Fields accepted by :func:`patch_entity`. The identifier and the
-# timestamps are not patchable.
-_PATCHABLE_FIELDS = frozenset({"name", "description", "notes", "status"})
+# timestamps are not patchable. v0.5+ PI-010 adds ``kind`` per
+# ``entity.md`` v1.1 §3.2.3 / DEC-292.
+_PATCHABLE_FIELDS = frozenset(
+    {"name", "description", "notes", "status", "kind"}
+)
 
 
 # ---------------------------------------------------------------------------
@@ -110,6 +114,31 @@ def _require_status(status: object) -> str:
             ]
         )
     return status  # type: ignore[return-value]
+
+
+def _coerce_kind(kind: object) -> str | None:
+    """Validate ``entity_kind`` per ``entity.md`` v1.1 §3.2.3 / DEC-292.
+
+    ``None`` is admitted unchanged (operator-deferred classification).
+    Empty / whitespace strings are coerced to ``None`` so callers can
+    use ``""`` interchangeably with ``null`` to clear the field. Any
+    other value must be a member of :data:`ENTITY_KINDS`.
+    """
+    if kind is None:
+        return None
+    if isinstance(kind, str) and not kind.strip():
+        return None
+    if kind not in ENTITY_KINDS:
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "entity_kind",
+                    "invalid_value",
+                    f"must be null or one of {sorted(ENTITY_KINDS)}",
+                )
+            ]
+        )
+    return kind  # type: ignore[return-value]
 
 
 def _check_transition(current: str, requested: str) -> None:
@@ -224,6 +253,7 @@ def _new_entity_row(
     description: str,
     notes: str | None,
     status: str,
+    kind: str | None,
 ) -> Entity:
     return Entity(
         entity_identifier=identifier,
@@ -231,6 +261,7 @@ def _new_entity_row(
         entity_description=description,
         entity_notes=notes,
         entity_status=status,
+        entity_kind=kind,
     )
 
 
@@ -240,6 +271,7 @@ def _insert_with_autoassign(
     description: str,
     notes: str | None,
     status: str,
+    kind: str | None,
 ) -> Entity:
     """Insert an entity with a server-assigned identifier, collision-safe.
 
@@ -254,7 +286,9 @@ def _insert_with_autoassign(
     last_error: IntegrityError | None = None
     for _attempt in range(_MAX_AUTOASSIGN_ATTEMPTS):
         savepoint = session.begin_nested()
-        row = _new_entity_row(candidate, name, description, notes, status)
+        row = _new_entity_row(
+            candidate, name, description, notes, status, kind
+        )
         session.add(row)
         try:
             session.flush()
@@ -281,6 +315,7 @@ def create_entity(
     description: str,
     notes: str | None = None,
     status: str = "candidate",
+    kind: str | None = None,
     identifier: str | None = None,
 ) -> dict:
     """Create an entity.
@@ -289,21 +324,29 @@ def create_entity(
     supplied it must match ``^ENT-\\d{3}$`` and not already exist.
     ``status`` defaults to ``candidate`` but may be set to any valid
     enum value on create (e.g. importing already-confirmed entities).
+    ``kind`` is optional per ``entity.md`` v1.1 §3.2.3 / DEC-292 —
+    operators may defer classification when Phase 1 surfaces an
+    entity before its kind is settled.
     """
     name = _require_nonempty(name, field="entity_name")
     description = _require_nonempty(description, field="entity_description")
     if status is None:
         status = "candidate"
     _require_status(status)
+    kind = _coerce_kind(kind)
     _reject_duplicate_name(session, name)
 
     if identifier is None:
-        row = _insert_with_autoassign(session, name, description, notes, status)
+        row = _insert_with_autoassign(
+            session, name, description, notes, status, kind
+        )
     else:
         _require_identifier_format(identifier)
         if session.get(Entity, identifier) is not None:
             raise ConflictError(f"entity {identifier!r} already exists")
-        row = _new_entity_row(identifier, name, description, notes, status)
+        row = _new_entity_row(
+            identifier, name, description, notes, status, kind
+        )
         session.add(row)
         session.flush()
 
@@ -328,6 +371,7 @@ def update_entity(
     description: str | None = None,
     notes: str | None = None,
     status: str | None = None,
+    kind: str | None = None,
 ) -> dict:
     """Full-replace update (PUT).
 
@@ -336,6 +380,10 @@ def update_entity(
     :class:`UnprocessableError`. ``name`` / ``description`` are required
     (a full replace cannot blank them); ``notes`` is replaced wholesale
     (``None`` clears it). A ``status`` change is transition-validated.
+    ``kind`` is replaced wholesale (``None`` clears it) per PUT
+    semantics; omitted-from-body deserialises to ``None`` and likewise
+    clears the field — operators wanting partial update should use
+    PATCH.
     """
     row = _get_row(session, identifier)
     if entity_identifier is not None and entity_identifier != identifier:
@@ -362,6 +410,7 @@ def update_entity(
     row.entity_name = name
     row.entity_description = description
     row.entity_notes = notes
+    row.entity_kind = _coerce_kind(kind)
     session.flush()
 
     after = to_dict(row)
@@ -379,8 +428,10 @@ def update_entity(
 def patch_entity(session: Session, identifier: str, **fields) -> dict:
     """Partial update (PATCH). Only the supplied fields are touched.
 
-    Recognised keys: ``name``, ``description``, ``notes``, ``status``.
-    A ``status`` change is transition-validated.
+    Recognised keys: ``name``, ``description``, ``notes``, ``status``,
+    ``kind``. A ``status`` change is transition-validated. A ``kind``
+    of ``None`` or an empty string clears the field; otherwise the
+    value must be a member of :data:`ENTITY_KINDS`.
     """
     unknown = set(fields) - _PATCHABLE_FIELDS
     if unknown:
@@ -414,6 +465,8 @@ def patch_entity(session: Session, identifier: str, **fields) -> dict:
         if status != row.entity_status:
             _check_transition(row.entity_status, status)
             row.entity_status = status
+    if "kind" in fields:
+        row.entity_kind = _coerce_kind(fields["kind"])
 
     session.flush()
     after = to_dict(row)

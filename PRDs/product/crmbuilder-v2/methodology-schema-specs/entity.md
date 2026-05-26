@@ -1,7 +1,7 @@
 # Methodology Entity Schema Spec — `entity`
 
-**Last Updated:** 05-12-26 02:30
-**Status:** Draft v1.0 — produced by schema-design conversation
+**Last Updated:** 05-26-26
+**Status:** v1.1 — PI-010 satisfier amendment landed; v0.5+ growth shipped
 **Position in workstream:** Second of four methodology-entity schema specs (`domain` → `entity` → `process` → `crm_candidate`)
 **Predecessor conversation:** `domain` schema-design conversation (close-out payload at `PRDs/product/crmbuilder-v2/close-out-payloads/ses_012.json`)
 **Successor conversation:** `process` schema design — kickoff at `PRDs/product/crmbuilder-v2/schema-design-kickoff-process.md`
@@ -12,11 +12,14 @@
 
 | Version | Date | Author | Summary |
 |---------|------|--------|---------|
+| 1.1 | 05-26-26 | Doug Bower / Claude | PI-010 satisfier amendment. v0.5+ schema growth shipped: (1) new `entity_kind` TEXT NULL column (`person` \| `organization` \| `event` \| `transaction` \| `other`, or NULL) per DEC-292; (2) new `entity_variant_of_entity` reference kind (entity → entity, many-to-one at source side, cardinality enforced at access layer) per DEC-291. Migration is additive; v1.0 records survive intact with `entity_kind` NULL and no inbound/outbound variant edges. Migration story (DEC-293) is no-op — no production variant data existed at amendment time. Resolves PI-010. |
 | 1.0 | 05-12-26 02:00 | Doug Bower / Claude | Initial draft. Produced by the second schema-design conversation in the methodology-entity-schema-design workstream. Defines `entity` as the v2 methodology entity type that hosts CRM-modeled nouns surfaced in evolved-methodology Phase 1 conversations under minimum-viable v0.4 scope. Inherits conventions established by `domain.md` (parent-prefix field naming, `{source}_{verb}_{target}` relationship-kind naming, soft-3-letter prefix posture). Establishes `entity_scopes_to_domain` as the first formal cross-entity vocabulary entry in the methodology workstream. |
 
 ---
 
 ## Change Log
+
+**Version 1.1 (05-26-26):** PI-010 satisfier amendment. Adds the `entity_kind` classification column (TEXT NULL; five-value enum `person | organization | event | transaction | other` plus NULL — per DEC-292), promoting the schema from eight columns to nine. Adds the `entity_variant_of_entity` relationship kind (entity → entity, first entity-to-entity edge in v2's vocabulary; many-to-one at source side via access-layer cardinality guard — per DEC-291). Includes self-reference rejection and one-step cycle guard at the access layer. Migration 0019_v0_5_entity_kind_and_variants ships the additive growth: ALTER TABLE adds the column with a CHECK admitting NULL or any of the five enum values; refs.relationship_kind CHECK extends to admit the new kind. Migration is fully reversible. No production variant data existed at amendment time (smoke-test entities only on the live engagement DB), so the migration story (DEC-293) is no-op for v0.4 records — they survive intact with `entity_kind` NULL and zero variant edges. 17 new tests across the entity access suite cover the five-value round-trip, the null-coercion path, PUT-clears semantics, the variant-edge round-trip, the cardinality guard, self-reference rejection, the one-step cycle guard, and the vocab registration. Resolves PI-010.
 
 **Version 1.0 (05-12-26 02:00):** Initial creation. Defines five substantive fields (`entity_identifier`, `entity_name`, `entity_description`, `entity_notes`, `entity_status`) plus inherited timestamps; three-status lifecycle mirroring `domain` (`candidate` / `confirmed` / `deferred`) with one-way propose-verify gate; entity status independent of any affiliated-domain statuses; many-to-many domain affiliation via the references entity using the new `entity_scopes_to_domain` relationship kind; no FK columns on the entity table; standard endpoint set with decomposed reference handling. Defers Domains-column in the master pane to v0.5+ paired with PI-007 short codes. Five decisions produced (DEC-050 through DEC-054) and two new planning items (PI-009 master-pane Domains column, PI-010 entity-schema v0.5+ extensions covering variants and base-type/kind). Acceptance criteria captured as 16 testable statements, three of which specifically cover the vocabulary registration and references-mechanism behavior.
 
@@ -87,12 +90,13 @@ Field naming follows the parent-prefix convention established by `domain.md` (DE
 | Field name | Type | Required | Default | Validation | Description |
 |------------|------|----------|---------|------------|-------------|
 | `entity_status` | TEXT | yes | `candidate` | enum: `candidate` \| `confirmed` \| `deferred`; valid transitions per section 3.4 | Lifecycle status. See section 3.4 for the transition map. |
+| `entity_kind` | TEXT | no (v1.1+) | NULL | NULL or enum: `person` \| `organization` \| `event` \| `transaction` \| `other` | CRM base-type classification (PI-010 / DEC-292). NULL means classification deferred; operators set explicitly when Phase 1 surfacing is firm enough. Informs Phase 3 field-shape defaults and Phase 5 CRM-engine evaluation scoring. |
 
-No `entity_kind` (base-type) classification in v0.4. CRM-base-type semantics (person / organization / event / transaction / etc.) belong to Phase 3 work; their absence here keeps the v0.4 schema neutral about CRM-engine specifics. Deferred under PI-010.
+The `entity_kind` enum was deferred from v0.4 under PI-010; v1.1 ships it as TEXT NULL with a CHECK constraint admitting NULL or any of the five values (DEC-292). Nullability is intentional — Phase 1 sometimes surfaces an entity before its kind is settled, and DEC-051's "don't force methodology concepts Phase 1 doesn't always produce" posture extends here. Operator-deferred classification is the legitimate default. The five-value set is exhaustive for the CBM-redo-era methodology; the `other` sentinel covers ambiguous cases (e.g. Campaign / Engagement, which carry dual event/transaction readings) and future patterns we haven't surfaced yet. Richer kind taxonomies (subtypes, secondary-kind tags, kind-inheritance from a parent variant) are deferred to v0.6+ pending CBM-redo signal.
 
 #### 3.2.4 Relationship fields
 
-None in v0.4. `entity` has no outgoing FK columns on its table. Domain affiliation is captured via the references entity (see section 3.3.1); future inter-entity relationships (entity-to-process, entity-to-field, entity-to-variant-of-entity) are deferred to v0.5+ and likewise will use references rather than FK columns when introduced.
+None in v0.4 or v1.1. `entity` has no outgoing FK columns on its table — including the new variant relationship from PI-010, which is implemented as a `refs`-table edge rather than a self-referential FK column (DEC-291). Domain affiliation is captured via the references entity (see section 3.3.1); the entity variant relationship is captured the same way (see section 3.3.1, `entity_variant_of_entity`). Future inter-entity relationships (entity-to-process, entity-to-field) likewise use references rather than FK columns.
 
 #### 3.2.5 Timestamp fields
 
@@ -108,13 +112,18 @@ None in v0.4. `entity` has no outgoing FK columns on its table. Domain affiliati
 
 #### 3.3.1 Outgoing relationships
 
-`entity` declares one outgoing relationship kind in v0.4: `entity_scopes_to_domain`.
+`entity` declares two outgoing relationship kinds as of v1.1: `entity_scopes_to_domain` (v0.4) and `entity_variant_of_entity` (PI-010, DEC-291).
 
 | relationship_kind | source | target | mechanism | cardinality | semantics |
 |-------------------|--------|--------|-----------|-------------|-----------|
 | `entity_scopes_to_domain` | `entity` | `domain` | references-entity edge | many-to-many | An entity is scoped to one or more domains. An entity may have zero, one, or many such references; a domain may have zero or many inbound references of this kind. |
+| `entity_variant_of_entity` | `entity` | `entity` | references-entity edge | many-to-one at source side (access-layer enforced); zero-or-one outbound per entity | An entity is a variant of another entity — the "Mentor Contact / Client Contact" pattern. Per DEC-291 the mechanism is a `refs`-table edge rather than a self-referential FK column or a separate variant entity type, matching DEC-053's default posture for methodology-entity many-to-many but constraining cardinality at the source side. Self-references and one-step cycles are rejected at the access layer. Deeper-cycle prevention is operator-responsibility. |
 
-The mechanism is the references entity at v2's `refs` table, governed by the existing `RELATIONSHIP_RULES` infrastructure (DEC-006). The choice over an entity-table multi-value FK column is per DEC-053: references discipline keeps the entity-table schema small, supports the same edge-creation/lookup semantics already used for governance-entity references, and makes the inverse query ("what entities scope to this domain?") trivial through the existing reverse-edge query. A direct single-value FK was a non-starter because it would contradict the methodology reality that entities span domains (CBM's Contact lives in MN, MR, and FU simultaneously).
+The mechanism for `entity_scopes_to_domain` is the references entity at v2's `refs` table, governed by the existing `RELATIONSHIP_RULES` infrastructure (DEC-006). The choice over an entity-table multi-value FK column is per DEC-053: references discipline keeps the entity-table schema small, supports the same edge-creation/lookup semantics already used for governance-entity references, and makes the inverse query ("what entities scope to this domain?") trivial through the existing reverse-edge query. A direct single-value FK was a non-starter because it would contradict the methodology reality that entities span domains (CBM's Contact lives in MN, MR, and FU simultaneously).
+
+The mechanism for `entity_variant_of_entity` is the same references entity (DEC-291). Three candidates were considered: (A) references-edge with new vocab kind, (B) self-referential FK `entity_parent_identifier` on the entity table, (C) separate variant entity type. Option A wins on three grounds: (i) DEC-053 establishes the references-edge mechanism as the default for methodology-entity many-to-many, and the variant relationship is structurally many-to-one (which the references mechanism handles with an access-layer cardinality guard), so there is no substantive reason to deviate from the default; (ii) option A reuses the existing `ReferencesSection` widget in the UI for both rendering and authoring with zero new widget code; (iii) option A is the first entity-to-entity edge kind in v2's vocabulary, which exercises the cascading-filter infrastructure cleanly. Option B would have added schema-table surface and prevented the inverse query ("what entities are variants of this entity?") from sharing the unified references-query path. Option C would have added a third entity type just to express "variant of," and the references table already does this.
+
+**Cardinality at the source side is enforced at the access layer, not the schema layer.** This matches the `field_belongs_to_entity` precedent from PI-004's first slice: an entity may have AT MOST ONE outbound `entity_variant_of_entity` edge. A POST that would create a second outbound edge of this kind from the same source entity returns 422 with the `cardinality_violation` code. Self-references (`source_id == target_id`) and one-step cycles (creating B→A when A→B already exists) are rejected with `self_reference` and `cycle_violation` codes respectively. Deeper cycles (A→B→C→A) are operator-responsibility — the access layer does not perform graph walks at edge-create time.
 
 **Mechanical additions per CLAUDE.md line 48:**
 
@@ -157,7 +166,7 @@ This spec adopts the `{source}_{verb}_{target}` relationship-kind naming convent
 
 #### 3.3.4 Hierarchy
 
-`entity` does not use the self-referential parent-child hierarchy pattern in v0.4. Entity variants (e.g., the Mentor Contact / Client Contact pattern from CBM) are deferred to v0.5+ under PI-010; whether variants land as a self-referential FK, a references-entity edge (`entity_variant_of_entity`), or some other mechanism is a v0.5+ design question. The v0.4 schema is variant-unaware: if two related-but-distinct entity records must coexist before v0.5 introduces variants properly, they are distinguished by suffixing the `entity_name` (e.g., "Contact — Mentor", "Contact — Client") and treating them as independent records. Listed as a CBM-redo open question in section 3.8.
+`entity` does not use the self-referential parent-child hierarchy pattern as a schema-table column. v1.1 ships the variant relationship (Mentor Contact / Client Contact pattern from CBM) as a `refs`-table edge (`entity_variant_of_entity`) per DEC-291 — see section 3.3.1 for the cardinality and semantics. The v0.4 workaround of suffixing `entity_name` ("Contact — Mentor", "Contact — Client") remains operator-accessible as a naming-only convention but is no longer the recommended pattern; v1.1+ records should attach an explicit `entity_variant_of_entity` edge from the variant to the base entity. Migration story for legacy suffix-named records is no-op per DEC-293 — no production variant data existed at v1.1 amendment time, and CBM-redo will go directly to the v1.1 mechanism without re-keying legacy records.
 
 ### 3.4 Lifecycle
 
@@ -403,7 +412,7 @@ Categorized per the spec guide section 3.8 convention. Each entry is one paragra
 
 **[v0.5+] PI-009 — master-pane Domains column on the Entities panel.** New planning item authored at this conversation's close. Adds a Domains column rendering affiliated domains as comma-separated short codes (e.g., "MN, MR, FU") once PI-007 lands. Requires batched-join query at the access layer (`list_entities_with_affiliations()` or equivalent) and a column-rendering update on the `ListDetailPanel` view-model.
 
-**[v0.5+] PI-010 — entity-schema v0.5+ extensions.** New planning item authored at this conversation's close. Covers entity variants (Mentor Contact / Client Contact pattern; mechanism TBD — self-referential FK, `entity_variant_of_entity` references edge, or another structure) and entity base-type / kind classification (person / organization / event / transaction / etc.). Tracked separately from PI-004 because these are entity-schema-growth (extending the existing entity type) rather than introducing new entity types.
+**[Resolved] PI-010 — entity-schema v0.5+ extensions.** Shipped in v1.1 (this amendment). Variant mechanism landed as references-edge with new vocab kind `entity_variant_of_entity` per DEC-291 — first entity-to-entity edge kind in v2's vocabulary. Kind classification landed as TEXT NULL column `entity_kind` with five-value enum (`person | organization | event | transaction | other`) per DEC-292. Migration story landed as no-op-additive per DEC-293 (no production variant data existed at amendment time). See section 3.2.3, section 3.3.1, section 3.3.4, and section 4 (migration and reversibility).
 
 **[v0.5+] DEC-038 — derived-fields entity type.** Already-decided architectural direction from SES-011. When fields land in v0.5+ (PI-004), the derived-fields posture from DEC-038 (first-class methodology entity with explicit references for lineage tracing) integrates naturally with the entity-to-field relationship. No `entity`-side schema change needed; the derived-field tracking lives on the field side.
 
@@ -446,6 +455,56 @@ The following five decisions are authored by running `crmbuilder-v2/scripts/appl
 
 - **Predecessor:** `domain` schema-design conversation. SES-012 close-out payload at `PRDs/product/crmbuilder-v2/close-out-payloads/ses_012.json`. Produced `domain.md` v1.0, DEC-044 through DEC-049, and PI-006 / PI-007 / PI-008.
 - **Successor:** `process` schema-design conversation. Kickoff at `PRDs/product/crmbuilder-v2/schema-design-kickoff-process.md`. Will inherit the conventions established in `domain.md` and applied here (parent-prefix field naming, `{source}_{verb}_{target}` relationship-kind naming, soft-3-letter prefix posture, status-lifecycle shape). Will register process-side relationship kinds (likely `process_belongs_to_domain` as a direct FK column per the `domain.md` working assumption, and `process_touches_entity` or similar as a references-entity edge per section 3.3.2 of this spec). The cross-spec consistency check at the v0.4-build-planning conversation validates that the source-side mechanism choices align with this spec's section 3.3.2 anticipations.
+
+---
+
+## 4. Migration and Reversibility (v1.1+)
+
+### 4.1 Migration 0019_v0_5_entity_kind_and_variants
+
+The PI-010 satisfier migration is additive and reversible. Operations, in order:
+
+1. Add `entity_kind` TEXT NULL column to the `entities` table with a CHECK constraint admitting NULL or any of the five enum values (`person | organization | event | transaction | other`). Existing v0.4 records acquire NULL on upgrade and continue to validate as legal v1.1+ records.
+2. Extend `refs.relationship_kind` CHECK to admit `entity_variant_of_entity`. The `refs.source_type` / `refs.target_type` CHECKs already admit `entity` from migration 0006, so no source/target CHECK changes are needed.
+
+### 4.2 Backward compatibility
+
+- `entity_kind` NULL is a first-class state — operator-deferred classification per DEC-292. No code path requires a non-NULL value.
+- No `entity_variant_of_entity` edges are auto-created. Variant relationships are added by operators after v1.1 ships; legacy suffix-named records (none existed at v1.1 amendment time) remain operator-editable.
+- Existing `entity_scopes_to_domain` references are unaffected.
+- All 36 prior reference kinds remain admitted.
+
+### 4.3 Reversibility
+
+The `downgrade()` reverses both operations:
+
+1. Hand-delete any rows in `refs` holding `entity_variant_of_entity`, then revert the CHECK to its 0018 form. Row loss in this step is documented behavior — variant edges created under v1.1+ are lost on downgrade; v0.4 records are unaffected.
+2. Drop the `entity_kind` column and its CHECK constraint. Records authored under v1.1+ with a non-NULL `entity_kind` lose that value on downgrade.
+
+### 4.4 No data migration required
+
+DEC-293 records that no production variant data existed at v1.1 amendment time (the live engagement DB held only smoke-test entities). CBM-redo Phase 1 captures variants directly using the v1.1+ mechanism; no rewrite of suffix-named legacy records is performed. If a later engagement has accreted suffix-named variants between v0.4 and v1.1, operators may either (a) attach explicit `entity_variant_of_entity` edges between the records, leaving the names unchanged, or (b) rename the variant records and attach edges. Either pattern is forward-compatible.
+
+### 4.5 Smoke verification
+
+After applying migration 0019 to an engagement DB and restarting the API, a smoke check verifies the surface:
+
+```bash
+# 1. New column visible.
+sqlite3 data/engagements/CRMBUILDER.db \\
+  "SELECT entity_kind FROM entities LIMIT 1;"
+# (expected: empty row — entity_kind is NULL for v0.4 records)
+
+# 2. Vocab kind admitted.
+curl -s http://127.0.0.1:8765/references -H 'Content-Type: application/json' \\
+  -d '{"source_type":"entity","source_id":"ENT-001","target_type":"entity","target_id":"ENT-002","relationship":"entity_variant_of_entity"}'
+# (expected: 201 + reference body)
+
+# 3. Cardinality enforced.
+curl -s http://127.0.0.1:8765/references -H 'Content-Type: application/json' \\
+  -d '{"source_type":"entity","source_id":"ENT-001","target_type":"entity","target_id":"ENT-003","relationship":"entity_variant_of_entity"}'
+# (expected: 422 cardinality_violation)
+```
 
 ---
 

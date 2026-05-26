@@ -209,7 +209,7 @@ def test_context_menu_offers_restore_on_soft_deleted_row(qtbot, entity_client):
 # ---------------------------------------------------------------------------
 
 
-def test_detail_pane_renders_six_fields_in_order(qtbot, entity_client):
+def test_detail_pane_renders_seven_fields_in_order(qtbot, entity_client):
     panel = EntitiesPanel(entity_client)
     qtbot.addWidget(panel)
     record = {
@@ -242,6 +242,9 @@ def test_detail_pane_renders_six_fields_in_order(qtbot, entity_client):
         "entity_notes_toggle",
         "entity_notes_value",
         "entity_status_value",
+        # PI-010 / DEC-292: entity_kind read-only label, "(unclassified)"
+        # when NULL.
+        "entity_kind_value",
     ]
 
     # Identifier is a read-only label; name a read-only line editor;

@@ -71,6 +71,7 @@ def create(body: EntityCreateIn):
                 description=body.entity_description,
                 notes=body.entity_notes,
                 status=body.entity_status,
+                kind=body.entity_kind,
                 identifier=body.entity_identifier,
             )
         )
@@ -88,6 +89,7 @@ def replace(identifier: str, body: EntityReplaceIn):
                 description=body.entity_description,
                 notes=body.entity_notes,
                 status=body.entity_status,
+                kind=body.entity_kind,
             )
         )
 

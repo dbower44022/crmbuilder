@@ -193,12 +193,16 @@ class EntityCreateIn(_Base):
 
     Domain affiliations are NOT inlined here — per ``entity.md`` section
     3.5.4 they attach via separate ``POST /references`` calls with the
-    ``entity_scopes_to_domain`` relationship kind."""
+    ``entity_scopes_to_domain`` relationship kind. Entity variants
+    (PI-010) attach the same way via the ``entity_variant_of_entity``
+    kind. ``entity_kind`` is optional per v1.1 §3.2.3 / DEC-292 —
+    operators may defer classification until Phase 3."""
 
     entity_name: str
     entity_description: str
     entity_notes: str | None = None
     entity_status: str | None = None
+    entity_kind: str | None = None
     entity_identifier: str | None = None
 
 
@@ -206,13 +210,16 @@ class EntityReplaceIn(_Base):
     """PUT /entities/{identifier} body — full record replace.
 
     ``entity_identifier`` is optional; when present it must match the
-    path identifier (mismatch → 422)."""
+    path identifier (mismatch → 422). ``entity_kind`` is replaced
+    wholesale (omitted-from-body deserialises to ``None`` and clears
+    the field); operators wanting partial update should use PATCH."""
 
     entity_identifier: str | None = None
     entity_name: str
     entity_description: str
     entity_notes: str | None = None
     entity_status: str
+    entity_kind: str | None = None
 
 
 class EntityPatchIn(_Base):
@@ -220,12 +227,15 @@ class EntityPatchIn(_Base):
 
     Routers consume this with ``model_dump(exclude_unset=True)`` so an
     explicit ``entity_notes: null`` (clear the field) is distinguished
-    from an omitted ``entity_notes`` (leave unchanged)."""
+    from an omitted ``entity_notes`` (leave unchanged). Same semantics
+    apply to ``entity_kind`` (PI-010 / DEC-292): null clears, omitted
+    leaves unchanged."""
 
     entity_name: str | None = None
     entity_description: str | None = None
     entity_notes: str | None = None
     entity_status: str | None = None
+    entity_kind: str | None = None
 
 
 # ---------- Personas (methodology entity, v0.5+) ----------

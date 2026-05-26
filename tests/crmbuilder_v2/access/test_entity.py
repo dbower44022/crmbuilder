@@ -29,10 +29,13 @@ from crmbuilder_v2.access.repositories import domain, entity, references
 from sqlalchemy import inspect
 
 # Expected ``entities`` columns and their SQLite affinities (criterion 1).
+# v0.5+ PI-010 grew the eight-column shape by one — ``entity_kind`` —
+# per entity.md v1.1 §3.2.3 / DEC-292.
 _EXPECTED_COLUMNS = {
     "entity_identifier": "VARCHAR",
     "entity_name": "VARCHAR",
     "entity_status": "VARCHAR",
+    "entity_kind": "TEXT",
     "entity_description": "TEXT",
     "entity_notes": "TEXT",
     "entity_created_at": "DATETIME",
@@ -46,7 +49,7 @@ _EXPECTED_COLUMNS = {
 # ---------------------------------------------------------------------------
 
 
-def test_entities_table_has_eight_columns_with_correct_types(v2_env):
+def test_entities_table_has_nine_columns_with_correct_types(v2_env):
     inspector = inspect(get_engine())
     assert "entities" in inspector.get_table_names()
     columns = {c["name"]: c for c in inspector.get_columns("entities")}
@@ -61,6 +64,8 @@ def test_entities_table_has_eight_columns_with_correct_types(v2_env):
     assert columns["entity_notes"]["nullable"] is True
     assert columns["entity_name"]["nullable"] is False
     assert columns["entity_description"]["nullable"] is False
+    # PI-010 / DEC-292: entity_kind is TEXT NULL with five-value enum.
+    assert columns["entity_kind"]["nullable"] is True
 
 
 # ---------------------------------------------------------------------------
@@ -464,3 +469,194 @@ def test_entity_status_change_does_not_consult_affiliated_domains(v2_env):
     # And the domain's status was not touched by the entity change.
     with session_scope() as s:
         assert domain.get_domain(s, "DOM-001")["domain_status"] == "deferred"
+
+
+# ---------------------------------------------------------------------------
+# PI-010 / DEC-292 — entity_kind classification (v0.5+ schema growth)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "kind", ["person", "organization", "event", "transaction", "other"]
+)
+def test_entity_kind_accepts_each_enum_value(v2_env, kind):
+    """Every value in ENTITY_KINDS round-trips through create_entity."""
+    with session_scope() as s:
+        row = entity.create_entity(
+            s, name=f"E-{kind}", description="d", kind=kind
+        )
+    assert row["entity_kind"] == kind
+
+
+def test_entity_kind_defaults_to_null(v2_env):
+    """Omitted kind is NULL — operator-deferred classification per DEC-292."""
+    with session_scope() as s:
+        row = entity.create_entity(s, name="Unkinded", description="d")
+    assert row["entity_kind"] is None
+
+
+def test_entity_kind_rejects_invalid_value(v2_env):
+    """Anything outside ENTITY_KINDS is rejected with the field error."""
+    with session_scope() as s, pytest.raises(UnprocessableError):
+        entity.create_entity(
+            s, name="Bad Kind", description="d", kind="vegetable"
+        )
+
+
+def test_entity_kind_empty_string_coerces_to_null(v2_env):
+    """`""` is treated as a "clear" sentinel by _coerce_kind."""
+    with session_scope() as s:
+        row = entity.create_entity(
+            s, name="Cleared", description="d", kind=""
+        )
+    assert row["entity_kind"] is None
+
+
+def test_patch_entity_kind_to_null_clears_field(v2_env):
+    with session_scope() as s:
+        entity.create_entity(
+            s, name="Clearable", description="d", kind="person"
+        )
+    with session_scope() as s:
+        row = entity.patch_entity(s, "ENT-001", kind=None)
+    assert row["entity_kind"] is None
+
+
+def test_patch_entity_kind_changes_value(v2_env):
+    with session_scope() as s:
+        entity.create_entity(
+            s, name="Mover", description="d", kind="person"
+        )
+    with session_scope() as s:
+        row = entity.patch_entity(s, "ENT-001", kind="organization")
+    assert row["entity_kind"] == "organization"
+
+
+def test_update_entity_kind_replaced_under_put_semantics(v2_env):
+    """PUT replaces wholesale — omitting kind from the body clears it."""
+    with session_scope() as s:
+        entity.create_entity(
+            s, name="PutCase", description="d", kind="event"
+        )
+    with session_scope() as s:
+        # Note: ``kind`` not passed → defaults to None → clears.
+        row = entity.update_entity(
+            s,
+            "ENT-001",
+            name="PutCase",
+            description="d",
+            status="candidate",
+        )
+    assert row["entity_kind"] is None
+
+
+# ---------------------------------------------------------------------------
+# PI-010 / DEC-291 — entity_variant_of_entity edge (v0.5+ schema growth)
+# ---------------------------------------------------------------------------
+
+
+def test_variant_edge_round_trips(v2_env):
+    """An entity_variant_of_entity edge can be created and surfaced."""
+    with session_scope() as s:
+        entity.create_entity(s, name="Contact", description="base")
+        entity.create_entity(
+            s, name="Mentor Contact", description="variant"
+        )
+        ref = references.create(
+            s,
+            source_type="entity",
+            source_id="ENT-002",
+            target_type="entity",
+            target_id="ENT-001",
+            relationship="entity_variant_of_entity",
+        )
+    assert ref["relationship"] == "entity_variant_of_entity"
+
+
+def test_variant_cardinality_rejects_second_outbound_edge(v2_env):
+    """An entity may be a variant of at most one other entity (DEC-291)."""
+    with session_scope() as s:
+        entity.create_entity(s, name="Contact", description="base1")
+        entity.create_entity(s, name="Account", description="base2")
+        entity.create_entity(
+            s, name="Hybrid", description="variant"
+        )
+        references.create(
+            s,
+            source_type="entity",
+            source_id="ENT-003",
+            target_type="entity",
+            target_id="ENT-001",
+            relationship="entity_variant_of_entity",
+        )
+    # Attempting a second outbound variant edge from ENT-003 fails.
+    with session_scope() as s, pytest.raises(UnprocessableError) as exc:
+        references.create(
+            s,
+            source_type="entity",
+            source_id="ENT-003",
+            target_type="entity",
+            target_id="ENT-002",
+            relationship="entity_variant_of_entity",
+        )
+    assert "cardinality_violation" in str(exc.value.errors[0].code)
+
+
+def test_variant_rejects_self_reference(v2_env):
+    with session_scope() as s:
+        entity.create_entity(s, name="Loner", description="d")
+    with session_scope() as s, pytest.raises(UnprocessableError) as exc:
+        references.create(
+            s,
+            source_type="entity",
+            source_id="ENT-001",
+            target_type="entity",
+            target_id="ENT-001",
+            relationship="entity_variant_of_entity",
+        )
+    assert "self_reference" in str(exc.value.errors[0].code)
+
+
+def test_variant_one_step_cycle_rejected(v2_env):
+    """If A→B exists, B→A is rejected (one-step cycle guard)."""
+    with session_scope() as s:
+        entity.create_entity(s, name="A", description="d")
+        entity.create_entity(s, name="B", description="d")
+        references.create(
+            s,
+            source_type="entity",
+            source_id="ENT-001",
+            target_type="entity",
+            target_id="ENT-002",
+            relationship="entity_variant_of_entity",
+        )
+    with session_scope() as s, pytest.raises(UnprocessableError) as exc:
+        references.create(
+            s,
+            source_type="entity",
+            source_id="ENT-002",
+            target_type="entity",
+            target_id="ENT-001",
+            relationship="entity_variant_of_entity",
+        )
+    assert "cycle_violation" in str(exc.value.errors[0].code)
+
+
+def test_variant_vocab_admits_kind(v2_env):
+    """`entity_variant_of_entity` is registered in REFERENCE_RELATIONSHIPS."""
+    from crmbuilder_v2.access.vocab import (
+        REFERENCE_RELATIONSHIPS,
+        RELATIONSHIP_RULES,
+    )
+
+    assert "entity_variant_of_entity" in REFERENCE_RELATIONSHIPS
+    assert "entity_variant_of_entity" in RELATIONSHIP_RULES[("entity", "entity")]
+
+
+def test_entity_kinds_vocab_shape():
+    """ENTITY_KINDS is the five-value enum per DEC-292."""
+    from crmbuilder_v2.access.vocab import ENTITY_KINDS
+
+    assert ENTITY_KINDS == frozenset(
+        {"person", "organization", "event", "transaction", "other"}
+    )

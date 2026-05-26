@@ -277,6 +277,68 @@ def create(
                 ]
             )
 
+    # PI-010 / DEC-291: `entity_variant_of_entity` is many-to-one at
+    # the source side — an entity may be a variant of at most one
+    # other entity. Reject a second outgoing edge of this kind from
+    # the same entity. Also reject self-variants (an entity is not a
+    # variant of itself) and reject cycles to a one-step depth (if A
+    # is already a variant of B, then B may not be made a variant of
+    # A); deeper cycles are operator-responsibility per entity.md
+    # v1.1 §3.3.1.
+    if relationship == "entity_variant_of_entity":
+        if source_id == target_id:
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "relationship",
+                        "self_reference",
+                        "an entity cannot be a variant of itself",
+                    )
+                ]
+            )
+        existing_count = session.scalar(
+            select(func.count(Reference.id)).where(
+                Reference.source_type == "entity",
+                Reference.source_id == source_id,
+                Reference.relationship_kind == "entity_variant_of_entity",
+            )
+        )
+        if existing_count and existing_count > 0:
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "relationship",
+                        "cardinality_violation",
+                        f"entity {source_id} already has a "
+                        "entity_variant_of_entity edge; an entity may be a "
+                        "variant of at most one other entity (delete the "
+                        "existing edge first to re-parent)",
+                    )
+                ]
+            )
+        # One-step cycle guard: reject (A, B) if (B, A) already exists.
+        reverse = session.scalar(
+            select(Reference).where(
+                Reference.source_type == "entity",
+                Reference.source_id == target_id,
+                Reference.target_type == "entity",
+                Reference.target_id == source_id,
+                Reference.relationship_kind == "entity_variant_of_entity",
+            )
+        )
+        if reverse is not None:
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "relationship",
+                        "cycle_violation",
+                        f"entity {target_id} is already a variant of "
+                        f"{source_id}; reversing the relationship would "
+                        "create a cycle",
+                    )
+                ]
+            )
+
     row = Reference(
         reference_identifier=next_reference_identifier(session),
         source_type=source_type,

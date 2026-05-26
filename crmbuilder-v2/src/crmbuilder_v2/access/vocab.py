@@ -57,6 +57,15 @@ ENTITY_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "deferred": frozenset({"confirmed"}),
 }
 
+# `entity_kind` base-type classification enum (v0.5+, PI-010 / DEC-292).
+# Five-value vocabulary per ``entity.md`` v1.1 §3.2.3 informing Phase 3
+# field-shape defaults and Phase 5 CRM-engine evaluation scoring.
+# Nullable on the column — operators may defer classification when
+# Phase 1 surfaces an entity before its kind is settled.
+ENTITY_KINDS: frozenset[str] = frozenset(
+    {"person", "organization", "event", "transaction", "other"}
+)
+
 # Methodology entity `persona` lifecycle (v0.5+, persona.md §3.4).
 # Mirrors `domain` / `entity` exactly — three-status propose-verify
 # lifecycle with one-way gate out of `candidate`.
@@ -357,6 +366,13 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         # v0.4 additions (methodology entities, UI v0.4 slice A).
         "entity_scopes_to_domain",
         "process_hands_off_to_process",
+        # v0.5+ entity-schema growth (PI-010, entity.md v1.1 §3.3.1):
+        #   - `entity_variant_of_entity` (entity → entity; many-to-one
+        #     at source side per DEC-291). First entity-to-entity edge
+        #     kind in the vocabulary. Cardinality (an entity has at
+        #     most one outbound variant edge) enforced at the access
+        #     layer per references.py, not the schema layer.
+        "entity_variant_of_entity",
         # v0.7 additions (governance entities). Eight new kinds aggregated
         # across the six governance schema specs (workstream, conversation,
         # reference_book, work_ticket, close_out_payload, deposit_event).
@@ -509,6 +525,9 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
     * ``covers`` — source must be charter or status.
     * ``entity_scopes_to_domain`` — source must be an entity, target must
       be a domain (v0.4, DEC-053).
+    * ``entity_variant_of_entity`` — source and target must both be
+      entities (v0.5+, PI-010 / DEC-291; many-to-one at source —
+      cardinality enforced at the access layer, not by this map).
     * ``process_hands_off_to_process`` — source and target must both be
       processes (v0.4, DEC-058; directional, source=producer,
       target=consumer).
@@ -588,6 +607,12 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         kinds.add("entity_scopes_to_domain")
     if source_type == "process" and target_type == "process":
         kinds.add("process_hands_off_to_process")
+    # v0.5+ PI-010 / DEC-291: entity variants. First entity-to-entity
+    # edge kind in the vocabulary. Note the `supersedes` clause above
+    # already admits same-type supersession for (entity, entity), so
+    # this pair surfaces both kinds in the cascading dialog.
+    if source_type == "entity" and target_type == "entity":
+        kinds.add("entity_variant_of_entity")
     # v0.7 governance additions, grouped by source type for readability.
     # The same-type `supersedes` clause above already admits supersession
     # for every governance same-type pair (workstream/workstream, etc.);

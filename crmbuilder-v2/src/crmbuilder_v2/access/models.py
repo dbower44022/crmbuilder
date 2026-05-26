@@ -46,6 +46,7 @@ from crmbuilder_v2.access.vocab import (
     DECISION_STATUSES,
     DEPOSIT_EVENT_OUTCOMES,
     DOMAIN_STATUSES,
+    ENTITY_KINDS,
     ENTITY_STATUSES,
     ENTITY_TYPES,
     FIELD_STATUSES,
@@ -320,6 +321,12 @@ class Entity(Base):
     ``ENT-NNN``) — there is no integer surrogate ``id`` column. Domain
     affiliations are NOT FK columns here; they live in the ``refs``
     table as ``entity_scopes_to_domain`` references.
+
+    v0.5+ PI-010 grows the schema by one classification column
+    (``entity_kind``, TEXT NULL, five-value enum + NULL — see
+    ``entity.md`` v1.1 §3.2.3 and DEC-292). Entity variants are
+    expressed via the references-table ``entity_variant_of_entity``
+    edge (PI-010 / DEC-291); no FK column on this table.
     """
 
     __tablename__ = "entities"
@@ -329,6 +336,7 @@ class Entity(Base):
     entity_status: Mapped[str] = mapped_column(
         String(16), nullable=False, default="candidate"
     )
+    entity_kind: Mapped[str | None] = mapped_column(Text, nullable=True)
     entity_description: Mapped[str] = mapped_column(Text, nullable=False)
     entity_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     entity_created_at: Mapped[datetime] = mapped_column(
@@ -355,6 +363,12 @@ class Entity(Base):
         CheckConstraint(
             _check_in("entity_status", ENTITY_STATUSES),
             name="ck_entity_status",
+        ),
+        # PI-010 / DEC-292: entity_kind admits NULL (deferred
+        # classification) or any of the five enum values.
+        CheckConstraint(
+            f"entity_kind IS NULL OR {_check_in('entity_kind', ENTITY_KINDS)}",
+            name="ck_entity_kind",
         ),
         Index("ix_entities_entity_status", "entity_status"),
         Index("ix_entities_entity_deleted_at", "entity_deleted_at"),

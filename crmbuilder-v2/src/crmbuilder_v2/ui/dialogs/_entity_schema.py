@@ -25,6 +25,7 @@ import re
 from copy import deepcopy
 
 from crmbuilder_v2.access.vocab import (
+    ENTITY_KINDS,
     ENTITY_STATUS_TRANSITIONS,
     ENTITY_STATUSES,
 )
@@ -35,6 +36,11 @@ IDENTIFIER_RE = re.compile(r"^ENT-\d{3}$")
 _DESCRIPTION_PLACEHOLDER = (
     "Brief description of what kind of thing this entity represents"
 )
+
+# Empty-string sentinel for the kind combo (PI-010 / DEC-292) — selecting
+# the blank option clears `entity_kind` to NULL. The repository's
+# `_coerce_kind` normalises "" to None on its way through.
+_KIND_CHOICES: list[str] = [""] + sorted(ENTITY_KINDS)
 
 
 def status_choices(current: str | None) -> list[str]:
@@ -86,6 +92,16 @@ _CONTENT_FIELDS: list[FieldSchema] = [
         compute_options=lambda state: status_choices(
             state.get("entity_status")
         ),
+    ),
+    # PI-010 / DEC-292: optional base-type classification. Blank
+    # sentinel maps to NULL via the repository's _coerce_kind.
+    FieldSchema(
+        key="entity_kind",
+        label="Kind",
+        widget="combo",
+        vocab=frozenset(_KIND_CHOICES),
+        default="",
+        compute_options=lambda _state: list(_KIND_CHOICES),
     ),
 ]
 

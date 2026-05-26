@@ -282,6 +282,17 @@ class EntitiesPanel(ListDetailPanel):
         status_row.addRow(required_label("Status"), status_container)
         outer.addLayout(status_row)
 
+        # Field 5b: entity_kind — PI-010 / DEC-292. Renders as a
+        # read-only label; "(unclassified)" when NULL. Editing flows
+        # through the dialog like every other field.
+        kind_row = QFormLayout()
+        kind_row.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
+        kind_value = record.get("entity_kind") or "(unclassified)"
+        kind_label = QLabel(kind_value)
+        kind_label.setObjectName("entity_kind_value")
+        kind_row.addRow(QLabel("Kind"), kind_label)
+        outer.addLayout(kind_row)
+
         outer.addWidget(_separator())
 
         # Field 6: the shared ReferencesSection. The first methodology
