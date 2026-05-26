@@ -48652,5 +48652,444 @@
     "id": 2063,
     "operation": "insert",
     "timestamp": "2026-05-26T06:58:25.042008"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-12T01:23:41.201246",
+      "description": "## Executive Summary\n\nPI-010 grows the methodology `entity` type for v0.5+ to close two limits surfaced under v0.4 worked use:\n\n1. **Entity variants** — promote the \"Mentor Contact vs Client Contact\" pattern from the v0.4 `entity_name` suffix workaround (\"Contact — Mentor\", \"Contact — Client\") to a first-class relationship, so variants share base semantics while differing in role and (under PI-004's now-shipped field type) field roster.\n2. **Entity kind classification** — add an `entity_kind` enum (`person | organization | event | transaction | other`) on the entity table to inform Phase 3 field-shape defaults and Phase 5 CRM-engine evaluation scoring.\n\nBoth are entity-type growth and are tracked separately from PI-004's introduction of new methodology entity types (field, requirement, manual_config, test_spec). DEC-051 explicitly defers `entity_kind` to v0.5+; the variant mechanism is named in DEC-051's consequences/alternatives but the choice itself is left for this PI. CBM-redo signal from v0.4 worked use is the primary input that informs both Phase B design conversations below.\n\n## Execution Plan\n\n**Phase A — Signal gathering (no schema change).** Inventory v0.4 entity captures that use the `entity_name` suffix workaround (CBM-redo Phase 1 is the primary source; any v0.5 cohorts also). Record concrete cases and the friction they create — search, ReferencesSection rendering, cross-domain affiliation, future field-roster differences. Cross-walk Phase 1 entity captures across cohorts for natural kind-clustering (which entities operators would tag person / organization / event / transaction unprompted). Cross-walk Phase 3 and Phase 5 material for the points where kind classification would actually change behavior (field-shape defaults, CRM-engine scoring, persona-backing entity selection). Capture findings as a session deliverable, not a permanent doc — it feeds Phase B and then archives with the session.\n\n**Phase B — Design conversations (one DEC per topic).**\n- **B1 — variant mechanism.** Choose among: self-referential FK (`entity_parent_identifier`), references-entity edge with new vocab kind (`entity_variant_of_entity`, mirroring DEC-053's `entity_scopes_to_domain` pattern), or separate `entity_variant` type sitting between base entity and field. DEC-053 establishes references-entity edges as the default many-to-many methodology-entity mechanism; option B carries the structural burden of proof unless a substantive reason to deviate surfaces in Phase A.\n- **B2 — `entity_kind` shape.** Column type (TEXT with vocab-enforced enum is the natural fit), the enum set itself (defaults: `person | organization | event | transaction | other`), nullability and default value, validation rules, render in detail pane and list. Sequence with B1 because the variant-mechanism choice influences whether kind is inherited by variants from a parent or independently set per variant.\n- **B3 — migration story.** Rewrite v0.4 suffix-named variants on upgrade (CBM-redo data is the test case), or leave them as legacy and let the variant relationship be additive only. Operator-visible upgrade ergonomics drive the choice; either is defensible.\n\n**Phase C — Schema + access layer.** Alembic migration for the new column(s) and/or vocab kind per B1+B2. `crmbuilder_v2/access/vocab.py` updates per the CLAUDE.md mechanical convention (`REFERENCE_RELATIONSHIPS` + `_kinds_for_pair`) if option A wins. Access-layer create/update/list/soft-delete validation; references-table CHECK-constraint migration if a new kind ships. Tests cover the conduct of the new relationship under soft-delete, supersession, and cross-engagement isolation.\n\n**Phase D — API + MCP surface.** Extend `entity` POST/PATCH/GET payloads with `entity_kind` (and any variant pointer column if B1 picks an FK shape). Update MCP tool schemas in `crmbuilder_v2.mcp_server.tools`. Refresh integration tests against the `{data, meta, errors}` envelope.\n\n**Phase E — UI (PySide6 desktop).** Entity detail pane: `entity_kind` selector control. Variant-relationship widget shape per B1 — if option A wins, the existing `ReferencesSection` widget renders it for free with cascading filters from `_kinds_for_pair`. Entity list / picker: kind badge and variant indicator. The \"transient modal sub-dialogs need `deleteLater()`\" hazard from the Qt-worker-widget GC memory applies if the variant widget spawns sub-dialogs.\n\n**Phase F — Methodology integration.** Phase 1 interview guide: when to capture `entity_kind` vs. defer (cite charter §11.6.b — inferences require positive support). Phase 3 prompt: kind-informed field-shape defaults. Phase 5 CRM-evaluation prompt: kind-informed scoring criteria. Any new question patterns land in `PRDs/process/conduct/question-library.md` with cross-references from the relevant phase guides.\n\n**Phase G — Backfill + validation.** Per B3, migrate any v0.4 `entity_name`-suffix variants in active databases. Re-run CBM-redo Phase 1 against the new mechanism to confirm friction is gone; capture residual gaps as v0.6+ candidates rather than expanding this PI's scope.\n\n**Phase H — Close-out.** Spec landed as an entity-spec amendment under `PRDs/product/crmbuilder-v2/`; per-slice close-out payloads under `close-out-payloads/`; apply prompts under `prompts/`. The final delivering session's `resolves_planning_items` section flips PI-010 to Resolved.\n\n**Open dependencies, sequencing, risks.**\n- DEC-053 establishes the references-entity edge as the default mechanism for methodology-entity many-to-many — B1 inherits that posture.\n- PI-055 (richer `field_type` vocabulary for v0.6+) and PI-060 (entity-soft-delete cascade posture for inbound `field` rows) interact with variant semantics if variants share or override field rosters — sequence Phase B1 to land after PI-060's posture is set, or in coordination with it.\n- The CBM-redo Phase 1 capture is the load-bearing evidence input. If CBM-redo is paused or rescoped, Phase A needs an alternative signal source before B1 / B2 can land confidently.\n\n## Background (original description)\n\n\nDEC-051 and DEC-053 jointly defer two entity-schema growth areas to v0.5+: (a) entity variants — the Mentor Contact / Client Contact pattern from CBM history where two related-but-distinct entities share a base type but carry different fields and role semantics; (b) entity base-type / kind classification — person / organization / event / transaction-style categorization that informs CRM-engine selection and field-shape defaults. Both are intentionally absent from v0.4: variants because Phase 1 doesn't produce them and v0.4 has no fields to vary across them; base-type/kind because it's Phase 3 territory tied to CRM-engine specifics that v0.4's thin shape stays neutral about. Tracked separately from PI-004 (which groups field/requirement/manual_config/test_spec as new methodology entity types) because PI-010 is entity-schema growth — extending the existing entity type — not introducing new entity types. Variant mechanism TBD: candidates include self-referential FK (entity_parent_identifier), references-entity edge (entity_variant_of_entity), or a separate variant entity type sitting between base entity and field. Mechanism choice is a v0.5+ design conversation. Workaround in v0.4: variants are distinguished by suffixing entity_name ('Contact — Mentor', 'Contact — Client'); CBM redo will reveal how much friction the workaround creates and inform mechanism design. Base-type/kind classification: candidate v0.5+ shape is an enum field (entity_kind: person | organization | event | transaction | other) on the entity table, with validation that informs Phase 3 field-shape defaults and Phase 5 CRM-evaluation scoring.",
+      "id": 10,
+      "identifier": "PI-010",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Open",
+      "title": "Entity-schema v0.5+ extensions — variants and base-type/kind classification",
+      "updated_at": "2026-05-26T14:59:23.929115+00:00"
+    },
+    "before_payload": {
+      "created_at": "2026-05-12T01:23:41.201246",
+      "description": "DEC-051 and DEC-053 jointly defer two entity-schema growth areas to v0.5+: (a) entity variants — the Mentor Contact / Client Contact pattern from CBM history where two related-but-distinct entities share a base type but carry different fields and role semantics; (b) entity base-type / kind classification — person / organization / event / transaction-style categorization that informs CRM-engine selection and field-shape defaults. Both are intentionally absent from v0.4: variants because Phase 1 doesn't produce them and v0.4 has no fields to vary across them; base-type/kind because it's Phase 3 territory tied to CRM-engine specifics that v0.4's thin shape stays neutral about. Tracked separately from PI-004 (which groups field/requirement/manual_config/test_spec as new methodology entity types) because PI-010 is entity-schema growth — extending the existing entity type — not introducing new entity types. Variant mechanism TBD: candidates include self-referential FK (entity_parent_identifier), references-entity edge (entity_variant_of_entity), or a separate variant entity type sitting between base entity and field. Mechanism choice is a v0.5+ design conversation. Workaround in v0.4: variants are distinguished by suffixing entity_name ('Contact — Mentor', 'Contact — Client'); CBM redo will reveal how much friction the workaround creates and inform mechanism design. Base-type/kind classification: candidate v0.5+ shape is an enum field (entity_kind: person | organization | event | transaction | other) on the entity table, with validation that informs Phase 3 field-shape defaults and Phase 5 CRM-evaluation scoring.",
+      "id": 10,
+      "identifier": "PI-010",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Open",
+      "title": "Entity-schema v0.5+ extensions — variants and base-type/kind classification",
+      "updated_at": "2026-05-12T01:23:41.201250"
+    },
+    "entity_identifier": "PI-010",
+    "entity_type": "planning_item",
+    "id": 2064,
+    "operation": "update",
+    "timestamp": "2026-05-26T14:59:23.929568"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "artifacts_produced": "Single build commit 3b326ce0c306453190db8ab292205f329e33ac43. New file `crmbuilder-v2/migrations/versions/0019_v0_5_entity_kind_and_variants.py`. Modified files: `crmbuilder-v2/src/crmbuilder_v2/access/models.py`, `crmbuilder-v2/src/crmbuilder_v2/access/vocab.py`, `crmbuilder-v2/src/crmbuilder_v2/access/repositories/entity.py`, `crmbuilder-v2/src/crmbuilder_v2/access/repositories/references.py`, `crmbuilder-v2/src/crmbuilder_v2/api/schemas.py`, `crmbuilder-v2/src/crmbuilder_v2/api/routers/entities.py`, `crmbuilder-v2/src/crmbuilder_v2/ui/dialogs/_entity_schema.py`, `crmbuilder-v2/src/crmbuilder_v2/ui/panels/entities.py`, `tests/crmbuilder_v2/access/test_entity.py` (+13 new tests + column-shape expectation grown to nine), `tests/crmbuilder_v2/ui/test_entities_panel.py` (detail-pane widget-ordering expectation extended), `PRDs/product/crmbuilder-v2/methodology-schema-specs/entity.md` (v1.0 → v1.1 amendment). This close-out payload `ses_090.json` and its apply prompt `CLAUDE-CODE-PROMPT-apply-close-out-ses-090.md`. Migration 0019 applied to the live CRMBUILDER engagement DB; deposit-event log `dep_NNN.log` lands at apply time.",
+      "conversation_reference": "Claude Code orchestrator session at Doug's terminal, 2026-05-26. Doug invoked the orchestrator with two prompts: (1) review PI-010 and prepend an executive summary + execution plan to the description; (2) execute the plan, complete the requirements, write a proper close-out, update documentation. The orchestrator dispatched an Explore agent for Phase A signal gathering, made the three Phase B design decisions directly from the signal, implemented Phases C–F inline (the work was tightly interconnected and benefited from a single context), declared Phase G a no-op from Phase A signal, and authored Phase H close-out artifacts. Implementation landed as commit 3b326ce. Three decisions DEC-301/302/303 cover the Phase B trio. Identifier collision discovered at close-out authoring time: a parallel-sandbox architecture-review session had drafted but not yet applied ses_089.json claiming SES-089 / CONV-059 / DEC-291-300 / PI-061-073. Re-keyed this session's identifiers to SES-090 / CONV-060 / DEC-301-303 per CLAUDE.md's identifier-collision contingency for parallel-sandbox work (precedent: SES-077). No work_ticket authored — this session was driven by direct user prompts rather than a kickoff-md-file.",
+      "created_at": "2026-05-26T15:37:12.944962+00:00",
+      "id": 87,
+      "identifier": "SES-090",
+      "in_flight_at_end": "PI-010 resolves on this apply. After this apply, entity.md sits at v1.1 with both variants and kind classification live. Follow-on v0.6+ candidates surfaced during signal gathering but not authored as PIs in this session: kind-inheritance from a parent variant (if a variant's kind is unset, should it default-render the parent's kind?); kind-informed Phase 3 field-shape defaults; kind-informed Phase 5 CRM-engine scoring; master-pane Kind column. The PI-060 interaction remains Open but is no longer blocking variant work. The API server is still running on pre-migration code (separate restart needed before live entity_kind / variant edges can be authored via REST); the close-out apply flow doesn't depend on the API knowing about entity_kind.",
+      "session_date": "2026-05-26",
+      "status": "Complete",
+      "summary": "PI-010 satisfier (entity v0.5+ schema growth) shipped end-to-end. RESOLVES PI-010 via slice A's atomic edge+flip behavior. NOT a new entity type — additive growth of the existing entity methodology entity per entity.md v1.1. One new TEXT NULL column (entity_kind, CHECK-constrained to NULL or one of person/organization/event/transaction/other) — DEC-302. One new outbound vocabulary kind (entity_variant_of_entity, entity → entity, many-to-one at source via access-layer cardinality guard; first entity-to-entity edge kind in v2) — DEC-301. Additive-only migration with no data backfill — no v0.4 production variant data existed — DEC-303. Existing v0.4 entity records survive intact with entity_kind NULL and zero variant edges. entity_status three-value lifecycle preserved verbatim. Master pane unchanged per the same posture as DEC-054's Domains-column deferral. Detail pane gains a Kind read-only label; Create/Edit dialogs gain a Kind combo. References-create dialog surfaces the new kind automatically for (entity, entity) via the cascading filter from RELATIONSHIP_RULES. Migration 0019 fully reversible per entity.md v1.1 §4.3. Test suite: 1876 baseline → 1893 (+17 new, 0 regressions). Identifier re-keying per CLAUDE.md's parallel-sandbox contingency: SES-089/CONV-059/DEC-291-293 → SES-090/CONV-060/DEC-301-303.",
+      "title": "PI-010 satisfier — entity v0.5+ schema growth end-to-end; RESOLVES PI-010",
+      "topics_covered": "Execution of the 8-phase PI-010 plan landed on the description in this session's first prompt. (Phase A — Signal gathering) Explore agent inventoried entity records in the live engagement DB (only ENT-001 / ENT-002 smoke-test records, no production variant-suffix names), located entity.md v1.0 at PRDs/product/crmbuilder-v2/methodology-schema-specs/, surveyed vocab.py (37 kinds, no existing entity-to-entity edge kinds), identified migration 0018 as the head and the complete-CHECK-rewrite pattern for adding new refs.relationship_kind values, validated the five-value `person | organization | event | transaction | other` enum against 15 sample entity names from the methodology corpus (no records required `other`; Campaign / Engagement showed dual event/transaction readings), and confirmed PI-060 is conditionally non-blocking because variants carry their own field roster under PI-004's shipped pattern. (Phase B — Design conversations) Three decisions: DEC-301 — variant mechanism is references-entity edge with new kind `entity_variant_of_entity`, many-to-one at source via access-layer cardinality guard, mirrors DEC-053's default posture, first entity-to-entity edge kind in v2's vocabulary; DEC-302 — `entity_kind` is TEXT NULL column with CHECK admitting NULL or one of the five enum values, no default, operator-deferred classification is the legitimate starter state per DEC-051's posture; DEC-303 — migration story is additive-only no-op, no rewrite of any v0.4 records (none had variant suffixes), CBM-redo goes directly to the v1.1 mechanism. (Phase C — Schema + access layer) Migration 0019_v0_5_entity_kind_and_variants.py adds entity_kind TEXT NULL column with CHECK constraint via batch_alter_table, extends refs.relationship_kind CHECK to admit entity_variant_of_entity. vocab.py adds ENTITY_KINDS frozenset, adds the new kind to REFERENCE_RELATIONSHIPS, adds the `_kinds_for_pair` clause for `(entity, entity)`. Entity model gains Mapped[str | None] entity_kind column with CHECK constraint via __table_args__. Repository adds _coerce_kind validator + kind kwarg on _new_entity_row / _insert_with_autoassign / create_entity / update_entity / patch_entity. References repository adds variant-specific guards: cardinality, self-reference rejection, one-step cycle rejection. (Phase D — API + MCP) EntityCreateIn / EntityReplaceIn / EntityPatchIn each gain entity_kind field; /entities router passes entity_kind through on POST and PUT. MCP tool surface unchanged — methodology entity CRUD goes through generic REST proxy methods which pass-through the new field automatically. (Phase E — UI) `_entity_schema.py` adds entity_kind FieldSchema as a combo with blank sentinel + five enum values; `entities.py` panel detail pane renders entity_kind as a read-only QLabel with `(unclassified)` fallback. Master-pane Kind column deferred. (Phase F — Methodology integration) entity.md amended v1.0 → v1.1 with full Revision Control entry and Change Log entry, sections 3.2.3 / 3.3.1 / 3.3.4 / 3.8.3 amended, new section 4 (Migration and Reversibility v1.1+) added. No interview-guide or conduct-framework amendments. (Phase G — Backfill) No-op confirmed. (Phase H — Close-out) ses_090.json + apply prompt + spec amendment + commit 3b326ce all land. Test suite: baseline 1876 → 1893 passed / +17 new (0 regressions). Migration 0019 applied to live CRMBUILDER engagement DB."
+    },
+    "before_payload": null,
+    "entity_identifier": "SES-090",
+    "entity_type": "session",
+    "id": 2065,
+    "operation": "insert",
+    "timestamp": "2026-05-26T15:37:12.945501"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T15:37:13.139710+00:00",
+      "id": 1137,
+      "reference_identifier": "REF-1133",
+      "relationship": "conversation_belongs_to_workstream",
+      "source_id": "CONV-060",
+      "source_type": "conversation",
+      "target_id": "WS-003",
+      "target_type": "workstream"
+    },
+    "before_payload": null,
+    "entity_identifier": "conversation:CONV-060 -[conversation_belongs_to_workstream]-> workstream:WS-003",
+    "entity_type": "reference",
+    "id": 2066,
+    "operation": "insert",
+    "timestamp": "2026-05-26T15:37:13.140224"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T15:37:13.142504+00:00",
+      "id": 1138,
+      "reference_identifier": "REF-1134",
+      "relationship": "conversation_records_session",
+      "source_id": "CONV-060",
+      "source_type": "conversation",
+      "target_id": "SES-090",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "conversation:CONV-060 -[conversation_records_session]-> session:SES-090",
+    "entity_type": "reference",
+    "id": 2067,
+    "operation": "insert",
+    "timestamp": "2026-05-26T15:37:13.143032"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "conversation_cancelled_at": null,
+      "conversation_completed_at": "2026-05-26T15:37:13.137426+00:00",
+      "conversation_created_at": "2026-05-26T15:37:13.137170+00:00",
+      "conversation_deleted_at": null,
+      "conversation_description": "Claude Code orchestrator conversation at Doug's terminal, 2026-05-26. Doug invoked the orchestrator with a two-prompt sequence: prompt 1 asked for review of PI-010 + executive summary + execution plan; prompt 2 asked the orchestrator to execute the plan, complete the requirements, write a proper close-out, and update any documentation. The orchestrator dispatched an Explore agent for Phase A signal gathering and made the Phase B decisions inline. Phases C–F were implemented in a single coherent context rather than parallelized across sub-agents because the changes are tightly interconnected. Phase G was confirmed no-op from Phase A signal. Phase H — this close-out — is the final step. The conversation has no `conversation_opens_against_work_ticket` edge because there is no kickoff prompt file. The conversation belongs to WS-003 (Methodology entity schema design) — that workstream is `complete` but admits new conversations attaching for additive growth work (precedent: CONV-058 / SES-088 for PI-005).",
+      "conversation_identifier": "CONV-060",
+      "conversation_kickoff_drafted_at": null,
+      "conversation_notes": null,
+      "conversation_purpose": "Execute the eight-phase PI-010 plan to ship entity-schema growth (variants via references-edge + entity_kind enum classification) per entity.md v1.1. RESOLVE PI-010 by emitting a `resolves` edge from this session to PI-010.",
+      "conversation_ready_at": null,
+      "conversation_started_at": null,
+      "conversation_status": "complete",
+      "conversation_superseded_at": null,
+      "conversation_title": "PI-010 satisfier — entity v0.5+ schema growth orchestration (variants + entity_kind)",
+      "conversation_updated_at": "2026-05-26T15:37:13.137530+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "CONV-060",
+    "entity_type": "conversation",
+    "id": 2068,
+    "operation": "insert",
+    "timestamp": "2026-05-26T15:37:13.143917"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "commit_author_email": "doug@dougbower.com",
+      "commit_author_name": "Doug Bower",
+      "commit_branch": "main",
+      "commit_committed_at": "2026-05-26T11:30:43-04:00",
+      "commit_conversation_id": "CONV-060",
+      "commit_created_at": "2026-05-26T15:37:13.279684+00:00",
+      "commit_deleted_at": null,
+      "commit_files_changed_count": 12,
+      "commit_identifier": "CM-0010",
+      "commit_message_first_line": "v2: PI-010 — entity v0.5+ schema growth (entity_kind + entity_variant_of_entity)",
+      "commit_message_full": "v2: PI-010 — entity v0.5+ schema growth (entity_kind + entity_variant_of_entity)\n\nGrows the existing entity methodology entity per\nmethodology-schema-specs/entity.md v1.1. Additive; preserves every\nv0.4 field, the three-status propose-verify lifecycle, the eight\nendpoints, and the master pane verbatim.\n\nMigration 0019:\n- Adds one TEXT NULL column to entities: entity_kind. CHECK admits\n  NULL or one of five enum values (person, organization, event,\n  transaction, other).\n- Extends refs.relationship_kind CHECK to admit\n  entity_variant_of_entity — first entity-to-entity edge kind in v2's\n  vocabulary.\n- Reversible.\n\nvocab.py:\n- Adds ENTITY_KINDS frozenset (five values).\n- Adds entity_variant_of_entity to REFERENCE_RELATIONSHIPS.\n- Adds _kinds_for_pair clause for (entity, entity).\n\nModel, repo, schemas, router:\n- Entity model gains Mapped[str | None] entity_kind column + CHECK.\n- _coerce_kind validator normalises None/empty-string to None.\n- create_entity / update_entity / patch_entity accept the new\n  optional kind kwarg.\n- EntityCreateIn / ReplaceIn / PatchIn schemas accept entity_kind.\n- /entities router passes entity_kind through on POST and PUT.\n\nReferences repo:\n- POST /references with relationship=entity_variant_of_entity\n  rejects self-references, second outbound edges from the same\n  source (cardinality_violation), and one-step cycles. Deeper cycles\n  remain operator-responsibility.\n\nUI:\n- Create + Edit dialogs gain a Kind combo via the new entity_kind\n  FieldSchema.\n- Detail pane gains a Kind read-only label.\n\nTests (+17 new, 0 regressions): five-value round-trip, default NULL,\ninvalid-value rejection, empty-string coercion, PATCH-null clears,\nPATCH change, PUT-clear semantics, variant edge round-trip, variant\ncardinality guard, variant self-reference rejection, variant\none-step cycle rejection, vocab registration sanity, ENTITY_KINDS\nshape check, detail-pane ordering. Baseline 1876 → 1893 passed.\n\nPI-010 resolves on close-out apply.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+      "commit_parent_shas": [
+        "d587d73faeda12d9ba2f090b096171870ed64224"
+      ],
+      "commit_repository": "crmbuilder",
+      "commit_sha": "3b326ce0c306453190db8ab292205f329e33ac43",
+      "commit_updated_at": "2026-05-26T15:37:13.279686+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "CM-0010",
+    "entity_type": "commit",
+    "id": 2069,
+    "operation": "insert",
+    "timestamp": "2026-05-26T15:37:13.280230"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Option B — self-referential FK column `entity_parent_identifier` (rejected; schema-table surface; inverse query becomes a table-scan). Option C — separate `entity_variant` entity type (rejected; the references table is the established v2 mechanism per DEC-006). DB-layer cardinality via partial UNIQUE on `(source_type, source_id, relationship_kind) WHERE relationship_kind='entity_variant_of_entity'` (rejected for v1.1; access-layer enforcement matches the PI-004 precedent). Deeper-cycle prevention at edge-create time (rejected for v1.1; graph walks add complexity; one-step guard catches the most common operator-error).",
+      "consequences": "An entity has zero or one outbound `entity_variant_of_entity` edges; a base has zero or many inbound such edges. The `ReferencesSection` widget renders both directions. The cascading dialog surfaces `entity_variant_of_entity` and `supersedes` for `(entity, entity)` (plus generic `is_about` / `references`). Soft-deleting either endpoint does not cascade-delete the variant edge. Variants are field-roster-independent — PI-060 becomes informational rather than blocking. CBM-redo Phase 1 will exercise the mechanism with real variant cases; any friction surfaces as v0.6+ candidates.",
+      "context": "PI-010 / Phase B1 of the orchestrated execution plan. The Mentor Contact / Client Contact pattern from CBM history needs first-class representation in v0.5+ — variants share a base type but carry different fields and role semantics. PI-010 named three candidate mechanisms: (A) references-entity edge with new vocab kind, (B) self-referential FK column on the entity table, (C) separate variant entity type. DEC-053 establishes references-edge as the default for methodology-entity many-to-many; the question for PI-010 is whether the variant relationship has a substantive reason to deviate. Phase A signal: no production variant data existed at decision time (live engagement DB had only smoke-test entities); PI-004's shipped field schema attaches fields per-entity via `field_belongs_to_entity`, so variants are field-roster-independent.",
+      "created_at": "2026-05-26T15:37:13.457589+00:00",
+      "decision": "Adopt option A: references-entity edge with new vocabulary kind `entity_variant_of_entity` (source `entity`, target `entity`). First entity-to-entity edge kind in v2's vocabulary. Mechanical additions per CLAUDE.md line 48: (1) `entity_variant_of_entity` added to `REFERENCE_RELATIONSHIPS` in `vocab.py`; (2) `_kinds_for_pair` extended with a clause for `(entity, entity)`; (3) Alembic migration 0019 extending the `refs.relationship_kind` CHECK. Cardinality many-to-one at source: an entity may have AT MOST ONE outbound `entity_variant_of_entity` edge. Enforced at the access layer via `references.py` `create()` guard, mirroring PI-004's `field_belongs_to_entity` precedent. Self-references rejected with `self_reference` code; one-step cycles (B→A when A→B exists) rejected with `cycle_violation`. Deeper-cycle prevention is operator-responsibility for v1.1.",
+      "decision_date": "2026-05-26",
+      "id": 278,
+      "identifier": "DEC-301",
+      "rationale": "Option B (self-referential FK) rejected: adds schema-table surface and prevents the inverse query ('what entities are variants of this entity?') from sharing the unified references-query path. Option C (separate variant type) rejected as overkill — the references table already does this with one new vocab kind. Option A wins on three grounds: (i) DEC-053 establishes references-edge as the default for methodology-entity many-to-many and there is no substantive reason to deviate (the variant relationship is structurally many-to-one but references handles that with an access-layer cardinality guard); (ii) option A reuses the existing `ReferencesSection` widget with zero new widget code; (iii) option A exercises the cascading-filter infrastructure with the first entity-to-entity kind cleanly.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Entity variant mechanism — references-entity edge with `entity_variant_of_entity` kind; many-to-one at source via access-layer cardinality guard",
+      "updated_at": "2026-05-26T15:37:13.457592+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-301",
+    "entity_type": "decision",
+    "id": 2070,
+    "operation": "insert",
+    "timestamp": "2026-05-26T15:37:13.457980"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Non-NULL required at create time with `other` as the default (rejected; pushes operators toward early-binding classifications). Two-axis classification (`entity_kind` + `entity_subkind`) (rejected for v1.1; subkind taxonomy undocumented). Free-text `entity_kind` with optional vocab guidance (rejected; loses CHECK-constraint validation). Default value `person` (rejected; silently biases the population). Length cap on the column (rejected; enum is closed so length is bounded). Kind-inheritance for variants (rejected for v1.1; deferred to v0.6+ as a CBM-redo signal candidate).",
+      "consequences": "The entities table grows by one TEXT NULL column. v0.4 records survive intact with `entity_kind` NULL. Phase 3 work that depends on kind-classification reads the column and gates on NULL. Master pane does not gain a Kind column in v1.1 — operator-density tradeoff matches DEC-054's Domains-column deferral. Detail pane renders Kind as a read-only label; Create/Edit dialog presents it as a combo. Downstream Phase 5 CRM-engine evaluation will weight scores by kind once that automation lands (currently kinds are stored and rendered but not yet score-weighted — v0.6+ candidate). `other` is a safety sentinel; if CBM-redo surfaces a sixth natural cluster, a v0.6+ migration adds it.",
+      "context": "PI-010 / Phase B2 of the orchestrated execution plan. DEC-051 deferred `entity_kind` to v0.5+ because base-type classification is Phase 3 territory and v0.4's thin shape stayed neutral about CRM-engine specifics. PI-010 named the candidate v0.5+ shape: an enum field on the entity table with values `person | organization | event | transaction | other`, informing Phase 3 field-shape defaults and Phase 5 CRM-engine evaluation scoring. The remaining shape questions for this build: column type, nullability, default value, validation enforcement layer, render strategy.",
+      "created_at": "2026-05-26T15:37:13.591093+00:00",
+      "decision": "Add `entity_kind` to the `entities` table as a TEXT column, NULL-able, no default. CHECK constraint admits NULL or one of the five enum values. Validation enforced both at the database layer (CHECK constraint) and at the access layer (`_coerce_kind` validator normalises None/empty-string to None; non-empty values must be members of `ENTITY_KINDS`). PATCH-null and PATCH-empty-string both clear the field; PATCH-omit leaves it unchanged. PUT replaces wholesale (omitted-from-body deserialises to None and clears the field). UI dialog presents a combo with a blank sentinel as the first option followed by the five enum values; the blank maps to NULL via `_coerce_kind`. Detail pane renders the value as a read-only label with `(unclassified)` fallback.",
+      "decision_date": "2026-05-26",
+      "id": 279,
+      "identifier": "DEC-302",
+      "rationale": "Operator-deferred classification (NULL) is the legitimate default because Phase 1 sometimes surfaces an entity before its kind is settled — same DEC-051 posture of 'don't force methodology concepts Phase 1 doesn't always produce'. Forcing a non-NULL value at create time would push operators toward `other` or guess-classifications that decay the signal value. The five-value enum is exhaustive for the CBM-redo-era methodology; Phase A's clustering check placed every of 15 sample entities confidently into one of the four substantive values with `other` as the safety sentinel. CHECK constraint at the DB layer plus `_coerce_kind` at the access layer is belt-and-braces per the DEC-006 vocabulary discipline. Empty-string-coerces-to-NULL handles the UI's blank-sentinel without requiring the combo to track a distinct 'no value' state.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Entity kind classification — `entity_kind` TEXT NULL column with five-value CHECK-constrained enum + operator-deferred NULL",
+      "updated_at": "2026-05-26T15:37:13.591096+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-302",
+    "entity_type": "decision",
+    "id": 2071,
+    "operation": "insert",
+    "timestamp": "2026-05-26T15:37:13.591461"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "alternatives_considered": "Automated rewrite scanning `entity_name` for variant-pattern punctuation (rejected; parent-child direction not always unambiguously recoverable). One-pass migration emitting a report of suspected patterns for operator triage (rejected for v1.1; no production data needs it). Lazy migration: prompt operator in UI on first access to matching records (rejected; UX surface no operator has asked for and the data doesn't exist to need).",
+      "consequences": "v0.4 records carry forward with `entity_kind = NULL` and zero variant edges. CBM-redo Phase 1 captures variants directly using the v1.1 mechanism. If a later engagement has accreted legacy suffix-named variants between v0.4 and v1.1, operators handle the migration manually via the UI's reference-create dialog. No data-migration script is shipped with migration 0019.",
+      "context": "PI-010 / Phase B3 of the orchestrated execution plan. The v0.4 workaround for entity variants was to suffix `entity_name` (e.g. 'Contact — Mentor', 'Contact — Client') per entity.md v1.0 §3.3.4. With the v1.1 variant mechanism (DEC-301) landing, the question is whether the migration should rewrite legacy suffix-named records to attach explicit `entity_variant_of_entity` edges, or leave them untouched and let the new mechanism be additive-only going forward.",
+      "created_at": "2026-05-26T15:37:13.767739+00:00",
+      "decision": "Migration 0019 is additive only — no rewrite of any v0.4 records. Operator-visible upgrade ergonomics: legacy suffix-named records remain operator-editable, and operators may either (a) attach explicit `entity_variant_of_entity` edges between the records leaving the names unchanged, or (b) rename the variant records and attach edges. Either pattern is forward-compatible. No automation rewrites names or attaches edges at upgrade time.",
+      "decision_date": "2026-05-26",
+      "id": 280,
+      "identifier": "DEC-303",
+      "rationale": "Phase A signal confirmed no production variant data existed at decision time — the live CRMBUILDER engagement DB held only two smoke-test entities (ENT-001 / ENT-002) with no suffix patterns. CBM-redo will go directly to the v1.1 mechanism. An automated rewrite would either (i) require operator review per-record (parent-child direction isn't always recoverable from a suffix alone), violating the additive-only posture; or (ii) make heuristic guesses that operators would have to correct, adding friction without value. Leaving legacy records untouched preserves v0.4-era data verbatim; explicit edges are added as operators encounter the records.",
+      "status": "Active",
+      "superseded_by_id": null,
+      "superseded_by_identifier": null,
+      "supersedes_id": null,
+      "supersedes_identifier": null,
+      "title": "Entity variant migration story — additive no-op for v0.4 records; no rewrite of `entity_name` suffix-named legacy variants",
+      "updated_at": "2026-05-26T15:37:13.767742+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEC-303",
+    "entity_type": "decision",
+    "id": 2072,
+    "operation": "insert",
+    "timestamp": "2026-05-26T15:37:13.768125"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-12T01:23:41.201246",
+      "description": "## Executive Summary\n\nPI-010 grows the methodology `entity` type for v0.5+ to close two limits surfaced under v0.4 worked use:\n\n1. **Entity variants** — promote the \"Mentor Contact vs Client Contact\" pattern from the v0.4 `entity_name` suffix workaround (\"Contact — Mentor\", \"Contact — Client\") to a first-class relationship, so variants share base semantics while differing in role and (under PI-004's now-shipped field type) field roster.\n2. **Entity kind classification** — add an `entity_kind` enum (`person | organization | event | transaction | other`) on the entity table to inform Phase 3 field-shape defaults and Phase 5 CRM-engine evaluation scoring.\n\nBoth are entity-type growth and are tracked separately from PI-004's introduction of new methodology entity types (field, requirement, manual_config, test_spec). DEC-051 explicitly defers `entity_kind` to v0.5+; the variant mechanism is named in DEC-051's consequences/alternatives but the choice itself is left for this PI. CBM-redo signal from v0.4 worked use is the primary input that informs both Phase B design conversations below.\n\n## Execution Plan\n\n**Phase A — Signal gathering (no schema change).** Inventory v0.4 entity captures that use the `entity_name` suffix workaround (CBM-redo Phase 1 is the primary source; any v0.5 cohorts also). Record concrete cases and the friction they create — search, ReferencesSection rendering, cross-domain affiliation, future field-roster differences. Cross-walk Phase 1 entity captures across cohorts for natural kind-clustering (which entities operators would tag person / organization / event / transaction unprompted). Cross-walk Phase 3 and Phase 5 material for the points where kind classification would actually change behavior (field-shape defaults, CRM-engine scoring, persona-backing entity selection). Capture findings as a session deliverable, not a permanent doc — it feeds Phase B and then archives with the session.\n\n**Phase B — Design conversations (one DEC per topic).**\n- **B1 — variant mechanism.** Choose among: self-referential FK (`entity_parent_identifier`), references-entity edge with new vocab kind (`entity_variant_of_entity`, mirroring DEC-053's `entity_scopes_to_domain` pattern), or separate `entity_variant` type sitting between base entity and field. DEC-053 establishes references-entity edges as the default many-to-many methodology-entity mechanism; option B carries the structural burden of proof unless a substantive reason to deviate surfaces in Phase A.\n- **B2 — `entity_kind` shape.** Column type (TEXT with vocab-enforced enum is the natural fit), the enum set itself (defaults: `person | organization | event | transaction | other`), nullability and default value, validation rules, render in detail pane and list. Sequence with B1 because the variant-mechanism choice influences whether kind is inherited by variants from a parent or independently set per variant.\n- **B3 — migration story.** Rewrite v0.4 suffix-named variants on upgrade (CBM-redo data is the test case), or leave them as legacy and let the variant relationship be additive only. Operator-visible upgrade ergonomics drive the choice; either is defensible.\n\n**Phase C — Schema + access layer.** Alembic migration for the new column(s) and/or vocab kind per B1+B2. `crmbuilder_v2/access/vocab.py` updates per the CLAUDE.md mechanical convention (`REFERENCE_RELATIONSHIPS` + `_kinds_for_pair`) if option A wins. Access-layer create/update/list/soft-delete validation; references-table CHECK-constraint migration if a new kind ships. Tests cover the conduct of the new relationship under soft-delete, supersession, and cross-engagement isolation.\n\n**Phase D — API + MCP surface.** Extend `entity` POST/PATCH/GET payloads with `entity_kind` (and any variant pointer column if B1 picks an FK shape). Update MCP tool schemas in `crmbuilder_v2.mcp_server.tools`. Refresh integration tests against the `{data, meta, errors}` envelope.\n\n**Phase E — UI (PySide6 desktop).** Entity detail pane: `entity_kind` selector control. Variant-relationship widget shape per B1 — if option A wins, the existing `ReferencesSection` widget renders it for free with cascading filters from `_kinds_for_pair`. Entity list / picker: kind badge and variant indicator. The \"transient modal sub-dialogs need `deleteLater()`\" hazard from the Qt-worker-widget GC memory applies if the variant widget spawns sub-dialogs.\n\n**Phase F — Methodology integration.** Phase 1 interview guide: when to capture `entity_kind` vs. defer (cite charter §11.6.b — inferences require positive support). Phase 3 prompt: kind-informed field-shape defaults. Phase 5 CRM-evaluation prompt: kind-informed scoring criteria. Any new question patterns land in `PRDs/process/conduct/question-library.md` with cross-references from the relevant phase guides.\n\n**Phase G — Backfill + validation.** Per B3, migrate any v0.4 `entity_name`-suffix variants in active databases. Re-run CBM-redo Phase 1 against the new mechanism to confirm friction is gone; capture residual gaps as v0.6+ candidates rather than expanding this PI's scope.\n\n**Phase H — Close-out.** Spec landed as an entity-spec amendment under `PRDs/product/crmbuilder-v2/`; per-slice close-out payloads under `close-out-payloads/`; apply prompts under `prompts/`. The final delivering session's `resolves_planning_items` section flips PI-010 to Resolved.\n\n**Open dependencies, sequencing, risks.**\n- DEC-053 establishes the references-entity edge as the default mechanism for methodology-entity many-to-many — B1 inherits that posture.\n- PI-055 (richer `field_type` vocabulary for v0.6+) and PI-060 (entity-soft-delete cascade posture for inbound `field` rows) interact with variant semantics if variants share or override field rosters — sequence Phase B1 to land after PI-060's posture is set, or in coordination with it.\n- The CBM-redo Phase 1 capture is the load-bearing evidence input. If CBM-redo is paused or rescoped, Phase A needs an alternative signal source before B1 / B2 can land confidently.\n\n## Background (original description)\n\n\nDEC-051 and DEC-053 jointly defer two entity-schema growth areas to v0.5+: (a) entity variants — the Mentor Contact / Client Contact pattern from CBM history where two related-but-distinct entities share a base type but carry different fields and role semantics; (b) entity base-type / kind classification — person / organization / event / transaction-style categorization that informs CRM-engine selection and field-shape defaults. Both are intentionally absent from v0.4: variants because Phase 1 doesn't produce them and v0.4 has no fields to vary across them; base-type/kind because it's Phase 3 territory tied to CRM-engine specifics that v0.4's thin shape stays neutral about. Tracked separately from PI-004 (which groups field/requirement/manual_config/test_spec as new methodology entity types) because PI-010 is entity-schema growth — extending the existing entity type — not introducing new entity types. Variant mechanism TBD: candidates include self-referential FK (entity_parent_identifier), references-entity edge (entity_variant_of_entity), or a separate variant entity type sitting between base entity and field. Mechanism choice is a v0.5+ design conversation. Workaround in v0.4: variants are distinguished by suffixing entity_name ('Contact — Mentor', 'Contact — Client'); CBM redo will reveal how much friction the workaround creates and inform mechanism design. Base-type/kind classification: candidate v0.5+ shape is an enum field (entity_kind: person | organization | event | transaction | other) on the entity table, with validation that informs Phase 3 field-shape defaults and Phase 5 CRM-evaluation scoring.",
+      "id": 10,
+      "identifier": "PI-010",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Resolved",
+      "title": "Entity-schema v0.5+ extensions — variants and base-type/kind classification",
+      "updated_at": "2026-05-26T15:37:13.910248+00:00"
+    },
+    "before_payload": {
+      "created_at": "2026-05-12T01:23:41.201246",
+      "description": "## Executive Summary\n\nPI-010 grows the methodology `entity` type for v0.5+ to close two limits surfaced under v0.4 worked use:\n\n1. **Entity variants** — promote the \"Mentor Contact vs Client Contact\" pattern from the v0.4 `entity_name` suffix workaround (\"Contact — Mentor\", \"Contact — Client\") to a first-class relationship, so variants share base semantics while differing in role and (under PI-004's now-shipped field type) field roster.\n2. **Entity kind classification** — add an `entity_kind` enum (`person | organization | event | transaction | other`) on the entity table to inform Phase 3 field-shape defaults and Phase 5 CRM-engine evaluation scoring.\n\nBoth are entity-type growth and are tracked separately from PI-004's introduction of new methodology entity types (field, requirement, manual_config, test_spec). DEC-051 explicitly defers `entity_kind` to v0.5+; the variant mechanism is named in DEC-051's consequences/alternatives but the choice itself is left for this PI. CBM-redo signal from v0.4 worked use is the primary input that informs both Phase B design conversations below.\n\n## Execution Plan\n\n**Phase A — Signal gathering (no schema change).** Inventory v0.4 entity captures that use the `entity_name` suffix workaround (CBM-redo Phase 1 is the primary source; any v0.5 cohorts also). Record concrete cases and the friction they create — search, ReferencesSection rendering, cross-domain affiliation, future field-roster differences. Cross-walk Phase 1 entity captures across cohorts for natural kind-clustering (which entities operators would tag person / organization / event / transaction unprompted). Cross-walk Phase 3 and Phase 5 material for the points where kind classification would actually change behavior (field-shape defaults, CRM-engine scoring, persona-backing entity selection). Capture findings as a session deliverable, not a permanent doc — it feeds Phase B and then archives with the session.\n\n**Phase B — Design conversations (one DEC per topic).**\n- **B1 — variant mechanism.** Choose among: self-referential FK (`entity_parent_identifier`), references-entity edge with new vocab kind (`entity_variant_of_entity`, mirroring DEC-053's `entity_scopes_to_domain` pattern), or separate `entity_variant` type sitting between base entity and field. DEC-053 establishes references-entity edges as the default many-to-many methodology-entity mechanism; option B carries the structural burden of proof unless a substantive reason to deviate surfaces in Phase A.\n- **B2 — `entity_kind` shape.** Column type (TEXT with vocab-enforced enum is the natural fit), the enum set itself (defaults: `person | organization | event | transaction | other`), nullability and default value, validation rules, render in detail pane and list. Sequence with B1 because the variant-mechanism choice influences whether kind is inherited by variants from a parent or independently set per variant.\n- **B3 — migration story.** Rewrite v0.4 suffix-named variants on upgrade (CBM-redo data is the test case), or leave them as legacy and let the variant relationship be additive only. Operator-visible upgrade ergonomics drive the choice; either is defensible.\n\n**Phase C — Schema + access layer.** Alembic migration for the new column(s) and/or vocab kind per B1+B2. `crmbuilder_v2/access/vocab.py` updates per the CLAUDE.md mechanical convention (`REFERENCE_RELATIONSHIPS` + `_kinds_for_pair`) if option A wins. Access-layer create/update/list/soft-delete validation; references-table CHECK-constraint migration if a new kind ships. Tests cover the conduct of the new relationship under soft-delete, supersession, and cross-engagement isolation.\n\n**Phase D — API + MCP surface.** Extend `entity` POST/PATCH/GET payloads with `entity_kind` (and any variant pointer column if B1 picks an FK shape). Update MCP tool schemas in `crmbuilder_v2.mcp_server.tools`. Refresh integration tests against the `{data, meta, errors}` envelope.\n\n**Phase E — UI (PySide6 desktop).** Entity detail pane: `entity_kind` selector control. Variant-relationship widget shape per B1 — if option A wins, the existing `ReferencesSection` widget renders it for free with cascading filters from `_kinds_for_pair`. Entity list / picker: kind badge and variant indicator. The \"transient modal sub-dialogs need `deleteLater()`\" hazard from the Qt-worker-widget GC memory applies if the variant widget spawns sub-dialogs.\n\n**Phase F — Methodology integration.** Phase 1 interview guide: when to capture `entity_kind` vs. defer (cite charter §11.6.b — inferences require positive support). Phase 3 prompt: kind-informed field-shape defaults. Phase 5 CRM-evaluation prompt: kind-informed scoring criteria. Any new question patterns land in `PRDs/process/conduct/question-library.md` with cross-references from the relevant phase guides.\n\n**Phase G — Backfill + validation.** Per B3, migrate any v0.4 `entity_name`-suffix variants in active databases. Re-run CBM-redo Phase 1 against the new mechanism to confirm friction is gone; capture residual gaps as v0.6+ candidates rather than expanding this PI's scope.\n\n**Phase H — Close-out.** Spec landed as an entity-spec amendment under `PRDs/product/crmbuilder-v2/`; per-slice close-out payloads under `close-out-payloads/`; apply prompts under `prompts/`. The final delivering session's `resolves_planning_items` section flips PI-010 to Resolved.\n\n**Open dependencies, sequencing, risks.**\n- DEC-053 establishes the references-entity edge as the default mechanism for methodology-entity many-to-many — B1 inherits that posture.\n- PI-055 (richer `field_type` vocabulary for v0.6+) and PI-060 (entity-soft-delete cascade posture for inbound `field` rows) interact with variant semantics if variants share or override field rosters — sequence Phase B1 to land after PI-060's posture is set, or in coordination with it.\n- The CBM-redo Phase 1 capture is the load-bearing evidence input. If CBM-redo is paused or rescoped, Phase A needs an alternative signal source before B1 / B2 can land confidently.\n\n## Background (original description)\n\n\nDEC-051 and DEC-053 jointly defer two entity-schema growth areas to v0.5+: (a) entity variants — the Mentor Contact / Client Contact pattern from CBM history where two related-but-distinct entities share a base type but carry different fields and role semantics; (b) entity base-type / kind classification — person / organization / event / transaction-style categorization that informs CRM-engine selection and field-shape defaults. Both are intentionally absent from v0.4: variants because Phase 1 doesn't produce them and v0.4 has no fields to vary across them; base-type/kind because it's Phase 3 territory tied to CRM-engine specifics that v0.4's thin shape stays neutral about. Tracked separately from PI-004 (which groups field/requirement/manual_config/test_spec as new methodology entity types) because PI-010 is entity-schema growth — extending the existing entity type — not introducing new entity types. Variant mechanism TBD: candidates include self-referential FK (entity_parent_identifier), references-entity edge (entity_variant_of_entity), or a separate variant entity type sitting between base entity and field. Mechanism choice is a v0.5+ design conversation. Workaround in v0.4: variants are distinguished by suffixing entity_name ('Contact — Mentor', 'Contact — Client'); CBM redo will reveal how much friction the workaround creates and inform mechanism design. Base-type/kind classification: candidate v0.5+ shape is an enum field (entity_kind: person | organization | event | transaction | other) on the entity table, with validation that informs Phase 3 field-shape defaults and Phase 5 CRM-evaluation scoring.",
+      "id": 10,
+      "identifier": "PI-010",
+      "item_type": "pending_work",
+      "resolution_reference": null,
+      "status": "Open",
+      "title": "Entity-schema v0.5+ extensions — variants and base-type/kind classification",
+      "updated_at": "2026-05-26T14:59:23.929115"
+    },
+    "entity_identifier": "PI-010",
+    "entity_type": "planning_item",
+    "id": 2073,
+    "operation": "update",
+    "timestamp": "2026-05-26T15:37:13.910614"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T15:37:13.909350+00:00",
+      "id": 1139,
+      "reference_identifier": "REF-1135",
+      "relationship": "resolves",
+      "source_id": "CONV-060",
+      "source_type": "conversation",
+      "target_id": "PI-010",
+      "target_type": "planning_item"
+    },
+    "before_payload": null,
+    "entity_identifier": "conversation:CONV-060 -[resolves]-> planning_item:PI-010",
+    "entity_type": "reference",
+    "id": 2074,
+    "operation": "insert",
+    "timestamp": "2026-05-26T15:37:13.910615"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T15:37:14.094991+00:00",
+      "id": 1140,
+      "reference_identifier": "REF-1136",
+      "relationship": "deposit_event_applies_close_out_payload",
+      "source_id": "DEP-073",
+      "source_type": "deposit_event",
+      "target_id": "COP-090",
+      "target_type": "close_out_payload"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-073 -[deposit_event_applies_close_out_payload]-> close_out_payload:COP-090",
+    "entity_type": "reference",
+    "id": 2075,
+    "operation": "insert",
+    "timestamp": "2026-05-26T15:37:14.095407"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T15:37:14.097418+00:00",
+      "id": 1141,
+      "reference_identifier": "REF-1137",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-073",
+      "source_type": "deposit_event",
+      "target_id": "SES-090",
+      "target_type": "session"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-073 -[deposit_event_wrote_record]-> session:SES-090",
+    "entity_type": "reference",
+    "id": 2076,
+    "operation": "insert",
+    "timestamp": "2026-05-26T15:37:14.097841"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T15:37:14.099690+00:00",
+      "id": 1142,
+      "reference_identifier": "REF-1138",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-073",
+      "source_type": "deposit_event",
+      "target_id": "CONV-060",
+      "target_type": "conversation"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-073 -[deposit_event_wrote_record]-> conversation:CONV-060",
+    "entity_type": "reference",
+    "id": 2077,
+    "operation": "insert",
+    "timestamp": "2026-05-26T15:37:14.100009"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T15:37:14.101977+00:00",
+      "id": 1143,
+      "reference_identifier": "REF-1139",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-073",
+      "source_type": "deposit_event",
+      "target_id": "CM-0010",
+      "target_type": "commit"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-073 -[deposit_event_wrote_record]-> commit:CM-0010",
+    "entity_type": "reference",
+    "id": 2078,
+    "operation": "insert",
+    "timestamp": "2026-05-26T15:37:14.102290"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T15:37:14.104209+00:00",
+      "id": 1144,
+      "reference_identifier": "REF-1140",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-073",
+      "source_type": "deposit_event",
+      "target_id": "DEC-301",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-073 -[deposit_event_wrote_record]-> decision:DEC-301",
+    "entity_type": "reference",
+    "id": 2079,
+    "operation": "insert",
+    "timestamp": "2026-05-26T15:37:14.104533"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T15:37:14.106448+00:00",
+      "id": 1145,
+      "reference_identifier": "REF-1141",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-073",
+      "source_type": "deposit_event",
+      "target_id": "DEC-302",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-073 -[deposit_event_wrote_record]-> decision:DEC-302",
+    "entity_type": "reference",
+    "id": 2080,
+    "operation": "insert",
+    "timestamp": "2026-05-26T15:37:14.106767"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "created_at": "2026-05-26T15:37:14.108650+00:00",
+      "id": 1146,
+      "reference_identifier": "REF-1142",
+      "relationship": "deposit_event_wrote_record",
+      "source_id": "DEP-073",
+      "source_type": "deposit_event",
+      "target_id": "DEC-303",
+      "target_type": "decision"
+    },
+    "before_payload": null,
+    "entity_identifier": "deposit_event:DEP-073 -[deposit_event_wrote_record]-> decision:DEC-303",
+    "entity_type": "reference",
+    "id": 2081,
+    "operation": "insert",
+    "timestamp": "2026-05-26T15:37:14.108888"
+  },
+  {
+    "actor": "claude_session",
+    "after_payload": {
+      "deposit_event_apply_context": {
+        "apply_script_version": "0.7.0",
+        "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_090.json",
+        "runner": "claude_code"
+      },
+      "deposit_event_created_at": "2026-05-26T15:37:14.092643+00:00",
+      "deposit_event_description": "Applied COP-090. Outcome: success. 1 commits, 1 conversations, 3 decisions, 1 sessions.",
+      "deposit_event_error_info": null,
+      "deposit_event_identifier": "DEP-073",
+      "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_073.log",
+      "deposit_event_outcome": "success",
+      "deposit_event_records_summary": {
+        "commits": 1,
+        "conversations": 1,
+        "decisions": 3,
+        "planning_items": 0,
+        "references": 0,
+        "sessions": 1,
+        "work_tickets": 0
+      },
+      "deposit_event_title": "Apply of COP-090, 2026-05-26T15:37:14+00:00"
+    },
+    "before_payload": null,
+    "entity_identifier": "DEP-073",
+    "entity_type": "deposit_event",
+    "id": 2082,
+    "operation": "insert",
+    "timestamp": "2026-05-26T15:37:14.109291"
   }
 ]

@@ -1,0 +1,25 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_090.json
+Label:  PI-010 satisfier — entity v0.5+ schema growth end-to-end (migration + access + vocab + REST + UI + tests + spec amendment). NOT a new entity type — grows the existing `entity` methodology entity additively per `methodology-schema-specs/entity.md` v1.1. Migration 0019 adds one new TEXT NULL column to the `entities` table (`entity_kind` with CHECK admitting NULL or one of person/organization/event/transaction/other) and extends `refs.relationship_kind` CHECK to admit one new outbound vocabulary kind (`entity_variant_of_entity` — first entity-to-entity edge kind in v2's vocabulary). vocab.py registers the new kind and adds an `_kinds_for_pair` clause for `(entity, entity)`. Access layer adds `_coerce_kind` validator + `kind` kwarg throughout the entity repository functions. References repository adds variant-specific guards: cardinality, self-reference rejection, one-step cycle rejection — mirroring the `field_belongs_to_entity` precedent from PI-004. API schemas grow by `entity_kind` field on POST/PUT/PATCH bodies. UI dialog schema adds Kind combo (blank sentinel maps to NULL); detail pane renders Kind as a read-only label. 17 new tests cover the five-value round-trip, default-NULL, invalid-value rejection, empty-string coercion, PATCH-null clear, PUT-clear semantics, variant edge round-trip, cardinality guard, self-reference and cycle rejection, and vocab registration. RESOLVES PI-010 via slice A's atomic edge+flip behavior. Test baseline 1876 → 1893 passed (+17), 0 regressions. Identifier re-keying per the parallel-sandbox contingency in CLAUDE.md: originally planned as SES-089 / CONV-059 / DEC-291-293; re-keyed to SES-090 / CONV-060 / DEC-301-303 because a parallel-sandbox architecture-review session has staked an unapplied claim on the SES-089 identifier block.
+Deposit event: DEP-073
+
+=== session (1 record) ===
+  ✓ POST session  SES-090 (HTTP 201)
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CONV-060 (HTTP 201)
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (3 records) ===
+  ✓ POST decisions  DEC-301 (HTTP 201)
+  ✓ POST decisions  DEC-302 (HTTP 201)
+  ✓ POST decisions  DEC-303 (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-010 (HTTP 201)
+
+✓ All 7 operations complete.
+
+✓ Recorded apply as deposit_event DEP-073 (HTTP 201).

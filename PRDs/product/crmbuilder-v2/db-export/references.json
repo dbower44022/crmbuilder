@@ -11298,5 +11298,105 @@
     "source_type": "deposit_event",
     "target_id": "COP-088",
     "target_type": "close_out_payload"
+  },
+  {
+    "created_at": "2026-05-26T15:37:13.139710",
+    "id": 1137,
+    "reference_identifier": "REF-1133",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-060",
+    "source_type": "conversation",
+    "target_id": "WS-003",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-26T15:37:13.142504",
+    "id": 1138,
+    "reference_identifier": "REF-1134",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-060",
+    "source_type": "conversation",
+    "target_id": "SES-090",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-26T15:37:13.909350",
+    "id": 1139,
+    "reference_identifier": "REF-1135",
+    "relationship_kind": "resolves",
+    "source_id": "CONV-060",
+    "source_type": "conversation",
+    "target_id": "PI-010",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-26T15:37:14.094991",
+    "id": 1140,
+    "reference_identifier": "REF-1136",
+    "relationship_kind": "deposit_event_applies_close_out_payload",
+    "source_id": "DEP-073",
+    "source_type": "deposit_event",
+    "target_id": "COP-090",
+    "target_type": "close_out_payload"
+  },
+  {
+    "created_at": "2026-05-26T15:37:14.097418",
+    "id": 1141,
+    "reference_identifier": "REF-1137",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-073",
+    "source_type": "deposit_event",
+    "target_id": "SES-090",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-26T15:37:14.099690",
+    "id": 1142,
+    "reference_identifier": "REF-1138",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-073",
+    "source_type": "deposit_event",
+    "target_id": "CONV-060",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-26T15:37:14.101977",
+    "id": 1143,
+    "reference_identifier": "REF-1139",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-073",
+    "source_type": "deposit_event",
+    "target_id": "CM-0010",
+    "target_type": "commit"
+  },
+  {
+    "created_at": "2026-05-26T15:37:14.104209",
+    "id": 1144,
+    "reference_identifier": "REF-1140",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-073",
+    "source_type": "deposit_event",
+    "target_id": "DEC-301",
+    "target_type": "decision"
+  },
+  {
+    "created_at": "2026-05-26T15:37:14.106448",
+    "id": 1145,
+    "reference_identifier": "REF-1141",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-073",
+    "source_type": "deposit_event",
+    "target_id": "DEC-302",
+    "target_type": "decision"
+  },
+  {
+    "created_at": "2026-05-26T15:37:14.108650",
+    "id": 1146,
+    "reference_identifier": "REF-1142",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-073",
+    "source_type": "deposit_event",
+    "target_id": "DEC-303",
+    "target_type": "decision"
   }
 ]
