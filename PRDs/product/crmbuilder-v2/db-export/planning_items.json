@@ -45,14 +45,14 @@
   },
   {
     "created_at": "2026-05-11T14:51:10.271856",
-    "description": "DEC-039 ships process in v0.4 with a thin Phase-1-only schema: identifier, name, brief description, priority classification, domain reference, process-to-process connections. Phase 3 of the evolved methodology (Iteration Build and Deploy) produces full Process Documents with steps, actors (personas), entity-field touches, triggers, outcomes, edge cases. Growing process's schema to host this content is v0.5+ work that depends on field (PI-004) and persona (PI-003) existing as records. Likely a migration story rather than re-design (thin schema designed with growth in mind), but the migration scope is non-trivial. Target release: v0.5+ after persona and field land, conditional on CBM redo reaching Phase 3.",
+    "description": "**Executive summary:** The project currently records each business process at sticky-note depth — name, domain, brief description, hand-offs to other processes — which is all the early planning conversations need. PI-005 grows that record into the full Process Document the build phase requires: the ordered steps, the actors who perform them, the data fields each step reads or writes, the trigger that kicks the process off, the outcome it produces, and the edge cases. The work waits on the field / requirement / test-spec record types (PI-004, still Open) because the expanded steps reference them — persona (PI-003) has since shipped, so half the original dependency is now met. Targeted for v0.5 or later, and only if the CBM client engagement actually reaches the build phase that consumes Process Documents; otherwise the thin shape continues to suffice.\n\nDEC-039 ships process in v0.4 with a thin Phase-1-only schema: identifier, name, brief description, priority classification, domain reference, process-to-process connections. Phase 3 of the evolved methodology (Iteration Build and Deploy) produces full Process Documents with steps, actors (personas), entity-field touches, triggers, outcomes, edge cases. Growing process's schema to host this content is v0.5+ work that depends on field (PI-004) and persona (PI-003) existing as records. Likely a migration story rather than re-design (thin schema designed with growth in mind), but the migration scope is non-trivial. Target release: v0.5+ after persona and field land, conditional on CBM redo reaching Phase 3.",
     "id": 5,
     "identifier": "PI-005",
     "item_type": "pending_work",
     "resolution_reference": null,
     "status": "Open",
     "title": "Process schema growth beyond Phase 1 thin shape (full process definition)",
-    "updated_at": "2026-05-11T14:51:10.271859"
+    "updated_at": "2026-05-26T05:35:03.154412"
   },
   {
     "created_at": "2026-05-11T18:50:11.689468",
