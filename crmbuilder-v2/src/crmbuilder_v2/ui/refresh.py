@@ -58,6 +58,9 @@ _FILENAME_TO_ENTITY_TYPE: dict[str, str] = {
     "requirements.json": "requirement",
     # v0.5+ methodology entity (PI-004 cohort, manual_config.md).
     "manual_configs.json": "manual_config",
+    # v0.5+ methodology entity (PI-004 cohort closer, test_spec.md;
+    # resolves PI-004).
+    "test_specs.json": "test_spec",
 }
 
 # v0.5 slice A: file-watch entries that live one level below the

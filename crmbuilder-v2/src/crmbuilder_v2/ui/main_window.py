@@ -54,6 +54,7 @@ from crmbuilder_v2.ui.panels.requirements import RequirementsPanel
 from crmbuilder_v2.ui.panels.risks import RisksPanel
 from crmbuilder_v2.ui.panels.sessions import SessionsPanel
 from crmbuilder_v2.ui.panels.status import StatusPanel
+from crmbuilder_v2.ui.panels.test_spec import TestSpecsPanel
 from crmbuilder_v2.ui.panels.topics import TopicsPanel
 from crmbuilder_v2.ui.panels.work_tickets import WorkTicketsPanel
 from crmbuilder_v2.ui.panels.workstreams import WorkstreamsPanel
@@ -93,6 +94,8 @@ ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
     # PI-004 methodology cohort (v0.5+).
     "requirement": "Requirements",
     "manual_config": "Manual Configs",
+    # PI-004 cohort closer (v0.5+, resolves PI-004).
+    "test_spec": "Test Specs",
     # v0.5 slice C: meta-DB engagement registry.
     "engagement": "Engagements",
     # v0.7 governance entities.
@@ -164,6 +167,8 @@ class MainWindow(QMainWindow):
                 page = ProcessesPanel(self._client)
             elif entry == "Requirements":
                 page = RequirementsPanel(self._client)
+            elif entry == "Test Specs":
+                page = TestSpecsPanel(self._client)
             elif entry == "CRM Candidates":
                 page = CrmCandidatesPanel(self._client)
             elif entry == "Personas":

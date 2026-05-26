@@ -1079,6 +1079,177 @@ class StorageClient:
         )
 
     # ------------------------------------------------------------------
+    # Test Specs (methodology entity — PI-004 cohort closer, v0.5+)
+    # ------------------------------------------------------------------
+
+    def list_test_specs(
+        self, *, include_deleted: bool = False
+    ) -> list[dict[str, Any]]:
+        """Return all test_specs as a list of dicts.
+
+        Shape matches ``crmbuilder_v2/api/routers/test_specs.py``. With
+        ``include_deleted=True`` soft-deleted test_specs are included;
+        otherwise the API filters them out. Per ``test_spec.md`` §3.5.1.
+        """
+        path = "/test-specs"
+        if include_deleted:
+            path = "/test-specs?include_deleted=true"
+        result = self._request("GET", path)
+        if not isinstance(result, list):
+            return []
+        return result
+
+    def get_test_spec(self, identifier: str) -> dict[str, Any]:
+        """Return a single test_spec by identifier (e.g. ``"TST-001"``).
+
+        Raises ``NotFoundError`` if the test_spec does not exist (or is
+        soft-deleted — the API 404s soft-deleted rows by default). Per
+        ``test_spec.md`` §3.5.1.
+        """
+        result = self._request("GET", f"/test-specs/{identifier}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for get_test_spec",
+            )
+        return result
+
+    def create_test_spec(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /test-specs. Returns the created record dict.
+
+        The body uses the parent-prefixed field names
+        (``test_spec_name``, ``test_spec_description``,
+        ``test_spec_steps``, ``test_spec_expected``, optional
+        ``test_spec_setup`` / ``test_spec_notes`` / ``test_spec_status``
+        / ``test_spec_last_run_outcome`` / ``test_spec_last_run_at`` /
+        ``test_spec_last_run_notes``). ``test_spec_identifier`` is
+        server-assigned when omitted. References (all three outbound
+        kinds) are NOT inlined — attach them afterwards via
+        ``create_reference``. Per ``test_spec.md`` §3.5.4.
+
+        Raises ``RequestShapeError`` on 422 (identifier-format /
+        name-uniqueness / status-enum / outcome-enum / cross-field
+        invariant), ``ConflictError`` on 409 (explicit-identifier
+        collision).
+        """
+        result = self._request("POST", "/test-specs", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for create_test_spec",
+            )
+        return result
+
+    def update_test_spec(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PUT /test-specs/{identifier} — full record replace.
+
+        The body is the full record; ``test_spec_identifier`` in the
+        body must match the path. Raises ``NotFoundError`` on 404,
+        ``RequestShapeError`` on 422 (validation, status transition,
+        or §3.4.4 cross-field invariant).
+        """
+        result = self._request(
+            "PUT", f"/test-specs/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for update_test_spec",
+            )
+        return result
+
+    def patch_test_spec(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PATCH /test-specs/{identifier} — partial update.
+
+        Body should contain only the changed fields. Raises
+        ``NotFoundError`` on 404, ``RequestShapeError`` on 422
+        (validation, invalid status transition — methodology-lifecycle
+        field only; outcome is unrestricted — or the §3.4.4 cross-field
+        invariant).
+        """
+        result = self._request(
+            "PATCH", f"/test-specs/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for patch_test_spec",
+            )
+        return result
+
+    def delete_test_spec(self, identifier: str) -> Any:
+        """DELETE /test-specs/{identifier}. Soft-deletes; idempotent.
+
+        Returns the API's response data. Raises ``NotFoundError`` on
+        404. Outbound references (all three kinds) persist per
+        ``test_spec.md`` §3.4.6.
+        """
+        return self._request("DELETE", f"/test-specs/{identifier}")
+
+    def restore_test_spec(self, identifier: str) -> dict[str, Any]:
+        """POST /test-specs/{identifier}/restore. Clears the soft-delete.
+
+        Raises ``NotFoundError`` on 404, ``RequestShapeError`` on 422
+        (the record is not soft-deleted).
+        """
+        result = self._request(
+            "POST", f"/test-specs/{identifier}/restore"
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for restore_test_spec",
+            )
+        return result
+
+    def next_test_spec_identifier(self) -> str:
+        """GET /test-specs/next-identifier. Returns the next ``TST-NNN``."""
+        result = self._request("GET", "/test-specs/next-identifier")
+        if isinstance(result, dict) and isinstance(result.get("next"), str):
+            return result["next"]
+        raise ServerError(
+            status_code=200,
+            errors=[],
+            message=(
+                "Expected {'next': str} body for next_test_spec_identifier"
+            ),
+        )
+
+    def record_test_spec_run(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """POST /test-specs/{identifier}/record-run — convenience endpoint.
+
+        Per ``test_spec.md`` §3.8.1. Body shape:
+        ``{"outcome": "passing", "notes": "...", "at": "2026-..."}``
+        with ``notes`` and ``at`` optional. The §3.4.4 cross-field
+        invariant applies — outcome=not_run clears last_run_at and
+        last_run_notes; outcome in run states server-defaults
+        last_run_at when ``at`` is omitted.
+        """
+        result = self._request(
+            "POST",
+            f"/test-specs/{identifier}/record-run",
+            json_body=body,
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for record_test_spec_run",
+            )
+        return result
+
+    # ------------------------------------------------------------------
     # Personas (methodology entity — v0.5+)
     # ------------------------------------------------------------------
 

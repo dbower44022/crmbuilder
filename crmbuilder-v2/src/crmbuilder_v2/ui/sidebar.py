@@ -50,7 +50,8 @@ from crmbuilder_v2.ui.styling import t
 # Methodology group gained "Domains" in v0.4 slice B, "Entities" in
 # slice C, "Processes" in slice D, and "CRM Candidates" in slice E.
 # v0.5+ adds "Personas" (PI-003), "Fields" (PI-004 first slice),
-# "Requirements" (PI-004 cohort), and "Manual Configs" (PI-004 cohort).
+# "Requirements" (PI-004 cohort), "Manual Configs" (PI-004 cohort), and
+# "Test Specs" (PI-004 cohort closer — resolves PI-004).
 SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # v0.5 slice A: empty Engagements group container above Governance.
     # Slice C populates with the single "Engagements" entry.
@@ -83,6 +84,13 @@ SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "Entities",
             "Processes",
             "Requirements",
+            # Test Specs inserted per test_spec.md §3.6.1 (after
+            # Requirements, before Manual Configs). The PI-004 build-
+            # planning conversation never finalized the full intra-group
+            # ordering; this is the position the spec proposes and the
+            # build prompt elects to honor. A future ordering pass may
+            # reorganise the whole Methodology group.
+            "Test Specs",
             "CRM Candidates",
             "Personas",
             "Fields",
