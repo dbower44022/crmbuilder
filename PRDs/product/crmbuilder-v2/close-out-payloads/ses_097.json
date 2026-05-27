@@ -1,0 +1,64 @@
+{
+  "label": "PI-074 implementation — add nullable executive_summary TEXT column with CHECK length 200-800 to planning_items, decisions, and sessions. Single Alembic migration 0020 with batch_alter_table per target table; access-layer validators on create+update via a new validate_optional_length helper; Pydantic Create/Update schemas grow the field on all three entity types; exporter is column-driven so db-export snapshots pick the column up automatically. NOT NULL deferred to PI-075 after backfill. Branch-isolated build off main; runtime engine stays foreign_keys=ON, only the migration engine relaxes it.",
+  "session": {
+    "identifier": "SES-097",
+    "title": "PI-074 implementation — executive_summary column added to planning_items, decisions, sessions",
+    "session_date": "2026-05-27",
+    "status": "Complete",
+    "conversation_reference": "Claude Code session against branch pi-074-executive-summary (created off main at 5dcda0e). CONV-067. Branch-isolated DB at crmbuilder-v2/data/branch-pi-074/CRMBUILDER.db. Single implementation commit at 6ae82c3.",
+    "topics_covered": "(1) Scope orientation — read PI-074 description from the live API; identified WS-012 as the parent workstream; confirmed PI-074 carries no blocked_by edge to PI-073 and can ship in parallel; observed that PI-073's branch is mid-transition with a broken application stack, so PI-074 must execute on its own branch off main rather than layering onto PI-073.\n(2) Branch setup — created pi-074-executive-summary off main; copied the live engagement DBs to crmbuilder-v2/data/branch-pi-074/ (gitignored under *.db); confirmed runtime stack is clean on this branch.\n(3) Migration authoring — Alembic revision 0020 with three batch_alter_table operations adding executive_summary TEXT NULL plus a per-table named CHECK constraint enforcing 'IS NULL OR length BETWEEN 200 AND 800'. First run failed at DROP TABLE decisions with a FOREIGN KEY constraint failure (decisions has self-FKs supersedes_id / superseded_by_id; SQLite batch_alter_table copies and drops the table, tripping FK enforcement).\n(4) FK-during-migration fix — first tried inline PRAGMA foreign_keys=OFF inside the migration's upgrade(); failed because SQLite ignores PRAGMA changes mid-transaction. Tried setting PRAGMA before context.begin_transaction() in env.py; still failed because SQLAlchemy 2.0 auto-begins a transaction on connect(). Final fix: added a dedicated _build_migration_engine() in migrations/env.py whose connect-time pragma listener sets foreign_keys=OFF (mirroring the runtime engine's behavior but inverted for FK enforcement). Runtime engine stays foreign_keys=ON; only the migration engine relaxes it.\n(5) Access-layer integration — added validate_optional_length() helper in access/_helpers.py; threaded executive_summary through create() and update() on decisions, planning_items, sessions repositories; update loops preserve explicit None for the nullable column (don't coerce to '' like the other legacy fields).\n(6) API schemas — Pydantic Create/Update schemas grow the field on all three entity types with None default. Routers already do **body.model_dump() so they pick up the field automatically; no router changes needed.\n(7) Exporter — column-driven via row.__table__.columns; no changes needed.\n(8) Verification — alembic upgrade head succeeded against the branch DB; column verified present on all three tables with notnull=0; 1086 access+migration+API tests pass against the live DB; smoke test against branch DB confirms <200 char rejected, >800 rejected, None accepted, valid value accepted.\n(9) Commit authored at 6ae82c3 against the branch.\n(10) Close-out authored: this payload plus apply prompt.",
+    "summary": "Implemented PI-074. Added nullable executive_summary TEXT column with a CHECK length 200-800 constraint to the planning_items, decisions, and sessions tables via a single Alembic migration (0020). Updated ORM models, access-layer create/update paths with a new validate_optional_length helper, and Pydantic API schemas. Resolved a SQLite batch_alter_table FK-enforcement collision (decisions has self-FKs) by adding a dedicated migration engine in env.py that sets foreign_keys=OFF only at migration time; the runtime engine stays FK-on. NOT NULL is deferred to PI-075's backfill migration per PI-074's body.",
+    "artifacts_produced": "crmbuilder-v2/migrations/versions/0020_pi_074_executive_summary.py (new); crmbuilder-v2/migrations/env.py (dedicated migration engine with foreign_keys=OFF); crmbuilder-v2/src/crmbuilder_v2/access/_helpers.py (validate_optional_length helper); crmbuilder-v2/src/crmbuilder_v2/access/models.py (executive_summary column + CHECK on three models); crmbuilder-v2/src/crmbuilder_v2/access/repositories/{decisions,planning_items,sessions}.py (create/update integration); crmbuilder-v2/src/crmbuilder_v2/api/schemas.py (Pydantic schemas grow the field). This close-out payload at PRDs/product/crmbuilder-v2/close-out-payloads/ses_097.json and its apply prompt at PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-apply-close-out-ses-097.md.",
+    "in_flight_at_end": "PI-075 (backfill executive_summary on all existing rows; then add NOT NULL) is the natural next step and is blocked_by PI-074 per the WS-012 dependency graph; PI-075 unblocks at this session's resolution of PI-074. PI-081 (orchestrator driver script) is also blocked_by PI-074. PI-073 (Session/Conversation redesign) remains in flight on its own branch; when it merges, the sessions.executive_summary column from PI-074 must be carried forward onto the renamed sessions table or migrated to session_executive_summary per the post-PI-073 parent-prefix convention. Whoever merges second absorbs the rebase.",
+    "executive_summary": "PI-074 ships: every planning item, decision, and session now carries an audience-facing executive_summary field that lets product managers and executives read the governance log without parsing engineering detail. The column is nullable in this release so the migration applies cleanly to existing rows; PI-075 backfills populated values and tightens the constraint to required. This session also fixed a latent SQLite migration foot-gun by isolating foreign-key enforcement to the runtime engine, leaving migrations free to use batch_alter_table on self-referencing tables without tripping FK checks."
+  },
+  "conversation": {
+    "conversation_identifier": "CONV-067",
+    "conversation_title": "PI-074 implementation — executive_summary column build",
+    "conversation_purpose": "Implement PI-074 end-to-end on a branch off main: Alembic migration, ORM models, access-layer validators, Pydantic schemas, and snapshot regenerator coverage. Resolve any incidental engine bugs surfaced by the build (the FK-batch-alter collision did surface).",
+    "conversation_description": "Single Claude Code session on branch pi-074-executive-summary (created off main at 5dcda0e). The work followed the standard sequence: read the PI body and the parent workstream from the live API; survey the affected modules (models.py, repositories/*, api/schemas.py, exporter.py); author the migration; thread the field through the access layer; update Pydantic; verify via test suite plus an end-to-end smoke. The build surfaced one engine fix: SQLite batch_alter_table copies and drops tables, and the drop trips FK enforcement on decisions (which has self-FKs supersedes_id / superseded_by_id). The fix was to add a dedicated migration engine in env.py with foreign_keys=OFF at connect time, keeping the runtime engine FK-on. All 1086 tests pass post-fix.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-067",
+        "target_type": "workstream",
+        "target_id": "WS-012",
+        "relationship": "conversation_belongs_to_workstream"
+      },
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-067",
+        "target_type": "session",
+        "target_id": "SES-097",
+        "relationship": "conversation_records_session"
+      }
+    ]
+  },
+  "commits": [
+    {
+      "commit_sha": "6ae82c33291a810ccd499cc1a865ad3056627973",
+      "commit_message_first_line": "v2: PI-074 — add executive_summary column to planning_items, decisions, sessions",
+      "commit_message_full": "v2: PI-074 — add executive_summary column to planning_items, decisions, sessions\n\nAdds a nullable ``executive_summary`` TEXT column to each of the three\ngovernance record types so a product manager or executive reading the\ngovernance log can see the gist of every record without parsing\nimplementer-facing detail. A CHECK constraint enforces 200-800\ncharacter length when the value is set; PI-075 will backfill existing\nrows and tighten the column to NOT NULL in a follow-on migration.\n\nChanges:\n\n- Alembic revision 0020 (heads on top of 0019). Three batch_alter_table\n  operations, one per target table. Each adds the column and a\n  per-table named CHECK constraint\n  (``ck_planning_executive_summary_length``,\n  ``ck_decision_executive_summary_length``,\n  ``ck_session_executive_summary_length``).\n- ``migrations/env.py`` now uses a dedicated migration engine with\n  ``foreign_keys=OFF`` set at connect time. SQLite batch_alter_table\n  copies and drops tables; the drop trips FK enforcement on\n  self-referencing rows (decisions.supersedes_id /\n  superseded_by_id). Issuing PRAGMA after SQLAlchemy's connect()\n  fails because the driver auto-begins a transaction. The runtime\n  engine remains FK-on; only the migration engine relaxes it.\n- ``access/_helpers.py`` grows ``validate_optional_length()`` — None\n  and whitespace-only strings normalise to None; non-string raises\n  ``ValidationError``; out-of-range strings raise with a\n  field-specific message.\n- Repository ``create`` and ``update`` paths on decisions,\n  planning_items, and sessions accept ``executive_summary`` and\n  validate via the helper. The update loop preserves explicit None\n  (the column is nullable, so don't coerce to \"\" like the other\n  legacy update fields).\n- Pydantic ``Create``/``Update`` schemas grow the field on all three\n  entity types. Routers pass through ``**body.model_dump()`` and\n  pick up the field automatically.\n- The JSON exporter is column-driven via\n  ``row.__table__.columns``, so the new column flows into\n  ``db-export/{planning_items,decisions,sessions}.json`` without\n  exporter changes.\n\nValidation:\n\n- All migration, access, and API tests pass (1086 passed, 2 skipped).\n- End-to-end smoke against the branch DB confirms: under-200 rejected,\n  over-800 rejected, None accepted, valid 200-800 accepted.\n\nBranch isolation: branched off ``main`` at 5dcda0e. Branch-isolated DB\ncopies live in ``crmbuilder-v2/data/branch-pi-074/`` (gitignored). The\nlive engagement DBs at ``crmbuilder-v2/data/engagements/*.db`` are not\ntouched by branch work.\n\nCross-PI note: PI-073 (Session/Conversation redesign) is in flight on\nits own branch and renames ``sessions`` to the new schema. After PI-073\nlands, the ``sessions.executive_summary`` column on PI-074 must be\npreserved on the renamed table or migrated to ``session_executive_summary``\nper the post-PI-073 parent-prefix convention. Whoever lands second\nabsorbs the rebase.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-27T12:25:44-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "pi-074-executive-summary",
+      "commit_parent_shas": [
+        "5dcda0e21a06f9c478bcd4a06b5a94b7233e5a43"
+      ],
+      "commit_files_changed_count": 8
+    }
+  ],
+  "work_tickets": [],
+  "planning_items": [],
+  "decisions": [],
+  "references": [],
+  "resolves_planning_items": [
+    {
+      "planning_item_identifier": "PI-074"
+    }
+  ],
+  "addresses_planning_items": []
+}
