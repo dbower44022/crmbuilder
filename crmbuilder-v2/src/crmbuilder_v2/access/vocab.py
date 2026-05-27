@@ -511,6 +511,13 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         "conversation_belongs_to_session",
         "conversation_follows_from",
         "conversation_relates_to",
+        # PI-080 addition: orchestrator → child conversation edge. Allows
+        # the governance timeline to express the parent–child structure
+        # of a parallel run (an orchestrator conversation supervising
+        # one or more child agents' conversations). Joins the other two
+        # conversation→conversation kinds (`conversation_follows_from`,
+        # `conversation_relates_to`) in _kinds_for_pair below.
+        "conversation_orchestrates_conversation",
     }
 )
 
@@ -794,6 +801,10 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
     if source_type == "conversation" and target_type == "conversation":
         kinds.add("conversation_follows_from")
         kinds.add("conversation_relates_to")
+        # PI-080: orchestrator → child conversation. Joins the other two
+        # conversation→conversation kinds; the same-type ``supersedes``
+        # clause earlier already admits supersession for this pair too.
+        kinds.add("conversation_orchestrates_conversation")
     return frozenset(kinds)
 
 

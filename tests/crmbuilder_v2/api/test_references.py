@@ -93,6 +93,28 @@ def test_delete_by_id_unknown_returns_404(client):
     assert r.status_code == 404
 
 
+def test_post_references_conversation_orchestrates_conversation(client):
+    """PI-080: ``conversation_orchestrates_conversation`` round-trips
+    through POST /references. Source and target are both conversations;
+    no entity rows are needed (references are soft pointers per the
+    DEC-006 universal pattern)."""
+    r = client.post(
+        "/references",
+        json={
+            "source_type": "conversation",
+            "source_id": "CNV-901",
+            "target_type": "conversation",
+            "target_id": "CNV-902",
+            "relationship": "conversation_orchestrates_conversation",
+        },
+    )
+    assert r.status_code == 201, r.text
+    body = r.json()["data"]
+    assert body["relationship"] == "conversation_orchestrates_conversation"
+    assert body["source_type"] == "conversation"
+    assert body["target_type"] == "conversation"
+
+
 def test_post_references_resolves_flips_status(client):
     """PI-030 slice A: POST /references with relationship=resolves
     triggers the atomic status flip on the target planning_item."""
