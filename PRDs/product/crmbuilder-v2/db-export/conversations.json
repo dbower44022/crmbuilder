@@ -1018,5 +1018,22 @@
     "conversation_superseded_at": null,
     "conversation_title": "PI-010 satisfier — entity v0.5+ schema growth orchestration (variants + entity_kind)",
     "conversation_updated_at": "2026-05-26T15:37:13.137530"
+  },
+  {
+    "conversation_cancelled_at": null,
+    "conversation_completed_at": "2026-05-27T02:23:20.282280",
+    "conversation_created_at": "2026-05-27T02:23:20.282085",
+    "conversation_deleted_at": null,
+    "conversation_description": "Operator (Doug) flagged that the entities table held only soft-deleted smoke-test rows. Working from the active dogfood direction, this conversation introspected crmbuilder_v2.access.models.Base subclasses, POSTed each as a methodology entity, and POSTed each declared column as a methodology field with type mapped to the V2 FIELD_TYPES vocabulary. 36 entities, 343 fields. Status candidate across the board; descriptions are docstring-first-line / column-metadata-generated, intended as a starting point rather than promoted truth.",
+    "conversation_identifier": "CONV-061",
+    "conversation_kickoff_drafted_at": null,
+    "conversation_notes": null,
+    "conversation_purpose": "Seed the V2 methodology-layer entities and fields tables with the V2 storage-system data model itself, so V2 carries a structured self-description of what it currently models.",
+    "conversation_ready_at": null,
+    "conversation_started_at": null,
+    "conversation_status": "complete",
+    "conversation_superseded_at": null,
+    "conversation_title": "V2 entities/fields self-modeling",
+    "conversation_updated_at": "2026-05-27T02:23:20.282353"
   }
 ]
