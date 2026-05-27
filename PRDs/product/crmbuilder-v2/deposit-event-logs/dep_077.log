@@ -1,0 +1,27 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_092.json
+Label:  Governance recording rules — Doug surfaced that SES-089 did not author a PI for the Section 3 revision implied by DEC-296 (three-category conceptual model), nor for the Section 5 revision implied by DEC-297 (Phase 1 client-led intake); diagnosed the pattern of substantive work landing in DEC `consequences` strings and `in_flight_at_end` notes rather than as queryable Planning Items, plus parallel failure modes from this session (identifier-collision recovery despite DEC-300, commits[] schema gap, missing post-SES-089 session record for ongoing governance content); decided that every session and conversation against any V2-tracked engagement must follow a canonical documented set of process rules applying equally to AI and human agents; queued the work as a PI to create that rules document at specifications/governance-recording-rules.md with a 10-section structure proposed in the conversation.
+Deposit event: DEP-077
+
+=== session (1 record) ===
+  ✓ POST session  SES-092 (HTTP 201)
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CONV-062 (HTTP 201)
+
+=== planning_items (1 record) ===
+  ✓ POST planning_items  PI-084 (HTTP 201)
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-310 (HTTP 201)
+
+=== references (2 records) ===
+  ✓ POST references  DEC-310 decided_in SES-092 (HTTP 201)
+  ✓ POST references  PI-084 addresses DEC-310 (HTTP 201)
+
+✓ All 7 operations complete.
+
+✓ Recorded apply as deposit_event DEP-077 (HTTP 201).
