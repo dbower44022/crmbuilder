@@ -1120,5 +1120,22 @@
     "conversation_superseded_at": null,
     "conversation_title": "Governance recording rules v0.1 authoring, CLAUDE.md wiring, and DEC-299 conceptual alignment",
     "conversation_updated_at": "2026-05-27T05:31:18.454148"
+  },
+  {
+    "conversation_cancelled_at": null,
+    "conversation_completed_at": "2026-05-27T16:38:37.488545",
+    "conversation_created_at": "2026-05-27T16:38:37.488213",
+    "conversation_deleted_at": null,
+    "conversation_description": "Single Claude Code session on branch pi-074-executive-summary (created off main at 5dcda0e). The work followed the standard sequence: read the PI body and the parent workstream from the live API; survey the affected modules (models.py, repositories/*, api/schemas.py, exporter.py); author the migration; thread the field through the access layer; update Pydantic; verify via test suite plus an end-to-end smoke. The build surfaced one engine fix: SQLite batch_alter_table copies and drops tables, and the drop trips FK enforcement on decisions (which has self-FKs supersedes_id / superseded_by_id). The fix was to add a dedicated migration engine in env.py with foreign_keys=OFF at connect time, keeping the runtime engine FK-on. All 1086 tests pass post-fix.",
+    "conversation_identifier": "CONV-067",
+    "conversation_kickoff_drafted_at": null,
+    "conversation_notes": null,
+    "conversation_purpose": "Implement PI-074 end-to-end on a branch off main: Alembic migration, ORM models, access-layer validators, Pydantic schemas, and snapshot regenerator coverage. Resolve any incidental engine bugs surfaced by the build (the FK-batch-alter collision did surface).",
+    "conversation_ready_at": null,
+    "conversation_started_at": null,
+    "conversation_status": "complete",
+    "conversation_superseded_at": null,
+    "conversation_title": "PI-074 implementation — executive_summary column build",
+    "conversation_updated_at": "2026-05-27T16:38:37.489037"
   }
 ]
