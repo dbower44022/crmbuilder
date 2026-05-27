@@ -177,6 +177,64 @@ def _shape_addresses_pi(entry: dict, context: dict) -> dict:
     }
 
 
+def _inline_membership_edges(
+    payload: dict, section_name: str, kind: str
+) -> None:
+    """Hoist mandatory membership edges from top-level ``references`` into
+    the singular ``session`` / ``conversation`` block.
+
+    Without this hoist, the apply script POSTs the singular block BEFORE
+    the top-level references section, and the access-layer edge-rule
+    validator on the create endpoint can't see the membership edge yet
+    — the create returns 422 with ``missing_*_membership_edge``.
+
+    Mutates ``payload`` in place: matching edges are moved out of
+    ``payload['references']`` and into ``payload[section_name]['references']``,
+    so the top-level references section no longer tries to POST them
+    (avoiding 409 collisions with the inline edge that the create
+    transaction already wrote).
+
+    No-op if the section block is missing, isn't a dict, or has no
+    candidate edges in top-level references.
+    """
+    block = payload.get(section_name)
+    if not isinstance(block, dict):
+        return
+    # The source identifier — new shape uses ``<section>_identifier``;
+    # legacy session payloads also accepted plain ``identifier``.
+    source_id_key = f"{section_name}_identifier"
+    source_id = block.get(source_id_key) or block.get("identifier")
+    if not isinstance(source_id, str):
+        return
+    top_refs = payload.get("references")
+    if not isinstance(top_refs, list):
+        return
+
+    matched: list[dict] = []
+    kept: list[dict] = []
+    for edge in top_refs:
+        if not isinstance(edge, dict):
+            kept.append(edge)
+            continue
+        if (
+            edge.get("source_type") == section_name
+            and edge.get("source_id") == source_id
+            and edge.get("relationship") == kind
+        ):
+            matched.append(edge)
+        else:
+            kept.append(edge)
+
+    if not matched:
+        return
+
+    payload["references"] = kept
+    inline_refs = block.get("references") or []
+    if not isinstance(inline_refs, list):
+        inline_refs = []
+    block["references"] = list(inline_refs) + matched
+
+
 # Section descriptors in methodology §4 apply order. The order is the
 # fixed apply ordering: session → conversation → work_tickets →
 # planning_items → commits → decisions → references →
@@ -532,6 +590,21 @@ def main() -> int:
             ci = conversation_block.get("conversation_identifier")
             if isinstance(ci, str):
                 context["conversation_identifier"] = ci
+
+        # Inline membership edges into singular session/conversation blocks
+        # so the access layer sees the mandatory edge at create-validation
+        # time. (Apply-script edge-ordering bug surfaced at SES-099 apply:
+        # session POST runs before the top-level references[] section, so
+        # a session_belongs_to_workstream edge in references[] arrives
+        # AFTER the session validate_edges check fires. Same for
+        # conversation_belongs_to_session edges with conversations.)
+        # Hoist any matching top-level reference into the source-entity's
+        # inline references array, then strip from top-level so the
+        # references section doesn't re-POST.
+        _inline_membership_edges(payload, "session",
+                                 "session_belongs_to_workstream")
+        _inline_membership_edges(payload, "conversation",
+                                 "conversation_belongs_to_session")
 
         for section in _SECTIONS:
             section_name = section.name
