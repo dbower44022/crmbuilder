@@ -1,0 +1,30 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_095.json
+Label:  PI-073 architectural-design conversation — redesign session and conversation entities. DEC-314 establishes the new model: session as medium-agnostic communication container, conversation as topical sub-unit within a session (1:N, not the legacy 1:0..1). Supersedes DEC-013 (sessions are no longer append-only — they are schedulable and stateful through their lifecycle). Resolves the four open design questions in PI-073's body. Produces session-v2.md and conversation-v2.md v1.0 specs. Adds blocked_by reference edges from PI-085, PI-086, PI-087, PI-088, PI-024, PI-025, PI-026 to PI-073 so downstream methodology and backfill work waits on the redesign. PI-073 itself is NOT resolved by this close-out — it resolves at Conversation N+1 (audit + documentation propagation, per the execution plan).
+Deposit event: DEP-080
+
+=== session (1 record) ===
+  ✓ POST session  SES-095 (HTTP 201)
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CONV-065 (HTTP 201)
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-314 (HTTP 201)
+
+=== references (8 records) ===
+  ✓ POST references  DEC-314 decided_in SES-095 (HTTP 201)
+  ✓ POST references  PI-085 blocked_by PI-073 (HTTP 201)
+  ✓ POST references  PI-086 blocked_by PI-073 (HTTP 201)
+  ✓ POST references  PI-087 blocked_by PI-073 (HTTP 201)
+  ✓ POST references  PI-088 blocked_by PI-073 (HTTP 201)
+  ✓ POST references  PI-024 blocked_by PI-073 (HTTP 201)
+  ✓ POST references  PI-025 blocked_by PI-073 (HTTP 201)
+  ✓ POST references  PI-026 blocked_by PI-073 (HTTP 201)
+
+=== addresses_planning_items (1 record) ===
+  ✓ POST addresses_planning_items  → PI-073 (HTTP 201)
+
+✓ All 12 operations complete.
+
+✓ Recorded apply as deposit_event DEP-080 (HTTP 201).

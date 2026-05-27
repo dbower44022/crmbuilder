@@ -1086,5 +1086,22 @@
     "conversation_superseded_at": null,
     "conversation_title": "Cross Domain Service object — author governance record (discipline retry after direct-POST violation)",
     "conversation_updated_at": "2026-05-27T03:58:15.614511"
+  },
+  {
+    "conversation_cancelled_at": null,
+    "conversation_completed_at": "2026-05-27T05:22:07.804483",
+    "conversation_created_at": "2026-05-27T05:22:07.804190",
+    "conversation_deleted_at": null,
+    "conversation_description": "PI-073 architectural-design conversation conducted in Claude Code at Doug's terminal. Doug asked for a review-and-plan of PI-073; Claude Code produced the eight-conversation execution plan; Doug confirmed PI-073-first sequencing and chose to run conversation 1 inside this Claude Code session rather than a sandbox session. Claude Code captured identifier heads, presented design recommendations on all four open questions plus the five risks named in the execution plan, accepted Doug's redirect to fully supersede DEC-013 (not just narrow it), then authored DEC-314 + session-v2.md + conversation-v2.md + this close-out + the apply prompt autonomously per Doug's authorization.",
+    "conversation_identifier": "CONV-065",
+    "conversation_kickoff_drafted_at": null,
+    "conversation_notes": null,
+    "conversation_purpose": "Resolve PI-073's four open design questions, author the architectural decision (DEC-314 superseding DEC-013), and produce the v1.0 schema specs for the redesigned session and conversation entities.",
+    "conversation_ready_at": null,
+    "conversation_started_at": null,
+    "conversation_status": "complete",
+    "conversation_superseded_at": null,
+    "conversation_title": "PI-073 architectural-design — redesign session and conversation entities; supersede DEC-013",
+    "conversation_updated_at": "2026-05-27T05:22:07.804616"
   }
 ]

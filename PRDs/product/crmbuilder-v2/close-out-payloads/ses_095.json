@@ -1,0 +1,125 @@
+{
+  "label": "PI-073 architectural-design conversation — redesign session and conversation entities. DEC-314 establishes the new model: session as medium-agnostic communication container, conversation as topical sub-unit within a session (1:N, not the legacy 1:0..1). Supersedes DEC-013 (sessions are no longer append-only — they are schedulable and stateful through their lifecycle). Resolves the four open design questions in PI-073's body. Produces session-v2.md and conversation-v2.md v1.0 specs. Adds blocked_by reference edges from PI-085, PI-086, PI-087, PI-088, PI-024, PI-025, PI-026 to PI-073 so downstream methodology and backfill work waits on the redesign. PI-073 itself is NOT resolved by this close-out — it resolves at Conversation N+1 (audit + documentation propagation, per the execution plan).",
+
+  "session": {
+    "identifier": "SES-095",
+    "title": "PI-073 architectural-design conversation — Session and Conversation entity redesign",
+    "session_date": "2026-05-27",
+    "status": "Complete",
+    "conversation_reference": "Claude Code session at Doug's terminal, continuing from a /clear and the SES-094 close-out apply. Doug asked Claude Code to review PI-073 and create a plan for executing it. Claude Code produced pi-073-execution-plan.md v0.1 — an 8-conversation execution plan (1 design + 1 build-planning + 6 build/audit) with cross-PI sequencing analysis (PI-073 first vs PI-085–PI-088). Doug confirmed 'PI-073 first' sequencing and asked Claude Code to add a note to PI-085 marking it dependent on PI-073's completion. Claude Code proposed expressing the dependency as a blocked_by reference edge (mechanically supported by apply_close_out.py via the references section) rather than a body PATCH (not supported by apply_close_out.py and a DEC-310 tension besides). Doug also said 'lets proceed with conversation 1' — turning this Claude Code session into the design conversation itself rather than spawning a sandbox session for it. Claude Code captured identifier heads per DEC-300 (next: SES-095, CONV-065, DEC-314, PI-090, WT-056), then presented recommendations on the four PI-073 open design questions and the five risks named in the execution plan. Doug confirmed all proposals with one redirect: DEC-013 should be superseded entirely, not just narrowed — sessions become stateful objects that can be scheduled for the future and updated when they occur. Doug then authorized completing the remainder of the plan without further input. Claude Code drafted DEC-314 (the architectural-redesign decision; supersedes DEC-013), session-v2.md (v1.0 spec for the redesigned session entity), conversation-v2.md (v1.0 spec for the redesigned conversation entity), this close-out payload, and the corresponding apply prompt.",
+    "topics_covered": "Seed prompt: 'please review pi-073 and create a plan for executing the plan' (a typo for 'a plan for executing it'). Subsequent prompts: '1 - yes. So we should put a note in pi085 that indicates it becomes effective when pi-073 completes. Lets proceed with conversation 1' (Doug confirming PI-073-first sequencing and authorizing conversation 1 to begin here). 'All the above is good, except the \"Sessions are append-only\" That rule should be superseded, so that sessions can be scheduled for the future, and then updated when it occurs. Please complete the remainder of this plan without my input, unless there is a catestrophic issue. When done commit the results and update the status in the database.' (Doug's redirect on DEC-013 + authorization to complete autonomously.)\n\n(1) PI-073 review and plan authoring. Claude Code read PI-073's body via REST (the four open design questions; the architectural redesign scope; the deferred status), DEC-119 (the historical conversation-entity decision being amended), and the current session/conversation models in the access layer. Identified the load-bearing cross-PI dependency: PI-087 (Session/Conversation Process PRD, currently Open) describes the lifecycle of the very entities PI-073 redesigns, so authoring PI-087 before PI-073 lands forces a full rewrite. Produced pi-073-execution-plan.md v0.1 — eight conversations: 1 design (this), 1 build planning, then slices A (Alembic migration) / B (access layer) / C (REST endpoints) / D (MCP tools) / E (desktop UI) / F (data migration of 94 existing sessions + 64 conversations), plus a final audit + documentation-propagation conversation that resolves PI-073. Recommended PI-073-first sequencing with blocked_by edges from PI-085, PI-086, PI-087, PI-088, PI-024, PI-025, PI-026 cascading the wait.\n\n(2) Sequencing confirmation and PI-085 note mechanism. Doug confirmed PI-073-first. Claude Code proposed that 'PI-085 becomes effective when PI-073 completes' is most cleanly expressed as a blocked_by reference edge (PI-085 → PI-073, plus parallel edges from PI-086, PI-087, PI-088, PI-024, PI-025, PI-026) — apply_close_out.py supports reference edges via the references section, doesn't support body-PATCH of existing PIs, and a PATCH would create DEC-310 friction besides. Doug accepted; the seven blocked_by edges land in this close-out's references section.\n\n(3) Conversation 1 venue. The execution plan §3 named Claude.ai sandbox as the C1 venue. Doug redirected to 'lets proceed with conversation 1' inside this Claude Code session. Accepted; this session becomes C1 with full context already loaded.\n\n(4) Identifier-head capture per DEC-300. Live API next-identifier responses prior to payload assignment: SES-095, CONV-065, DEC-314 (DEC-313 is the most recent live decision; DEC-312 occupies a soft-deleted slot from SES-094's discipline-retry pattern), PI-090, WT-056. The DEC-313 → DEC-314 jump and PI-088 → PI-090 jump (PI-089 was hard-deleted then re-used by SES-094) both reflect the existing soft-delete and hard-delete asymmetry called out in SES-094.\n\n(5) Design recommendations and Doug confirmation. Claude Code presented:\n  - Q1 (session-level sequencing): yes, optional session_follows_from reference edge + optional session_thread_id field, because email threads and Zoom recurring meetings have medium-driven session sequencing that doesn't reduce to per-conversation chains.\n  - Q2 (planned-but-not-started conversations): option (a) — conversation record exists in not_started state. Symmetric with workstream-conversation lifecycle, avoids PI-to-conversation type-shift, preserves audit trail of unstarted topics.\n  - Q3 (medium-specific metadata): JSON column session_medium_metadata + small set of universal columns (session_medium enum, session_started_at, session_ended_at, session_participants). SQLite json_extract makes the JSON queryable; new mediums add via enum extension + recommended-shape doc with no per-medium schema churn.\n  - Q4 (existing-record migration): old conversation rows become new session rows (CONV-NNN identifiers stay, semantic shift accepted); old session rows become new conversation rows (SES-NNN identifiers stay, semantic shift accepted); identifier-prefix asymmetry accepted to avoid rewriting 200+ historical references.\n  - Risk dispositions: narrow DEC-013 to session-level append-only; vocab churn deferred to Conversation 2; keep MCP tool names with semantic shift; keep CONV-NNN identifier reuse; defer PI-024/025/026 via blocked_by edges.\n\n(6) Doug's redirect on DEC-013. Doug pushed back on 'narrow DEC-013' — sessions should be schedulable for the future and updateable when they occur, which is fundamentally incompatible with append-only. Claude Code adopted the redirect: DEC-013 is superseded in its entirety by DEC-314 (not narrowed). The new session entity is editable throughout its non-terminal lifecycle; terminal-state field-content immutability is retained but with administrative-correction PATCH parallel to the commit spec §3.4.3 posture (a tighter constraint than 'narrowed' but still substantially looser than append-only).\n\n(7) DEC-314 authored. Title: 'Redesign session and conversation entities as medium-agnostic container with topical sub-units; supersede DEC-013'. Records all four design-question resolutions + the supersession + the five risk dispositions + the PI-073-first sequencing call + the blocked_by edge cascade design. Supersedes DEC-013 via the standard supersedes_id mechanism.\n\n(8) Schema specs authored. session-v2.md v1.0 (full v0.7-format spec — identity, fields with medium-specific JSON metadata, relationships including the new session_follows_from kind, lifecycle with five-status state machine, validation, REST endpoints, twelve acceptance criteria, build-planning open questions, migration strawman). conversation-v2.md v1.0 (full v0.7-format spec — new CNV-NNN identifier prefix to avoid collision with the migrated CONV-NNN sessions, fields including conversation_summary captured at close, relationships with new conversation_belongs_to_session and conversation_follows_from and conversation_relates_to kinds, six-status lifecycle including the Q2-resolution not_started terminal, ten acceptance criteria, migration strawman aligned with session-v2.md §6).\n\n(9) Blocked_by edge cascade. Seven blocked_by edges land in this close-out's references section, all sourcing into PI-073: PI-085 (Domain Overview), PI-086 (Personas), PI-087 (Session/Conversation Process PRD — the most load-bearing dependency since it describes the redesigned entities), PI-088 (Meta Process PRD Definition Process), PI-024 (prior workstreams backfill), PI-025 (prior conversations backfill), PI-026 (historical applies as deposit_events backfill). All seven will be unblocked when PI-073 resolves at Conversation N+1.\n\n(10) Items deferred from this session (carried forward to Conversation 2 — build planning): the commits-table FK migration question (rename commit_conversation_id to commit_session_id and migrate the FK, vs convert to a reference edge — strawman: rename + migrate); per-medium JSON validation strictness (hard-reject or warn-and-accept); indexed JSON paths on session_medium_metadata; session_scheduled_for timezone handling; the auto-flip planned → not_started on session close (on by default or opt-in); conversation_summary required on complete (soft or hard); whether to ship a dedicated PI-073 workstream or keep work under WS-011.",
+    "summary": "Architectural-design conversation for PI-073. Resolves the four open design questions, supersedes DEC-013 (sessions are no longer append-only — they are schedulable and stateful through a five-status lifecycle), authors the v1.0 schema specs for the redesigned session and conversation entities, and locks seven blocked_by reference edges so PI-085, PI-086, PI-087, PI-088, PI-024, PI-025, PI-026 wait on PI-073's resolution. New model: session = medium-agnostic communication container (one Claude chat or email or phone call or Zoom or in-person meeting or Slack thread = one session, with universal columns + JSON medium-specific metadata + optional medium-driven session_follows_from sequencing); conversation = topical sub-unit within a session (1:N, with its own lifecycle including the not_started terminal that captures planned-but-never-opened topics, plus cross-session linkage via conversation_follows_from and conversation_relates_to). Identifier-prefix asymmetry accepted at migration: existing CONV-NNN rows become sessions (prefix retained), existing SES-NNN rows become conversations (prefix retained), new conversations under v2 use CNV-NNN. PI-073 itself is NOT resolved here — it resolves at Conversation N+1 (the audit + documentation-propagation conversation per pi-073-execution-plan.md).",
+    "artifacts_produced": "(1) PRDs/product/crmbuilder-v2/pi-073-execution-plan.md v0.1 — the eight-conversation execution plan (1 design + 1 build planning + 6 build/audit). (2) PRDs/product/crmbuilder-v2/governance-schema-specs/session-v2.md v1.0 — full spec for the redesigned session entity. (3) PRDs/product/crmbuilder-v2/governance-schema-specs/conversation-v2.md v1.0 — full spec for the redesigned conversation entity. (4) PRDs/product/crmbuilder-v2/close-out-payloads/ses_095.json — this close-out payload. (5) PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-apply-close-out-ses-095.md — the apply prompt for this payload. The post-apply commit additionally regenerates PRDs/product/crmbuilder-v2/db-export/*.json and writes PRDs/product/crmbuilder-v2/deposit-event-logs/dep_NNN.log.",
+    "in_flight_at_end": "Conversation 2 of the PI-073 sequence is the next concrete work item — build planning, which slices the two specs into Alembic + access + API + MCP + UI + data-migration build prompts. Sequencing per the execution plan: Conversation 2 in Claude.ai sandbox (recommended) or here; then six build slices in Claude Code; then Conversation N+1 for audit + documentation propagation (which is the conversation that resolves PI-073). The seven downstream PIs (PI-085, PI-086, PI-087, PI-088, PI-024, PI-025, PI-026) are blocked by PI-073 via blocked_by reference edges authored in this close-out; they unblock when PI-073 resolves at Conversation N+1. Items deferred to Conversation 2: commits-table FK migration (commit_conversation_id → commit_session_id rename + migrate vs convert to reference edge); per-medium JSON validation strictness; indexed JSON paths on session_medium_metadata; session_scheduled_for timezone handling; auto-flip planned → not_started on session close; conversation_summary required on complete; whether to ship a dedicated PI-073 workstream or keep work under WS-011. Workstream assignment for this session is WS-011 (V2 storage API refinements) provisionally — the redesign work is post-launch refinement of the v0.7 release in the sense WS-011 is scoped for, and standing up a dedicated workstream requires a separate planning conversation that hasn't been authored."
+  },
+
+  "conversation": {
+    "conversation_identifier": "CONV-065",
+    "conversation_title": "PI-073 architectural-design — redesign session and conversation entities; supersede DEC-013",
+    "conversation_purpose": "Resolve PI-073's four open design questions, author the architectural decision (DEC-314 superseding DEC-013), and produce the v1.0 schema specs for the redesigned session and conversation entities.",
+    "conversation_description": "PI-073 architectural-design conversation conducted in Claude Code at Doug's terminal. Doug asked for a review-and-plan of PI-073; Claude Code produced the eight-conversation execution plan; Doug confirmed PI-073-first sequencing and chose to run conversation 1 inside this Claude Code session rather than a sandbox session. Claude Code captured identifier heads, presented design recommendations on all four open questions plus the five risks named in the execution plan, accepted Doug's redirect to fully supersede DEC-013 (not just narrow it), then authored DEC-314 + session-v2.md + conversation-v2.md + this close-out + the apply prompt autonomously per Doug's authorization.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-065",
+        "target_type": "workstream",
+        "target_id": "WS-011",
+        "relationship": "conversation_belongs_to_workstream"
+      },
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-065",
+        "target_type": "session",
+        "target_id": "SES-095",
+        "relationship": "conversation_records_session"
+      }
+    ]
+  },
+
+  "commits": [],
+
+  "work_tickets": [],
+
+  "planning_items": [],
+
+  "decisions": [
+    {
+      "identifier": "DEC-314",
+      "title": "Redesign session and conversation entities — session as medium-agnostic communication container, conversation as topical sub-unit; supersede DEC-013",
+      "decision_date": "2026-05-27",
+      "status": "Active",
+      "supersedes": "DEC-013",
+      "context": "V2's existing session and conversation entities have a 1:0..1 relationship that conflates two distinct concepts. The session entity (DEC-013) was originally an append-only after-the-fact record of a single Claude.ai chat; the conversation entity (DEC-119) was added as a chat-lifecycle wrapper (planned → kickoff_drafted → ready → in_flight → complete) that the append-only session could not host. The two tables are structurally one concept split for historical reasons. Their names also collide with everyday English — Claude.ai's 'conversation' is a chat window; 'session' is too generic — and the model is Claude.ai-specific despite the methodology needing to record email, phone, Zoom, in-person, and Slack communications too. PI-073 was authored to capture the redesign and shelved pending design-conversation attention. This conversation (SES-095) is that design conversation.",
+      "decision": "Redesign session and conversation as follows. (1) Session becomes a medium-agnostic communication container — one Claude.ai chat / one email / one phone call / one Zoom meeting / one in-person meeting / one Slack thread = one session. Universal columns: session_medium (enum: chat, email, phone, zoom, in_person, slack, other), session_started_at, session_ended_at, session_participants (JSON array). Medium-specific metadata: JSON column session_medium_metadata with per-medium shape (chat_url, email subject+thread_id, zoom_meeting_id+recording_url, etc.). Optional medium-driven sequencing: session_follows_from reference edge for email threads, recurring Zoom meetings, follow-up phone calls. (2) Conversation becomes a topical sub-unit within a session. One session contains 1..N conversations. Conversations do not span sessions. Cross-session topical continuity uses conversation_follows_from (direct successor) and conversation_relates_to (loose relation) reference edges. The lifecycle states are planned → in_flight → one of complete / cancelled / not_started / superseded, with not_started being the new terminal for conversations planned within a session that never opened. (3) DEC-013's append-only rule is superseded in its entirety. Sessions are now schedulable (created in planned status with a session_scheduled_for timestamp) and stateful (transitioned to in_flight when the event starts; to complete when it ends; to not_started if the event never happened). Editable throughout non-terminal lifecycle; administrative-correction PATCH admitted on terminal-state field content (parallel to commit spec §3.4.3). (4) Identifier-prefix asymmetry accepted at migration: existing CONV-NNN rows become sessions (prefix retained for historical readability); existing SES-NNN rows become conversations (prefix retained); new conversations under the v2 model use CNV-NNN. (5) Sequencing: PI-073 lands before PI-085, PI-086, PI-087, PI-088, PI-024, PI-025, PI-026; the seven downstream PIs are marked blocked_by PI-073 via reference edges in this close-out.",
+      "rationale": "The 1:0..1 relationship is the strongest indicator that the original session and conversation were structurally one concept split for historical reasons; collapsing the split is overdue and the v2-methodology direction (which explicitly aims to record cross-medium communication per the dogfood agenda) makes the Claude.ai-only origin actively constraining. Q1's optional session_follows_from is justified because email threads and recurring Zoom meetings carry session-level sequence as a property of the medium, not derivable from per-conversation chains. Q2's option (a) — conversation in not_started state rather than reverting to a PI — is symmetric with the existing lifecycle patterns (workstream, conversation), avoids the operational complexity of type-shifting between PI and conversation, and preserves the audit trail of planned-but-unstarted topics. Q3's JSON column for medium-specific metadata avoids the maintenance burden of a column-per-medium-per-field schema while preserving queryability via SQLite's json_extract. Q4's identifier-preservation across the migration accepts a one-time documentation cost (CLAUDE.md update + migration table) in exchange for not rewriting the 200+ historical CONV-NNN and SES-NNN references in markdown files. The full supersession of DEC-013 (rather than the originally-proposed narrowing) is Doug's explicit redirect — sessions becoming first-class schedulable lifecycle objects is fundamentally incompatible with append-only; narrowing is a half-measure that the redesign's intent does not support. PI-073-first sequencing is justified because PI-087 (Session/Conversation Process PRD) describes the very entities being redesigned, and authoring it against the old model forces a full rewrite when PI-073 lands.",
+      "alternatives_considered": "(a) Leave the 1:0..1 model in place and rename the entities for clarity only. Rejected because the structural problem (conflated concepts; Claude.ai-only origin; append-only constraint blocking schedulable sessions) persists. (b) Narrow DEC-013 (sessions are append-only EXCEPT for the per-status lifecycle timestamps that are server-set on transition). Rejected per Doug's redirect — narrowing is a half-measure that doesn't let sessions be scheduled-then-updated as the new model requires. (c) Run PI-085 / PI-086 / PI-087 / PI-088 first against the old model, then redesign with PI-073, accepting the PI-087 rewrite. Rejected because the rewrite is roughly all of PI-087, and the dogfood intent of DEC-295 is undermined by recording the methodology against an about-to-change schema. (d) Issue fresh SES-NNN identifiers for everything and retire the old identifier corpus. Rejected because it creates collision risk and orphans 200+ markdown references. (e) Column-per-medium schema (no JSON). Rejected because every new medium requires an Alembic migration. (f) Pure-JSON schema (no universal columns). Rejected because common cross-medium queries (when did this happen? how long?) lose performance.",
+      "consequences": "An eight-conversation workstream (this design conversation + build planning + six build/audit conversations) lands the redesign per pi-073-execution-plan.md. The two new specs (session-v2.md, conversation-v2.md) drive Conversation 2's slice plan. Slice A authors an Alembic migration that renames the existing conversations table to sessions and creates a new conversations table; Slice B updates the access layer; Slice C updates the REST endpoints; Slice D updates the MCP tool surface; Slice E updates the desktop UI; Slice F migrates the existing 94 sessions + 64 conversations into the new shape; Conversation N+1 audits the migration, propagates documentation through CLAUDE.md and downstream PRDs, and resolves PI-073. Seven downstream planning items (PI-085, PI-086, PI-087, PI-088, PI-024, PI-025, PI-026) get blocked_by reference edges to PI-073 in this close-out's references section; they unblock when PI-073 resolves at Conversation N+1. DEC-013 transitions from Active to Superseded (status flip is post-apply since apply_close_out.py does not currently support cross-row status updates in a single transaction; the apply prompt's post-apply step PATCHes DEC-013's status and superseded_by field). The supersedes_id FK on DEC-314 → DEC-013 is set by the close-out's POST. MCP tool names (get_session, get_conversation) carry semantic shift documented in CLAUDE.md without name changes. Identifier-prefix asymmetry (CONV-NNN = session, SES-NNN = conversation, CNV-NNN = new-conversation) is the accepted one-time documentation cost."
+    }
+  ],
+
+  "references": [
+    {
+      "source_type": "decision",
+      "source_id": "DEC-314",
+      "target_type": "session",
+      "target_id": "SES-095",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-085",
+      "target_type": "planning_item",
+      "target_id": "PI-073",
+      "relationship": "blocked_by"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-086",
+      "target_type": "planning_item",
+      "target_id": "PI-073",
+      "relationship": "blocked_by"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-087",
+      "target_type": "planning_item",
+      "target_id": "PI-073",
+      "relationship": "blocked_by"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-088",
+      "target_type": "planning_item",
+      "target_id": "PI-073",
+      "relationship": "blocked_by"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-024",
+      "target_type": "planning_item",
+      "target_id": "PI-073",
+      "relationship": "blocked_by"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-025",
+      "target_type": "planning_item",
+      "target_id": "PI-073",
+      "relationship": "blocked_by"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-026",
+      "target_type": "planning_item",
+      "target_id": "PI-073",
+      "relationship": "blocked_by"
+    }
+  ],
+
+  "resolves_planning_items": [],
+
+  "addresses_planning_items": [
+    { "planning_item_identifier": "PI-073" }
+  ]
+}

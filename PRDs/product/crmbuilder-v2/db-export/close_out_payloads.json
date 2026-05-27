@@ -1048,5 +1048,20 @@
     "close_out_payload_superseded_at": null,
     "close_out_payload_title": "COP-094 (lazy)",
     "close_out_payload_updated_at": "2026-05-27T03:58:16.759128"
+  },
+  {
+    "close_out_payload_applied_at": "2026-05-27T05:22:10.367272",
+    "close_out_payload_cancelled_at": null,
+    "close_out_payload_created_at": "2026-05-27T05:22:10.366404",
+    "close_out_payload_deleted_at": null,
+    "close_out_payload_description": "Lazily created on a deposit_event apply targeting COP-095.",
+    "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_095.json",
+    "close_out_payload_identifier": "COP-095",
+    "close_out_payload_notes": null,
+    "close_out_payload_ready_at": "2026-05-27T05:22:10.366262",
+    "close_out_payload_status": "applied",
+    "close_out_payload_superseded_at": null,
+    "close_out_payload_title": "COP-095 (lazy)",
+    "close_out_payload_updated_at": "2026-05-27T05:22:10.381879"
   }
 ]
