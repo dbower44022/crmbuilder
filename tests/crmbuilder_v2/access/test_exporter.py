@@ -44,11 +44,29 @@ def test_bootstrap_creates_all_export_files(v2_env, export_dir: Path):
         "work_tickets.json",
         "close_out_payloads.json",
         "deposit_events.json",
+        # v0.8 governance entity (PI-029, commit.md) — registered in
+        # exporter._EXPORT_TABLES by PI-053 so commits.json regenerates
+        # alongside the other governance snapshots.
+        "commits.json",
         "references.json",
         "change_log.json",
     }
     actual = {p.name for p in export_dir.iterdir() if p.suffix == ".json"}
     assert expected == actual
+
+
+def test_commit_model_in_export_tables():
+    """PI-053 — Commit must be registered in _EXPORT_TABLES so commits.json
+    regenerates when snapshots regenerate."""
+    from crmbuilder_v2.access.exporter import _EXPORT_TABLES
+    from crmbuilder_v2.access.models import Commit
+
+    names = [name for name, _ in _EXPORT_TABLES]
+    models = [model for _, model in _EXPORT_TABLES]
+    assert "commits" in names
+    assert Commit in models
+    # And the (filename, model) pairing is correct.
+    assert ("commits", Commit) in _EXPORT_TABLES
 
 
 def test_export_reflects_writes(v2_env, export_dir: Path):
