@@ -167,6 +167,21 @@ class FieldSchema:
       ``(identifier, title)``. Read at dialog-open time and on every
       upstream-change event so vocab evolution is picked up without
       UI changes.
+    * ``min_length`` — optional minimum character count for the field's
+      value. Mirrors the access-layer ``validate_optional_length``
+      helper exactly: empty / whitespace-only values are valid
+      regardless (the field is optional); non-empty values must satisfy
+      ``min_length <= len(value) <= max_length``. Currently honored for
+      ``text`` widgets (the only widget kind that today carries
+      length-constrained content); other widgets ignore it.
+    * ``max_length`` — optional maximum character count. Same semantics
+      and currently-honored widget set as ``min_length``. When either
+      ``min_length`` or ``max_length`` is set on a ``text`` widget, a
+      live ``N / max_length`` (or bare ``N`` when only ``min_length``
+      is set) character counter renders directly under the text input.
+      Counter color: neutral when in range or when ``N == 0``; amber
+      (``t("color.warning.default")``) when ``0 < N < min_length``;
+      red (``_INLINE_ERROR_STYLE``) when ``N > max_length``.
     """
 
     key: str
@@ -191,6 +206,8 @@ class FieldSchema:
     tree_picker_title: str = "Select"
     depends_on: list[str] | None = None
     compute_options: Callable[[dict[str, str]], list[Any]] | None = None
+    min_length: int | None = None
+    max_length: int | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -206,15 +223,36 @@ def _make_inline_error() -> QLabel:
     return label
 
 
-def _wrap_with_error(input_widget: QWidget, error_label: QLabel) -> QWidget:
-    """Pair a form input with its inline-error label in a vertical container."""
+def _wrap_with_error(
+    input_widget: QWidget,
+    error_label: QLabel,
+    counter_label: QLabel | None = None,
+) -> QWidget:
+    """Pair a form input with its inline-error label in a vertical container.
+
+    When ``counter_label`` is supplied, it is inserted between the input
+    and the error label so the character counter sits directly below the
+    input while the (initially hidden) error label remains beneath it.
+    The counter is always visible once attached; the error label is
+    toggled by ``_show_error`` / ``_clear_error``.
+    """
     container = QWidget()
     layout = QVBoxLayout(container)
     layout.setContentsMargins(0, 0, 0, 0)
     layout.setSpacing(2)
     layout.addWidget(input_widget)
+    if counter_label is not None:
+        layout.addWidget(counter_label)
     layout.addWidget(error_label)
     return container
+
+
+def _make_length_counter() -> QLabel:
+    """Build the live character-count label used under length-bounded text inputs."""
+    label = QLabel("")
+    label.setObjectName("dialogLengthCounter")
+    label.setVisible(True)
+    return label
 
 
 class FormWidgets:
@@ -401,6 +439,7 @@ class EntityCrudDialog(QDialog):
         self._initial: dict[str, str] = {}
         self._tree_picker_selections: dict[str, str | None] = {}
         self._error_labels: dict[str, QLabel] = {}
+        self._length_counters: dict[str, QLabel] = {}
         self._field_widgets: dict[str, QWidget] = {}
         self._widgets = FormWidgets(
             self._field_widgets,
@@ -443,12 +482,14 @@ class EntityCrudDialog(QDialog):
             error_label = _make_inline_error()
             self._error_labels[schema.key] = error_label
             self._widgets[schema.key] = widget
+            counter_label = self._maybe_build_length_counter(schema, widget)
             self._wire_clear_on_change(schema, widget)
             label_widget = (
                 required_label(schema.label) if schema.required else schema.label
             )
             self._form.addRow(
-                label_widget, _wrap_with_error(widget, error_label)
+                label_widget,
+                _wrap_with_error(widget, error_label, counter_label),
             )
         body_layout.addLayout(self._form)
 
@@ -637,6 +678,79 @@ class EntityCrudDialog(QDialog):
             widget.dateChanged.connect(clear)
         # tree_picker buttons clear their error when a selection is made;
         # see _on_tree_picker_clicked.
+
+    def _maybe_build_length_counter(
+        self, schema: FieldSchema, widget: QWidget
+    ) -> QLabel | None:
+        """Build the length-counter label for a length-bounded text widget.
+
+        Only ``text`` widgets with a declared ``min_length`` or
+        ``max_length`` get a counter. Wires the widget's ``textChanged``
+        signal to ``_update_length_counter`` so the count + color stay
+        live, and seeds the counter against the current (empty) value
+        so the initial render is correct (``0`` in neutral).
+        """
+        if schema.widget != "text":
+            return None
+        if schema.min_length is None and schema.max_length is None:
+            return None
+        if not isinstance(widget, QPlainTextEdit):
+            return None
+        counter = _make_length_counter()
+        self._length_counters[schema.key] = counter
+
+        def _update(_payload=None, k=schema.key) -> None:
+            self._update_length_counter(k)
+
+        widget.textChanged.connect(_update)
+        # Seed initial state. Edit-mode pre-population happens later;
+        # ``_populate_from_record`` triggers ``textChanged`` itself via
+        # ``setPlainText``, which re-invokes ``_update`` and refreshes
+        # the counter against the loaded value.
+        self._update_length_counter(schema.key)
+        return counter
+
+    def _update_length_counter(self, key: str) -> None:
+        """Refresh the live ``N / max_length`` (or ``N``) counter for a key.
+
+        Color rules per Phase 1 contract:
+
+        * Empty (``N == 0``) → neutral (default text color).
+        * In range (``min_length <= N <= max_length``) → neutral.
+        * Below minimum but non-empty (``0 < N < min_length``) →
+          amber (``t("color.warning.default")``).
+        * Above maximum (``N > max_length``) → red
+          (``_INLINE_ERROR_STYLE``'s ``#B22222``).
+        """
+        counter = self._length_counters.get(key)
+        if counter is None:
+            return
+        schema = self._fields_by_key.get(key)
+        if schema is None:
+            return
+        widget = self._field_widgets.get(key)
+        if not isinstance(widget, QPlainTextEdit):
+            return
+        n = len(widget.toPlainText())
+        min_len = schema.min_length
+        max_len = schema.max_length
+
+        # Text content.
+        if max_len is not None:
+            counter.setText(f"{n} / {max_len}")
+        else:
+            counter.setText(str(n))
+
+        # Color rules.
+        style = ""
+        if n == 0:
+            style = ""
+        elif max_len is not None and n > max_len:
+            style = _INLINE_ERROR_STYLE
+        elif min_len is not None and n < min_len:
+            style = f"color: {t('color.warning.default')};"
+        # Otherwise neutral.
+        counter.setStyleSheet(style)
 
     def _set_initial_focus(self) -> None:
         # On Create: focus the identifier field if present, else the
@@ -966,6 +1080,8 @@ class EntityCrudDialog(QDialog):
             return
         if not self._validate_formats():
             return
+        if not self._validate_lengths():
+            return
         body = self._build_request_body()
         if self._mode == "edit" and not body:
             self.accept()
@@ -1005,6 +1121,49 @@ class EntityCrudDialog(QDialog):
             if not schema.regex.match(value):
                 hint = schema.regex_hint or "Invalid format."
                 self._show_error(schema.key, hint)
+                ok = False
+        return ok
+
+    def _validate_lengths(self) -> bool:
+        """Enforce ``min_length`` / ``max_length`` for length-bounded fields.
+
+        Mirrors the access-layer ``validate_optional_length`` helper
+        (``crmbuilder_v2.access._helpers.validate_optional_length``)
+        exactly so the client-side error matches the API error verbatim:
+
+        * Empty / whitespace-only values are valid (the field is
+          optional; the access helper coerces them to ``None`` before
+          the range check).
+        * Non-empty values must satisfy ``min_len <= len(value) <=
+          max_len`` inclusive. ``len(value)`` is the same character-count
+          measure the helper uses.
+        * The inline error message exactly matches the API's wording:
+          ``"must be {min_len}-{max_len} characters (got {n})"``.
+
+        Only enforced when both ``min_length`` and ``max_length`` are
+        set (matching the helper signature, which requires both). A
+        schema that declares only one of the two opts into the live
+        counter but not the gate — Phase 1 deliberately leaves
+        single-sided validation to Phase 2 to spec if needed.
+        """
+        ok = True
+        for schema in self._fields:
+            min_len = schema.min_length
+            max_len = schema.max_length
+            if min_len is None or max_len is None:
+                continue
+            raw = self._current_value(schema)
+            if not isinstance(raw, str):
+                continue
+            # Whitespace-only / empty is valid — the field is optional.
+            if raw.strip() == "":
+                continue
+            n = len(raw)
+            if n < min_len or n > max_len:
+                self._show_error(
+                    schema.key,
+                    f"must be {min_len}-{max_len} characters (got {n})",
+                )
                 ok = False
         return ok
 

@@ -711,3 +711,296 @@ def test_set_field_enabled_disables_widget(qapp, qtbot):
     assert dialog._field_widgets["identifier"].isEnabled() is False
     dialog.set_field_enabled("identifier", True)
     assert dialog._field_widgets["identifier"].isEnabled() is True
+
+
+# ---------------------------------------------------------------------------
+# Length validation + live character counter (Phase 1 of v2-ui length series)
+# ---------------------------------------------------------------------------
+
+
+def _length_bounded_schema(
+    min_length: int = 200, max_length: int = 800
+) -> list[FieldSchema]:
+    """Schema with a required identifier and an optional length-bounded summary."""
+    return [
+        FieldSchema(
+            key="identifier",
+            label="Identifier",
+            widget="line",
+            required=True,
+        ),
+        FieldSchema(
+            key="summary",
+            label="Summary",
+            widget="text",
+            min_length=min_length,
+            max_length=max_length,
+        ),
+    ]
+
+
+def test_length_bounded_text_field_builds_counter(qapp, qtbot):
+    """A text widget with min_length/max_length renders a counter label."""
+    client = build_client(_success_handler("POST", "/things", {"identifier": "X-1"}))
+    dialog = EntityCrudDialog(
+        client,
+        _length_bounded_schema(),
+        mode="create",
+        title="t",
+        create_method=lambda b: {"identifier": b["identifier"]},
+    )
+    qtbot.addWidget(dialog)
+    assert "summary" in dialog._length_counters
+    counter = dialog._length_counters["summary"]
+    # Empty initial state: shows 0 / 800 with neutral (empty) styling.
+    assert counter.text() == "0 / 800"
+    assert counter.styleSheet() == ""
+
+
+def test_text_field_without_length_constraints_has_no_counter(qapp, qtbot):
+    """A text widget without min/max length renders NO counter."""
+    schema = [
+        FieldSchema(key="identifier", label="ID", widget="line", required=True),
+        FieldSchema(key="notes", label="Notes", widget="text"),
+    ]
+    client = build_client(_success_handler("POST", "/things", {"identifier": "X-1"}))
+    dialog = EntityCrudDialog(
+        client,
+        schema,
+        mode="create",
+        title="t",
+        create_method=lambda b: {"identifier": b["identifier"]},
+    )
+    qtbot.addWidget(dialog)
+    assert "notes" not in dialog._length_counters
+
+
+def test_counter_amber_when_below_minimum(qapp, qtbot):
+    """Typing fewer than min_length characters renders the counter amber."""
+    from crmbuilder_v2.ui.styling import t
+
+    client = build_client(_success_handler("POST", "/things", {"identifier": "X-1"}))
+    dialog = EntityCrudDialog(
+        client,
+        _length_bounded_schema(),
+        mode="create",
+        title="t",
+        create_method=lambda b: {"identifier": b["identifier"]},
+    )
+    qtbot.addWidget(dialog)
+    summary: QPlainTextEdit = dialog._widgets["summary"]
+    summary.setPlainText("x" * 100)
+    counter = dialog._length_counters["summary"]
+    assert counter.text() == "100 / 800"
+    expected = f"color: {t('color.warning.default')};"
+    assert counter.styleSheet() == expected
+
+
+def test_counter_neutral_when_in_range(qapp, qtbot):
+    """Typing within range renders the counter with default (empty) style."""
+    client = build_client(_success_handler("POST", "/things", {"identifier": "X-1"}))
+    dialog = EntityCrudDialog(
+        client,
+        _length_bounded_schema(),
+        mode="create",
+        title="t",
+        create_method=lambda b: {"identifier": b["identifier"]},
+    )
+    qtbot.addWidget(dialog)
+    summary: QPlainTextEdit = dialog._widgets["summary"]
+    summary.setPlainText("y" * 500)
+    counter = dialog._length_counters["summary"]
+    assert counter.text() == "500 / 800"
+    assert counter.styleSheet() == ""
+
+
+def test_counter_red_when_above_maximum(qapp, qtbot):
+    """Typing more than max_length characters renders the counter red."""
+    client = build_client(_success_handler("POST", "/things", {"identifier": "X-1"}))
+    dialog = EntityCrudDialog(
+        client,
+        _length_bounded_schema(),
+        mode="create",
+        title="t",
+        create_method=lambda b: {"identifier": b["identifier"]},
+    )
+    qtbot.addWidget(dialog)
+    summary: QPlainTextEdit = dialog._widgets["summary"]
+    summary.setPlainText("z" * 900)
+    counter = dialog._length_counters["summary"]
+    assert counter.text() == "900 / 800"
+    assert "B22222" in counter.styleSheet()
+
+
+def test_counter_with_only_min_length_renders_bare_count(qapp, qtbot):
+    """When only min_length is set, the counter shows just the bare count."""
+    schema = [
+        FieldSchema(key="identifier", label="ID", widget="line", required=True),
+        FieldSchema(
+            key="summary",
+            label="Summary",
+            widget="text",
+            min_length=50,
+        ),
+    ]
+    client = build_client(_success_handler("POST", "/things", {"identifier": "X-1"}))
+    dialog = EntityCrudDialog(
+        client,
+        schema,
+        mode="create",
+        title="t",
+        create_method=lambda b: {"identifier": b["identifier"]},
+    )
+    qtbot.addWidget(dialog)
+    summary: QPlainTextEdit = dialog._widgets["summary"]
+    summary.setPlainText("a" * 25)
+    counter = dialog._length_counters["summary"]
+    assert counter.text() == "25"
+
+
+def test_save_with_below_minimum_value_shows_inline_error(qapp, qtbot):
+    """Save with a 100-char value (below min=200) shows the API-matching error."""
+    captured: list[dict] = []
+
+    def create(body):
+        captured.append(body)
+        return {"identifier": body["identifier"]}
+
+    client = build_client(_success_handler("POST", "/things", {"identifier": "X-1"}))
+    dialog = EntityCrudDialog(
+        client,
+        _length_bounded_schema(),
+        mode="create",
+        title="t",
+        create_method=create,
+    )
+    qtbot.addWidget(dialog)
+    dialog._widgets["identifier"].setText("X-1")
+    summary: QPlainTextEdit = dialog._widgets["summary"]
+    summary.setPlainText("x" * 100)
+    dialog._on_save_clicked()
+    # No API call — gate fired pre-submit.
+    assert captured == []
+    err = dialog._error_labels["summary"]
+    assert err.isHidden() is False
+    assert err.text() == "must be 200-800 characters (got 100)"
+
+
+def test_save_with_above_maximum_value_shows_inline_error(qapp, qtbot):
+    """Save with a 900-char value (above max=800) shows the API-matching error."""
+    captured: list[dict] = []
+
+    def create(body):
+        captured.append(body)
+        return {"identifier": body["identifier"]}
+
+    client = build_client(_success_handler("POST", "/things", {"identifier": "X-1"}))
+    dialog = EntityCrudDialog(
+        client,
+        _length_bounded_schema(),
+        mode="create",
+        title="t",
+        create_method=create,
+    )
+    qtbot.addWidget(dialog)
+    dialog._widgets["identifier"].setText("X-1")
+    summary: QPlainTextEdit = dialog._widgets["summary"]
+    summary.setPlainText("z" * 900)
+    dialog._on_save_clicked()
+    assert captured == []
+    err = dialog._error_labels["summary"]
+    assert err.isHidden() is False
+    assert err.text() == "must be 200-800 characters (got 900)"
+
+
+def test_save_with_empty_optional_length_field_omits_and_succeeds(qapp, qtbot):
+    """Empty length-bounded text field is valid (optional) and triggers no error."""
+    captured: list[dict] = []
+
+    def create(body):
+        captured.append(body)
+        return {"identifier": body["identifier"]}
+
+    client = build_client(_success_handler("POST", "/things", {"identifier": "X-1"}))
+    schema = [
+        FieldSchema(
+            key="identifier",
+            label="Identifier",
+            widget="line",
+            required=True,
+        ),
+        FieldSchema(
+            key="summary",
+            label="Summary",
+            widget="text",
+            min_length=200,
+            max_length=800,
+            # Mirror the access-layer contract: empty == omit on POST.
+            omit_when_empty_in_create=True,
+        ),
+    ]
+    dialog = EntityCrudDialog(
+        client,
+        schema,
+        mode="create",
+        title="t",
+        create_method=create,
+    )
+    qtbot.addWidget(dialog)
+    dialog._widgets["identifier"].setText("X-1")
+    # summary deliberately left empty
+    with qtbot.waitSignal(dialog.accepted, timeout=2000):
+        dialog._on_save_clicked()
+    assert captured == [{"identifier": "X-1"}]
+    err = dialog._error_labels["summary"]
+    assert err.isHidden() is True
+
+
+def test_save_with_in_range_value_succeeds(qapp, qtbot):
+    """Save with a 500-char value (in [200, 800]) succeeds and dispatches."""
+    captured: list[dict] = []
+
+    def create(body):
+        captured.append(body)
+        return {"identifier": body["identifier"]}
+
+    client = build_client(_success_handler("POST", "/things", {"identifier": "X-1"}))
+    dialog = EntityCrudDialog(
+        client,
+        _length_bounded_schema(),
+        mode="create",
+        title="t",
+        create_method=create,
+    )
+    qtbot.addWidget(dialog)
+    dialog._widgets["identifier"].setText("X-1")
+    payload = "y" * 500
+    dialog._widgets["summary"].setPlainText(payload)
+    with qtbot.waitSignal(dialog.accepted, timeout=2000):
+        dialog._on_save_clicked()
+    assert len(captured) == 1
+    assert captured[0]["identifier"] == "X-1"
+    assert captured[0]["summary"] == payload
+    err = dialog._error_labels["summary"]
+    assert err.isHidden() is True
+
+
+def test_length_error_clears_when_user_edits(qapp, qtbot):
+    """The standard clear-on-edit behavior covers the length-error case too."""
+    client = build_client(_success_handler("POST", "/things", {"identifier": "X-1"}))
+    dialog = EntityCrudDialog(
+        client,
+        _length_bounded_schema(),
+        mode="create",
+        title="t",
+        create_method=lambda b: {"identifier": b["identifier"]},
+    )
+    qtbot.addWidget(dialog)
+    dialog._widgets["identifier"].setText("X-1")
+    summary: QPlainTextEdit = dialog._widgets["summary"]
+    summary.setPlainText("x" * 100)
+    dialog._on_save_clicked()
+    assert dialog._error_labels["summary"].isHidden() is False
+    # Edit clears the error label (existing wire_clear_on_change path).
+    summary.setPlainText("x" * 300)
+    assert dialog._error_labels["summary"].isHidden() is True

@@ -59,6 +59,7 @@ _log = logging.getLogger("crmbuilder_v2.ui.panels.decisions")
 
 _LONG_TEXT_MIN_HEIGHT = 80
 _LONG_TEXT_FIELDS = (
+    ("executive_summary", "Executive Summary"),
     ("context", "Context"),
     ("decision", "Decision"),
     ("rationale", "Rationale"),

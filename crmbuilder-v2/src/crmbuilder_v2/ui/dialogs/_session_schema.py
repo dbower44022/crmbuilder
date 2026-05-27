@@ -52,6 +52,16 @@ _CONTENT_FIELDS: list[FieldSchema] = [
         placeholder="Paragraph describing the session — what communication is happening, who is involved, what defines its close.",
     ),
     FieldSchema(
+        key="session_executive_summary",
+        label="Executive Summary",
+        widget="text",
+        required=False,
+        min_length=200,
+        max_length=800,
+        placeholder="200-800 character audience-facing summary for non-technical reviewers.",
+        omit_when_empty_in_create=True,
+    ),
+    FieldSchema(
         key="session_medium",
         label="Medium",
         widget="combo",

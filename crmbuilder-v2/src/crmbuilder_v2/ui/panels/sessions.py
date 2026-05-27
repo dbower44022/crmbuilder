@@ -192,6 +192,11 @@ class SessionsPanel(ListDetailPanel):
             required_label("Medium"),
             read_only_line(record.get("session_medium") or ""),
         )
+        executive_summary = record.get("session_executive_summary") or ""
+        form.addRow(
+            "Executive Summary",
+            read_only_text(executive_summary) if executive_summary else read_only_line("—"),
+        )
         form.addRow(
             required_label("Description"),
             read_only_text(record.get("session_description") or ""),

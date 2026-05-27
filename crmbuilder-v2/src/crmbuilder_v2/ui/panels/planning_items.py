@@ -177,6 +177,10 @@ class PlanningItemsPanel(ListDetailPanel):
         outer.addLayout(form)
 
         outer.addWidget(_separator())
+        outer.addWidget(_label("Executive Summary", bold=True))
+        outer.addWidget(_long_text(record.get("executive_summary") or ""))
+
+        outer.addWidget(_separator())
         outer.addWidget(_label("Description", bold=True))
         outer.addWidget(_long_text(record.get("description") or ""))
 

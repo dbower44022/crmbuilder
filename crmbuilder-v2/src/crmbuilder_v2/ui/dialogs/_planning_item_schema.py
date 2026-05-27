@@ -35,6 +35,19 @@ _PLANNING_ITEM_FIELDS_TEMPLATE: list[FieldSchema] = [
     FieldSchema(key="title", label="Title", widget="line", required=True),
     FieldSchema(key="description", label="Description", widget="text"),
     FieldSchema(
+        key="executive_summary",
+        label="Executive Summary",
+        widget="text",
+        required=False,
+        min_length=200,
+        max_length=800,
+        placeholder=(
+            "200-800 character audience-facing summary for non-technical "
+            "reviewers."
+        ),
+        omit_when_empty_in_create=True,
+    ),
+    FieldSchema(
         key="item_type",
         label="Type",
         widget="combo",
