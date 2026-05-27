@@ -187,16 +187,17 @@ class StorageClient:
         email, phone, zoom, in_person, slack, other), ``workstream_identifier``
         (filters via the session_belongs_to_workstream edge).
         """
-        params: dict[str, Any] = {}
+        query: list[str] = []
         if include_deleted:
-            params["include_deleted"] = "true"
+            query.append("include_deleted=true")
         if status is not None:
-            params["status"] = status
+            query.append(f"status={status}")
         if medium is not None:
-            params["medium"] = medium
+            query.append(f"medium={medium}")
         if workstream_identifier is not None:
-            params["workstream_identifier"] = workstream_identifier
-        result = self._request("GET", "/sessions", params=params or None)
+            query.append(f"workstream_identifier={workstream_identifier}")
+        path = "/sessions" + ("?" + "&".join(query) if query else "")
+        result = self._request("GET", path)
         if not isinstance(result, list):
             return []
         return result
