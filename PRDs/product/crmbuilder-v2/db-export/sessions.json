@@ -1713,5 +1713,32 @@
     "session_superseded_at": null,
     "session_title": "PI-091 / PI-092 / PI-093 implementation — surface executive_summary in planning_items, decisions, and sessions desktop UI under orchestrator pattern",
     "session_updated_at": "2026-05-27T18:10:17.195940"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-27T18:14:55.738844",
+    "session_created_at": "2026-05-27T18:14:55.738577",
+    "session_deleted_at": null,
+    "session_description": "Brief Claude Code session at Doug's terminal. Doug requested governance authoring of a session + conversation + PI describing the work of reading each existing PI in the database and updating its executive_summary field with a generated summary. This session is governance-only — it produces the PI record but does not perform the backfill work itself.",
+    "session_ended_at": null,
+    "session_executive_summary": null,
+    "session_identifier": "SES-102",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "chat_platform": "claude_code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude Code"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "Author PI to backfill executive_summary on all existing planning items",
+    "session_updated_at": "2026-05-27T18:14:55.738926"
   }
 ]

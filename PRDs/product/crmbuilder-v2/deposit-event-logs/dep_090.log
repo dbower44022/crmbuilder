@@ -1,0 +1,18 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_102.json
+Label:  Author PI-096 — backfill executive_summary on every existing planning item in the V2 database. PI-074 added the executive_summary column with a 200..800 char length CHECK; PI-075 was scoped for backfill + NOT NULL but hasn't run. Current state: 95 PIs total in main's CRMBUILDER.db, 3 with executive_summary populated, 92 needing backfill. This session authors PI-096 to capture that work. Implementation is deferred to a follow-on session that will read each PI's title + description, generate a 200–800 character executive summary, and PATCH the executive_summary field. Per DEC-310 governance discipline, this payload is the only governance authoring path for the PI — no direct REST POSTs.
+Deposit event: DEP-090
+
+=== session (1 record) ===
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-004 (HTTP 201)
+
+=== planning_items (1 record) ===
+  ✓ POST planning_items  PI-096 (HTTP 201)
+
+=== addresses_planning_items (1 record) ===
+  ✓ POST addresses_planning_items  → PI-096 (HTTP 201)
+
+
+✓ Recorded apply as deposit_event DEP-090 (HTTP 201).

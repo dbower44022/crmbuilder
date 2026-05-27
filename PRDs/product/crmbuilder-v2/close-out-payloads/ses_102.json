@@ -1,0 +1,61 @@
+{
+  "label": "Author PI-096 — backfill executive_summary on every existing planning item in the V2 database. PI-074 added the executive_summary column with a 200..800 char length CHECK; PI-075 was scoped for backfill + NOT NULL but hasn't run. Current state: 95 PIs total in main's CRMBUILDER.db, 3 with executive_summary populated, 92 needing backfill. This session authors PI-096 to capture that work. Implementation is deferred to a follow-on session that will read each PI's title + description, generate a 200–800 character executive summary, and PATCH the executive_summary field. Per DEC-310 governance discipline, this payload is the only governance authoring path for the PI — no direct REST POSTs.",
+
+  "session": {
+    "session_identifier": "SES-102",
+    "session_title": "Author PI to backfill executive_summary on all existing planning items",
+    "session_description": "Brief Claude Code session at Doug's terminal. Doug requested governance authoring of a session + conversation + PI describing the work of reading each existing PI in the database and updating its executive_summary field with a generated summary. This session is governance-only — it produces the PI record but does not perform the backfill work itself. The backfill is sized as a separate follow-on (~95 PATCH calls, one per PI, with generated summaries respecting the 200–800 character CHECK constraint from PI-074).",
+    "session_medium": "chat",
+    "session_status": "complete",
+    "session_medium_metadata": {"chat_platform": "claude_code"},
+    "session_participants": ["Doug Bower", "Claude Code"],
+    "references": [
+      {
+        "source_type": "session",
+        "source_id": "SES-102",
+        "target_type": "workstream",
+        "target_id": "WS-011",
+        "relationship": "session_belongs_to_workstream"
+      }
+    ]
+  },
+
+  "conversation": {
+    "conversation_identifier": "CNV-004",
+    "conversation_title": "Author PI-096 — executive_summary backfill on existing planning items",
+    "conversation_purpose": "Capture the executive_summary backfill work as a tracked planning item so it doesn't get lost.",
+    "conversation_description": "Doug surfaced that 92 of the 95 existing PIs lack executive_summary content (PI-074 added the column with a 200–800 char length CHECK; PI-075 was scoped for backfill but hasn't landed). The conversation authors PI-096 capturing the backfill scope, leaves implementation to a follow-on session. No decisions authored — the backfill scope is mechanical and doesn't warrant a DEC.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-004",
+        "target_type": "session",
+        "target_id": "SES-102",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+
+  "work_tickets": [],
+  "commits": [],
+  "decisions": [],
+
+  "planning_items": [
+    {
+      "identifier": "PI-096",
+      "title": "Backfill executive_summary on every existing planning item by reading the PI's title and description and generating a 200..800 character audience-readable summary",
+      "description": "PI-074 added the ``executive_summary`` TEXT NULL column to ``planning_items`` (also ``decisions`` and ``sessions``) with a CHECK constraint ``executive_summary IS NULL OR length(executive_summary) BETWEEN 200 AND 800``. PI-075 was scoped to backfill + tighten the constraint to NOT NULL but hasn't been executed. Current state (as of SES-102 authoring): 95 PIs in main's CRMBUILDER.db, 3 with executive_summary populated, 92 needing backfill.\n\nScope:\n\n(1) Iterate over every PI in the database (``GET /planning-items?include_deleted=true&limit=...`` paginated as needed — current count fits in one page).\n\n(2) For each PI lacking an executive_summary (``executive_summary IS NULL``), read the PI's ``title`` and ``description`` fields.\n\n(3) Generate an executive_summary respecting the CHECK constraint:\n    - Length: 200..800 characters inclusive (strict — values outside the range fail the CHECK at PATCH time)\n    - Audience: a product manager or executive reviewing the governance log; should communicate the gist of the PI without implementer-facing detail\n    - Style: declarative, present tense, no implementation jargon, no internal identifier references (the reader sees the identifier in the PI header)\n    - Source material: the PI's own title + description; do not invent context not present in the source\n\n(4) PATCH each PI's executive_summary via the REST API (``PATCH /planning-items/{identifier}`` with ``{\"executive_summary\": \"...\"}``). Idempotent: re-running on a PI that already has a summary is a no-op (the script SHOULD detect existing values and skip).\n\n(5) Audit: at completion, query GET /planning-items?include_deleted=true again and confirm every row has an executive_summary populated. Capture the count delta in the session's close-out artifacts.\n\nImplementation candidates:\n\n(a) Manual one-by-one with operator review of each generated summary — high quality, slow. Estimated ~6 hours for 92 PIs at ~4 minutes each.\n\n(b) Scripted bulk generation via an LLM tool call per PI, no operator review — fast but inconsistent quality. ~30 minutes machine time.\n\n(c) Hybrid: scripted bulk generation produces draft summaries; operator reviews and edits a small random sample; corrections feed back as a prompt-tuning iteration; second-pass bulk generation with the refined prompt. ~2 hours.\n\nRecommended: option (c). The 200..800 char constraint provides a hard quality floor; LLM-generated summaries at that length are typically usable but benefit from one review iteration to catch systematic patterns (e.g., over-quoting the description rather than summarizing it).\n\nDeliverable: a session in V2 that records the backfill run, with the PATCH calls itemized in the session's apply prompt and an audit-result artifact (a list of (PI identifier, generated summary length) tuples) committed alongside.\n\nDoes not affect ``decisions`` or ``sessions`` executive_summary backfill — those are separate PIs to be authored at their own discretion.",
+      "item_type": "pending_work",
+      "status": "Open"
+    }
+  ],
+
+  "references": [],
+
+  "resolves_planning_items": [],
+
+  "addresses_planning_items": [
+    {"planning_item_identifier": "PI-096"}
+  ]
+}
