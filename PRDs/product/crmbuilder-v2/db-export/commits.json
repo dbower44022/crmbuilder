@@ -1,0 +1,686 @@
+[
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-24T16:52:00-04:00",
+    "commit_created_at": "2026-05-25T15:28:35.075000",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 4,
+    "commit_identifier": "CM-0001",
+    "commit_message_first_line": "v2: PI-030 slice A — POST /references atomic edge+flip for resolves; methodology §4.0 conversation block",
+    "commit_message_full": "v2: PI-030 slice A — POST /references atomic edge+flip for resolves; methodology §4.0 conversation block\n\nTwo coupled changes preparing v2 governance for PI-030 slice B:\n\n1. references.create() extended: when relationship_kind == 'resolves',\n   the same transaction also calls planning_items.update(target_id,\n   status='Resolved'). Idempotent on already-Resolved targets. Validates\n   the source/target shape via existing vocab/_kinds_for_pair (admits\n   resolves only for conversation → planning_item).\n\n2. methodology-code-change-lifecycle.md amended:\n   - §4 apply-ordering bullet updated to insert 'conversation' between\n     session and work_tickets\n   - §4.0 conversation block added with JSON example and authoring note\n   - Change log row added for the 05-24-26 amendment\n   - Last Updated bumped to 05-24-26 17:30\n\nAuthority: DEC-223 (close-out payload format gains a conversation\nblock; methodology amended) and DEC-224 (POST /references extended\nfor resolves status-flip).\n\nTests: 5 new (4 access-layer, 1 API). Baseline 1481 + 5 = 1486 passed.\n\nCloses the server-side prerequisite for PI-030 slice B's\nresolves_planning_items section handling.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "8623e1632c921f8e0c8cdb075611ee572eb50c15"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "CONV-046",
+    "commit_sha": "70d88e6ee8b1290707da5604fa5043bfe4c5411f",
+    "commit_updated_at": "2026-05-25T15:28:35.075003"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-24T18:42:09-04:00",
+    "commit_created_at": "2026-05-25T15:28:35.185660",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 5,
+    "commit_identifier": "CM-0002",
+    "commit_message_first_line": "v2: PI-030 slice B — apply_close_out.py extensions for five new close-out payload sections",
+    "commit_message_full": "v2: PI-030 slice B — apply_close_out.py extensions for five new close-out payload sections\n\napply_close_out.py now lands all five new sections introduced by the\nCode Change Lifecycle methodology + DEC-223:\n\n  session → conversation → work_tickets → planning_items → commits\n         → decisions → references → resolves_planning_items\n         → addresses_planning_items\n\nSection shape transforms:\n  - work_tickets[].addresses_planning_item → embedded addresses ref\n    (atomic with work_ticket POST; requires work_ticket_identifier in\n    the entry so the embedded ref's source_id is explicit)\n  - commits[].commit_conversation_id auto-populated from the payload's\n    conversation block\n  - resolves_planning_items[] → POST /references with relationship=resolves\n    (slice A's atomic edge+flip fires server-side)\n  - addresses_planning_items[] → POST /references with relationship=addresses\n\nArchitecture changes in apply_close_out.py:\n  - _SECTION_ENDPOINTS replaced with _SECTIONS (NamedTuple-based; NamedTuple\n    chosen over @dataclass to avoid a Python 3.12 dataclass introspection\n    quirk under the test-loader pattern spec_from_file_location)\n  - Per-section optional shape_fn(entry, context) -> body translation\n  - Context dict threaded through the loop, populated from the payload's\n    conversation block; shape functions read conversation_identifier\n  - _record_target_id extended for the v0.8 entity types' prefixed\n    identifier fields (conversation_identifier, work_ticket_identifier,\n    commit_identifier)\n  - _record_label extended for the prefixed identifiers and the\n    resolves/addresses entries' planning_item_identifier\n  - ValueError from a shape function fails the apply with kind=shape_error\n    captured in deposit_event_error_info; subsequent sections still attempt\n\nvocab.py extended to admit conversation, work_ticket, and commit as\ndeposit_event_wrote_record target_types. The access-layer invariant\nsum(records_summary) == len(wrote_records) holds for the new types\nwithout skipping (the references skip pattern is preserved as the\nDEC-215 Option I documented exception).\n\nconversations.py: surgical fix — when an explicit identifier is provided\nand matches an existing row, raise ConflictError BEFORE the duplicate-\ntitle check fires. Previously the title-duplicate check ran first,\nwhich surfaced a 422 \"duplicate title\" on a re-applied close-out\npayload (because the conversation_title was the same) instead of the\ncorrect 409 \"already exists\". The fix restores apply idempotency on\nre-run for payloads that include a conversation block.\n\nBackward compatibility: payloads without the new sections (v0.7 format)\napply unchanged. Sections absent or empty are skipped (no-op). HTTP 409\nSKIP idempotency preserved across all sections including conversation.\n\nTests: 12 new in test_apply_close_out.py (TestPI030NewSections) covering\nconversation block creation with the records_session edge, commits FK\npropagation, missing-conversation-block shape error, work_ticket embedded\naddresses ref, resolves/addresses translation, section ordering per\nmethodology §4, full-payload idempotency on re-run, v0.7 backward\ncompatibility, the v0.8 audit chain via wrote_record edges, atomic\nconversation+refs rollback on conversation POST failure, and resolves\nidempotency on an already-Resolved planning_item. Plus 3 new in\ntest_vocab_v0_8.py for the new wrote_record target_types. Baseline 1486\n+ 15 = 1501 passed.\n\nAuthority: DEC-221 (full scope), DEC-222 (emit-time helper, full\nrecords in payload), DEC-223 (conversation block), DEC-224 (resolves\nextension).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "fabf3c0ed15b47ad7ce6a6682603ad6d60bc687d"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "CONV-046",
+    "commit_sha": "2b5557d4edbe2136ac0dd99dc93d1dc4d11f3994",
+    "commit_updated_at": "2026-05-25T15:28:35.185662"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-24T21:43:10-04:00",
+    "commit_created_at": "2026-05-25T15:28:35.338044",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 2,
+    "commit_identifier": "CM-0003",
+    "commit_message_first_line": "v2: PI-030 slice C — enumerate_commits.py helper for close-out commit ingestion",
+    "commit_message_full": "v2: PI-030 slice C — enumerate_commits.py helper for close-out commit ingestion\n\nNew standalone script that produces the JSON array suitable to paste\ninto a close-out payload's commits section. Sandbox-side use, invoked\nat close-out authoring time per methodology §5.5.\n\nMechanics:\n- Reads db-export/commits.json to find the per-repo last-ingested SHA\n  (highest commit_committed_at value for that repository).\n- Runs git pull --ff-only per repo (skippable via --skip-pull for tests).\n- Enumerates commits via 'git log --reverse <since>..HEAD --format=...'\n  using ASCII control-character separators (US/RS) for safe multi-line\n  commit message parsing. --reverse asks git for chronological order\n  directly, matching CM-NNNN assignment order at apply time.\n- Counts files-changed per SHA via git diff-tree --root (the --root\n  flag ensures the initial commit compares against the empty tree\n  rather than emitting nothing).\n- Emits JSON in commit.md §3.2 shape.\n\nCLI surface:\n- --repos crmbuilder[,ClevelandBusinessMentoring]\n- --engagement-db-export <path>\n- --repo-root <path> + --repo-root-override REPO=PATH for multi-repo\n- --branch main\n- --skip-pull\n- --output <path> (default stdout)\n\nTests: 8 covering happy path, bootstrap (no snapshot), since-snapshot\nfiltering, multi-line message parsing, merge commit parent extraction,\nlowercase SHA normalization, non-git repo error, CLI end-to-end.\n\nAuthority: DEC-222 (emit-time helper, full records in payload),\nmethodology §5.5 (commit enumeration range).",
+    "commit_parent_shas": [
+      "63f13a4ee48313a8e14d8da4a499b43b2a29a8a0"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "CONV-046",
+    "commit_sha": "c6ff67a25eed8c33151383fd7f9e286dd41a7d80",
+    "commit_updated_at": "2026-05-25T15:28:35.338047"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-25T15:35:17-04:00",
+    "commit_created_at": "2026-05-25T19:46:40.845395",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 5,
+    "commit_identifier": "CM-0004",
+    "commit_message_first_line": "v2: Path B shelved — Cloudflare Managed OAuth configured but blocked by upstream claude.ai connector bug",
+    "commit_message_full": "v2: Path B shelved — Cloudflare Managed OAuth configured but blocked by upstream claude.ai connector bug\n\nThis commits the local Path B implementation work toward PI-049 / DEC-226 (replace X-CRMBuilder-Secret middleware with OAuth 2.1 + PKCE auth via Cloudflare Access). Path B was configured end-to-end: middleware.py and the X-CRMBuilder-Secret enforcement removed; server.py wires streamable_http_path='/' so user-entered URL matches the PRM resource field exactly (Anthropic connector spec requirement); config.py drops the mcp_shared_secret setting; Cloudflare-side: existing self-hosted CRM Builder MCP Access app has Managed OAuth enabled with claude.ai/claude.com redirect URIs registered, RFC 8707 compliant, PKCE S256, DCR endpoint live; end-to-end OAuth dance succeeds through the consent step. Outcome: claude.ai connector registration FAILS post-consent with the ofid_* reference-ID error pattern documented in Anthropic GitHub issue #271 and 6+ sibling issues across WorkOS, Clerk, Salesforce, M365, and now Cloudflare. The MCP HTTP transport is left in its current OAuth-ready state, preserved as-is so that if Anthropic eventually fixes the connector bug, claude.ai-web integration is immediately available with no further code work. MCP stdio mode for Claude Desktop continues to work unchanged.",
+    "commit_parent_shas": [
+      "723bc284c477a6b6c7922295dcad218fb2de1766"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "CONV-047",
+    "commit_sha": "fc4690c3cfe699cd85d96719e833f54a60701307",
+    "commit_updated_at": "2026-05-25T19:46:40.845398"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-25T16:20:02-04:00",
+    "commit_created_at": "2026-05-25T20:26:57.146726",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 18,
+    "commit_identifier": "CM-0005",
+    "commit_message_first_line": "v2: PI-002 — make identifier optional on POST for decision/session/risk/planning_item/topic",
+    "commit_message_full": "v2: PI-002 — make identifier optional on POST for decision/session/risk/planning_item/topic\n\nResolves DEC-043's option (C) for the five prefixed-identifier entity\ntypes that hadn't yet adopted server-side auto-assignment. The v0.7\ngovernance entities and v0.4+ methodology entities already implemented\nthe pattern; this commit completes the surface.\n\nPer repository (decisions, sessions, risks, planning_items, topics):\n  - Add _IDENTIFIER_RE prefix-NNN regex\n  - Add _require_identifier_format() returning UnprocessableError (422)\n  - Add _increment_identifier() bumper\n  - Add _insert_with_autoassign() SAVEPOINT-retry helper mirroring\n    access/repositories/domain.py's pattern verbatim\n  - create() now accepts identifier: str | None = None and dispatches\n\nSchemas (api/schemas.py):\n  - DecisionCreateIn, SessionCreateIn, RiskCreateIn, PlanningItemCreateIn,\n    TopicCreateIn: identifier: str -> identifier: str | None = None\n\nThe explicit-identifier path now enforces the entity-type's prefix\nregex (consistent with v0.4+ entities). Three legacy test fixtures\nthat had used wrong-prefix identifiers under the old required-but-\nunvalidated contract (RISK-001 -> RSK-001; TOPIC-NNN -> TOP-NNN;\nDEC-EXPLODE -> DEC-999) are corrected in passing.\n\nCLAUDE.md's v2-section paragraph that previously documented the\nclient-side compute-identifier rule is rewritten to its successor\nform: identifier optional on POST for every prefixed entity type;\nGET /<entity>/next-identifier helpers remain for read-then-write\nclients; charter/status versioned by construction; references\nnumeric-auto-assigned. SES-010's friction is fully discharged.\n\nTests: 30 new access-layer (omit-assigns-next, supply-uses-it,\ninvalid-format-422, empty-string-422, dup-explicit-409, autoassign-\nretry-on-collision) + 10 new API smoke tests across the five\nentity types. Test suite: 1549 passed, 3 skipped.\n\nAuthority: DEC-043 (option C tracked as PI-002), PI-002 (this work).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "723bc284c477a6b6c7922295dcad218fb2de1766"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "CONV-048",
+    "commit_sha": "48a91e358936ae1acfc70d69cf44b60e75bd9cd3",
+    "commit_updated_at": "2026-05-25T20:26:57.146729"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-25T23:22:54-04:00",
+    "commit_created_at": "2026-05-26T03:23:25.820728",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 19,
+    "commit_identifier": "CM-0006",
+    "commit_message_first_line": "v2: PI-003 — persona methodology entity type end-to-end (migration, access, REST, UI, tests)",
+    "commit_message_full": "v2: PI-003 — persona methodology entity type end-to-end (migration, access, REST, UI, tests)\n\nResolves PI-003 (deferred from v0.4 minimum-viable inventory per\nDEC-039). Lands the `persona` methodology entity type per\n`methodology-schema-specs/persona.md` v1.0 — the fifth methodology\nentity type after domain / entity / process / crm_candidate.\n\nMigration 0013 (forward + reverse):\n  - Creates the `personas` table: 9 columns, 2 CHECK constraints,\n    2 indexes.\n  - Extends `refs.source_type` / `refs.target_type` to admit\n    'persona'.\n  - Extends `refs.relationship_kind` to admit\n    'persona_scopes_to_domain' and 'persona_realized_as_entity'.\n  - Extends `change_log.entity_type` to admit 'persona'.\n\nAccess layer:\n  - `Persona` SQLAlchemy model mirroring `Entity` with persona_*\n    prefix; no FK columns (references-over-FK per DEC-053).\n  - `access/repositories/persona.py` — 8 module-level functions\n    (list / get / next_identifier / create / update / patch /\n    delete / restore) plus helpers; SAVEPOINT-retry auto-assign\n    for race-free concurrent creates.\n  - Vocab additions: PERSONA_STATUSES + PERSONA_STATUS_TRANSITIONS\n    (three-status propose-verify with one-way gate, mirroring\n    domain/entity); 'persona' in ENTITY_TYPES; two new kinds in\n    REFERENCE_RELATIONSHIPS; two clauses in _kinds_for_pair.\n\nREST API:\n  - `api/routers/persona.py` — 8 endpoints with `{data, meta,\n    errors}` envelope discipline; status_transition_handler\n    handles dedicated invalid-transition body shape.\n  - 3 Pydantic schemas (PersonaCreateIn / Replace / Patch).\n  - main.py wiring.\n\nUI:\n  - 8 client methods in ui/client.py.\n  - Sidebar entry 'Personas' at Methodology position #5.\n  - main_window dispatch + ENTITY_TYPE_TO_SIDEBAR_LABEL entry.\n  - `PersonasPanel` mirroring EntitiesPanel; first methodology\n    panel to render two outgoing reference kinds in its\n    ReferencesSection. Responsibilities collapsible expanded by\n    default per spec §3.6.3 (client-facing content); Notes\n    collapsed by default (consultant scratchpad).\n  - `PersonaCreateDialog` / `PersonaEditDialog` /\n    `PersonaDeleteDialog` + `_persona_schema.py` mirroring\n    entity_crud.py; adopts v0.4 DEC-067 create-then-attach flow\n    for cross-entity-type consistency.\n  - personas.json filename routes to 'Personas' panel in the\n    file-watch refresh service.\n  - Exporter writes personas.json snapshots alongside the v0.4\n    methodology-entity files.\n\nTests: 76 new tests across 3 files (38 access / 22 API / 16 UI),\ncovering persona.md §3.7 acceptance criteria 1–14 (criterion 12\nUI dialogs end-to-end; criterion 13 vocab + _kinds_for_pair\nintegration through the references POST surface). Plus 4\nconstant-list test updates (test_exporter, test_smoke ×2,\ntest_crm_candidates) per the v0.4 slice-C precedent.\n\nTest suite: 1542 → 1618 passed, 3 skipped, 0 regressions.\n\nAuthority: PI-003 (deferred per DEC-039 from v0.4 minimum-viable\ninventory); persona.md v1.0 (authored under SES-081 / CONV-051 /\nWT-049 as part of SES-081's design-phase orchestration of\nPI-003/PI-004/PI-005). Build prompt:\nCLAUDE-CODE-PROMPT-build-persona.md.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "2f09a3757929d634547a7ca38d502b65249e61a6"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "CONV-052",
+    "commit_sha": "d6fd7c1dde3ef56deadc72e9a9fb9378ef660527",
+    "commit_updated_at": "2026-05-26T03:23:25.820730"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-26T00:09:14-04:00",
+    "commit_created_at": "2026-05-26T04:13:32.003126",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 19,
+    "commit_identifier": "CM-0007",
+    "commit_message_first_line": "v2: PI-004 first slice — `field` methodology entity type end-to-end per field.md v1.0",
+    "commit_message_full": "v2: PI-004 first slice — `field` methodology entity type end-to-end per field.md v1.0\n\nLands the `field` methodology entity type. First of four PI-004\nsibling builds (others: requirement, manual_config, test_spec;\npersona shipped earlier under PI-003).\n\nMigration 0014:\n- fields table with 11 columns per field.md §3.2 plus the\n  `field_previous_parent_entity_identifier` stash column supporting\n  the §3.4.6 soft-delete/restore atomicity story (the refs table\n  has no `deleted_at` column so the access layer hard-deletes the\n  edge and stashes the parent's identifier on delete; restore reads\n  the column to recreate the edge atomically).\n- 4 CHECK constraints (identifier format, status enum, type enum,\n  required-boolean) + 3 indexes.\n- refs.source_type / refs.target_type CHECK extended to admit 'field'.\n- refs.relationship_kind CHECK extended to admit 'field_belongs_to_entity'.\n- change_log.entity_type CHECK extended to admit 'field'.\n\nvocab.py:\n- FIELD_STATUSES + FIELD_STATUS_TRANSITIONS (mirrors entity per spec\n  §3.4 / will-be-DEC-26X).\n- FIELD_TYPES (11 values per spec §3.2.3 / will-be-DEC-27X).\n- 'field' in ENTITY_TYPES; 'field_belongs_to_entity' in\n  REFERENCE_RELATIONSHIPS.\n- _kinds_for_pair((field, entity)) returns\n  {field_belongs_to_entity, is_about, references} per spec §3.3.1.\n\nrepositories/field.py:\n- Atomic POST: field row + field_belongs_to_entity edge + change-log\n  emit in one transaction per spec §3.5.4.\n- Per-entity-scoped name uniqueness via refs lookup per spec §3.2.3\n  (Contact.status and Mentor.status both valid).\n- SAVEPOINT-retry identifier auto-assignment per PI-002.\n- Status transition validation per FIELD_STATUS_TRANSITIONS.\n- field_type enum validation per FIELD_TYPES.\n- Soft-delete and restore round-trip row + edge atomically per\n  spec §3.4.6; the parent-entity identifier stashed in the row's\n  `field_previous_parent_entity_identifier` column between delete\n  and restore.\n\nrepositories/references.py:\n- Cardinality guard on create: second field_belongs_to_entity edge\n  for a live field rejected with 422 cardinality_violation.\n- Cardinality guard on delete/delete_by_id: deletion of the only\n  live field_belongs_to_entity edge of a live field rejected with\n  422 cardinality_violation. Internal `_skip_cardinality_check=True`\n  flag used by repositories/field.delete_field for atomic row+edge\n  soft-delete.\n\nAPI:\n- FieldCreateIn requires field_belongs_to_entity_identifier;\n  Replace/Patch do NOT accept it (per spec §3.5.4 — reparenting\n  requires explicit edge management; future PI tracks convenience\n  endpoint).\n- 8 endpoints: GET list (with ?entity_identifier= filter per\n  §3.5.5), GET next-identifier, GET by id, POST, PUT, PATCH, DELETE,\n  POST /restore.\n\nUI:\n- Fields entry in Methodology sidebar at position #6 (after\n  Personas; the spec's planned position #5 was claimed by persona\n  which shipped first).\n- FieldsPanel as plain ListDetailPanel (master-pane entity grouping\n  per spec §3.6.2 deferred to follow-on slice with TODO comment).\n- FieldCreateDialog includes parent-entity combo picker;\n  FieldEditDialog shows parent as read-only label ('Move to entity'\n  per §3.6.5 deferred to follow-on slice).\n- FieldDeleteDialog edge-text confirmation per §3.6.6.\n- field_required modelled as combo over (\"false\",\"true\") with\n  dialog-side coercion to Python bool (the EntityCrudDialog base\n  supports only string-valued widgets).\n\nTests: 41 new tests across access (26) / API (10) / UI smoke (5)\nincluding atomic-POST correctness, both cardinality-violation\nsurfaces, per-entity name scoping, status transitions, type\nvalidation, soft-delete/restore atomicity, vocab registration,\nfilter-by-entity, server-assigned identifier, explicit-identifier\ncollision, and panel render smoke. Plus 1 constant-list update in\ntest_smoke.py per the v0.4 slice-C precedent.\n\nTest suite: 1618 → 1659 passed, 3 skipped, 0 regressions.\n\nAddresses PI-004 (does NOT resolve; the last sibling's\nbuild-closure session resolves per DEC-232 / SES-074 pattern —\nfield is the first of the four PI-004 sibling builds).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "3af99a74b75cbb1421634bee12fe5ddd64768148"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "CONV-053",
+    "commit_sha": "84459330703814418c9bdc9e8ec33aca33495335",
+    "commit_updated_at": "2026-05-26T04:13:32.003129"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-26T00:19:27-04:00",
+    "commit_created_at": "2026-05-26T06:21:41.214915",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0008",
+    "commit_message_first_line": "v2: PI-052 Slice A — terminal proof-of-concept for Anthropic-API chat loop with three read-only governance tools",
+    "commit_message_full": "v2: PI-052 Slice A — terminal proof-of-concept for Anthropic-API chat loop with three read-only governance tools\n\nWT-048. Per DEC-261 (slicing plan) and DEC-257 (streaming on for the\nproduction UI — explicitly deferred for this spike), this is the\nfoundational architecture validation: a ~130 LOC Python script that runs\na blocking chat loop with three hand-defined tools (get_current_status,\nget_current_charter, list_recent_sessions), validating that the\nAnthropic SDK + native tools=[...] + httpx against the local REST API\ncompose into a working chat loop before any PySide6 code lands.\n\nNo PySide6, no streaming, no caching, no persistence. Slice B is the\nfirst slice with production code. The script is throwaway —\ncommitted as a reference but not maintained.\n\nImplementation notes:\n- ANTHROPIC_API_KEY env required; prints to stderr and exits 1 if missing\n  (no keyring path per DEC-254 — Slice B adds that).\n- Three tools defined inline as JSON Schema in the TOOLS list. No reuse\n  of mcp_server.tools (Slice C does the refactor per design Appendix A).\n- httpx.Client (blocking) against http://127.0.0.1:8765 with 30s timeout.\n- Multi-tool turn handled in the inner while loop — collects every\n  tool_use block in one assistant message, dispatches each, appends a\n  single tool_result message with the full batch.\n- Tool call echo to stderr (one line per call: → name(args)).\n- Final assistant text printed to stdout once stop_reason != tool_use.\n- Ctrl+C and EOF both exit cleanly with code 0.\n- Tool errors caught and returned as is_error tool_result blocks so the\n  assistant sees them rather than the script crashing.\n\nSmoke-tested the three dispatch paths against the live REST API\n(returned status singleton, charter singleton, recent sessions list\nwith default-3 and explicit limit=2). The live Anthropic chat loop\ntest (ANTHROPIC_API_KEY required) is Doug's manual gate per the\nkickoff acceptance criteria.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "1c98021e5c5a386a51db0c0af8f0559a9e65a3f8"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "CONV-057",
+    "commit_sha": "b519df0835b150e7f8e0fcd44196206c349bfd52",
+    "commit_updated_at": "2026-05-26T06:21:41.214918"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-26T02:50:20-04:00",
+    "commit_created_at": "2026-05-26T06:53:28.912424",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 12,
+    "commit_identifier": "CM-0009",
+    "commit_message_first_line": "v2: PI-005 — process v2 schema growth (six TEXT columns + three vocab kinds + UI)",
+    "commit_message_full": "v2: PI-005 — process v2 schema growth (six TEXT columns + three vocab kinds + UI)\n\nGrows the existing process methodology entity per\nmethodology-schema-specs/process-v2.md v2.0. Additive; preserves every\nv0.4 field, the four-value process_classification lifecycle, the eight\nendpoints, and the master pane verbatim.\n\nMigration 0018:\n- Adds six new TEXT NULL columns to processes: process_steps,\n  process_triggers, process_outcomes, process_edge_cases,\n  process_frequency, process_duration_estimate.\n- Extends refs.relationship_kind CHECK to admit\n  process_performed_by_persona, process_touches_field, and\n  process_touches_entity.\n- Reversible: downgrade drops the six columns and reverts the CHECK\n  (with a guarded DELETE of any rows holding the new kinds — lossy\n  recovery posture documented in the function docstring).\n\nvocab.py, model, repo, schemas, router, UI, tests — full PI-005 surface\nshipped per process-v2.md §3.2 / §3.3.2 / §3.5 / §3.6 / §3.7 and the\nSES-081 build prompt. Baseline 1854 → 1876 passed (+22 new), 3 skipped\npre-existing. PI-005 resolves on close-out apply.",
+    "commit_parent_shas": [
+      "3c0ccbff27274b4160b270d5f81922e3b802a660"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "CONV-058",
+    "commit_sha": "2bd7428dd7f5e16bb4bd9a632594257996c4d9b0",
+    "commit_updated_at": "2026-05-26T06:53:28.912427"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-26T11:30:43-04:00",
+    "commit_created_at": "2026-05-26T15:37:13.279684",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 12,
+    "commit_identifier": "CM-0010",
+    "commit_message_first_line": "v2: PI-010 — entity v0.5+ schema growth (entity_kind + entity_variant_of_entity)",
+    "commit_message_full": "v2: PI-010 — entity v0.5+ schema growth (entity_kind + entity_variant_of_entity)\n\nGrows the existing entity methodology entity per\nmethodology-schema-specs/entity.md v1.1. Additive; preserves every\nv0.4 field, the three-status propose-verify lifecycle, the eight\nendpoints, and the master pane verbatim.\n\nMigration 0019:\n- Adds one TEXT NULL column to entities: entity_kind. CHECK admits\n  NULL or one of five enum values (person, organization, event,\n  transaction, other).\n- Extends refs.relationship_kind CHECK to admit\n  entity_variant_of_entity — first entity-to-entity edge kind in v2's\n  vocabulary.\n- Reversible.\n\nvocab.py:\n- Adds ENTITY_KINDS frozenset (five values).\n- Adds entity_variant_of_entity to REFERENCE_RELATIONSHIPS.\n- Adds _kinds_for_pair clause for (entity, entity).\n\nModel, repo, schemas, router:\n- Entity model gains Mapped[str | None] entity_kind column + CHECK.\n- _coerce_kind validator normalises None/empty-string to None.\n- create_entity / update_entity / patch_entity accept the new\n  optional kind kwarg.\n- EntityCreateIn / ReplaceIn / PatchIn schemas accept entity_kind.\n- /entities router passes entity_kind through on POST and PUT.\n\nReferences repo:\n- POST /references with relationship=entity_variant_of_entity\n  rejects self-references, second outbound edges from the same\n  source (cardinality_violation), and one-step cycles. Deeper cycles\n  remain operator-responsibility.\n\nUI:\n- Create + Edit dialogs gain a Kind combo via the new entity_kind\n  FieldSchema.\n- Detail pane gains a Kind read-only label.\n\nTests (+17 new, 0 regressions): five-value round-trip, default NULL,\ninvalid-value rejection, empty-string coercion, PATCH-null clears,\nPATCH change, PUT-clear semantics, variant edge round-trip, variant\ncardinality guard, variant self-reference rejection, variant\none-step cycle rejection, vocab registration sanity, ENTITY_KINDS\nshape check, detail-pane ordering. Baseline 1876 → 1893 passed.\n\nPI-010 resolves on close-out apply.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "d587d73faeda12d9ba2f090b096171870ed64224"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "CONV-060",
+    "commit_sha": "3b326ce0c306453190db8ab292205f329e33ac43",
+    "commit_updated_at": "2026-05-26T15:37:13.279686"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-26T04:13:09+00:00",
+    "commit_created_at": "2026-05-26T19:37:25.437292",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 19,
+    "commit_identifier": "CM-0011",
+    "commit_message_first_line": "Set Master CRMBuilder PRD as direction; mark methodology docs transitional",
+    "commit_message_full": "Set Master CRMBuilder PRD as direction; mark methodology docs transitional\n\n- Insert 'Current direction' section at top of CLAUDE.md naming the Master CRMBuilder PRD at specifications/master-crmbuilder-PRD.md as the consolidating source of truth.\n- Add transitional status header to 17 methodology MD files (3 conduct, 13 interviews/guides, 1 v2 user process guide) pointing readers to the Master CRMBuilder PRD as the future authoritative reference.\n- Add sibling STATUS.md alongside the 13-phase CRM-Builder-Document-Production-Process.docx (the .docx itself is untouched per the MD-only-going-forward rule).\n- Record the 05-26-26 format rule: all PRDs and internal documents in MD going forward; customer-facing deliverables remain format-flexible per case.",
+    "commit_parent_shas": [
+      "2f09a3757929d634547a7ca38d502b65249e61a6"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "CONV-059",
+    "commit_sha": "09f8f62d4a766b5b7a5ca24e29234bbe71f293cb",
+    "commit_updated_at": "2026-05-26T19:37:25.437294"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-26T04:19:40+00:00",
+    "commit_created_at": "2026-05-26T19:37:25.640532",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0012",
+    "commit_message_first_line": "Initial draft of Master CRMBuilder PRD at specifications/master-crmbuilder-PRD.md",
+    "commit_message_full": "Initial draft of Master CRMBuilder PRD at specifications/master-crmbuilder-PRD.md\n\nv0.1 — minimum-viable initial content sufficient to run Phase 1 (Business Context Capture) against CRMBuilder dogfood. Contents:\n\n- Part I — Orientation: what this PRD is, the client concept (CRMBuilder dogfood + CBM validation), the two-layer mental model (governance vs methodology)\n- Part II — The V2 Process Guide: phase sequence overview (13 phases, only Phase 1 drafted; Phases 2-13 are placeholders to be drafted iteratively), the full Phase 1 spec (purpose, inputs, conduct rules, phase-specific rules, activity, captured V2 records, output, completion criteria), the 'what to do first' mini-guide for Phase 1\n- Part III — Iterative Drafting: explicit list of sections to be drafted in subsequent versions, notes on source materials drawn upon, known gaps at v0.1\n\nPhase 1 spec synthesizes content from PRDs/process/interviews/interview-master-prd.md v1.4 (existing strategic-vision interview guide) and PRDs/process/v2-user-process-guide.md v0.1 (existing V2-aligned process guide). Both remain as transitional reference until subsumed.\n\nIncludes a sparse-checkout addition for specifications/ to make the file visible to the local clone.",
+    "commit_parent_shas": [
+      "09f8f62d4a766b5b7a5ca24e29234bbe71f293cb"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "CONV-059",
+    "commit_sha": "cfaec2933cf3f9d6355e49ee31a61e9f3bb3c0e5",
+    "commit_updated_at": "2026-05-26T19:37:25.640535"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-26T04:23:09+00:00",
+    "commit_created_at": "2026-05-26T19:37:25.788224",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0013",
+    "commit_message_first_line": "Mark Master CRMBuilder PRD as discussion draft pending review",
+    "commit_message_full": "Mark Master CRMBuilder PRD as discussion draft pending review\n\nAdds prominent 'DISCUSSION DRAFT — NOT YET APPROVED' marker at the top of specifications/master-crmbuilder-PRD.md. Every substantive structural and content choice in v0.1 is unilateral and open for revision through discussion with Doug.",
+    "commit_parent_shas": [
+      "cfaec2933cf3f9d6355e49ee31a61e9f3bb3c0e5"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "CONV-059",
+    "commit_sha": "e9d30e0be6b91c0af7e40abc815fa8639a8a4e79",
+    "commit_updated_at": "2026-05-26T19:37:25.788227"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-26T04:32:47+00:00",
+    "commit_created_at": "2026-05-26T19:37:25.966568",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0014",
+    "commit_message_first_line": "Create specifications/glossary.md; seed with Engagement (TERM-001)",
+    "commit_message_full": "Create specifications/glossary.md; seed with Engagement (TERM-001)\n\nFirst glossary entry per the where-do-term-definitions-live decision authored in this session. Glossary lives in MD per Option A; a Planning Item captured separately tracks the future migration to V2 records with desktop UI access (Option C as the architectural endpoint).\n\nFile includes:\n- Header table with status and future-state pointer\n- Change log\n- Contribution guidance (entry format, identifier numbering convention)\n- Engagement entry (TERM-001): definition, scope, examples, distinguishing notes vs Client/Session/Project, related terms",
+    "commit_parent_shas": [
+      "e9d30e0be6b91c0af7e40abc815fa8639a8a4e79"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "CONV-059",
+    "commit_sha": "d9337607031f1b8e98e7c99988296cff0ba1069b",
+    "commit_updated_at": "2026-05-26T19:37:25.966570"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-26T05:25:49+00:00",
+    "commit_created_at": "2026-05-26T19:37:26.114882",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0015",
+    "commit_message_first_line": "Expand glossary to v0.2: add Skill, Pattern, Inventory, Client (TERM-002 through TERM-005)",
+    "commit_message_full": "Expand glossary to v0.2: add Skill, Pattern, Inventory, Client (TERM-002 through TERM-005)\n\nFour glossary entries added per session discussion:\n\n- Skill (TERM-002): reusable domain-specific knowledge file, loaded contextually on client defining statements\n- Pattern (TERM-003): reusable structural template for a business domain or org type\n- Inventory (TERM-004): reference list of typical items for a domain or org type\n- Client (TERM-005): organization whose product is being defined through the CRMBuilder process\n\nAll four are Category 3 (Process Support Knowledge/Tools) reference content except Client (which is a fundamental engagement concept). Each entry follows the approved format (identifier, definition, scope, examples, distinguishing notes, related terms). Identifiers assigned in creation order; file renders alphabetically.\n\nChange log bumped to v0.2. Last Updated 05-26-26 14:00.",
+    "commit_parent_shas": [
+      "e96e40919ba3bb6483013e2de3fd81dfa2cddf53"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "CONV-059",
+    "commit_sha": "794d5f41cff6373afbe7b1dde95e5c74fc27ab9d",
+    "commit_updated_at": "2026-05-26T19:37:26.114885"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-26T20:00:14+00:00",
+    "commit_created_at": "2026-05-27T02:42:40.253710",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0016",
+    "commit_message_first_line": "v2: Author kickoff prompt for continuing the V2 architecture review",
+    "commit_message_full": "v2: Author kickoff prompt for continuing the V2 architecture review\n\nSeeds a new Claude.ai conversation that picks up where SES-089 left\noff — Master CRMBuilder PRD v0.1 still DISCUSSION DRAFT, 13 open\nplanning items (PI-061..PI-073), 10 decisions recorded\n(DEC-291..DEC-300).\n\nKickoff covers:\n- What landed in SES-089 (direction, decisions, planning items,\n  artifacts on disk)\n- The thirteen open planning items with state\n- Eight candidate working directions for the next session\n  (A: review/revise the PRD; B: cross-engagement reference store\n  architecture; C: Session/Conversation entity redesign; D: client-\n  input storage; E: Engagement Level Setup; F: continue PRD drafting;\n  G: specifications/ README; H: open-ended)\n- Pre-flight identifier-head capture per DEC-300 with the curl\n  commands inlined\n- Carried-forward working conventions (one thing at a time, sandbox\n  commits-and-pushes together, three-category conceptual model,\n  end-to-end PRD scope, glossary expansion welcome)\n- A pasteable seed prompt at the bottom for Doug to drop into the\n  new Claude.ai conversation\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "c5227814afcfaec52ec51506ac0874d6c2f48379"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "CONV-062",
+    "commit_sha": "91c760e560f3ded397f16b12b080a6ce22e1add1",
+    "commit_updated_at": "2026-05-27T02:42:40.253712"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-27T03:12:48+00:00",
+    "commit_created_at": "2026-05-27T03:20:00.029037",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0017",
+    "commit_message_first_line": "v2: Author kickoff prompt for PI-085 Domain Overview drafting session",
+    "commit_message_full": "v2: Author kickoff prompt for PI-085 Domain Overview drafting session\n\nSeeds the new Claude.ai conversation that will execute PI-085 — define\nthe CRMBuilder Domain that owns governance recording, producing the\nDomain Overview document.\n\nKickoff covers:\n- What landed in SES-093 (the dogfood reframe; DEC-311; PI-085..088)\n- Pre-flight identifier-head capture per DEC-300\n- The Domain naming question to be resolved at session start\n- Working conventions carried forward\n- A pasteable seed prompt for the new chat\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "bb298d51feed5e0eff1c39875d5aa84a0f8182b2"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "CONV-063",
+    "commit_sha": "e357bfc5d8d75bbc776d05dd4c542afebd3528eb",
+    "commit_updated_at": "2026-05-27T03:20:00.029040"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-27T04:40:12+00:00",
+    "commit_created_at": "2026-05-27T05:31:18.931660",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0018",
+    "commit_message_first_line": "v2: governance-recording-rules.md v0.1 DISCUSSION DRAFT",
+    "commit_message_full": "v2: governance-recording-rules.md v0.1 DISCUSSION DRAFT\n\nInitial draft of normative rules for governance-record authoring in V2.\nCovers workstreams, sessions, conversations, decisions, planning items,\nreferences, work tickets, and close-out payloads.\n\n- Stored at specifications/ alongside master-crmbuilder-PRD.md, where the\n  eventual consolidating wrapper will live.\n- Applies equally to AI agents and human agents (DEC-310).\n- Core principle: record authoring goes through API or MCP, not UI.\n- Outline approved in this conversation; workstreams added as first-class\n  section 2 (creation via direct API/MCP, not bundled into close-out\n  payloads under current convention).\n\nWorking draft; v0.1 over the agreed word budget (~2700 vs ~2150 target);\ntrim pass deferred pending Doug review.",
+    "commit_parent_shas": [
+      "408881ffe017f5566400d53f1aec2821d85eec3b"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "CONV-066",
+    "commit_sha": "5a2b6a4b64003cf09cb2f123cc5a8e61310677cb",
+    "commit_updated_at": "2026-05-27T05:31:18.931662"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-27T04:53:07+00:00",
+    "commit_created_at": "2026-05-27T05:31:19.116857",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 2,
+    "commit_identifier": "CM-0019",
+    "commit_message_first_line": "v2: wire governance-recording-rules into CLAUDE.md + add kickoff pre-flight requirements",
+    "commit_message_full": "v2: wire governance-recording-rules into CLAUDE.md + add kickoff pre-flight requirements\n\nCLAUDE.md:\n- Added 'v2 governance recording rules' bullet to Working conventions,\n  pointing to specifications/governance-recording-rules.md as the\n  authoritative reference for governance-record authoring.\n- Core principle surfaced inline: API/MCP only, no UI authoring.\n\nspecifications/governance-recording-rules.md:\n- Added 'Kickoff prompt pre-flight requirements' sub-section to §1\n  (Identifier Discipline) listing the six steps every v2 kickoff\n  prompt's pre-flight must direct the agent to perform: read engagement\n  CLAUDE.md, read this rules document, capture identifier heads,\n  identify parent workstream, API health check, pull-rebase.\n- Notes that a canonical kickoff-prompt template is a follow-on item.\n- Revision history row added; same-day same-session amendment, no\n  version bump.\n\nBoth edits land together per sandbox commit-and-push convention.",
+    "commit_parent_shas": [
+      "5a2b6a4b64003cf09cb2f123cc5a8e61310677cb"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "CONV-066",
+    "commit_sha": "c28b3638f9a21d71ee20c5ceeff4e9a1694a1dba",
+    "commit_updated_at": "2026-05-27T05:31:19.116860"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-27T05:09:21+00:00",
+    "commit_created_at": "2026-05-27T05:31:19.341355",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0020",
+    "commit_message_first_line": "v2: align governance-recording-rules with DEC-299 conceptual model + add Mandatory Logging and stop-and-log discipline",
+    "commit_message_full": "v2: align governance-recording-rules with DEC-299 conceptual model + add Mandatory Logging and stop-and-log discipline\n\nSubstantial conceptual rewrite triggered by Doug's observation that the\ndocument was silent on (a) the requirement to log every Claude.ai chat\noperating against V2, and (b) the discipline at conversation boundaries\nwithin a multi-conversation session.\n\nThe investigation surfaced two prior errors in v0.1:\n\n- I had framed Session as the close-out completion record and\n  Conversation as one-per-Claude.ai-chat. DEC-299 (already Active in\n  V2) inverts this: Session is the medium-agnostic communication unit\n  (1 Claude.ai chat = 1 session); Conversation is a topical sub-unit\n  (1:N within session). DEC-299 directs that documentation use the new\n  conceptual model even before PI-073's schema migration completes.\n\n- I had documented the close-out payload as a 'four-section shape'\n  drawn from SES-046 through SES-052 precedent, when the actual current\n  schema is v0.8 with ten elements (label + nine record sections), as\n  documented in CLAUDE.md line 106.\n\nChanges in this commit:\n\n- §0: added Mandatory Logging as a second core principle alongside\n  API/MCP-only. Every session against a V2 engagement is logged. No\n  off-the-record communication.\n- §3: rewrote Session framing to medium-agnostic communication unit\n  per DEC-299. Added medium-classifier note pointing at PI-073 open\n  design questions.\n- §4: rewrote Conversation framing to topical sub-unit per DEC-299.\n  Added stop-and-log discipline with two escape hatches: close current\n  conversation and open new one in same session, OR suggest new\n  session. Added boundary heuristics. Added authoring mechanism:\n  direct API POST at boundary, not bundled in close-out.\n- §9: rewrote to v0.8 ten-element payload schema (label + 9 record\n  sections), correcting the prior four-section error. Added\n  transitional note for singular conversation -> plural conversations\n  pluralization via PI-073.\n- §10: added three failure modes — topic shift without stop-and-log,\n  multiple conversations conflated under v0.8 singular constraint, and\n  off-the-record session.\n- Revision history row added; document grew from ~2700 to 4022 words.\n  Over the original v0.1 budget; trim pass deferred pending review.",
+    "commit_parent_shas": [
+      "c28b3638f9a21d71ee20c5ceeff4e9a1694a1dba"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "CONV-066",
+    "commit_sha": "b8a6df17f4e22d761ac2e8843d1c4ed2475d5209",
+    "commit_updated_at": "2026-05-27T05:31:19.341359"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-074-executive-summary",
+    "commit_committed_at": "2026-05-27T12:25:44-04:00",
+    "commit_created_at": "2026-05-27T16:38:37.716282",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 8,
+    "commit_identifier": "CM-0021",
+    "commit_message_first_line": "v2: PI-074 — add executive_summary column to planning_items, decisions, sessions",
+    "commit_message_full": "v2: PI-074 — add executive_summary column to planning_items, decisions, sessions\n\nAdds a nullable ``executive_summary`` TEXT column to each of the three\ngovernance record types so a product manager or executive reading the\ngovernance log can see the gist of every record without parsing\nimplementer-facing detail. A CHECK constraint enforces 200-800\ncharacter length when the value is set; PI-075 will backfill existing\nrows and tighten the column to NOT NULL in a follow-on migration.\n\nChanges:\n\n- Alembic revision 0020 (heads on top of 0019). Three batch_alter_table\n  operations, one per target table. Each adds the column and a\n  per-table named CHECK constraint\n  (``ck_planning_executive_summary_length``,\n  ``ck_decision_executive_summary_length``,\n  ``ck_session_executive_summary_length``).\n- ``migrations/env.py`` now uses a dedicated migration engine with\n  ``foreign_keys=OFF`` set at connect time. SQLite batch_alter_table\n  copies and drops tables; the drop trips FK enforcement on\n  self-referencing rows (decisions.supersedes_id /\n  superseded_by_id). Issuing PRAGMA after SQLAlchemy's connect()\n  fails because the driver auto-begins a transaction. The runtime\n  engine remains FK-on; only the migration engine relaxes it.\n- ``access/_helpers.py`` grows ``validate_optional_length()`` — None\n  and whitespace-only strings normalise to None; non-string raises\n  ``ValidationError``; out-of-range strings raise with a\n  field-specific message.\n- Repository ``create`` and ``update`` paths on decisions,\n  planning_items, and sessions accept ``executive_summary`` and\n  validate via the helper. The update loop preserves explicit None\n  (the column is nullable, so don't coerce to \"\" like the other\n  legacy update fields).\n- Pydantic ``Create``/``Update`` schemas grow the field on all three\n  entity types. Routers pass through ``**body.model_dump()`` and\n  pick up the field automatically.\n- The JSON exporter is column-driven via\n  ``row.__table__.columns``, so the new column flows into\n  ``db-export/{planning_items,decisions,sessions}.json`` without\n  exporter changes.\n\nValidation:\n\n- All migration, access, and API tests pass (1086 passed, 2 skipped).\n- End-to-end smoke against the branch DB confirms: under-200 rejected,\n  over-800 rejected, None accepted, valid 200-800 accepted.\n\nBranch isolation: branched off ``main`` at 5dcda0e. Branch-isolated DB\ncopies live in ``crmbuilder-v2/data/branch-pi-074/`` (gitignored). The\nlive engagement DBs at ``crmbuilder-v2/data/engagements/*.db`` are not\ntouched by branch work.\n\nCross-PI note: PI-073 (Session/Conversation redesign) is in flight on\nits own branch and renames ``sessions`` to the new schema. After PI-073\nlands, the ``sessions.executive_summary`` column on PI-074 must be\npreserved on the renamed table or migrated to ``session_executive_summary``\nper the post-PI-073 parent-prefix convention. Whoever lands second\nabsorbs the rebase.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "5dcda0e21a06f9c478bcd4a06b5a94b7233e5a43"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "CONV-067",
+    "commit_sha": "6ae82c33291a810ccd499cc1a865ad3056627973",
+    "commit_updated_at": "2026-05-27T16:38:37.716284"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-073-redesign",
+    "commit_committed_at": "2026-05-27T11:48:35-04:00",
+    "commit_created_at": "2026-05-27T17:40:12.263160",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 2,
+    "commit_identifier": "CM-0022",
+    "commit_message_first_line": "v2: PI-073 branch initialized — v0.3 plan (branch + DB isolation)",
+    "commit_message_full": "v2: PI-073 branch initialized — v0.3 plan (branch + DB isolation)\n\nInitializes the pi-073-redesign branch for the Session/Conversation entity redesign per PI-073 + DEC-314. v0.3 plan documents the branch + DB-isolation strategy that quarantines mid-flight breakage from main. Backups at ~/v2-backups/{CRMBUILDER,CBM}.db.pre-pi-073.20260527-100817.",
+    "commit_parent_shas": [
+      "5dcda0e21a06f9c478bcd4a06b5a94b7233e5a43"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-099",
+    "commit_sha": "d8b2d37fa42a1560cc417091d51f98e02d62ead9",
+    "commit_updated_at": "2026-05-27T17:40:12.263163"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-073-redesign",
+    "commit_committed_at": "2026-05-27T11:55:02-04:00",
+    "commit_created_at": "2026-05-27T17:40:12.499900",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0023",
+    "commit_message_first_line": "v2: PI-073 Phase A — Alembic migration redesigning session and conversation tables",
+    "commit_message_full": "v2: PI-073 Phase A — Alembic migration redesigning session and conversation tables\n\nMigration 0020 (pre-rebase number; renumbered to 0021 at rebase to revise 0020_pi_074_executive_summary). Renames old conversations → legacy_conversations and old sessions → legacy_sessions, creates new sessions table (medium-agnostic) and new conversations table (topical sub-unit, CNV-NNN identifier), extends refs.relationship_kind CHECK with six new kinds, renames commits.commit_conversation_id → commit_session_id. CHECK constraints on identifier format admit both legacy and new prefixes per the migration plan.",
+    "commit_parent_shas": [
+      "d8b2d37fa42a1560cc417091d51f98e02d62ead9"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-099",
+    "commit_sha": "6cd62ca410e468effe8b081023b3efd63b14dfa8",
+    "commit_updated_at": "2026-05-27T17:40:12.499903"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-073-redesign",
+    "commit_committed_at": "2026-05-27T12:02:42-04:00",
+    "commit_created_at": "2026-05-27T17:40:12.729637",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 2,
+    "commit_identifier": "CM-0024",
+    "commit_message_first_line": "v2: PI-073 Phase B.1 — vocab + ORM models updated to new session/conversation schema",
+    "commit_message_full": "v2: PI-073 Phase B.1 — vocab + ORM models updated to new session/conversation schema\n\nReplaces SESSION_STATUSES and CONVERSATION_STATUSES with the new six-status sets; adds SESSION_MEDIUMS; adds six new relationship kinds (session_belongs_to_workstream, session_opens_against_work_ticket, session_follows_from, conversation_belongs_to_session, conversation_follows_from, conversation_relates_to) and matching _kinds_for_pair clauses. Rewrites the Session and Conversation ORM model classes to match the new schema.",
+    "commit_parent_shas": [
+      "6cd62ca410e468effe8b081023b3efd63b14dfa8"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-099",
+    "commit_sha": "bdce21d7565e1f6f28461519a641e6dd1337b636",
+    "commit_updated_at": "2026-05-27T17:40:12.729639"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-073-redesign",
+    "commit_committed_at": "2026-05-27T12:44:22-04:00",
+    "commit_created_at": "2026-05-27T17:40:12.919529",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 2,
+    "commit_identifier": "CM-0025",
+    "commit_message_first_line": "v2: PI-073 Phase B.2 — sessions and conversations repositories rewritten for new schema",
+    "commit_message_full": "v2: PI-073 Phase B.2 — sessions and conversations repositories rewritten for new schema\n\nRewrites sessions.py (full lifecycle CRUD; session_belongs_to_workstream edge required; complete-requires-conversation edge rule) and conversations.py (CNV-NNN prefix; conversation_belongs_to_session edge required; cross-session continuity via conversation_follows_from / conversation_relates_to). Legacy shims preserved for callers not yet ported.",
+    "commit_parent_shas": [
+      "bdce21d7565e1f6f28461519a641e6dd1337b636"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-099",
+    "commit_sha": "63562d8740ed6b3f0e8027bf825ea9814ac6b081",
+    "commit_updated_at": "2026-05-27T17:40:12.919532"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-073-redesign",
+    "commit_committed_at": "2026-05-27T12:54:33-04:00",
+    "commit_created_at": "2026-05-27T17:40:13.134188",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 7,
+    "commit_identifier": "CM-0026",
+    "commit_message_first_line": "v2: PI-073 Phase C — REST routers, schemas, apply_close_out.py updated for new shape",
+    "commit_message_full": "v2: PI-073 Phase C — REST routers, schemas, apply_close_out.py updated for new shape\n\nRewrites the /sessions and /conversations routers to full nine-endpoint CRUD; updates Pydantic schemas for the new field set including session_medium_metadata JSON column and conversation_summary; renames commit_conversation_id → commit_session_id throughout commits router + repository + schemas; updates apply_close_out.py to derive commit_session_id from the payload's session block instead of conversation_identifier from the conversation block. End-to-end API smoke-test verified against branch DB.",
+    "commit_parent_shas": [
+      "63562d8740ed6b3f0e8027bf825ea9814ac6b081"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-099",
+    "commit_sha": "313b8e063bad209a60ec35f75987b1ce5ab470f3",
+    "commit_updated_at": "2026-05-27T17:40:13.134191"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-073-redesign",
+    "commit_committed_at": "2026-05-27T12:57:03-04:00",
+    "commit_created_at": "2026-05-27T17:40:13.368854",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0027",
+    "commit_message_first_line": "v2: PI-073 Phase D — MCP tools updated for new session/conversation shape",
+    "commit_message_full": "v2: PI-073 Phase D — MCP tools updated for new session/conversation shape\n\nUpdates the MCP tool surface for sessions (create_session uses new field set including required medium; new update_session tool; list_sessions gains status/medium/workstream_identifier filters; list_conversations_for_session added) and adds the previously-absent conversation tools (get/list/create/update/delete_conversation, with CNV-NNN identifier auto-assignment).",
+    "commit_parent_shas": [
+      "313b8e063bad209a60ec35f75987b1ce5ab470f3"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-099",
+    "commit_sha": "98988702208d63efe97ca9940c011b28a1ad2188",
+    "commit_updated_at": "2026-05-27T17:40:13.368855"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-073-redesign",
+    "commit_committed_at": "2026-05-27T13:03:28-04:00",
+    "commit_created_at": "2026-05-27T17:40:13.598384",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 7,
+    "commit_identifier": "CM-0028",
+    "commit_message_first_line": "v2: PI-073 Phase E — Desktop UI updated for new session/conversation shape",
+    "commit_message_full": "v2: PI-073 Phase E — Desktop UI updated for new session/conversation shape\n\nFull desktop UI rewrite for the new model. Sessions panel gains full lifecycle CRUD (edit / delete / restore / show-deleted), six-status combo with transition-aware choices, lifecycle timestamps section, JSON medium_metadata + participants collapsible sections. Session dialog set (Create / Edit / Delete) modeled on v0.7 conversation_crud pattern with workstream-membership selector authoring session_belongs_to_workstream edge inline. Conversation dialog gains session-membership selector replacing the legacy workstream selector; conversation_summary field added to schema. client.py adds list_sessions filters, next_session_identifier, patch_session, delete_session, restore_session; list_conversations filter changes workstream_identifier → session_identifier.",
+    "commit_parent_shas": [
+      "98988702208d63efe97ca9940c011b28a1ad2188"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-099",
+    "commit_sha": "5b46e9231b78ad7a021b9be8818d5171aace76f2",
+    "commit_updated_at": "2026-05-27T17:40:13.598387"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-073-redesign",
+    "commit_committed_at": "2026-05-27T13:10:04-04:00",
+    "commit_created_at": "2026-05-27T17:40:13.782379",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 3,
+    "commit_identifier": "CM-0029",
+    "commit_message_first_line": "v2: PI-073 Phase F — Data migration of 66 conversations + 95 sessions to new shape",
+    "commit_message_full": "v2: PI-073 Phase F — Data migration of 66 conversations + 95 sessions to new shape\n\nAmends migration 0020 CHECK constraints to admit identifier-prefix asymmetry (legacy CONV-NNN rows retain identifiers as sessions; legacy SES-NNN rows retain identifiers as conversations). Introduces scripts/migrate_pi_073_data.py — the data-only migration that translates legacy_conversations → new sessions and legacy_sessions → new conversations, with reference-edge retargeting (source/target type flips, kind renames, conversation_records_session direction reversal into conversation_belongs_to_session). Audit report at PRDs/product/crmbuilder-v2/pi-073-migration-audit.md. End-to-end API smoke-test post-migration: GET /sessions count=66, GET /conversations count=95, derived endpoints intact, edge rules firing.",
+    "commit_parent_shas": [
+      "5b46e9231b78ad7a021b9be8818d5171aace76f2"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-099",
+    "commit_sha": "f5dfda597b5e7cc0003dfecfc9b7d3ad8d95015f",
+    "commit_updated_at": "2026-05-27T17:40:13.782383"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-27T17:37:05+00:00",
+    "commit_created_at": "2026-05-27T17:59:59.853427",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0030",
+    "commit_message_first_line": "v2: Phase 2 Domain Discovery candidate inventory for CRMBUILDER engagement (SES-098, re-keyed from SES-097 after collision with PI-074 implementation session)",
+    "commit_message_full": "v2: Phase 2 Domain Discovery candidate inventory for CRMBUILDER engagement (SES-098, re-keyed from SES-097 after collision with PI-074 implementation session)\n\nCaptures the Phase 2 Domain Discovery output for the CRMBUILDER dogfood\nengagement as a durable Markdown working artifact per Option C.1 (DEC-319):\n\n- 14 candidate domains, all passing Rule 2.1 against the revised mission\n  in DEC-320 (application framework framing, three-mode platform-or-build\n  option)\n- ~40 candidate entities grouped by domain, marked V1 / V2 / spec\n- 9 candidate personas with Rule 2.2 backings (2 resolved, 7 TBD pending\n  PI-091 user/role entity model)\n- Full Phase 2 interview transcript organized by topic\n- Decision summaries for DEC-319 through DEC-324\n- Planning item summaries for PI-091 and PI-092\n\nRe-keyed at push time from SES-097 to SES-098 after origin/main showed\nSES-097 was claimed by a parallel session (PI-074 executive_summary\ncolumn implementation). DEC-319..324 and PI-091..092 identifiers\nunchanged (origin DEC head DEC-318, origin PI head PI-090). Conversation\nre-keyed CONV-067 -> CONV-068.\n\nThis is the source-of-truth for CRMBuilder's Phase 2 inventory until\nPI-092 resolves and the records are promoted to V2 Domain/Persona/Entity\nrecords via whatever ingestion mechanism is chosen.\n\nConducted per PRDs/process/interviews/interview-domain-discovery.md v1.1\nwith Variant A administrator-as-proxy adapted for dogfood (Doug as both\nadministrator and sole stakeholder).",
+    "commit_parent_shas": [
+      "ebfdb9bf5f37f844d96d24c83a7fb4ab3d57c224"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-100",
+    "commit_sha": "bf5ed0ed6800a12b55d54f226e3c3d493ef974c9",
+    "commit_updated_at": "2026-05-27T17:59:59.853430"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-27T14:07:04-04:00",
+    "commit_created_at": "2026-05-27T18:10:17.435904",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 8,
+    "commit_identifier": "CM-0031",
+    "commit_message_first_line": "v2: PI-091/092/093 — surface executive_summary in planning_items, decisions, sessions desktop UI",
+    "commit_message_full": "v2: PI-091/092/093 — surface executive_summary in planning_items, decisions, sessions desktop UI\n\nBrings the audience-facing executive_summary field (added in PI-074) into\nthe v2 desktop app for all three governance entity types. PMs and\nexecutives now see the same 200-800-character audience-readable summary\nin the create / edit dialogs and on the master pane that has been\nwrite/readable via API/MCP since PI-074. Optional until PI-075's\nbackfill tightens to NOT NULL.\n\nShared base infrastructure (consumed by all three PIs):\n\n- FieldSchema grows ``min_length: int | None`` and ``max_length: int | None``\n  attributes. When set on a ``widget=\"text\"`` field, EntityCrudDialog\n  attaches a live ``\"N / max_length\"`` counter beneath the\n  ``QPlainTextEdit`` and enforces the range pre-submit.\n- Counter color rules: neutral at N=0 and when ``min_length <= N <= max_length``;\n  amber (``t(\"color.warning.default\")``, #9D6517) when ``0 < N < min_length``;\n  red (``_INLINE_ERROR_STYLE``, #B22222) when ``N > max_length``. Updates\n  live on textChanged.\n- Length gate runs after required / regex checks via a new\n  ``_validate_lengths`` step. The inline error message uses exactly the\n  wording ``validate_optional_length`` (PI-074) raises from the API:\n  ``\"must be {min_length}-{max_length} characters (got {N})\"`` — so the\n  client error and the API error are character-identical.\n- Empty / whitespace-only values are always valid (the field is optional;\n  the access-layer helper coerces empty/whitespace to None before the\n  range check, and the UI mirrors that).\n- Counter is wired through the existing ``_wrap_with_error`` container\n  as an optional third row. Containers without length-bounded fields\n  are unchanged.\n\nPI-091 — planning_items:\n\n- ``_planning_item_schema.py``: new ``executive_summary`` FieldSchema\n  between ``description`` and ``item_type``. ``omit_when_empty_in_create=True``.\n- ``panels/planning_items.py``: \"Executive Summary\" section in the\n  detail pane above Description, mirroring the existing ``_long_text``\n  treatment for the description field.\n\nPI-092 — decisions:\n\n- ``_decision_schema.py``: new ``executive_summary`` FieldSchema between\n  ``status`` and ``context`` so the audience-facing summary appears\n  above the implementer-facing long-form fields.\n- ``panels/decisions.py``: ``(\"executive_summary\", \"Executive Summary\")``\n  inserted as the first entry of ``_LONG_TEXT_FIELDS``, rendering above\n  Context / Decision / Rationale / Alternatives / Consequences in the\n  detail pane's existing long-text loop.\n\nPI-093 — sessions:\n\n- ``_session_schema.py``: new ``session_executive_summary`` FieldSchema\n  (using the post-PI-073 ``session_``-prefixed column name verified\n  against access/models.py) between ``session_description`` and\n  ``session_medium``. PI-093's \"no edit dialog per DEC-013\" note in its\n  body is stale: DEC-314 superseded DEC-013 and SessionEditDialog\n  already exists in session_create.py, so both Create and Edit pick the\n  field up automatically through the shared schema list.\n- ``panels/sessions.py``: \"Executive Summary\" form row immediately above\n  the Description row in the main detail form. Empty values render as a\n  dim ``—`` placeholder via ``read_only_line`` matching the panel's\n  existing form-row convention.\n\nTests:\n\n- ``tests/crmbuilder_v2/ui/test_crud_dialog_base.py`` grows 11 new tests\n  covering counter construction, color thresholds (neutral / amber / red),\n  single-bound rendering, the length-validation gate (below min, above\n  max, in range, empty optional), error-clearing on edit, and the\n  no-counter-when-no-bounds default. 36 passed / 0 failed on the file.\n- Targeted runs: 207 passed across planning_item / decision / crud_dialog\n  scope. 6 pre-existing failures in test_orientation, test_navigation,\n  test_apply_close_out, and mcp_server/test_smoke all reproduce against\n  clean main (verified via stash + re-run); they sit in PI-073\n  Session/Conversation redesign territory (apply_close_out hasn't yet\n  caught up to the new session/conversation Pydantic shape) and are not\n  regressions from this work.\n- ``tests/crmbuilder_v2/ui/test_session_create_dialog.py`` has a\n  collection-time ``ImportError`` for ``SESSION_CONVERSATION_REF_PLACEHOLDER``;\n  also pre-existing on clean main.\n\nPI-091 and PI-092 are unchanged in the access layer / API since PI-074\nalready wired the field through. PI-093 likewise consumes\n``session_executive_summary`` from PI-074. This commit is UI-only.\n\nWorkstream parent: WS-012 (Parallel agent orchestrator and executive summary).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "dec2edd4868e0aaee4c197892781b9f7b27303e1"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-101",
+    "commit_sha": "3adb959e6bf8d4f7867a81709fef1065445fcf9d",
+    "commit_updated_at": "2026-05-27T18:10:17.435907"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-27T14:21:08-04:00",
+    "commit_created_at": "2026-05-27T18:31:18.195057",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0032",
+    "commit_message_first_line": "v2: PI-068 — author specifications/README.md manifest",
+    "commit_message_full": "v2: PI-068 — author specifications/README.md manifest\n\nCreates the entry-point manifest for the specifications/ directory.\nNames the current canonical documents (master-crmbuilder-PRD.md,\ngovernance-recording-rules.md, glossary.md), recommended reading\norder, and cross-references the supersession ledger in CLAUDE.md.\n\nGoal per PI-068: 'where is the definitive document for X?' is\nanswerable by reading specifications/README.md first.\n\nFrom PI-068.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "7ad4ce42fb2a3e13e603f5b7ead929bf28ede4ee"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-103",
+    "commit_sha": "cac3909ef2050da123a697fc1b3e797d63cbb6e3",
+    "commit_updated_at": "2026-05-27T18:31:18.195060"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-27T14:23:40-04:00",
+    "commit_created_at": "2026-05-27T18:31:18.454345",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 2,
+    "commit_identifier": "CM-0033",
+    "commit_message_first_line": "v2: PI-053 — add Commit model to exporter._EXPORT_TABLES so commits.json regenerates",
+    "commit_message_full": "v2: PI-053 — add Commit model to exporter._EXPORT_TABLES so commits.json regenerates\n\nThe Commit model (v0.7+ code-change governance entity) was missing from\nthe _EXPORT_TABLES list in access/exporter.py, so the snapshot regenerator\nnever wrote a commits.json file. Every other governance entity (workstream,\nconversation, reference_book*, work_ticket, close_out_payload, deposit_event)\nis present in the list. Adding Commit closes the gap so commits.json\nnow regenerates alongside the other governance snapshots.\n\nDiscovered during SES-078 (PI-002) close-out apply when CM-0005 was\ncreated in the DB but no commits.json file appeared on disk. From PI-053.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "f9603e0854d27d48232e41af6ab9fea4fe776e93"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-103",
+    "commit_sha": "bd55db011b4e0d9ef7d326f89f86424238a52a8f",
+    "commit_updated_at": "2026-05-27T18:31:18.454347"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-27T14:24:00-04:00",
+    "commit_created_at": "2026-05-27T18:31:18.665684",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 3,
+    "commit_identifier": "CM-0034",
+    "commit_message_first_line": "v2: PI-019 — cross-file category resolution in YAML layout validator",
+    "commit_message_full": "v2: PI-019 — cross-file category resolution in YAML layout validator\n\nFixes _validate_layout in espo_impl/core/config_loader.py so the\nfield_categories set unions across all YAML files in the deploy batch\n(via ProgramContext) and the current entity's own fields, mirroring\nthe existing pattern for field names a few lines above. Previously\nthe category check was file-scoped, so a layout panel referencing\ncategory=\"Sponsor Profile\" only validated if the SAME YAML declared\na field with that category — forcing operators to over-bundle\ndefinitions in one file.\n\nSurfaced on the CBM MN-Account / MN-Partner / MN-Sponsor file-split\ncase. PI-019.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "bd55db011b4e0d9ef7d326f89f86424238a52a8f"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-103",
+    "commit_sha": "07fa7b207e4f22681dfec20adf2a9f0cb9973ab7",
+    "commit_updated_at": "2026-05-27T18:31:18.665686"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-27T14:24:10-04:00",
+    "commit_created_at": "2026-05-27T18:31:18.911389",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 2,
+    "commit_identifier": "CM-0035",
+    "commit_message_first_line": "v2: PI-050 — extend enumerate_commits.py with --commits explicit-list mode",
+    "commit_message_full": "v2: PI-050 — extend enumerate_commits.py with --commits explicit-list mode\n\nAdds a --commits SHA1,SHA2,... flag that emits commit-record JSON for\nexactly the named SHAs in chronological order, bypassing the\nsince..HEAD range entirely. Needed when multiple workstreams interleave\ncommits on main and the since..HEAD range would pull in unrelated\ncommits.\n\nThe since..HEAD assumption (single active workstream per repo) breaks\nwhen parallel workstreams land between a workstream's parent commit\nand its closure HEAD. SES-074 (PI-030's first end-to-end use)\ndiscovered this — 8 commits NOT owned by PI-030 sat within the natural\nrange. SES-074 worked around it by hand-curating SHAs into the\npayload's commits section per DEC-233; --commits formalizes that\npattern so it scales.\n\nFrom PI-050.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "07fa7b207e4f22681dfec20adf2a9f0cb9973ab7"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-103",
+    "commit_sha": "2903f77c7d902d3998a059314c9fbe35f285dab5",
+    "commit_updated_at": "2026-05-27T18:31:18.911391"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-27T14:26:40-04:00",
+    "commit_created_at": "2026-05-27T18:31:19.164530",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 4,
+    "commit_identifier": "CM-0036",
+    "commit_message_first_line": "v2: PI-080 — register conversation_orchestrates_conversation reference kind",
+    "commit_message_full": "v2: PI-080 — register conversation_orchestrates_conversation reference kind\n\nAdds the relationship kind connecting an orchestrator conversation to\neach of its child agents' conversations. Without it, the governance\ntimeline can't express the parent-child structure of a parallel run\nand audit queries can't walk from an orchestrator session to its\nchildren.\n\nThree coordinated changes per the CLAUDE.md rule for adding relationship\nkinds:\n\n- REFERENCE_RELATIONSHIPS grows the new kind.\n- _kinds_for_pair admits (conversation, conversation) →\n  conversation_orchestrates_conversation alongside the existing\n  conversation_follows_from / conversation_relates_to edges.\n- Alembic migration 0022 extends refs.relationship_kind CHECK to\n  include the new kind. Runs through the post-PI-074\n  _build_migration_engine() with foreign_keys=OFF automatically.\n\nThe desktop UI's references-create dialog picks the new option up\nautomatically through RELATIONSHIP_RULES; no UI code change required.\n\nFrom PI-080.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "2903f77c7d902d3998a059314c9fbe35f285dab5"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-103",
+    "commit_sha": "5333f46f21ff98eb25e6d80e5ecb8df7c7f41e04",
+    "commit_updated_at": "2026-05-27T18:31:19.164532"
+  }
+]

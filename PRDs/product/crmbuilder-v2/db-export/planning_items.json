@@ -223,9 +223,9 @@
     "identifier": "PI-019",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Cross-file category resolution in YAML layout validator",
-    "updated_at": "2026-05-27T18:20:32.448131"
+    "updated_at": "2026-05-27T18:30:43.676795"
   },
   {
     "created_at": "2026-05-19T19:41:21.309157",
@@ -595,9 +595,9 @@
     "identifier": "PI-050",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Extend enumerate_commits.py with explicit-list mode for parallel-workstream closures",
-    "updated_at": "2026-05-27T18:20:39.616500"
+    "updated_at": "2026-05-27T18:30:43.926391"
   },
   {
     "created_at": "2026-05-25T15:37:43.754155",
@@ -631,9 +631,9 @@
     "identifier": "PI-053",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Add Commit model to access/exporter.py _EXPORT_TABLES so commits.json regenerates with the rest of the engagement snapshot",
-    "updated_at": "2026-05-27T18:20:40.281959"
+    "updated_at": "2026-05-27T18:30:44.171700"
   },
   {
     "created_at": "2026-05-26T04:13:30.825964",
@@ -811,9 +811,9 @@
     "identifier": "PI-068",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Create specifications/ directory README/manifest",
-    "updated_at": "2026-05-27T18:20:43.737933"
+    "updated_at": "2026-05-27T18:30:44.378897"
   },
   {
     "created_at": "2026-05-26T19:35:53.718172",
@@ -955,9 +955,9 @@
     "identifier": "PI-080",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Register conversation_orchestrates_conversation reference kind",
-    "updated_at": "2026-05-27T18:20:46.492418"
+    "updated_at": "2026-05-27T18:30:44.621961"
   },
   {
     "created_at": "2026-05-27T01:28:35.543981",
