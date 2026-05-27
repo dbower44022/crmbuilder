@@ -194,8 +194,14 @@ def upgrade() -> None:
         sa.Column("session_superseded_at", sa.DateTime(timezone=True),
                   nullable=True),
         # Constraints
+        # Identifier-prefix asymmetry per session-v2.md §6: existing
+        # legacy_conversations rows (CONV-NNN identifiers) migrate INTO
+        # this table at Phase F, becoming sessions but retaining their
+        # CONV-NNN identifier for historical readability. New sessions
+        # created post-PI-073 use SES-NNN. Both prefixes admitted.
         sa.CheckConstraint(
-            "session_identifier GLOB 'SES-[0-9][0-9][0-9]'",
+            "session_identifier GLOB 'SES-[0-9][0-9][0-9]' "
+            "OR session_identifier GLOB 'CONV-[0-9][0-9][0-9]'",
             name="ck_session_identifier_format",
         ),
         sa.CheckConstraint(
@@ -256,8 +262,14 @@ def upgrade() -> None:
         sa.Column("conversation_superseded_at", sa.DateTime(timezone=True),
                   nullable=True),
         # Constraints
+        # Identifier-prefix asymmetry per conversation-v2.md §3.1: existing
+        # legacy_sessions rows (SES-NNN identifiers) migrate INTO this table
+        # at Phase F, becoming conversations but retaining their SES-NNN
+        # identifier for historical readability. New conversations created
+        # post-PI-073 use CNV-NNN. Both prefixes admitted.
         sa.CheckConstraint(
-            "conversation_identifier GLOB 'CNV-[0-9][0-9][0-9]'",
+            "conversation_identifier GLOB 'CNV-[0-9][0-9][0-9]' "
+            "OR conversation_identifier GLOB 'SES-[0-9][0-9][0-9]'",
             name="ck_conversation_identifier_format",
         ),
         sa.CheckConstraint(
