@@ -1,0 +1,69 @@
+{
+  "label": "Author PI-097 (decision executive_summary backfill) and PI-098 (session executive_summary backfill), then execute both. PI-074 added the executive_summary column to decisions and sessions alongside planning_items. PI-096 covered the planning_items backfill (executed at SES-102 follow-on; 93/93 PATCHes succeeded). This session covers decisions (309 records) and sessions (73 records). Session status authored as in_flight to sidestep the complete_session_requires_conversation edge-rule fire at create time; PATCHed to complete after CNV-006 lands and the inbound conversation_belongs_to_session edge exists.",
+
+  "session": {
+    "session_identifier": "SES-104",
+    "session_title": "Author PI-097 + PI-098 and execute executive_summary backfill on decisions (309) and sessions (73)",
+    "session_description": "Claude Code session at Doug's terminal. Follow-on to SES-102's PI-096 (planning_items backfill, executed). Doug requested 'do the same for decisions and sessions' — author PI-097 + PI-098 capturing the per-entity-type backfill scope, then execute both via the same heuristic-generation pattern used for PI-096 (read title + description + structured fields, generate 200..800 char executive summary, PATCH). Session status authored as in_flight to avoid the complete_session_requires_conversation edge-rule bug at session-create time; the close-out workflow includes a post-apply PATCH to complete after CNV-006 is in place.",
+    "session_medium": "chat",
+    "session_status": "in_flight",
+    "session_medium_metadata": {"chat_platform": "claude_code"},
+    "session_participants": ["Doug Bower", "Claude Code"],
+    "references": [
+      {
+        "source_type": "session",
+        "source_id": "SES-104",
+        "target_type": "workstream",
+        "target_id": "WS-011",
+        "relationship": "session_belongs_to_workstream"
+      }
+    ]
+  },
+
+  "conversation": {
+    "conversation_identifier": "CNV-006",
+    "conversation_title": "Author PI-097 + PI-098 — executive_summary backfill for decisions and sessions",
+    "conversation_purpose": "Capture the decision and session executive_summary backfill work as tracked planning items, then execute both backfills in the same session.",
+    "conversation_description": "Doug asked to extend SES-102's PI-096 pattern to decisions (309 records all needing backfill) and sessions (73 records all needing backfill). Authors PI-097 for the decision backfill scope and PI-098 for the session backfill scope. Execution is performed inline in this session via the same heuristic-summary script pattern used for PI-096 — read structured fields, generate 200..800 char summary, PATCH each record. PI-097 and PI-098 stay Open until Doug's review pass approves the generated summaries (review deferred until both backfills complete, same as PI-096).",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-006",
+        "target_type": "session",
+        "target_id": "SES-104",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+
+  "work_tickets": [],
+  "commits": [],
+  "decisions": [],
+
+  "planning_items": [
+    {
+      "identifier": "PI-097",
+      "title": "Backfill executive_summary on every existing decision by reading the DEC's title, context, decision, and rationale fields and generating a 200..800 character audience-readable summary",
+      "description": "PI-074 added the ``executive_summary`` TEXT NULL column to ``decisions`` alongside planning_items and sessions, with the same CHECK constraint ``executive_summary IS NULL OR length(executive_summary) BETWEEN 200 AND 800``. PI-075 was scoped for backfill + NOT NULL tightening but hasn't run. PI-096 covered planning_items backfill; this PI covers decisions.\n\nCurrent state (as of SES-104 authoring): 309 live decisions in main's CRMBUILDER.db, all with executive_summary NULL (excluding soft-deleted records).\n\nScope:\n\n(1) Iterate over every live decision (``GET /decisions?limit=500``).\n\n(2) For each decision lacking an executive_summary, read the DEC's ``title``, ``context``, ``decision``, and ``rationale`` fields. The decision field (the actual call made) is the most load-bearing source material; rationale adds the 'why'.\n\n(3) Generate an executive_summary respecting the CHECK (200..800 chars, audience PM/executive, declarative, no implementer jargon, no internal identifier clutter).\n\n(4) PATCH each decision via ``PATCH /decisions/{identifier}`` with ``{\"executive_summary\": \"...\"}``. Idempotent: skip records that already have a summary.\n\n(5) Audit: confirm every live decision has an executive_summary populated.\n\nPre-condition: DecisionUpdateIn Pydantic schema must accept executive_summary. Same gap that blocked the initial PI-096 run — PI-074 added the DB column but the API schemas weren't updated. SES-104 adds the field to unblock its own PATCHes; the change may be reverted by the parallel Option A session working on the executive_summary UI, but the backfill PATCHes will have already landed by then.\n\nGeneration template (same as PI-096): first 2-4 substantive sentences of context + decision, with implementer detail stripped (backticked code spans, spec citations, identifier clusters); fallback wrappers if too short or long; truncated at sentence boundary if approaching the 800 char limit.\n\nDeliverable: a session-recorded backfill run (SES-104), with the PATCH script committed and audit results in the close-out's artifacts.",
+      "item_type": "pending_work",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-098",
+      "title": "Backfill session_executive_summary on every existing session by reading the SES's session_title and session_description and generating a 200..800 character audience-readable summary",
+      "description": "PI-074 added the ``executive_summary`` TEXT NULL column to ``sessions`` alongside planning_items and decisions. Under PI-073's session redesign the column was preserved with the same CHECK constraint on the new sessions table as ``session_executive_summary``. PI-075 was scoped for backfill + NOT NULL but hasn't run. PI-096 covered planning_items; PI-097 covers decisions; this PI covers sessions.\n\nCurrent state (as of SES-104 authoring): 73 sessions in main's CRMBUILDER.db, all with session_executive_summary NULL. The 73 sessions include the 68 legacy_conversations migrated by Phase F of PI-073 (CONV-NNN identifiers retained as sessions) plus the new SES-NNN sessions created post-PI-073.\n\nScope:\n\n(1) Iterate over every session (``GET /sessions?include_deleted=true&limit=500``).\n\n(2) For each session lacking session_executive_summary, read the SES's ``session_title`` and ``session_description`` fields.\n\n(3) Generate an executive_summary respecting the CHECK (200..800 chars). Source-text considerations: migrated sessions (CONV-NNN identifiers) carry the legacy conversation purpose + description concatenated into session_description; newer sessions have purpose-built session_description. Both shapes accommodate the same heuristic.\n\n(4) PATCH each session via ``PATCH /sessions/{identifier}`` with ``{\"session_executive_summary\": \"...\"}``. Idempotent: skip records that already have a summary. The SessionPatchIn Pydantic schema already includes session_executive_summary (added in Phase C of PI-073 — commit 313b8e0 — and not reverted by the parallel session).\n\n(5) Audit: confirm every session has session_executive_summary populated.\n\nGeneration template (same as PI-096 / PI-097): first 2-4 substantive sentences of session_description, with implementer detail stripped; fallback wrappers if too short or long; truncated at sentence boundary if approaching the 800 char limit.\n\nDeliverable: same SES-104 close-out captures this backfill alongside PI-097's. PATCH script and audit results committed.",
+      "item_type": "pending_work",
+      "status": "Open"
+    }
+  ],
+
+  "references": [],
+
+  "resolves_planning_items": [],
+
+  "addresses_planning_items": [
+    {"planning_item_identifier": "PI-097"},
+    {"planning_item_identifier": "PI-098"}
+  ]
+}

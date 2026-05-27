@@ -1,0 +1,22 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_104.json
+Label:  Author PI-097 (decision executive_summary backfill) and PI-098 (session executive_summary backfill), then execute both. PI-074 added the executive_summary column to decisions and sessions alongside planning_items. PI-096 covered the planning_items backfill (executed at SES-102 follow-on; 93/93 PATCHes succeeded). This session covers decisions (309 records) and sessions (73 records). Session status authored as in_flight to sidestep the complete_session_requires_conversation edge-rule fire at create time; PATCHed to complete after CNV-006 lands and the inbound conversation_belongs_to_session edge exists.
+Deposit event: DEP-093
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-006 (HTTP 201)
+
+=== planning_items (2 records) ===
+  ✓ POST planning_items  PI-097 (HTTP 201)
+  ✓ POST planning_items  PI-098 (HTTP 201)
+
+=== addresses_planning_items (2 records) ===
+  ✓ POST addresses_planning_items  → PI-097 (HTTP 201)
+  ✓ POST addresses_planning_items  → PI-098 (HTTP 201)
+
+✓ All 6 operations complete.
+
+✓ Recorded apply as deposit_event DEP-093 (HTTP 201).

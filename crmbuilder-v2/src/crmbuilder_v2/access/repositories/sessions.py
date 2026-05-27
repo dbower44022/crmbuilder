@@ -67,6 +67,7 @@ _PATCHABLE_FIELDS = frozenset(
         "ended_at",
         "participants",
         "medium_metadata",
+        "executive_summary",  # PI-074
     }
 )
 
@@ -553,6 +554,8 @@ def patch_session(
         row.session_participants = _coerce_participants(fields["participants"])
     if "medium_metadata" in fields:
         row.session_medium_metadata = _coerce_medium_metadata(fields["medium_metadata"])
+    if "executive_summary" in fields:
+        row.session_executive_summary = fields["executive_summary"]
     if "status" in fields:
         status = _require_status(fields["status"])
         if status != row.session_status:
