@@ -575,7 +575,7 @@ class RelationshipDefinition:
     :param name: Identifier for this relationship.
     :param entity: Primary entity (natural name).
     :param entity_foreign: Foreign entity (natural name).
-    :param link_type: oneToMany, manyToOne, or manyToMany.
+    :param link_type: oneToMany, manyToOne, manyToMany, or oneToOne.
     :param link: Link name on the primary entity.
     :param link_foreign: Link name on the foreign entity.
     :param label: Panel label on the primary entity.

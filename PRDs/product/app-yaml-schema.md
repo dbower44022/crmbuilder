@@ -19,6 +19,7 @@
 | 1.2.3 | 05-03-26 18:30 | Adds `settings.autoPlaceName` (default `true`); LayoutManager now auto-prepends the system `name` field to detail/edit layouts unless explicitly placed or opted out. |
 | 1.2.4 | 05-04-26 00:00 | Adds field-level `optionsDeferred: bool` flag on enum/multiEnum fields (Section 6.3). When `true`, the validator accepts an empty `options:` list — used for fields whose value list cannot be expressed at YAML-authoring time and is configured post-deploy via the EspoCRM admin UI per a `MANUAL-CONFIG.md` companion entry. Default `false` preserves the existing strict validator behavior. New Section 6.4.1 documents the deferred-options pattern with worked example and companion-artifact rule. Validator-only change; deploy engine behavior unchanged. |
 | 1.2.5 | 05-19-26 | Adds `foreign` field type (Section 6.2, new Section 6.8) for mirroring a scalar field from a linked entity onto the current entity's detail/list/edit views — the platform's "Foreign" field. Requires `link:` (a manyToOne or oneToOne link name declared in the top-level `relationships:` block) and `field:` (the name of the field on the linked entity to mirror). Validator rejects: missing `link:` or `field:`; `required: true` (foreign fields are read-only mirrors — set the constraint on the source field); `formula:` (mirroring and computing are mutually exclusive); `link:`/`field:` on any non-foreign type. New validation rules added to Section 10. Deploy ordering note: because the regular field step runs before the relationship step, a YAML that introduces a brand-new relationship and a foreign field referencing it in the same file needs a second Configure run after the link exists. Subsequent re-runs are idempotent. |
+| 1.3.1 | 05-27-26 | Adds `oneToOne` to the set of valid `linkType:` values in the top-level `relationships:` block (Section 8.1 property table; Section 8.2 link-types table with notes on EspoCRM's asymmetric internal metadata; Section 10 Relationship-level validation rules). EspoCRM's `EntityManager/action/createLink` API has always accepted `oneToOne`; the validator just rejected it, so requirements captured through the methodology that called for a true 1:1 link had to fall back to `manyToOne` plus an operator-discipline uniqueness rule (the original CBM trigger was `MN-Partner-TEST.yaml` / `MN-Sponsor-TEST.yaml`, 2026-05-19). PI-018. |
 | 1.3 | 05-22-26 14:30 | Adds Category 6 Parts A–E (Role-Based Access Control) per `yaml-schema-gap-analysis-MR-pilot.md` Section 6, as amended 05-20-26 21:18 (Option C reordering — scope-level access lands here, field-level access defers). New top-level keys `roles:` and `teams:` extend the program-file shape — a file may now contain any combination of `entities:`, `relationships:`, `roles:`, and `teams:` (Section 3.1). Operational convention is a dedicated `programs/security.yaml` file, but the schema does not enforce a file-type distinction; the loader queues any file declaring `roles:` or `teams:` ahead of files referencing them (Section 12.6). New Section 12 ties the five Parts together: 12.1 Roles, 12.2 Teams, 12.3 Scope-Level Entity Access (per-role `scope_access:` block with whitelist semantics — entities not listed are denied), 12.4 System Permissions (per-role `system_permissions:` block for non-entity controls), 12.5 Role-Aware Visibility (12.5.1 `role:` leaf clause in Section 11 condition expressions, valid only in `visibleWhen:` contexts; 12.5.2 `forRoles:` on layout declarations). Section 3.1 lists the new top-level keys. Section 7.2 adds `forRoles:` to the layout property table. Section 11.2 extends the leaf-clause syntax to permit `role:` as an alternative discriminator to `field:`, with Section 11.5 adding rejection rules for `role:` in non-`visibleWhen:` contexts. Section 10 gains a new Roles/Teams/Layout-`forRoles:` validation block. Field-level permissions and permission presets (gap-analysis Section 6, "Deferred to v1.3") remain out of scope and will land in a future schema bump; "v1.3" in the gap analysis refers to feature-scope ordering, not the doc revision in which they ship. Note: "v1.2" in the gap analysis and the kickoff prompts is similarly feature-scope language — by the time Parts A–E reach the schema spec, the doc had advanced through v1.2.1–v1.2.5 patches, so this addition is the next minor bump (v1.2.5 → v1.3). |
 
 ---
@@ -1796,7 +1797,7 @@ relationships:
 | `description` | string | yes | Business rationale and PRD reference |
 | `entity` | string | yes | Primary entity (natural name) |
 | `entityForeign` | string | yes | Foreign entity (natural name) |
-| `linkType` | string | yes | `oneToMany`, `manyToOne`, or `manyToMany` |
+| `linkType` | string | yes | `oneToMany`, `manyToOne`, `manyToMany`, or `oneToOne` |
 | `link` | string | yes | Link name on the primary entity |
 | `linkForeign` | string | yes | Link name on the foreign entity |
 | `label` | string | yes | Panel label on the primary entity's detail view |
@@ -1813,10 +1814,28 @@ relationships:
 | `oneToMany` | One record of the primary entity relates to many of the foreign entity |
 | `manyToOne` | Many records of the primary entity relate to one of the foreign entity |
 | `manyToMany` | Many records on both sides. Requires `relationName` |
+| `oneToOne` | At most one record on each side. Requires `linkForeign`; `relationName` has no effect and is ignored with a warning |
 
 Entity names in relationship definitions use natural names without any
 platform-specific prefix. The tool applies prefix transformations at
 deployment time.
+
+**`oneToOne` notes.** EspoCRM models a 1:1 link asymmetrically in its
+internal metadata — the side that owns the foreign-key column reads as
+`belongsTo`, the inverse side reads as `hasOne`. The YAML author does
+not pick a side: a single `linkType: oneToOne` declaration in the
+top-level `relationships:` block is sufficient, and EspoCRM's
+`EntityManager/action/createLink` API decides the column ownership
+based on `entity`, `entityForeign`, `link`, and `linkForeign`. The
+verify-step comparator accepts either internal type when reading the
+link back. Use `oneToOne` when a foreign entity belongs to at most one
+primary record and a primary record has at most one foreign — for
+example, `Account` ↔ `PartnerProfile`, where each `Account` has at
+most one `PartnerProfile` extension and each `PartnerProfile` belongs
+to exactly one `Account`. Compared to the `manyToOne` workaround plus
+an operator-discipline uniqueness rule, the `oneToOne` declaration is
+both more truthful in the YAML and enforced at the schema level by
+EspoCRM itself.
 
 ### 8.3 The `action: skip` Pattern
 
@@ -2006,6 +2025,12 @@ rules apply to all program files:
 **Relationship-level:**
 - All required properties must be present (see Section 8.1)
 - `manyToMany` relationships must include `relationName`
+- `oneToOne` relationships must include `linkForeign` (universally
+  required, but flagged with a oneToOne-specific diagnostic so the
+  failure mode is obvious for the asymmetric 1:1 case)
+- `oneToOne` relationships that include `relationName` emit a warning
+  (rather than a hard error): `relationName` is a `manyToMany`
+  affordance and is ignored for 1:1 links
 
 **Role-level (v1.3+, see Section 12.1):**
 - Each `roles:` entry must have a `name:` string

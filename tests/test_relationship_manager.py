@@ -307,6 +307,85 @@ def test_error_includes_response_body():
     assert "409" in error_msgs[0]
 
 
+def test_build_payload_one_to_one():
+    """oneToOne payload passes ``linkType: "oneToOne"`` verbatim.
+
+    EspoCRM's ``EntityManager/action/createLink`` accepts the string
+    ``oneToOne`` directly; the engine does not split the call into a
+    hasOne/belongsTo pair. The internal asymmetry surfaces only at
+    metadata-read time (see ``test_compare_link_one_to_one_*``).
+    """
+    manager, _ = make_manager()
+    rel = make_rel(
+        entity="Account",
+        entity_foreign="PartnerProfile",
+        link_type="oneToOne",
+        link="partnerProfile",
+        link_foreign="account",
+    )
+    payload = manager._build_payload(rel)
+    assert payload["entity"] == "Account"
+    assert payload["entityForeign"] == "CPartnerProfile"
+    assert payload["linkType"] == "oneToOne"
+    assert payload["link"] == "partnerProfile"
+    assert payload["linkForeign"] == "account"
+    assert payload["relationName"] is None
+
+
+def test_compare_link_one_to_one_has_one_side():
+    """oneToOne read back as ``hasOne`` on the inverse side matches."""
+    manager, _ = make_manager()
+    existing = {
+        "type": "hasOne",
+        "entity": "CPartnerProfile",
+        "foreign": "account",
+    }
+    rel = make_rel(
+        entity="Account",
+        entity_foreign="PartnerProfile",
+        link_type="oneToOne",
+        link="partnerProfile",
+        link_foreign="account",
+    )
+    assert manager._compare_link(existing, rel, "CPartnerProfile") is True
+
+
+def test_compare_link_one_to_one_belongs_to_side():
+    """oneToOne read back as ``belongsTo`` on the owning side matches."""
+    manager, _ = make_manager()
+    existing = {
+        "type": "belongsTo",
+        "entity": "Account",
+        "foreign": "partnerProfile",
+    }
+    rel = make_rel(
+        entity="PartnerProfile",
+        entity_foreign="Account",
+        link_type="oneToOne",
+        link="account",
+        link_foreign="partnerProfile",
+    )
+    assert manager._compare_link(existing, rel, "Account") is True
+
+
+def test_compare_link_one_to_one_rejects_has_many():
+    """oneToOne does not match a ``hasMany`` metadata type."""
+    manager, _ = make_manager()
+    existing = {
+        "type": "hasMany",
+        "entity": "CPartnerProfile",
+        "foreign": "account",
+    }
+    rel = make_rel(
+        entity="Account",
+        entity_foreign="PartnerProfile",
+        link_type="oneToOne",
+        link="partnerProfile",
+        link_foreign="account",
+    )
+    assert manager._compare_link(existing, rel, "CPartnerProfile") is False
+
+
 def test_create_link_non_json_failure_surfaces_raw_text():
     """Parse-failed sentinel from create_link surfaces raw text in error line."""
     client = MagicMock(spec=EspoAdminClient)

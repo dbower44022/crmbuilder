@@ -81,7 +81,12 @@ VALID_ACTIONS: set[str] = {"create", "delete", "delete_and_create"}
 
 VALID_LAYOUT_TYPES: set[str] = {"detail", "edit", "list"}
 
-VALID_LINK_TYPES: set[str] = {"oneToMany", "manyToOne", "manyToMany"}
+VALID_LINK_TYPES: set[str] = {
+    "oneToMany",
+    "manyToOne",
+    "manyToMany",
+    "oneToOne",
+}
 
 # EspoCRM /Admin/fieldManager requires camelCase field names starting with
 # a lowercase ASCII letter. The server c-prefixes custom fields automatically.
@@ -2789,6 +2794,32 @@ class ConfigLoader:
                 f"{prefix}: 'relationName' is required for "
                 f"manyToMany relationships"
             )
+
+        # oneToOne-specific rules. `linkForeign` is already enforced as
+        # universally required above, but we add a oneToOne-specific
+        # diagnostic to make the failure mode obvious for the new type.
+        if rel.link_type == "oneToOne":
+            if not rel.link_foreign:
+                errors.append(
+                    f"{prefix}: 'linkForeign' is required for "
+                    f"oneToOne relationships (names the inverse link "
+                    f"on the foreign entity)"
+                )
+            if rel.relation_name:
+                # Warning, not error — `relationName` is a manyToMany
+                # affordance (junction-table name) and has no meaning
+                # for a oneToOne link. Surface it through the program's
+                # condition_warnings channel rather than rejecting the
+                # file, so existing YAML that carries the key by
+                # accident still deploys.
+                msg = (
+                    f"{prefix}: 'relationName' has no effect for "
+                    f"oneToOne relationships (it is a manyToMany "
+                    f"affordance) and will be ignored"
+                )
+                logger.warning(msg)
+                if self._active_program is not None:
+                    self._active_program.condition_warnings.append(msg)
 
         if rel.action is not None and rel.action != "skip":
             errors.append(

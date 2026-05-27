@@ -28,6 +28,15 @@ LINK_TYPE_TO_METADATA: dict[str, str] = {
     "manyToMany": "hasMany",
 }
 
+# oneToOne links are asymmetric in EspoCRM's internal metadata: the side
+# that owns the foreign-key column reads as ``belongsTo``, the inverse
+# side reads as ``hasOne``. The YAML author declares the relationship as
+# ``linkType: oneToOne`` without specifying which side they are writing
+# from — EspoCRM decides at createLink time based on ``linkForeign`` and
+# the entities involved — so the verify-step comparator must accept
+# either metadata type when reading back a oneToOne link.
+ONE_TO_ONE_METADATA_TYPES: frozenset[str] = frozenset({"hasOne", "belongsTo"})
+
 
 class RelationshipManagerError(Exception):
     """Raised when the API returns 401 Unauthorized."""
@@ -257,9 +266,16 @@ class RelationshipManager:
         :param espo_entity_foreign: Resolved foreign entity name.
         :returns: True if matches.
         """
-        expected_type = LINK_TYPE_TO_METADATA.get(rel.link_type)
-        if existing.get("type") != expected_type:
-            return False
+        existing_type = existing.get("type")
+        if rel.link_type == "oneToOne":
+            # Either side of a oneToOne link is a valid match — see
+            # ONE_TO_ONE_METADATA_TYPES at module top.
+            if existing_type not in ONE_TO_ONE_METADATA_TYPES:
+                return False
+        else:
+            expected_type = LINK_TYPE_TO_METADATA.get(rel.link_type)
+            if existing_type != expected_type:
+                return False
         if existing.get("entity") != espo_entity_foreign:
             return False
         # foreign key may be absent or c-prefixed by EspoCRM

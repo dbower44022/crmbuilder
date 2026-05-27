@@ -1534,6 +1534,100 @@ def test_validate_relationship_missing_required_fields(loader, tmp_path):
     assert any("linkForeign" in e for e in errors)
 
 
+def test_validate_relationship_one_to_one_accepted(loader, tmp_path):
+    """A well-formed oneToOne relationship validates without errors.
+
+    PI-018: oneToOne joined the set of valid linkTypes alongside
+    oneToMany, manyToOne, and manyToMany. EspoCRM's createLink API
+    accepts it natively; the engine no longer needs the workaround
+    of declaring such relationships as manyToOne plus an operator-
+    discipline uniqueness rule.
+    """
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        relationships:
+          - name: accountPartnerProfile
+            entity: Account
+            entityForeign: PartnerProfile
+            linkType: oneToOne
+            link: partnerProfile
+            linkForeign: account
+            label: "Partner Profile"
+            labelForeign: "Account"
+    """)
+    path = tmp_path / "one_to_one.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert errors == []
+
+
+def test_validate_relationship_one_to_one_missing_link_foreign(
+    loader, tmp_path
+):
+    """oneToOne without linkForeign is a hard-reject error."""
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        relationships:
+          - name: badOneToOne
+            entity: Account
+            entityForeign: PartnerProfile
+            linkType: oneToOne
+            link: partnerProfile
+            linkForeign: ""
+            label: "Partner Profile"
+            labelForeign: "Account"
+    """)
+    path = tmp_path / "bad_one_to_one.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("linkForeign" in e for e in errors)
+    # The oneToOne-specific diagnostic surfaces the relationship type
+    # explicitly so the operator does not just see the generic missing-
+    # required-property message.
+    assert any(
+        "linkForeign" in e and "oneToOne" in e for e in errors
+    )
+
+
+def test_validate_relationship_one_to_one_with_relation_name_warns(
+    loader, tmp_path
+):
+    """oneToOne + relationName is a soft warning, not a hard error.
+
+    ``relationName`` is a manyToMany affordance (junction-table name)
+    with no meaning for a 1:1 link. The file still validates; the
+    warning surfaces through ``program.condition_warnings`` so the
+    operator sees the diagnostic without losing the deployment.
+    """
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        relationships:
+          - name: oddOneToOne
+            entity: Account
+            entityForeign: PartnerProfile
+            linkType: oneToOne
+            link: partnerProfile
+            linkForeign: account
+            label: "Partner Profile"
+            labelForeign: "Account"
+            relationName: accountPartner
+    """)
+    path = tmp_path / "warn_one_to_one.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert errors == []
+    assert any(
+        "relationName" in w and "oneToOne" in w
+        for w in program.condition_warnings
+    )
+
+
 def test_relationships_only_file_validates(loader, tmp_path):
     """A YAML file with only relationships (no entities) should validate."""
     content = dedent("""\
