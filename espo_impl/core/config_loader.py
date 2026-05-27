@@ -780,9 +780,17 @@ class ConfigLoader:
             | self._active_context.field_names_for(entity.name)
             | self._native_field_names(entity)
         )
-        field_categories = {
-            f.category for f in entity.fields if f.category
-        }
+        # Categories union across the current entity's own fields and
+        # any fields declared on the same entity in sibling YAMLs in
+        # the deploy batch (via ProgramContext). Mirrors the field-name
+        # union above so a TabSpec.category reference in YAML A can
+        # resolve against a category declared in YAML B. Native fields
+        # do not carry categories (they're a YAML-side authoring
+        # construct), so no native-entity leg is included. PI-019.
+        field_categories = (
+            {f.category for f in entity.fields if f.category}
+            | self._active_context.field_categories_for(entity.name)
+        )
         seen_labels: set[str] = set()
 
         for panel in layout_spec.panels:

@@ -890,6 +890,14 @@ class ProgramContext:
         field names declared for that entity across the batch.
         Custom-entity names appear in their natural form (without
         the ``C`` prefix EspoCRM applies on the wire).
+    :param categories_by_entity: Mapping of entity natural name to
+        the set of all field ``category`` values declared for that
+        entity across the batch. Used by ``_validate_layout`` to
+        resolve ``TabSpec.category`` references against the union
+        of categories from every YAML in the deploy batch — a
+        layout in YAML A can reference a category declared by a
+        field in YAML B as long as both sit in the same batch.
+        Empty-string and ``None`` categories are excluded.
     :param entity_names: Frozenset of every entity natural name
         declared in the batch. Subset of
         ``fields_by_entity.keys()`` when every entity declares at
@@ -908,6 +916,9 @@ class ProgramContext:
     """
 
     fields_by_entity: dict[str, frozenset[str]]
+    categories_by_entity: dict[str, frozenset[str]] = field(
+        default_factory=dict
+    )
     entity_names: frozenset[str] = frozenset()
     role_names: frozenset[str] = frozenset()
     team_names: frozenset[str] = frozenset()
@@ -923,6 +934,23 @@ class ProgramContext:
             named entity.
         """
         return self.fields_by_entity.get(entity_name, frozenset())
+
+    def field_categories_for(self, entity_name: str) -> frozenset[str]:
+        """Return the union of declared field categories for ``entity_name``.
+
+        Categories are the YAML-side grouping label fields use to
+        populate tabbed layouts (``TabSpec.category``). The validator
+        resolves a ``TabSpec.category`` reference against the union
+        of categories declared on the named entity in every YAML in
+        the deploy batch, mirroring the cross-file resolution model
+        already in place for field names.
+
+        :param entity_name: Entity natural name.
+        :returns: Frozenset of category strings, or an empty frozenset
+            if no program in this context declares any categories on
+            the named entity.
+        """
+        return self.categories_by_entity.get(entity_name, frozenset())
 
     @classmethod
     def from_programs(cls, programs: list["ProgramFile"]) -> "ProgramContext":
@@ -942,6 +970,7 @@ class ProgramContext:
         :returns: New ``ProgramContext``.
         """
         fields_by_entity: dict[str, set[str]] = defaultdict(set)
+        categories_by_entity: dict[str, set[str]] = defaultdict(set)
         entity_names: set[str] = set()
         role_counts: dict[str, int] = defaultdict(int)
         team_counts: dict[str, int] = defaultdict(int)
@@ -950,6 +979,10 @@ class ProgramContext:
                 entity_names.add(entity.name)
                 for field_def in entity.fields:
                     fields_by_entity[entity.name].add(field_def.name)
+                    if field_def.category:
+                        categories_by_entity[entity.name].add(
+                            field_def.category
+                        )
             for role in program.roles:
                 role_counts[role.name] += 1
             for team in program.teams:
@@ -957,6 +990,9 @@ class ProgramContext:
         return cls(
             fields_by_entity={
                 k: frozenset(v) for k, v in fields_by_entity.items()
+            },
+            categories_by_entity={
+                k: frozenset(v) for k, v in categories_by_entity.items()
             },
             entity_names=frozenset(entity_names),
             role_names=frozenset(role_counts.keys()),

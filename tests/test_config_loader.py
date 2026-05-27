@@ -815,6 +815,174 @@ def test_validate_tab_category_not_found(loader, tmp_path):
     assert any("nonexistent" in e and "not found" in e for e in errors)
 
 
+def test_validate_tab_category_resolves_same_file(loader, tmp_path):
+    """Layout category reference resolves to a field category declared
+    in the same YAML file (legacy single-file case). PI-019.
+    """
+    content = dedent("""\
+        version: "1.1"
+        description: "Same-file category"
+        entities:
+          Contact:
+            fields:
+              - name: sponsorName
+                type: varchar
+                label: "Sponsor Name"
+                category: "Sponsor Profile"
+            layout:
+              detail:
+                panels:
+                  - label: "Panel"
+                    tabs:
+                      - label: "Sponsor"
+                        category: "Sponsor Profile"
+    """)
+    path = tmp_path / "same_file_cat.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert not any("Sponsor Profile" in e for e in errors), (
+        f"Unexpected category error in: {errors}"
+    )
+
+
+def test_validate_tab_category_resolves_cross_file(loader, tmp_path):
+    """Layout category reference in YAML A resolves to a field category
+    declared in YAML B when both are in the same deploy batch via
+    ProgramContext. PI-019.
+    """
+    from espo_impl.core.models import ProgramContext
+
+    a = _write(tmp_path, "MN-Sponsor.yaml", """\
+        version: "1.1"
+        description: "MN domain — sponsor fields"
+        entities:
+          Account:
+            fields:
+              - name: sponsorTier
+                type: enum
+                label: "Sponsor Tier"
+                category: "Sponsor Profile"
+                options:
+                  - Gold
+                  - Silver
+              - name: sponsorContact
+                type: varchar
+                label: "Sponsor Contact"
+                category: "Sponsor Profile"
+    """)
+    b = _write(tmp_path, "MN-Account.yaml", """\
+        version: "1.1"
+        description: "MN domain — Account layout"
+        entities:
+          Account:
+            fields:
+              - name: accountSegment
+                type: varchar
+                label: "Account Segment"
+            layout:
+              detail:
+                panels:
+                  - label: "Sponsorship"
+                    tabs:
+                      - label: "Sponsor"
+                        category: "Sponsor Profile"
+    """)
+    p_a = loader.load_program(a)
+    p_b = loader.load_program(b)
+    context = ProgramContext.from_programs([p_a, p_b])
+    errors = loader.validate_program_with_context(p_b, context)
+    assert not any("Sponsor Profile" in e for e in errors), (
+        f"Unexpected cross-file category error in: {errors}"
+    )
+
+
+def test_validate_tab_category_unknown_in_batch_still_errors(
+    loader, tmp_path,
+):
+    """Layout category reference still fails with the existing
+    'not found' error when no YAML in the deploy batch declares
+    that category on the entity. PI-019.
+    """
+    from espo_impl.core.models import ProgramContext
+
+    a = _write(tmp_path, "MN-Sponsor.yaml", """\
+        version: "1.1"
+        description: "MN domain — sponsor fields"
+        entities:
+          Account:
+            fields:
+              - name: sponsorTier
+                type: enum
+                label: "Sponsor Tier"
+                category: "Sponsor Profile"
+                options:
+                  - Gold
+                  - Silver
+    """)
+    b = _write(tmp_path, "MN-Account.yaml", """\
+        version: "1.1"
+        description: "MN domain — Account layout"
+        entities:
+          Account:
+            fields:
+              - name: accountSegment
+                type: varchar
+                label: "Account Segment"
+            layout:
+              detail:
+                panels:
+                  - label: "Donor"
+                    tabs:
+                      - label: "Donor"
+                        category: "Donor Profile"
+    """)
+    p_a = loader.load_program(a)
+    p_b = loader.load_program(b)
+    context = ProgramContext.from_programs([p_a, p_b])
+    errors = loader.validate_program_with_context(p_b, context)
+    assert any(
+        "Donor Profile" in e and "not found" in e for e in errors
+    ), f"Expected category not-found error in: {errors}"
+
+
+def test_program_context_categories_for_entity(loader, tmp_path):
+    """ProgramContext.field_categories_for unions categories across
+    sibling YAMLs by entity. PI-019.
+    """
+    from espo_impl.core.models import ProgramContext
+
+    a = _write(tmp_path, "A.yaml", """\
+        version: "1.1"
+        description: "A"
+        entities:
+          Account:
+            fields:
+              - name: sponsorTier
+                type: varchar
+                label: "Sponsor Tier"
+                category: "Sponsor Profile"
+    """)
+    b = _write(tmp_path, "B.yaml", """\
+        version: "1.1"
+        description: "B"
+        entities:
+          Account:
+            fields:
+              - name: donorTier
+                type: varchar
+                label: "Donor Tier"
+                category: "Donor Profile"
+    """)
+    p_a = loader.load_program(a)
+    p_b = loader.load_program(b)
+    context = ProgramContext.from_programs([p_a, p_b])
+    cats = context.field_categories_for("Account")
+    assert "Sponsor Profile" in cats
+    assert "Donor Profile" in cats
+    assert context.field_categories_for("Contact") == frozenset()
+
+
 def test_validate_tab_break_without_label(loader, tmp_path):
     content = dedent("""\
         version: "1.0"
