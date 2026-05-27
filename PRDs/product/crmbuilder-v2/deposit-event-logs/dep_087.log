@@ -1,0 +1,41 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_100.json
+Label:  RE-KEYED FROM ORIGINAL SES-098 DOGFOOD PHASE 2 (PENDING_REKEY artifact). Captures the same Phase 2 Domain Discovery work as the original Doug sandbox SES-098 (now preserved in ses_098_dogfood_phase2.PENDING_REKEY.json), re-keyed for application against post-PI-073 main: SES-098→SES-100, CONV-068→CNV-002, PI-091→PI-094, PI-092→PI-095. Session block reshaped to post-PI-073 schema (session_title/session_description/session_medium/session_medium_metadata replacing legacy fields). Conversation block keeps most fields; new conversation_belongs_to_session edge replaces the v0.7 conversation_belongs_to_workstream + conversation_records_session pair. decided_in edges retargeted from session SES-098 to conversation CNV-002 per conversation-v2.md §3.3.1 (decisions are made in conversations under the new model). Decision identifiers DEC-319..324 unchanged — no collisions on main.
+Deposit event: DEP-087
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== conversation (1 record) ===
+  · POST conversation  CNV-002 already present (HTTP 409) — skipping
+
+=== planning_items (2 records) ===
+  · POST planning_items  PI-094 already present (HTTP 409) — skipping
+  · POST planning_items  PI-095 already present (HTTP 409) — skipping
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (6 records) ===
+  · POST decisions  DEC-319 already present (HTTP 409) — skipping
+  · POST decisions  DEC-320 already present (HTTP 409) — skipping
+  · POST decisions  DEC-321 already present (HTTP 409) — skipping
+  · POST decisions  DEC-322 already present (HTTP 409) — skipping
+  · POST decisions  DEC-323 already present (HTTP 409) — skipping
+  · POST decisions  DEC-324 already present (HTTP 409) — skipping
+
+=== references (10 records) ===
+  · POST references  DEC-319 decided_in CNV-002 already present (HTTP 409) — skipping
+  · POST references  DEC-320 decided_in CNV-002 already present (HTTP 409) — skipping
+  · POST references  DEC-321 decided_in CNV-002 already present (HTTP 409) — skipping
+  · POST references  DEC-322 decided_in CNV-002 already present (HTTP 409) — skipping
+  · POST references  DEC-323 decided_in CNV-002 already present (HTTP 409) — skipping
+  · POST references  DEC-324 decided_in CNV-002 already present (HTTP 409) — skipping
+  · POST references  PI-094 decided_in CNV-002 already present (HTTP 409) — skipping
+  · POST references  PI-095 decided_in CNV-002 already present (HTTP 409) — skipping
+  · POST references  PI-095 is_about DEC-319 already present (HTTP 409) — skipping
+  · POST references  PI-094 is_about DEC-323 already present (HTTP 409) — skipping
+
+✓ All 21 operations complete.
+
+✓ Recorded apply as deposit_event DEP-087 (HTTP 201).
