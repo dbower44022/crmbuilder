@@ -1,0 +1,212 @@
+{
+  "label": "CRMBuilder dogfood Phase 2 Domain Discovery session \u2014 established 14 candidate domains for the CRMBUILDER engagement (all passing Rule 2.1 against a revised mission), captured the candidate inventory as a durable Markdown working artifact at PRDs/product/crmbuilder-v2/CRMBuilder-Phase-2-Candidate-Inventory.md, and filed PI-092 to track the methodology-records-into-V2 promotion. The MD is the source-of-truth until promotion completes. PI-091 captures the user/role entity gap surfaced by 7 of 9 personas having TBD backing.",
+  "session": {
+    "identifier": "SES-098",
+    "title": "Phase 2 Domain Discovery for CRMBUILDER dogfood \u2014 14 candidate domains established, candidate inventory MD authored, methodology-records promotion deferred to PI-092",
+    "session_date": "2026-05-27",
+    "status": "Complete",
+    "conversation_reference": "Claude.ai sandbox conversation. CONV-068. Conducted Phase 2 Domain Discovery per interview-domain-discovery.md v1.1 with Variant A administrator-as-proxy adapted for dogfood (Doug as both administrator and sole stakeholder). Six decisions captured, two planning items filed, candidate inventory committed as MD pending methodology-records promotion through PI-092.",
+    "topics_covered": "Seed prompt: \"I would like to start a session to define the domains for crmBuilder using the domain capture prd\"\n\n1. Pre-flight per kickoff.md Variant A: read repo CLAUDE.md, read interview-domain-discovery.md v1.1, read charter.md v1.2 and kickoff.md v1.1, read V1 PRD \u00a71.1 for mission, read Master CRMBuilder PRD v0.1, inspected V2 governance state for CRMBUILDER (Charter v0.2 at governance layer; methodology layer empty except deleted smoke-test records). Layer 2 collapsed to one-sentence per Variant A; Layer 3 skipped.\n\n2. Pre-Topic-1 architectural decision surfaced: v0.8 close-out payload schema is governance-only; methodology candidates can't ride into V2 via standard apply. Initial Option C (\"working scratch markdown during session, V2 candidate records at close-out\") proposed and confirmed by Doug, then revised mid-session to Option C.1 after investigating apply_close_out.py (DEC-319). Revised plan: durable Markdown candidate inventory + standard governance close-out + PI for methodology promotion.\n\n3. Topic 1 \u2014 Mission Grounding. V1 PRD \u00a71.1 mission presented; Doug revised twice: (a) lift framing from \"tool\" to \"application framework for conducting that process\"; (b) extend platform-selection language to include three-mode option (existing CRM, extend existing with custom, build from scratch). Final mission paragraph locked. (DEC-320.)\n\n4. Topic 2 \u2014 Walking the Work. Three-track listening adapted for dogfood: presented 9 initial candidate domains extracted from the corpus (V1 PRD 6-phase workflow, 13-phase process doc, Master CRMBuilder PRD two-layer model, revised mission). Doug added 2 more (CRM Inventory & Functional Analysis, CRM Deployment Pattern Inventory) recognizing the knowledge-substrate-vs-operational-execution split. Structural observation surfaced: parallel knowing-domain pattern could apply to CRM Configuration and Custom CRM Build; observation initially not understood, clarified with concrete examples, parallels rejected (DEC-322).\n\n5. Topic 3 \u2014 Completeness Sweep. Three additional corpus-supported candidates surfaced: Configuration Artifact Generation (Phase 8 YAML Generation generalized), Document Rendering, Engagement Setup. Doug promoted all three to domain status. Domain list locked at 14. Engagement entity tension (flagged earlier as implicit) resolved by being owned by #14 Engagement Setup.\n\n6. Entity inventory sub-round (within Topic 2 three-track listening). ~40 candidate entities surfaced, grouped by domain. Initial \"Entity overload\" flagged \u2014 methodology Entity vs. client CRM entity type \u2014 retracted after Doug observed they are the same concept across lifecycle stages, not duplicates.\n\n7. Persona inventory sub-round. 9 candidate personas surfaced (Implementation Consultant, Client Administrator, Client SME, Technical Administrator, Methodology Author, CRM Researcher, AI Agent, Custom Developer, CRM End-User). Rule 2.2 applied: AI Agent backed indirectly via Conversation entity; CRM End-User External; 7 others TBD pending user/role entity model. PI-091 filed for the gap.\n\n8. Topic 4 \u2014 Domain Validation (Rule 2.1). 12 of 14 clear-pass; 2 explicit-confirmation cases (Methodology Authoring as CRMBuilder-internal-only, Document Rendering on Stakeholder Review dependency). Doug confirmed both. All 14 candidates pass. DEC-323 captures the Methodology Authoring scope decision.\n\n9. Topic 5 \u2014 Persona Backing (Rule 2.2). Confirmed: AI Agent + CRM End-User resolved; Custom Developer revised from External to TBD; 7 personas TBD pending PI-091. Doug agreed the user/role gap deserves a PI but should not block. Doug noted: \"So we will need to write the personnas to the v2 db.\"\n\n10. Topic 6 \u2014 Candidate Entity Disambiguation. Three remaining tensions: Pattern overload (Deployment Pattern / Pattern Library Entry / implicit Configuration Pattern), Render Run vs Render Job naming, Generated Artifact vs Generated Document. Resolved: Pattern qualifiers locked in; Render Run standardized across #12 and #13; Generated Artifact and Generated Document stay distinct. DEC-324 captures these.\n\n11. Topic 7 \u2014 Interview Transcript (structural in Option C.1 mode \u2014 conversation IS the transcript, captured in this topics_covered field plus the candidate inventory MD's \u00a74).\n\n12. Closing pivot from Option C to Option C.1. Pre-authoring investigation of apply_close_out.py revealed the v0.8 payload schema's 9 sections are governance-only (session, conversation, work_tickets, planning_items, commits, decisions, references, resolves_planning_items, addresses_planning_items) \u2014 no methodology section. Three revised paths surfaced (C.1 defer via PI + durable MD; C.2 one-off methodology-write script; C.3 raw curls in apply prompt). Doug confirmed C.1 with the explicit addition: \"convert MD document to database record when the closeout allows.\" PI-092 captures this conversion work. DEC-319 records the methodology shape decision.\n\n13. Close-out artifacts authored: candidate inventory MD committed at e03688b (515 insertions; canonical Phase 2 working artifact for the CRMBUILDER engagement); this close-out payload; the apply prompt. All three commits pushed from sandbox in the same turn per sandbox commit-and-push convention.\n\n14. Re-keying at push time: origin/main collision with a parallel session that had claimed SES-097 and CONV-067 (PI-074 executive_summary column implementation). Sandbox detected the collision via push-rejection on initial push, aborted rebase, hard-reset to origin/main, and re-keyed SES-097 -> SES-098, CONV-067 -> CONV-068 across all three artifacts (inventory MD, payload, apply prompt). DEC and PI identifiers unchanged (origin DEC head DEC-318 < my DEC-319; origin PI head PI-090 < my PI-091).",
+    "summary": "Conducted Phase 2 Domain Discovery for the CRMBUILDER dogfood engagement. Revised the operative mission to an application-framework framing with three-mode platform-or-build option (DEC-320). Established 14 candidate domains, all passing Rule 2.1 (DEC-321), including one CRMBuilder-internal-only domain (Methodology Authoring \u2014 DEC-323) and two knowledge-substrate domains feeding operational ones (#10 and #11). Rejected symmetric pattern-inventory parallels for #6 and #8 (DEC-322). Captured ~40 candidate entities and 9 candidate personas. Resolved entity-naming disambiguations for Pattern overload and Render Run (DEC-324). Pivoted session methodology from initial Option C to Option C.1 after discovering the v0.8 close-out payload schema is governance-only (DEC-319): candidate inventory committed as durable MD; methodology-records promotion deferred to PI-092 pending close-out pipeline support. Filed PI-091 for the user/role entity gap surfaced by 7 of 9 personas having TBD Rule 2.2 backing. This session effectively drafts the new Master CRMBuilder PRD's Phase 2 by execution per the iterative-drafting principle in \u00a7III.",
+    "artifacts_produced": "PRDs/product/crmbuilder-v2/CRMBuilder-Phase-2-Candidate-Inventory.md (515 lines, committed at e03688b) \u2014 canonical Phase 2 candidate inventory for the CRMBUILDER engagement: 14 candidate domains with mission tie-ins and Rule 2.1 results, ~40 candidate entities grouped by domain, 9 candidate personas with Rule 2.2 results, full interview transcript organized by Phase 2 topic, decision and planning-item summaries. This close-out payload (ses_098.json) and its apply prompt (CLAUDE-CODE-PROMPT-apply-close-out-ses-098.md).",
+    "in_flight_at_end": "Phase 2 candidate methodology records (14 Domains, 9 Personas, ~40 Entities) are captured in the MD inventory but not yet promoted to V2 records \u2014 PI-092 owns the promotion work and the design step that decides the ingestion mechanism. Workstream parentage for CONV-068 uses WS-011 (V2 storage API refinements) pragmatically per the SES-096 precedent; a dedicated dogfood-methodology-authoring workstream (provisionally WS-013) would be substantively better but requires API access to create and is deferred. Methodology Authoring as a domain is recorded as CRMBuilder-internal-only (DEC-323), so external client engagements' default domain set is 13 (excluding #1) plus client-specific additions \u2014 the Master CRMBuilder PRD \u00a7III iterative-drafting framework can absorb this distinction when Phase 2 is drafted into the PRD. The new Master CRMBuilder PRD's Phase 2 placeholder can now be replaced with content drafted from this session's execution per \u00a7III. Phase 3 Inventory Reconciliation under the old methodology has limited applicability with a sole stakeholder \u2014 a follow-up session is recommended to decide whether the new methodology absorbs Phase 3 into Phase 1 or defines a different next-phase. The session was re-keyed at push time from SES-097 to SES-098 (CONV-067 to CONV-068) after detecting an origin-side identifier collision with a parallel PI-074 session; this is the identifier-collision class documented in governance-recording-rules.md \u00a71 'Renumbering protocol' and \u00a710 'Heads advanced mid-session without re-check'."
+  },
+  "conversation": {
+    "conversation_identifier": "CONV-068",
+    "conversation_title": "Phase 2 Domain Discovery for CRMBUILDER dogfood \u2014 domain set definition with mid-session methodology-shape pivot",
+    "conversation_purpose": "Define the candidate domain set for the CRMBUILDER engagement by conducting Phase 2 Domain Discovery on CRMBuilder as the dogfood client. Surface candidate domains, entities, and personas via three-track listening adapted from oral narrative to corpus-walking. Apply Rule 2.1 (Domain Validation Test) and Rule 2.2 (Persona Backing Rule). Produce a durable candidate inventory for promotion to V2 records.",
+    "conversation_description": "Single-conversation Claude.ai chat. Started from the seed prompt 'I would like to start a session to define the domains for crmBuilder using the domain capture prd' and proceeded through Phase 2 Domain Discovery topics 1-7 plus closing. Variant A administrator-as-proxy applied \u2014 Doug as both administrator and sole stakeholder (dogfood). Layer 2 collapsed to one-sentence per Variant A; Layer 3 skipped. The session's most consequential mid-conversation pivot was at close-out preparation: investigation of apply_close_out.py revealed the v0.8 payload schema is governance-only, requiring revision of the originally-confirmed Option C session shape to Option C.1 \u2014 durable MD candidate inventory plus deferral of methodology-records promotion via PI-092. Doug confirmed the pivot with explicit additional requirement that the MD-to-DB conversion happens when the close-out pipeline supports it. Six decisions and two planning items captured across the session.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-068",
+        "target_type": "workstream",
+        "target_id": "WS-011",
+        "relationship": "conversation_belongs_to_workstream"
+      },
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-068",
+        "target_type": "session",
+        "target_id": "SES-098",
+        "relationship": "conversation_records_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [
+    {
+      "identifier": "PI-091",
+      "title": "Design and implement a user/role entity model in V2 for tracking per-engagement participants",
+      "description": "Phase 2 Domain Discovery for the CRMBUILDER engagement surfaced 7 of 9 candidate personas with TBD backing under Rule 2.2 \u2014 they are real engagement participants (Implementation Consultant, Client Administrator, Client SME, Technical Administrator, Methodology Author, CRM Researcher, Custom Developer) but have no entity record to be backed by in current V2 schema. CRMBuilder presently lacks a first-class user/role entity model. This planning item captures the design and implementation work to close that gap.\n\nScope:\n(1) Schema design \u2014 user/role entity table(s); fields for role kind, name, contact, affiliation, engagement participation history; relationship to existing V2 entities.\n(2) API endpoints \u2014 GET/POST for user/role records (endpoint name TBD: /users, /roles, /participants, etc.).\n(3) Persona-to-user backing reference \u2014 how methodology-layer Persona records connect to the new user/role records via the universal references table.\n(4) Backfill \u2014 for the CRMBUILDER engagement, 7 candidate personas need backings created once promotion completes via PI-092.\n(5) Forward use \u2014 external client engagements' personas will have backings created during their Phase 2 sessions.\n\nAffected domains in the methodology layer: Engagement Governance (#2 \u2014 the user/role entity lives in the governance layer alongside Session, Conversation, etc.); Requirements Capture (#3 \u2014 personas reference user/role records as backing).\n\nNot a session blocker. Surfaced as a Planning Item per Doug's confirmation during Topic 5: 'It is worth a planning item, but should not block.'",
+      "item_type": "pending_work",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-092",
+      "title": "Promote Phase 2 candidate methodology records (14 Domains, 9 Personas, ~40 Entities) from CRMBuilder-Phase-2-Candidate-Inventory.md into V2 records once the close-out pipeline supports methodology ingestion",
+      "description": "Per DEC-319, SES-098's Phase 2 candidate inventory was captured as a durable Markdown document at PRDs/product/crmbuilder-v2/CRMBuilder-Phase-2-Candidate-Inventory.md rather than written directly to V2 records, because the v0.8 close-out payload schema is governance-only (session/conversation/work_tickets/planning_items/commits/decisions/references/resolves_planning_items/addresses_planning_items) \u2014 no methodology section.\n\nDoug's explicit requirement at confirmation: 'convert MD document to database record when the closeout allows.' This PI tracks that conversion.\n\nWhen the V2 close-out pipeline supports methodology candidate ingestion (whether via a v0.9 payload schema extension, a separate methodology-write apply path, an MCP tool surface for batch ingestion, or another mechanism), use the MD inventory as the source-of-truth to write to V2:\n- 14 Domain records at status: candidate (full list and descriptions in \u00a71 of the MD)\n- 9 Persona records at status: candidate (full list and Rule 2.2 results in \u00a73 of the MD); backings TBD pending PI-091\n- ~40 Entity records at status: candidate (per-domain lists in \u00a72 of the MD), with appropriate source attribution (V1, V2, or spec)\n\nPlus the references that link them:\n- domain-contains-entity for each entity-to-domain relationship\n- persona-backed-by-entity or persona-backed-external per Rule 2.2 results\n- persona-participates-in-domain for each persona-to-primary-domain relationship\n\nIncludes a design step (sub-task): determine the ingestion mechanism. Options:\n(a) v0.9 payload schema extension adding methodology arrays (domains, personas, entities) to the close-out \u2014 most aligned with existing close-out discipline; requires schema work plus apply_close_out.py extension.\n(b) Separate methodology-write apply path \u2014 own script, own validation, own ordering rules; less invasive to existing close-out infrastructure.\n(c) MCP tool surface for batch methodology ingestion \u2014 useful for live-session ingestion patterns; less useful for backfill of MD-captured inventories.\n(d) Inline curl POSTs in apply prompts \u2014 least disciplined; mentioned for completeness only.\n\nThe mechanism choice is itself a design decision worth its own session and should be captured as a DEC at that session's close-out.\n\nThe MD inventory is the source-of-truth for CRMBuilder's Phase 2 inventory until this PI resolves. Future engagement Phase 2 sessions for non-dogfood clients will face the same gap until this PI resolves \u2014 that schedules urgency.\n\nAffected: All 14 domains' representation in V2.",
+      "item_type": "pending_work",
+      "status": "Open"
+    }
+  ],
+  "commits": [
+    {
+      "commit_sha": "bf5ed0ed6800a12b55d54f226e3c3d493ef974c9",
+      "commit_message_first_line": "v2: Phase 2 Domain Discovery candidate inventory for CRMBUILDER engagement (SES-098, re-keyed from SES-097 after collision with PI-074 implementation session)",
+      "commit_message_full": "v2: Phase 2 Domain Discovery candidate inventory for CRMBUILDER engagement (SES-098, re-keyed from SES-097 after collision with PI-074 implementation session)\n\nCaptures the Phase 2 Domain Discovery output for the CRMBUILDER dogfood\nengagement as a durable Markdown working artifact per Option C.1 (DEC-319):\n\n- 14 candidate domains, all passing Rule 2.1 against the revised mission\n  in DEC-320 (application framework framing, three-mode platform-or-build\n  option)\n- ~40 candidate entities grouped by domain, marked V1 / V2 / spec\n- 9 candidate personas with Rule 2.2 backings (2 resolved, 7 TBD pending\n  PI-091 user/role entity model)\n- Full Phase 2 interview transcript organized by topic\n- Decision summaries for DEC-319 through DEC-324\n- Planning item summaries for PI-091 and PI-092\n\nRe-keyed at push time from SES-097 to SES-098 after origin/main showed\nSES-097 was claimed by a parallel session (PI-074 executive_summary\ncolumn implementation). DEC-319..324 and PI-091..092 identifiers\nunchanged (origin DEC head DEC-318, origin PI head PI-090). Conversation\nre-keyed CONV-067 -> CONV-068.\n\nThis is the source-of-truth for CRMBuilder's Phase 2 inventory until\nPI-092 resolves and the records are promoted to V2 Domain/Persona/Entity\nrecords via whatever ingestion mechanism is chosen.\n\nConducted per PRDs/process/interviews/interview-domain-discovery.md v1.1\nwith Variant A administrator-as-proxy adapted for dogfood (Doug as both\nadministrator and sole stakeholder).",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-27T17:37:05+00:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "ebfdb9bf5f37f844d96d24c83a7fb4ab3d57c224"
+      ],
+      "commit_files_changed_count": 1
+    }
+  ],
+  "decisions": [
+    {
+      "identifier": "DEC-319",
+      "title": "Adopt Option C.1 for SES-098 close-out \u2014 durable Markdown candidate inventory plus standard governance close-out; methodology-records promotion deferred to PI-092",
+      "decision_date": "2026-05-27",
+      "status": "Active",
+      "context": "At session start, three shapes for capturing CRMBuilder dogfood Phase 2 work were considered: (A) old-guide faithful \u2014 produce a working Discovery Report MD per Phase 2 Domain Discovery guide v1.1, no V2 writes this session except governance; (B) new-direction only \u2014 skip the working report, write V2 candidate methodology records at close-out via the standard payload; (C) hybrid \u2014 working scratch markdown during the session for three-track capture-back, V2 candidate records via close-out payload at session end. Option C was initially recommended and confirmed by Doug. Mid-session, while preparing the close-out, sandbox investigated apply_close_out.py and discovered the v0.8 payload schema's nine sections are governance-only \u2014 no methodology-records section exists. Option C as originally framed could not write candidate Domain/Persona/Entity records via the standard apply. Three revised options surfaced: C.1 (defer methodology writes via PI; commit durable MD inventory); C.2 (one-off methodology-write script alongside standard apply); C.3 (raw curls in apply prompt).",
+      "decision": "Adopt Option C.1. Commit a durable Markdown candidate inventory at PRDs/product/crmbuilder-v2/CRMBuilder-Phase-2-Candidate-Inventory.md. Run standard governance close-out (SES, DEC, PI, REF) via the v0.8 payload. File PI-092 to capture the methodology-promotion work \u2014 converting the MD inventory's records to V2 Domain/Persona/Entity records once the close-out pipeline supports methodology ingestion. The MD inventory is the canonical source-of-truth until that promotion completes. Doug's explicit additional requirement at confirmation: the MD-to-DB conversion happens when the close-out supports it.",
+      "rationale": "Preserves the standard v0.8 close-out schema strictly. Avoids inventing methodology-ingestion tooling on the fly during a close-out under time pressure. The methodology-candidate ingestion pattern is itself interesting design work that deserves its own session and proper schema-extension consideration rather than an ad-hoc script. The MD inventory is fully durable in the repo and is committed at session close, so no information is lost \u2014 the conversion is a separate, well-scoped work item rather than a tooling shortcut.",
+      "alternatives_considered": "(C.2) One-off methodology-write script alongside standard apply, pattern-matching existing one-offs like apply_dec_025.py \u2014 rejected because batch methodology candidate ingestion has no precedent; inventing the pattern under time pressure during a close-out risks technical debt. (C.3) Raw curls in apply prompt \u2014 rejected as the least disciplined of the three; raw curl loops without transactional discipline could partially-succeed and leave V2 in inconsistent state.",
+      "consequences": "PI-092 created to capture the methodology-promotion work. The Phase 2 candidate inventory exists as MD until PI-092 resolves. Future engagement Phase 2 sessions for non-dogfood clients will face the same gap until PI-092 resolves \u2014 informs whether v0.9 payload schema needs a methodology section or whether the promotion pattern is per-engagement separate. The Phase 2 guide v1.1's Discovery Report concept maps cleanly to this MD; could become the canonical Phase 2 output format for all future engagements until V2 schema absorbs it. This session also effectively drafts the new Master CRMBuilder PRD's Phase 2 by execution per \u00a7III iterative-drafting principle."
+    },
+    {
+      "identifier": "DEC-320",
+      "title": "Mission revision \u2014 V1 PRD \u00a71.1 replaced with application-framework framing including three-mode platform-or-build option",
+      "decision_date": "2026-05-27",
+      "status": "Active",
+      "context": "Phase 2 Domain Discovery Topic 1 (Mission Grounding) requires locking the working mission for Rule 2.1 application later. The V1 PRD \u00a71.1 mission described CRMBuilder as 'a tool for designing, selecting, provisioning, and configuring CRM systems for any organization' \u2014 operationally focused on the selection-and-deployment-of-existing-CRMs path. Doug requested two revisions: (a) lift the framing above 'tool' to 'application framework' to capture the methodology-authoring and governance dimensions; (b) extend 'selecting' to include building custom CRM functionality (extend existing CRM with custom modules, or build CRM from scratch).",
+      "decision": "Mission paragraph is revised to: 'CRM Builder is an application framework for conducting the end-to-end process of designing, selecting or building, provisioning, configuring, and verifying a CRM system for any organization. The framework provides the methodology, AI-assisted interview surface, structured requirements capture, governance tracking, platform-selection and custom-build logic (recommend an existing CRM platform, extend an existing platform with custom functionality, or build a custom CRM from scratch), and declarative deployment-and-verification pipelines that hold the engagement together from initial discovery through deployed system.' This is the working mission used to apply Rule 2.1 to all 14 candidate domains in SES-098.",
+      "rationale": "V1 PRD \u00a71.1's tool-framing under-described what CRMBuilder has become \u2014 the methodology, governance, and AI-interview-surface dimensions added since v1.0 had no home in the old framing. The custom-build expansion captures real planned work (the Custom CRM Build domain, #8) that the V1 mission excluded by implication. Anchoring Rule 2.1 against this revised mission gives consistent reasoning across all 14 candidates, including those that didn't have a clear home under the V1 tool-framing.",
+      "alternatives_considered": "Use V1 PRD \u00a71.1 as-is \u2014 rejected because it doesn't ground the Custom CRM Build domain or the methodology-authoring aspect; Rule 2.1 would partially fail for several candidate domains. Tweak smaller (e.g., just add 'or build' without 'application framework' lift) \u2014 rejected because the framework-framing also supports other captured domains (Engagement Governance, Document Rendering, AI-Assisted Interview Surface) that don't fit the tool framing.",
+      "consequences": "V1 PRD \u00a71.1 is now superseded for methodology purposes by this revised mission. The revised mission is captured in this DEC and in the candidate inventory MD's 'Working Mission' section. PRDs/product/CRMBuilder-PRD.md should be updated to reflect this in a follow-on task (deferred). Rule 2.1 was applied against this revised mission for all 14 candidates in this session; all passed."
+    },
+    {
+      "identifier": "DEC-321",
+      "title": "CRMBUILDER engagement domain set: 14 candidate domains established in SES-098, all passing Rule 2.1",
+      "decision_date": "2026-05-27",
+      "status": "Active",
+      "context": "Phase 2 Domain Discovery Topic 2 (Walking the Work) surfaced 9 candidate domains via three-track listening adapted from oral narrative to corpus-walking (the 13-phase Document Production Process, the V1 PRD \u00a71, the Master CRMBuilder PRD \u00a73 two-layer model, the revised mission of DEC-320). Doug added two more candidates (#10 CRM Inventory & Functional Analysis, #11 CRM Deployment Pattern Inventory) recognizing the knowledge-substrate-vs-operational-execution split. Topic 3 (Completeness Sweep) surfaced three more (#12 Configuration Artifact Generation, #13 Document Rendering, #14 Engagement Setup). All 14 passed Rule 2.1 with two requiring explicit confirmation (#1 Methodology Authoring as CRMBuilder-internal-only \u2014 see DEC-323; #13 Document Rendering on Stakeholder-Review-dependency strength).",
+      "decision": "The Phase 2 candidate domain set for the CRMBUILDER engagement is the 14 domains: Methodology Authoring (#1), Engagement Governance (#2), Requirements Capture (#3), CRM Platform Decision (#4), CRM Deployment (#5), CRM Configuration (#6), CRM Verification (#7), Custom CRM Build (#8), AI-Assisted Interview Surface (#9), CRM Inventory & Functional Analysis (#10), CRM Deployment Pattern Inventory (#11), Configuration Artifact Generation (#12), Document Rendering (#13), Engagement Setup (#14). Each has a mission tie-in recorded in the candidate inventory MD \u00a71. All pass Rule 2.1. The candidates are not yet promoted to V2 Domain records \u2014 promotion is tracked by PI-092.",
+      "rationale": "All 14 either are explicitly named in the revised mission (DEC-320) or named in a constituent capability the mission requires. The carving distinguishes operational ('doing') domains from knowledge-substrate ('knowing') domains (#10, #11), and renderer domains (#12, #13) from the operational domains they feed. The asymmetry (only #4 and #5 have paired knowing-domains; #6 and #8 don't) is intentional and reflects a real difference between research-ahead and patterns-emerge-through-doing work (DEC-322 captures the asymmetry decision separately).",
+      "alternatives_considered": "6-domain set per V1 PRD \u00a71 (Discovery, Entity Definition, CRM Selection, CRM Deployment, Configuration, Verify & Maintain) \u2014 rejected as too coarse; doesn't capture governance, methodology authoring, the knowing-vs-doing split, or the renderers. 13-phase process domain set \u2014 rejected because the 13 phases mix governance (Phase 7 Stakeholder Review) with methodology (Phase 5 Entity PRDs) and operational (Phase 11 CRM Deployment) at the same level; the two-layer model in the Master CRMBuilder PRD \u00a73 is the better carving framework.",
+      "consequences": "14 Domain records will be authored at PI-092 resolution. The candidate inventory MD lists them with descriptions, mission tie-ins, and Rule 2.1 results. For external client engagements, the domain set will differ \u2014 domain #1 Methodology Authoring is CRMBuilder-internal-only (see DEC-323), so external engagements will have a 13-domain default before client-specific additions/subtractions. This decision also drafts the new Master CRMBuilder PRD's Phase 2 by execution per \u00a7III iterative-drafting framework."
+    },
+    {
+      "identifier": "DEC-322",
+      "title": "Symmetric pattern-inventory parallels rejected for CRM Configuration (#6) and Custom CRM Build (#8) \u2014 patterns intrinsic to those operational domains, not separate knowing-domains",
+      "decision_date": "2026-05-27",
+      "status": "Active",
+      "context": "Doug's two additions in Topic 2 (#10 CRM Inventory & Functional Analysis feeding #4 CRM Platform Decision; #11 CRM Deployment Pattern Inventory feeding #5 CRM Deployment) introduced a structural shape: knowledge-substrate domain (ongoing, ahead-of-engagement research) feeds operational-execution domain (per-engagement). By the same logic, two more pattern-inventory candidates could be surfaced: Configuration Pattern Inventory (would feed #6 CRM Configuration) and Custom Build Pattern Inventory (would feed #8 Custom CRM Build). Sandbox surfaced this structural observation; Doug initially asked for clarification ('I do not understand your observation, could you explain it better'); clarified with concrete examples (CRM Inventory researches Salesforce/HubSpot/Zoho ahead of any client; Deployment Pattern Inventory researches install paths ahead of any client; both happen engagement-independently).",
+      "decision": "Both parallels rejected. CRM Configuration's patterns are intrinsic to the operational domain \u2014 they emerge through doing configuration work for early clients, not from research ahead of any client. Custom CRM Build's patterns are equally intrinsic. The asymmetry between #4/#5 (which have paired knowing-domains #10/#11) and #6/#8 (which don't) is intentional and reflects a real difference: research that genuinely runs ahead of client engagement (you research Salesforce features before any Salesforce-bound client appears) vs. patterns that emerge through doing (you discover how to configure HubSpot by configuring it for the first HubSpot client).",
+      "rationale": "The case for #10 and #11 as separate domains is strong because the work is genuinely engagement-independent. For Configuration and Custom Build patterns, the patterns emerge through the doing \u2014 there's no useful pattern catalog to maintain ahead of having configured even one instance of a new CRM platform; the patterns ARE the doing. Symmetry isn't a methodology principle on its own; the real principle is whether knowledge-substrate work is genuinely engagement-independent.",
+      "alternatives_considered": "Add the two parallels for symmetry \u2014 rejected because symmetry isn't a methodology principle; the real principle is engagement-independence of the knowing-work.",
+      "consequences": "Configuration Pattern handling lives inside #6 CRM Configuration as an internal concern (intrinsic; not a first-class entity); same for Custom Build patterns inside #8. If practice later shows that configuration patterns do warrant their own domain (e.g., when adding the third or fourth supported CRM platform makes the pattern catalog substantial enough to maintain engagement-independently), the decision can be revisited."
+    },
+    {
+      "identifier": "DEC-323",
+      "title": "Methodology Authoring (#1) is a CRMBuilder-internal-only domain \u2014 present in CRMBUILDER engagement, absent from external client engagements' domain sets",
+      "decision_date": "2026-05-27",
+      "status": "Active",
+      "context": "Rule 2.1 application to candidate domain #1 Methodology Authoring surfaced an ambiguity: methodology authoring is a real per-engagement activity for the CRMBUILDER engagement (the dogfood premise from Master CRMBuilder PRD \u00a7III: CRMBuilder uses its own process to define itself). But for external client engagements, the client consumes methodology rather than authoring it \u2014 making #1 not appear in external engagement domain sets. Sandbox flagged this during Topic 4 (Rule 2.1 application); Doug confirmed the pass with the dogfood scoping.",
+      "decision": "Domain #1 Methodology Authoring is a CRMBuilder-internal-only domain. It passes Rule 2.1 for the CRMBUILDER engagement and is recorded as one of the 14 candidate domains there. External client engagements (CBM, future) will have a 13-domain default starting point (everything except #1) plus or minus client-specific additions/subtractions per their own Phase 2 Domain Discovery.",
+      "rationale": "The dogfood premise creates a unique engagement situation: the client (CRMBuilder) IS its own methodology author. This is structurally different from external clients who use the methodology as a tool. The two-layer mental model (governance vs. methodology) in the Master CRMBuilder PRD \u00a73 cleanly handles this: Methodology Authoring is at the methodology layer but applies only when the engagement's 'client' is CRMBuilder itself.",
+      "alternatives_considered": "Treat #1 as universal across engagements \u2014 rejected because external clients have nothing to author at the methodology layer (they consume the methodology, they don't extend it). Treat #1 as a cross-domain service \u2014 rejected because it's not a service that other domains use; it IS the work of evolving the methodology.",
+      "consequences": "The CRMBUILDER engagement's domain set includes #1; external client engagements do not. The candidate inventory MD \u00a71 records this scope distinction in #1's description. Future engagements' Phase 2 Domain Discovery starts from the 13-domain default (excluding #1) and adapts. The new Master CRMBuilder PRD will document this exception when Phase 2 is drafted."
+    },
+    {
+      "identifier": "DEC-324",
+      "title": "Entity naming disambiguation in Phase 2 inventory \u2014 Pattern qualifiers locked in; Render Run standardized across #12 and #13; Generated Artifact and Generated Document stay distinct",
+      "decision_date": "2026-05-27",
+      "status": "Active",
+      "context": "Phase 2 Topic 6 (Candidate Entity Disambiguation) surfaced cross-cutting naming tensions in the candidate entity inventory. Three tensions came in: (a) 'Entity' overload \u2014 methodology Entity vs. deployed CRM entity type. Doug retracted this: methodology Entity is the lifecycle spec, the deployed CRM's 'Contact' is its realization, same concept across stages. (b) 'Pattern' overload \u2014 Deployment Pattern (in #11), Pattern Library Entry (in #3, from CBM-redo work), implicit Configuration Pattern (in #6). Three uses of one word for genuinely distinct concepts. (c) 'Render Run' vs. 'Render Job' \u2014 parallel renderer-execution-tracker entities named differently across #12 and #13. Plus surfaced on review: Generated Artifact (#12) and Generated Document (#13) as parallel renderer outputs.",
+      "decision": "(1) Pattern entity naming locked in as: Deployment Pattern (#11), Pattern Library Entry (#3, with 'library' as the disambiguator), Configuration Pattern (intrinsic to #6, not a first-class entity). (2) Renderer execution tracking standardized as Render Run in both #12 and #13, distinguished by a render_target_kind field (configuration-artifact vs. document). (3) Generated Artifact (#12) and Generated Document (#13) remain distinct entities, since downstream consumers differ (deployment pipeline vs. human stakeholder). (4) Test Specification (#3) and Build Specification (#8) remain distinct names for different concepts (no name change needed).",
+      "rationale": "The Pattern overload is real but the three concepts are genuinely distinct \u2014 qualifier-naming preserves clarity without forcing semantic merging. The Render Run standardization aligns with V1 codebase convention (DeploymentRun, AuditResult, etc., all use 'Run'); breaking that for #13 alone introduced inconsistency. Generated Artifact / Generated Document distinction is preserved because downstream consumption is genuinely different (deployment pipelines consume one; humans consume the other).",
+      "alternatives_considered": "Merge Pattern types into a single Pattern entity with kind discriminator \u2014 rejected because the use cases and lifecycle are different (Deployment Pattern is operations-side reference; Pattern Library Entry is methodology-side reference; Configuration Pattern is intrinsic code). Standardize Generated Artifact / Generated Document into one entity \u2014 rejected because downstream consumption is genuinely different.",
+      "consequences": "When the candidate Entity records are authored into V2 at PI-092 resolution, they use these locked-in names. The candidate inventory MD \u00a72 records the disambiguation outcomes per domain. Future Phase 2 sessions for other engagements should apply the same naming conventions if equivalent concepts surface."
+    }
+  ],
+  "references": [
+    {
+      "source_type": "decision",
+      "source_id": "DEC-319",
+      "target_type": "session",
+      "target_id": "SES-098",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-320",
+      "target_type": "session",
+      "target_id": "SES-098",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-321",
+      "target_type": "session",
+      "target_id": "SES-098",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-322",
+      "target_type": "session",
+      "target_id": "SES-098",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-323",
+      "target_type": "session",
+      "target_id": "SES-098",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-324",
+      "target_type": "session",
+      "target_id": "SES-098",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-091",
+      "target_type": "session",
+      "target_id": "SES-098",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-092",
+      "target_type": "session",
+      "target_id": "SES-098",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-092",
+      "target_type": "decision",
+      "target_id": "DEC-319",
+      "relationship": "is_about"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-091",
+      "target_type": "decision",
+      "target_id": "DEC-323",
+      "relationship": "is_about"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": []
+}
