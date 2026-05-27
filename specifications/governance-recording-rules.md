@@ -1,7 +1,7 @@
 # CRM Builder — Governance Recording Rules
 
 **Version:** 0.1 DISCUSSION DRAFT
-**Last Updated:** 05-27-26 04:55
+**Last Updated:** 05-27-26 05:30
 **Purpose:** Normative rules for authoring governance records in V2 — workstreams, sessions, conversations, decisions, planning items, references, work tickets, and close-out payloads. Applies equally to AI agents (Claude.ai sandbox conversations, Claude Code instances) and human agents operating against any V2-tracked engagement.
 **Scope:** All sessions and conversations operating against any V2-tracked engagement, present and future (CRMBUILDER dogfood, Cleveland Business Mentors, anything to come). Authoritative for record-authoring discipline; non-authoritative for stakeholder-facing interview conduct (see `PRDs/process/conduct/charter.md`).
 **See also:** `PRDs/process/conduct/charter.md` (interview conduct — orthogonal scope), `PRDs/process/conduct/kickoff.md` (interview pre-session priming), `PRDs/process/conduct/question-library.md` (interview worked examples).
@@ -20,6 +20,8 @@
 **Who it governs.** AI agents (Claude.ai sandbox conversations, Claude Code instances) and human agents (Doug, future operators) equally, per DEC-310. There is no AI-only carve-out and no human-only carve-out.
 
 **Core principle: API and MCP only.** All record creation and modification goes through the V2 REST API or its MCP adapter. The V2 desktop UI is for **monitoring and scheduling**, not for authoring records. Every section below assumes this; no section repeats it. Exceptions, if any ever exist, must be named explicitly in this document.
+
+**Core principle: Mandatory logging.** Every Claude.ai chat thread, every Claude Code execution, and more broadly every *session* (in the post-DEC-299 sense — see §3) that operates against a V2-tracked engagement is logged. **There is no off-the-record communication.** A session that produces no governance content beyond the session record itself still gets a session record; the closing turn states the absence of further content explicitly, and that statement is the log. The Mandatory Logging principle is what makes the V2 database an actual source of truth rather than a partial mirror of what people remembered to write down.
 
 **Engagement targeting.** Every governance record lands against a specific engagement's database. CRMBUILDER dogfood work targets the CRMBUILDER engagement. Client work (e.g., Cleveland Business Mentors) targets the client's engagement. The target engagement is determined from the conversation's subject matter and confirmed in the session-opening handshake.
 
@@ -63,15 +65,17 @@ A canonical kickoff prompt template that bakes these in by default is a follow-o
 
 ## 3. Session Record Authoring
 
-**When created.** The SES record is authored at session close-out time, bundled into the close-out payload — not via a desktop New Session dialog. The bundle-in-payload mechanism is the operative path per the SES-046 through SES-052 precedent. The desktop-dialog framing in earlier kickoff prompts was descriptive of one available mechanism, not prescriptive.
+**What a session is (per DEC-299).** A session is a discrete unit of communication in any medium — one Claude.ai chat thread, one Claude Code execution, one email, one phone call, one Zoom meeting, one in-person interview. One Claude.ai chat = one session. One session contains one or more conversations as its topical sub-units (see §4). DEC-299 directs that documentation describe sessions and conversations in this post-redesign shape **even before PI-073's schema migration completes**; the conceptual model leads, the schema follows.
 
-**Required fields.** `identifier` (SES-NNN), `title`, `session_date`, `status` (only `Complete` is emitted at close-out), `conversation_reference` (descriptive text since per-conversation Claude.ai export is infeasible — DEC-025), `topics_covered`, `artifacts_produced`, `in_flight_at_end`, `summary`.
+**When created.** The session record is initialized at session start (the opening of the Claude.ai chat, Claude Code execution, etc.) and finalized at close-out. Pre-PI-073 schema: the SES record is authored at close-out time bundled into the close-out payload. Post-PI-073 schema: the session record is created via API at session open and updated as conversations complete; close-out finalizes status and bundles outputs. Both pre and post, the bundle-in-payload mechanism remains operative for the close-out moment — not via a desktop New Session dialog.
+
+**Required fields.** `identifier` (SES-NNN), `title`, `session_date`, `status` (only `Complete` is emitted at close-out), `conversation_reference` (descriptive text fallback — partially superseded once `conversation` is a first-class entity per PI-073), `topics_covered`, `artifacts_produced`, `in_flight_at_end`, `summary`.
 
 **`topics_covered` opens with the verbatim seed prompt** rendered as:
 ```
 Seed prompt: "<task statement>"
 ```
-followed by a structured summary of what the session actually covered, in order. Topics that surfaced and were deferred get a one-liner each so the trail is preserved.
+followed by a structured summary of what the session actually covered, in order. Topics that surfaced and were deferred get a one-liner each so the trail is preserved. When the session contained multiple conversations, `topics_covered` organizes by conversation.
 
 **`artifacts_produced`** is concrete: files written, prompts authored, draft documents created. "Discussion" is not an artifact. A planning item filed is not an artifact (the PI itself is the record); the artifact is what the PI captures.
 
@@ -79,19 +83,42 @@ followed by a structured summary of what the session actually covered, in order.
 
 **Session date format.** Use `YYYY-MM-DD` for new sessions. The CRMBUILDER snapshot contains heterogeneous historical formats (older sessions store `MM-DD-YY`); any script reading `session_date` normalizes on read.
 
+**Medium classifier.** Per PI-073, sessions carry a medium-type classifier (`claude_ai_chat`, `claude_code`, `email`, `phone_call`, `zoom`, `in_person`, etc.) and medium-specific metadata. The classifier and metadata schema are open design questions in PI-073; until resolved, set medium-type best-guess in the session record's notes / description fields and revise once PI-073 lands.
+
 ---
 
 ## 4. Conversation Record Authoring
 
-**What it captures.** One CONV record per Claude.ai conversation (or Claude Code session). Carries `conversation_identifier` (CONV-NNN), `conversation_title`, `conversation_purpose`, `conversation_description`, `conversation_status`, and lifecycle timestamps.
+**What a conversation is (per DEC-299).** A focused topical discussion that takes place *within* a session. One session contains one or more conversations. Conversations are session-scoped — they do not span sessions. Cross-session topical continuity is expressed via the `conversation_follows_from` and `conversation_relates_to` reference edges, not by reusing conversation identifiers.
+
+**The stop-and-log discipline.** When a topic shift becomes apparent within an open session, Claude **stops before proceeding**. At the boundary, Claude does one of two things:
+
+1. **Close the current conversation and open a new one in the same session.** Author the current CONV record (transition to `concluded` status) via direct API POST. Then open a new CONV with appropriate fields and continue in the same Claude.ai chat thread. The new CONV becomes the next topical sub-unit of the current session.
+2. **Suggest starting a new session.** If the new topic is large or unrelated enough that grouping it into the current session would muddy the close-out, Claude proposes closing out the current session and starting a fresh Claude.ai chat for the new topic.
+
+Claude does **not** continue mid-thread as if no boundary existed. Topic shifts that aren't logged produce muddled CONV records that no one can later parse.
+
+**Conversation boundary heuristics.** A boundary has been crossed when one or more apply:
+- The user introduces a topic that doesn't fit the current conversation's deliverable or reasoning thread.
+- The conversation's parent PI or workstream would change.
+- The decision-context shifts so that the current reasoning no longer applies.
+- The user explicitly signals a switch ("now let's switch to…", "different topic — …").
+- The deliverable changes type (was drafting a document, now debugging code; was discussing architecture, now authoring a kickoff prompt).
+
+Unclear cases get clarified, not assumed. The cost of asking is one turn; the cost of conflating two conversations into one CONV record is permanent.
+
+**Required fields.** `conversation_identifier` (CONV-NNN), `conversation_title`, `conversation_purpose`, `conversation_description`, `conversation_status`, and lifecycle timestamps.
+
+**Lifecycle.** `planned` → `started` → `concluded`, with `not_started` available for conversations that were planned but never opened during the session. Terminal: `cancelled`, `superseded`. The status transition to `concluded` is the authoring moment that triggers the direct API POST.
+
+**Authoring mechanism.** Direct API POST at the boundary moment, not bundled into the close-out payload. The close-out payload references conversations via the references section (each conversation already exists in the live DB by the time close-out runs). The transitional v0.8 payload schema carries a singular `conversation` block at top level — see §9 — that is being plural-ized by PI-073.
 
 **Required references at authoring time.**
-- `conversation_belongs_to_workstream` → parent workstream WS-NNN (captured at session-opening handshake).
-- One reference linking the CONV to its parent SES (typically created in the close-out payload's references section).
+- `conversation_belongs_to_session` → parent SES-NNN (captured at session open).
+- `conversation_belongs_to_workstream` → parent workstream WS-NNN (inherited from the session's workstream by default; override only when a conversation legitimately addresses different workstream).
+- For continuation conversations: `conversation_follows_from` → the prior CONV-NNN in the prior session whose topic this conversation continues.
 
-**Relation to SES.** A session may contain multiple conversations (e.g., a kickoff-drafting conversation and a follow-up execution conversation). The CONV-to-SES relationship is many-to-one. The SES is the unit of governance close-out; the CONV is the unit of Claude.ai chat.
-
-**Transcript capture infeasibility (DEC-025).** Per-conversation transcript export from Claude.ai is not currently available. Conversation content is captured by descriptive prose in the parent SES's `topics_covered` and `conversation_reference`, not by transcript ingestion.
+**Transcript capture infeasibility (DEC-025).** Per-conversation transcript export from Claude.ai is not currently available. Conversation content is captured by structured prose in the conversation's `conversation_description` and in the parent session's `topics_covered`, not by transcript ingestion.
 
 ---
 
@@ -149,18 +176,26 @@ followed by a structured summary of what the session actually covered, in order.
 
 ## 9. Close-Out Payload Authoring
 
-**When emitted.** Every session that produces governance records ends with a close-out. Clarification chats and planning-only discussions that produce no governance content do not need a close-out — but the absence is itself a choice, named explicitly in the session's closing turn.
+**When emitted.** Every session that produces governance records ends with a close-out. Per the Mandatory Logging principle in §0, every session also produces a close-out even when no decisions, PIs, or other records were authored — in that case the close-out's session block explicitly states the absence and the other sections are empty. Empty sections are still listed, never omitted.
 
-**Four-section shape** (per SES-046 through SES-052 precedent):
+**v0.8 ten-element payload shape.** The close-out payload is a JSON object with one top-level label and nine record sections:
+
 1. `label` — short identifier for the payload run.
 2. `session` — the SES record itself, bundled into the payload.
-3. `decisions` — array of DEC records authored in the session.
-4. `planning_items` — array of PI records created or status-updated in the session.
-5. `references` — array of reference records linking the above, plus governance references the session surfaced.
+3. `conversation` — the conversation record (singular under v0.8 schema; see transitional note below).
+4. `work_tickets` — array of WT records authored or status-updated in the session.
+5. `planning_items` — array of PI records created or status-updated in the session.
+6. `commits` — array of git commit records the session produced (where applicable).
+7. `decisions` — array of DEC records authored in the session.
+8. `references` — array of reference records linking the above, plus governance references the session surfaced.
+9. `resolves_planning_items` — array of PI identifiers this session resolves (atomic flip to `Resolved` per slice A of PI-030).
+10. `addresses_planning_items` — array of PI identifiers this session advances without resolving.
 
-The session block carrying the SES record itself is the operative bundle-in-payload mechanism. Do not write the SES separately through any other path.
+Empty sections are present as empty arrays, never omitted. The session block bundles the SES record itself — not written separately through any other path.
 
-**Payload location.** `{repo}/{target-engagement-close-outs-directory}/ses_NNN.json` where NNN is the SES identifier and the target engagement is determined from the conversation's subject matter. Repo-level CLAUDE.md documents the close-outs-directory path per engagement.
+**Transitional note (v0.8 → post-PI-073).** Under v0.8, the `conversation` section is **singular** — one conversation record per payload, matching the 1:0..1 SES↔CONV schema of v0.7/v0.8. PI-073 pluralizes this to a `conversations` array as part of the redesign decided in DEC-299. Until PI-073 lands, a session containing multiple conversations under the new conceptual model handles the singular constraint by: (a) authoring the additional conversations directly via API POST mid-session (per §4 stop-and-log), so each conversation exists in the live DB; (b) including only the final / primary conversation in the payload's `conversation` slot at close-out; (c) using the `references` section to link the session to each additional conversation explicitly. Post-PI-073, all conversations appear in the `conversations` array and the references-only workaround is retired.
+
+**Payload location.** `{repo}/{target-engagement-close-outs-directory}/ses_NNN.json` where NNN is the SES identifier and the target engagement is determined from the conversation's subject matter. Repo-level CLAUDE.md documents the close-outs-directory path per engagement (CRMBUILDER: `PRDs/product/crmbuilder-v2/close-out-payloads/`).
 
 **Apply prompt structure.**
 1. **Purpose** with a Net Effect block listing the records that will land.
@@ -188,6 +223,12 @@ A short catalog of patterns that produce broken governance records and how to av
 
 **Conversation authored without parent workstream reference.** A CONV record exists in V2 but `conversation_belongs_to_workstream` is missing; orphan conversation. Mitigation: capture the parent workstream identifier at session-opening handshake, alongside identifier heads.
 
+**Topic shift without stop-and-log.** A session begins on topic A, drifts into topic B without authoring the topic-A conversation record, and emits a single CONV at close-out that conflates both topics. The governance record loses the boundary; later readers cannot tell where A ended and B began, and decisions made in B are attributed to A's conversation. Mitigation: recognize the boundary heuristics in §4 and stop. Author the current CONV as `concluded` before continuing, or suggest a new session.
+
+**Multiple conversations conflated under v0.8 singular-conversation constraint.** A session contained three conversations under the new conceptual model, but only one shows up in the close-out payload's singular `conversation` slot, and the other two are nowhere in the payload (not authored mid-session, not linked via references). Mitigation: per §9 transitional guidance, author additional conversations via direct API POST mid-session and link them via the payload's references section until PI-073 pluralizes the schema.
+
+**Off-the-record session.** A Claude.ai chat thread operates against a V2 engagement, produces material content, and ends without any session record being authored. The governance record is silent on a session that actually happened. Mitigation: per the Mandatory Logging principle in §0, every session against a V2 engagement is logged. Even content-free sessions get a session record stating the absence of further content.
+
 **Snapshot lag between sandbox commits and post-apply commits.** A sandbox conversation pushes its close-out payload and apply prompt to GitHub; Doug runs the apply locally, regenerating snapshots in his local clone; if Doug has not yet pushed the snapshot-regen commit, the GitHub snapshot lags the live API. A subsequent sandbox conversation that reads only GitHub will see stale heads. Mitigation: every sandbox session re-captures live identifier heads at session start via the curl block, regardless of what the GitHub snapshot says.
 
 **Heterogeneous date formats.** `session.session_date` in the CRMBUILDER engagement stores `MM-DD-YY` for older sessions and `YYYY-MM-DD` for newer; any script substituting `session_date` into an ISO datetime must normalize on read (PI-025 Stage D precedent). Author new sessions with `YYYY-MM-DD`.
@@ -206,3 +247,4 @@ A short catalog of patterns that produce broken governance records and how to av
 |---|---|---|
 | 0.1 | 05-27-26 04:30 | Initial discussion draft. |
 | 0.1 | 05-27-26 04:55 | Added "Kickoff prompt pre-flight requirements" sub-section to §1, listing the six steps every v2 kickoff must direct the agent to perform. Same-session amendment, no version bump. |
+| 0.1 | 05-27-26 05:30 | Aligned §0/§3/§4/§9 with DEC-299's post-redesign conceptual model: Session = medium-agnostic communication unit (1 Claude.ai chat = 1 session); Conversation = focused topical sub-unit (1:N within session). Added Mandatory Logging core principle to §0. Added stop-and-log discipline and conversation boundary heuristics to §4. Corrected §9 to actual v0.8 ten-element payload schema (label + 9 record sections) with transitional note about singular `conversation` slot pluralizing under PI-073. Added two failure modes to §10 (topic shift without stop-and-log; off-the-record session) plus a transitional-state pattern. |
