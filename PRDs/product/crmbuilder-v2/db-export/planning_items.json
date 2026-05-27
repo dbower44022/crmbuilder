@@ -1087,9 +1087,9 @@
     "identifier": "PI-091",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Surface executive_summary in the planning_items desktop UI (create dialog, edit dialog, master pane)",
-    "updated_at": "2026-05-27T16:53:59.599212"
+    "updated_at": "2026-05-27T18:09:31.558156"
   },
   {
     "created_at": "2026-05-27T16:53:59.834663",
@@ -1099,9 +1099,9 @@
     "identifier": "PI-092",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Surface executive_summary in the decisions desktop UI (create dialog, edit dialog, master pane)",
-    "updated_at": "2026-05-27T16:53:59.834666"
+    "updated_at": "2026-05-27T18:09:31.777463"
   },
   {
     "created_at": "2026-05-27T16:54:00.033015",
@@ -1111,8 +1111,32 @@
     "identifier": "PI-093",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Surface executive_summary in the sessions desktop UI (create dialog, master pane) — no edit dialog per DEC-013",
-    "updated_at": "2026-05-27T16:54:00.033018"
+    "updated_at": "2026-05-27T18:09:31.969772"
+  },
+  {
+    "created_at": "2026-05-27T17:59:46.985504",
+    "description": "Phase 2 Domain Discovery for the CRMBUILDER engagement surfaced 7 of 9 candidate personas with TBD backing under Rule 2.2 — they are real engagement participants (Implementation Consultant, Client Administrator, Client SME, Technical Administrator, Methodology Author, CRM Researcher, Custom Developer) but have no entity record to be backed by in current V2 schema. CRMBuilder presently lacks a first-class user/role entity model. This planning item captures the design and implementation work to close that gap.\n\nScope:\n(1) Schema design — user/role entity table(s); fields for role kind, name, contact, affiliation, engagement participation history; relationship to existing V2 entities.\n(2) API endpoints — GET/POST for user/role records (endpoint name TBD: /users, /roles, /participants, etc.).\n(3) Persona-to-user backing reference — how methodology-layer Persona records connect to the new user/role records via the universal references table.\n(4) Backfill — for the CRMBUILDER engagement, 7 candidate personas need backings created once promotion completes via PI-092.\n(5) Forward use — external client engagements' personas will have backings created during their Phase 2 sessions.\n\nAffected domains in the methodology layer: Engagement Governance (#2 — the user/role entity lives in the governance layer alongside Session, Conversation, etc.); Requirements Capture (#3 — personas reference user/role records as backing).\n\nNot a session blocker. Surfaced as a Planning Item per Doug's confirmation during Topic 5: 'It is worth a planning item, but should not block.'",
+    "executive_summary": null,
+    "id": 94,
+    "identifier": "PI-094",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Design and implement a user/role entity model in V2 for tracking per-engagement participants",
+    "updated_at": "2026-05-27T17:59:46.985507"
+  },
+  {
+    "created_at": "2026-05-27T17:59:47.223985",
+    "description": "Per DEC-319, SES-098's Phase 2 candidate inventory was captured as a durable Markdown document at PRDs/product/crmbuilder-v2/CRMBuilder-Phase-2-Candidate-Inventory.md rather than written directly to V2 records, because the v0.8 close-out payload schema is governance-only (session/conversation/work_tickets/planning_items/commits/decisions/references/resolves_planning_items/addresses_planning_items) — no methodology section.\n\nDoug's explicit requirement at confirmation: 'convert MD document to database record when the closeout allows.' This PI tracks that conversion.\n\nWhen the V2 close-out pipeline supports methodology candidate ingestion (whether via a v0.9 payload schema extension, a separate methodology-write apply path, an MCP tool surface for batch ingestion, or another mechanism), use the MD inventory as the source-of-truth to write to V2:\n- 14 Domain records at status: candidate (full list and descriptions in §1 of the MD)\n- 9 Persona records at status: candidate (full list and Rule 2.2 results in §3 of the MD); backings TBD pending PI-091\n- ~40 Entity records at status: candidate (per-domain lists in §2 of the MD), with appropriate source attribution (V1, V2, or spec)\n\nPlus the references that link them:\n- domain-contains-entity for each entity-to-domain relationship\n- persona-backed-by-entity or persona-backed-external per Rule 2.2 results\n- persona-participates-in-domain for each persona-to-primary-domain relationship\n\nIncludes a design step (sub-task): determine the ingestion mechanism. Options:\n(a) v0.9 payload schema extension adding methodology arrays (domains, personas, entities) to the close-out — most aligned with existing close-out discipline; requires schema work plus apply_close_out.py extension.\n(b) Separate methodology-write apply path — own script, own validation, own ordering rules; less invasive to existing close-out infrastructure.\n(c) MCP tool surface for batch methodology ingestion — useful for live-session ingestion patterns; less useful for backfill of MD-captured inventories.\n(d) Inline curl POSTs in apply prompts — least disciplined; mentioned for completeness only.\n\nThe mechanism choice is itself a design decision worth its own session and should be captured as a DEC at that session's close-out.\n\nThe MD inventory is the source-of-truth for CRMBuilder's Phase 2 inventory until this PI resolves. Future engagement Phase 2 sessions for non-dogfood clients will face the same gap until this PI resolves — that schedules urgency.\n\nAffected: All 14 domains' representation in V2.",
+    "executive_summary": null,
+    "id": 95,
+    "identifier": "PI-095",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Promote Phase 2 candidate methodology records (14 Domains, 9 Personas, ~40 Entities) from CRMBuilder-Phase-2-Candidate-Inventory.md into V2 records once the close-out pipeline supports methodology ingestion",
+    "updated_at": "2026-05-27T17:59:47.223988"
   }
 ]

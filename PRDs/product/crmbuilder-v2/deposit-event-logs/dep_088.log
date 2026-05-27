@@ -1,0 +1,19 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_101.json
+Label:  PI-091 / PI-092 / PI-093 implementation — surface executive_summary in the planning_items, decisions, and sessions desktop UI. Single Claude Code orchestration session that ran a Phase 1 base-infrastructure sub-agent sequentially (extend FieldSchema with min_length/max_length, add live char counter + length gate to EntityCrudDialog) then dispatched three Phase 2 sub-agents in parallel against disjoint files (PI-091 planning_items schema+panel, PI-092 decisions schema+panel, PI-093 sessions schema+panel). All three PIs resolve in this one close-out. Implementation commit 3adb959. 36/36 base dialog tests pass; 207 targeted tests pass with 6 pre-existing PI-073-territory failures verified on clean main.
+Deposit event: DEP-088
+
+=== session (1 record) ===
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-003 (HTTP 201)
+
+=== commits (1 record) ===
+
+=== resolves_planning_items (3 records) ===
+  ✓ POST resolves_planning_items  → PI-091 (HTTP 201)
+  ✓ POST resolves_planning_items  → PI-092 (HTTP 201)
+  ✓ POST resolves_planning_items  → PI-093 (HTTP 201)
+
+
+✓ Recorded apply as deposit_event DEP-088 (HTTP 201).
