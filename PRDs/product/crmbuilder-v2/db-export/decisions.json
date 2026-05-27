@@ -4750,5 +4750,37 @@
     "supersedes_id": null,
     "title": "Dogfood reframe — produce governance recording as Domain Overview + Persona entities + Process PRDs (supersedes PI-084's standalone rules document approach; DEC-310's rules-required mandate stays in force)",
     "updated_at": "2026-05-27T03:20:00.250521"
+  },
+  {
+    "alternatives_considered": "Represent Cross Domain Services as a special kind of Process or Entity — rejected; conflates distinct methodology concepts and breaks Phase 6 separation. Defer until a concrete service is needed — rejected; the gap is foundational and surfaces as soon as any methodology authoring attempts to reference a service.",
+    "consequences": "A new Planning Item (PI-089) is authored to track the implementation work. The scope of the PI will include schema/migration, access-layer module, REST endpoints, desktop panel, edge-rule constraints, and any reference relationship vocabulary updates.",
+    "context": "The V2 governance system does not contain an object to define Cross Domain Services, but Cross-Domain Service Definition is Phase 6 of the document production process (per CLAUDE.md), producing one document per service (Notes, Email, Calendar, Surveys, etc.) that is referenced across multiple Domains. Without a first-class Cross Domain Service object in V2, these methodology artifacts cannot be queried, cross-referenced, or governed alongside other V2 entities (Domain, Persona, Process, Entity).",
+    "created_at": "2026-05-27T03:50:32.057877",
+    "decision": "Create a Planning Item to add a Cross Domain Service object to the V2 application. The PI will scope the migration, access layer, REST endpoints, desktop panel, and edge-rule semantics for the new entity type.",
+    "decision_date": "2026-05-26",
+    "id": 299,
+    "identifier": "DEC-312",
+    "rationale": "Cross-Domain Services are a key methodology artifact in the CRMBuilder document production process. They must be representable as first-class queryable objects in V2 alongside Domain, Persona, Process, and Entity to support reference graphs (which Domains use which Services, which Processes invoke which Services, etc.) and to allow the methodology to dogfood its own service-definition artifacts.",
+    "status": "Deleted",
+    "superseded_by_id": null,
+    "supersedes_id": null,
+    "title": "Add a Cross Domain Service object to the V2 system",
+    "updated_at": "2026-05-27T03:54:47.707390"
+  },
+  {
+    "alternatives_considered": "Represent Cross Domain Services as a special kind of Process or Entity — rejected; conflates distinct methodology concepts and breaks the Phase 6 separation that the document production process explicitly defines. Defer until a concrete service is needed — rejected; the gap is foundational, and methodology authoring against any Domain that references Cross Domain Services would immediately surface it.",
+    "consequences": "A new Planning Item (PI-089) is authored to track the implementation work. Scope: schema/migration, access-layer module, REST endpoints, desktop panel, edge-rule constraints, reference relationship vocabulary updates, db-export emitter, tests. Note: a direct-POST attempt earlier in this session created DEC-312 (now status=Deleted, soft-delete) and PI-089 (hard-deleted, identifier now reused by this payload) before the auto-mode classifier blocked the reference-edge POST citing DEC-310; the soft-deleted DEC-312 row remains as a permanent deletion trail of that attempt.",
+    "context": "The V2 governance system does not contain an object to define Cross Domain Services, but Cross-Domain Service Definition is Phase 6 of the document production process (per CLAUDE.md § 'Document Production Process'), producing one document per service (Notes, Email, Calendar, Surveys, etc.) that is referenced across multiple Domains. V2 has first-class objects for Domain, Persona, Process, Entity, Decision, Planning Item, Risk, Topic, plus the v0.7 governance entities (workstream, conversation, reference_book, work_ticket, close_out_payload, deposit_event) — but no Cross Domain Service object. Without one, these methodology artifacts cannot be queried, cross-referenced, or governed alongside other V2 entities.",
+    "created_at": "2026-05-27T03:58:16.043944",
+    "decision": "Create a Planning Item to add a Cross Domain Service object to the V2 application. The PI will scope the migration, access layer, REST endpoints, desktop panel, edge-rule semantics, and reference vocabulary updates for the new entity type.",
+    "decision_date": "2026-05-26",
+    "id": 300,
+    "identifier": "DEC-313",
+    "rationale": "Cross-Domain Services are a key methodology artifact in the CRMBuilder document production process. They must be representable as first-class queryable objects in V2 alongside Domain, Persona, Process, and Entity to support reference graphs (which Domains use which Services, which Processes invoke which Services, etc.) and to allow the methodology to dogfood its own service-definition artifacts — consistent with DEC-295 (CRMBuilder uses its own methodology to define itself) and DEC-311 (produce methodology recording as Domain Overview + Personas + Process PRDs rather than standalone documents).",
+    "status": "Active",
+    "superseded_by_id": null,
+    "supersedes_id": null,
+    "title": "Add a Cross Domain Service object to the V2 system",
+    "updated_at": "2026-05-27T03:58:16.043947"
   }
 ]

@@ -1,0 +1,24 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_094.json
+Label:  Cross Domain Service object — Doug surfaced that V2 lacks an object for Cross-Domain Services (Phase 6 of the document production process); Claude Code initially attempted to author the DEC + PI via direct REST POSTs and created orphan records (DEC-312, PI-089) before the auto-mode classifier blocked the reference-edge POST citing DEC-310's discipline; Doug chose to back out the orphans and redo properly via session/close-out; this payload records DEC-313 (add a Cross Domain Service object) and PI-089 (implementation scope) per the canonical close-out flow.
+Deposit event: DEP-079
+
+=== session (1 record) ===
+  ✓ POST session  SES-094 (HTTP 201)
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CONV-064 (HTTP 201)
+
+=== planning_items (1 record) ===
+  ✓ POST planning_items  PI-089 (HTTP 201)
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-313 (HTTP 201)
+
+=== references (2 records) ===
+  ✓ POST references  DEC-313 decided_in SES-094 (HTTP 201)
+  ✓ POST references  PI-089 addresses DEC-313 (HTTP 201)
+
+✓ All 6 operations complete.
+
+✓ Recorded apply as deposit_event DEP-079 (HTTP 201).

@@ -966,5 +966,16 @@
     "status": "Open",
     "title": "Define the standard Process PRD Definition Process — meta Process PRD authored from observed practice",
     "updated_at": "2026-05-27T03:19:59.842088"
+  },
+  {
+    "created_at": "2026-05-27T03:58:15.859534",
+    "description": "Implement Cross Domain Service as a first-class V2 entity so methodology artifacts produced in Phase 6 of the document production process (Notes, Email, Calendar, Surveys, etc.) become queryable, cross-referenceable, and governable alongside Domain, Persona, Process, and Entity.\n\nScope:\n- Alembic migration adding the cross_domain_service table (identifier prefix CDS-NNN, plus core fields: name, description, status, owner, version, file_path)\n- Access-layer module under crmbuilder_v2/access/ with CRUD plus next-identifier helper and SAVEPOINT-retry per PI-002\n- REST endpoints under crmbuilder_v2/api/ following the {data, meta, errors} envelope; POST accepts null/omitted identifier per PI-002\n- Desktop panel under the appropriate sidebar group with the standard EntityCrudDialog pattern\n- Reference relationship vocabulary updates in crmbuilder_v2/access/vocab.py — at minimum: cross_domain_service used_by domain, process invokes cross_domain_service, entity touched_by cross_domain_service; plus the CHECK-constraint migration on refs.relationship_kind\n- db-export emitter for the new table\n- Tests covering access layer, API, and edge rules\n\nOpen design questions deferred to PI execution:\n- Should Cross Domain Services be scoped per Engagement, or shared across Engagements as global methodology assets?\n- Does the entity need version history (like reference_book has reference_book_versions)?\n- How does it interact with Domain — explicit reference edge, or implicit through which Domains invoke it?\n\nAddresses DEC-313.",
+    "id": 89,
+    "identifier": "PI-089",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Add a Cross Domain Service entity to the V2 application",
+    "updated_at": "2026-05-27T03:58:15.859537"
   }
 ]

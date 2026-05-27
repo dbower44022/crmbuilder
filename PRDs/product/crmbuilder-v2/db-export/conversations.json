@@ -1069,5 +1069,22 @@
     "conversation_superseded_at": null,
     "conversation_title": "Dogfood reframe of governance recording — Process PRD framing led to full methodology-dogfood approach",
     "conversation_updated_at": "2026-05-27T03:19:58.961740"
+  },
+  {
+    "conversation_cancelled_at": null,
+    "conversation_completed_at": "2026-05-27T03:58:15.614422",
+    "conversation_created_at": "2026-05-27T03:58:15.614193",
+    "conversation_deleted_at": null,
+    "conversation_description": "Doug asked Claude Code to author a decision (V2 lacks a Cross Domain Service object) and a Planning Item (add one). Claude Code first attempted via direct REST POSTs, creating DEC-312 and PI-089 before the auto-mode classifier blocked the reference-edge POST citing DEC-310. Doug chose to back out the orphans and redo properly. PI-089 hard-deleted, DEC-312 soft-deleted. This conversation captures the discipline-compliant re-authoring as DEC-313 + PI-089 within SES-094.",
+    "conversation_identifier": "CONV-064",
+    "conversation_kickoff_drafted_at": null,
+    "conversation_notes": null,
+    "conversation_purpose": "Author the decision and PI for adding a Cross Domain Service object to V2 via the canonical session/close-out flow, after an initial direct-POST attempt was blocked by the auto-mode classifier and the orphan records were backed out.",
+    "conversation_ready_at": null,
+    "conversation_started_at": null,
+    "conversation_status": "complete",
+    "conversation_superseded_at": null,
+    "conversation_title": "Cross Domain Service object — author governance record (discipline retry after direct-POST violation)",
+    "conversation_updated_at": "2026-05-27T03:58:15.614511"
   }
 ]

@@ -1,0 +1,79 @@
+{
+  "label": "Cross Domain Service object — Doug surfaced that V2 lacks an object for Cross-Domain Services (Phase 6 of the document production process); Claude Code initially attempted to author the DEC + PI via direct REST POSTs and created orphan records (DEC-312, PI-089) before the auto-mode classifier blocked the reference-edge POST citing DEC-310's discipline; Doug chose to back out the orphans and redo properly via session/close-out; this payload records DEC-313 (add a Cross Domain Service object) and PI-089 (implementation scope) per the canonical close-out flow.",
+  "session": {
+    "identifier": "SES-094",
+    "title": "Add a Cross Domain Service object to V2 — governance authoring (discipline retry after direct-POST violation)",
+    "session_date": "2026-05-26",
+    "status": "Complete",
+    "conversation_reference": "Claude Code session continuing from the back-to-back SES-092 and SES-093 close-out applies. After both applies succeeded and identifier heads were captured (SES-093, CONV-063, DEC-311, PI-088, WT-055), Doug asked Claude Code to author a decision and PI capturing that V2 lacks a Cross Domain Service object — a key methodology artifact per Phase 6 of the document production process (Cross-Domain Service Definition, producing one document per service such as Notes, Email, Calendar, Surveys). Claude Code's first attempt POSTed DEC-312 and PI-089 directly via REST, then attempted a third POST for the addresses reference edge. The auto-mode classifier blocked the reference edge, citing DEC-310 (every decision and PI must land via a session/close-out payload, not direct REST). Claude Code surfaced the violation, the two orphan records, and offered Doug two options: back out and redo properly, or patch the orphan edge directly. Doug chose option 1. PI-089 was hard-deleted (HTTP 200, row removed); DEC-312 was soft-deleted (HTTP 200, status flipped to 'Deleted', row retained). Next-identifier helpers confirmed DEC-313 (skipping the soft-deleted DEC-312) and PI-089 (identifier now reusable after hard-delete) as the proper assignments for the discipline-compliant re-authoring. This session captures the re-authoring.",
+    "topics_covered": "Seed prompt: \"please create a decision that says 'The system does not contain a object to define Cross Domain Services, a key part of our process. The decision is to create a Planning Item to create a Cross Domain Service object.' Then create the PI for creating a Cross Domain Service object in the V2 application.\"\n\n(1) Identification of the methodology gap. Phase 6 of the document production process (per CLAUDE.md § 'Document Production Process') is Cross-Domain Service Definition, producing one document per service (Notes, Email, Calendar, Surveys, etc.). The V2 governance system has first-class objects for Domain, Persona, Process, Entity, Decision, Planning Item, Risk, Topic, plus the v0.7 governance entities (workstream, conversation, reference_book, work_ticket, close_out_payload, deposit_event) — but no object for Cross Domain Service. Without one, Phase 6 artifacts cannot be queried, cross-referenced, or governed alongside other V2 entities.\n\n(2) Initial attempt and discipline violation. Claude Code captured identifier heads (per DEC-300), then POSTed DEC-312 and PI-089 directly via REST. Both POSTs succeeded. The third POST (an `addresses` reference edge PI-089 → DEC-312) was blocked by the auto-mode classifier with the explicit reason that creating governance content via direct REST bypasses DEC-310's just-established discipline that all sessions and conversations on V2-tracked engagements record through session/close-out payloads.\n\n(3) Surfacing the violation. Claude Code stopped, reported the state (DEC-312 and PI-089 created but unlinked; no `decided_in` to any session), and offered Doug two options: option 1, back out and redo properly via session close-out; option 2, patch the orphan edge directly with Doug's explicit authorization, accepting the missing `decided_in` gap. Recommendation was option 1.\n\n(4) Doug chose option 1. Cleanup: PI-089 hard-deleted (HTTP 200, full record returned, no longer queryable); DEC-312 soft-deleted (HTTP 200, status flipped to 'Deleted', row retained in DB). Next-identifier helpers returned DEC-313 (the soft-deleted DEC-312 occupies its slot in the sequence) and PI-089 (identifier reusable after hard-delete). The asymmetry between DEC soft-delete and PI hard-delete is noted as a substantive design observation but is not the subject of this session.\n\n(5) Discipline-compliant re-authoring. This payload re-creates the same substantive content as DEC-313 and PI-089 within a proper session/close-out, with `decided_in` (DEC-313 → SES-094) and `addresses` (PI-089 → DEC-313) reference edges, applied atomically via apply_close_out.py and recorded as a deposit_event. The soft-deleted DEC-312 row remains in V2 as a permanent deletion trail; it is not removed.\n\n(6) Identifier-head capture per DEC-300. Heads captured before payload assignment: SES-093, CONV-063, DEC-311 (live, excluding soft-deleted DEC-312), PI-088, WT-055. Next-identifier helper queries confirmed SES-094, CONV-064, DEC-313, PI-089. The discrepancy between the 'list endpoint head' (DEC-311) and the 'next-identifier' (DEC-313, skipping DEC-312) is a feature of the access-layer next-identifier helper handling soft-deletes correctly.\n\n(7) Items deferred from this session: the discrepancy in DEC vs PI delete semantics (DEC soft-deletes; PI hard-deletes); whether soft-deleted rows should remain visible via list endpoints with a status filter; whether a future cleanup capability should hard-delete soft-deleted rows when the operator confirms; the asymmetry in identifier-sequence behavior (soft-deletes consume identifier slots, hard-deletes do not). These are out of scope for this small governance session and would be authored as separate PIs in future sessions per DEC-310 discipline.",
+    "summary": "Discipline-correction session. Doug asked Claude Code to author a decision (V2 lacks a Cross Domain Service object) and a PI (add one). Claude Code attempted via direct REST POSTs, was blocked by the auto-mode classifier after creating two orphan records (DEC-312, PI-089), surfaced the violation, and Doug chose to back out and redo properly. PI-089 hard-deleted, DEC-312 soft-deleted. This close-out re-authors the same substantive content as DEC-313 (skipping the soft-deleted slot) and PI-089 (identifier reusable) via the canonical session/close-out flow. Decisions: DEC-313 declares V2 needs a Cross Domain Service object and authorizes a PI to add it. Planning items: PI-089 scopes the implementation (Alembic migration adding cross_domain_service table with CDS-NNN identifier prefix, access-layer module, REST endpoints, desktop panel, reference relationship vocabulary updates, db-export emitter, tests). References: decided_in (DEC-313 → SES-094), addresses (PI-089 → DEC-313). First worked example of the option-1 back-out-and-retry path for a DEC-310 discipline violation — documents the cleanup pattern for future occurrences.",
+    "artifacts_produced": "This close-out's payload (PRDs/product/crmbuilder-v2/close-out-payloads/ses_094.json) and apply prompt (PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-apply-close-out-ses-094.md). No other content or code commits in scope — this session is governance-only and is the first instance of governance recording for a small in-session DEC+PI authoring that surfaced organically from a Claude Code working session rather than from a Claude.ai conversation. The soft-deleted DEC-312 row remains in V2 as a permanent deletion trail of the original direct-POST attempt.",
+    "in_flight_at_end": "PI-089 (add a Cross Domain Service entity to V2) is the next implementation work item. The PI is sized as a normal v2 entity-addition feature — Alembic migration, access layer, API, panel, vocab, db-export, tests — and can be sliced if scope demands. Deferred items surfaced in this session but not authored as governance records (per DEC-310 discipline, expected to be authored in future sessions): (a) the discrepancy in DEC soft-delete vs PI hard-delete semantics; (b) whether list endpoints should expose soft-deleted rows behind a status filter; (c) whether a hard-delete capability should be added for cleanup of soft-deleted rows; (d) the asymmetry in identifier-sequence handling between soft-deletes (consume slots) and hard-deletes (release slots). These are foundational consistency questions that warrant their own DECs and PIs once anyone is ready to address them. The workstream assignment (WS-011 V2 storage API refinements) is the same as SES-092 and SES-093, still provisional pending the dedicated governance-recording workstream contemplated in SES-092's in_flight_at_end."
+  },
+  "conversation": {
+    "conversation_identifier": "CONV-064",
+    "conversation_title": "Cross Domain Service object — author governance record (discipline retry after direct-POST violation)",
+    "conversation_purpose": "Author the decision and PI for adding a Cross Domain Service object to V2 via the canonical session/close-out flow, after an initial direct-POST attempt was blocked by the auto-mode classifier and the orphan records were backed out.",
+    "conversation_description": "Doug asked Claude Code to author a decision (V2 lacks a Cross Domain Service object) and a Planning Item (add one). Claude Code first attempted via direct REST POSTs, creating DEC-312 and PI-089 before the auto-mode classifier blocked the reference-edge POST citing DEC-310. Doug chose to back out the orphans and redo properly. PI-089 hard-deleted, DEC-312 soft-deleted. This conversation captures the discipline-compliant re-authoring as DEC-313 + PI-089 within SES-094.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-064",
+        "target_type": "workstream",
+        "target_id": "WS-011",
+        "relationship": "conversation_belongs_to_workstream"
+      },
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-064",
+        "target_type": "session",
+        "target_id": "SES-094",
+        "relationship": "conversation_records_session"
+      }
+    ]
+  },
+  "commits": [],
+  "work_tickets": [],
+  "planning_items": [
+    {
+      "identifier": "PI-089",
+      "title": "Add a Cross Domain Service entity to the V2 application",
+      "description": "Implement Cross Domain Service as a first-class V2 entity so methodology artifacts produced in Phase 6 of the document production process (Notes, Email, Calendar, Surveys, etc.) become queryable, cross-referenceable, and governable alongside Domain, Persona, Process, and Entity.\n\nScope:\n- Alembic migration adding the cross_domain_service table (identifier prefix CDS-NNN, plus core fields: name, description, status, owner, version, file_path)\n- Access-layer module under crmbuilder_v2/access/ with CRUD plus next-identifier helper and SAVEPOINT-retry per PI-002\n- REST endpoints under crmbuilder_v2/api/ following the {data, meta, errors} envelope; POST accepts null/omitted identifier per PI-002\n- Desktop panel under the appropriate sidebar group with the standard EntityCrudDialog pattern\n- Reference relationship vocabulary updates in crmbuilder_v2/access/vocab.py — at minimum: cross_domain_service used_by domain, process invokes cross_domain_service, entity touched_by cross_domain_service; plus the CHECK-constraint migration on refs.relationship_kind\n- db-export emitter for the new table\n- Tests covering access layer, API, and edge rules\n\nOpen design questions deferred to PI execution:\n- Should Cross Domain Services be scoped per Engagement, or shared across Engagements as global methodology assets?\n- Does the entity need version history (like reference_book has reference_book_versions)?\n- How does it interact with Domain — explicit reference edge, or implicit through which Domains invoke it?\n\nAddresses DEC-313.",
+      "item_type": "pending_work",
+      "status": "Open"
+    }
+  ],
+  "decisions": [
+    {
+      "identifier": "DEC-313",
+      "title": "Add a Cross Domain Service object to the V2 system",
+      "decision_date": "2026-05-26",
+      "status": "Active",
+      "context": "The V2 governance system does not contain an object to define Cross Domain Services, but Cross-Domain Service Definition is Phase 6 of the document production process (per CLAUDE.md § 'Document Production Process'), producing one document per service (Notes, Email, Calendar, Surveys, etc.) that is referenced across multiple Domains. V2 has first-class objects for Domain, Persona, Process, Entity, Decision, Planning Item, Risk, Topic, plus the v0.7 governance entities (workstream, conversation, reference_book, work_ticket, close_out_payload, deposit_event) — but no Cross Domain Service object. Without one, these methodology artifacts cannot be queried, cross-referenced, or governed alongside other V2 entities.",
+      "decision": "Create a Planning Item to add a Cross Domain Service object to the V2 application. The PI will scope the migration, access layer, REST endpoints, desktop panel, edge-rule semantics, and reference vocabulary updates for the new entity type.",
+      "rationale": "Cross-Domain Services are a key methodology artifact in the CRMBuilder document production process. They must be representable as first-class queryable objects in V2 alongside Domain, Persona, Process, and Entity to support reference graphs (which Domains use which Services, which Processes invoke which Services, etc.) and to allow the methodology to dogfood its own service-definition artifacts — consistent with DEC-295 (CRMBuilder uses its own methodology to define itself) and DEC-311 (produce methodology recording as Domain Overview + Personas + Process PRDs rather than standalone documents).",
+      "alternatives_considered": "Represent Cross Domain Services as a special kind of Process or Entity — rejected; conflates distinct methodology concepts and breaks the Phase 6 separation that the document production process explicitly defines. Defer until a concrete service is needed — rejected; the gap is foundational, and methodology authoring against any Domain that references Cross Domain Services would immediately surface it.",
+      "consequences": "A new Planning Item (PI-089) is authored to track the implementation work. Scope: schema/migration, access-layer module, REST endpoints, desktop panel, edge-rule constraints, reference relationship vocabulary updates, db-export emitter, tests. Note: a direct-POST attempt earlier in this session created DEC-312 (now status=Deleted, soft-delete) and PI-089 (hard-deleted, identifier now reused by this payload) before the auto-mode classifier blocked the reference-edge POST citing DEC-310; the soft-deleted DEC-312 row remains as a permanent deletion trail of that attempt."
+    }
+  ],
+  "references": [
+    {
+      "source_type": "decision",
+      "source_id": "DEC-313",
+      "target_type": "session",
+      "target_id": "SES-094",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-089",
+      "target_type": "decision",
+      "target_id": "DEC-313",
+      "relationship": "addresses"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": []
+}
