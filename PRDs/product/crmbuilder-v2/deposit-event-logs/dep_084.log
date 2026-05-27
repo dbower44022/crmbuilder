@@ -1,0 +1,20 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_099.json
+Label:  PI-073 close-out — eight-phase Session/Conversation entity redesign per DEC-314 lands on main. Captures all eight phase commits (Phase A migration through Phase F data migration), the audit + documentation conversation that produced this payload, and resolves PI-073. The session and conversation entities surrender their legacy v0.7 shapes: session is now the medium-agnostic communication container with a six-status lifecycle (DEC-013 fully superseded — sessions are schedulable and stateful), conversation is now the topical sub-unit within a session in a 1:N relationship (DEC-119's 1:0..1 model retired). Existing CONV-NNN identifiers are now session identifiers; existing SES-NNN identifiers are now conversation identifiers; new conversations use CNV-NNN going forward. This payload is authored against the new schema and applies AFTER the rebase + merge + Phase F data migration land on main per the apply prompt at prompts/CLAUDE-CODE-PROMPT-apply-close-out-ses-099.md.
+Deposit event: DEP-084
+
+=== session (1 record) ===
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-001 (HTTP 201)
+
+=== commits (8 records) ===
+
+=== references (1 record) ===
+  ✓ POST references  SES-099 session_belongs_to_workstream WS-011 (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-073 (HTTP 201)
+
+
+✓ Recorded apply as deposit_event DEP-084 (HTTP 201).

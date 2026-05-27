@@ -1,24 +1,24 @@
 # PI-073 Phase F — Data Migration Audit Report
 
-**Generated:** 2026-05-27 13:09:06
+**Generated:** 2026-05-27 13:38:18
 **Phase:** F (data migration)
 **Source DB:** branch isolation copy at `crmbuilder-v2/data/branch-pi-073/CRMBUILDER.db`
 
 ## Row counts
 
-- legacy_conversations → new sessions: **66** rows migrated
-- legacy_sessions → new conversations: **95** rows migrated
+- legacy_conversations → new sessions: **68** rows migrated
+- legacy_sessions → new conversations: **97** rows migrated
 
 ## Reference-edge retargeting
 
-- `source_type_flipped_conv_to_sess`: 175
+- `source_type_flipped_conv_to_sess`: 178
 - `source_type_flipped_sess_to_conv`: 208
-- `target_type_flipped_conv_to_sess`: 87
-- `target_type_flipped_sess_to_conv`: 309
-- `kind_renames_session_belongs_to_workstream`: 66
+- `target_type_flipped_conv_to_sess`: 89
+- `target_type_flipped_sess_to_conv`: 311
+- `kind_renames_session_belongs_to_workstream`: 68
 - `kind_renames_session_opens_against_work_ticket`: 54
 - `kind_renames_session_follows_from`: 36
-- `records_session_reversed`: 66
+- `records_session_reversed`: 68
 
 ## legacy_conversations → sessions (CONV-NNN identifiers retained)
 
@@ -90,6 +90,8 @@
 | CONV-064 | CONV-064 | complete | complete |
 | CONV-065 | CONV-065 | complete | complete |
 | CONV-066 | CONV-066 | complete | complete |
+| CONV-067 | CONV-067 | complete | complete |
+| CONV-068 | CONV-068 | complete | complete |
 
 ## legacy_sessions → conversations (SES-NNN identifiers retained)
 
@@ -190,3 +192,5 @@
 | SES-094 | SES-094 | Complete | complete |
 | SES-095 | SES-095 | Complete | complete |
 | SES-096 | SES-096 | Complete | complete |
+| SES-097 | SES-097 | Complete | complete |
+| SES-098 | SES-098 | Complete | complete |

@@ -92,9 +92,17 @@ def _row_to_dict(cursor: sqlite3.Cursor, row: tuple) -> dict:
 def verify_state(conn: sqlite3.Connection) -> tuple[int, int]:
     """Confirm DB is at the right alembic head and legacy tables present."""
     head = conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-    if head != "0020_pi_073_session_conversation_redesign":
+    # Accept either the pre-rebase 0020_pi_073_* or the post-rebase
+    # 0021_pi_073_session_conversation_redesign (renumbered to revise
+    # main's 0020_pi_074_executive_summary). Both names point at the
+    # same schema migration.
+    valid_heads = (
+        "0020_pi_073_session_conversation_redesign",
+        "0021_pi_073_session_conversation_redesign",
+    )
+    if head not in valid_heads:
         raise SystemExit(
-            f"Expected alembic head 0020_pi_073_*, got {head}. "
+            f"Expected alembic head in {valid_heads}, got {head}. "
             f"Run 'alembic upgrade head' first."
         )
     tables = {

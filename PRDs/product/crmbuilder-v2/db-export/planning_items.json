@@ -871,9 +871,9 @@
     "identifier": "PI-073",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Redesign Session and Conversation entities — medium-agnostic communication container with topical sub-units",
-    "updated_at": "2026-05-26T19:35:54.375796"
+    "updated_at": "2026-05-27T17:38:48.846273"
   },
   {
     "created_at": "2026-05-27T01:28:34.399916",
