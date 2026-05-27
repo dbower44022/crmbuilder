@@ -1,105 +1,84 @@
-"""Field schema for the Sessions create dialog (v0.3 slice D).
+"""Field schema for the Session CRUD dialogs (PI-073 / DEC-314 redesign).
 
-Per DEC-013 / DEC-034, sessions are append-only and user-authorable
-through the UI. The nine-field schema mirrors PRD §2.4. The identifier
-is auto-assigned at dialog-open time by ``SessionCreateDialog`` and
-read-only at the field level. ``topics_covered`` and
-``conversation_reference`` carry placeholder hints aligned with the
-DEC-025 conventions.
+Sessions are the medium-agnostic communication container — one Claude.ai
+chat / email / phone call / Zoom meeting / in-person meeting / Slack
+thread = one session. The schema mirrors ``session-v2.md`` §3.2.
+
+Identifier prefix ``SES-NNN``. Six-status lifecycle (planned, in_flight,
+complete, cancelled, not_started, superseded). Editable throughout (the
+DEC-013 append-only rule is superseded by DEC-314).
 """
 
 from __future__ import annotations
 
-from datetime import date
+from copy import deepcopy
 
-from crmbuilder_v2.access.vocab import SESSION_STATUSES
+from crmbuilder_v2.access.vocab import (
+    SESSION_MEDIUMS,
+    SESSION_STATUS_TRANSITIONS,
+    SESSION_STATUSES,
+)
 from crmbuilder_v2.ui.base.crud_dialog import FieldSchema
 
-SESSION_TOPICS_PLACEHOLDER = (
-    'Seed prompt: "..."\n\n'
-    "Followed by structured discussion summary "
-    "(per DEC-025 conventions)."
+
+def status_choices(current: str | None) -> list[str]:
+    current = current or "planned"
+    if current not in SESSION_STATUSES:
+        return sorted(SESSION_STATUSES)
+    return sorted(
+        {current} | set(SESSION_STATUS_TRANSITIONS.get(current, frozenset()))
+    )
+
+
+_IDENTIFIER_FIELD = FieldSchema(
+    key="session_identifier",
+    label="Identifier",
+    widget="line",
+    read_only_on_edit=True,
 )
 
-SESSION_CONVERSATION_REF_PLACEHOLDER = (
-    "Descriptive text identifying the conversation by its outputs "
-    "(PRDs, prompts, decisions). No transcript URL "
-    "(per DEC-025)."
-)
+_CONTENT_FIELDS: list[FieldSchema] = [
+    FieldSchema(
+        key="session_title",
+        label="Title",
+        widget="line",
+        required=True,
+    ),
+    FieldSchema(
+        key="session_description",
+        label="Description",
+        widget="text",
+        required=True,
+        placeholder="Paragraph describing the session — what communication is happening, who is involved, what defines its close.",
+    ),
+    FieldSchema(
+        key="session_medium",
+        label="Medium",
+        widget="combo",
+        required=True,
+        vocab=SESSION_MEDIUMS,
+        default="chat",
+    ),
+    FieldSchema(
+        key="session_status",
+        label="Status",
+        widget="combo",
+        required=True,
+        vocab=SESSION_STATUSES,
+        default="planned",
+        compute_options=lambda state: status_choices(state.get("session_status")),
+    ),
+    FieldSchema(
+        key="session_notes",
+        label="Internal notes",
+        widget="text",
+    ),
+]
 
 
-def session_fields_create(
-    *, identifier: str, today_text: str | None = None
-) -> list[FieldSchema]:
-    """Return a fresh nine-field schema for ``SessionCreateDialog``.
-
-    Computed per dialog-open: ``identifier`` is the auto-assigned
-    next ``SES-NNN`` and ``today_text`` is the default for
-    ``session_date``. ``today_text`` defaults to the current date
-    in MM-DD-YY format when omitted.
-    """
-    if today_text is None:
-        today_text = date.today().strftime("%m-%d-%y")
-
-    return [
-        FieldSchema(
-            key="identifier",
-            label="Identifier",
-            widget="line",
-            required=True,
-            read_only=True,
-            default=identifier,
-        ),
-        FieldSchema(
-            key="session_date",
-            label="Session Date",
-            widget="date",
-            required=True,
-        ),
-        FieldSchema(
-            key="status",
-            label="Status",
-            widget="combo",
-            required=True,
-            vocab=SESSION_STATUSES,
-            default="Complete",
-        ),
-        FieldSchema(
-            key="title",
-            label="Title",
-            widget="line",
-            required=True,
-        ),
-        FieldSchema(
-            key="summary",
-            label="Summary",
-            widget="text",
-            required=True,
-        ),
-        FieldSchema(
-            key="topics_covered",
-            label="Topics Covered",
-            widget="text",
-            required=True,
-            placeholder=SESSION_TOPICS_PLACEHOLDER,
-        ),
-        FieldSchema(
-            key="artifacts_produced",
-            label="Artifacts Produced",
-            widget="text",
-            required=True,
-        ),
-        FieldSchema(
-            key="in_flight_at_end",
-            label="In-Flight at End",
-            widget="text",
-            required=False,
-        ),
-        FieldSchema(
-            key="conversation_reference",
-            label="Conversation Reference",
-            widget="text",
-            required=True,
-            placeholder=SESSION_CONVERSATION_REF_PLACEHOLDER,
-        ),
-    ]
+def session_fields(*, include_identifier: bool) -> list[FieldSchema]:
+    fields: list[FieldSchema] = []
+    if include_identifier:
+        fields.append(deepcopy(_IDENTIFIER_FIELD))
+    fields.extend(deepcopy(_CONTENT_FIELDS))
+    return fields

@@ -154,7 +154,13 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
         """Delete a decision record."""
         return await _unwrap(await http.delete(f"/decisions/{identifier}"))
 
-    # ---------- Sessions ----------
+    # ---------- Sessions (PI-073 / DEC-314 redesign) ----------
+    # Sessions are the medium-agnostic communication container — one
+    # Claude.ai chat / one email / one phone call / one Zoom meeting /
+    # one in-person meeting / one Slack thread = one session.
+    # Schedulable (created in `planned` status) and stateful through a
+    # six-status lifecycle: planned, in_flight, complete, cancelled,
+    # not_started, superseded. DEC-013's append-only rule is superseded.
 
     @server.tool()
     async def get_session(identifier: str) -> Any:
@@ -162,10 +168,26 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
         return await _unwrap(await http.get(f"/sessions/{identifier}"))
 
     @server.tool()
-    async def list_sessions(limit: int | None = None) -> Any:
-        """List sessions, newest first. Pass ``limit`` to truncate."""
-        params = {"limit": limit} if limit is not None else None
-        return await _unwrap(await http.get("/sessions", params=params))
+    async def list_sessions(
+        status: str | None = None,
+        medium: str | None = None,
+        workstream_identifier: str | None = None,
+    ) -> Any:
+        """List sessions. Filters: ``status`` (planned, in_flight, complete,
+        cancelled, not_started, superseded), ``medium`` (chat, email, phone,
+        zoom, in_person, slack, other), ``workstream_identifier``
+        (resolves the session_belongs_to_workstream edge).
+        """
+        params = {
+            k: v
+            for k, v in dict(
+                status=status,
+                medium=medium,
+                workstream_identifier=workstream_identifier,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(await http.get("/sessions", params=params or None))
 
     @server.tool()
     async def list_recent_sessions(limit: int = 3) -> Any:
@@ -177,36 +199,106 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
 
     @server.tool()
     async def create_session(
-        identifier: str,
         title: str,
-        session_date: str,
-        status: str,
-        conversation_reference: str = "",
-        topics_covered: str = "",
-        summary: str = "",
-        artifacts_produced: str = "",
-        in_flight_at_end: str = "",
+        description: str,
+        medium: str,
+        identifier: str | None = None,
+        notes: str | None = None,
+        status: str = "planned",
+        scheduled_for: str | None = None,
+        started_at: str | None = None,
+        ended_at: str | None = None,
+        participants: list | None = None,
+        medium_metadata: dict | None = None,
     ) -> Any:
-        """Create a session record. Status must be 'Complete' or 'In Progress'.
-        Sessions are append-only — once written, they are not edited."""
+        """Create a session record in the redesigned shape (PI-073 / DEC-314).
+
+        Required: ``title``, ``description``, ``medium`` (one of chat,
+        email, phone, zoom, in_person, slack, other).
+
+        Status defaults to ``planned`` — pass ``in_flight`` to mark an
+        actively-happening session, or ``complete`` for one already over.
+        Identifier is server-assigned (SES-NNN) when omitted.
+
+        ``medium_metadata`` is a JSON object whose shape varies by medium
+        — e.g., ``{"email_subject": ..., "email_thread_id": ...}`` for
+        email; ``{"zoom_meeting_id": ..., "zoom_recording_url": ...}``
+        for zoom. See session-v2.md §3.2.5 for the recommended shape per
+        medium.
+        """
         body = {
-            "identifier": identifier,
-            "title": title,
-            "session_date": session_date,
-            "status": status,
-            "conversation_reference": conversation_reference,
-            "topics_covered": topics_covered,
-            "summary": summary,
-            "artifacts_produced": artifacts_produced,
-            "in_flight_at_end": in_flight_at_end,
+            k: v
+            for k, v in dict(
+                session_identifier=identifier,
+                session_title=title,
+                session_description=description,
+                session_medium=medium,
+                session_notes=notes,
+                session_status=status,
+                session_scheduled_for=scheduled_for,
+                session_started_at=started_at,
+                session_ended_at=ended_at,
+                session_participants=participants,
+                session_medium_metadata=medium_metadata,
+            ).items()
+            if v is not None
         }
         return await _unwrap(await http.post("/sessions", json=body))
 
     @server.tool()
+    async def update_session(
+        identifier: str,
+        title: str | None = None,
+        description: str | None = None,
+        medium: str | None = None,
+        notes: str | None = None,
+        status: str | None = None,
+        scheduled_for: str | None = None,
+        started_at: str | None = None,
+        ended_at: str | None = None,
+        participants: list | None = None,
+        medium_metadata: dict | None = None,
+    ) -> Any:
+        """Update fields on a session (PATCH). Pass only the fields to change.
+
+        Sessions are now editable throughout their lifecycle (DEC-013
+        superseded by DEC-314). Lifecycle transitions are validated:
+        planned → in_flight → complete, with cancelled/not_started/
+        superseded as terminal alternatives.
+        """
+        body = {
+            f"session_{k}": v
+            for k, v in dict(
+                title=title,
+                description=description,
+                medium=medium,
+                notes=notes,
+                status=status,
+                scheduled_for=scheduled_for,
+                started_at=started_at,
+                ended_at=ended_at,
+                participants=participants,
+                medium_metadata=medium_metadata,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(await http.patch(f"/sessions/{identifier}", json=body))
+
+    @server.tool()
     async def delete_session(identifier: str) -> Any:
-        """Delete a session record (rare — sessions are typically only deleted
-        when written by mistake)."""
+        """Soft-delete a session record."""
         return await _unwrap(await http.delete(f"/sessions/{identifier}"))
+
+    @server.tool()
+    async def list_conversations_for_session(identifier: str) -> Any:
+        """List every conversation (topical sub-unit) belonging to a session.
+
+        Replaces the legacy 1:0..1 conversation/session mapping; under
+        PI-073 a session contains 1..N conversations.
+        """
+        return await _unwrap(
+            await http.get(f"/sessions/{identifier}/conversations")
+        )
 
     @server.tool()
     async def list_decisions_for_session(identifier: str) -> Any:
@@ -214,6 +306,104 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
         return await _unwrap(
             await http.get(f"/orientation/decisions-for-session/{identifier}")
         )
+
+    # ---------- Conversations (PI-073 / DEC-314) ----------
+    # Conversations are topical sub-units within a session. New identifier
+    # prefix ``CNV-NNN`` (distinct from legacy ``CONV-NNN``, which now
+    # identifies sessions in the redesigned model). Six-status lifecycle:
+    # planned, in_flight, complete, cancelled, not_started, superseded.
+
+    @server.tool()
+    async def get_conversation(identifier: str) -> Any:
+        """Return one conversation record by its CNV-NNN identifier."""
+        return await _unwrap(await http.get(f"/conversations/{identifier}"))
+
+    @server.tool()
+    async def list_conversations(
+        status: str | None = None,
+        session_identifier: str | None = None,
+    ) -> Any:
+        """List conversations. Filters: ``status``, ``session_identifier``
+        (resolves the conversation_belongs_to_session edge)."""
+        params = {
+            k: v
+            for k, v in dict(
+                status=status,
+                session_identifier=session_identifier,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(
+            await http.get("/conversations", params=params or None)
+        )
+
+    @server.tool()
+    async def create_conversation(
+        title: str,
+        purpose: str,
+        description: str,
+        identifier: str | None = None,
+        summary: str | None = None,
+        notes: str | None = None,
+        status: str = "planned",
+    ) -> Any:
+        """Create a conversation (topical sub-unit) record.
+
+        Required: ``title``, ``purpose``, ``description``. Identifier is
+        server-assigned (CNV-NNN) when omitted. ``summary`` is the
+        per-topic outcome captured at conversation close (status=complete).
+
+        A conversation must be linked to its parent session via a
+        ``conversation_belongs_to_session`` reference edge — author the
+        edge separately via the references API, or include it in the
+        create body's ``references`` array (not exposed in this tool yet).
+        """
+        body = {
+            k: v
+            for k, v in dict(
+                conversation_identifier=identifier,
+                conversation_title=title,
+                conversation_purpose=purpose,
+                conversation_description=description,
+                conversation_summary=summary,
+                conversation_notes=notes,
+                conversation_status=status,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(await http.post("/conversations", json=body))
+
+    @server.tool()
+    async def update_conversation(
+        identifier: str,
+        title: str | None = None,
+        purpose: str | None = None,
+        description: str | None = None,
+        summary: str | None = None,
+        notes: str | None = None,
+        status: str | None = None,
+    ) -> Any:
+        """Update fields on a conversation (PATCH)."""
+        body = {
+            f"conversation_{k}": v
+            for k, v in dict(
+                title=title,
+                purpose=purpose,
+                description=description,
+                summary=summary,
+                notes=notes,
+                status=status,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(
+            await http.patch(f"/conversations/{identifier}", json=body)
+        )
+
+    @server.tool()
+    async def delete_conversation(identifier: str) -> Any:
+        """Soft-delete a conversation record."""
+        return await _unwrap(await http.delete(f"/conversations/{identifier}"))
 
     # ---------- Risks ----------
 

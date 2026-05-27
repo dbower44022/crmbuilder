@@ -1,113 +1,147 @@
-"""Append-only Sessions create dialog (v0.3 slice D — DEC-034).
+"""Session CRUD dialogs (PI-073 / DEC-314 redesign).
 
-Per DEC-013, every Claude.ai conversation produces exactly one
-session record (append-only — no edit, no delete, no restore, no
-draft mode). DEC-034 authorizes user-authored sessions through the
-UI; this dialog is the corresponding write surface.
+Sessions are now first-class lifecycle objects — schedulable, editable,
+and stateful through six statuses. The legacy append-only constraint
+(DEC-013) is superseded.
 
-The identifier is auto-assigned at dialog-open time by reading the
-existing sessions list and incrementing the highest ``SES-NNN``. On
-a collision (another writer beat us between the list read and the
-POST), the dialog recomputes the next identifier once and retries
-the save transparently before surfacing an inline error.
+This module provides ``SessionCreateDialog``, ``SessionEditDialog``, and
+``SessionDeleteDialog``. The create dialog includes an inline workstream-
+membership selector (sessions require exactly one outbound
+``session_belongs_to_workstream`` edge at every live status).
+
+Filename retained as ``session_create.py`` for branch git-history
+continuity; the file now exports edit/delete dialogs alongside create.
 """
 
 from __future__ import annotations
 
 import logging
+from typing import Any
 
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QComboBox, QLineEdit, QVBoxLayout, QWidget
 
-from crmbuilder_v2.ui.base.crud_dialog import EntityCrudDialog
+from crmbuilder_v2.ui.base.crud_dialog import (
+    EntityCrudDeleteDialog,
+    EntityCrudDialog,
+)
 from crmbuilder_v2.ui.client import StorageClient
-from crmbuilder_v2.ui.dialogs._session_schema import session_fields_create
-from crmbuilder_v2.ui.exceptions import ConflictError
+from crmbuilder_v2.ui.dialogs._session_schema import session_fields
+from crmbuilder_v2.ui.exceptions import StorageClientError
+from crmbuilder_v2.ui.widgets.form_helpers import required_label
 
 _log = logging.getLogger("crmbuilder_v2.ui.dialogs.session_create")
-
-
-def compute_next_session_identifier(
-    sessions: list[dict],
-) -> str:
-    """Return the next ``SES-NNN`` after the highest existing identifier.
-
-    Records with malformed identifiers (missing ``SES-`` prefix or
-    non-numeric suffix) are skipped. An empty list yields ``SES-001``.
-    """
-    max_n = 0
-    for record in sessions:
-        ident = record.get("identifier") or ""
-        if not isinstance(ident, str) or not ident.startswith("SES-"):
-            continue
-        suffix = ident[len("SES-") :]
-        try:
-            n = int(suffix)
-        except ValueError:
-            continue
-        if n > max_n:
-            max_n = n
-    return f"SES-{max_n + 1:03d}"
+_IDENTIFIER_FIELD = "session_identifier"
 
 
 class SessionCreateDialog(EntityCrudDialog):
-    """Modal create-session dialog. Append-only per DEC-013 / DEC-034."""
+    """New session. Includes a workstream-membership selector."""
 
     def __init__(
-        self,
-        client: StorageClient,
-        parent: QWidget | None = None,
+        self, client: StorageClient, parent: QWidget | None = None
     ) -> None:
-        next_identifier = compute_next_session_identifier(
-            client.list_sessions()
-        )
         super().__init__(
             client,
-            session_fields_create(identifier=next_identifier),
+            session_fields(include_identifier=False),
             mode="create",
-            title="New Session",
+            title="New session",
             create_method=client.create_session,
+            identifier_field=_IDENTIFIER_FIELD,
             parent=parent,
         )
-        self._collision_retry_attempted = False
+        self._workstream_combo = QComboBox()
+        try:
+            workstreams = client.list_workstreams()
+        except StorageClientError as exc:
+            _log.warning("Could not list workstreams: %s", exc)
+            workstreams = []
+        self._workstream_combo.addItem("(select a workstream)", None)
+        for ws in workstreams:
+            ident = ws.get("workstream_identifier")
+            name = ws.get("workstream_name") or ""
+            if ident:
+                self._workstream_combo.addItem(f"{ident} — {name}", ident)
+        # Insert the picker as the first row of the form.
+        self._form.insertRow(0, required_label("Workstream"), self._workstream_combo)
+
+    def _build_create_body(self) -> dict[str, Any]:
+        body = super()._build_create_body()
+        ws_id = self._workstream_combo.currentData()
+        if not ws_id:
+            self._show_error(
+                "session_title", "Select a workstream for this session."
+            )
+            return {}
+        try:
+            new_id = self._client.next_session_identifier()
+        except StorageClientError as exc:
+            _log.warning("next_session_identifier failed: %s", exc)
+            return body
+        body[_IDENTIFIER_FIELD] = new_id
+        body["references"] = [
+            {
+                "source_type": "session",
+                "source_id": new_id,
+                "target_type": "workstream",
+                "target_id": ws_id,
+                "relationship": "session_belongs_to_workstream",
+            }
+        ]
+        return body
 
     def created_identifier(self) -> str | None:
         """Identifier of the newly created record, or None if not accepted."""
         return self.saved_identifier()
 
-    # ------------------------------------------------------------------
-    # Identifier-collision retry
-    # ------------------------------------------------------------------
 
-    def _on_save_error(self, exc: Exception) -> None:
-        """Recompute identifier and resubmit on a one-shot collision retry.
+class SessionEditDialog(EntityCrudDialog):
+    def __init__(
+        self,
+        client: StorageClient,
+        record: dict[str, Any],
+        parent: QWidget | None = None,
+    ) -> None:
+        identifier = str(record.get(_IDENTIFIER_FIELD) or "")
+        title = f"Edit {identifier}" if identifier else "Edit session"
+        super().__init__(
+            client,
+            session_fields(include_identifier=True),
+            mode="edit",
+            title=title,
+            update_method=client.patch_session,
+            record=record,
+            identifier_field=_IDENTIFIER_FIELD,
+            parent=parent,
+        )
 
-        A ``ConflictError`` on a session create almost certainly means
-        another writer claimed our auto-assigned ``SES-NNN`` between
-        the list read at dialog-open and the POST. Recomputing once
-        from a fresh list and resubmitting is the natural recovery —
-        the user wrote a session, not a specific identifier. If the
-        retry also collides, fall back to the base class's inline
-        error rendering so the user can see something is genuinely
-        wrong rather than spinning forever.
-        """
-        if (
-            isinstance(exc, ConflictError)
-            and not self._collision_retry_attempted
-        ):
-            self._collision_retry_attempted = True
-            try:
-                fresh_id = compute_next_session_identifier(
-                    self._client.list_sessions()
-                )
-            except Exception:  # noqa: BLE001 — degrade to default error path
-                _log.exception(
-                    "Could not recompute session identifier after collision"
-                )
-                super()._on_save_error(exc)
-                return
-            self._widgets.set_value("identifier", fresh_id)
-            # Re-run the save flow with the new identifier. ``_on_save_clicked``
-            # rebuilds the request body from current widget values.
-            self._on_save_clicked()
-            return
-        super()._on_save_error(exc)
+
+class SessionDeleteDialog(EntityCrudDeleteDialog):
+    def __init__(
+        self,
+        client: StorageClient,
+        identifier: str,
+        title: str,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(
+            client,
+            identifier,
+            title,
+            client.delete_session,
+            entity_label="session",
+            parent=parent,
+        )
+        self._body_label.setText(
+            f"Delete {identifier} — {title or '(untitled)'}?\n\n"
+            "Type the identifier below to confirm. This soft-deletes the "
+            "session; it can be restored from the Show-deleted view."
+        )
+        self._confirm_edit = QLineEdit()
+        self._confirm_edit.setPlaceholderText(identifier)
+        self._confirm_edit.textChanged.connect(self._on_confirm_text_changed)
+        layout = self.layout()
+        if isinstance(layout, QVBoxLayout):
+            layout.insertWidget(layout.count() - 1, self._confirm_edit)
+        self._delete_btn.setEnabled(False)
+
+    def _on_confirm_text_changed(self, text: str) -> None:
+        self._delete_btn.setEnabled(text.strip() == self._identifier)

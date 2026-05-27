@@ -28,12 +28,7 @@ class StatusReplaceIn(_Base):
 
 class DecisionCreateIn(_Base):
     """POST /decisions body. ``identifier`` is server-assigned when
-    omitted (PI-002, option C of SES-010).
-
-    ``executive_summary`` (PI-074) — optional 200-800 character
-    audience-facing summary. Nullable until PI-075's backfill +
-    NOT NULL migration.
-    """
+    omitted (PI-002, option C of SES-010)."""
 
     identifier: str | None = None
     title: str
@@ -46,7 +41,6 @@ class DecisionCreateIn(_Base):
     consequences: str = ""
     supersedes: str | None = None
     superseded_by: str | None = None
-    executive_summary: str | None = None
 
 
 class DecisionUpdateIn(_Base):
@@ -60,31 +54,70 @@ class DecisionUpdateIn(_Base):
     consequences: str | None = None
     supersedes: str | None = None
     superseded_by: str | None = None
-    executive_summary: str | None = None
 
 
 # ---------- Sessions ----------
 
 
 class SessionCreateIn(_Base):
-    """POST /sessions body. ``identifier`` is server-assigned when
-    omitted (PI-002, option C of SES-010).
+    """POST /sessions body — PI-073 / DEC-314 redesign.
 
-    ``executive_summary`` (PI-074) — optional 200-800 character
-    audience-facing summary. Nullable until PI-075's backfill +
-    NOT NULL migration.
+    Sessions are now the medium-agnostic communication container. The
+    legacy fields (session_date, conversation_reference, topics_covered,
+    summary, artifacts_produced, in_flight_at_end) are removed; their
+    semantic content lives on the new conversation entity. ``identifier``
+    is server-assigned when omitted (PI-002).
     """
 
-    identifier: str | None = None
-    title: str
-    session_date: str
-    status: str
-    conversation_reference: str = ""
-    topics_covered: str = ""
-    summary: str = ""
-    artifacts_produced: str = ""
-    in_flight_at_end: str = ""
-    executive_summary: str | None = None
+    session_identifier: str | None = None
+    session_title: str
+    session_description: str
+    session_medium: str
+    session_notes: str | None = None
+    session_executive_summary: str | None = None  # PI-074
+    session_status: str | None = None
+    session_scheduled_for: datetime | None = None
+    session_started_at: datetime | None = None
+    session_ended_at: datetime | None = None
+    session_participants: list | None = None
+    session_medium_metadata: dict | None = None
+    references: list[GovernanceEdgeIn] | None = None
+    timestamps: dict[str, Any] | None = None
+
+
+class SessionReplaceIn(_Base):
+    """PUT /sessions/{identifier} body — full replacement."""
+
+    session_identifier: str | None = None
+    session_title: str
+    session_description: str
+    session_medium: str
+    session_notes: str | None = None
+    session_executive_summary: str | None = None  # PI-074
+    session_status: str
+    session_scheduled_for: datetime | None = None
+    session_started_at: datetime | None = None
+    session_ended_at: datetime | None = None
+    session_participants: list | None = None
+    session_medium_metadata: dict | None = None
+    references: list[GovernanceEdgeIn] | None = None
+
+
+class SessionPatchIn(_Base):
+    """PATCH /sessions/{identifier} body — partial update."""
+
+    session_title: str | None = None
+    session_description: str | None = None
+    session_medium: str | None = None
+    session_notes: str | None = None
+    session_executive_summary: str | None = None  # PI-074
+    session_status: str | None = None
+    session_scheduled_for: datetime | None = None
+    session_started_at: datetime | None = None
+    session_ended_at: datetime | None = None
+    session_participants: list | None = None
+    session_medium_metadata: dict | None = None
+    references: list[GovernanceEdgeIn] | None = None
 
 
 # ---------- Risks ----------
@@ -117,12 +150,7 @@ class RiskUpdateIn(_Base):
 
 class PlanningItemCreateIn(_Base):
     """POST /planning-items body. ``identifier`` is server-assigned when
-    omitted (PI-002, option C of SES-010).
-
-    ``executive_summary`` (PI-074) — optional 200-800 character
-    audience-facing summary. Nullable until PI-075's backfill +
-    NOT NULL migration.
-    """
+    omitted (PI-002, option C of SES-010)."""
 
     identifier: str | None = None
     title: str
@@ -130,7 +158,6 @@ class PlanningItemCreateIn(_Base):
     description: str = ""
     status: str
     resolution_reference: str | None = None
-    executive_summary: str | None = None
 
 
 class PlanningItemUpdateIn(_Base):
@@ -139,7 +166,6 @@ class PlanningItemUpdateIn(_Base):
     description: str | None = None
     status: str | None = None
     resolution_reference: str | None = None
-    executive_summary: str | None = None
 
 
 # ---------- Topics ----------
@@ -984,10 +1010,20 @@ class WorkstreamPatchIn(_Base):
 
 
 class ConversationCreateIn(_Base):
+    """POST /conversations body — PI-073 / DEC-314 redesign.
+
+    Conversations are now topical sub-units within a session. New
+    identifier prefix ``CNV-NNN``. New field ``conversation_summary``
+    captured at close. ``conversation_status`` six-status set (planned,
+    in_flight, complete, cancelled, not_started, superseded).
+    """
+
     conversation_title: str
     conversation_purpose: str
     conversation_description: str
+    conversation_summary: str | None = None
     conversation_notes: str | None = None
+    conversation_executive_summary: str | None = None  # PI-074 carry-over
     conversation_status: str | None = None
     conversation_identifier: str | None = None
     references: list[GovernanceEdgeIn] | None = None
@@ -999,7 +1035,9 @@ class ConversationReplaceIn(_Base):
     conversation_title: str
     conversation_purpose: str
     conversation_description: str
+    conversation_summary: str | None = None
     conversation_notes: str | None = None
+    conversation_executive_summary: str | None = None  # PI-074 carry-over
     conversation_status: str
     references: list[GovernanceEdgeIn] | None = None
 
@@ -1008,7 +1046,9 @@ class ConversationPatchIn(_Base):
     conversation_title: str | None = None
     conversation_purpose: str | None = None
     conversation_description: str | None = None
+    conversation_summary: str | None = None
     conversation_notes: str | None = None
+    conversation_executive_summary: str | None = None  # PI-074 carry-over
     conversation_status: str | None = None
     references: list[GovernanceEdgeIn] | None = None
 
@@ -1126,7 +1166,7 @@ class CommitCreateIn(_Base):
     commit_branch: str | None = "main"
     commit_parent_shas: list[str]
     commit_files_changed_count: int
-    commit_conversation_id: str
+    commit_session_id: str
     commit_identifier: str | None = None
     references: list[GovernanceEdgeIn] | None = None
     timestamps: dict[str, Any] | None = None
@@ -1145,7 +1185,7 @@ class CommitReplaceIn(_Base):
     commit_branch: str
     commit_parent_shas: list[str]
     commit_files_changed_count: int
-    commit_conversation_id: str
+    commit_session_id: str
     references: list[GovernanceEdgeIn] | None = None
 
 
@@ -1159,7 +1199,7 @@ class CommitPatchIn(_Base):
     commit_branch: str | None = None
     commit_parent_shas: list[str] | None = None
     commit_files_changed_count: int | None = None
-    commit_conversation_id: str | None = None
+    commit_session_id: str | None = None
     references: list[GovernanceEdgeIn] | None = None
 
 

@@ -65,6 +65,7 @@ from crmbuilder_v2.access.vocab import (
     RISK_IMPACTS,
     RISK_PROBABILITIES,
     RISK_STATUSES,
+    SESSION_MEDIUMS,
     SESSION_STATUSES,
     TEST_SPEC_RUN_OUTCOMES,
     TEST_SPEC_STATUSES,
@@ -169,34 +170,106 @@ class Decision(Base):
 
 
 class Session(Base):
-    """Append-only session record."""
+    """Governance entity — one discrete unit of communication in any medium.
+
+    Redesigned in PI-073 / DEC-314 (supersedes DEC-013's append-only rule).
+    A session represents one Claude.ai chat, one email, one phone call,
+    one Zoom meeting, one in-person meeting, or one Slack thread.
+    Schedulable and stateful through a six-status lifecycle. Carries
+    universal columns (medium, started_at, ended_at, participants) and a
+    JSON ``session_medium_metadata`` column for per-medium extras.
+    Conversations (topical sub-units) belong to a session via the
+    ``conversation_belongs_to_session`` reference edge.
+    """
 
     __tablename__ = "sessions"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    identifier: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
-    title: Mapped[str] = mapped_column(String(255), nullable=False)
-    session_date: Mapped[str] = mapped_column(String(32), nullable=False)
-    status: Mapped[str] = mapped_column(String(32), nullable=False)
-    conversation_reference: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    topics_covered: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    artifacts_produced: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    in_flight_at_end: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    executive_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
+    session_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    session_title: Mapped[str] = mapped_column(String(255), nullable=False)
+    session_description: Mapped[str] = mapped_column(Text, nullable=False)
+    session_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    session_status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="planned"
+    )
+    session_medium: Mapped[str] = mapped_column(String(20), nullable=False)
+    # PI-074 carry-over field (TEXT NULL with 200–800 length CHECK).
+    # Reconciles with PI-073's redesign: legacy_sessions retains
+    # executive_summary post-migration; the new sessions entity exposes
+    # session_executive_summary for the same audience-readable purpose.
+    session_executive_summary: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    session_scheduled_for: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    session_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    session_ended_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    session_participants: Mapped[list] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    session_medium_metadata: Mapped[dict] = mapped_column(
+        JSON, nullable=False, default=dict
+    )
+    session_created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    session_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow,
+        onupdate=_utcnow,
+    )
+    session_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    session_in_flight_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    session_completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    session_cancelled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    session_not_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    session_superseded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
 
     __table_args__ = (
-        CheckConstraint(_check_in("status", SESSION_STATUSES), name="ck_session_status"),
+        # Identifier-prefix asymmetry per session-v2.md §6: existing
+        # CONV-NNN rows migrate INTO this table (becoming sessions);
+        # new sessions use SES-NNN. Both prefixes admitted.
         CheckConstraint(
-            "executive_summary IS NULL OR "
-            "(length(executive_summary) >= 200 AND length(executive_summary) <= 800)",
+            "session_identifier GLOB 'SES-[0-9][0-9][0-9]' "
+            "OR session_identifier GLOB 'CONV-[0-9][0-9][0-9]'",
+            name="ck_session_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("session_status", SESSION_STATUSES),
+            name="ck_session_status",
+        ),
+        CheckConstraint(
+            _check_in("session_medium", SESSION_MEDIUMS),
+            name="ck_session_medium",
+        ),
+        # PI-074 CHECK on executive_summary length (200..800 inclusive
+        # when set; PI-075 will backfill + tighten to NOT NULL).
+        CheckConstraint(
+            "session_executive_summary IS NULL OR "
+            "(length(session_executive_summary) >= 200 "
+            "AND length(session_executive_summary) <= 800)",
             name="ck_session_executive_summary_length",
         ),
-        Index("ix_sessions_identifier", "identifier"),
-        Index("ix_sessions_session_date", "session_date"),
+        Index("ix_sessions_session_status", "session_status"),
+        Index("ix_sessions_session_medium", "session_medium"),
+        Index("ix_sessions_session_deleted_at", "session_deleted_at"),
     )
 
 
@@ -1024,12 +1097,16 @@ class Workstream(Base):
 
 
 class Conversation(Base):
-    """Governance entity — one unit of conversational work through its lifecycle.
+    """Governance entity — one focused topical discussion within a session.
 
-    Second of six governance entity types (UI v0.7). Seven-status workflow
-    lifecycle (forward-only planning line plus three terminals); six
-    per-status lifecycle timestamps. Workstream membership, session linkage,
-    kickoff linkage, sequencing, and supersession all live in ``refs``.
+    Redesigned in PI-073 / DEC-314. A conversation is a topical sub-unit
+    of a session — one session contains one or more conversations. Each
+    has its own six-status lifecycle including the ``not_started``
+    terminal for conversations planned within a session that never opened.
+    Identifier prefix is ``CNV-NNN`` (distinct from the legacy ``CONV-NNN``
+    sessions, which are migrated separately by Phase F). Session
+    membership, cross-session continuity (follows_from/relates_to), and
+    supersession all live in ``refs``.
     """
 
     __tablename__ = "conversations"
@@ -1038,28 +1115,30 @@ class Conversation(Base):
         String(32), primary_key=True
     )
     conversation_title: Mapped[str] = mapped_column(String(255), nullable=False)
+    conversation_purpose: Mapped[str] = mapped_column(Text, nullable=False)
+    conversation_description: Mapped[str] = mapped_column(Text, nullable=False)
+    conversation_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    conversation_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # PI-074 carry-over field. Old SES-NNN rows under v0.7 carried
+    # executive_summary; they become conversations under PI-073's
+    # redesign. The CHECK length budget (200–800) parallels session_*.
+    conversation_executive_summary: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
     conversation_status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="planned"
     )
-    conversation_purpose: Mapped[str] = mapped_column(Text, nullable=False)
-    conversation_description: Mapped[str] = mapped_column(Text, nullable=False)
-    conversation_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     conversation_created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
     conversation_updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+        DateTime(timezone=True), nullable=False, default=_utcnow,
+        onupdate=_utcnow,
     )
     conversation_deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    conversation_kickoff_drafted_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    conversation_ready_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    conversation_started_at: Mapped[datetime | None] = mapped_column(
+    conversation_in_flight_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     conversation_completed_at: Mapped[datetime | None] = mapped_column(
@@ -1068,18 +1147,32 @@ class Conversation(Base):
     conversation_cancelled_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    conversation_not_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     conversation_superseded_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
 
     __table_args__ = (
+        # Identifier-prefix asymmetry per conversation-v2.md §3.1:
+        # legacy SES-NNN rows migrate INTO this table as conversations,
+        # retaining their identifier; new conversations use CNV-NNN.
         CheckConstraint(
-            "conversation_identifier GLOB 'CONV-[0-9][0-9][0-9]'",
+            "conversation_identifier GLOB 'CNV-[0-9][0-9][0-9]' "
+            "OR conversation_identifier GLOB 'SES-[0-9][0-9][0-9]'",
             name="ck_conversation_identifier_format",
         ),
         CheckConstraint(
             _check_in("conversation_status", CONVERSATION_STATUSES),
             name="ck_conversation_status",
+        ),
+        # PI-074 CHECK on executive_summary length.
+        CheckConstraint(
+            "conversation_executive_summary IS NULL OR "
+            "(length(conversation_executive_summary) >= 200 "
+            "AND length(conversation_executive_summary) <= 800)",
+            name="ck_conversation_executive_summary_length",
         ),
         Index("ix_conversations_conversation_status", "conversation_status"),
         Index(
@@ -1440,7 +1533,7 @@ class Commit(Base):
     # validated, not SQL-level FK per V2 convention. Direct FK column on
     # this dense entity per DEC-199's frequency-justified deviation from
     # DEC-124's references-edge precedent.
-    commit_conversation_id: Mapped[str] = mapped_column(
+    commit_session_id: Mapped[str] = mapped_column(
         String(32), nullable=False
     )
     commit_created_at: Mapped[datetime] = mapped_column(
@@ -1469,7 +1562,7 @@ class Commit(Base):
             "commit_files_changed_count >= 0",
             name="ck_commit_files_changed_count_nonneg",
         ),
-        Index("ix_commits_commit_conversation_id", "commit_conversation_id"),
+        Index("ix_commits_commit_session_id", "commit_session_id"),
         Index("ix_commits_commit_repository", "commit_repository"),
         Index("ix_commits_commit_committed_at", "commit_committed_at"),
         Index("ix_commits_commit_deleted_at", "commit_deleted_at"),

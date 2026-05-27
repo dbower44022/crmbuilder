@@ -55,11 +55,10 @@ from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 _log = logging.getLogger("crmbuilder_v2.ui.panels.conversations")
 
 _LIFECYCLE_TIMESTAMPS = [
-    ("Kickoff drafted", "conversation_kickoff_drafted_at"),
-    ("Ready", "conversation_ready_at"),
-    ("Started", "conversation_started_at"),
+    ("In flight", "conversation_in_flight_at"),
     ("Completed", "conversation_completed_at"),
     ("Cancelled", "conversation_cancelled_at"),
+    ("Not started", "conversation_not_started_at"),
     ("Superseded", "conversation_superseded_at"),
 ]
 
@@ -154,6 +153,14 @@ class ConversationsPanel(ListDetailPanel):
         form.addRow(required_label("Description"), read_only_text(
             record.get("conversation_description") or ""))
         outer.addLayout(form)
+
+        summary_text = record.get("conversation_summary") or ""
+        if summary_text:
+            outer.addWidget(CollapsibleSection(
+                "Summary (captured at close)",
+                read_only_text(summary_text),
+                expanded=True,
+            ))
 
         outer.addWidget(CollapsibleSection(
             "Internal notes",
