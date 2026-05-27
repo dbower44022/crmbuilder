@@ -1775,5 +1775,28 @@
       "work_tickets": 0
     },
     "deposit_event_title": "Apply of COP-097, 2026-05-27T16:38:38+00:00"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "0.7.0",
+      "invocation": "/home/doug/Dropbox/Projects/crmbuilder/crmbuilder-v2/scripts/apply_close_out.py /home/doug/Dropbox/Projects/crmbuilder/PRDs/product/crmbuilder-v2/close-out-payloads/ses_098.json",
+      "runner": "claude_code"
+    },
+    "deposit_event_created_at": "2026-05-27T16:54:00.265699",
+    "deposit_event_description": "Applied COP-098. Outcome: success. 1 conversations, 3 planning_items, 1 sessions.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-083",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_083.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "commits": 0,
+      "conversations": 1,
+      "decisions": 0,
+      "planning_items": 3,
+      "references": 0,
+      "sessions": 1,
+      "work_tickets": 0
+    },
+    "deposit_event_title": "Apply of COP-098, 2026-05-27T16:54:00+00:00"
   }
 ]

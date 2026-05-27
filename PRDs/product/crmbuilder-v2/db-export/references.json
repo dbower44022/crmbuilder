@@ -16558,5 +16558,85 @@
     "source_type": "deposit_event",
     "target_id": "CM-0021",
     "target_type": "commit"
+  },
+  {
+    "created_at": "2026-05-27T16:53:59.361043",
+    "id": 1663,
+    "reference_identifier": "REF-1659",
+    "relationship_kind": "conversation_belongs_to_workstream",
+    "source_id": "CONV-068",
+    "source_type": "conversation",
+    "target_id": "WS-012",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-27T16:53:59.364553",
+    "id": 1664,
+    "reference_identifier": "REF-1660",
+    "relationship_kind": "conversation_records_session",
+    "source_id": "CONV-068",
+    "source_type": "conversation",
+    "target_id": "SES-098",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-27T16:54:00.268850",
+    "id": 1665,
+    "reference_identifier": "REF-1661",
+    "relationship_kind": "deposit_event_applies_close_out_payload",
+    "source_id": "DEP-083",
+    "source_type": "deposit_event",
+    "target_id": "COP-098",
+    "target_type": "close_out_payload"
+  },
+  {
+    "created_at": "2026-05-27T16:54:00.272364",
+    "id": 1666,
+    "reference_identifier": "REF-1662",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-083",
+    "source_type": "deposit_event",
+    "target_id": "SES-098",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-27T16:54:00.275260",
+    "id": 1667,
+    "reference_identifier": "REF-1663",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-083",
+    "source_type": "deposit_event",
+    "target_id": "CONV-068",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-27T16:54:00.277984",
+    "id": 1668,
+    "reference_identifier": "REF-1664",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-083",
+    "source_type": "deposit_event",
+    "target_id": "PI-091",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-27T16:54:00.280850",
+    "id": 1669,
+    "reference_identifier": "REF-1665",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-083",
+    "source_type": "deposit_event",
+    "target_id": "PI-092",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-27T16:54:00.284685",
+    "id": 1670,
+    "reference_identifier": "REF-1666",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-083",
+    "source_type": "deposit_event",
+    "target_id": "PI-093",
+    "target_type": "planning_item"
   }
 ]

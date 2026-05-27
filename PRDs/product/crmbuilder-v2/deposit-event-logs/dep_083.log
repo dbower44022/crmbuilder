@@ -1,0 +1,19 @@
+=== Applying close-out payload ===
+Source: /home/doug/Dropbox/Projects/crmbuilder/PRDs/product/crmbuilder-v2/close-out-payloads/ses_098.json
+Label:  UI gap discovery and authoring of PI-091/PI-092/PI-093 — three area-disjoint planning items to surface executive_summary in the desktop UI (create/edit dialogs + master panes) for planning_items, decisions, and sessions respectively. Discovery surfaced that PI-074 added the column to the data layer but no PI scoped the corresponding UI work. The three PIs split by entity-type rather than bundling into one because the file sets are disjoint (planning_items, decisions, sessions panels and dialogs each touch their own files), enabling parallel agent dispatch once the orchestrator (PI-081) lands.
+Deposit event: DEP-083
+
+=== session (1 record) ===
+  ✓ POST session  SES-098 (HTTP 201)
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CONV-068 (HTTP 201)
+
+=== planning_items (3 records) ===
+  ✓ POST planning_items  PI-091 (HTTP 201)
+  ✓ POST planning_items  PI-092 (HTTP 201)
+  ✓ POST planning_items  PI-093 (HTTP 201)
+
+✓ All 5 operations complete.
+
+✓ Recorded apply as deposit_event DEP-083 (HTTP 201).

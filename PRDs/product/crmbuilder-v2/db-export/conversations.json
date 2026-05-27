@@ -1137,5 +1137,22 @@
     "conversation_superseded_at": null,
     "conversation_title": "PI-074 implementation — executive_summary column build",
     "conversation_updated_at": "2026-05-27T16:38:37.489037"
+  },
+  {
+    "conversation_cancelled_at": null,
+    "conversation_completed_at": "2026-05-27T16:53:59.357905",
+    "conversation_created_at": "2026-05-27T16:53:59.357667",
+    "conversation_deleted_at": null,
+    "conversation_description": "Single-conversation discussion within the same Claude Code terminal chat that produced SES-097. The earlier conversation (CONV-067) had resolved PI-074's data-layer scope and was already closed/applied. Doug asked whether a UI follow-on PI existed; a quick survey of the live PI list confirmed the gap. Discussion then weighed one-bundle-PI versus three-per-entity-PI scoping; settled on three per-entity PIs to enable parallel orchestrator dispatch once PI-081 lands. The three PIs were drafted following WS-012's Audience-facing-summary + Technical-scope template.",
+    "conversation_identifier": "CONV-068",
+    "conversation_kickoff_drafted_at": null,
+    "conversation_notes": null,
+    "conversation_purpose": "Determine whether a follow-on PI exists for the desktop UI surface of the executive_summary field, and if not, author the missing PI(s).",
+    "conversation_ready_at": null,
+    "conversation_started_at": null,
+    "conversation_status": "complete",
+    "conversation_superseded_at": null,
+    "conversation_title": "UI gap discovery for executive_summary + authoring PI-091/PI-092/PI-093",
+    "conversation_updated_at": "2026-05-27T16:53:59.357992"
   }
 ]
