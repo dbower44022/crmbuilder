@@ -1,14 +1,14 @@
 # CLAUDE-CODE-PROMPT — Apply SES-079 close-out payload
 
 **Last Updated:** 05-25-26 22:30
-**Purpose:** Apply the SES-079 close-out payload — the establishing close-out for WS-012 (Parallel agent orchestrator and executive summary). Lands SES-079, CONV-049 (with two atomic embedded edges to WS-012 and SES-079), six decisions (DEC-246 through DEC-251), ten planning items (PI-053 through PI-062) in `Open` status, and twenty-one references (six `decided_in` plus fifteen `blocked_by`). WS-012 itself is created out-of-band by the pre-step below.
+**Purpose:** Apply the SES-079 close-out payload — the establishing close-out for WS-012 (Parallel agent orchestrator and executive summary). Lands SES-079, CONV-049 (with two atomic embedded edges to WS-012 and SES-079), six decisions (DEC-304 through DEC-309), ten planning items (PI-074 through PI-083) in `Open` status, and twenty-one references (six `decided_in` plus fifteen `blocked_by`). WS-012 itself is created out-of-band by the pre-step below.
 
 **Net Effect:**
 - +1 workstream (WS-012 from pre-step)
 - +1 session (SES-079)
 - +1 conversation (CONV-049) with two atomic embedded edges
-- +6 decisions (DEC-246..DEC-251)
-- +10 planning_items (PI-053..PI-062, all Open)
+- +6 decisions (DEC-304..DEC-309)
+- +10 planning_items (PI-074..PI-083, all Open)
 - +21 payload references (6 `decided_in` + 15 `blocked_by` between the new PIs)
 - +1 close_out_payload (lazy-create, COP-077)
 - +1 deposit_event (lazy-create, DEP head + 1)
@@ -22,7 +22,7 @@
 - SES-078 must have landed (the most recent close-out per the sandbox's pre-apply head capture).
 - The CRMBUILDER engagement must be the active engagement when the apply runs.
 
-**Successor:** WS-012's bootstrap track. Wave 1 (PI-053, PI-055, PI-056, PI-057, PI-059) is fully unblocked and may be dispatched in any order via individual Claude Code prompts.
+**Successor:** WS-012's bootstrap track. Wave 1 (PI-074, PI-076, PI-077, PI-078, PI-080) is fully unblocked and may be dispatched in any order via individual Claude Code prompts.
 
 ---
 
@@ -33,10 +33,10 @@ Apply `close-out-payloads/ses_077.json` using `crmbuilder-v2/scripts/apply_close
 - **1 session** (SES-079 — orchestrator architecture planning conversation)
 - **1 conversation** (CONV-049, status `complete`, embedded edges: `conversation_belongs_to_workstream` → WS-012 and `conversation_records_session` → SES-079)
 - **0 work_tickets**
-- **10 planning_items** (PI-053 through PI-062, all `pending_work`, status `Open`)
+- **10 planning_items** (PI-074 through PI-083, all `pending_work`, status `Open`)
 - **0 commits** (planning-only conversation; no code commits authored)
-- **6 decisions** (DEC-246 area-level parallelism, DEC-247 multi-valued area, DEC-248 per-agent + orchestrator conv+ses pairs, DEC-249 static waves, DEC-250 exec_summary structured field, DEC-251 bundle exec-summary into WS-012)
-- **21 references** (6 `decided_in` for DEC-246..DEC-251 → SES-079; 15 `blocked_by` declaring dependency structure among the new PIs)
+- **6 decisions** (DEC-304 area-level parallelism, DEC-305 multi-valued area, DEC-306 per-agent + orchestrator conv+ses pairs, DEC-307 static waves, DEC-308 exec_summary structured field, DEC-309 bundle exec-summary into WS-012)
+- **21 references** (6 `decided_in` for DEC-304..DEC-309 → SES-079; 15 `blocked_by` declaring dependency structure among the new PIs)
 - **0 resolves_planning_items** (no PIs resolved by this conversation)
 - **0 addresses_planning_items** (no partial-address edges)
 
@@ -113,7 +113,7 @@ else
       "workstream_identifier": "WS-012",
       "workstream_name": "Parallel agent orchestrator and executive summary",
       "workstream_purpose": "Build a Claude Code orchestrator that spins up multiple parallel agents to process the open planning-item backlog, with the supporting governance metadata (executive_summary field, area field, claimed_by/claimed_at fields, identifier reservation API, ready-batches API, conversation_orchestrates_conversation reference kind) the orchestrator requires.",
-      "workstream_description": "The workstream established at SES-079 to add a parallel-agent execution layer on top of the v0.7 governance entity substrate and the v0.8 code-change-lifecycle methodology. Comprises ten planning items in two tracks: bootstrap (PI-053 executive_summary field, PI-054 executive_summary backfill, PI-055 area field, PI-056 claimed_by/claimed_at, PI-059 conversation_orchestrates_conversation reference kind) and orchestrator proper (PI-057 identifier reservation API, PI-058 ready-batches API, PI-060 driver script, PI-061 child kickoff template, PI-062 area backfill). Dependencies declared via blocked_by. Acceptance test is an orchestrator run that dispatches at least two concurrent agents end-to-end, each producing its own close-out payload, with the orchestrator producing a supervising close-out that references both children via conversation_orchestrates_conversation. Architectural decisions captured in DEC-246 through DEC-251 (area-level parallelism, multi-valued area, per-agent conv+ses + orchestrator conv+ses, static waves, executive_summary as structured field, bundle into WS-012). Status remains in_flight until all ten PIs resolve.",
+      "workstream_description": "The workstream established at SES-079 to add a parallel-agent execution layer on top of the v0.7 governance entity substrate and the v0.8 code-change-lifecycle methodology. Comprises ten planning items in two tracks: bootstrap (PI-074 executive_summary field, PI-075 executive_summary backfill, PI-076 area field, PI-077 claimed_by/claimed_at, PI-080 conversation_orchestrates_conversation reference kind) and orchestrator proper (PI-078 identifier reservation API, PI-079 ready-batches API, PI-081 driver script, PI-082 child kickoff template, PI-083 area backfill). Dependencies declared via blocked_by. Acceptance test is an orchestrator run that dispatches at least two concurrent agents end-to-end, each producing its own close-out payload, with the orchestrator producing a supervising close-out that references both children via conversation_orchestrates_conversation. Architectural decisions captured in DEC-304 through DEC-309 (area-level parallelism, multi-valued area, per-agent conv+ses + orchestrator conv+ses, static waves, executive_summary as structured field, bundle into WS-012). Status remains in_flight until all ten PIs resolve.",
       "workstream_started_at": "2026-05-25T00:00:00",
       "workstream_status": "in_flight"
     }' \
@@ -138,9 +138,9 @@ Expected output structure (methodology §4 order: session → conversation → w
 - **`=== session ===`** — 1 OK (SES-079)
 - **`=== conversation ===`** — 1 OK (CONV-049 with two embedded edges committed atomically: `conversation_belongs_to_workstream` → WS-012, `conversation_records_session` → SES-079)
 - **`=== work_tickets ===`** — 0 (section empty)
-- **`=== planning_items ===`** — 10 OK (PI-053..PI-062, all status Open)
+- **`=== planning_items ===`** — 10 OK (PI-074..PI-083, all status Open)
 - **`=== commits ===`** — 0 (section empty)
-- **`=== decisions ===`** — 6 OK (DEC-246..DEC-251)
+- **`=== decisions ===`** — 6 OK (DEC-304..DEC-309)
 - **`=== references ===`** — 21 OK (6 `decided_in` + 15 `blocked_by`)
 - **`=== resolves_planning_items ===`** — 0 (section empty)
 - **`=== addresses_planning_items ===`** — 0 (section empty)
@@ -158,9 +158,9 @@ If any record returns 409 SKIP on first run, halt and investigate — first run 
 echo "=== Post-apply heads ==="
 echo "Sessions (expect SES-079):"
 curl -s 'http://127.0.0.1:8765/sessions?limit=2000' | python3 -c "import sys,json; d=json.load(sys.stdin)['data']; print(sorted(r['identifier'] for r in d)[-1])"
-echo "Decisions (expect DEC-251):"
+echo "Decisions (expect DEC-309):"
 curl -s 'http://127.0.0.1:8765/decisions?limit=2000' | python3 -c "import sys,json; d=json.load(sys.stdin)['data']; print(sorted(r['identifier'] for r in d)[-1])"
-echo "Planning items (expect PI-062):"
+echo "Planning items (expect PI-083):"
 curl -s 'http://127.0.0.1:8765/planning-items?limit=2000' | python3 -c "import sys,json; d=json.load(sys.stdin)['data']; print(sorted(r['identifier'] for r in d)[-1])"
 echo "Conversations (expect CONV-049):"
 curl -s 'http://127.0.0.1:8765/conversations?limit=2000' | python3 -c "import sys,json; d=json.load(sys.stdin)['data']; print(sorted(r['conversation_identifier'] for r in d)[-1])"
@@ -182,14 +182,14 @@ curl -s 'http://127.0.0.1:8765/references?source_id=CONV-049' | python3 -c "impo
 #   CONV-049 -> SES-079 [ conversation_records_session ]
 
 # Spot-check one decision and confirm decided_in resolves
-curl -s http://127.0.0.1:8765/decisions/DEC-246 | python3 -c "import sys,json; d=json.load(sys.stdin)['data']; print('  DEC-246 title:', d['title'][:100]); print('  status:', d['status'])"
-curl -s 'http://127.0.0.1:8765/references?source_id=DEC-246' | python3 -c "import sys,json; d=json.load(sys.stdin)['data']; [print(' ', r['source_id'], '->', r['target_id'], '[', r['relationship'], ']') for r in d]"
-# Expect: DEC-246 -> SES-079 [ decided_in ]
+curl -s http://127.0.0.1:8765/decisions/DEC-304 | python3 -c "import sys,json; d=json.load(sys.stdin)['data']; print('  DEC-304 title:', d['title'][:100]); print('  status:', d['status'])"
+curl -s 'http://127.0.0.1:8765/references?source_id=DEC-304' | python3 -c "import sys,json; d=json.load(sys.stdin)['data']; [print(' ', r['source_id'], '->', r['target_id'], '[', r['relationship'], ']') for r in d]"
+# Expect: DEC-304 -> SES-079 [ decided_in ]
 
-# Spot-check a blocked_by edge — PI-060 should have nine blockers
+# Spot-check a blocked_by edge — PI-081 should have nine blockers
 echo ""
-echo "PI-060 dependency chain (expect 9 blocked_by edges to PI-053..PI-059, PI-061, PI-062):"
-curl -s 'http://127.0.0.1:8765/references?source_id=PI-060' | python3 -c "
+echo "PI-081 dependency chain (expect 9 blocked_by edges to PI-074..PI-080, PI-082, PI-083):"
+curl -s 'http://127.0.0.1:8765/references?source_id=PI-081' | python3 -c "
 import sys, json
 d = json.load(sys.stdin)['data']
 by_kind = {}
@@ -199,8 +199,8 @@ for kind, targets in sorted(by_kind.items()):
     print(f'  {kind}: {sorted(targets)}')
 "
 
-# Spot-check that PI-053 is Open (the entire batch must land Open)
-for pi in PI-053 PI-054 PI-055 PI-056 PI-057 PI-058 PI-059 PI-060 PI-061 PI-062; do
+# Spot-check that PI-074 is Open (the entire batch must land Open)
+for pi in PI-074 PI-075 PI-076 PI-077 PI-078 PI-079 PI-080 PI-081 PI-082 PI-083; do
   curl -s "http://127.0.0.1:8765/planning-items/$pi" | python3 -c "
 import sys, json
 d = json.load(sys.stdin)['data']
@@ -220,7 +220,7 @@ curl -s 'http://127.0.0.1:8765/references?limit=5000' | python3 -c "import sys,j
 #    +1 close_out_payload_produced_by_conversation (CONV-049 → COP-077) — if the lazy-create wires this
 ```
 
-Expected post-apply state: sessions head SES-079, decisions head DEC-251, planning-items head PI-062, conversations head CONV-049, workstreams head WS-012, COP head COP-077 (lazy), DEP head one above pre-apply. Reference total ≈ pre + 44 (give or take depending on lazy-create edges).
+Expected post-apply state: sessions head SES-079, decisions head DEC-309, planning-items head PI-083, conversations head CONV-049, workstreams head WS-012, COP head COP-077 (lazy), DEP head one above pre-apply. Reference total ≈ pre + 44 (give or take depending on lazy-create edges).
 
 ---
 
@@ -230,8 +230,8 @@ The apply script's `_refresh_snapshot` hook regenerates db-export JSON snapshots
 
 - `db-export/sessions.json` (SES-079 added)
 - `db-export/conversations.json` (CONV-049 added)
-- `db-export/decisions.json` (DEC-246..DEC-251 added)
-- `db-export/planning_items.json` (PI-053..PI-062 added)
+- `db-export/decisions.json` (DEC-304..DEC-309 added)
+- `db-export/planning_items.json` (PI-074..PI-083 added)
 - `db-export/workstreams.json` (WS-012 added from the pre-step)
 - `db-export/close_out_payloads.json` (COP-077 lazy)
 - `db-export/deposit_events.json` (DEP head + 1 lazy)
@@ -257,15 +257,15 @@ Records landed via apply_close_out.py against the CRMBUILDER engagement:
 - 1 conversation (CONV-049, status complete, two atomic embedded edges:
   conversation_belongs_to_workstream to WS-012, conversation_records_session
   to SES-079)
-- 6 decisions (DEC-246 area-level parallelism; DEC-247 multi-valued area;
-  DEC-248 per-agent conv+ses + orchestrator conv+ses; DEC-249 static waves;
-  DEC-250 executive_summary as structured field on PI/DEC/SES; DEC-251
+- 6 decisions (DEC-304 area-level parallelism; DEC-305 multi-valued area;
+  DEC-306 per-agent conv+ses + orchestrator conv+ses; DEC-307 static waves;
+  DEC-308 executive_summary as structured field on PI/DEC/SES; DEC-309
   bundle executive_summary work into WS-012)
-- 10 planning_items (PI-053 executive_summary field; PI-054 executive_summary
-  backfill; PI-055 area field; PI-056 claimed_by/claimed_at; PI-057 identifier
-  reservation API; PI-058 ready-batches API; PI-059 conversation_orchestrates_
-  conversation kind; PI-060 orchestrator driver; PI-061 child kickoff template;
-  PI-062 area backfill — all Open)
+- 10 planning_items (PI-074 executive_summary field; PI-075 executive_summary
+  backfill; PI-076 area field; PI-077 claimed_by/claimed_at; PI-078 identifier
+  reservation API; PI-079 ready-batches API; PI-080 conversation_orchestrates_
+  conversation kind; PI-081 orchestrator driver; PI-082 child kickoff template;
+  PI-083 area backfill — all Open)
 - 21 payload references (6 decided_in + 15 blocked_by between the new PIs)
 - 1 close_out_payload (COP-077, lazy-created at apply close)
 - 1 deposit_event (lazy-created at apply close)
@@ -285,7 +285,7 @@ Reply in this thread with:
 - Pre-apply heads (sessions / decisions / planning-items / conversations / workstreams / COP / DEP / references count) — captured in pre-flight.
 - Pre-step result (`Created: WS-012 - in_flight` on first run, else idempotent skip).
 - Apply script output — should be 1+1+10+6+21 = 39 OK records across the section banners, plus 1 lazy COP + 1 lazy DEP.
-- Post-apply heads (expect SES-079 / DEC-251 / PI-062 / CONV-049 / WS-012 / COP-077 / DEP head + 1).
+- Post-apply heads (expect SES-079 / DEC-309 / PI-083 / CONV-049 / WS-012 / COP-077 / DEP head + 1).
 - Reference total before and after (expect ~+44 delta).
 - Snapshot commit SHA.
-- Next-conversation kickoff path: any Wave 1 PI (PI-053, PI-055, PI-056, PI-057, or PI-059) can be opened next via an individual Claude Code prompt.
+- Next-conversation kickoff path: any Wave 1 PI (PI-074, PI-076, PI-077, PI-078, or PI-080) can be opened next via an individual Claude Code prompt.

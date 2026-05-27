@@ -801,5 +801,115 @@
     "status": "Open",
     "title": "Redesign Session and Conversation entities — medium-agnostic communication container with topical sub-units",
     "updated_at": "2026-05-26T19:35:54.375796"
+  },
+  {
+    "created_at": "2026-05-27T01:28:34.399916",
+    "description": "Audience-facing summary: Adds a required 'executive summary' field to every planning item, decision, and session record. Today these records carry only implementer-facing description text, so a product manager or executive reading the governance log has to parse engineering detail to extract the gist. With this field in place, governance records become legible to non-technical reviewers without losing the technical content for implementers.\n\nTechnical scope: Add 'executive_summary' column to the planning_items, decisions, and sessions tables via a single Alembic migration. Type TEXT NOT NULL with a CHECK constraint enforcing length between 200 and 800 characters. Update the access-layer validators in planning_items.py, decisions.py, and sessions.py to require the field on create and update. Update the Pydantic models in the API to include the field. Update the snapshot regenerator to include executive_summary in db-export JSON output for all three tables. The migration runs against existing rows — see PI-075 for the backfill of populated values; the NOT NULL constraint must be deferred to the post-backfill migration in PI-075, or the column added as nullable here and made NOT NULL in PI-075.",
+    "id": 74,
+    "identifier": "PI-074",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Add executive_summary field to planning_items, decisions, sessions",
+    "updated_at": "2026-05-27T01:28:34.399919"
+  },
+  {
+    "created_at": "2026-05-27T01:28:34.574525",
+    "description": "Audience-facing summary: Writes an audience-facing summary on every existing governance record so the new field is populated retroactively. Without this, the new executive_summary field would be empty on every record created before PI-074 landed, defeating the purpose of having it.\n\nTechnical scope: AI-assisted backfill pass over all ~51 existing planning_items, ~243 existing decisions, and ~76 existing sessions in the CRMBUILDER engagement. For each record, generate a 200-800 character PM/exec-readable summary by reading the existing description/context/decision/rationale/summary fields and rewriting them for a non-technical audience. Spot-check at minimum 10 records per type before bulk-applying. Submit summaries via API PATCH (or directly via the access layer) one record at a time so the change_log captures the audit trail. Finalize the NOT NULL constraint on the column (if PI-074 deferred it) after all rows are populated.",
+    "id": 75,
+    "identifier": "PI-075",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Backfill executive_summary on existing planning items, decisions, sessions",
+    "updated_at": "2026-05-27T01:28:34.574527"
+  },
+  {
+    "created_at": "2026-05-27T01:28:34.726488",
+    "description": "Audience-facing summary: Lets each planning item declare which areas of the codebase or methodology it touches. The orchestrator uses these area labels to figure out which planning items are safe to run in parallel without two agents editing the same files at the same time. Without this field, parallel dispatch is unsafe.\n\nTechnical scope: Add 'area' column to the planning_items table via Alembic migration. Type JSON NOT NULL with a CHECK constraint enforcing json_array_length >= 1 and every element in the registered vocabulary. Register a new vocabulary 'area' in crmbuilder-v2/src/crmbuilder_v2/access/vocab.py with the initial seventeen values listed in orchestrator-planning.md §2.1 (v2-storage, v2-access, v2-api, v2-mcp, v2-ui, cbm-mn, cbm-mr, cbm-cr, cbm-fu, cbm-services, methodology-interviews, methodology-process, methodology-templates, methodology-product, infrastructure, v1-automation, v1-espo, v1-programs). Update the planning_items access-layer validator to enforce the vocabulary on create and update. Update the API Pydantic model. Update the snapshot regenerator. NOT NULL constraint is deferred until PI-083 backfills existing rows; add the column as JSON nullable here, tighten to NOT NULL in PI-083.",
+    "id": 76,
+    "identifier": "PI-076",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Add area field to planning_items (multi-valued JSON, vocabulary-checked)",
+    "updated_at": "2026-05-27T01:28:34.726492"
+  },
+  {
+    "created_at": "2026-05-27T01:28:34.872048",
+    "description": "Audience-facing summary: Lets the orchestrator mark a planning item as 'currently being worked on by a specific agent' so two agents never grab the same item at once. The fields are null when a planning item is available, populated when an agent claims it, and cleared when the agent's work resolves or is rolled back.\n\nTechnical scope: Add 'claimed_by' (nullable foreign-key-style string column referencing either a conversation_identifier or a session_identifier — to be decided in this PI) and 'claimed_at' (nullable timestamp) columns to the planning_items table via Alembic migration. Update the access-layer validators to enforce 'both fields set or both null'. Decide whether claimed_by references the conversation entity (semantically the conversation holds the claim) or the session entity (simpler to write at start-of-work). Update API Pydantic model and snapshot regenerator. Add a small access-layer helper claim_planning_item(identifier, claimant) that sets the pair atomically with optimistic concurrency (fail if already claimed). No backfill needed — existing rows stay null.",
+    "id": 77,
+    "identifier": "PI-077",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Add claimed_by and claimed_at fields to planning_items",
+    "updated_at": "2026-05-27T01:28:34.872051"
+  },
+  {
+    "created_at": "2026-05-27T01:28:35.065500",
+    "description": "Audience-facing summary: Lets the orchestrator atomically reserve a block of identifiers (for example, the next five session IDs) at the start of a run, so child agents don't race to claim the next available number when they finish their work. Small API addition with outsized impact on orchestrator safety — without it, two child agents finishing close in time could collide on the next-SES identifier.\n\nTechnical scope: Add 'POST /identifiers/reserve' endpoint accepting {entity_type, count} and returning {reserved: [list of identifiers], head_after}. Atomic advancement of the engagement-scoped identifier head, with the reserved block held server-side under the requesting conversation's claim. A subsequent POST of a record with an identifier in the reserved block consumes the reservation. Stale reservations (no record posted within a configurable TTL, default 1 hour) auto-release. Update API documentation. Add access-layer tests. Supports the standard prefixed identifier types (SES, DEC, PI, CONV, RISK, TOPIC, CHA, STAT, and any other client-computed identifier kinds).",
+    "id": 78,
+    "identifier": "PI-078",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Implement identifier reservation API endpoint",
+    "updated_at": "2026-05-27T01:28:35.065503"
+  },
+  {
+    "created_at": "2026-05-27T01:28:35.217361",
+    "description": "Audience-facing summary: The single API call the orchestrator makes at the start of every run to figure out what's safe to dispatch. Returns the open planning items grouped by dependency depth (planning items at depth 0 have no unresolved dependencies; depth 1 depends on depth 0; etc.) with each item's area set attached. Without this, the orchestrator would have to make many separate calls and run the topological sort itself.\n\nTechnical scope: Add 'GET /orchestration/ready-batches' endpoint scoped to the active engagement. Returns {batches: [{depth: 0, items: [{identifier, title, executive_summary, area, claimed_by}, ...]}, {depth: 1, items: [...]}, ...]}. Computes the dependency graph by reading blocked_by references where source_type=planning_item and target_type=planning_item and source.status=Open. Resolved items are filtered out. Already-claimed items appear in their batch but with claimed_by populated so the orchestrator can skip them. Topological sort handles cycles by surfacing them as a separate 'cyclic' bucket with a warning rather than failing. Optional query parameters: area (filter to just specific areas), max_depth (cut off the sort early).",
+    "id": 79,
+    "identifier": "PI-079",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Implement orchestration ready-batches API endpoint",
+    "updated_at": "2026-05-27T01:28:35.217364"
+  },
+  {
+    "created_at": "2026-05-27T01:28:35.402588",
+    "description": "Audience-facing summary: Adds the relationship type that connects the orchestrator's supervising conversation to each of its child agents' conversations. Without it, the governance timeline can't show the parent-child structure of a parallel run, and audit queries can't walk from an orchestrator session to its children.\n\nTechnical scope: Add 'conversation_orchestrates_conversation' to REFERENCE_RELATIONSHIPS in crmbuilder-v2/src/crmbuilder_v2/access/vocab.py. Extend the _kinds_for_pair logic to allow the (conversation, conversation) source/target pair with this new kind. Alembic migration to extend the refs.relationship_kind CHECK constraint to include the new kind. Update the V2 desktop UI's references-create dialog to expose the new option in the cascading filter (this is automatic from the vocab/rules update — no UI code changes needed; flagged here as a verification step). Per CLAUDE.md, adding a relationship kind requires updating REFERENCE_RELATIONSHIPS, _kinds_for_pair, and the CHECK constraint together.",
+    "id": 80,
+    "identifier": "PI-080",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Register conversation_orchestrates_conversation reference kind",
+    "updated_at": "2026-05-27T01:28:35.402591"
+  },
+  {
+    "created_at": "2026-05-27T01:28:35.543981",
+    "description": "Audience-facing summary: The orchestrator itself — a Python script that runs at the developer's terminal, reads the open planning-item backlog via the ready-batches API, plans the wave structure, spawns parallel child agents (one per area-disjoint cluster), monitors them, and produces its own close-out payload referencing each child's close-out. The largest deliverable in this workstream and the proof that the rest of the foundation works.\n\nTechnical scope: Python script under crmbuilder-v2/scripts/orchestrator/run.py. Pre-flight: clean git status, current engagement set, API health check, no other orchestrator currently running (file lock under ~/.crmbuilder-v2/). Main loop: GET /orchestration/ready-batches → reserve identifiers via POST /identifiers/reserve (one SES + one CONV per child + one for the orchestrator itself) → POST workstream-membership and records_session edges for the orchestrator's own conversation → for each area-disjoint cluster in the current wave, create a child branch, write a kickoff file from the template (PI-082) with the agent's assigned identifiers and PI list embedded, spawn a Claude Code subagent against the branch → poll until all agents in the wave complete or fail → on completion, ingest each child's close-out payload reference and create the conversation_orchestrates_conversation edge → advance to next wave. On any failure: halt, log the failure context, leave claimed_by populated for forensic review. Produces a final close-out payload referencing every child's CONV via conversation_orchestrates_conversation.",
+    "id": 81,
+    "identifier": "PI-081",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Build orchestrator driver script",
+    "updated_at": "2026-05-27T01:28:35.543983"
+  },
+  {
+    "created_at": "2026-05-27T01:28:35.721442",
+    "description": "Audience-facing summary: The standardized kickoff prompt that each child agent receives when the orchestrator dispatches it. Tells the agent which planning items it owns, which branch to work on, which session/conversation identifiers it was pre-allocated, which areas it's claimed, and how to produce its close-out payload at the end. Without this template, every orchestrator run would invent kickoff prompts ad hoc and the agents would have inconsistent behavior.\n\nTechnical scope: Template file at PRDs/product/crmbuilder-v2/orchestrator/child-agent-kickoff-template.md with placeholder substitution markers ({{session_identifier}}, {{conversation_identifier}}, {{planning_items}}, {{areas_claimed}}, {{branch_name}}, etc.). Body sections: operating mode (DETAIL by default for code work), engagement and workstream context, pre-allocated identifiers, planning items in scope (full descriptions from the ready-batches response), areas claimed (and the conflict rule explaining the agent must not touch other areas), close-out payload requirements (the agent produces its own ses_NNN.json and apply prompt at the engagement's close-out-payloads directory), branch and commit conventions (branch name, commit message prefix). The template is rendered by the orchestrator driver (PI-081) at dispatch time and written into the working directory of the spawned Claude Code subagent.",
+    "id": 82,
+    "identifier": "PI-082",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Build child agent kickoff prompt template",
+    "updated_at": "2026-05-27T01:28:35.721445"
+  },
+  {
+    "created_at": "2026-05-27T01:28:35.865501",
+    "description": "Audience-facing summary: Assigns area labels to every currently-open planning item so the orchestrator can categorize them when it dispatches. Without this backfill, open items have null areas and the orchestrator can't include them in any batch.\n\nTechnical scope: AI-assisted pass over the ~33 currently-open planning items in the CRMBUILDER engagement (count as of SES-079; rerun against current open list at PI execution time). For each open PI, read its title and description, infer the affected area(s) from the language (file paths, subsystem names, methodology vs. product framing, etc.), and propose a multi-valued area set. Spot-check at least the first 10 with Doug before bulk-applying. PATCH each PI via API. After backfill, tighten the area column's NOT NULL constraint (deferred from PI-076). Closed/Resolved PIs do not need backfill — area is meaningful only for open work the orchestrator might dispatch. The backfill is one-shot; future PIs declare area at authoring time.",
+    "id": 83,
+    "identifier": "PI-083",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Backfill area field on currently-open planning items",
+    "updated_at": "2026-05-27T01:28:35.865504"
   }
 ]

@@ -163,5 +163,20 @@
     "workstream_status": "in_flight",
     "workstream_superseded_at": null,
     "workstream_updated_at": "2026-05-25T20:26:45.989304"
+  },
+  {
+    "workstream_cancelled_at": null,
+    "workstream_completed_at": null,
+    "workstream_created_at": "2026-05-27T01:29:46.864599",
+    "workstream_deleted_at": null,
+    "workstream_description": "Established at SES-079. Ten planning items in two tracks: bootstrap (executive_summary field, executive_summary backfill, area field, claimed_by/claimed_at, conversation_orchestrates_conversation reference kind) and orchestrator proper (identifier reservation API, ready-batches API, driver script, child kickoff template, area backfill). Dependencies declared via blocked_by. Architectural decisions captured in DEC-304..DEC-309 (re-keyed from original DEC-246..DEC-251 at apply time per the identifier-collision contingency). Status remains in_flight until all ten PIs resolve.",
+    "workstream_identifier": "WS-012",
+    "workstream_name": "Parallel agent orchestrator and executive summary",
+    "workstream_notes": null,
+    "workstream_purpose": "Build a Claude Code orchestrator that spins up multiple parallel agents to process the open planning-item backlog, with the supporting governance metadata (executive_summary field, area field, claimed_by/claimed_at fields, identifier reservation API, ready-batches API, conversation_orchestrates_conversation reference kind) the orchestrator requires.",
+    "workstream_started_at": "2026-05-27T01:29:46.865072",
+    "workstream_status": "in_flight",
+    "workstream_superseded_at": null,
+    "workstream_updated_at": "2026-05-27T01:29:46.865472"
   }
 ]

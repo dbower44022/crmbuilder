@@ -817,6 +817,23 @@
   },
   {
     "conversation_cancelled_at": null,
+    "conversation_completed_at": "2026-05-27T01:28:34.196877",
+    "conversation_created_at": "2026-05-27T01:28:34.193534",
+    "conversation_deleted_at": null,
+    "conversation_description": "Architecture-mode planning conversation opened against the open-ended seed prompt 'What changes should we make to the v2 process to allow a claude code orchestrator to spin up multiple agents to process all open PIs'. Worked through six consequential decisions using the eight-element template — five about orchestrator architecture (parallelism unit, area cardinality, close-out shape, scheduling model, workstream organization) and one about a cross-cutting governance metadata extension (executive_summary structured field on PI/DEC/SES). Pre-close-out repo pull surfaced that the workstream entity and several proposed reference kinds already shipped in v0.7/v0.8, prompting a plan revision: dropped two workstream-entity bring-up PIs (already implemented), renamed depends_on to the existing blocked_by reference kind, and targeted WS-012 (next available). Final close-out lands ten planning items (PI-074 through PI-083) in two tracks (bootstrap: schema + vocab + backfill; orchestrator proper: APIs + driver + child template), six decisions (DEC-304 through DEC-309), one workstream (WS-012 created out-of-band by the apply prompt's pre-step), and a planning artifact (orchestrator-planning.md).",
+    "conversation_identifier": "CONV-049",
+    "conversation_kickoff_drafted_at": null,
+    "conversation_notes": null,
+    "conversation_purpose": "Architect a parallel agent orchestrator that dispatches Claude Code subagents to process the open planning-item backlog concurrently. Establish a new workstream (WS-012) covering the orchestrator and the executive-summary structured-field extension it depends on.",
+    "conversation_ready_at": null,
+    "conversation_started_at": null,
+    "conversation_status": "complete",
+    "conversation_superseded_at": null,
+    "conversation_title": "Parallel agent orchestrator architecture and WS-012 establishment",
+    "conversation_updated_at": "2026-05-27T01:28:34.196989"
+  },
+  {
+    "conversation_cancelled_at": null,
     "conversation_completed_at": "2026-05-26T02:48:33.571107",
     "conversation_created_at": "2026-05-26T02:48:33.570844",
     "conversation_deleted_at": null,

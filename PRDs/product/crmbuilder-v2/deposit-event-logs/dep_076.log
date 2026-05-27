@@ -1,0 +1,57 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_079.json
+Label:  SES-079 close-out — WS-012 establishing conversation: parallel agent orchestrator architecture (six decisions DEC-304 through DEC-309) plus ten-PI roadmap (PI-074 through PI-083). Bootstrap track (PI-074 exec_summary field, PI-075 exec_summary backfill, PI-076 area field, PI-077 claimed_by/claimed_at, PI-080 conversation_orchestrates_conversation kind) and orchestrator track (PI-078 identifier reservation API, PI-079 ready-batches API, PI-081 driver script, PI-082 child kickoff template, PI-083 area backfill). All ten dependencies declared via blocked_by edges. WS-012 created out-of-band via apply-prompt pre-step.
+Deposit event: DEP-076
+
+=== session (1 record) ===
+  ✓ POST session  SES-079 (HTTP 201)
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CONV-049 (HTTP 201)
+
+=== planning_items (10 records) ===
+  ✓ POST planning_items  PI-074 (HTTP 201)
+  ✓ POST planning_items  PI-075 (HTTP 201)
+  ✓ POST planning_items  PI-076 (HTTP 201)
+  ✓ POST planning_items  PI-077 (HTTP 201)
+  ✓ POST planning_items  PI-078 (HTTP 201)
+  ✓ POST planning_items  PI-079 (HTTP 201)
+  ✓ POST planning_items  PI-080 (HTTP 201)
+  ✓ POST planning_items  PI-081 (HTTP 201)
+  ✓ POST planning_items  PI-082 (HTTP 201)
+  ✓ POST planning_items  PI-083 (HTTP 201)
+
+=== decisions (6 records) ===
+  ✓ POST decisions  DEC-304 (HTTP 201)
+  ✓ POST decisions  DEC-305 (HTTP 201)
+  ✓ POST decisions  DEC-306 (HTTP 201)
+  ✓ POST decisions  DEC-307 (HTTP 201)
+  ✓ POST decisions  DEC-308 (HTTP 201)
+  ✓ POST decisions  DEC-309 (HTTP 201)
+
+=== references (21 records) ===
+  ✓ POST references  DEC-304 decided_in SES-079 (HTTP 201)
+  ✓ POST references  DEC-305 decided_in SES-079 (HTTP 201)
+  ✓ POST references  DEC-306 decided_in SES-079 (HTTP 201)
+  ✓ POST references  DEC-307 decided_in SES-079 (HTTP 201)
+  ✓ POST references  DEC-308 decided_in SES-079 (HTTP 201)
+  ✓ POST references  DEC-309 decided_in SES-079 (HTTP 201)
+  ✓ POST references  PI-075 blocked_by PI-074 (HTTP 201)
+  ✓ POST references  PI-079 blocked_by PI-076 (HTTP 201)
+  ✓ POST references  PI-079 blocked_by PI-077 (HTTP 201)
+  ✓ POST references  PI-082 blocked_by PI-076 (HTTP 201)
+  ✓ POST references  PI-082 blocked_by PI-080 (HTTP 201)
+  ✓ POST references  PI-083 blocked_by PI-076 (HTTP 201)
+  ✓ POST references  PI-081 blocked_by PI-074 (HTTP 201)
+  ✓ POST references  PI-081 blocked_by PI-075 (HTTP 201)
+  ✓ POST references  PI-081 blocked_by PI-076 (HTTP 201)
+  ✓ POST references  PI-081 blocked_by PI-077 (HTTP 201)
+  ✓ POST references  PI-081 blocked_by PI-078 (HTTP 201)
+  ✓ POST references  PI-081 blocked_by PI-079 (HTTP 201)
+  ✓ POST references  PI-081 blocked_by PI-080 (HTTP 201)
+  ✓ POST references  PI-081 blocked_by PI-082 (HTTP 201)
+  ✓ POST references  PI-081 blocked_by PI-083 (HTTP 201)
+
+✓ All 39 operations complete.
+
+✓ Recorded apply as deposit_event DEP-076 (HTTP 201).
