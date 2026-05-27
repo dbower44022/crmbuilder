@@ -12,7 +12,34 @@ DECISION_STATUSES: frozenset[str] = frozenset(
     {"Active", "Superseded", "Withdrawn", "Deleted"}
 )
 
-SESSION_STATUSES: frozenset[str] = frozenset({"Complete", "In Progress"})
+# `session` lifecycle (DEC-314, PI-073 redesign). Six statuses; forward-only
+# (planned → in_flight) with four terminals (complete, cancelled,
+# not_started, superseded). Sessions are now schedulable and stateful per
+# the DEC-013 supersession.
+SESSION_STATUSES: frozenset[str] = frozenset(
+    {
+        "planned",
+        "in_flight",
+        "complete",
+        "cancelled",
+        "not_started",
+        "superseded",
+    }
+)
+SESSION_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "planned": frozenset({"in_flight", "cancelled", "not_started", "superseded"}),
+    "in_flight": frozenset({"complete", "cancelled", "superseded"}),
+    "complete": frozenset(),
+    "cancelled": frozenset(),
+    "not_started": frozenset(),
+    "superseded": frozenset(),
+}
+
+# `session_medium` enum (DEC-314, PI-073). Seven mediums plus 'other' for
+# extensibility — chat, email, phone, zoom, in_person, slack, other.
+SESSION_MEDIUMS: frozenset[str] = frozenset(
+    {"chat", "email", "phone", "zoom", "in_person", "slack", "other"}
+)
 
 RISK_PROBABILITIES: frozenset[str] = frozenset({"Low", "Medium", "High"})
 RISK_IMPACTS: frozenset[str] = frozenset({"Low", "Medium", "High"})
@@ -267,26 +294,28 @@ WORKSTREAM_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "superseded": frozenset(),
 }
 
-# `conversation` lifecycle (DEC-131). Seven statuses; forward-only planning
-# line (planned → kickoff_drafted → ready → in_flight) with three terminals.
+# `conversation` lifecycle (DEC-314, PI-073 redesign — supersedes DEC-131).
+# Six statuses; forward-only (planned → in_flight) with four terminals
+# (complete, cancelled, not_started, superseded). Conversations are now
+# topical sub-units within a session per the redesign; the not_started
+# terminal captures conversations planned within a session that never
+# opened (Q2 resolution).
 CONVERSATION_STATUSES: frozenset[str] = frozenset(
     {
         "planned",
-        "kickoff_drafted",
-        "ready",
         "in_flight",
         "complete",
         "cancelled",
+        "not_started",
         "superseded",
     }
 )
 CONVERSATION_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
-    "planned": frozenset({"kickoff_drafted", "cancelled", "superseded"}),
-    "kickoff_drafted": frozenset({"ready", "cancelled", "superseded"}),
-    "ready": frozenset({"in_flight", "cancelled", "superseded"}),
+    "planned": frozenset({"in_flight", "cancelled", "not_started", "superseded"}),
     "in_flight": frozenset({"complete", "cancelled", "superseded"}),
     "complete": frozenset(),
     "cancelled": frozenset(),
+    "not_started": frozenset(),
     "superseded": frozenset(),
 }
 
@@ -454,6 +483,34 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         "process_performed_by_persona",
         "process_touches_field",
         "process_touches_entity",
+        # PI-073 / DEC-314 additions (session-conversation redesign).
+        # Six new kinds aggregated across session-v2.md §3.3.4 and
+        # conversation-v2.md §3.3.4. The v0.7-era kinds
+        # (`conversation_records_session`, `conversation_opens_against_work_ticket`,
+        # `conversation_succeeds_conversation`, `close_out_payload_produced_by_conversation`)
+        # remain admitted during transition; Phase F retires them after
+        # the data migration retargets the edges.
+        #
+        # session outbound:
+        #   - `session_belongs_to_workstream` (session → workstream;
+        #     exactly-one membership per session-v2.md §3.3.1).
+        #   - `session_opens_against_work_ticket` (session → work_ticket;
+        #     successor to `conversation_opens_against_work_ticket`).
+        #   - `session_follows_from` (session → session; medium-driven
+        #     session-level sequencing per Q1 resolution).
+        # conversation outbound (new topical sub-unit shape):
+        #   - `conversation_belongs_to_session` (conversation → session;
+        #     mandatory parent linkage, replaces 1:0..1 with 1:N).
+        #   - `conversation_follows_from` (conversation → conversation;
+        #     direct cross-session topical continuity per Q2).
+        #   - `conversation_relates_to` (conversation → conversation;
+        #     loose cross-session topical relation).
+        "session_belongs_to_workstream",
+        "session_opens_against_work_ticket",
+        "session_follows_from",
+        "conversation_belongs_to_session",
+        "conversation_follows_from",
+        "conversation_relates_to",
     }
 )
 
@@ -721,6 +778,22 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         kinds.add("process_touches_field")
     if source_type == "process" and target_type == "entity":
         kinds.add("process_touches_entity")
+    # PI-073 / DEC-314 additions (session-conversation redesign). The
+    # legacy `conversation_records_session`, `conversation_opens_against_work_ticket`,
+    # `conversation_succeeds_conversation`, `close_out_payload_produced_by_conversation`
+    # clauses remain present above during transition; Phase F retires them
+    # after the data migration retargets edges to the new kinds.
+    if source_type == "session" and target_type == "workstream":
+        kinds.add("session_belongs_to_workstream")
+    if source_type == "session" and target_type == "work_ticket":
+        kinds.add("session_opens_against_work_ticket")
+    if source_type == "session" and target_type == "session":
+        kinds.add("session_follows_from")
+    if source_type == "conversation" and target_type == "session":
+        kinds.add("conversation_belongs_to_session")
+    if source_type == "conversation" and target_type == "conversation":
+        kinds.add("conversation_follows_from")
+        kinds.add("conversation_relates_to")
     return frozenset(kinds)
 
 

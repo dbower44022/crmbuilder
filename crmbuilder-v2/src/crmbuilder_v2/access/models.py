@@ -65,6 +65,7 @@ from crmbuilder_v2.access.vocab import (
     RISK_IMPACTS,
     RISK_PROBABILITIES,
     RISK_STATUSES,
+    SESSION_MEDIUMS,
     SESSION_STATUSES,
     TEST_SPEC_RUN_OUTCOMES,
     TEST_SPEC_STATUSES,
@@ -163,28 +164,87 @@ class Decision(Base):
 
 
 class Session(Base):
-    """Append-only session record."""
+    """Governance entity — one discrete unit of communication in any medium.
+
+    Redesigned in PI-073 / DEC-314 (supersedes DEC-013's append-only rule).
+    A session represents one Claude.ai chat, one email, one phone call,
+    one Zoom meeting, one in-person meeting, or one Slack thread.
+    Schedulable and stateful through a six-status lifecycle. Carries
+    universal columns (medium, started_at, ended_at, participants) and a
+    JSON ``session_medium_metadata`` column for per-medium extras.
+    Conversations (topical sub-units) belong to a session via the
+    ``conversation_belongs_to_session`` reference edge.
+    """
 
     __tablename__ = "sessions"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    identifier: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
-    title: Mapped[str] = mapped_column(String(255), nullable=False)
-    session_date: Mapped[str] = mapped_column(String(32), nullable=False)
-    status: Mapped[str] = mapped_column(String(32), nullable=False)
-    conversation_reference: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    topics_covered: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    artifacts_produced: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    in_flight_at_end: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    created_at: Mapped[datetime] = mapped_column(
+    session_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    session_title: Mapped[str] = mapped_column(String(255), nullable=False)
+    session_description: Mapped[str] = mapped_column(Text, nullable=False)
+    session_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    session_status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="planned"
+    )
+    session_medium: Mapped[str] = mapped_column(String(20), nullable=False)
+    session_scheduled_for: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    session_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    session_ended_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    session_participants: Mapped[list] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    session_medium_metadata: Mapped[dict] = mapped_column(
+        JSON, nullable=False, default=dict
+    )
+    session_created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    session_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow,
+        onupdate=_utcnow,
+    )
+    session_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    session_in_flight_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    session_completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    session_cancelled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    session_not_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    session_superseded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
 
     __table_args__ = (
-        CheckConstraint(_check_in("status", SESSION_STATUSES), name="ck_session_status"),
-        Index("ix_sessions_identifier", "identifier"),
-        Index("ix_sessions_session_date", "session_date"),
+        CheckConstraint(
+            "session_identifier GLOB 'SES-[0-9][0-9][0-9]'",
+            name="ck_session_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("session_status", SESSION_STATUSES),
+            name="ck_session_status",
+        ),
+        CheckConstraint(
+            _check_in("session_medium", SESSION_MEDIUMS),
+            name="ck_session_medium",
+        ),
+        Index("ix_sessions_session_status", "session_status"),
+        Index("ix_sessions_session_medium", "session_medium"),
+        Index("ix_sessions_session_deleted_at", "session_deleted_at"),
     )
 
 
@@ -1006,12 +1066,16 @@ class Workstream(Base):
 
 
 class Conversation(Base):
-    """Governance entity — one unit of conversational work through its lifecycle.
+    """Governance entity — one focused topical discussion within a session.
 
-    Second of six governance entity types (UI v0.7). Seven-status workflow
-    lifecycle (forward-only planning line plus three terminals); six
-    per-status lifecycle timestamps. Workstream membership, session linkage,
-    kickoff linkage, sequencing, and supersession all live in ``refs``.
+    Redesigned in PI-073 / DEC-314. A conversation is a topical sub-unit
+    of a session — one session contains one or more conversations. Each
+    has its own six-status lifecycle including the ``not_started``
+    terminal for conversations planned within a session that never opened.
+    Identifier prefix is ``CNV-NNN`` (distinct from the legacy ``CONV-NNN``
+    sessions, which are migrated separately by Phase F). Session
+    membership, cross-session continuity (follows_from/relates_to), and
+    supersession all live in ``refs``.
     """
 
     __tablename__ = "conversations"
@@ -1020,28 +1084,24 @@ class Conversation(Base):
         String(32), primary_key=True
     )
     conversation_title: Mapped[str] = mapped_column(String(255), nullable=False)
+    conversation_purpose: Mapped[str] = mapped_column(Text, nullable=False)
+    conversation_description: Mapped[str] = mapped_column(Text, nullable=False)
+    conversation_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    conversation_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     conversation_status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="planned"
     )
-    conversation_purpose: Mapped[str] = mapped_column(Text, nullable=False)
-    conversation_description: Mapped[str] = mapped_column(Text, nullable=False)
-    conversation_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     conversation_created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
     conversation_updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+        DateTime(timezone=True), nullable=False, default=_utcnow,
+        onupdate=_utcnow,
     )
     conversation_deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    conversation_kickoff_drafted_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    conversation_ready_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    conversation_started_at: Mapped[datetime | None] = mapped_column(
+    conversation_in_flight_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     conversation_completed_at: Mapped[datetime | None] = mapped_column(
@@ -1050,13 +1110,16 @@ class Conversation(Base):
     conversation_cancelled_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    conversation_not_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     conversation_superseded_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
 
     __table_args__ = (
         CheckConstraint(
-            "conversation_identifier GLOB 'CONV-[0-9][0-9][0-9]'",
+            "conversation_identifier GLOB 'CNV-[0-9][0-9][0-9]'",
             name="ck_conversation_identifier_format",
         ),
         CheckConstraint(
