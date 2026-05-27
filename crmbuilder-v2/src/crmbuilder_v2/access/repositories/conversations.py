@@ -1,20 +1,33 @@
-"""Conversation repository — the second governance entity type (UI v0.7).
+"""Conversations repository — the topical sub-unit within a session.
 
-Per ``governance-schema-specs/conversation.md``. Seven-status workflow
-lifecycle (forward-only planning line plus three truly-terminal terminals).
+Redesigned in PI-073 / DEC-314. Per
+``governance-schema-specs/conversation-v2.md`` v1.0.
+
+A conversation is a focused topical discussion within a session — one
+session contains 1..N conversations. The new entity uses the ``CNV-NNN``
+identifier prefix (distinct from the legacy ``CONV-NNN`` which now
+identifies sessions in the redesigned model — see migration 0020).
+
+Six-status lifecycle (forward-only ``planned → in_flight`` plus four
+terminals: ``complete``, ``cancelled``, ``not_started``, ``superseded``).
+
 Access-layer edge rules:
 
-* **Workstream membership** — exactly one outbound
-  ``conversation_belongs_to_workstream`` edge is required on every live
-  record (DEC-120).
-* **Complete-requires-session-edge** — ``complete`` requires an outbound
-  ``conversation_records_session`` edge (DEC-131).
+* **Session membership** — exactly one outbound
+  ``conversation_belongs_to_session`` edge is required on every live
+  record per conversation-v2.md §3.3.1.
 * **Supersession-requires-edge** — ``superseded`` requires an outbound
-  ``supersedes`` edge.
+  ``supersedes`` edge to the successor conversation.
 
-Per-status lifecycle timestamps are server-set on transition; the membership
-and terminal edges may be supplied in the same request's ``references`` array
-and are validated together at commit time.
+Cross-session continuity is optional and expressed via two edge kinds:
+
+* ``conversation_follows_from`` — direct successor of a topic carried
+  over from a prior conversation (in this or a prior session).
+* ``conversation_relates_to`` — looser relation; same topical area, prior
+  context, sibling discussion.
+
+These are NOT enforced at create/update time — they're queryable
+metadata that operators populate when the topical link exists.
 """
 
 from __future__ import annotations
@@ -42,19 +55,18 @@ from crmbuilder_v2.access.vocab import (
 )
 
 _ENTITY_TYPE = "conversation"
-_IDENTIFIER_PREFIX = "CONV"
-_IDENTIFIER_RE = re.compile(r"^CONV-\d{3}$")
+_IDENTIFIER_PREFIX = "CNV"
+_IDENTIFIER_RE = re.compile(r"^CNV-\d{3}$")
 _MAX_AUTOASSIGN_ATTEMPTS = 50
 _PATCHABLE_FIELDS = frozenset(
-    {"title", "purpose", "description", "notes", "status"}
+    {"title", "purpose", "description", "summary", "notes", "status"}
 )
 
 _STATUS_TIMESTAMP = {
-    "kickoff_drafted": "conversation_kickoff_drafted_at",
-    "ready": "conversation_ready_at",
-    "in_flight": "conversation_started_at",
+    "in_flight": "conversation_in_flight_at",
     "complete": "conversation_completed_at",
     "cancelled": "conversation_cancelled_at",
+    "not_started": "conversation_not_started_at",
     "superseded": "conversation_superseded_at",
 }
 
@@ -101,40 +113,38 @@ def _increment_identifier(identifier: str) -> str:
 
 
 def _validate_edges(session: Session, identifier: str, status: str) -> None:
-    """Enforce membership, complete, and supersession edge rules."""
+    """Enforce session membership and supersession edge rules.
+
+    The new conversation entity requires mandatory parent linkage at all
+    non-terminal states (and stays linked through the terminal states for
+    historical query-ability). Per conversation-v2.md §3.3.1: exactly one
+    outbound ``conversation_belongs_to_session`` edge.
+
+    The supersession rule applies only when status == 'superseded'.
+
+    Note: there is no "complete-requires-session-edge" rule (which the
+    v0.7 conversation had via ``conversation_records_session``). Under
+    the redesign, a conversation belongs to a session at all statuses
+    via ``conversation_belongs_to_session`` — the membership IS the
+    session linkage, and it's mandatory from create, not deferred to
+    complete.
+    """
     membership = gov.outbound_edges(
         session,
         source_type=_ENTITY_TYPE,
         source_id=identifier,
-        relationship="conversation_belongs_to_workstream",
+        relationship="conversation_belongs_to_session",
     )
     if len(membership) != 1:
         raise UnprocessableError(
             [
                 FieldError(
                     "references",
-                    "missing_workstream_membership_edge",
-                    "exactly one conversation_belongs_to_workstream edge is required",
+                    "missing_session_membership_edge",
+                    "exactly one conversation_belongs_to_session edge is required",
                 )
             ]
         )
-    if status == "complete":
-        edges = gov.outbound_edges(
-            session,
-            source_type=_ENTITY_TYPE,
-            source_id=identifier,
-            relationship="conversation_records_session",
-        )
-        if not edges:
-            raise UnprocessableError(
-                [
-                    FieldError(
-                        "status",
-                        "complete_conversation_requires_session_edge",
-                        "an outbound 'conversation_records_session' edge is required",
-                    )
-                ]
-            )
     if status == "superseded":
         gov.reject_missing_supersedes_edge(
             session, entity_type=_ENTITY_TYPE, identifier=identifier
@@ -151,22 +161,30 @@ def list_conversations(
     *,
     include_deleted: bool = False,
     status: str | None = None,
-    workstream_identifier: str | None = None,
+    session_identifier: str | None = None,
 ) -> list[dict]:
+    """List conversations.
+
+    Filters: ``status`` (lifecycle), ``session_identifier`` (resolves the
+    inbound conversation_belongs_to_session edge to filter conversations
+    that belong to a specific session).
+    """
     stmt = select(Conversation).order_by(Conversation.conversation_identifier)
     if not include_deleted:
         stmt = stmt.where(Conversation.conversation_deleted_at.is_(None))
     if status is not None:
         stmt = stmt.where(Conversation.conversation_status == status)
     rows = [to_dict(r) for r in session.scalars(stmt).all()]
-    if workstream_identifier is not None:
+    if session_identifier is not None:
+        # Find conversations whose conversation_belongs_to_session edge
+        # targets the named session.
         members = {
             e.source_id
             for e in gov.inbound_edges(
                 session,
-                target_type="workstream",
-                target_id=workstream_identifier,
-                relationship="conversation_belongs_to_workstream",
+                target_type="session",
+                target_id=session_identifier,
+                relationship="conversation_belongs_to_session",
             )
         }
         rows = [r for r in rows if r["conversation_identifier"] in members]
@@ -196,23 +214,40 @@ def next_conversation_identifier(session: Session) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _new_row(identifier, title, purpose, description, notes, status):
+def _new_row(
+    identifier: str,
+    title: str,
+    purpose: str,
+    description: str,
+    summary: str | None,
+    notes: str | None,
+    status: str,
+) -> Conversation:
     return Conversation(
         conversation_identifier=identifier,
         conversation_title=title,
         conversation_purpose=purpose,
         conversation_description=description,
+        conversation_summary=summary,
         conversation_notes=notes,
         conversation_status=status,
     )
 
 
-def _insert_with_autoassign(session, title, purpose, description, notes, status):
+def _insert_with_autoassign(
+    session: Session,
+    title: str,
+    purpose: str,
+    description: str,
+    summary: str | None,
+    notes: str | None,
+    status: str,
+) -> Conversation:
     candidate = next_conversation_identifier(session)
     last_error: IntegrityError | None = None
     for _ in range(_MAX_AUTOASSIGN_ATTEMPTS):
         savepoint = session.begin_nested()
-        row = _new_row(candidate, title, purpose, description, notes, status)
+        row = _new_row(candidate, title, purpose, description, summary, notes, status)
         session.add(row)
         try:
             session.flush()
@@ -235,6 +270,7 @@ def create_conversation(
     title: str,
     purpose: str,
     description: str,
+    summary: str | None = None,
     notes: str | None = None,
     status: str = "planned",
     identifier: str | None = None,
@@ -250,17 +286,12 @@ def create_conversation(
         status = "planned"
     _require_status(status)
 
-    # When the caller provides an explicit identifier, check identifier
-    # conflict BEFORE title conflict. If the identifier already exists, the
-    # title match is incidental (same record), and a 409 ConflictError is
-    # the correct outcome — not a 422 duplicate-title. This makes the
-    # close-out apply idempotent on re-run (PI-030 slice B): a second apply
-    # of the same payload SKIPs the conversation cleanly instead of failing
-    # with a misleading "duplicate title" 422.
     if identifier is not None:
         gov.require_identifier_format(
-            identifier, regex=_IDENTIFIER_RE,
-            field="conversation_identifier", example="CONV-001",
+            identifier,
+            regex=_IDENTIFIER_RE,
+            field="conversation_identifier",
+            example="CNV-001",
         )
         if session.get(Conversation, identifier) is not None:
             raise ConflictError(f"conversation {identifier!r} already exists")
@@ -269,10 +300,10 @@ def create_conversation(
 
     if identifier is None:
         row = _insert_with_autoassign(
-            session, title, purpose, description, notes, status
+            session, title, purpose, description, summary, notes, status
         )
     else:
-        row = _new_row(identifier, title, purpose, description, notes, status)
+        row = _new_row(identifier, title, purpose, description, summary, notes, status)
         session.add(row)
         session.flush()
 
@@ -304,6 +335,7 @@ def update_conversation(
     title: str | None = None,
     purpose: str | None = None,
     description: str | None = None,
+    summary: str | None = None,
     notes: str | None = None,
     status: str | None = None,
     references: list[dict] | None = None,
@@ -345,6 +377,7 @@ def update_conversation(
     row.conversation_title = title
     row.conversation_purpose = purpose
     row.conversation_description = description
+    row.conversation_summary = summary
     row.conversation_notes = notes
     session.flush()
     _validate_edges(session, identifier, row.conversation_status)
@@ -362,7 +395,11 @@ def update_conversation(
 
 
 def patch_conversation(
-    session: Session, identifier: str, *, references: list[dict] | None = None, **fields
+    session: Session,
+    identifier: str,
+    *,
+    references: list[dict] | None = None,
+    **fields,
 ) -> dict:
     unknown = set(fields) - _PATCHABLE_FIELDS
     if unknown:
@@ -393,6 +430,8 @@ def patch_conversation(
         row.conversation_description = gov.require_nonempty(
             fields["description"], field="conversation_description"
         )
+    if "summary" in fields:
+        row.conversation_summary = fields["summary"]
     if "notes" in fields:
         row.conversation_notes = fields["notes"]
     if "status" in fields:
