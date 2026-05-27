@@ -1,0 +1,39 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_093.json
+Label:  Dogfood reframe of governance recording: rather than producing a standalone rules document (PI-084's original scope), produce CRMBuilder methodology artifacts — a Domain Overview for the Domain that owns governance recording (PI-085), separate Persona entities for the personas the Domain involves (PI-086, personas are first-class), the Session/Conversation governance Process PRD as the first concrete Process within the Domain (PI-087), and the standard Process PRD Definition Process formalized from observed practice (PI-088). DEC-310's rules-required mandate stays in force; the SHAPE of the documentation changes from standalone rules document to dogfood methodology artifacts. PI-085 supersedes PI-084. Personas are first-class entities (not nested under Domains) per Doug's clarification.
+Deposit event: DEP-078
+
+=== session (1 record) ===
+  ✓ POST session  SES-093 (HTTP 201)
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CONV-063 (HTTP 201)
+
+=== planning_items (4 records) ===
+  ✓ POST planning_items  PI-085 (HTTP 201)
+  ✓ POST planning_items  PI-086 (HTTP 201)
+  ✓ POST planning_items  PI-087 (HTTP 201)
+  ✓ POST planning_items  PI-088 (HTTP 201)
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-311 (HTTP 201)
+
+=== references (11 records) ===
+  ✓ POST references  DEC-311 decided_in SES-093 (HTTP 201)
+  ✓ POST references  PI-085 addresses DEC-311 (HTTP 201)
+  ✓ POST references  PI-086 addresses DEC-311 (HTTP 201)
+  ✓ POST references  PI-087 addresses DEC-311 (HTTP 201)
+  ✓ POST references  PI-088 addresses DEC-311 (HTTP 201)
+  ✓ POST references  PI-087 addresses DEC-310 (HTTP 201)
+  ✓ POST references  PI-085 supersedes PI-084 (HTTP 201)
+  ✓ POST references  PI-086 blocked_by PI-085 (HTTP 201)
+  ✓ POST references  PI-087 blocked_by PI-085 (HTTP 201)
+  ✓ POST references  PI-087 blocked_by PI-086 (HTTP 201)
+  ✓ POST references  PI-088 blocked_by PI-087 (HTTP 201)
+
+✓ All 19 operations complete.
+
+✓ Recorded apply as deposit_event DEP-078 (HTTP 201).

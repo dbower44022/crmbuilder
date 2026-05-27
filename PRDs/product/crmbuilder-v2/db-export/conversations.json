@@ -1052,5 +1052,22 @@
     "conversation_superseded_at": null,
     "conversation_title": "Governance recording discipline review — surfacing the pattern of incomplete V2 records and deciding on a canonical rules document",
     "conversation_updated_at": "2026-05-27T02:42:39.799488"
+  },
+  {
+    "conversation_cancelled_at": null,
+    "conversation_completed_at": "2026-05-27T03:19:58.961655",
+    "conversation_created_at": "2026-05-27T03:19:58.961410",
+    "conversation_deleted_at": null,
+    "conversation_description": "Topical continuation of the SES-089/SES-092 chat. Started with Doug testing whether a new Claude.ai session could begin with 'do PI-084' minimal seed. Sandbox traced the bootstrap problem (DEC-310 requires a rules document, PI-084 creates it; circular until the rules exist). Doug then observed PI-084's artifact has the structural shape of a Process PRD operating on V2 Entities within a Domain. Sandbox mapped the 10-section structure to Process PRD fields and surfaced framing/Domain-naming/timing questions. Doug expanded the reframe to full methodology dogfood per DEC-295: define a Domain, define Personas, define at least one Process (Session/Conversation), and recursively define the meta Process PRD Definition Process. Sandbox proposed three structural options; Doug chose Option C (4 separate PIs) and corrected that Personas are first-class entities not contained in Domains. Identifier-head capture per DEC-300 confirmed SES-092 was applied during the conversation (PI-084 now live), making the in-place payload amendment path impossible — reframe requires a new session record. Authored DEC-311 + 4 PIs + reference edges (decided_in, addresses, supersedes, blocked_by). Authored kickoff prompt for the new Claude.ai session that will execute PI-085 (Domain Overview).",
+    "conversation_identifier": "CONV-063",
+    "conversation_kickoff_drafted_at": null,
+    "conversation_notes": null,
+    "conversation_purpose": "Operationally test the PI-084 workflow ('do PI-084' as a session seed); surface structural and conceptual reframes that emerged from the test; reach decisions on how governance recording should be produced; supersede PI-084 with properly-scoped methodology artifacts.",
+    "conversation_ready_at": null,
+    "conversation_started_at": null,
+    "conversation_status": "complete",
+    "conversation_superseded_at": null,
+    "conversation_title": "Dogfood reframe of governance recording — Process PRD framing led to full methodology-dogfood approach",
+    "conversation_updated_at": "2026-05-27T03:19:58.961740"
   }
 ]
