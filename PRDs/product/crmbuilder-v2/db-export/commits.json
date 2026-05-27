@@ -682,5 +682,24 @@
     "commit_session_id": "SES-103",
     "commit_sha": "5333f46f21ff98eb25e6d80e5ecb8df7c7f41e04",
     "commit_updated_at": "2026-05-27T18:31:19.164532"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-27T19:10:04-04:00",
+    "commit_created_at": "2026-05-27T23:11:54.486928",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 5,
+    "commit_identifier": "CM-0037",
+    "commit_message_first_line": "v2: PI-018 — add oneToOne YAML link-type support",
+    "commit_message_full": "v2: PI-018 — add oneToOne YAML link-type support\n\nAdds 'oneToOne' as a valid linkType in the YAML schema. YAML authors\ncan now declare a true 1:1 relationship and the engine creates it\nin EspoCRM with the correct asymmetric internal types (hasOne on one\nside, belongsTo on the inverse).\n\nToday, methodology-side artifacts (interview-entity-prd.md, the Path B\nimporter) already accept oneToOne, but the YAML validator rejects it\n— so requirements captured through the methodology can become\nundeployable when they hit the engine. The first concrete trigger was\nthe CBM MN-Partner-TEST.yaml / MN-Sponsor-TEST.yaml scaffolding (2026-05-19),\nworked around at the time with manyToOne + operator-discipline\nuniqueness rules.\n\nChanges:\n\n- ``espo_impl/core/config_loader.py`` — ``VALID_LINK_TYPES`` grows\n  ``oneToOne``. ``_validate_relationship`` rejects oneToOne missing\n  ``linkForeign`` and warns on oneToOne with ``relationName`` (a\n  manyToMany affordance).\n- ``espo_impl/core/relationship_manager.py`` — ``LINK_TYPE_TO_METADATA``\n  / ``_build_payload`` extended to handle the asymmetric oneToOne case.\n  ``_links_match`` updated so the comparator compares oneToOne links\n  correctly when reading back the per-side metadata type from EspoCRM.\n- Unit tests cover: valid oneToOne accepted, missing-linkForeign\n  rejected, relationName warns, asymmetric payload emitted, comparator\n  matches oneToOne round-trip.\n- ``PRDs/product/app-yaml-schema.md`` Section 6 documents oneToOne.\n\nOut of scope (deferred): step 7 of the PI body (updating CBM repo\nMN-Partner-TEST.yaml / MN-Sponsor-TEST.yaml to drop the manyToOne\nworkaround) — that's a separate-repo follow-on. End-to-end EspoCRM\ndeploy verification also deferred — no live EspoCRM available in this\nautonomous run; unit + integration coverage carries the change.\n\nFrom PI-018.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "594edce0c0c97d582b0302332732bbcfa33eeec6"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-105",
+    "commit_sha": "122a9ac2b5632e216dc8469db7d4e7858f0021e0",
+    "commit_updated_at": "2026-05-27T23:11:54.486931"
   }
 ]

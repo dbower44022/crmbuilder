@@ -211,9 +211,9 @@
     "identifier": "PI-018",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Add oneToOne relationship support to YAML schema",
-    "updated_at": "2026-05-27T18:20:32.233783"
+    "updated_at": "2026-05-27T23:11:48.028172"
   },
   {
     "created_at": "2026-05-19T19:40:46.355712",

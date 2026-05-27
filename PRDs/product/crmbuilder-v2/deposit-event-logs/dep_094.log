@@ -1,0 +1,17 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_105.json
+Label:  PI-018 implementation — add oneToOne YAML link-type support. Single autonomous sub-agent run. VALID_LINK_TYPES grows oneToOne; _validate_relationship gains a oneToOne-specific hard error (missing linkForeign) and soft warning (relationName is a manyToMany affordance); _compare_link branches on linkType to accept both hasOne and belongsTo as valid metadata-readback types per side; _build_payload unchanged (already passes linkType verbatim and EspoCRM accepts oneToOne literally). app-yaml-schema.md Section 8 documents the new link type and EspoCRM's asymmetric internal metadata. 7 new tests pass (34 in relationship/link/one_to_one scope, no regressions in v1 touched-file scope). Out of scope and deferred: step 7 of the PI body (updating CBM repo MN-Partner-TEST.yaml / MN-Sponsor-TEST.yaml to drop the manyToOne workaround) and live-EspoCRM round-trip verification.
+Deposit event: DEP-094
+
+=== session (1 record) ===
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-007 (HTTP 201)
+
+=== commits (1 record) ===
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-018 (HTTP 201)
+
+
+✓ Recorded apply as deposit_event DEP-094 (HTTP 201).
