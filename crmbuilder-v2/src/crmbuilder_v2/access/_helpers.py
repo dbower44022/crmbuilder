@@ -73,3 +73,41 @@ def require_in(value: Any, allowed: frozenset[str], *, field: str) -> str:
             ]
         )
     return value
+
+
+def validate_optional_length(
+    value: Any,
+    *,
+    field: str,
+    min_len: int,
+    max_len: int,
+) -> str | None:
+    """Return ``None`` for None/empty; reject non-strings; reject out-of-range strings.
+
+    Used by PI-074's ``executive_summary`` field on planning_items, decisions,
+    and sessions. The column is nullable in the schema (until PI-075's
+    backfill + NOT NULL); when the caller supplies a value, it must be a
+    string whose length sits in ``[min_len, max_len]`` inclusive. Empty
+    string and whitespace-only strings are coerced to ``None`` so callers
+    can omit the field cleanly without tripping the length check.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValidationError(
+            [FieldError(field, "invalid_type", "must be a string or null")]
+        )
+    if value.strip() == "":
+        return None
+    n = len(value)
+    if n < min_len or n > max_len:
+        raise ValidationError(
+            [
+                FieldError(
+                    field,
+                    "invalid_length",
+                    f"must be {min_len}-{max_len} characters (got {n})",
+                )
+            ]
+        )
+    return value

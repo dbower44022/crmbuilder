@@ -28,7 +28,12 @@ class StatusReplaceIn(_Base):
 
 class DecisionCreateIn(_Base):
     """POST /decisions body. ``identifier`` is server-assigned when
-    omitted (PI-002, option C of SES-010)."""
+    omitted (PI-002, option C of SES-010).
+
+    ``executive_summary`` (PI-074) — optional 200-800 character
+    audience-facing summary. Nullable until PI-075's backfill +
+    NOT NULL migration.
+    """
 
     identifier: str | None = None
     title: str
@@ -41,6 +46,7 @@ class DecisionCreateIn(_Base):
     consequences: str = ""
     supersedes: str | None = None
     superseded_by: str | None = None
+    executive_summary: str | None = None
 
 
 class DecisionUpdateIn(_Base):
@@ -54,6 +60,7 @@ class DecisionUpdateIn(_Base):
     consequences: str | None = None
     supersedes: str | None = None
     superseded_by: str | None = None
+    executive_summary: str | None = None
 
 
 # ---------- Sessions ----------
@@ -61,7 +68,12 @@ class DecisionUpdateIn(_Base):
 
 class SessionCreateIn(_Base):
     """POST /sessions body. ``identifier`` is server-assigned when
-    omitted (PI-002, option C of SES-010)."""
+    omitted (PI-002, option C of SES-010).
+
+    ``executive_summary`` (PI-074) — optional 200-800 character
+    audience-facing summary. Nullable until PI-075's backfill +
+    NOT NULL migration.
+    """
 
     identifier: str | None = None
     title: str
@@ -72,6 +84,7 @@ class SessionCreateIn(_Base):
     summary: str = ""
     artifacts_produced: str = ""
     in_flight_at_end: str = ""
+    executive_summary: str | None = None
 
 
 # ---------- Risks ----------
@@ -104,7 +117,12 @@ class RiskUpdateIn(_Base):
 
 class PlanningItemCreateIn(_Base):
     """POST /planning-items body. ``identifier`` is server-assigned when
-    omitted (PI-002, option C of SES-010)."""
+    omitted (PI-002, option C of SES-010).
+
+    ``executive_summary`` (PI-074) — optional 200-800 character
+    audience-facing summary. Nullable until PI-075's backfill +
+    NOT NULL migration.
+    """
 
     identifier: str | None = None
     title: str
@@ -112,6 +130,7 @@ class PlanningItemCreateIn(_Base):
     description: str = ""
     status: str
     resolution_reference: str | None = None
+    executive_summary: str | None = None
 
 
 class PlanningItemUpdateIn(_Base):
@@ -120,6 +139,7 @@ class PlanningItemUpdateIn(_Base):
     description: str | None = None
     status: str | None = None
     resolution_reference: str | None = None
+    executive_summary: str | None = None
 
 
 # ---------- Topics ----------

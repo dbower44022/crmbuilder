@@ -19,6 +19,7 @@ from crmbuilder_v2.access._helpers import (
     require_in,
     require_string,
     to_dict,
+    validate_optional_length,
 )
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
@@ -75,8 +76,12 @@ _UPDATABLE_FIELDS = frozenset(
         "rationale",
         "alternatives_considered",
         "consequences",
+        "executive_summary",
     }
 )
+
+_EXECUTIVE_SUMMARY_MIN = 200
+_EXECUTIVE_SUMMARY_MAX = 800
 
 
 def _resolve_decision_id(session: Session, identifier: str | None) -> int | None:
@@ -124,6 +129,7 @@ def _new_decision_row(
     consequences: str,
     supersedes_id: int | None,
     superseded_by_id: int | None,
+    executive_summary: str | None,
 ) -> Decision:
     return Decision(
         identifier=identifier,
@@ -137,6 +143,7 @@ def _new_decision_row(
         consequences=consequences,
         supersedes_id=supersedes_id,
         superseded_by_id=superseded_by_id,
+        executive_summary=executive_summary,
     )
 
 
@@ -152,6 +159,7 @@ def _insert_with_autoassign(
     consequences: str,
     supersedes_id: int | None,
     superseded_by_id: int | None,
+    executive_summary: str | None,
 ) -> Decision:
     """Insert a decision with a server-assigned identifier, collision-safe.
 
@@ -176,6 +184,7 @@ def _insert_with_autoassign(
             consequences,
             supersedes_id,
             superseded_by_id,
+            executive_summary,
         )
         session.add(row)
         try:
@@ -207,15 +216,26 @@ def create(
     consequences: str = "",
     supersedes: str | None = None,
     superseded_by: str | None = None,
+    executive_summary: str | None = None,
 ) -> dict:
     """Create a decision.
 
     ``identifier`` is server-assigned when omitted (``None``). When
     supplied it must match ``^DEC-\\d{3}$`` and not already exist.
+
+    ``executive_summary`` (PI-074) is optional in v0.8; when supplied it
+    must be a 200-800 character audience-facing summary. PI-075 will
+    backfill and tighten the column to NOT NULL.
     """
     require_string(title, field="title")
     require_string(decision_date, field="decision_date")
     require_in(status, DECISION_STATUSES, field="status")
+    executive_summary = validate_optional_length(
+        executive_summary,
+        field="executive_summary",
+        min_len=_EXECUTIVE_SUMMARY_MIN,
+        max_len=_EXECUTIVE_SUMMARY_MAX,
+    )
 
     supersedes_id = _resolve_decision_id(session, supersedes)
     superseded_by_id = _resolve_decision_id(session, superseded_by)
@@ -233,6 +253,7 @@ def create(
             consequences or "",
             supersedes_id,
             superseded_by_id,
+            executive_summary,
         )
     else:
         _require_identifier_format(identifier)
@@ -253,6 +274,7 @@ def create(
             consequences or "",
             supersedes_id,
             superseded_by_id,
+            executive_summary,
         )
         session.add(row)
         session.flush()
@@ -295,9 +317,20 @@ def update(
         )
     if "status" in fields:
         require_in(fields["status"], DECISION_STATUSES, field="status")
+    if "executive_summary" in fields:
+        fields["executive_summary"] = validate_optional_length(
+            fields["executive_summary"],
+            field="executive_summary",
+            min_len=_EXECUTIVE_SUMMARY_MIN,
+            max_len=_EXECUTIVE_SUMMARY_MAX,
+        )
 
     for key, value in fields.items():
-        setattr(row, key, value if value is not None else "")
+        if key == "executive_summary":
+            # Nullable column — preserve explicit None instead of coercing to "".
+            setattr(row, key, value)
+        else:
+            setattr(row, key, value if value is not None else "")
 
     if supersedes is not None:
         row.supersedes_id = _resolve_decision_id(session, supersedes)

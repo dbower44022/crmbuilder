@@ -13,6 +13,7 @@ from crmbuilder_v2.access._helpers import (
     require_in,
     require_string,
     to_dict,
+    validate_optional_length,
 )
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
@@ -56,8 +57,18 @@ def _increment_identifier(identifier: str) -> str:
     return f"{_IDENTIFIER_PREFIX}-{number + 1:03d}"
 
 _UPDATABLE_FIELDS = frozenset(
-    {"title", "item_type", "description", "status", "resolution_reference"}
+    {
+        "title",
+        "item_type",
+        "description",
+        "status",
+        "resolution_reference",
+        "executive_summary",
+    }
 )
+
+_EXECUTIVE_SUMMARY_MIN = 200
+_EXECUTIVE_SUMMARY_MAX = 800
 
 
 def get(session: Session, identifier: str) -> dict:
@@ -81,6 +92,7 @@ def _new_planning_item_row(
     description: str,
     status: str,
     resolution_reference: str | None,
+    executive_summary: str | None,
 ) -> PlanningItem:
     return PlanningItem(
         identifier=identifier,
@@ -89,6 +101,7 @@ def _new_planning_item_row(
         description=description,
         status=status,
         resolution_reference=resolution_reference,
+        executive_summary=executive_summary,
     )
 
 
@@ -99,6 +112,7 @@ def _insert_with_autoassign(
     description: str,
     status: str,
     resolution_reference: str | None,
+    executive_summary: str | None,
 ) -> PlanningItem:
     """Insert a planning_item with a server-assigned identifier (PI-002)."""
     candidate = compute_next_identifier(session)
@@ -106,7 +120,13 @@ def _insert_with_autoassign(
     for _attempt in range(_MAX_AUTOASSIGN_ATTEMPTS):
         savepoint = session.begin_nested()
         row = _new_planning_item_row(
-            candidate, title, item_type, description, status, resolution_reference
+            candidate,
+            title,
+            item_type,
+            description,
+            status,
+            resolution_reference,
+            executive_summary,
         )
         session.add(row)
         try:
@@ -133,19 +153,36 @@ def create(
     description: str = "",
     status: str,
     resolution_reference: str | None = None,
+    executive_summary: str | None = None,
 ) -> dict:
     """Create a planning_item.
 
     ``identifier`` is server-assigned when omitted (``None``). When
     supplied it must match ``^PI-\\d{3}$`` and not already exist.
+
+    ``executive_summary`` (PI-074) is optional in v0.8; when supplied it
+    must be a 200-800 character audience-facing summary. PI-075 will
+    backfill and tighten the column to NOT NULL.
     """
     require_string(title, field="title")
     require_in(item_type, PLANNING_ITEM_TYPES, field="item_type")
     require_in(status, PLANNING_ITEM_STATUSES, field="status")
+    executive_summary = validate_optional_length(
+        executive_summary,
+        field="executive_summary",
+        min_len=_EXECUTIVE_SUMMARY_MIN,
+        max_len=_EXECUTIVE_SUMMARY_MAX,
+    )
 
     if identifier is None:
         row = _insert_with_autoassign(
-            session, title, item_type, description or "", status, resolution_reference
+            session,
+            title,
+            item_type,
+            description or "",
+            status,
+            resolution_reference,
+            executive_summary,
         )
     else:
         _require_identifier_format(identifier)
@@ -163,6 +200,7 @@ def create(
             description or "",
             status,
             resolution_reference,
+            executive_summary,
         )
         session.add(row)
         session.flush()
@@ -200,6 +238,13 @@ def update(session: Session, identifier: str, **fields) -> dict:
         require_in(fields["item_type"], PLANNING_ITEM_TYPES, field="item_type")
     if "status" in fields:
         require_in(fields["status"], PLANNING_ITEM_STATUSES, field="status")
+    if "executive_summary" in fields:
+        fields["executive_summary"] = validate_optional_length(
+            fields["executive_summary"],
+            field="executive_summary",
+            min_len=_EXECUTIVE_SUMMARY_MIN,
+            max_len=_EXECUTIVE_SUMMARY_MAX,
+        )
     before = to_dict(row)
     for k, v in fields.items():
         setattr(row, k, v)

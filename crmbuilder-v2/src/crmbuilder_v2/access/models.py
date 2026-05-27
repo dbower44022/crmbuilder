@@ -136,6 +136,7 @@ class Decision(Base):
         Text, nullable=False, default=""
     )
     consequences: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    executive_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     supersedes_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("decisions.id"), nullable=True
     )
@@ -158,6 +159,11 @@ class Decision(Base):
 
     __table_args__ = (
         CheckConstraint(_check_in("status", DECISION_STATUSES), name="ck_decision_status"),
+        CheckConstraint(
+            "executive_summary IS NULL OR "
+            "(length(executive_summary) >= 200 AND length(executive_summary) <= 800)",
+            name="ck_decision_executive_summary_length",
+        ),
         Index("ix_decisions_identifier", "identifier"),
     )
 
@@ -177,12 +183,18 @@ class Session(Base):
     summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
     artifacts_produced: Mapped[str] = mapped_column(Text, nullable=False, default="")
     in_flight_at_end: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    executive_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
 
     __table_args__ = (
         CheckConstraint(_check_in("status", SESSION_STATUSES), name="ck_session_status"),
+        CheckConstraint(
+            "executive_summary IS NULL OR "
+            "(length(executive_summary) >= 200 AND length(executive_summary) <= 800)",
+            name="ck_session_executive_summary_length",
+        ),
         Index("ix_sessions_identifier", "identifier"),
         Index("ix_sessions_session_date", "session_date"),
     )
@@ -225,6 +237,7 @@ class PlanningItem(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     status: Mapped[str] = mapped_column(String(16), nullable=False)
     resolution_reference: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    executive_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
@@ -238,6 +251,11 @@ class PlanningItem(Base):
         ),
         CheckConstraint(
             _check_in("status", PLANNING_ITEM_STATUSES), name="ck_planning_status"
+        ),
+        CheckConstraint(
+            "executive_summary IS NULL OR "
+            "(length(executive_summary) >= 200 AND length(executive_summary) <= 800)",
+            name="ck_planning_executive_summary_length",
         ),
     )
 

@@ -16,6 +16,7 @@ from crmbuilder_v2.access._helpers import (
     require_in,
     require_string,
     to_dict,
+    validate_optional_length,
 )
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
@@ -31,6 +32,9 @@ _ENTITY_TYPE = "session"
 _IDENTIFIER_PREFIX = "SES"
 _IDENTIFIER_RE = re.compile(r"^SES-\d{3}$")
 _MAX_AUTOASSIGN_ATTEMPTS = 50
+
+_EXECUTIVE_SUMMARY_MIN = 200
+_EXECUTIVE_SUMMARY_MAX = 800
 
 
 def compute_next_identifier(session: Session) -> str:
@@ -86,6 +90,7 @@ def _new_session_row(
     summary: str,
     artifacts_produced: str,
     in_flight_at_end: str,
+    executive_summary: str | None,
 ) -> SessionModel:
     return SessionModel(
         identifier=identifier,
@@ -97,6 +102,7 @@ def _new_session_row(
         summary=summary,
         artifacts_produced=artifacts_produced,
         in_flight_at_end=in_flight_at_end,
+        executive_summary=executive_summary,
     )
 
 
@@ -110,6 +116,7 @@ def _insert_with_autoassign(
     summary: str,
     artifacts_produced: str,
     in_flight_at_end: str,
+    executive_summary: str | None,
 ) -> SessionModel:
     """Insert a session with a server-assigned identifier, collision-safe (PI-002)."""
     candidate = compute_next_identifier(session)
@@ -126,6 +133,7 @@ def _insert_with_autoassign(
             summary,
             artifacts_produced,
             in_flight_at_end,
+            executive_summary,
         )
         session.add(row)
         try:
@@ -155,15 +163,26 @@ def create(
     summary: str = "",
     artifacts_produced: str = "",
     in_flight_at_end: str = "",
+    executive_summary: str | None = None,
 ) -> dict:
     """Create a session.
 
     ``identifier`` is server-assigned when omitted (``None``). When
     supplied it must match ``^SES-\\d{3}$`` and not already exist.
+
+    ``executive_summary`` (PI-074) is optional in v0.8; when supplied it
+    must be a 200-800 character audience-facing summary. PI-075 will
+    backfill and tighten the column to NOT NULL.
     """
     require_string(title, field="title")
     require_string(session_date, field="session_date")
     require_in(status, SESSION_STATUSES, field="status")
+    executive_summary = validate_optional_length(
+        executive_summary,
+        field="executive_summary",
+        min_len=_EXECUTIVE_SUMMARY_MIN,
+        max_len=_EXECUTIVE_SUMMARY_MAX,
+    )
 
     if identifier is None:
         row = _insert_with_autoassign(
@@ -176,6 +195,7 @@ def create(
             summary or "",
             artifacts_produced or "",
             in_flight_at_end or "",
+            executive_summary,
         )
     else:
         _require_identifier_format(identifier)
@@ -194,6 +214,7 @@ def create(
             summary or "",
             artifacts_produced or "",
             in_flight_at_end or "",
+            executive_summary,
         )
         session.add(row)
         session.flush()
