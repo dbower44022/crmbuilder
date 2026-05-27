@@ -1,0 +1,178 @@
+{
+  "label": "Dogfood reframe of governance recording: rather than producing a standalone rules document (PI-084's original scope), produce CRMBuilder methodology artifacts \u2014 a Domain Overview for the Domain that owns governance recording (PI-085), separate Persona entities for the personas the Domain involves (PI-086, personas are first-class), the Session/Conversation governance Process PRD as the first concrete Process within the Domain (PI-087), and the standard Process PRD Definition Process formalized from observed practice (PI-088). DEC-310's rules-required mandate stays in force; the SHAPE of the documentation changes from standalone rules document to dogfood methodology artifacts. PI-085 supersedes PI-084. Personas are first-class entities (not nested under Domains) per Doug's clarification.",
+  "session": {
+    "identifier": "SES-093",
+    "title": "Dogfood reframe \u2014 produce governance recording as Domain Overview + Personas + Process PRDs (supersedes PI-084 rules-document approach)",
+    "session_date": "2026-05-26",
+    "status": "Complete",
+    "conversation_reference": "Topical continuation of the Claude.ai chat that previously produced SES-089 (architecture review) and SES-092 (governance recording rules required). After SES-092 was applied (DEC-310 in force, PI-084 created to make the rules document), the conversation continued discussing how a new Claude.ai session would discover PI-084 and execute it. The discussion surfaced two reframes in sequence: (1) the artifact being created looks structurally like a Process PRD operating on V2 Entities within a Domain, not like a standalone reference document; (2) properly dogfooding the CRMBuilder methodology (per DEC-295) means producing a Domain Overview + Persona entities + Process PRDs, not a one-off rules document. Doug confirmed Option C (4 separate PIs covering Domain, Personas, Session/Conversation Process, and the meta Process PRD Definition Process) and corrected that Personas are first-class entities referenced by Domains, not contained in them. This session records the reframe decision (DEC-311), supersedes PI-084 with PI-085 as the direct successor, and authors PI-086/PI-087/PI-088 for the scope expansion.",
+    "topics_covered": "Seed prompt: \"So we should absolutely change the kickoff prompt and PI to be more of a 'Define domain, personas, and at least one process for CRMbuilder. The first process will be the Session/conversation process, that will define what entities, personas, etc are affected, using our standard process prd definition process. (Which is also not defined and should be defined as a Process :)\"\n\n(1) Operational test of the PI-084 workflow. Doug asked whether a new Claude.ai session opened with the minimal prompt 'do PI-084' would be off to the races. Sandbox traced through what would actually happen: the new session would ask which CLAUDE.md to read, read it, learn the project's content but not the governance protocols (CLAUDE.md doesn't yet surface DEC-300 / DEC-310 prominently); would need to find PI-084's description (in V2 after SES-092's apply, or in the close-out payload before); would need to know the discipline DEC-310 establishes; and would need to know the pre-flight identifier-head capture per DEC-300. Bootstrap problem: DEC-310 requires a rules document to exist, but PI-084 IS the work creating it. Sandbox identified that a kickoff prompt for the new session is the practical bootstrap mechanism, and offered to author it.\n\n(2) Doug surfaced the structural observation: 'This document almost seems like a Process PRD that will define what Entities should be updated and created during as part of a Domain.' Sandbox mapped the 10-section structure onto a Process PRD template (trigger, steps, entities touched, personas, exception handling, acceptance criteria, outputs) \u2014 confirmed the mapping is clean. Surfaced three immediate questions: Process PRD framing yes/no, Domain name, update SES-092 payload pre-apply vs. amend later.\n\n(3) Doug expanded the reframe further: rather than just framing PI-084's artifact differently, the work should be 'Define domain, personas, and at least one process for CRMbuilder. The first process will be the Session/conversation process, that will define what entities, personas, etc are affected, using our standard process prd definition process. (Which is also not defined and should be defined as a Process :)' This is proper methodology dogfood per DEC-295, with recursive humor on the meta-process being itself a Process.\n\n(4) Sandbox proposed three structural options: (A) single expanded PI-084; (B) three PIs (Domain Overview including Personas, Session/Conv Process, Meta Process); (C) four PIs separating Personas from Domain. Doug chose Option C and added the critical correction: 'Personas should absolutely not live under domains. The domains should define which personas are involved, and create new ones if discovered while defining domain.' Personas are first-class entities referenced by Domains; this makes them reusable across Domains (Engagement Lead participates in Conversation Governance, Methodology Execution, Deployment, etc.).\n\n(5) Identifier-head capture per DEC-300. Doug confirmed live V2 heads: SES-092, CONV-062, DEC-310, PI-084. Next available: SES-093, CONV-063, DEC-311, PI-085. Critically, SES-092 was applied during this conversation (PI-084 went from pending-apply to in-V2), so the originally-planned in-place payload amendment is no longer possible; the reframe requires a new session record. Sandbox also verified V2 supports the `supersedes` relationship_kind (2 prior uses in the references table) so PI-084 can be marked superseded by PI-085 via reference, not status change.\n\n(6) Authored DEC-311 (dogfood reframe \u2014 produce governance recording as Domain Overview + Persona entities + Process PRDs rather than standalone rules document; DEC-310's rules-required mandate stays in force) and four new PIs: PI-085 (Domain), PI-086 (Personas), PI-087 (Session/Conversation Process \u2014 which contains the rules content originally planned for PI-084), PI-088 (Meta Process PRD Definition Process). References: decided_in DEC-311 \u2192 SES-093; addresses PI-085/086/087/088 \u2192 DEC-311; addresses PI-087 \u2192 DEC-310 (the rules-required mandate is fulfilled by the Session/Conversation Process PRD); supersedes PI-085 \u2192 PI-084; blocked_by edges establishing the dependency chain (PI-086 blocked_by PI-085, PI-087 blocked_by PI-085 and PI-086, PI-088 blocked_by PI-087).\n\n(7) Authored the kickoff prompt for the new Claude.ai session that will execute PI-085 (Domain Overview drafting). The kickoff is the practical bootstrap mechanism Doug had been asking for \u2014 minimal seed prompt the new session reads, then asks Doug for fresh identifier heads, then proposes the Domain naming question, then begins drafting. Kickoff is committed as part of this session's artifacts and referenced in commits[].",
+    "summary": "Topical continuation of the SES-089/SES-092 Claude.ai chat. After SES-092 was applied and DEC-310 + PI-084 became live V2 records, the conversation surfaced two sequential reframes: first that PI-084's rules-document artifact is structurally a Process PRD; second that proper methodology dogfood per DEC-295 means producing a Domain Overview + separate Persona entities + Process PRDs rather than a standalone rules document. Doug chose Option C (4 PIs: Domain, Personas, Session/Conversation Process, meta Process PRD Definition Process) and corrected the structure: Personas are first-class entities referenced by Domains, not contained in them. Authored DEC-311 (dogfood reframe \u2014 supersedes PI-084's standalone rules document approach; DEC-310's rules mandate stays in force), PI-085 (Domain Overview, supersedes PI-084), PI-086 (Personas), PI-087 (Session/Conversation Process PRD \u2014 contains the rules content originally planned for PI-084), PI-088 (meta Process PRD Definition Process). Dependency edges (blocked_by) sequence the work: Domain first, then Personas + Session/Conv Process, then Meta Process. Also produced the kickoff prompt for the new Claude.ai session that will execute PI-085.",
+    "artifacts_produced": "This session's commits: e357bfc5 (kickoff prompt for the PI-085 Domain Overview drafting session at PRDs/product/crmbuilder-v2/pi-085-domain-overview-drafting-kickoff.md); plus this close-out payload at PRDs/product/crmbuilder-v2/close-out-payloads/ses_093.json and its apply prompt at PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-apply-close-out-ses-093.md.",
+    "in_flight_at_end": "PI-085 (Domain Overview) is the next concrete work item \u2014 to be executed in a new Claude.ai session seeded by the kickoff prompt produced in this session. Personas (PI-086) and Session/Conversation Process (PI-087) are blocked by PI-085 (need the Domain named first); Meta Process (PI-088) is blocked by PI-087 (formalize after observing practice). PI-084 stays Open in V2 but is marked superseded by PI-085 via a `supersedes` reference. The specific Domain name, Persona codes, Process code, and Meta Process code are deferred to the actual work and will be decided as part of executing PI-085. The Master CRMBuilder PRD v0.1 at specifications/master-crmbuilder-PRD.md is still DISCUSSION DRAFT; the Section 3 (Two-Layer Mental Model) and Section 5 (Phase 1) revisions surfaced in SES-089 are still pending governance-recording as separate PIs. The commits[] schema fix for sandbox close-out scripts is also still pending PI authoring. All these deferred items remain in the queue for future sessions per the rules-document drafting work."
+  },
+  "conversation": {
+    "conversation_identifier": "CONV-063",
+    "conversation_title": "Dogfood reframe of governance recording \u2014 Process PRD framing led to full methodology-dogfood approach",
+    "conversation_purpose": "Operationally test the PI-084 workflow ('do PI-084' as a session seed); surface structural and conceptual reframes that emerged from the test; reach decisions on how governance recording should be produced; supersede PI-084 with properly-scoped methodology artifacts.",
+    "conversation_description": "Topical continuation of the SES-089/SES-092 chat. Started with Doug testing whether a new Claude.ai session could begin with 'do PI-084' minimal seed. Sandbox traced the bootstrap problem (DEC-310 requires a rules document, PI-084 creates it; circular until the rules exist). Doug then observed PI-084's artifact has the structural shape of a Process PRD operating on V2 Entities within a Domain. Sandbox mapped the 10-section structure to Process PRD fields and surfaced framing/Domain-naming/timing questions. Doug expanded the reframe to full methodology dogfood per DEC-295: define a Domain, define Personas, define at least one Process (Session/Conversation), and recursively define the meta Process PRD Definition Process. Sandbox proposed three structural options; Doug chose Option C (4 separate PIs) and corrected that Personas are first-class entities not contained in Domains. Identifier-head capture per DEC-300 confirmed SES-092 was applied during the conversation (PI-084 now live), making the in-place payload amendment path impossible \u2014 reframe requires a new session record. Authored DEC-311 + 4 PIs + reference edges (decided_in, addresses, supersedes, blocked_by). Authored kickoff prompt for the new Claude.ai session that will execute PI-085 (Domain Overview).",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-063",
+        "target_type": "workstream",
+        "target_id": "WS-011",
+        "relationship": "conversation_belongs_to_workstream"
+      },
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-063",
+        "target_type": "session",
+        "target_id": "SES-093",
+        "relationship": "conversation_records_session"
+      }
+    ]
+  },
+  "commits": [
+    {
+      "commit_sha": "e357bfc5d8d75bbc776d05dd4c542afebd3528eb",
+      "commit_message_first_line": "v2: Author kickoff prompt for PI-085 Domain Overview drafting session",
+      "commit_message_full": "v2: Author kickoff prompt for PI-085 Domain Overview drafting session\n\nSeeds the new Claude.ai conversation that will execute PI-085 \u2014 define\nthe CRMBuilder Domain that owns governance recording, producing the\nDomain Overview document.\n\nKickoff covers:\n- What landed in SES-093 (the dogfood reframe; DEC-311; PI-085..088)\n- Pre-flight identifier-head capture per DEC-300\n- The Domain naming question to be resolved at session start\n- Working conventions carried forward\n- A pasteable seed prompt for the new chat\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-27T03:12:48+00:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "bb298d51feed5e0eff1c39875d5aa84a0f8182b2"
+      ],
+      "commit_files_changed_count": 1
+    }
+  ],
+  "work_tickets": [],
+  "planning_items": [
+    {
+      "identifier": "PI-085",
+      "title": "Define the CRMBuilder Domain that owns governance recording \u2014 Domain Overview document",
+      "description": "Author the Domain Overview document for the CRMBuilder Domain that owns governance recording. This PI supersedes PI-084 (the original 'create rules document' approach) per DEC-311.\n\nThe Domain Overview document includes:\n- The Domain's name (TBD \u2014 candidates surfaced in discussion include 'Conversation Governance,' 'Methodology Execution,' 'Engagement Operations'; the choice gets made at session start)\n- The Domain's 'big question' that the CRMBuilder mission forces it to answer\n- Scope statement\n- List of Personas the Domain involves (referenced by identifier \u2014 defined separately in PI-086)\n- List of Processes within the Domain (referenced by code \u2014 defined separately starting with PI-087)\n- List of Entities the Domain operates on (V2 governance entities: Session, Conversation, Decision, Planning Item, Reference, Commit, Work Ticket, Close-Out Payload, Deposit Event)\n- Cross-Domain Services involved, if any\n\nFile path: TBD based on Domain naming. Candidate: `specifications/{domain-code}/domain-overview.md`.\n\nOutput: v0.1 DISCUSSION DRAFT Domain Overview that names the Domain, states its scope and big question, and references the Personas + Processes + Entities it involves.\n\nStatus of PI-084: superseded by this PI via a `supersedes` reference. PI-084's original 'create rules document at specifications/governance-recording-rules.md per 10-section structure' is no longer the planned approach; the same intent is now distributed across PI-085 (this PI, for the Domain), PI-086 (Personas), PI-087 (Session/Conversation Process PRD \u2014 which contains the rules content), and PI-088 (meta Process PRD Definition Process).\n\nThis is the first concrete dogfood of the CRMBuilder methodology against CRMBuilder itself per DEC-295.",
+      "item_type": "pending_work",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-086",
+      "title": "Define the Personas referenced by the CRMBuilder governance-recording Domain \u2014 separate Persona entities",
+      "description": "Author individual Persona entity records (or Persona PRDs) for each Persona referenced by the Domain Overview produced in PI-085. Personas are first-class entities (per Doug's clarification: 'Personas should absolutely not live under domains; the domains should define which personas are involved, and create new ones if discovered while defining domain'), so they can be referenced by multiple Domains over time.\n\nPersonas that surface from the governance-recording Domain (preliminary list, to be confirmed during PI-085):\n- Engagement Lead (Doug \u2014 runs the engagement, makes architectural and disposition decisions, applies close-outs locally)\n- AI Agent \u2014 Sandbox (Claude.ai sandbox conversation; authors close-out payloads, drafts documents, follows the governance discipline)\n- AI Agent \u2014 Claude Code (local terminal Claude Code instance; applies close-outs, executes build prompts, commits but does not push)\n- Possibly: Reviewer, Client Stakeholder, or others discovered during PI-085\n\nPer Doug: 'create new ones if discovered while defining domain' \u2014 if PI-085 surfaces a Persona not in the preliminary list, that Persona gets added as part of this PI's scope.\n\nFile path: TBD. Candidate: `specifications/personas/{persona-code}.md` per Persona, or a single `specifications/personas/persona-inventory.md` listing all of them.\n\nOutput: v0.1 DISCUSSION DRAFT Persona records (one per Persona) with responsibilities, decision authority, lifecycle.\n\nBlocked by PI-085 (needs the Domain Overview to confirm which Personas are referenced and surface any not yet anticipated).",
+      "item_type": "pending_work",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-087",
+      "title": "Define the Session/Conversation governance Process \u2014 first concrete Process PRD in the CRMBuilder governance-recording Domain",
+      "description": "Author the Process PRD for the Session/Conversation governance Process \u2014 the lifecycle of a Claude.ai conversation (or other communication unit) from start through close-out, including all governance recording rules. This PRD is where DEC-310's rules-required mandate is fulfilled: the rules are encoded as the Process's steps, anti-patterns, and acceptance criteria, not as a separate document.\n\nProcess PRD content includes:\n- Process metadata: code, name, domain (from PI-085), owner Persona, version\n- Trigger: a Claude.ai conversation begins against a V2-tracked engagement\n- Inputs: engagement context, working artifact state, prior session records as relevant\n- Process steps (numbered, sequential, with conditions and persona attributions):\n  1. Read CLAUDE.md and confirm engagement\n  2. Capture pre-flight identifier heads from live V2 API (per DEC-300)\n  3. Acknowledge governance recording rules (this Process PRD itself)\n  4. Begin substantive work\n  5. At each decision-point: author DEC + paired PI + addressing reference at moment-of-decision (no batching)\n  6. At each work-surfacing: author PI + addressing reference at moment-of-surfacing\n  7. At each disposition affecting an existing artifact: author the disposition DEC + revision PI explicitly\n  8. At each artifact production: capture commit row with the full ten-field schema\n  9. Re-check identifier heads before any mid-conversation amendment that touches identifier slots\n  10. Run close-out completeness audit before sealing the payload\n  11. Author close-out payload + apply prompt\n  12. Commit and push (per push convention \u2014 sandbox commits-and-pushes, Claude Code commits without pushing)\n- Entities touched (create / update / read for each):\n  - Create: Session, Conversation, Decision, Planning Item, Reference, Commit row, Close-Out Payload (lazy), Deposit Event (lazy)\n  - Update: Planning Item (via resolves), existing references where supersession applies\n  - Read: existing decisions, planning items, references, work tickets for context\n- Personas involved (from PI-086): AI Agent (sandbox or Claude Code), Engagement Lead, others as relevant\n- Exception handling: identifier collision (re-query heads, renumber, possibly use --ours merge resolution); apply failure (read deposit_event for diagnostic, patch payload, re-apply); rule violation mid-conversation (record violation as a governance event, do not paper over)\n- Acceptance criteria: close-out completeness audit checklist \u2014 for each DEC, does its consequences name work AND is the work a PI? For each PI, does it reference an originating DEC? For each commit, is it in commits[] with the full ten-field schema? For each placeholder phrase ('we should also,' 'this needs,' 'follow-up:'), is there a PI?\n- Outputs: applied governance records in V2; working artifacts (PRDs, code, configurations) committed to git; close-out payload + apply prompt committed; deposit_event logged\n\nUse bootstrapped methodology since the formal Process PRD Definition Process (PI-088) doesn't yet exist. Observing the practice used to produce this PRD becomes the input to PI-088.\n\nFile path: TBD. Candidate: `specifications/{domain-code}/{process-code}.md`.\n\nOutput: v0.1 DISCUSSION DRAFT Process PRD that fulfills DEC-310's rules-required mandate by encoding the rules as the Process's structure.\n\nBlocked by PI-085 (needs the Domain) and PI-086 (needs the Personas).",
+      "item_type": "pending_work",
+      "status": "Open"
+    },
+    {
+      "identifier": "PI-088",
+      "title": "Define the standard Process PRD Definition Process \u2014 meta Process PRD authored from observed practice",
+      "description": "Formalize how Process PRDs are authored in the CRMBuilder methodology by observing the practice used to produce PI-087's Session/Conversation governance Process PRD. This is the recursive piece \u2014 a Process PRD describing how to produce Process PRDs.\n\nMeta Process PRD content:\n- Process metadata: code, name, domain (likely the same Domain as PI-087, or a separate 'methodology-authoring' Domain \u2014 to be decided)\n- Trigger: a new Process within an existing Domain has been identified and needs a Process PRD\n- Inputs: Domain Overview (from PI-085 or equivalent for the new Process's Domain); list of Personas; observed practice from prior Process PRD authoring (initially PI-087's experience)\n- Process steps: how to gather context, how to identify trigger / steps / entities / personas / exception handling / acceptance criteria, how to author the draft, review cycles, finalization\n- Entities touched: Process (create), Domain (read), Persona (read), Entity (read for references)\n- Personas involved: AI Agent, Engagement Lead, possibly Domain Owner\n- Exception handling: incomplete upstream Domain/Personas (proceed with bootstrapped methodology and refine), conflicting Process descriptions, etc.\n- Acceptance criteria: produces a Process PRD that the Close-Out Completeness Audit (from PI-087) can validate\n- Outputs: a complete Process PRD ready for use\n\nBlocked by PI-087 (must observe at least one concrete Process PRD authoring before formalizing the meta-process).\n\nOnce authored, this meta Process PRD becomes the standard for all future Process PRD authoring in CRMBuilder and any engagement operating under this methodology.\n\nFile path: TBD. Candidate: `specifications/{methodology-domain-code}/process-prd-definition.md`.\n\nOutput: v0.1 DISCUSSION DRAFT meta Process PRD.",
+      "item_type": "pending_work",
+      "status": "Open"
+    }
+  ],
+  "decisions": [
+    {
+      "identifier": "DEC-311",
+      "title": "Dogfood reframe \u2014 produce governance recording as Domain Overview + Persona entities + Process PRDs (supersedes PI-084's standalone rules document approach; DEC-310's rules-required mandate stays in force)",
+      "decision_date": "2026-05-26",
+      "status": "Active",
+      "context": "PI-084 was authored in SES-092 as 'create the canonical governance-recording rules document at specifications/governance-recording-rules.md per a 10-section structure.' During follow-on discussion testing whether a new Claude.ai session could execute PI-084 with a minimal 'do PI-084' prompt, Doug observed that the document has the structural shape of a Process PRD operating on V2 Entities within a Domain. The sandbox mapped the 10-section structure onto Process PRD fields and confirmed the mapping is clean. Doug then expanded the reframe further: rather than just changing the artifact's framing, the work should be 'Define domain, personas, and at least one process for CRMbuilder. The first process will be the Session/conversation process, that will define what entities, personas, etc are affected, using our standard process prd definition process. (Which is also not defined and should be defined as a Process :)'. This is proper methodology dogfood per DEC-295 \u2014 CRMBuilder uses its own methodology to define itself, with CBM as validation. The reframe requires multiple PIs to capture the scope expansion (Domain, Personas, Process, Meta Process). Doug also clarified that Personas are first-class entities referenced by Domains, not contained within them, so Personas get their own PI.",
+      "decision": "Produce governance recording by authoring four CRMBuilder methodology artifacts rather than a standalone rules document:\n1. A Domain Overview document for the CRMBuilder Domain that owns governance recording (PI-085).\n2. Persona entities (one per Persona) for the Personas the Domain involves (PI-086). Personas are first-class entities, referenced by Domains.\n3. The Session/Conversation governance Process PRD as the first concrete Process within the Domain (PI-087). This Process PRD contains the governance rules content originally planned for PI-084's rules document.\n4. The standard Process PRD Definition Process as the meta Process PRD, formalized from observed practice authoring PI-087 (PI-088).\n\nPI-084 is superseded by PI-085 via a `supersedes` reference (PI-085 \u2192 PI-084). PI-084's status remains Open in V2 (status update is not part of close-out apply mechanics); the supersession is recorded via the reference graph.\n\nDEC-310's mandate (every session and conversation against any V2-tracked engagement must follow a documented set of process rules) stays in force. The SHAPE of the documentation changes \u2014 from standalone rules document to dogfood methodology artifacts \u2014 but the requirement that rules be documented and followed does not.",
+      "rationale": "Per DEC-295, CRMBuilder dogfoods its own methodology with CBM as validation. A standalone rules document is an orphan reference \u2014 it doesn't exercise the methodology against CRMBuilder itself. A Domain Overview + Persona entities + Process PRDs DOES exercise the methodology, producing the same canonical reference (the rules) while simultaneously validating that the methodology's artifact shapes are workable.\n\nPer DEC-296, methodology artifacts fit Category 2 (Deliverables). A Domain Overview, Persona entities, and Process PRDs are first-class methodology deliverables. A 'rules document' is unclear in the three-category model.\n\nThe 10-section structure originally proposed for the rules document maps cleanly to Process PRD template fields (trigger, steps, entities touched, personas, exception handling, acceptance criteria, outputs). The content is not lost \u2014 it's reorganized into the methodology's standard artifact shapes.\n\nPersonas as first-class entities (not nested under Domains) makes them reusable across Domains. The Engagement Lead persona participates in Conversation Governance, Methodology Execution, Deployment, and other Domains; defining her once and referencing her many times is the correct model.",
+      "alternatives_considered": "Keep PI-084's standalone rules document approach \u2014 rejected; doesn't dogfood, produces an orphan reference, doesn't validate the methodology against CRMBuilder itself.\n\nKeep PI-084 as a single broader PI covering all of Domain/Personas/Process/Meta \u2014 rejected; too granular within one PI, hard to track sub-progress, the four artifacts are independently produceable.\n\nCombine Domain + Personas into one PI (the original Option B that included Personas in the Domain Overview document) \u2014 rejected per Doug's clarification that Personas are first-class entities, not Domain-contained.\n\nModify PI-084 in V2 to reshape its description rather than supersede \u2014 rejected; PI-084's original text describes a meaningfully different artifact (rules document) than what we now want; supersession preserves audit history.",
+      "consequences": "PI-084 is superseded by PI-085 via reference (not status change). Four new PIs are authored: PI-085 (Domain), PI-086 (Personas), PI-087 (Session/Conversation Process), PI-088 (Meta Process). Dependency edges (blocked_by) sequence the work: PI-086 and PI-087 are blocked by PI-085 (need the Domain first); PI-088 is blocked by PI-087 (formalize after observing practice). The kickoff prompt authored alongside this decision points the new Claude.ai session at PI-085 as the starting point. Specific Domain name, Persona codes, Process code, and meta-Process code are deferred to the actual work and will be decided during PI-085's execution. The original 10-section structure from PI-084 is preserved as content for the Session/Conversation Process PRD (PI-087), reorganized into Process PRD template fields. This is the first formal application of the CRMBuilder methodology against CRMBuilder itself."
+    }
+  ],
+  "references": [
+    {
+      "source_type": "decision",
+      "source_id": "DEC-311",
+      "target_type": "session",
+      "target_id": "SES-093",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-085",
+      "target_type": "decision",
+      "target_id": "DEC-311",
+      "relationship": "addresses"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-086",
+      "target_type": "decision",
+      "target_id": "DEC-311",
+      "relationship": "addresses"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-087",
+      "target_type": "decision",
+      "target_id": "DEC-311",
+      "relationship": "addresses"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-088",
+      "target_type": "decision",
+      "target_id": "DEC-311",
+      "relationship": "addresses"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-087",
+      "target_type": "decision",
+      "target_id": "DEC-310",
+      "relationship": "addresses"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-085",
+      "target_type": "planning_item",
+      "target_id": "PI-084",
+      "relationship": "supersedes"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-086",
+      "target_type": "planning_item",
+      "target_id": "PI-085",
+      "relationship": "blocked_by"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-087",
+      "target_type": "planning_item",
+      "target_id": "PI-085",
+      "relationship": "blocked_by"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-087",
+      "target_type": "planning_item",
+      "target_id": "PI-086",
+      "relationship": "blocked_by"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-088",
+      "target_type": "planning_item",
+      "target_id": "PI-087",
+      "relationship": "blocked_by"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": []
+}
