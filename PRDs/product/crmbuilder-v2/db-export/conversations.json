@@ -1103,5 +1103,22 @@
     "conversation_superseded_at": null,
     "conversation_title": "PI-073 architectural-design — redesign session and conversation entities; supersede DEC-013",
     "conversation_updated_at": "2026-05-27T05:22:07.804616"
+  },
+  {
+    "conversation_cancelled_at": null,
+    "conversation_completed_at": "2026-05-27T05:31:18.454065",
+    "conversation_created_at": "2026-05-27T05:31:18.453831",
+    "conversation_deleted_at": null,
+    "conversation_description": "Single-conversation Claude.ai chat. Started from the conversation-logging-rules-kickoff seed prompt (the corrected follow-on after PI-085 was superseded in the predecessor session's framing pivot). Pre-flight surfaced an unrelated finding: the GitHub-tracked db-export snapshots lag the live V2 API by two sessions and three decisions because SES-093's apply ran locally and its snapshot-regen commit was not pushed back. Sandbox proceeded against captured live heads. Outline design for the rules document went through one consequential-decision pause (workstreams as first-class section), then v0.1 drafted, then committed. Doug's question about CLAUDE.md modification expanded into a broader enforcement-architecture discussion; eight layers laid out, three approved (CLAUDE.md edit, kickoff pre-flight reference, validator PI). Doug then observed two gaps: the document was silent on the mandatory-logging requirement, and §4 implied one-CONV-per-Claude.ai-chat. Sandbox read PI-073 and DEC-299, recognized the conceptual model had already been redesigned (Session = communication unit; Conversation = topical sub-unit within session), and rewrote §0/§3/§4/§9/§10 against the new model. Sandbox also discovered and corrected a separate §9 error — the document had documented the close-out payload as four-section (from outdated SES-046-through-SES-052 precedent) when the actual current schema is v0.8 ten-element. This close-out was authored against the corrected schema.",
+    "conversation_identifier": "CONV-066",
+    "conversation_kickoff_drafted_at": null,
+    "conversation_notes": null,
+    "conversation_purpose": "Author the canonical governance recording rules document; wire it into CLAUDE.md and into kickoff pre-flight; align with the DEC-299 conceptual model; surface enforcement architecture as a layered strategy with the apply-pipeline validator as the highest-leverage next move.",
+    "conversation_ready_at": null,
+    "conversation_started_at": null,
+    "conversation_status": "complete",
+    "conversation_superseded_at": null,
+    "conversation_title": "Governance recording rules v0.1 authoring, CLAUDE.md wiring, and DEC-299 conceptual alignment",
+    "conversation_updated_at": "2026-05-27T05:31:18.454148"
   }
 ]

@@ -1,0 +1,38 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_096.json
+Label:  Authoring of governance-recording-rules.md v0.1 DISCUSSION DRAFT at specifications/, with concurrent wiring into CLAUDE.md and the document's own kickoff pre-flight requirements; conceptual alignment with DEC-299's Session/Conversation redesign (Session = medium-agnostic communication unit; Conversation = focused topical sub-unit) and adoption of Mandatory Logging plus stop-and-log discipline. PI-090 surfaces apply-pipeline validator as the strongest available enforcement layer.
+Deposit event: DEP-081
+
+=== session (1 record) ===
+  ✓ POST session  SES-096 (HTTP 201)
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CONV-066 (HTTP 201)
+
+=== planning_items (1 record) ===
+  ✓ POST planning_items  PI-090 (HTTP 201)
+
+=== commits (3 records) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (4 records) ===
+  ✓ POST decisions  DEC-315 (HTTP 201)
+  ✓ POST decisions  DEC-316 (HTTP 201)
+  ✓ POST decisions  DEC-317 (HTTP 201)
+  ✓ POST decisions  DEC-318 (HTTP 201)
+
+=== references (8 records) ===
+  ✓ POST references  DEC-315 decided_in SES-096 (HTTP 201)
+  ✓ POST references  DEC-316 decided_in SES-096 (HTTP 201)
+  ✓ POST references  DEC-317 decided_in SES-096 (HTTP 201)
+  ✓ POST references  DEC-318 decided_in SES-096 (HTTP 201)
+  ✓ POST references  DEC-317 is_about DEC-299 (HTTP 201)
+  ✓ POST references  DEC-318 is_about PI-073 (HTTP 201)
+  ✓ POST references  PI-090 addresses DEC-310 (HTTP 201)
+  ✓ POST references  PI-090 decided_in SES-096 (HTTP 201)
+
+✓ All 18 operations complete.
+
+✓ Recorded apply as deposit_event DEP-081 (HTTP 201).
