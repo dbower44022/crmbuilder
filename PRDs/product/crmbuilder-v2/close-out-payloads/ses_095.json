@@ -1,0 +1,197 @@
+{
+  "label": "Authoring of governance-recording-rules.md v0.1 DISCUSSION DRAFT at specifications/, with concurrent wiring into CLAUDE.md and the document's own kickoff pre-flight requirements; conceptual alignment with DEC-299's Session/Conversation redesign (Session = medium-agnostic communication unit; Conversation = focused topical sub-unit) and adoption of Mandatory Logging plus stop-and-log discipline. PI-090 surfaces apply-pipeline validator as the strongest available enforcement layer.",
+  "session": {
+    "identifier": "SES-095",
+    "title": "Governance recording rules v0.1 \u2014 authoring, CLAUDE.md wiring, DEC-299 conceptual alignment, stop-and-log discipline",
+    "session_date": "2026-05-27",
+    "status": "Complete",
+    "conversation_reference": "Claude.ai sandbox conversation following the conversation-logging-rules-kickoff seed prompt. CONV-065. Conversation drove a v0.1 draft, two material amendments (kickoff pre-flight requirements; DEC-299 conceptual rewrite), and an enforcement-strategy decision capturing PI-090 as the strongest-leverage next move.",
+    "topics_covered": "Seed prompt: \"I want to produce a working rules document for how Claude.ai conversations log governance records into V2. This is the corrected follow-on after PI-085 was superseded in the predecessor conversation. Read the kickoff prompt first: PRDs/product/crmbuilder-v2/conversation-logging-rules-kickoff.md.\"\n\n1. Pre-flight per the kickoff: identifier-head capture, CLAUDE.md confirmation, snapshot-vs-live-API lag identified (snapshot at SES-092 / DEC-310; live at SES-094 / DEC-313).\n\n2. Outline design for the rules document. Initial 9-section outline proposed (identifier discipline, session, conversation, decision, PI, reference, work ticket, close-out, failure modes). Doug asked about workstreams; consequential decision surfaced; workstreams added as first-class \u00a72 with explicit API/MCP-only creation principle.\n\n3. Location and naming decision. Original kickoff proposed PRDs/process/conduct/conversation-logging-rules.md; sandbox surfaced that existing conduct/ is scoped to stakeholder-facing interview behavior and recommended a separate governance/ folder. Doug overrode both with specifications/, alongside master-crmbuilder-PRD.md. Final filename governance-recording-rules.md matches DEC-310 phrasing.\n\n4. v0.1 draft authored at specifications/governance-recording-rules.md \u2014 11 sections (front matter + \u00a70 through \u00a710), 2695 words (initial), over the agreed ~2150 budget but acceptable for working draft. Committed as 5a2b6a4.\n\n5. CLAUDE.md modification and broader enforcement question. Doug asked how to instruct all crmbuilder conversations to read and utilize the rules and whether other enforcement mechanisms exist. Sandbox laid out eight enforcement layers ranked weakest-to-strongest, recommended a layered approach: CLAUDE.md edit (#1) + kickoff pre-flight reference (#2) + apply-pipeline validator (#4) as the high-leverage missing layer. Doug approved all three. CLAUDE.md edit and kickoff pre-flight requirements section added to the rules document. Committed as c28b363.\n\n6. Mandatory logging and conversation-boundary discipline gap surfaced by Doug. Conversation revealed three issues: (a) the document lacked an explicit \"every chat is logged\" assertion; (b) \u00a74 implied one-CONV-per-Claude.ai-chat which is wrong; (c) the schema that supports multi-conversation chats was an open question. Doug confirmed Option B (multi-conversation V2 sessions, schema evolution) and pointed at PI-073 as the in-flight work. Sandbox read PI-073's description and DEC-299, which already settled the new conceptual model (Session = medium-agnostic communication unit; Conversation = focused topical sub-unit within a session, 1:N) and directed that documentation use the new model before PI-073's schema migration completes.\n\n7. Substantial conceptual rewrite of \u00a70/\u00a73/\u00a74/\u00a79/\u00a710. Mandatory Logging added as second core principle in \u00a70. \u00a73 reframed Session as medium-agnostic communication unit. \u00a74 rewritten with stop-and-log discipline (two escape hatches: close current conversation and open new one in same session, or suggest a new Claude.ai chat) plus boundary heuristics. \u00a79 corrected from outdated four-section framing to actual v0.8 ten-element payload schema (label + nine record sections) with transitional note about singular-conversation pluralization via PI-073. \u00a710 gained three failure modes (topic shift without stop-and-log, conflated-under-singular-constraint, off-the-record session). Document grew from 2700 to 4022 words. Committed as b8a6df1.\n\n8. Close-out authored: this payload + apply prompt. Identifier-head capture at session start was SES-094, CONV-064, DEC-313, PI-089, WT-055; heads have not been re-verified live since session start (sandbox does not have direct API access). Apply pre-flight must re-verify before write.",
+    "summary": "Produced v0.1 DISCUSSION DRAFT of the canonical governance recording rules document at specifications/governance-recording-rules.md, wired it into the repository-level CLAUDE.md, codified its own kickoff pre-flight requirements within \u00a71 of the document, aligned \u00a73/\u00a74/\u00a79 with DEC-299's post-redesign Session/Conversation conceptual model, added Mandatory Logging as a core principle, and added the stop-and-log discipline for multi-conversation Claude.ai chats. Surfaced apply-pipeline payload validator as PI-090 \u2014 the highest-leverage missing enforcement layer for the rules.",
+    "artifacts_produced": "specifications/governance-recording-rules.md (v0.1 DISCUSSION DRAFT, 4022 words, 250 lines, three substantive commits during the session). CLAUDE.md amended with a new 'v2 governance recording rules' bullet in Working conventions pointing to the rules document as the authoritative reference. This close-out payload (ses_095.json) and its apply prompt (CLAUDE-CODE-PROMPT-apply-close-out-ses-095.md).",
+    "in_flight_at_end": "Trim pass on the rules document deferred \u2014 document is currently 4022 words against an original ~2150-word v0.1 budget; \u00a710 (now 11 failure modes) and \u00a73/\u00a74 transitional explanations are the obvious trim targets. Doug to determine whether to trim before or after PI-073 lands. Three open judgment-call items remain for Doug's eyes: (a) \u00a79 transitional v0.8 handling for multi-conversation sessions \u2014 sandbox documented a direct-API-POST-with-references workaround; Doug may prefer a cleaner rule; (b) conversation_belongs_to_session reference vocabulary \u2014 sandbox introduced this reference kind in \u00a74; under v0.7/v0.8's 1:0..1 schema it isn't needed, but under PI-073's 1:N schema it will be required; sandbox did not verify whether vocab.py registers it; (c) workstream linkage in the new model \u2014 sandbox preserved conversation_belongs_to_workstream for backward compatibility while noting the linkage may move to session-level post-PI-073. PI-073 open design questions (medium-classifier metadata in \u00a73; planned-but-not-started conversation handling in \u00a74) flagged as pending PI-073 resolution. PI/SES linkage uncertain: this session's work matches PI-084's title exactly, but SES-093's reframe superseded PI-084 with PI-085 (Domain Overview), and the predecessor framing-pivot session may have created a successor PI in the PI-085..089 range; sandbox has no visibility into PI-085 through PI-089 because the snapshot lags. Apply pre-flight must determine whether resolves_planning_items should be populated with PI-084 (if framing pivot un-superseded it) or with a successor PI."
+  },
+  "conversation": {
+    "conversation_identifier": "CONV-065",
+    "conversation_title": "Governance recording rules v0.1 authoring, CLAUDE.md wiring, and DEC-299 conceptual alignment",
+    "conversation_purpose": "Author the canonical governance recording rules document; wire it into CLAUDE.md and into kickoff pre-flight; align with the DEC-299 conceptual model; surface enforcement architecture as a layered strategy with the apply-pipeline validator as the highest-leverage next move.",
+    "conversation_description": "Single-conversation Claude.ai chat. Started from the conversation-logging-rules-kickoff seed prompt (the corrected follow-on after PI-085 was superseded in the predecessor session's framing pivot). Pre-flight surfaced an unrelated finding: the GitHub-tracked db-export snapshots lag the live V2 API by two sessions and three decisions because SES-093's apply ran locally and its snapshot-regen commit was not pushed back. Sandbox proceeded against captured live heads. Outline design for the rules document went through one consequential-decision pause (workstreams as first-class section), then v0.1 drafted, then committed. Doug's question about CLAUDE.md modification expanded into a broader enforcement-architecture discussion; eight layers laid out, three approved (CLAUDE.md edit, kickoff pre-flight reference, validator PI). Doug then observed two gaps: the document was silent on the mandatory-logging requirement, and \u00a74 implied one-CONV-per-Claude.ai-chat. Sandbox read PI-073 and DEC-299, recognized the conceptual model had already been redesigned (Session = communication unit; Conversation = topical sub-unit within session), and rewrote \u00a70/\u00a73/\u00a74/\u00a79/\u00a710 against the new model. Sandbox also discovered and corrected a separate \u00a79 error \u2014 the document had documented the close-out payload as four-section (from outdated SES-046-through-SES-052 precedent) when the actual current schema is v0.8 ten-element. This close-out was authored against the corrected schema.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-065",
+        "target_type": "workstream",
+        "target_id": "WS-011",
+        "relationship": "conversation_belongs_to_workstream"
+      },
+      {
+        "source_type": "conversation",
+        "source_id": "CONV-065",
+        "target_type": "session",
+        "target_id": "SES-095",
+        "relationship": "conversation_records_session"
+      }
+    ]
+  },
+  "commits": [
+    {
+      "commit_sha": "5a2b6a4b64003cf09cb2f123cc5a8e61310677cb",
+      "commit_message_first_line": "v2: governance-recording-rules.md v0.1 DISCUSSION DRAFT",
+      "commit_message_full": "v2: governance-recording-rules.md v0.1 DISCUSSION DRAFT\n\nInitial draft of normative rules for governance-record authoring in V2.\nCovers workstreams, sessions, conversations, decisions, planning items,\nreferences, work tickets, and close-out payloads.\n\n- Stored at specifications/ alongside master-crmbuilder-PRD.md, where the\n  eventual consolidating wrapper will live.\n- Applies equally to AI agents and human agents (DEC-310).\n- Core principle: record authoring goes through API or MCP, not UI.\n- Outline approved in this conversation; workstreams added as first-class\n  section 2 (creation via direct API/MCP, not bundled into close-out\n  payloads under current convention).\n\nWorking draft; v0.1 over the agreed word budget (~2700 vs ~2150 target);\ntrim pass deferred pending Doug review.",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-27T04:40:12+00:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "408881ffe017f5566400d53f1aec2821d85eec3b"
+      ],
+      "commit_files_changed_count": 1
+    },
+    {
+      "commit_sha": "c28b3638f9a21d71ee20c5ceeff4e9a1694a1dba",
+      "commit_message_first_line": "v2: wire governance-recording-rules into CLAUDE.md + add kickoff pre-flight requirements",
+      "commit_message_full": "v2: wire governance-recording-rules into CLAUDE.md + add kickoff pre-flight requirements\n\nCLAUDE.md:\n- Added 'v2 governance recording rules' bullet to Working conventions,\n  pointing to specifications/governance-recording-rules.md as the\n  authoritative reference for governance-record authoring.\n- Core principle surfaced inline: API/MCP only, no UI authoring.\n\nspecifications/governance-recording-rules.md:\n- Added 'Kickoff prompt pre-flight requirements' sub-section to \u00a71\n  (Identifier Discipline) listing the six steps every v2 kickoff\n  prompt's pre-flight must direct the agent to perform: read engagement\n  CLAUDE.md, read this rules document, capture identifier heads,\n  identify parent workstream, API health check, pull-rebase.\n- Notes that a canonical kickoff-prompt template is a follow-on item.\n- Revision history row added; same-day same-session amendment, no\n  version bump.\n\nBoth edits land together per sandbox commit-and-push convention.",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-27T04:53:07+00:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "5a2b6a4b64003cf09cb2f123cc5a8e61310677cb"
+      ],
+      "commit_files_changed_count": 2
+    },
+    {
+      "commit_sha": "b8a6df17f4e22d761ac2e8843d1c4ed2475d5209",
+      "commit_message_first_line": "v2: align governance-recording-rules with DEC-299 conceptual model + add Mandatory Logging and stop-and-log discipline",
+      "commit_message_full": "v2: align governance-recording-rules with DEC-299 conceptual model + add Mandatory Logging and stop-and-log discipline\n\nSubstantial conceptual rewrite triggered by Doug's observation that the\ndocument was silent on (a) the requirement to log every Claude.ai chat\noperating against V2, and (b) the discipline at conversation boundaries\nwithin a multi-conversation session.\n\nThe investigation surfaced two prior errors in v0.1:\n\n- I had framed Session as the close-out completion record and\n  Conversation as one-per-Claude.ai-chat. DEC-299 (already Active in\n  V2) inverts this: Session is the medium-agnostic communication unit\n  (1 Claude.ai chat = 1 session); Conversation is a topical sub-unit\n  (1:N within session). DEC-299 directs that documentation use the new\n  conceptual model even before PI-073's schema migration completes.\n\n- I had documented the close-out payload as a 'four-section shape'\n  drawn from SES-046 through SES-052 precedent, when the actual current\n  schema is v0.8 with ten elements (label + nine record sections), as\n  documented in CLAUDE.md line 106.\n\nChanges in this commit:\n\n- \u00a70: added Mandatory Logging as a second core principle alongside\n  API/MCP-only. Every session against a V2 engagement is logged. No\n  off-the-record communication.\n- \u00a73: rewrote Session framing to medium-agnostic communication unit\n  per DEC-299. Added medium-classifier note pointing at PI-073 open\n  design questions.\n- \u00a74: rewrote Conversation framing to topical sub-unit per DEC-299.\n  Added stop-and-log discipline with two escape hatches: close current\n  conversation and open new one in same session, OR suggest new\n  session. Added boundary heuristics. Added authoring mechanism:\n  direct API POST at boundary, not bundled in close-out.\n- \u00a79: rewrote to v0.8 ten-element payload schema (label + 9 record\n  sections), correcting the prior four-section error. Added\n  transitional note for singular conversation -> plural conversations\n  pluralization via PI-073.\n- \u00a710: added three failure modes \u2014 topic shift without stop-and-log,\n  multiple conversations conflated under v0.8 singular constraint, and\n  off-the-record session.\n- Revision history row added; document grew from ~2700 to 4022 words.\n  Over the original v0.1 budget; trim pass deferred pending review.",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-27T05:09:21+00:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "c28b3638f9a21d71ee20c5ceeff4e9a1694a1dba"
+      ],
+      "commit_files_changed_count": 1
+    }
+  ],
+  "work_tickets": [],
+  "planning_items": [
+    {
+      "identifier": "PI-090",
+      "title": "Build apply-pipeline validator that checks close-out payloads against governance-recording-rules.md",
+      "description": "Author a Python validator that runs in apply_close_out.py pre-flight, checking every close-out payload against the rules in specifications/governance-recording-rules.md before any record is POSTed to the V2 API. The validator becomes the executable form of the rules document: any rule the document states must either map to an existing schema/access-layer constraint OR to a check in this validator. Catches violations before they hit the DB; fast feedback with clear error messages.\n\nScope of v0.1 checks (drawn from the rules document):\n(1) Decision status enum \u2014 reject any DEC with status not in {Active, Deleted, Superseded, Withdrawn}. DB constraint already rejects; validator catches earlier with actionable error and prevents partial applies.\n(2) Decision back-reference \u2014 every DEC in the payload has a decided_in reference back to the session's SES in the references array.\n(3) PI item_type \u2014 for CRMBUILDER target, every PI in the payload carries item_type 'pending_work'.\n(4) WT file_path \u2014 every work_ticket carries work_ticket_file_path regardless of work_ticket_kind, including 'other'.\n(5) Conversation parentage \u2014 every CONV record (or implied by the session) has a conversation_belongs_to_workstream reference to a valid WS-NNN present in the live API, plus the conversation_records_session reference back to its session.\n(6) Reference field key \u2014 references use the API-style key 'relationship' (not the DB-column-style 'relationship_kind'). Catches the SES-051/052 mismatch class.\n(7) Required payload sections \u2014 payload contains label, session, conversation, work_tickets, planning_items, commits, decisions, references, resolves_planning_items, addresses_planning_items. Empty arrays acceptable; missing keys are not.\n(8) Identifier-head conflicts \u2014 every identifier in the payload exceeds the live API's current head for its record type at validation time.\n(9) Session date format \u2014 new sessions use YYYY-MM-DD (warning, not reject; field is non-normative on apply).\n(10) Decision status 'Final' \u2014 explicit reject with reference to SES-067, the highest-frequency mistake class.\n\nNon-goals for v0.1: full schema validation (access layer already does that), workstream authoring rules (workstreams aren't in close-out payloads under current convention), MCP-side validation (separate workstream).\n\nExpected output: a validator module invoked from apply_close_out.py pre-flight; exit code non-zero on validation failure with structured error report listing each violation. Validator's rule list is documented inline so the rules document and the validator stay synchronized \u2014 a rule added to the document without a corresponding validator check is a known gap.\n\nWorkstream assignment: candidate for a new workstream (provisionally WS-013, 'Governance recording enforcement') if and when the related work (MCP-side validation, audit reports) gets prioritized; otherwise can slot into an existing workstream at authoring time.\n\nDelivers: enforcement layer #4 from the SES-095 conversation, supporting the broader strategy of layered enforcement for governance recording rules (DEC-310).",
+      "item_type": "pending_work",
+      "status": "Open"
+    }
+  ],
+  "decisions": [
+    {
+      "identifier": "DEC-314",
+      "title": "Governance recording rules document lives at specifications/governance-recording-rules.md, not under PRDs/process/conduct/",
+      "decision_date": "2026-05-27",
+      "status": "Active",
+      "context": "The session's kickoff prompt proposed PRDs/process/conduct/conversation-logging-rules.md as the rules document's location, alongside the three existing conduct documents (charter.md, kickoff.md, question-library.md). Sandbox investigation found those three are explicitly scoped to stakeholder-facing interview conduct ('All interview-*.md and guide-*.md phase documents in PRDs/process/interviews/') \u2014 orthogonal to governance-record authoring, which is internal discipline for AI and human agents operating against V2.",
+      "decision": "Store the rules document at specifications/governance-recording-rules.md, alongside master-crmbuilder-PRD.md (under consolidation) and glossary.md. The filename governance-recording-rules.md matches DEC-310's phrasing ('governance recording rules required for all sessions and conversations') and signals the document's content more accurately than the kickoff's conversation-logging-rules.md.",
+      "rationale": "specifications/ is the eventual home of the consolidating Master CRMBuilder PRD into which the conduct documents are being absorbed. Storing the rules document there places it where its long-term home lies and avoids a future migration. The conduct/ folder remains scoped to stakeholder-facing interview behavior; broadening it to also house governance-record-authoring rules would create a scope mismatch within the folder and require updating the existing conduct documents' opening scope statements.",
+      "alternatives_considered": "(A) PRDs/process/conduct/conversation-logging-rules.md (kickoff's original proposal) \u2014 rejected because it would broaden conduct/ beyond its current scope, requiring conduct/ docs' framing updates and confusing future readers about what conduct/ contains. (B) PRDs/process/governance/governance-recording-rules.md (new peer folder to conduct/) \u2014 sandbox-recommended option; cleanly separates governance-record-authoring from interview conduct without touching conduct/, but adds a top-level folder Doug overrode in favor of specifications/. (C) PRDs/product/crmbuilder-v2/governance-recording-rules.md \u2014 rejected because the rules apply to any V2-tracked engagement present and future, not just to CRMBuilder v2 product specs.",
+      "consequences": "The document is location-stable through the Master CRMBuilder PRD consolidation; no migration needed. CLAUDE.md's Working conventions section now points to specifications/governance-recording-rules.md as the canonical reference. The three existing conduct documents continue to govern stakeholder-facing interview behavior; their scope statements are unchanged."
+    },
+    {
+      "identifier": "DEC-315",
+      "title": "Workstreams covered as first-class section in governance recording rules document; all record creation via API or MCP, never via desktop UI",
+      "decision_date": "2026-05-27",
+      "status": "Active",
+      "context": "During outline review, sandbox proposed a 9-section structure that omitted workstreams. Doug asked 'What about Workstreams?' Investigation found workstreams are a real, active V2 record type (12 in the snapshot, 4 in_flight as of session start), and every conversation references its parent workstream via conversation_belongs_to_workstream (67 references involving workstreams). DEC-309 specifically decided 'executive-summary work bundles into WS-012, no separate workstream' \u2014 workstream scope changes happen in sessions and need governance. But workstreams are not currently bundled into close-out payloads (zero of 68 payloads in the snapshot mention them), and the change_log shows no consistent creation-source annotation, raising the question of how workstreams actually get authored.",
+      "decision": "Cover workstream authoring as a first-class section in the rules document \u2014 \u00a72, between Identifier Discipline and Session Record Authoring. Workstream creation goes through direct API POST or MCP call, not the desktop V2 UI. More broadly: ALL record creation across every record type covered by the document (workstreams, sessions, conversations, decisions, planning items, references, work tickets, close-out payloads) goes through the V2 REST API or its MCP adapter; the V2 desktop UI is for monitoring and scheduling, never for authoring. The API/MCP-only-creation principle is added to \u00a70 as a cross-cutting rule alongside Mandatory Logging.",
+      "rationale": "Workstreams sit above sessions and conversations in the V2 hierarchy and are the parent of every conversation; silence on workstreams would contradict the document's claim to govern 'every session and every conversation operating against any V2-tracked engagement.' Doug's API/MCP-only-creation principle resolves a latent tension across multiple sections (e.g., 'bundle in payload vs. desktop New Session dialog') by establishing a single rule: the UI doesn't create records, period. The principle is cross-cutting, so it belongs in \u00a70 where every later section inherits it.",
+      "alternatives_considered": "(B) Defer workstream authoring to v0.2 with named gap \u2014 rejected because the document's authority weakens visibly if it is silent on the parent entity of every conversation. (C) Cover workstreams partially in v0.1 \u2014 rejected as worse than either full coverage or explicit deferral; half-coverage leaves readers not knowing what they don't know.",
+      "consequences": "Document grew by approximately 150 words. \u00a70 carries two named core principles (API/MCP-only, Mandatory Logging). Section count goes to 11 (front matter + \u00a70 through \u00a710), exceeding the original 9-section outline. The desktop UI's role across V2 is clarified at the rule-document level (monitoring and scheduling only)."
+    },
+    {
+      "identifier": "DEC-316",
+      "title": "Governance recording rules document adopts DEC-299's post-redesign Session/Conversation conceptual model; Mandatory Logging codified as a core principle",
+      "decision_date": "2026-05-27",
+      "status": "Active",
+      "context": "After v0.1 was committed, Doug observed two material gaps: (a) the document lacked an explicit assertion that every Claude.ai chat operating against V2 is logged; (b) \u00a74 implied 'one CONV record per Claude.ai conversation,' which conflated the Claude.ai chat thread with the V2 conversation record. Investigation surfaced DEC-299 (already Active in V2, decision_date 2026-05-26): Session and Conversation entities are being redesigned from a 1:0..1 historical pair into a 1:N hierarchy where Session is the medium-agnostic communication unit (one Claude.ai chat, one email, one phone call) and Conversation is a focused topical sub-unit within a session. DEC-299 explicitly directs: 'the conceptual model governs how future documentation describes these entities even before the V2 schema catches up.' PI-073 carries the schema-migration work and is in flight. Separately, sandbox discovered \u00a79 of the v0.1 draft used a four-section payload schema drawn from outdated SES-046-through-SES-052 precedent, while CLAUDE.md line 106 documents the actual current v0.8 ten-element schema.",
+      "decision": "Align \u00a70/\u00a73/\u00a74/\u00a79/\u00a710 of the rules document with DEC-299's post-redesign conceptual model. Add Mandatory Logging as a second core principle in \u00a70 alongside API/MCP-only-creation. Rewrite \u00a73 to frame Session as the medium-agnostic communication unit (one Claude.ai chat = one session). Rewrite \u00a74 to frame Conversation as the topical sub-unit (1:N within session) and add the stop-and-log discipline with two escape hatches: close current conversation and open new one in same session, or suggest a new Claude.ai chat. Rewrite \u00a79 to the actual v0.8 ten-element schema (label + nine record sections), correcting the four-section error. Add three new failure modes in \u00a710.",
+      "rationale": "DEC-299 already settled the conceptual model and explicitly directed documentation to use the new shape even pre-PI-073. Writing the rules document against the outdated 1:0..1 model would have produced documentation that contradicts an Active decision and would require a full rewrite once PI-073 lands. Mandatory Logging fills a real gap \u2014 the document was silent on the basic 'every chat is logged' assertion, which is the foundation everything else rests on. The \u00a79 schema correction is a straightforward factual fix.",
+      "alternatives_considered": "Wait for PI-073 to land before aligning the rules document \u2014 rejected because DEC-299 explicitly directs the opposite (use the new conceptual model first; let the schema catch up). Document the current v0.7/v0.8 model with a 'pending update' note \u2014 rejected because it would be wrong on the conceptual level (the conceptual model has already been redesigned) and would mislead readers into thinking the old framing was the correct one.",
+      "consequences": "Document grew from approximately 2700 to 4022 words \u2014 about double the original v0.1 word budget. The transitional period between now and PI-073 landing is documented inline in \u00a79 (singular `conversation` slot in v0.8 payload; multi-conversation sessions handled via direct API POSTs and references-section linkage until PI-073 pluralizes the schema). Two pieces of follow-on work are flagged inline: (a) verify whether `conversation_belongs_to_session` reference vocabulary is registered in vocab.py (it may need a vocab-registration step); (b) the workstream linkage on conversations may move to session-level post-PI-073, though sandbox preserved conversation-level linkage for backward compatibility."
+    },
+    {
+      "identifier": "DEC-317",
+      "title": "Multi-conversation Claude.ai chats handled via PI-073's schema evolution (Option B), not via one-V2-session-per-conversation (Option A)",
+      "decision_date": "2026-05-27",
+      "status": "Active",
+      "context": "Sandbox surfaced a consequential decision about how multi-conversation Claude.ai chats map to V2 records, given the current v0.8 payload schema has a singular `conversation` slot. Three options were presented: (A) each conversation gets its own V2 session, schema unchanged, multiple SESes per Claude.ai chat thread; (B) multi-conversation V2 sessions via schema evolution (`conversation` \u2192 `conversations` array); (C) hybrid \u2014 direct API POST of CONV at the boundary, payload still singular. Sandbox initially recommended A on the basis that it preserves current schema and matches all 91 historical sessions. Doug overrode with B, pointing at PI-073 as the in-flight schema-evolution work.",
+      "decision": "Adopt Option B for multi-conversation Claude.ai chats. One Claude.ai chat = one V2 session; multiple topical conversations within that session are first-class. The schema evolution to support this is PI-073's scope. The rules document's stop-and-log discipline (DEC-316) operates under Option B: at a conversation boundary, Claude either closes the current conversation and opens a new one within the same session, or suggests a new Claude.ai chat (new session) entirely.",
+      "rationale": "Option B is consistent with DEC-299's post-redesign conceptual model, which is already Active and already directs documentation to use the new shape. The transitional period between now and PI-073's landing is documented in \u00a79 of the rules document with a workaround (direct API POST of additional conversations, references-section linkage). PI-073 was already planned, in-flight, and will pluralize the `conversation` payload slot \u2014 making Option B the natural target. Option A's heavy-friction close-out-every-conversation discipline would push agents to start new Claude.ai chats reflexively, suppressing the multi-conversation case the conceptual model enables.",
+      "alternatives_considered": "(A) Each logical conversation = its own V2 session, schema unchanged \u2014 sandbox-recommended on cost grounds; rejected by Doug because PI-073 is already addressing the schema evolution. (C) Direct-API-POST hybrid with payload staying singular permanently \u2014 rejected because the payload would lose multi-conversation history; close-out fidelity would drop.",
+      "consequences": "The rules document's \u00a74 mechanism is direct API POST at the conversation boundary, not bundle-in-close-out. \u00a79 of the rules document documents the transitional workaround (singular `conversation` in payload + references for the rest) until PI-073 lands. PI-073's completion will retire the workaround. The stop-and-log discipline applies under both transitional and post-PI-073 states."
+    }
+  ],
+  "references": [
+    {
+      "source_type": "decision",
+      "source_id": "DEC-314",
+      "target_type": "session",
+      "target_id": "SES-095",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-315",
+      "target_type": "session",
+      "target_id": "SES-095",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-316",
+      "target_type": "session",
+      "target_id": "SES-095",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-317",
+      "target_type": "session",
+      "target_id": "SES-095",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-316",
+      "target_type": "decision",
+      "target_id": "DEC-299",
+      "relationship": "is_about"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-317",
+      "target_type": "planning_item",
+      "target_id": "PI-073",
+      "relationship": "is_about"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-090",
+      "target_type": "decision",
+      "target_id": "DEC-310",
+      "relationship": "addresses"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-090",
+      "target_type": "session",
+      "target_id": "SES-095",
+      "relationship": "decided_in"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": []
+}
