@@ -1,7 +1,7 @@
 # CRM Builder — Governance Recording Rules
 
 **Version:** 0.1 DISCUSSION DRAFT
-**Last Updated:** 05-27-26 04:30
+**Last Updated:** 05-27-26 04:55
 **Purpose:** Normative rules for authoring governance records in V2 — workstreams, sessions, conversations, decisions, planning items, references, work tickets, and close-out payloads. Applies equally to AI agents (Claude.ai sandbox conversations, Claude Code instances) and human agents operating against any V2-tracked engagement.
 **Scope:** All sessions and conversations operating against any V2-tracked engagement, present and future (CRMBUILDER dogfood, Cleveland Business Mentors, anything to come). Authoritative for record-authoring discipline; non-authoritative for stakeholder-facing interview conduct (see `PRDs/process/conduct/charter.md`).
 **See also:** `PRDs/process/conduct/charter.md` (interview conduct — orthogonal scope), `PRDs/process/conduct/kickoff.md` (interview pre-session priming), `PRDs/process/conduct/question-library.md` (interview worked examples).
@@ -32,6 +32,16 @@
 **Re-check before mid-session amendment.** If a session pauses, branches, or otherwise risks heads advancing between the original capture and the next identifier-issuing moment, re-capture before issuing. No head-guessing. A guessed head that collides with a freshly-created record produces a payload that fails on apply.
 
 **Renumbering protocol.** When a session has reserved identifiers (e.g., DEC-318 and DEC-319) and a heads-advancement reveals the reservation has collided with newer records (DEC-318 was used elsewhere), the session renumbers its own reserved identifiers to the next available slots and updates every internal reference in the working payload. The renumbering is captured in `topics_covered` so the close-out reflects what actually happened.
+
+**Kickoff prompt pre-flight requirements.** Every v2 session kickoff prompt's pre-flight section must direct the agent to:
+1. Read the engagement's `CLAUDE.md` (repo-level — `crmbuilder/CLAUDE.md` for dogfood, the client repo's `CLAUDE.md` for client work).
+2. Read **this document** (`specifications/governance-recording-rules.md`) before authoring any governance record.
+3. Capture identifier heads via the canonical curl block against `http://127.0.0.1:8765` — Sessions, Conversations, Decisions, Planning Items, Work Tickets, Workstreams.
+4. Identify the parent workstream (WS-NNN) the conversation belongs to.
+5. Run an API health check (any 200 OK against the engagement's API).
+6. `git pull --ff-only origin main` (or rebase if a divergent local branch exists).
+
+A canonical kickoff prompt template that bakes these in by default is a follow-on item, not in scope for v0.1 of this document. Until that template exists, the responsibility rests on the author of each individual kickoff.
 
 ---
 
@@ -195,3 +205,4 @@ A short catalog of patterns that produce broken governance records and how to av
 | Version | Date | Notes |
 |---|---|---|
 | 0.1 | 05-27-26 04:30 | Initial discussion draft. |
+| 0.1 | 05-27-26 04:55 | Added "Kickoff prompt pre-flight requirements" sub-section to §1, listing the six steps every v2 kickoff must direct the agent to perform. Same-session amendment, no version bump. |
