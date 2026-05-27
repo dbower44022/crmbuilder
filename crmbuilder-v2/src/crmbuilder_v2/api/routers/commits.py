@@ -31,7 +31,7 @@ def _edges(body) -> list[dict] | None:
 def list_all(
     include_deleted: bool = False,
     commit_repository: str | None = None,
-    commit_conversation_id: str | None = None,
+    commit_session_id: str | None = None,
     sort: str = "commit_committed_at",
     order: str = "desc",
     limit: int | None = None,
@@ -42,7 +42,7 @@ def list_all(
             s,
             include_deleted=include_deleted,
             commit_repository=commit_repository,
-            commit_conversation_id=commit_conversation_id,
+            commit_session_id=commit_session_id,
             sort=sort,
             order=order,
             limit=limit,
@@ -110,7 +110,7 @@ def create(body: CommitCreateIn):
             branch=body.commit_branch or "main",
             parent_shas=body.commit_parent_shas,
             files_changed_count=body.commit_files_changed_count,
-            conversation_id=body.commit_conversation_id,
+            session_id=body.commit_session_id,
             identifier=body.commit_identifier,
             references=_edges(body),
             timestamps=body.timestamps,
@@ -134,7 +134,7 @@ def replace(identifier: str, body: CommitReplaceIn):
             branch=body.commit_branch,
             parent_shas=body.commit_parent_shas,
             files_changed_count=body.commit_files_changed_count,
-            conversation_id=body.commit_conversation_id,
+            session_id=body.commit_session_id,
             references=_edges(body),
         ))
 

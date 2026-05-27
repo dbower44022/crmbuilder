@@ -16,8 +16,10 @@ DEC-223 (close-out payload format gains a conversation block):
 Per-section shape transforms translate payload entries into POST bodies:
   - work_tickets[].addresses_planning_item becomes an embedded addresses
     edge in the work_ticket POST.
-  - commits[].commit_conversation_id is auto-populated from the payload's
-    conversation block (per methodology §4.1).
+  - commits[].commit_session_id is auto-populated from the payload's
+    session block (per PI-073 / DEC-314 — commits now attribute to
+    sessions, replacing the legacy commit_conversation_id which
+    pointed at the v0.7 conversation entity).
   - resolves_planning_items[] entries translate to POST /references with
     relationship=resolves; slice A's atomic edge+flip fires server-side.
   - addresses_planning_items[] entries translate to POST /references with
@@ -115,18 +117,22 @@ def _shape_work_ticket(entry: dict, context: dict) -> dict:
 
 
 def _shape_commit(entry: dict, context: dict) -> dict:
-    """Inject ``commit_conversation_id`` from the payload's conversation
-    block. Per methodology §4.1 the payload entry omits the FK; the apply
-    derives it from the close-out's owning conversation."""
-    conv_id = context.get("conversation_identifier")
-    if not conv_id:
+    """Inject ``commit_session_id`` from the payload's session block.
+
+    Under PI-073 / DEC-314, commits attribute to sessions (not the
+    legacy v0.7 conversation entity). The payload entry omits the FK;
+    the apply derives it from the close-out's owning session (from the
+    payload's ``session.identifier`` block).
+    """
+    sess_id = context.get("session_identifier")
+    if not sess_id:
         raise ValueError(
-            "commits section present but no conversation block in payload — "
-            "every commit needs commit_conversation_id. Add a conversation "
+            "commits section present but no session block in payload — "
+            "every commit needs commit_session_id. Add a session "
             "block per methodology §4.0."
         )
     body = dict(entry)
-    body.setdefault("commit_conversation_id", conv_id)
+    body.setdefault("commit_session_id", sess_id)
     return body
 
 
@@ -506,11 +512,21 @@ def main() -> int:
             records_summary.setdefault(section.summary_key, 0)
         first_error: dict | None = None
 
-        # v0.8 context dict: cross-section values that per-entry shape
-        # functions need. The conversation_identifier from the payload's
-        # conversation block propagates into commits (commit_conversation_id)
-        # and into resolves_/addresses_planning_items (refs source_id).
+        # Cross-section values that per-entry shape functions need.
+        #
+        # PI-073 / DEC-314 update: commits now attribute to session_identifier
+        # (the column on the commits table was renamed from
+        # commit_conversation_id to commit_session_id). The session_identifier
+        # propagates into commits. The conversation_identifier still
+        # propagates into resolves_/addresses_planning_items as the source_id
+        # of those reference edges (a conversation resolves/addresses PIs).
         context: dict[str, str] = {}
+        session_block = payload.get("session")
+        if isinstance(session_block, dict):
+            # New shape uses session_identifier; legacy shape used 'identifier'
+            si = session_block.get("session_identifier") or session_block.get("identifier")
+            if isinstance(si, str):
+                context["session_identifier"] = si
         conversation_block = payload.get("conversation")
         if isinstance(conversation_block, dict):
             ci = conversation_block.get("conversation_identifier")

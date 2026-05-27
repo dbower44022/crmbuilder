@@ -24,7 +24,8 @@ from crmbuilder_v2.access.exceptions import (
     NotFoundError,
     UnprocessableError,
 )
-from crmbuilder_v2.access.models import Commit, Conversation
+from crmbuilder_v2.access.models import Commit
+from crmbuilder_v2.access.models import Session as SessionModel
 from crmbuilder_v2.access.repositories import _governance as gov
 
 _ENTITY_TYPE = "commit"
@@ -48,7 +49,7 @@ _PATCHABLE_FIELDS = frozenset({
     "commit_branch",
     "commit_parent_shas",
     "commit_files_changed_count",
-    "commit_conversation_id",
+    "commit_session_id",
 })
 
 # columns that may appear in ?sort=<column>; locked to a known-safe set.
@@ -138,12 +139,12 @@ def _require_repository(value: object) -> str:
     return repo
 
 
-def _require_conversation_exists(session: Session, conversation_id: str) -> None:
-    if session.get(Conversation, conversation_id) is None:
+def _require_session_exists(session: Session, session_id: str) -> None:
+    if session.get(SessionModel, session_id) is None:
         raise UnprocessableError([
-            FieldError("commit_conversation_id",
-                       "commit_conversation_id_not_found",
-                       f"conversation {conversation_id!r} does not exist")
+            FieldError("commit_session_id",
+                       "commit_session_id_not_found",
+                       f"session {session_id!r} does not exist")
         ])
 
 
@@ -189,7 +190,7 @@ def list_commits(
     *,
     include_deleted: bool = False,
     commit_repository: str | None = None,
-    commit_conversation_id: str | None = None,
+    commit_session_id: str | None = None,
     sort: str = "commit_committed_at",
     order: str = "desc",
     limit: int | None = None,
@@ -211,9 +212,9 @@ def list_commits(
         stmt = stmt.where(Commit.commit_deleted_at.is_(None))
     if commit_repository is not None:
         stmt = stmt.where(Commit.commit_repository == commit_repository)
-    if commit_conversation_id is not None:
+    if commit_session_id is not None:
         stmt = stmt.where(
-            Commit.commit_conversation_id == commit_conversation_id
+            Commit.commit_session_id == commit_session_id
         )
     if offset:
         stmt = stmt.offset(offset)
@@ -281,7 +282,7 @@ def _new_row(
     branch: str,
     parent_shas: list[str],
     files_changed_count: int,
-    conversation_id: str,
+    session_id: str,
 ) -> Commit:
     return Commit(
         commit_identifier=identifier,
@@ -295,7 +296,7 @@ def _new_row(
         commit_branch=branch,
         commit_parent_shas=parent_shas,
         commit_files_changed_count=files_changed_count,
-        commit_conversation_id=conversation_id,
+        commit_session_id=session_id,
     )
 
 
@@ -345,7 +346,7 @@ def create_commit(
     repository: str,
     parent_shas: list,
     files_changed_count: int,
-    conversation_id: str,
+    session_id: str,
     branch: str = "main",
     identifier: str | None = None,
     references: list[dict] | None = None,
@@ -374,10 +375,10 @@ def create_commit(
     branch = gov.require_nonempty(branch, field="commit_branch")
     parent_shas = _require_parent_shas(parent_shas)
     files_changed_count = _require_files_changed_count(files_changed_count)
-    conversation_id = gov.require_nonempty(
-        conversation_id, field="commit_conversation_id"
+    session_id = gov.require_nonempty(
+        session_id, field="commit_session_id"
     )
-    _require_conversation_exists(session, conversation_id)
+    _require_session_exists(session, session_id)
 
     # SHA uniqueness pre-check for a clean error envelope; the DB CHECK
     # is the canonical guard, but pre-checking lets us return a 409 with
@@ -400,7 +401,7 @@ def create_commit(
         branch=branch,
         parent_shas=parent_shas,
         files_changed_count=files_changed_count,
-        conversation_id=conversation_id,
+        session_id=session_id,
     )
 
     if identifier is None:
@@ -447,7 +448,7 @@ def update_commit(
     branch: str | None = None,
     parent_shas: list | None = None,
     files_changed_count: int | None = None,
-    conversation_id: str | None = None,
+    session_id: str | None = None,
     references: list[dict] | None = None,
 ) -> dict:
     row = _get_row(session, identifier)
@@ -487,11 +488,11 @@ def update_commit(
     branch = gov.require_nonempty(branch, field="commit_branch")
     parent_shas = _require_parent_shas(parent_shas)
     files_changed_count = _require_files_changed_count(files_changed_count)
-    conversation_id = gov.require_nonempty(
-        conversation_id, field="commit_conversation_id"
+    session_id = gov.require_nonempty(
+        session_id, field="commit_session_id"
     )
-    if conversation_id != row.commit_conversation_id:
-        _require_conversation_exists(session, conversation_id)
+    if session_id != row.commit_session_id:
+        _require_session_exists(session, session_id)
 
     row.commit_message_first_line = message_first_line
     row.commit_message_full = message_full
@@ -502,7 +503,7 @@ def update_commit(
     row.commit_branch = branch
     row.commit_parent_shas = parent_shas
     row.commit_files_changed_count = files_changed_count
-    row.commit_conversation_id = conversation_id
+    row.commit_session_id = session_id
     session.flush()
 
     gov.apply_reference_list(session, references)
@@ -594,13 +595,13 @@ def patch_commit(
         row.commit_files_changed_count = _require_files_changed_count(
             fields["commit_files_changed_count"]
         )
-    if "commit_conversation_id" in fields:
+    if "commit_session_id" in fields:
         conv_id = gov.require_nonempty(
-            fields["commit_conversation_id"], field="commit_conversation_id"
+            fields["commit_session_id"], field="commit_session_id"
         )
-        if conv_id != row.commit_conversation_id:
-            _require_conversation_exists(session, conv_id)
-            row.commit_conversation_id = conv_id
+        if conv_id != row.commit_session_id:
+            _require_session_exists(session, conv_id)
+            row.commit_session_id = conv_id
 
     session.flush()
     gov.apply_reference_list(session, references)

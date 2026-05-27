@@ -1485,7 +1485,7 @@ class Commit(Base):
     # validated, not SQL-level FK per V2 convention. Direct FK column on
     # this dense entity per DEC-199's frequency-justified deviation from
     # DEC-124's references-edge precedent.
-    commit_conversation_id: Mapped[str] = mapped_column(
+    commit_session_id: Mapped[str] = mapped_column(
         String(32), nullable=False
     )
     commit_created_at: Mapped[datetime] = mapped_column(
@@ -1514,7 +1514,7 @@ class Commit(Base):
             "commit_files_changed_count >= 0",
             name="ck_commit_files_changed_count_nonneg",
         ),
-        Index("ix_commits_commit_conversation_id", "commit_conversation_id"),
+        Index("ix_commits_commit_session_id", "commit_session_id"),
         Index("ix_commits_commit_repository", "commit_repository"),
         Index("ix_commits_commit_committed_at", "commit_committed_at"),
         Index("ix_commits_commit_deleted_at", "commit_deleted_at"),
