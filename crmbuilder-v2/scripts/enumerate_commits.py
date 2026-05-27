@@ -108,6 +108,47 @@ def _last_ingested_sha(
     return repo_rows[0].get("commit_sha")
 
 
+def _parse_log_output(
+    log_output: str,
+    repo_name: str,
+    repo_root: Path,
+    branch: str,
+) -> list[dict]:
+    """Parse the raw ``git log`` output (formatted with ``_GIT_LOG_FORMAT``)
+    into a list of commit-record dicts in the methodology §4.1 shape.
+    Factored out so both the range-mode and explicit-list-mode paths
+    share the same record-construction logic."""
+    records: list[dict] = []
+    for raw_record in log_output.split(_RECORD_SEP):
+        raw = raw_record.strip()
+        if not raw:
+            continue
+        # Six field separators yield seven fields. The last field
+        # (full body) may contain newlines and embedded text.
+        parts = raw.split(_FIELD_SEP, 6)
+        if len(parts) != 7:
+            raise RuntimeError(
+                f"unexpected git log record in {repo_name} (got "
+                f"{len(parts)} fields, expected 7): {raw[:200]!r}"
+            )
+        sha, parent_str, author_name, author_email, committed_at, subject, body = parts
+        parent_shas = parent_str.split() if parent_str else []
+        files_changed_count = _files_changed_count(sha, repo_root)
+        records.append({
+            "commit_sha": sha.lower(),
+            "commit_message_first_line": subject,
+            "commit_message_full": body.rstrip("\n"),
+            "commit_author_name": author_name,
+            "commit_author_email": author_email,
+            "commit_committed_at": committed_at,
+            "commit_repository": repo_name,
+            "commit_branch": branch,
+            "commit_parent_shas": parent_shas,
+            "commit_files_changed_count": files_changed_count,
+        })
+    return records
+
+
 def _enumerate_repo(
     repo_name: str,
     repo_root: Path,
@@ -147,36 +188,59 @@ def _enumerate_repo(
         repo_root,
     )
 
-    records: list[dict] = []
-    for raw_record in log_output.split(_RECORD_SEP):
-        raw = raw_record.strip()
-        if not raw:
-            continue
-        # Six field separators yield seven fields. The last field
-        # (full body) may contain newlines and embedded text.
-        parts = raw.split(_FIELD_SEP, 6)
-        if len(parts) != 7:
-            raise RuntimeError(
-                f"unexpected git log record in {repo_name} (got "
-                f"{len(parts)} fields, expected 7): {raw[:200]!r}"
-            )
-        sha, parent_str, author_name, author_email, committed_at, subject, body = parts
-        parent_shas = parent_str.split() if parent_str else []
-        files_changed_count = _files_changed_count(sha, repo_root)
-        records.append({
-            "commit_sha": sha.lower(),
-            "commit_message_first_line": subject,
-            "commit_message_full": body.rstrip("\n"),
-            "commit_author_name": author_name,
-            "commit_author_email": author_email,
-            "commit_committed_at": committed_at,
-            "commit_repository": repo_name,
-            "commit_branch": branch,
-            "commit_parent_shas": parent_shas,
-            "commit_files_changed_count": files_changed_count,
-        })
+    return _parse_log_output(log_output, repo_name, repo_root, branch)
 
-    return records
+
+def _enumerate_explicit_commits(
+    repo_name: str,
+    repo_root: Path,
+    branch: str,
+    commit_shas: list[str],
+) -> list[dict]:
+    """Enumerate exactly the named commit SHAs from the working tree,
+    emitting records in chronological order (oldest first). Bypasses
+    the since..HEAD range model entirely. Used when parallel
+    workstreams interleave commits on the same branch and a range
+    query would pull in unrelated commits — see PI-050 and SES-074's
+    DEC-233 workaround.
+
+    Each SHA is validated with ``git cat-file -e`` before enumeration;
+    an unknown SHA raises ``RuntimeError`` naming the offending value.
+    """
+    if not (repo_root / ".git").exists():
+        raise RuntimeError(
+            f"repo_root {repo_root} is not a git repository "
+            f"(no .git directory)"
+        )
+
+    # Validate each SHA before doing any further work, so a typo
+    # fails fast with a clear message naming the offender.
+    for sha in commit_shas:
+        result = subprocess.run(
+            ["git", "cat-file", "-e", f"{sha}^{{commit}}"],
+            cwd=str(repo_root), capture_output=True, text=True, check=False,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"unknown commit SHA in {repo_name}: {sha!r} "
+                f"(git cat-file: {result.stderr.strip() or 'no such object'})"
+            )
+
+    # ``git log --no-walk`` emits records for exactly the named commits
+    # without traversing parents. Combined with ``--date-order``, git
+    # sorts the output by commit date — we then pass ``--reverse`` to
+    # flip into chronological (oldest-first) order, matching the range-
+    # mode behaviour and the CM-NNNN identifier-assignment order the
+    # apply script uses.
+    log_output = _run(
+        [
+            "git", "log", "--no-walk", "--date-order", "--reverse",
+            f"--format={_GIT_LOG_FORMAT}", *commit_shas,
+        ],
+        repo_root,
+    )
+
+    return _parse_log_output(log_output, repo_name, repo_root, branch)
 
 
 def _files_changed_count(sha: str, repo_root: Path) -> int:
@@ -201,21 +265,43 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     )
     parser.add_argument(
         "--repos",
-        required=True,
+        required=False,
+        default=None,
         help=(
             "Comma-separated repository names (matching `commit_repository` "
             "values in the snapshot). Example: 'crmbuilder' or "
-            "'crmbuilder,ClevelandBusinessMentoring'."
+            "'crmbuilder,ClevelandBusinessMentoring'. Required in range "
+            "mode; in --commits explicit-list mode, defaults to a single "
+            "repository named 'crmbuilder' when omitted (override with "
+            "--repos REPONAME)."
         ),
     )
     parser.add_argument(
         "--engagement-db-export",
         type=Path,
-        required=True,
+        required=False,
+        default=None,
         help=(
             "Path to the engagement's db-export directory containing "
             "`commits.json`. For the CRMBUILDER dogfood engagement: "
-            "PRDs/product/crmbuilder-v2/db-export/."
+            "PRDs/product/crmbuilder-v2/db-export/. Required in range "
+            "mode; ignored when --commits is provided (explicit-list "
+            "mode bypasses the snapshot-derived since..HEAD range)."
+        ),
+    )
+    parser.add_argument(
+        "--commits",
+        default=None,
+        help=(
+            "Comma-separated list of full commit SHAs. When set, the "
+            "helper emits commit-record JSON for exactly these SHAs in "
+            "chronological order (oldest first), bypassing the "
+            "since..HEAD range entirely. Use this when multiple "
+            "workstreams interleave commits on `main` and the natural "
+            "range would pull in unrelated commits (see PI-050 and "
+            "SES-074's DEC-233 workaround). Each SHA is validated "
+            "against the working tree's git history; an unknown SHA "
+            "errors out by name."
         ),
     )
     parser.add_argument(
@@ -266,7 +352,40 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv if argv is not None else sys.argv[1:])
 
-    repos = [r.strip() for r in args.repos.split(",") if r.strip()]
+    explicit_mode = args.commits is not None
+
+    # In range mode, --repos and --engagement-db-export are both
+    # required (mirroring the historical contract). In explicit-list
+    # mode, both are optional: --repos defaults to "crmbuilder" and
+    # --engagement-db-export is unused entirely. Surface a warning
+    # when the operator supplied --engagement-db-export alongside
+    # --commits so the misuse is visible.
+    if explicit_mode:
+        if args.engagement_db_export is not None:
+            print(
+                "warning: --engagement-db-export is ignored when --commits "
+                "is provided (explicit-list mode bypasses the snapshot-"
+                "derived since..HEAD range)",
+                file=sys.stderr,
+            )
+        repos_raw = args.repos if args.repos is not None else "crmbuilder"
+    else:
+        if args.repos is None:
+            print(
+                "error: --repos is required in range mode (omit --commits "
+                "to use range mode, or pass --repos REPONAME explicitly)",
+                file=sys.stderr,
+            )
+            return 2
+        if args.engagement_db_export is None:
+            print(
+                "error: --engagement-db-export is required in range mode",
+                file=sys.stderr,
+            )
+            return 2
+        repos_raw = args.repos
+
+    repos = [r.strip() for r in repos_raw.split(",") if r.strip()]
     if not repos:
         print("error: --repos must name at least one repository", file=sys.stderr)
         return 2
@@ -282,21 +401,50 @@ def main(argv: list[str] | None = None) -> int:
         key, val = spec.split("=", 1)
         overrides[key.strip()] = Path(val.strip()).expanduser()
 
-    all_records: list[dict] = []
-    for repo in repos:
+    if explicit_mode:
+        commit_shas = [s.strip() for s in args.commits.split(",") if s.strip()]
+        if not commit_shas:
+            print(
+                "error: --commits must name at least one commit SHA",
+                file=sys.stderr,
+            )
+            return 2
+        if len(repos) != 1:
+            print(
+                "error: --commits explicit-list mode requires exactly one "
+                "repository in --repos (multi-repo enumeration with "
+                "explicit SHAs requires separate invocations)",
+                file=sys.stderr,
+            )
+            return 2
+        repo = repos[0]
         repo_root = overrides.get(repo, args.repo_root).expanduser()
         try:
-            records = _enumerate_repo(
+            all_records = _enumerate_explicit_commits(
                 repo_name=repo,
                 repo_root=repo_root,
                 branch=args.branch,
-                db_export_dir=args.engagement_db_export,
-                skip_pull=args.skip_pull,
+                commit_shas=commit_shas,
             )
         except RuntimeError as exc:
             print(f"error enumerating {repo!r}: {exc}", file=sys.stderr)
             return 1
-        all_records.extend(records)
+    else:
+        all_records = []
+        for repo in repos:
+            repo_root = overrides.get(repo, args.repo_root).expanduser()
+            try:
+                records = _enumerate_repo(
+                    repo_name=repo,
+                    repo_root=repo_root,
+                    branch=args.branch,
+                    db_export_dir=args.engagement_db_export,
+                    skip_pull=args.skip_pull,
+                )
+            except RuntimeError as exc:
+                print(f"error enumerating {repo!r}: {exc}", file=sys.stderr)
+                return 1
+            all_records.extend(records)
 
     output = json.dumps(all_records, indent=2)
     if args.output:
