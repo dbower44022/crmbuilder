@@ -171,12 +171,32 @@ class StorageClient:
         """
         return self._request("DELETE", f"/decisions/{identifier}")
 
-    def list_sessions(self) -> list[dict[str, Any]]:
-        """Return all sessions as a list of dicts.
+    def list_sessions(
+        self,
+        *,
+        include_deleted: bool = False,
+        status: str | None = None,
+        medium: str | None = None,
+        workstream_identifier: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return sessions as a list of dicts.
 
-        Shape matches ``crmbuilder_v2/api/routers/sessions.py``.
+        Redesigned in PI-073 / DEC-314 — sessions are the medium-agnostic
+        communication container. Filters: ``status`` (planned, in_flight,
+        complete, cancelled, not_started, superseded), ``medium`` (chat,
+        email, phone, zoom, in_person, slack, other), ``workstream_identifier``
+        (filters via the session_belongs_to_workstream edge).
         """
-        result = self._request("GET", "/sessions")
+        params: dict[str, Any] = {}
+        if include_deleted:
+            params["include_deleted"] = "true"
+        if status is not None:
+            params["status"] = status
+        if medium is not None:
+            params["medium"] = medium
+        if workstream_identifier is not None:
+            params["workstream_identifier"] = workstream_identifier
+        result = self._request("GET", "/sessions", params=params or None)
         if not isinstance(result, list):
             return []
         return result
@@ -195,15 +215,28 @@ class StorageClient:
             )
         return result
 
+    def next_session_identifier(self) -> str:
+        """Return the next available ``SES-NNN`` identifier."""
+        result = self._request("GET", "/sessions/next-identifier")
+        if isinstance(result, dict):
+            nxt = result.get("next")
+            if isinstance(nxt, str):
+                return nxt
+        raise ServerError(
+            status_code=200,
+            errors=[],
+            message="Expected {'next': 'SES-NNN'} body for next_session_identifier",
+        )
+
     def create_session(self, body: dict[str, Any]) -> dict[str, Any]:
         """POST /sessions. Returns the created record dict.
 
-        v0.3 slice D — DEC-034. The body shape is the nine-field
-        session payload (identifier, title, session_date, status,
-        and the five long-text fields). Raises ``ValidationError``
-        on 400, ``ConflictError`` on 409 (duplicate identifier),
-        other ``StorageClientError`` subclasses per the standard
-        error matrix.
+        Body shape (PI-073 / DEC-314): session_title, session_description,
+        session_medium (required); plus optional session_identifier,
+        session_notes, session_status (default 'planned'),
+        session_scheduled_for, session_started_at, session_ended_at,
+        session_participants (JSON array), session_medium_metadata (JSON
+        object), references (array of GovernanceEdgeIn dicts), timestamps.
         """
         result = self._request("POST", "/sessions", json_body=body)
         if not isinstance(result, dict):
@@ -211,6 +244,45 @@ class StorageClient:
                 status_code=200,
                 errors=[],
                 message="Expected dict body for create_session",
+            )
+        return result
+
+    def patch_session(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PATCH /sessions/{identifier}. Partial update of mutable fields."""
+        result = self._request(
+            "PATCH", f"/sessions/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for patch_session",
+            )
+        return result
+
+    def delete_session(self, identifier: str) -> dict[str, Any]:
+        """DELETE /sessions/{identifier}. Soft-delete."""
+        result = self._request("DELETE", f"/sessions/{identifier}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for delete_session",
+            )
+        return result
+
+    def restore_session(self, identifier: str) -> dict[str, Any]:
+        """POST /sessions/{identifier}/restore. Reverse soft-delete."""
+        result = self._request(
+            "POST", f"/sessions/{identifier}/restore"
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for restore_session",
             )
         return result
 
@@ -2185,15 +2257,22 @@ class StorageClient:
         *,
         include_deleted: bool = False,
         status: str | None = None,
-        workstream_identifier: str | None = None,
+        session_identifier: str | None = None,
     ) -> list[dict[str, Any]]:
+        """List conversations.
+
+        PI-073 / DEC-314 — conversations belong to sessions (not directly
+        to workstreams). The ``workstream_identifier`` filter is removed;
+        use ``session_identifier`` instead, or traverse via sessions to
+        get all conversations under a workstream.
+        """
         params: list[str] = []
         if include_deleted:
             params.append("include_deleted=true")
         if status:
             params.append(f"status={status}")
-        if workstream_identifier:
-            params.append(f"workstream_identifier={workstream_identifier}")
+        if session_identifier:
+            params.append(f"session_identifier={session_identifier}")
         path = "/conversations" + ("?" + "&".join(params) if params else "")
         return self._expect_list(self._request("GET", path))
 

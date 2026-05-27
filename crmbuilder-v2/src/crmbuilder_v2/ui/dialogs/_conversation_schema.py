@@ -43,6 +43,12 @@ _CONTENT_FIELDS: list[FieldSchema] = [
         required=True,
         placeholder="Paragraph describing the conversation",
     ),
+    FieldSchema(
+        key="conversation_summary",
+        label="Summary",
+        widget="text",
+        placeholder="Outcome captured at conversation close (PI-073 / DEC-314)",
+    ),
     FieldSchema(key="conversation_notes", label="Internal notes", widget="text"),
     FieldSchema(
         key="conversation_status",
