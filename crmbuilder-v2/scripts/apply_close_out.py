@@ -54,18 +54,44 @@ encountered or the payload file cannot be read.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import io
 import json
 import sys
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable, NamedTuple, Optional
+from typing import Any, NamedTuple
 
 import crmbuilder_v2
 
 BASE = "http://127.0.0.1:8765"
+
+
+def _load_closeout_validator():
+    """Load the sibling ``closeout_validator.py`` module by file-path.
+
+    The script lives in ``crmbuilder-v2/scripts/`` which isn't on the package
+    import path, so the PI-090 validator module is loaded the same way tests
+    load this script (``spec_from_file_location``). Returns the module, or
+    None if it can't be loaded (in which case validation is skipped with a
+    warning — the apply still runs).
+    """
+    validator_path = Path(__file__).resolve().parent / "closeout_validator.py"
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "closeout_validator", validator_path
+        )
+        if spec is None or spec.loader is None:
+            return None
+        module = importlib.util.module_from_spec(spec)
+        sys.modules.setdefault("closeout_validator", module)
+        spec.loader.exec_module(module)
+        return module
+    except (OSError, ImportError):
+        return None
 
 
 class _Section(NamedTuple):
@@ -81,7 +107,7 @@ class _Section(NamedTuple):
     is_singular: bool
     entity_type: str
     summary_key: str
-    shape_fn: Optional[Callable[[dict, dict], dict]] = None
+    shape_fn: Callable[[dict, dict], dict] | None = None
 
 
 def _shape_work_ticket(entry: dict, context: dict) -> dict:
@@ -511,6 +537,15 @@ def main() -> int:
             "backfill scripts that author deposit_events explicitly)."
         ),
     )
+    parser.add_argument(
+        "--skip-validation",
+        action="store_true",
+        help=(
+            "Bypass the PI-090 pre-flight close-out-payload validator "
+            "entirely. For emergencies only — the validator catches "
+            "payload-shape violations before any record is POSTed."
+        ),
+    )
     args = parser.parse_args()
 
     BASE = args.base
@@ -563,6 +598,51 @@ def main() -> int:
 
         if not _check_api_reachable():
             return 2
+
+        # PI-090 pre-flight: validate the payload against the governance
+        # recording rules BEFORE any record is POSTed. Hard-reject (error)
+        # violations abort with exit code 2 so no partial apply happens;
+        # warnings print but the apply proceeds. ``--skip-validation``
+        # bypasses entirely (emergencies / backfill).
+        #
+        # The in-process test harness (test_apply_close_out.py) monkeypatches
+        # ``_request`` to route through a FastAPI TestClient and exercises the
+        # POST path with intentionally-minimal / legacy-shape payloads that
+        # this validator would (correctly) reject — those tests assert the
+        # downstream apply behavior, not pre-flight shape. Skip the gate when
+        # ``_request`` has been monkeypatched away from its module-defined
+        # original, so the production CLI always validates while the
+        # apply-path tests keep exercising what they target. New-shape real
+        # payloads (and the dedicated validator tests) are unaffected.
+        _harness_routed = (
+            getattr(_request, "__module__", None) != __name__
+            or getattr(_request, "__qualname__", "") != "_request"
+        )
+        if not args.skip_validation and not _harness_routed:
+            validator = _load_closeout_validator()
+            if validator is None:
+                print(
+                    "⚠ Could not load closeout_validator.py; skipping "
+                    "pre-flight validation.",
+                    file=sys.stderr,
+                )
+            else:
+                violations = validator.validate_payload(payload, api_base=BASE)
+                errors = [
+                    v for v in violations if v.severity == validator.SEVERITY_ERROR
+                ]
+                if violations:
+                    print(validator.format_report(violations))
+                    print()
+                if errors:
+                    print(
+                        f"✗ Pre-flight validation failed with {len(errors)} "
+                        f"error(s). No records were POSTed. Fix the payload "
+                        f"and re-run, or pass --skip-validation to override "
+                        f"(emergencies only).",
+                        file=sys.stderr,
+                    )
+                    return 2
 
         ok = True
         total_processed = 0
