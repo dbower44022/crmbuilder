@@ -1,0 +1,86 @@
+{
+  "label": "SES-111 / CNV-013 close-out \u2014 file the three SES-110 follow-up backlog items (PI-101 close-out-validator hardening; PI-102 executive_summary model/DB drift; PI-103 edit-locking for promoted records) and link the promoted-record kickoff (WT-056) to the new edit-locking item. The apply prompt also PATCHes PI-100 to narrow it to storage-substrate validation only, completing the edit-locking/substrate split. No decisions, no code. Attaches to WS-012.",
+  "session": {
+    "session_identifier": "SES-111",
+    "session_title": "File SES-110 follow-up backlog items + split edit-locking from substrate",
+    "session_description": "Follow-up conversation in the same Claude.ai chat as SES-110; recorded as a short separate session because SES-110 was already closed out and the close-out tooling is one-file-per-session. CNV-013. Workstream WS-012 (Parallel agent orchestrator).\n\nTopics covered:\n\nSeed prompt: \"yep. But I also want to know what happened to our second conversations about edit locking?\"\n\n1. The SES-110 apply surfaced three pre-apply payload defects (wrong status case; missing executive_summary on the decision and the planning item \u2014 the latter a NOT-NULL requirement that landed via PI-075 mid-authoring) plus two follow-ups worth filing as governance items.\n\n2. Rules-doc and kickoff already corrected (commit c6d966a) to prevent recurrence: lowercased status enums in the rules, executive_summary-required notes, two new failure-mode entries.\n\n3. Confirmed edit-locking was not dropped \u2014 it was the lead thread of the combined promoted-record concurrency item (PI-100), framed as optimistic version-check vs advisory lease. Doug flagged that bundling edit-locking with the substrate question muddied the item, and that bare PI numbers without names are unhelpful.\n\n4. Filed three clearly-named backlog items: harden the close-out validator (PI-101); reconcile executive_summary nullability between models and live DB (PI-102); edit-locking for promoted records (PI-103).\n\n5. Narrowed the previously-combined item (PI-100) to storage-substrate validation only (PATCH in the apply prompt), so edit-locking (PI-103) and substrate (PI-100) are now separate, focused items. Linked the existing promoted-record kickoff (WT-056) to PI-103 so that conversation can open against either.\n\nIn flight at end: none \u2014 all surfaced work is now filed as named backlog items.",
+    "session_medium": "chat",
+    "session_status": "complete",
+    "session_executive_summary": "Filed the governance follow-ups surfaced by the SES-110 apply and corrected a scope-bundling problem. Two items capture that apply's lessons: hardening the pre-flight validator to reject missing required fields and wrong-case status values, and reconciling the executive_summary column nullability between the code models and the live database. A third item splits edit-locking for already-promoted records out of the previously-combined promoted-record concurrency item, which is narrowed to storage-substrate validation only, so each topic is a focused, clearly-named backlog entry. No architectural decisions; this was backlog organization and recurrence prevention.",
+    "session_medium_metadata": {
+      "chat_platform": "claude_ai",
+      "model": "claude-opus-4-7",
+      "surface": "claude_ai_web_sandbox",
+      "note": "same chat as SES-110; recorded separately as SES-110 was already closed"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.7, claude.ai)"
+    ],
+    "references": [
+      {
+        "source_type": "session",
+        "source_id": "SES-111",
+        "target_type": "workstream",
+        "target_id": "WS-012",
+        "relationship": "session_belongs_to_workstream"
+      }
+    ]
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-013",
+    "conversation_title": "File SES-110 apply follow-ups and split edit-locking into its own item",
+    "conversation_purpose": "Capture the two SES-110 apply lessons (validator hardening, executive_summary model/DB drift) and the edit-locking work as clearly-named backlog items, and separate edit-locking from the storage-substrate question.",
+    "conversation_description": "Follow-up within the SES-110 chat. Filed PI-101 (harden the close-out pre-flight validator), PI-102 (reconcile executive_summary nullability between models and the live DB), and PI-103 (edit-locking for promoted records, split out of the previously-combined promoted-record concurrency item). The combined item (PI-100) is narrowed to storage-substrate validation via a PATCH in the apply prompt. The existing promoted-record kickoff (WT-056) is linked to PI-103. No decisions were made; this was backlog organization and recurrence prevention.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-013",
+        "target_type": "session",
+        "target_id": "SES-111",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [
+    {
+      "identifier": "PI-101",
+      "title": "Harden the close-out pre-flight validator to reject missing required fields and wrong-case status values",
+      "description": "The close-out pre-flight validator (shipped to catch payload problems before apply) let all three of the SES-110 apply's real defects through, emitting only identifier_heads warnings. Two were missing required fields \u2014 executive_summary on the decision and on the planning item, now NOT NULL \u2014 and one was a wrong-case status value (work_ticket_status \"Ready\" vs the lowercase enum \"ready\"). Scope: extend the validator so pre-flight rejects (a) any record missing a required field, including executive_summary on decisions/planning_items/sessions, and (b) any status value not matching its lowercase enum, for every status-bearing entity. These are exactly the class of error the validator exists to prevent; catching them at pre-flight removes the manual-retry churn recent close-outs have each absorbed.",
+      "item_type": "pending_work",
+      "status": "Open",
+      "executive_summary": "The close-out pre-flight validator let all three of the SES-110 apply's defects through, emitting only identifier-head warnings. Two were missing required fields (executive_summary, now NOT NULL on decisions and planning items) and one was a wrong-case status value (capitalized instead of the lowercase enum). This item hardens the validator to reject missing required fields and incorrect enum casing at pre-flight, which is exactly the class of error it exists to prevent, removing the manual-retry churn that has cost recent close-outs an extra apply pass each."
+    },
+    {
+      "identifier": "PI-102",
+      "title": "Reconcile the executive_summary column nullability between the SQLAlchemy models and the live database",
+      "description": "models.py:140 declares decisions.executive_summary as nullable=True, but the live CRMBUILDER database enforces NOT NULL with a 200-800 character CHECK (tightened when executive_summary was made required, PI-075). The SQLAlchemy source no longer describes the actual schema, which misleads anyone reading the model. Scope: reconcile the model definition to the live database for executive_summary on decisions, and audit planning_items and sessions for the same drift, then align all three. Harmless at runtime today (the live DB is authoritative) but a correctness/maintainability defect in the source of record. Decide whether to add an Alembic migration to formalize the constraint or simply correct the model's nullable flag to match.",
+      "item_type": "pending_work",
+      "status": "Open",
+      "executive_summary": "The SQLAlchemy model declares the decisions.executive_summary column as nullable, but the live governance database enforces NOT NULL with a 200-800 character constraint, so the source no longer matches the schema it describes. This item reconciles the model definitions to the live database for executive_summary across decisions, and checks planning_items and sessions for the same drift, so the code accurately describes the actual schema and future authors are not misled by a model that disagrees with the database."
+    },
+    {
+      "identifier": "PI-103",
+      "title": "Edit-locking for already-promoted records: choose the modify-modify protection (optimistic version-check vs advisory lease)",
+      "description": "When a draft governance record is promoted to a real record, the per-session draft token that protected it during creation (the SessionDraftToken, decided this session) retires \u2014 leaving already-real records with no protection against two agents editing the same record and silently overwriting one another (the modify-modify / lost-update problem). Scope: choose the protection for edits to promoted records \u2014 an optimistic version/precondition check that rejects a stale write (reuse updated_at as a compare-and-swap, or add a monotonic row_version; note no row_version exists today), an advisory lease that signals who is editing over the crash-safe floor, or a hybrid. This is the edit-locking half of the concurrency model: distinct from the draft-phase write authorization already decided, and distinct from the storage-substrate adequacy question. Split out of the former combined item so it gets a focused conversation. Opens against the promoted-record-concurrency kickoff (WT-056) alongside the substrate item.",
+      "item_type": "pending_work",
+      "status": "Open",
+      "executive_summary": "When a draft governance record is promoted to a real record, the per-session draft token that protected it during creation retires, leaving already-real records with no protection against two agents editing the same record and silently overwriting each other. This item chooses the modify-modify protection for promoted records: an optimistic version/precondition check that rejects a stale write, an advisory lease that signals who is editing, or a hybrid. It is the edit-locking half of the concurrency model, distinct from the draft-phase authorization already decided and from the storage-substrate question, and guarantees no lost updates as agent concurrency rises."
+    }
+  ],
+  "commits": [],
+  "decisions": [],
+  "references": [
+    {
+      "source_type": "work_ticket",
+      "source_id": "WT-056",
+      "target_type": "planning_item",
+      "target_id": "PI-103",
+      "relationship": "addresses"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": []
+}

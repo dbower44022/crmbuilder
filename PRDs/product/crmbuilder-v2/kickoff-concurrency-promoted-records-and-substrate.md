@@ -1,10 +1,10 @@
 # Kickoff — Concurrency for promoted records + substrate validation at scale
 
-**Opens against:** PI-100
+**Opens against:** PI-103 (edit-locking for promoted records) and PI-100 (storage-substrate validation)
 **Work ticket:** WT-056
 **Workstream:** WS-012 (Parallel agent orchestrator)
 **Operating mode:** ARCHITECTURE
-**Follows from:** CNV-012 (SES-110) — see DEC-325
+**Follows from:** CNV-012 (SES-110) — see DEC-325 (the SessionDraftToken decision)
 
 ---
 
@@ -21,7 +21,7 @@ CNV-012 designed the **draft phase** of a concurrent-write-safety model and deci
 - **Substrate facts (db.py):** SQLite, serialized writers (`BEGIN IMMEDIATE`, `busy_timeout=5000`, `isolation_level=None`), **no WAL**, **one DB file per engagement**. Write concurrency is therefore **per-engagement** — cross-engagement scales horizontally for free; within one engagement everything funnels through a single serialized writer.
 - **Complementary existing PIs under WS-012 (do not duplicate):** PI-077 (claimed_by/claimed_at), PI-078 (identifier reservation API), PI-079 (ready-batches).
 
-## Thread 1 — Concurrency on promoted (already-real) records
+## Thread 1 — Edit-locking on promoted (already-real) records (PI-103)
 
 Once a draft is promoted to a real record, the SessionDraftToken retires. Real records need their own modify-modify protection guaranteeing **no lost updates**. Decide the mechanism:
 
@@ -31,7 +31,7 @@ Once a draft is promoted to a real record, the SessionDraftToken retires. Real r
 
 Frame as the eight-element consequential-decision template; this passes the two-part test.
 
-## Thread 2 — Substrate at scale
+## Thread 2 — Substrate at scale (PI-100)
 
 Decide whether **SQLite-per-engagement holds** at the target peak number of concurrent writers **against a single engagement**, or whether a different store (e.g., Postgres with row-level MVCC) is required. Distinguish:
 
@@ -42,15 +42,17 @@ First input needed from Doug: order-of-magnitude peak concurrent writers against
 
 ## Companion fix (fold in)
 
-`apply_close_out.py` treats HTTP 409 as "already present — skipping" and exits 0, silently dropping a genuine collision (same identifier, different content). Should **hard-fail** when identifier matches but content differs. File as its own PI or bundle into Thread 1's implementation.
+`apply_close_out.py` treats HTTP 409 as "already present — skipping" and exits 0, silently dropping a genuine collision (same identifier, different content). Should **hard-fail** when identifier matches but content differs. Fold into PI-101 (close-out pipeline integrity), which already covers pre-flight validation.
 
-## Known follow-ups to file as PIs (surfaced applying SES-110)
+## Related backlog (already filed — not this conversation's job)
 
-The SES-110 apply hit three pre-apply payload defects the sandbox couldn't catch (wrong status case; missing `executive_summary` on the decision and PI — the latter a NOT-NULL requirement that landed via PI-075 mid-authoring). Two follow-ups, to be authored as PIs in this conversation's close-out:
+Two sibling items came out of the SES-110 apply and are filed separately under WS-012; noted here only for context:
 
-1. **Harden the PI-090 close-out validator** so pre-flight rejects missing-required-field (`executive_summary`) and wrong-enum-case (`work_ticket_status`, session `status`), not just `identifier_heads` warnings. These three defects are exactly its job and it passed them through.
-2. **Resolve the model/DB schema drift** — `models.py:140` declares `decisions.executive_summary` as `nullable=True`, but the live CRMBUILDER DB enforces NOT NULL (per PI-075). Reconcile the SQLAlchemy model to the live schema; check `planning_items` and `sessions` for the same drift.
+1. **Harden the close-out pre-flight validator** (PI-101) — it should reject missing required fields and wrong-case status values.
+2. **Reconcile the executive_summary column nullability** between the SQLAlchemy models and the live database (PI-102).
+
+This conversation does **not** work those — it works edit-locking (PI-103) and substrate (PI-100).
 
 ## Deliverable shape
 
-Decisions authored at moment-of-decision (DEC-326+); a close-out that, together with DEC-325, **resolves PI-100** once the full model (draft phase + promoted-record phase + substrate decision) is settled; an implementation PI/sequence for building the model.
+Decisions authored at moment-of-decision (DEC-326+); a close-out that, together with DEC-325 (the SessionDraftToken decision), **resolves PI-103 (edit-locking) and PI-100 (substrate)** once both threads are settled; an implementation PI/sequence for building the model.
