@@ -52,4 +52,8 @@ crmbuilder-v2/data/engagements/
 crmbuilder-v2/data/current_engagement.json
 crmbuilder-v2/data/v2.db.pre-v0.5-backup
 
+# MCP OAuth authorization-server secrets (never commit)
+crmbuilder-v2/data/oauth_jwt_secret
+crmbuilder-v2/data/oauth_secrets.env
+
 *.lock

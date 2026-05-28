@@ -55,9 +55,36 @@ class Settings(BaseSettings):
     api_base_url: str = "http://127.0.0.1:8765"
     mcp_http_port: int = 8810
 
+    # --- MCP OAuth 2.1 authorization server (streamable-http only) ---
+    # We run our own OAuth AS (mcp SDK's OAuthAuthorizationServerProvider)
+    # instead of Cloudflare Managed OAuth, which drops the per-request
+    # ``resource``/``code_challenge`` params across its login step
+    # (empirically confirmed; see the AI-surface notes in CLAUDE.md). The
+    # public URL is both the OAuth issuer and the protected-resource URL,
+    # and must equal what claude.ai users type as the connector URL. For
+    # local end-to-end testing, override via CRMBUILDER_V2_MCP_PUBLIC_URL
+    # (e.g. http://localhost:8810). stdio transport is always unauthenticated.
+    oauth_enabled: bool = True
+    mcp_public_url: str = "https://mcp.crmbuilder.ai"
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    oauth_allowed_email: str = "doug@dougbower.com"
+    # Empty => a stable secret is generated and persisted next to oauth_db_path.
+    oauth_jwt_secret: str = ""
+    oauth_db_path: Path = Field(
+        default_factory=lambda: _repo_root() / "crmbuilder-v2" / "data" / "oauth.db"
+    )
+    access_token_ttl: int = 3600  # 1 hour
+    refresh_token_ttl: int = 60 * 60 * 24 * 30  # 30 days
+    auth_code_ttl: int = 600  # 10 minutes
+
     @property
     def db_url(self) -> str:
         return f"sqlite:///{self.db_path}"
+
+    @property
+    def google_redirect_uri(self) -> str:
+        return f"{self.mcp_public_url.rstrip('/')}/oauth/google/callback"
 
 
 @lru_cache(maxsize=1)
