@@ -583,9 +583,9 @@
     "identifier": "PI-049",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "v2 MCP server OAuth 2.1 + PKCE implementation: enable claude.ai custom connector registration by replacing the X-CRMBuilder-Secret shared-secret middleware with OAuth-token-based auth (with a timeboxed Path B feasibility check before committing to Path A)",
-    "updated_at": "2026-05-27T18:20:39.364236"
+    "updated_at": "2026-05-28T05:07:36.288590"
   },
   {
     "created_at": "2026-05-25T15:28:34.963337",
@@ -1234,5 +1234,17 @@
     "status": "Open",
     "title": "Edit-locking for already-promoted records: choose the modify-modify protection (optimistic version-check vs advisory lease)",
     "updated_at": "2026-05-28T04:55:03.512956"
+  },
+  {
+    "created_at": "2026-05-28T05:07:32.911500",
+    "description": "The v2 MCP remote-access server (DEC-327) is complete, spec-compliant, and works with compliant MCP clients (Claude Code CLI, Claude Desktop) at https://mcp.crmbuilder.ai. claude.ai-web cannot use it because of an upstream connector regression: it completes the full OAuth 2.1 + PKCE flow and receives a valid token, then never attaches the bearer token to the follow-up MCP request, reporting 'Authorization with the MCP server failed (ofid_*)' (DEC-328; anthropics/claude-ai-mcp #155, anthropics/claude-code #46140; began ~2026-04-15, affects all self-hosted OAuth MCP servers). No server-side fix exists. This item tracks the cross-session pending work: monitor those upstream issues and, once Anthropic ships the bearer-attachment fix, re-test the claude.ai-web custom connector against https://mcp.crmbuilder.ai and confirm it connects and lists the tools. No code change is expected — the server is already ready. Resolves when claude.ai-web connects successfully, or when the goal is formally abandoned in favor of the DEC-245 chat-UI-on-API client (PI-052). Also a good moment to remove the stale 'claude.ai CRMBuilder MCP' synced connector entry that routes through the buggy proxy.",
+    "executive_summary": "The v2 MCP remote-access server is complete and works with compliant MCP clients (Claude Code CLI, Claude Desktop), but claude.ai-web cannot use it due to an upstream connector bug that completes OAuth yet never attaches the bearer token to MCP requests (DEC-328; anthropics/claude-ai-mcp #155, anthropics/claude-code #46140). No server-side fix exists. This item tracks the cross-session pending work: monitor the upstream issues and, once Anthropic ships the bearer-attachment fix, re-test the claude.ai-web custom connector against https://mcp.crmbuilder.ai and confirm it connects and lists tools. No code is expected — the server is already spec-compliant and ready; this is a re-validation and close-out item.",
+    "id": 104,
+    "identifier": "PI-104",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Re-test and enable the claude.ai-web custom connector once Anthropic ships the post-OAuth bearer-attachment fix",
+    "updated_at": "2026-05-28T05:07:32.911504"
   }
 ]

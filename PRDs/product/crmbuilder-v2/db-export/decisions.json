@@ -3784,11 +3784,11 @@
     "id": 224,
     "identifier": "DEC-226",
     "rationale": "claude.ai's connector UI is the gating constraint, and it speaks OAuth 2.1 only. No amount of server-side header-based auth makes the connector usable. OAuth is also more MCP-spec-compliant — Protected Resource Metadata (RFC 9728) and OAuth 2.1 with PKCE are the MCP spec's prescribed model for remote authorization. The shared-secret + Service Token architecture from DEC-204/225 was a useful intermediate state that proved out Cloudflare Tunnel + Cloudflare Access for the remote-access deliverable, and the Cloudflare Access edge stays in place. The middleware swap (X-CRMBuilder-Secret → bearer-token) is a discrete code change, not an architectural reset.",
-    "status": "Active",
-    "superseded_by_id": null,
+    "status": "Superseded",
+    "superseded_by_id": 314,
     "supersedes_id": null,
     "title": "v2 MCP server auth model: replace shared-secret + Cloudflare Service Token with OAuth 2.1 + PKCE to enable claude.ai connector registration",
-    "updated_at": "2026-05-27T22:26:44.621650"
+    "updated_at": "2026-05-28T05:07:49.100716"
   },
   {
     "alternatives_considered": "B — Planner conversation defers its own close until builders finish. C — Each Claude Code session emits its own minimal build-receipt payload. D — First subsequent planning conversation absorbs the prior build. All rejected. Details in topics_covered (1) and in the Q1 discussion of the kickoff prompt.",
@@ -5285,5 +5285,56 @@
     "supersedes_id": null,
     "title": "Draft-phase write authorization via a per-session capability token (SessionDraftToken)",
     "updated_at": "2026-05-28T04:11:22.530640"
+  },
+  {
+    "alternatives_considered": "(a) Accept DEC-244's claude.ai-token-bug attribution and keep waiting — rejected: empirically falsified, the auth server is reachable and the token endpoint accepts the resource param. (b) Treat it as a Cloudflare audience/resource registration config gap (the WorkOS issue #271 pattern) — rejected: a code_challenge cannot be pre-registered, so the drop is not a config issue. (c) Pursue the issue-#341 /token-proxy workaround layered on Cloudflare Managed OAuth — rejected: it cannot fix a parameter drop that happens before the token step.",
+    "consequences": "Unblocks the pivot to our own authorization server (DEC-327), because the blocker is a replaceable auth-server choice, not an unfixable claude.ai bug. DEC-244's broader conclusion that claude.ai-web is currently unreachable still holds, but for the reason in DEC-328 rather than DEC-244's stated cause; DEC-244 is kept Active and this correction is linked to it via an is_about reference.",
+    "context": "DEC-244 shelved claude.ai-web access, attributing the failure to a claude.ai-side bug between receiving the authorization code and exchanging it for a token ('no token request ever reaches the auth server'). This session re-investigated empirically against the live Cloudflare Managed OAuth (Beta) authorization server, prompted by the seed question of how to make the v2 MCP server reachable by claude.ai.",
+    "created_at": "2026-05-28T05:07:33.532692",
+    "decision": "The failure is a Cloudflare Managed OAuth (Beta) defect. The authorization server is fully reachable — protected-resource and authorization-server metadata, dynamic client registration, and the token endpoint all respond. It accepts the RFC 8707 resource indicator and the PKCE code_challenge pre-login (the authorize request proceeds to Google login), but it DROPS both parameters across its authentication step and then rejects the post-login authorization request for their absence ('code_challenge is required for public clients'; 'No resource parameter found') even though both were sent. DEC-244's attribution to a claude.ai token-exchange bug is incorrect.",
+    "decision_date": "2026-05-28",
+    "executive_summary": "The claude.ai-web connector failure was misdiagnosed by DEC-244, which attributed it to a claude.ai bug between receiving the authorization code and exchanging it for a token. Empirical testing of the Cloudflare Managed OAuth (Beta) authorization server showed the opposite: the server is fully reachable and accepts the resource and code_challenge parameters pre-login, but drops both across its authentication step and then rejects the post-login authorization for their absence. Because a PKCE code_challenge is a per-request value that is never pre-registered, its post-login disappearance can only be parameter loss, not a configuration or audience-registration issue — making this a definitive Cloudflare-side defect, not a claude.ai token-exchange bug.",
+    "id": 313,
+    "identifier": "DEC-326",
+    "rationale": "A PKCE code_challenge is a per-request value that is never pre-registered anywhere, so its post-login disappearance cannot be a configuration or audience-registration issue — it can only be parameter loss across Cloudflare's login redirect. The resource parameter is dropped the same way. Reproduced deterministically with both public (PKCE) and confidential clients and with fresh and existing sessions. The ofid_* string in the error is a correlation ID, not a diagnosis.",
+    "status": "Active",
+    "superseded_by_id": null,
+    "supersedes_id": null,
+    "title": "Root-cause correction: the claude.ai-web connector failure is Cloudflare Managed OAuth dropping per-request OAuth parameters, not a claude.ai token-exchange bug",
+    "updated_at": "2026-05-28T05:07:33.532694"
+  },
+  {
+    "alternatives_considered": "(a) Stay on Cloudflare Managed OAuth and wait for a Cloudflare Beta fix — rejected: third-party Beta with no timeline, the same trap DEC-244 warned against. (b) The issue-#341 /authorize+/token proxy layered on Cloudflare — rejected: more moving parts and still dependent on Cloudflare's token step. (c) A single-passphrase login instead of Google OIDC — viable and zero-setup but weaker for a write-capable tool; Doug chose Google. (d) Keep Cloudflare Access for login via path-scoped policies — rejected: server-to-server /token cannot carry an Access session, and the dashboard path-scoping was not navigable. (e) Abandon remote MCP and rely solely on the DEC-245 chat-UI-on-API pivot — rejected: the OAuth server reclaims standard MCP-client access with bounded effort.",
+    "consequences": "Removes the Cloudflare Managed OAuth dependency and the shelved-infra coupling; the server now works with any compliant MCP client. Operational surface added: a systemd user service, a Google OAuth client, and gitignored secret files (oauth_secrets.env, mcp.env, oauth_jwt_secret, oauth.db). cloudflared itself is not yet a managed service (still a manual process) — a durability follow-up, noted here rather than filed as its own PI. claude.ai-web remains blocked by an upstream client bug (DEC-328). Supersedes DEC-226 (Cloudflare Managed OAuth auth model); DEC-245's chat-UI pivot remains valid but is now lower-urgency. Delivered in commit 5b098bc.",
+    "context": "Given DEC-326 (Cloudflare Managed OAuth drops per-request params), the remote-MCP / claude.ai-web goal needs an authorization server that correctly preserves the resource and code_challenge parameters. DEC-226 had chosen Cloudflare Managed OAuth as the auth model. Doug chose to reclaim claude.ai-web by replacing the authorization server rather than waiting on a Cloudflare Beta fix.",
+    "created_at": "2026-05-28T05:07:33.827255",
+    "decision": "Embed an OAuth 2.1 + PKCE authorization server in the MCP server using the mcp SDK's OAuthAuthorizationServerProvider (new module crmbuilder_v2.mcp_server.auth). It provides DCR, /authorize, /token, /register, and RFC 9728 / RFC 8414 metadata; the SDK verifies PKCE-S256. Human authentication is delegated to Google OIDC (an Internal Workspace app on dougbower.com): /authorize stashes the pending request (preserving code_challenge + resource) and redirects to Google; a /oauth/google/callback route verifies the id_token, enforces the allowed email, and mints a one-time authorization code. Access tokens are stateless HS256 JWTs bound to the resource; DCR clients and rotating refresh tokens persist in a gitignored SQLite store. Auth is enabled only for the streamable-http transport; stdio stays unauthenticated. The Cloudflare Tunnel is kept for ingress; the Cloudflare Access layer is removed so the server is the sole auth boundary. The server runs as a systemd user service (crmbuilder-v2-mcp, linger enabled) behind https://mcp.crmbuilder.ai. Supersedes DEC-226.",
+    "decision_date": "2026-05-28",
+    "executive_summary": "The v2 MCP server now runs its own OAuth 2.1 + PKCE authorization server (the mcp SDK's OAuthAuthorizationServerProvider) instead of relying on Cloudflare Managed OAuth, which dropped per-request parameters across login (DEC-326). Human auth is delegated to Google OIDC (an Internal Workspace app on dougbower.com); the server verifies the allowed email, mints stateless HS256 JWT access tokens bound to the resource, and persists DCR clients and refresh tokens in a gitignored SQLite store. The Cloudflare Tunnel is kept for ingress; the Cloudflare Access layer is removed, making the server the sole auth boundary, and it runs durably as a systemd user service behind https://mcp.crmbuilder.ai. Supersedes DEC-226's choice of Cloudflare Managed OAuth. Verified end-to-end.",
+    "id": 314,
+    "identifier": "DEC-327",
+    "rationale": "Because we implement the provider, the per-request resource + code_challenge are preserved by construction — the exact failure mode Cloudflare's Beta exhibited (DEC-326). Delegating human auth to Google keeps the security boundary on a real identity provider with MFA without building password handling, appropriate for a tool that can write the governance DB. Keeping the Tunnel preserves the network exposure that already worked; removing Access removes the broken Managed OAuth and a now-redundant edge layer. Verified end-to-end: DCR -> /authorize -> Google -> /token (PKCE) -> JWT bearer -> MCP tool call against the live governance DB, with /mcp returning 401 without a token.",
+    "status": "Active",
+    "superseded_by_id": null,
+    "supersedes_id": null,
+    "title": "Architecture: the v2 MCP server runs its own Google-backed OAuth 2.1 + PKCE authorization server, replacing Cloudflare Managed OAuth",
+    "updated_at": "2026-05-28T05:07:33.827258"
+  },
+  {
+    "alternatives_considered": "(a) Keep iterating server-side (token shape, audience binding, metadata) — rejected: the server is already compliant and the failure is the client not sending the token. (b) Route claude.ai-web through its synced connector / mcp-proxy.anthropic.com — rejected: that path carries the same bug. (c) Build the DEC-245 chat-UI-on-API client as the claude.ai substitute — viable and tracked by PI-052, but orthogonal to this disposition.",
+    "consequences": "claude.ai-web access is deferred to an Anthropic fix, tracked by PI-104 (re-test when shipped). The achieved win is remote MCP access via Claude Code/Desktop today. Linked to DEC-244 via an is_about reference: DEC-244 correctly anticipated claude.ai-web being unreachable, though for the wrong cause.",
+    "context": "With our own correct authorization server live (DEC-327), the claude.ai-web custom connector was tested against https://mcp.crmbuilder.ai. Server logs show the full OAuth flow completing — dynamic client registration, /authorize, the Google round-trip, and POST /token returning 200 with a valid token issued.",
+    "created_at": "2026-05-28T05:07:34.136864",
+    "decision": "claude.ai-web fails because, after the successful token exchange, it never sends the bearer token on the follow-up MCP request — no authenticated /mcp call reaches the server at all — and reports 'Authorization with the MCP server failed (ofid_*)'. This is a documented upstream claude.ai-web connector regression (anthropics/claude-ai-mcp #155, anthropics/claude-code #46140) that began around 2026-04-15 and affects all self-hosted OAuth MCP servers; Claude Code CLI and Claude Desktop authenticate and use the same server correctly. Disposition: do not pursue further server-side work for claude.ai-web; use Claude Code/Desktop now; keep the server ready for claude.ai-web pending an Anthropic fix.",
+    "decision_date": "2026-05-28",
+    "executive_summary": "With our own correct authorization server in place, claude.ai-web still fails — but for a different, correctly-identified reason than DEC-244 named. The full OAuth flow completes and a valid token is issued, yet claude.ai-web never attaches the bearer token to the follow-up MCP request and reports 'Authorization with the MCP server failed (ofid_*)'. This is a documented upstream claude.ai-web connector regression (anthropics/claude-ai-mcp #155, anthropics/claude-code #46140) affecting all self-hosted OAuth MCP servers; Claude Code CLI and Claude Desktop authenticate and use the same server correctly. Disposition: do not pursue further server-side work for claude.ai-web; use Claude Code/Desktop now; the server is ready for claude.ai-web the moment Anthropic ships the fix.",
+    "id": 315,
+    "identifier": "DEC-328",
+    "rationale": "Our 401 carries a correct RFC 9728 WWW-Authenticate header and our token validates against /mcp in direct testing, so the server is spec-compliant; the missing step is entirely on claude.ai-web's client side and is reproduced across many unrelated servers and identity providers. No server change can make claude.ai-web attach a bearer token it does not send.",
+    "status": "Active",
+    "superseded_by_id": null,
+    "supersedes_id": null,
+    "title": "claude.ai-web remains blocked by a distinct upstream connector bug (bearer token never attached post-OAuth); use Claude Code/Desktop and hold the server ready",
+    "updated_at": "2026-05-28T05:07:34.136866"
   }
 ]

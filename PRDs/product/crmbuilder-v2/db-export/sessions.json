@@ -2005,5 +2005,34 @@
     "session_superseded_at": null,
     "session_title": "File SES-110 follow-up backlog items + split edit-locking from substrate",
     "session_updated_at": "2026-05-28T04:55:02.678050"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-28T05:07:32.608246",
+    "session_created_at": "2026-05-28T05:07:32.607984",
+    "session_deleted_at": null,
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-014. Parent workstream WS-010 (v2 AI Surface Integration).\n\nIdentifier note: this close-out was originally drafted as SES-111 / CNV-013 / PI-101; a parallel orchestrator claimed those during the session, so it was re-keyed to SES-112 / CNV-014 / PI-104 per the identifier-collision protocol. Decisions DEC-326..DEC-328 were free and kept.\n\nSeed prompt: \"we attempted to configure the mcp server hosted on this system to be accessible to claude.ai using cloudflare. However, we ran into a problem that would not allow claude.ai to authenticate and connect to the mcp server. I would like to explore how we can make the V2 MCP server available to claude.ai\"\n\nTopics covered, in order:\n\n1. Re-examined the shelved claude.ai-web work (DEC-244 / DEC-245 / PI-045 / PI-049). Checked upstream issue status and found DEC-244's cited issue (anthropics/claude-ai-mcp #271) was closed with a server-side root cause (RFC 8707 audience), contradicting DEC-244's 'no token request reaches the auth server' claim.\n\n2. Empirically diagnosed the live Cloudflare Managed OAuth (Beta) authorization server: metadata + DCR + token endpoint all reachable; it accepts the resource and code_challenge parameters pre-login (proceeds to Google login), but DROPS both across its authentication step and then rejects the post-login authorization for their absence ('code_challenge is required for public clients'; 'No resource parameter found') despite both being sent. Confirmed with public (PKCE) and confidential clients. DECISION DEC-326: this is a Cloudflare-side parameter-preservation defect — a code_challenge is never pre-registered, so its post-login disappearance can only be param loss, not config — and DEC-244 misattributed it to a claude.ai token-exchange bug.\n\n3. Doug chose to reclaim claude.ai-web by replacing the authorization server. DECISION DEC-327: run our own OAuth 2.1 + PKCE authorization server inside the MCP server (mcp SDK OAuthAuthorizationServerProvider; new module crmbuilder_v2.mcp_server.auth), with human auth delegated to Google OIDC (Internal Workspace app, dougbower.com). Implemented register/get_client (DCR), authorize (stashes pending request preserving code_challenge+resource, redirects to Google), a /oauth/google/callback route (verifies id_token, enforces allowed email, mints one-time code), token exchange (SDK verifies PKCE-S256; we mint stateless HS256 JWT access tokens bound to the resource), refresh-token rotation, and stateless bearer validation. DCR clients + refresh tokens persist in a gitignored SQLite store. Wired into build_server for the streamable-http transport only; stdio stays unauthenticated. Supersedes DEC-226.\n\n4. Verified end-to-end locally with a real Google login: DCR -> /authorize -> Google -> callback -> our code -> /token (PKCE) -> JWT bearer -> MCP initialize + get_current_status tool call (51 tools, live data); /mcp returns 401 without a token. Committed as 5b098bc.\n\n5. Cut over to production: deleted the Cloudflare Access application (removing the broken Managed OAuth + redundant edge), kept the Cloudflare Tunnel, made the server durable as a systemd user service (crmbuilder-v2-mcp, linger enabled) at https://mcp.crmbuilder.ai. Verified the public OAuth surface through the tunnel (PRM/AS metadata 200, DCR, /authorize 302 to Google, /mcp 401 with correct RFC 9728 WWW-Authenticate). Registered a native Claude Code MCP entry 'crmbuilder-v2'.\n\n6. Tested the claude.ai-web custom connector; it failed with 'Authorization with the MCP server failed (ofid_*)'. Server logs show the FULL OAuth flow completing (DCR -> /authorize -> Google -> /token 200) and a valid token issued, then NO further request — claude.ai-web never attaches the bearer to the MCP call. DECISION DEC-328: this is a documented upstream claude.ai-web connector regression (anthropics/claude-ai-mcp #155, anthropics/claude-code #46140) affecting all self-hosted OAuth MCP servers; Claude Code CLI and Claude Desktop work against the same server. Use those now; hold the server ready for claude.ai-web pending an Anthropic fix.\n\nIn flight at end:\n- Doug's interactive step: authenticate the 'crmbuilder-v2' server in Claude Code via /mcp (Google login) to exercise the working path — pending, not blocking.\n- cloudflared itself is still a manual process, not a managed service — a durability follow-up noted in DEC-327 consequences, not filed as its own PI this session.\n- Commit 5b098bc and this close-out await Doug's push.",
+    "session_ended_at": null,
+    "session_executive_summary": "Reopened the shelved claude.ai-web remote-MCP goal; its blocking diagnosis (DEC-244) was wrong. Empirically proved Cloudflare Managed OAuth (Beta) drops the per-request resource and code_challenge parameters across login, so no PKCE flow can complete (DEC-326). Replaced it with our own Google-backed OAuth 2.1 + PKCE authorization server in the MCP server, kept the Cloudflare Tunnel, dropped the Access layer, made it durable via systemd behind https://mcp.crmbuilder.ai (DEC-327), and verified the full flow end-to-end. claude.ai-web still fails, but for a distinct documented upstream bug — it completes OAuth then never attaches the bearer token — that breaks every self-hosted OAuth MCP server; Claude Code/Desktop work (DEC-328). Resolved PI-049, advanced PI-045, filed PI-104.",
+    "session_identifier": "SES-112",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "model": "claude-opus-4-7",
+      "runner": "claude_code",
+      "surface": "claude_code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.7, Claude Code)"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "Reclaimed remote MCP access via own Google-backed OAuth 2.1 server — Cloudflare Managed OAuth replaced; claude.ai-web blocked by a distinct upstream bearer bug",
+    "session_updated_at": "2026-05-28T05:07:32.608332"
   }
 ]

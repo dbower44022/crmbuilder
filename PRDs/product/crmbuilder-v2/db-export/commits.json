@@ -739,5 +739,24 @@
     "commit_session_id": "SES-109",
     "commit_sha": "2ca6e6f70d868f6dec22ac1bfd63eff13cbe7891",
     "commit_updated_at": "2026-05-28T03:02:18.840479"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-28T00:17:32-04:00",
+    "commit_created_at": "2026-05-28T05:07:33.228107",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 4,
+    "commit_identifier": "CM-0040",
+    "commit_message_first_line": "v2: MCP server runs its own Google-backed OAuth 2.1 + PKCE authorization server",
+    "commit_message_full": "v2: MCP server runs its own Google-backed OAuth 2.1 + PKCE authorization server\n\nReplaces Cloudflare Managed OAuth, whose Beta dropped the per-request\nresource and code_challenge params across its login step — empirically\nconfirmed (a code_challenge can never be a registration/config issue, so\nits post-login disappearance proves the params are dropped), which blocked\nclaude.ai custom-connector registration and was misattributed to a claude.ai\nbug in DEC-244.\n\nThe mcp SDK's OAuthAuthorizationServerProvider implementation preserves\ncode_challenge + resource by construction; human auth delegates to Google\nOIDC (Internal app, dougbower.com). Access tokens are stateless HS256 JWTs;\nclients + refresh tokens persist in a gitignored SQLite store. Verified\nend-to-end locally: DCR, /authorize -> Google -> callback, PKCE token\nexchange, JWT bearer validation, /mcp auth gate (401 without, tool call with).",
+    "commit_parent_shas": [
+      "e95a0ad59eb2fbfeca633e538077426f7030a852"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-112",
+    "commit_sha": "5b098bc995ce5d8e3eca65c8e3c8c869382dfee5",
+    "commit_updated_at": "2026-05-28T05:07:33.228112"
   }
 ]

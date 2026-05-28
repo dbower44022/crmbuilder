@@ -1,0 +1,40 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_112.json
+Label:  SES-112 / CNV-014 close-out — Reclaimed remote MCP access by building our own Google-backed OAuth 2.1 + PKCE authorization server inside the MCP server, replacing the broken Cloudflare Managed OAuth (Beta). Authors DEC-326 (root-cause correction of DEC-244: Cloudflare drops per-request resource/code_challenge across login, not a claude.ai token bug), DEC-327 (own-OAuth-server architecture; supersedes DEC-226), and DEC-328 (claude.ai-web still blocked by a distinct upstream bearer-not-attached bug; use Claude Code/Desktop). Ingests commit 5b098bc. Resolves PI-049, advances PI-045, files PI-104. Attaches to WS-010. Re-keyed from originally-drafted SES-111/CNV-013/PI-101 after a parallel orchestrator claimed those identifiers.
+Deposit event: DEP-105
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-014 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== planning_items (1 record) ===
+  ✓ POST planning_items  PI-104 (HTTP 201)
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (3 records) ===
+  ✓ POST decisions  DEC-326 (HTTP 201)
+  ✓ POST decisions  DEC-327 (HTTP 201)
+  ✓ POST decisions  DEC-328 (HTTP 201)
+
+=== references (6 records) ===
+  ✓ POST references  DEC-326 decided_in CNV-014 (HTTP 201)
+  ✓ POST references  DEC-327 decided_in CNV-014 (HTTP 201)
+  ✓ POST references  DEC-328 decided_in CNV-014 (HTTP 201)
+  ✓ POST references  DEC-327 supersedes DEC-226 (HTTP 201)
+  ✓ POST references  DEC-326 is_about DEC-244 (HTTP 201)
+  ✓ POST references  DEC-328 is_about DEC-244 (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-049 (HTTP 201)
+
+=== addresses_planning_items (2 records) ===
+  ✓ POST addresses_planning_items  → PI-045 (HTTP 201)
+  ✓ POST addresses_planning_items  → PI-104 (HTTP 201)
+
+✓ All 16 operations complete.
+
+✓ Recorded apply as deposit_event DEP-105 (HTTP 201).
