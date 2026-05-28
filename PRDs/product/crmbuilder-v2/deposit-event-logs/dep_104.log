@@ -1,0 +1,22 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_111.json
+Label:  SES-111 / CNV-013 close-out — file the three SES-110 follow-up backlog items (PI-101 close-out-validator hardening; PI-102 executive_summary model/DB drift; PI-103 edit-locking for promoted records) and link the promoted-record kickoff (WT-056) to the new edit-locking item. The apply prompt also PATCHes PI-100 to narrow it to storage-substrate validation only, completing the edit-locking/substrate split. No decisions, no code. Attaches to WS-012.
+Deposit event: DEP-104
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-013 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== planning_items (3 records) ===
+  ✓ POST planning_items  PI-101 (HTTP 201)
+  ✓ POST planning_items  PI-102 (HTTP 201)
+  ✓ POST planning_items  PI-103 (HTTP 201)
+
+=== references (1 record) ===
+  ✓ POST references  WT-056 addresses PI-103 (HTTP 201)
+
+✓ All 6 operations complete.
+
+✓ Recorded apply as deposit_event DEP-104 (HTTP 201).

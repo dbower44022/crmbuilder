@@ -1975,5 +1975,35 @@
     "session_superseded_at": null,
     "session_title": "Concurrent-write-safety architecture (draft phase) — SessionDraftToken decided; promoted-record concurrency + substrate deferred",
     "session_updated_at": "2026-05-28T04:05:11.651346"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-28T04:55:02.677969",
+    "session_created_at": "2026-05-28T04:55:02.677502",
+    "session_deleted_at": null,
+    "session_description": "Follow-up conversation in the same Claude.ai chat as SES-110; recorded as a short separate session because SES-110 was already closed out and the close-out tooling is one-file-per-session. CNV-013. Workstream WS-012 (Parallel agent orchestrator).\n\nTopics covered:\n\nSeed prompt: \"yep. But I also want to know what happened to our second conversations about edit locking?\"\n\n1. The SES-110 apply surfaced three pre-apply payload defects (wrong status case; missing executive_summary on the decision and the planning item — the latter a NOT-NULL requirement that landed via PI-075 mid-authoring) plus two follow-ups worth filing as governance items.\n\n2. Rules-doc and kickoff already corrected (commit c6d966a) to prevent recurrence: lowercased status enums in the rules, executive_summary-required notes, two new failure-mode entries.\n\n3. Confirmed edit-locking was not dropped — it was the lead thread of the combined promoted-record concurrency item (PI-100), framed as optimistic version-check vs advisory lease. Doug flagged that bundling edit-locking with the substrate question muddied the item, and that bare PI numbers without names are unhelpful.\n\n4. Filed three clearly-named backlog items: harden the close-out validator (PI-101); reconcile executive_summary nullability between models and live DB (PI-102); edit-locking for promoted records (PI-103).\n\n5. Narrowed the previously-combined item (PI-100) to storage-substrate validation only (PATCH in the apply prompt), so edit-locking (PI-103) and substrate (PI-100) are now separate, focused items. Linked the existing promoted-record kickoff (WT-056) to PI-103 so that conversation can open against either.\n\nIn flight at end: none — all surfaced work is now filed as named backlog items.",
+    "session_ended_at": null,
+    "session_executive_summary": "Filed the governance follow-ups surfaced by the SES-110 apply and corrected a scope-bundling problem. Two items capture that apply's lessons: hardening the pre-flight validator to reject missing required fields and wrong-case status values, and reconciling the executive_summary column nullability between the code models and the live database. A third item splits edit-locking for already-promoted records out of the previously-combined promoted-record concurrency item, which is narrowed to storage-substrate validation only, so each topic is a focused, clearly-named backlog entry. No architectural decisions; this was backlog organization and recurrence prevention.",
+    "session_identifier": "SES-111",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "chat_platform": "claude_ai",
+      "model": "claude-opus-4-7",
+      "note": "same chat as SES-110; recorded separately as SES-110 was already closed",
+      "surface": "claude_ai_web_sandbox"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.7, claude.ai)"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "File SES-110 follow-up backlog items + split edit-locking from substrate",
+    "session_updated_at": "2026-05-28T04:55:02.678050"
   }
 ]

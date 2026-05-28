@@ -1189,14 +1189,50 @@
   },
   {
     "created_at": "2026-05-28T04:11:22.252703",
-    "description": "The two open threads from CNV-012, deferred by Doug to a separate conversation. THREAD 1 - concurrency on PROMOTED records: once a draft is promoted to a real record the SessionDraftToken (DEC-325) retires, so real records need their own modify-modify protection that guarantees no lost updates. Choose the mechanism: optimistic version/precondition check (reuse the existing updated_at column with a compare-and-swap, or add a dedicated monotonic row_version - note no row_version stamp exists today; only charter/status/reference_book carry a different 'version' concept) versus an advisory lease over the crash-safe floor versus a hybrid. THREAD 2 - substrate at scale: the engine is SQLite with serialized writers (BEGIN IMMEDIATE, busy_timeout=5000, no WAL) and one DB file per engagement, so write concurrency is per-engagement. Decide whether SQLite-per-engagement holds at the target peak number of concurrent writers against a SINGLE engagement, or whether a different store (e.g., Postgres with row-level MVCC) is required - distinguishing logical concurrency (many partitioned agents, short writes - SQLite survives) from throughput concurrency (sustained rate beyond a single writer - SQLite does not). Also fold in the companion fix surfaced in CNV-012: apply_close_out.py treats HTTP 409 as benign skip and exits 0, silently dropping genuine collisions; it should hard-fail when an identifier matches but content differs. Resolves when the full concurrent-write-safety model is settled: draft phase (DEC-325) + promoted-record phase + substrate decision. Complementary to PI-077 / PI-078 / PI-079 under WS-012; opens against WT-056.",
+    "description": "Decide whether SQLite-per-engagement holds at the target peak number of concurrent writers against a single engagement, or whether a different store (e.g. Postgres with row-level MVCC) is required. The engine is SQLite with serialized writers (BEGIN IMMEDIATE, busy_timeout=5000, isolation_level=None, no WAL) and one DB file per engagement, so write concurrency is per-engagement: cross-engagement scales horizontally for free; within one engagement everything funnels through a single serialized writer. Distinguish logical concurrency (many area-partitioned agents, short writes - SQLite survives) from throughput concurrency (sustained rate beyond a single writer, or long-held write transactions - SQLite does not). First input needed: order-of-magnitude peak concurrent writers against one engagement, and whether their work partitions cleanly or contends on shared records. The edit-locking / modify-modify mechanism was split out to PI-103; this item is substrate-adequacy only.",
     "executive_summary": "The two concurrency threads deferred from CNV-012. Thread 1, promoted records: choose the modify-modify protection for already-real records once the SessionDraftToken (DEC-325) retires, among an optimistic version/precondition check, an advisory lease, or a hybrid. Thread 2, substrate: validate whether SQLite-per-engagement (serialized writers, BEGIN IMMEDIATE, busy_timeout, no WAL) holds at the target peak concurrent-writer count against one engagement, or whether a store with row-level MVCC such as Postgres is required. Also folds in the CNV-012 companion fix: apply_close_out.py treats HTTP 409 as a benign skip and exits 0, silently dropping genuine collisions, and should hard-fail when an identifier matches but content differs.",
     "id": 100,
     "identifier": "PI-100",
     "item_type": "pending_work",
     "resolution_reference": null,
     "status": "Open",
-    "title": "Settle concurrency control for promoted (already-real) governance records and validate the storage substrate at target write-concurrency scale",
-    "updated_at": "2026-05-28T04:11:22.252706"
+    "title": "Validate the storage substrate at target concurrent-writer scale",
+    "updated_at": "2026-05-28T04:55:24.937606"
+  },
+  {
+    "created_at": "2026-05-28T04:55:02.932111",
+    "description": "The close-out pre-flight validator (shipped to catch payload problems before apply) let all three of the SES-110 apply's real defects through, emitting only identifier_heads warnings. Two were missing required fields — executive_summary on the decision and on the planning item, now NOT NULL — and one was a wrong-case status value (work_ticket_status \"Ready\" vs the lowercase enum \"ready\"). Scope: extend the validator so pre-flight rejects (a) any record missing a required field, including executive_summary on decisions/planning_items/sessions, and (b) any status value not matching its lowercase enum, for every status-bearing entity. These are exactly the class of error the validator exists to prevent; catching them at pre-flight removes the manual-retry churn recent close-outs have each absorbed.",
+    "executive_summary": "The close-out pre-flight validator let all three of the SES-110 apply's defects through, emitting only identifier-head warnings. Two were missing required fields (executive_summary, now NOT NULL on decisions and planning items) and one was a wrong-case status value (capitalized instead of the lowercase enum). This item hardens the validator to reject missing required fields and incorrect enum casing at pre-flight, which is exactly the class of error it exists to prevent, removing the manual-retry churn that has cost recent close-outs an extra apply pass each.",
+    "id": 101,
+    "identifier": "PI-101",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Harden the close-out pre-flight validator to reject missing required fields and wrong-case status values",
+    "updated_at": "2026-05-28T04:55:02.932114"
+  },
+  {
+    "created_at": "2026-05-28T04:55:03.208502",
+    "description": "models.py:140 declares decisions.executive_summary as nullable=True, but the live CRMBUILDER database enforces NOT NULL with a 200-800 character CHECK (tightened when executive_summary was made required, PI-075). The SQLAlchemy source no longer describes the actual schema, which misleads anyone reading the model. Scope: reconcile the model definition to the live database for executive_summary on decisions, and audit planning_items and sessions for the same drift, then align all three. Harmless at runtime today (the live DB is authoritative) but a correctness/maintainability defect in the source of record. Decide whether to add an Alembic migration to formalize the constraint or simply correct the model's nullable flag to match.",
+    "executive_summary": "The SQLAlchemy model declares the decisions.executive_summary column as nullable, but the live governance database enforces NOT NULL with a 200-800 character constraint, so the source no longer matches the schema it describes. This item reconciles the model definitions to the live database for executive_summary across decisions, and checks planning_items and sessions for the same drift, so the code accurately describes the actual schema and future authors are not misled by a model that disagrees with the database.",
+    "id": 102,
+    "identifier": "PI-102",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Reconcile the executive_summary column nullability between the SQLAlchemy models and the live database",
+    "updated_at": "2026-05-28T04:55:03.208505"
+  },
+  {
+    "created_at": "2026-05-28T04:55:03.512953",
+    "description": "When a draft governance record is promoted to a real record, the per-session draft token that protected it during creation (the SessionDraftToken, decided this session) retires — leaving already-real records with no protection against two agents editing the same record and silently overwriting one another (the modify-modify / lost-update problem). Scope: choose the protection for edits to promoted records — an optimistic version/precondition check that rejects a stale write (reuse updated_at as a compare-and-swap, or add a monotonic row_version; note no row_version exists today), an advisory lease that signals who is editing over the crash-safe floor, or a hybrid. This is the edit-locking half of the concurrency model: distinct from the draft-phase write authorization already decided, and distinct from the storage-substrate adequacy question. Split out of the former combined item so it gets a focused conversation. Opens against the promoted-record-concurrency kickoff (WT-056) alongside the substrate item.",
+    "executive_summary": "When a draft governance record is promoted to a real record, the per-session draft token that protected it during creation retires, leaving already-real records with no protection against two agents editing the same record and silently overwriting each other. This item chooses the modify-modify protection for promoted records: an optimistic version/precondition check that rejects a stale write, an advisory lease that signals who is editing, or a hybrid. It is the edit-locking half of the concurrency model, distinct from the draft-phase authorization already decided and from the storage-substrate question, and guarantees no lost updates as agent concurrency rises.",
+    "id": 103,
+    "identifier": "PI-103",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Edit-locking for already-promoted records: choose the modify-modify protection (optimistic version-check vs advisory lease)",
+    "updated_at": "2026-05-28T04:55:03.512956"
   }
 ]
