@@ -53,6 +53,10 @@ from crmbuilder_v2.ui.styling import t
 # "Requirements" (PI-004 cohort), "Manual Configs" (PI-004 cohort), and
 # "Test Specs" (PI-004 cohort closer — resolves PI-004).
 SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    # PI-052 Slice B (WT-055): AI group at the top of the sidebar with
+    # the single "Chat" entry — chat is the front-and-center surface, so
+    # it's the first thing in the list. Re-sortable in a later slice.
+    ("AI", ("Chat",)),
     # v0.5 slice A: empty Engagements group container above Governance.
     # Slice C populates with the single "Engagements" entry.
     ("Engagements", ("Engagements",)),

@@ -21,6 +21,9 @@ from crmbuilder_v2.ui.sidebar import SIDEBAR_ENTRIES, Sidebar
 from crmbuilder_v2.ui.splash import Splash
 
 EXPECTED_ENTRIES = (
+    # AI group — PI-052 Slice B (WT-055): single "Chat" entry at the top
+    # of the sidebar.
+    "Chat",
     # Engagements group — populated in UI v0.5 slice C with a single
     # entry, on top of the empty group slice A introduced.
     "Engagements",

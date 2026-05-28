@@ -35,6 +35,7 @@ from crmbuilder_v2.ui.base.list_detail_panel import ListDetailPanel
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.crash_banner import CrashBanner
 from crmbuilder_v2.ui.panels.charter import CharterPanel
+from crmbuilder_v2.ui.panels.chat import ChatPanel
 from crmbuilder_v2.ui.panels.close_out_payloads import CloseOutPayloadsPanel
 from crmbuilder_v2.ui.panels.conversations import ConversationsPanel
 from crmbuilder_v2.ui.panels.crm_candidates import CrmCandidatesPanel
@@ -143,8 +144,16 @@ class MainWindow(QMainWindow):
         self._lifecycle_ready = False
 
         for entry in SIDEBAR_ENTRIES:
-            if entry == "Charter":
-                page: QWidget = CharterPanel(self._client)
+            if entry == "Chat":
+                # PI-052 Slice B: the chat tab consumes the existing
+                # FastAPI surface directly (DEC-253/§2.8), so it takes the
+                # API base URL rather than the StorageClient. It is not a
+                # ListDetailPanel, so it is excluded from the
+                # connection_lost / navigate wiring and the on-select
+                # refresh below.
+                page: QWidget = ChatPanel(get_settings().api_base_url)
+            elif entry == "Charter":
+                page = CharterPanel(self._client)
             elif entry == "Status":
                 page = StatusPanel(self._client)
             elif entry == "Decisions":
