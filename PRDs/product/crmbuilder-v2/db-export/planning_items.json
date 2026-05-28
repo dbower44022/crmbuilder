@@ -1147,9 +1147,9 @@
     "identifier": "PI-096",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Backfill executive_summary on every existing planning item by reading the PI's title and description and generating a 200..800 character audience-readable summary",
-    "updated_at": "2026-05-27T18:20:49.521119"
+    "updated_at": "2026-05-28T02:15:55.348952"
   },
   {
     "created_at": "2026-05-27T22:24:46.273168",
@@ -1159,9 +1159,9 @@
     "identifier": "PI-097",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Backfill executive_summary on every existing decision by reading the DEC's title, context, decision, and rationale fields and generating a 200..800 character audience-readable summary",
-    "updated_at": "2026-05-27T22:30:39.809395"
+    "updated_at": "2026-05-28T02:15:55.653572"
   },
   {
     "created_at": "2026-05-27T22:24:46.509936",
@@ -1171,8 +1171,8 @@
     "identifier": "PI-098",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Backfill session_executive_summary on every existing session by reading the SES's session_title and session_description and generating a 200..800 character audience-readable summary",
-    "updated_at": "2026-05-27T22:30:40.126019"
+    "updated_at": "2026-05-28T02:15:55.966349"
   }
 ]

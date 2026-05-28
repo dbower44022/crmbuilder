@@ -17468,5 +17468,75 @@
     "source_type": "deposit_event",
     "target_id": "CM-0037",
     "target_type": "commit"
+  },
+  {
+    "created_at": "2026-05-28T02:15:54.693117",
+    "id": 1754,
+    "reference_identifier": "REF-1750",
+    "relationship_kind": "session_belongs_to_workstream",
+    "source_id": "SES-106",
+    "source_type": "session",
+    "target_id": "WS-011",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-28T02:15:55.050843",
+    "id": 1755,
+    "reference_identifier": "REF-1751",
+    "relationship_kind": "conversation_belongs_to_session",
+    "source_id": "CNV-008",
+    "source_type": "conversation",
+    "target_id": "SES-106",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-28T02:15:55.348188",
+    "id": 1756,
+    "reference_identifier": "REF-1752",
+    "relationship_kind": "resolves",
+    "source_id": "CNV-008",
+    "source_type": "conversation",
+    "target_id": "PI-096",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-28T02:15:55.652805",
+    "id": 1757,
+    "reference_identifier": "REF-1753",
+    "relationship_kind": "resolves",
+    "source_id": "CNV-008",
+    "source_type": "conversation",
+    "target_id": "PI-097",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-28T02:15:55.965468",
+    "id": 1758,
+    "reference_identifier": "REF-1754",
+    "relationship_kind": "resolves",
+    "source_id": "CNV-008",
+    "source_type": "conversation",
+    "target_id": "PI-098",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-28T02:15:56.275036",
+    "id": 1759,
+    "reference_identifier": "REF-1755",
+    "relationship_kind": "deposit_event_applies_close_out_payload",
+    "source_id": "DEP-096",
+    "source_type": "deposit_event",
+    "target_id": "COP-106",
+    "target_type": "close_out_payload"
+  },
+  {
+    "created_at": "2026-05-28T02:15:56.278685",
+    "id": 1760,
+    "reference_identifier": "REF-1756",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-096",
+    "source_type": "deposit_event",
+    "target_id": "CNV-008",
+    "target_type": "conversation"
   }
 ]
