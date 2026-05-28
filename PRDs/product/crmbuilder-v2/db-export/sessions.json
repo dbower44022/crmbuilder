@@ -1857,5 +1857,36 @@
     "session_superseded_at": null,
     "session_title": "Resolve PI-096 + PI-097 + PI-098 — Doug reviewed and accepted the 481 backfilled executive_summary values",
     "session_updated_at": "2026-05-28T02:16:09.507393"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-28T02:22:08.903398",
+    "session_created_at": "2026-05-28T02:22:08.903150",
+    "session_deleted_at": null,
+    "session_description": "Single Claude Code session. Doug's prompt after the SES-105 PI-018 close-out: 'lets file the apply_close_out ordering issue as a PI then knock it out.' Both halves done in this session: PI-099 authored AND resolved.\n\n---\n\nTopics covered:\n\nSeed prompt: \"yes\" (continuing from the prior turn's offer to file and fix the apply_close_out ordering issue).\n\n1. Surveyed apply_close_out.py to locate _SECTIONS (lines ~241-251). Confirmed current order: session, conversation, work_tickets, planning_items, commits, decisions, references, resolves_planning_items, addresses_planning_items. The session entry runs FIRST.\n\n2. Traced the failure mode: post-PI-073 / DEC-314 introduced the complete_session_requires_conversation validation rule — a session in complete status requires at least one inbound conversation_belongs_to_session edge at create-validation time. Apply_close_out POSTs the session before the conversation, so the inbound edge doesn't exist yet, and the session creation 422s.\n\n3. Reviewed context-population (lines 580-592): context['session_identifier'] and context['conversation_identifier'] are read from payload data BEFORE the section loop, not from POST responses. So shape helpers that read those (commits' _shape_commit; resolves' _shape_resolves_pi; addresses' _shape_addresses_pi) work regardless of section order.\n\n4. Reviewed the existing _inline_membership_edges hoisting (lines ~605-612): a prior fix hoists session_belongs_to_workstream into the session block's inline references and conversation_belongs_to_session into the conversation block's inline references so the access layer sees the membership edge at create-validation time. The hoisting handles outbound edges; the current bug is on the inbound edge side (session needs to see the inbound edge from the conversation, but the conversation hasn't been POSTed yet).\n\n5. Dispatched a single sub-agent with the technical scope (swap _SECTIONS[0] and _SECTIONS[1]; update the docstring's order diagram; add tests covering single-pass apply). Brief explicitly noted the empirical evidence — three first-apply failures in 24 hours — and the safe-because-X reasoning (conversation creation tolerates a not-yet-existent target).\n\n6. Sub-agent returned commit 9f04266. Verified the conversation access layer at conversations.py:115 has the explicit comment 'there is no complete-requires-session-edge rule' — the membership IS the session linkage and runs from create, but the target session row is NOT required to exist for the conversation POST. Confirms the swap is safe.\n\n7. Agent also surfaced four other inbound-edge requirements in the broader access layer (close_out_payloads.py:105 payload_requires_producing_conversation_edge; close_out_payloads.py:150 applied_payload_requires_successful_deposit_event_edge; work_tickets.py:102 consumed_work_ticket_requires_consumption_edge; deposit_events.py:213 deposit_event_requires_applies_close_out_payload_edge). None are tripping current close-outs because they're handled by lazy-create paths or atomic POSTs at apply time. Noted for a future apply-pipeline-validator PI (likely a PI-090 expansion or sibling) but out of scope for PI-099.\n\n8. Tests added in test_apply_close_out.py: TestPI099SectionOrdering with two tests — section-order assertion and a single-pass-apply test that authors a minimal payload (new-shape session_identifier/session_title/session_description/session_medium fields) and verifies the session lands in complete status without needing a retry. Both pass. Pre-existing 15 failures in the file remain (all PI-073-schema-mismatch — payloads use legacy identifier/title/topics_covered shape) but were verified non-regressing.\n\n9. Authoring this close-out as the meta-validation. The expectation: SES-107's own apply succeeds in ONE pass (no DEP retry pattern) because PI-099's fix is now active. The actual deposit_event sequence will be DEP-NNN single instead of DEP-NNN-failed plus DEP-(NNN+1)-success.\n\n---\n\nIn flight at end:\n\n- The four other inbound-edge requirements surfaced by the agent (close_out_payloads payload_requires_producing_conversation_edge; close_out_payloads applied_payload_requires_successful_deposit_event_edge; work_tickets consumed_work_ticket_requires_consumption_edge; deposit_events deposit_event_requires_applies_close_out_payload_edge) — none breaking today, structurally identical pattern. PI-090 (apply-pipeline validator) would catch ordering violations at pre-flight; a sibling PI could fix any future occurrences by either making the rules tolerant-of-deferred-edge-presence or by atomic-batch POSTing the linked records.\n- Sibling parallel session SES-106 landed during my agent's work (resolved PI-096 / PI-097 / PI-098 — the executive_summary backfill review pass). My SES-107 reservation re-keyed from SES-106 to SES-107, CNV-008 to CNV-009; PI-099 head unaffected.",
+    "session_ended_at": null,
+    "session_executive_summary": null,
+    "session_identifier": "SES-107",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "chat_platform": "claude_code_cli",
+      "meta_validation": "this close-out's own apply is the proof — if PI-099 works, SES-107 lands in one pass",
+      "model": "claude-opus-4-7[1m]",
+      "orchestration_pattern": "single_subagent_singleton",
+      "subagent_count": 1
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude Code (Opus 4.7 1M-context)"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "PI-099 — fix apply_close_out section ordering; meta-validation via this session's own one-pass apply",
+    "session_updated_at": "2026-05-28T02:22:08.903483"
   }
 ]

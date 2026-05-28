@@ -1,0 +1,20 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_107.json
+Label:  PI-099 authored + resolved in one close-out — fix apply_close_out.py section ordering so conversation POSTs before session. Three close-outs in 24 hours hit the complete_session_requires_conversation rule on first apply because session was being POSTed before its required inbound edge existed. Single-line swap of _SECTIONS[0] and _SECTIONS[1] resolves it. THIS close-out's own apply is the meta-validation: if PI-099 works, SES-107 lands in one pass with no retry — unlike the three preceding close-outs (SES-101, SES-103, SES-105) that all needed a second attempt.
+Deposit event: DEP-097
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-009 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== planning_items (1 record) ===
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+
+
+✓ Recorded apply as deposit_event DEP-097 (HTTP 201).

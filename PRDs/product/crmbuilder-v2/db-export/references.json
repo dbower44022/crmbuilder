@@ -17538,5 +17538,85 @@
     "source_type": "deposit_event",
     "target_id": "CNV-008",
     "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-28T02:22:08.602306",
+    "id": 1761,
+    "reference_identifier": "REF-1757",
+    "relationship_kind": "conversation_belongs_to_session",
+    "source_id": "CNV-009",
+    "source_type": "conversation",
+    "target_id": "SES-107",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-28T02:22:08.906309",
+    "id": 1762,
+    "reference_identifier": "REF-1758",
+    "relationship_kind": "session_belongs_to_workstream",
+    "source_id": "SES-107",
+    "source_type": "session",
+    "target_id": "WS-012",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-28T02:22:09.504543",
+    "id": 1763,
+    "reference_identifier": "REF-1759",
+    "relationship_kind": "deposit_event_applies_close_out_payload",
+    "source_id": "DEP-097",
+    "source_type": "deposit_event",
+    "target_id": "COP-107",
+    "target_type": "close_out_payload"
+  },
+  {
+    "created_at": "2026-05-28T02:22:09.507759",
+    "id": 1764,
+    "reference_identifier": "REF-1760",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-097",
+    "source_type": "deposit_event",
+    "target_id": "CNV-009",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-28T02:22:09.510663",
+    "id": 1765,
+    "reference_identifier": "REF-1761",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-097",
+    "source_type": "deposit_event",
+    "target_id": "CM-0038",
+    "target_type": "commit"
+  },
+  {
+    "created_at": "2026-05-28T02:22:47.172587",
+    "id": 1766,
+    "reference_identifier": "REF-1762",
+    "relationship_kind": "resolves",
+    "source_id": "CNV-009",
+    "source_type": "conversation",
+    "target_id": "PI-099",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-28T02:22:47.424712",
+    "id": 1767,
+    "reference_identifier": "REF-1763",
+    "relationship_kind": "deposit_event_applies_close_out_payload",
+    "source_id": "DEP-098",
+    "source_type": "deposit_event",
+    "target_id": "COP-107",
+    "target_type": "close_out_payload"
+  },
+  {
+    "created_at": "2026-05-28T02:22:47.427825",
+    "id": 1768,
+    "reference_identifier": "REF-1764",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-098",
+    "source_type": "deposit_event",
+    "target_id": "PI-099",
+    "target_type": "planning_item"
   }
 ]

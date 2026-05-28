@@ -41,6 +41,7 @@ class DecisionCreateIn(_Base):
     consequences: str = ""
     supersedes: str | None = None
     superseded_by: str | None = None
+    executive_summary: str | None = None  # PI-074
 
 
 class DecisionUpdateIn(_Base):
@@ -159,6 +160,7 @@ class PlanningItemCreateIn(_Base):
     description: str = ""
     status: str
     resolution_reference: str | None = None
+    executive_summary: str | None = None  # PI-074
 
 
 class PlanningItemUpdateIn(_Base):

@@ -701,5 +701,24 @@
     "commit_session_id": "SES-105",
     "commit_sha": "122a9ac2b5632e216dc8469db7d4e7858f0021e0",
     "commit_updated_at": "2026-05-27T23:11:54.486931"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-27T22:19:44-04:00",
+    "commit_created_at": "2026-05-28T02:22:09.189164",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 2,
+    "commit_identifier": "CM-0038",
+    "commit_message_first_line": "v2: PI-099 — fix apply_close_out section ordering so conversation POSTs before session",
+    "commit_message_full": "v2: PI-099 — fix apply_close_out section ordering so conversation POSTs before session\n\nEvery close-out's first apply attempt has been failing on the new\npost-PI-073 ``complete_session_requires_conversation`` validation rule\nsince the redesign landed. Three back-to-back occurrences (SES-101\nfirst apply at DEP-088, SES-103 first apply at DEP-091, SES-105 first\napply at DEP-094) traced to the same cause: ``_SECTIONS`` orders\n``session`` before ``conversation``, but ``complete`` sessions require\nat least one inbound ``conversation_belongs_to_session`` edge at\ncreate-validation time. The conversation that emits that edge wasn't\nPOSTed yet.\n\nThe fix is a one-line list swap: process ``conversation`` before\n``session``. Empirically proven safe — conversation creation already\ntolerates a not-yet-existent ``conversation_belongs_to_session``\ntarget (the three first-apply failures above ALL successfully created\nthe conversation; the session was the only thing that failed). With\nthe swap, the conversation's inline membership edge to the session is\nin place before session validation runs, and the apply completes in\none pass.\n\nChanges:\n\n- ``crmbuilder-v2/scripts/apply_close_out.py`` — swap the first two\n  entries of ``_SECTIONS``. Update the module docstring's apply-order\n  diagram to match.\n- ``tests/crmbuilder_v2/scripts/test_apply_close_out.py`` — assert\n  the new section order, plus a single-pass-apply test that authors a\n  minimal close-out payload and verifies the session lands in\n  ``complete`` status without needing a retry.\n\nThe fix is independent of and complementary to PI-090 (apply-pipeline\nvalidator). PI-090 will catch broader payload-shape violations at\npre-flight; PI-099 fixes the specific ordering bug that was tripping\nevery close-out.\n\nFrom PI-099.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "e808dda57f544356ff8648fdb78c43b13ec13de7"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-107",
+    "commit_sha": "9f042666e7434b267c112f2607cd660f55d4ce62",
+    "commit_updated_at": "2026-05-28T02:22:09.189166"
   }
 ]
