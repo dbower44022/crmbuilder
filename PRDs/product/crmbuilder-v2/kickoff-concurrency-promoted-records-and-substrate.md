@@ -44,6 +44,13 @@ First input needed from Doug: order-of-magnitude peak concurrent writers against
 
 `apply_close_out.py` treats HTTP 409 as "already present — skipping" and exits 0, silently dropping a genuine collision (same identifier, different content). Should **hard-fail** when identifier matches but content differs. File as its own PI or bundle into Thread 1's implementation.
 
+## Known follow-ups to file as PIs (surfaced applying SES-110)
+
+The SES-110 apply hit three pre-apply payload defects the sandbox couldn't catch (wrong status case; missing `executive_summary` on the decision and PI — the latter a NOT-NULL requirement that landed via PI-075 mid-authoring). Two follow-ups, to be authored as PIs in this conversation's close-out:
+
+1. **Harden the PI-090 close-out validator** so pre-flight rejects missing-required-field (`executive_summary`) and wrong-enum-case (`work_ticket_status`, session `status`), not just `identifier_heads` warnings. These three defects are exactly its job and it passed them through.
+2. **Resolve the model/DB schema drift** — `models.py:140` declares `decisions.executive_summary` as `nullable=True`, but the live CRMBUILDER DB enforces NOT NULL (per PI-075). Reconcile the SQLAlchemy model to the live schema; check `planning_items` and `sessions` for the same drift.
+
 ## Deliverable shape
 
 Decisions authored at moment-of-decision (DEC-326+); a close-out that, together with DEC-325, **resolves PI-100** once the full model (draft phase + promoted-record phase + substrate decision) is settled; an implementation PI/sequence for building the model.
