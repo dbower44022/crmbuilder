@@ -476,7 +476,8 @@ class TestPI030NewSections:
     def test_apply_ordering_section_headers_in_methodology_order(
         self, routed, tmp_path, monkeypatch, capsys
     ):
-        """Full payload with all sections applies in methodology §4 order."""
+        """Full payload with all sections applies in PI-099 apply order:
+        conversation → session → work_tickets → planning_items → ... → decisions."""
         ws_id = _create_workstream(routed)
         payload = {
             "label": "Ordering test",
@@ -510,15 +511,15 @@ class TestPI030NewSections:
 
         captured = capsys.readouterr()
         out = captured.out
-        # Methodology §4 order: session → conversation → work_tickets →
+        # PI-099 order: conversation → session → work_tickets →
         # planning_items → ... → decisions → ...
-        idx_session = out.find("=== session ")
         idx_conv = out.find("=== conversation ")
+        idx_session = out.find("=== session ")
         idx_wt = out.find("=== work_tickets ")
         idx_pi = out.find("=== planning_items ")
         idx_dec = out.find("=== decisions ")
-        assert idx_session != -1
-        assert idx_session < idx_conv < idx_wt < idx_pi < idx_dec
+        assert idx_conv != -1
+        assert idx_conv < idx_session < idx_wt < idx_pi < idx_dec
 
     def test_409_skip_idempotent_on_re_run_all_sections(
         self, routed, tmp_path, monkeypatch
@@ -690,3 +691,108 @@ class TestPI030NewSections:
         # Status still Resolved
         pi = routed.get("/planning-items/PI-212").json()["data"]
         assert pi["status"] == "Resolved"
+
+
+# ---------------------------------------------------------------------------
+# PI-099: section ordering — conversation before session
+# ---------------------------------------------------------------------------
+
+
+class TestPI099SectionOrdering:
+    """PI-099: every close-out's first apply was failing because the
+    apply script POSTed the session before the conversation, but the
+    post-PI-073 ``complete_session_requires_conversation`` validation
+    rule needs the inbound ``conversation_belongs_to_session`` edge to
+    exist at session-create time. The fix swaps the section order so
+    the conversation (and its inline membership edge) lands first.
+    """
+
+    def test_section_order_has_conversation_before_session(self):
+        """Regression guard: the swap can't quietly drift back."""
+        sections = apply_close_out._SECTIONS
+        assert sections[0].name == "conversation"
+        assert sections[1].name == "session"
+
+    def test_single_pass_apply_succeeds_for_complete_session_with_conversation(
+        self, routed, tmp_path, monkeypatch
+    ):
+        """Authoritative proof: a minimal close-out with a session
+        whose status is ``complete`` and a conversation supplying the
+        mandatory inbound ``conversation_belongs_to_session`` edge
+        applies cleanly in a single pass — no retry needed.
+
+        Pre-PI-099, this payload's first apply failed on the session
+        POST with ``complete_session_requires_conversation`` because
+        the conversation (and therefore its inbound edge) hadn't been
+        created yet. Post-PI-099, the conversation creates first, its
+        inline membership edge to the not-yet-existent session lands,
+        and then the session create finds the edge and validates.
+        """
+        # Create the workstream the session will belong to.
+        ws_id = _create_workstream(routed)
+
+        payload = {
+            "label": "PI-099 single-pass apply test",
+            "session": {
+                "session_identifier": "SES-300",
+                "session_title": "PI-099 single-pass test session",
+                "session_description": "Verifies that a complete session "
+                "with an inbound conversation_belongs_to_session edge "
+                "applies in one pass.",
+                "session_medium": "chat",
+                "session_status": "complete",
+                "references": [
+                    {
+                        "source_type": "session",
+                        "source_id": "SES-300",
+                        "target_type": "workstream",
+                        "target_id": ws_id,
+                        "relationship": "session_belongs_to_workstream",
+                    }
+                ],
+            },
+            "conversation": {
+                "conversation_identifier": "CNV-300",
+                "conversation_title": "PI-099 single-pass test conversation",
+                "conversation_purpose": "Provide the inbound edge the "
+                "session create-validation requires.",
+                "conversation_description": "Empty body — exists only to "
+                "supply the conversation_belongs_to_session edge.",
+                "conversation_status": "complete",
+                "references": [
+                    {
+                        "source_type": "conversation",
+                        "source_id": "CNV-300",
+                        "target_type": "session",
+                        "target_id": "SES-300",
+                        "relationship": "conversation_belongs_to_session",
+                    }
+                ],
+            },
+        }
+        path = _payload_path(tmp_path, "ses_300.json", payload)
+        monkeypatch.setattr("sys.argv", ["apply_close_out.py", str(path)])
+
+        rc = apply_close_out.main()
+        assert rc == 0, "single-pass apply should succeed without retry"
+
+        # Session landed in 'complete' status.
+        sess = routed.get("/sessions/SES-300").json()["data"]
+        assert sess["session_identifier"] == "SES-300"
+        assert sess["session_status"] == "complete"
+
+        # Conversation landed.
+        conv = routed.get("/conversations/CNV-300").json()["data"]
+        assert conv["conversation_identifier"] == "CNV-300"
+
+        # The membership edge exists.
+        refs = routed.get(
+            "/references?source_id=CNV-300&target_id=SES-300"
+        ).json()["data"]
+        kinds = [r["relationship"] for r in refs]
+        assert "conversation_belongs_to_session" in kinds
+
+        # Deposit event recorded the apply as a success in one pass.
+        deposits = routed.get("/deposit-events").json()["data"]
+        assert len(deposits) == 1
+        assert deposits[0]["deposit_event_outcome"] == "success"

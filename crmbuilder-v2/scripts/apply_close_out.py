@@ -9,9 +9,9 @@ v0.8 (PI-030 slice B) extends the script to handle five new top-level
 payload sections introduced by the Code Change Lifecycle methodology and
 DEC-223 (close-out payload format gains a conversation block):
 
-  session → conversation → work_tickets → planning_items → commits
-         → decisions → references → resolves_planning_items
-         → addresses_planning_items
+  conversation → session → work_tickets → planning_items → commits
+              → decisions → references → resolves_planning_items
+              → addresses_planning_items
 
 Per-section shape transforms translate payload entries into POST bodies:
   - work_tickets[].addresses_planning_item becomes an embedded addresses
@@ -235,13 +235,17 @@ def _inline_membership_edges(
     block["references"] = list(inline_refs) + matched
 
 
-# Section descriptors in methodology §4 apply order. The order is the
-# fixed apply ordering: session → conversation → work_tickets →
+# Section descriptors in apply order. PI-099 swapped session and
+# conversation so the conversation POSTs first — its mandatory inline
+# ``conversation_belongs_to_session`` edge must exist before the
+# session create runs validate_edges (the ``complete_session_requires_
+# conversation`` rule looks for that inbound edge at create-time). The
+# rest of the order is fixed: conversation → session → work_tickets →
 # planning_items → commits → decisions → references →
 # resolves_planning_items → addresses_planning_items.
 _SECTIONS: list[_Section] = [
-    _Section("session",                  "/sessions",       True,  "session",        "sessions"),
     _Section("conversation",             "/conversations",  True,  "conversation",   "conversations"),
+    _Section("session",                  "/sessions",       True,  "session",        "sessions"),
     _Section("work_tickets",             "/work-tickets",   False, "work_ticket",    "work_tickets", _shape_work_ticket),
     _Section("planning_items",           "/planning-items", False, "planning_item",  "planning_items"),
     _Section("commits",                  "/commits",        False, "commit",         "commits",       _shape_commit),
