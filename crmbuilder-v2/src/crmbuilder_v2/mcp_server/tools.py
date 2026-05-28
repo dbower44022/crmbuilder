@@ -12,10 +12,37 @@ session SES-001 cover").
 
 from __future__ import annotations
 
+import inspect
+from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
 
 import httpx
 from mcp.server.fastmcp import FastMCP
+
+# Name-prefix → write classification (design §4). Consumed by the chat
+# tool dispatcher's mode toggle (Full / Read-only / Ask before write).
+_WRITE_PREFIXES = ("create_", "update_", "delete_", "add_", "replace_")
+
+
+def _is_write(name: str) -> bool:
+    return name.startswith(_WRITE_PREFIXES)
+
+
+@dataclass(frozen=True)
+class ToolDefinition:
+    """One governance tool: name, async callable, cleaned docstring, and
+    read/write classification.
+
+    The single source of truth shared by the MCP stdio/HTTP server
+    (:func:`register_tools`) and the chat UI's ``ChatToolDispatcher``
+    (Anthropic Messages API), so the two surfaces never drift.
+    """
+
+    name: str
+    func: Callable[..., Any]
+    description: str
+    is_write: bool
 
 
 async def _unwrap(response: httpx.Response) -> Any:
@@ -27,25 +54,28 @@ async def _unwrap(response: httpx.Response) -> Any:
     return body.get("data")
 
 
-def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
+def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
+    """Build the full governance tool surface bound to ``http``.
+
+    Each inner coroutine wraps one REST endpoint. The list returned here
+    is consumed both by :func:`register_tools` (FastMCP / Claude Desktop)
+    and by the chat UI dispatcher (Anthropic Messages API), so the two
+    surfaces stay in lock-step.
+    """
     # ---------- Charter ----------
 
-    @server.tool()
     async def get_current_charter() -> Any:
         """Return the current charter document (singleton, latest version)."""
         return await _unwrap(await http.get("/charter"))
 
-    @server.tool()
     async def get_charter_version(version: int) -> Any:
         """Return a specific historical charter version."""
         return await _unwrap(await http.get(f"/charter/versions/{version}"))
 
-    @server.tool()
     async def list_charter_versions() -> Any:
         """List all charter versions, newest first."""
         return await _unwrap(await http.get("/charter/versions"))
 
-    @server.tool()
     async def replace_charter(payload: dict) -> Any:
         """Replace the charter, creating a new version. Previous version becomes
         historical."""
@@ -53,39 +83,32 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
 
     # ---------- Status ----------
 
-    @server.tool()
     async def get_current_status() -> Any:
         """Return the current project status (singleton, latest version)."""
         return await _unwrap(await http.get("/status"))
 
-    @server.tool()
     async def get_status_version(version: int) -> Any:
         """Return a specific historical status version."""
         return await _unwrap(await http.get(f"/status/versions/{version}"))
 
-    @server.tool()
     async def list_status_versions() -> Any:
         """List all status versions, newest first."""
         return await _unwrap(await http.get("/status/versions"))
 
-    @server.tool()
     async def replace_status(payload: dict) -> Any:
         """Replace the status, creating a new version."""
         return await _unwrap(await http.put("/status", json={"payload": payload}))
 
     # ---------- Decisions ----------
 
-    @server.tool()
     async def get_decision(identifier: str) -> Any:
         """Return one decision record by its DEC-NNN identifier."""
         return await _unwrap(await http.get(f"/decisions/{identifier}"))
 
-    @server.tool()
     async def list_decisions() -> Any:
         """List all decisions in identifier order."""
         return await _unwrap(await http.get("/decisions"))
 
-    @server.tool()
     async def create_decision(
         identifier: str,
         title: str,
@@ -116,7 +139,6 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
         }
         return await _unwrap(await http.post("/decisions", json=body))
 
-    @server.tool()
     async def update_decision(
         identifier: str,
         title: str | None = None,
@@ -149,7 +171,6 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
         }
         return await _unwrap(await http.patch(f"/decisions/{identifier}", json=body))
 
-    @server.tool()
     async def delete_decision(identifier: str) -> Any:
         """Delete a decision record."""
         return await _unwrap(await http.delete(f"/decisions/{identifier}"))
@@ -162,12 +183,10 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
     # six-status lifecycle: planned, in_flight, complete, cancelled,
     # not_started, superseded. DEC-013's append-only rule is superseded.
 
-    @server.tool()
     async def get_session(identifier: str) -> Any:
         """Return one session record by its SES-NNN identifier."""
         return await _unwrap(await http.get(f"/sessions/{identifier}"))
 
-    @server.tool()
     async def list_sessions(
         status: str | None = None,
         medium: str | None = None,
@@ -189,7 +208,6 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
         }
         return await _unwrap(await http.get("/sessions", params=params or None))
 
-    @server.tool()
     async def list_recent_sessions(limit: int = 3) -> Any:
         """Return the most recent ``limit`` sessions (DEC-011 Tier 2 read).
         Default 3."""
@@ -197,7 +215,6 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
             await http.get("/orientation/recent-sessions", params={"limit": limit})
         )
 
-    @server.tool()
     async def create_session(
         title: str,
         description: str,
@@ -245,7 +262,6 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
         }
         return await _unwrap(await http.post("/sessions", json=body))
 
-    @server.tool()
     async def update_session(
         identifier: str,
         title: str | None = None,
@@ -284,12 +300,10 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
         }
         return await _unwrap(await http.patch(f"/sessions/{identifier}", json=body))
 
-    @server.tool()
     async def delete_session(identifier: str) -> Any:
         """Soft-delete a session record."""
         return await _unwrap(await http.delete(f"/sessions/{identifier}"))
 
-    @server.tool()
     async def list_conversations_for_session(identifier: str) -> Any:
         """List every conversation (topical sub-unit) belonging to a session.
 
@@ -300,7 +314,6 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
             await http.get(f"/sessions/{identifier}/conversations")
         )
 
-    @server.tool()
     async def list_decisions_for_session(identifier: str) -> Any:
         """List the decisions referenced by a given session (DEC-011 Tier 2)."""
         return await _unwrap(
@@ -313,12 +326,10 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
     # identifies sessions in the redesigned model). Six-status lifecycle:
     # planned, in_flight, complete, cancelled, not_started, superseded.
 
-    @server.tool()
     async def get_conversation(identifier: str) -> Any:
         """Return one conversation record by its CNV-NNN identifier."""
         return await _unwrap(await http.get(f"/conversations/{identifier}"))
 
-    @server.tool()
     async def list_conversations(
         status: str | None = None,
         session_identifier: str | None = None,
@@ -337,7 +348,6 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
             await http.get("/conversations", params=params or None)
         )
 
-    @server.tool()
     async def create_conversation(
         title: str,
         purpose: str,
@@ -373,7 +383,6 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
         }
         return await _unwrap(await http.post("/conversations", json=body))
 
-    @server.tool()
     async def update_conversation(
         identifier: str,
         title: str | None = None,
@@ -400,24 +409,20 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
             await http.patch(f"/conversations/{identifier}", json=body)
         )
 
-    @server.tool()
     async def delete_conversation(identifier: str) -> Any:
         """Soft-delete a conversation record."""
         return await _unwrap(await http.delete(f"/conversations/{identifier}"))
 
     # ---------- Risks ----------
 
-    @server.tool()
     async def get_risk(identifier: str) -> Any:
         """Return one risk record."""
         return await _unwrap(await http.get(f"/risks/{identifier}"))
 
-    @server.tool()
     async def list_risks() -> Any:
         """List all risks."""
         return await _unwrap(await http.get("/risks"))
 
-    @server.tool()
     async def create_risk(
         identifier: str,
         title: str,
@@ -444,7 +449,6 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
             )
         )
 
-    @server.tool()
     async def update_risk(
         identifier: str,
         title: str | None = None,
@@ -469,24 +473,20 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
         }
         return await _unwrap(await http.patch(f"/risks/{identifier}", json=body))
 
-    @server.tool()
     async def delete_risk(identifier: str) -> Any:
         """Delete a risk record."""
         return await _unwrap(await http.delete(f"/risks/{identifier}"))
 
     # ---------- Planning items ----------
 
-    @server.tool()
     async def get_planning_item(identifier: str) -> Any:
         """Return one planning item."""
         return await _unwrap(await http.get(f"/planning-items/{identifier}"))
 
-    @server.tool()
     async def list_planning_items() -> Any:
         """List all planning items."""
         return await _unwrap(await http.get("/planning-items"))
 
-    @server.tool()
     async def create_planning_item(
         identifier: str,
         title: str,
@@ -511,7 +511,6 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
             )
         )
 
-    @server.tool()
     async def update_planning_item(
         identifier: str,
         title: str | None = None,
@@ -536,24 +535,20 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
             await http.patch(f"/planning-items/{identifier}", json=body)
         )
 
-    @server.tool()
     async def delete_planning_item(identifier: str) -> Any:
         """Delete a planning item."""
         return await _unwrap(await http.delete(f"/planning-items/{identifier}"))
 
     # ---------- Topics ----------
 
-    @server.tool()
     async def get_topic(identifier: str) -> Any:
         """Return one topic."""
         return await _unwrap(await http.get(f"/topics/{identifier}"))
 
-    @server.tool()
     async def list_topics() -> Any:
         """List all topics."""
         return await _unwrap(await http.get("/topics"))
 
-    @server.tool()
     async def create_topic(
         identifier: str,
         name: str,
@@ -574,7 +569,6 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
             )
         )
 
-    @server.tool()
     async def update_topic(
         identifier: str,
         name: str | None = None,
@@ -591,19 +585,16 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
             body["parent_topic"] = parent_topic
         return await _unwrap(await http.patch(f"/topics/{identifier}", json=body))
 
-    @server.tool()
     async def delete_topic(identifier: str) -> Any:
         """Delete a topic."""
         return await _unwrap(await http.delete(f"/topics/{identifier}"))
 
     # ---------- References (DEC-006) ----------
 
-    @server.tool()
     async def list_references() -> Any:
         """List every reference in the database."""
         return await _unwrap(await http.get("/references"))
 
-    @server.tool()
     async def add_reference(
         source_type: str,
         source_id: str,
@@ -626,7 +617,6 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
             )
         )
 
-    @server.tool()
     async def delete_reference(
         source_type: str,
         source_id: str,
@@ -648,21 +638,18 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
             )
         )
 
-    @server.tool()
     async def list_references_from(source_type: str, source_id: str) -> Any:
         """All references where the given entity is the source."""
         return await _unwrap(
             await http.get(f"/references/from/{source_type}/{source_id}")
         )
 
-    @server.tool()
     async def list_references_to(target_type: str, target_id: str) -> Any:
         """All references where the given entity is the target."""
         return await _unwrap(
             await http.get(f"/references/to/{target_type}/{target_id}")
         )
 
-    @server.tool()
     async def list_references_touching(entity_type: str, entity_id: str) -> Any:
         """All references where the given entity is the source OR the target.
         Returns ``{"as_source": [...], "as_target": [...]}``."""
@@ -672,7 +659,6 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
 
     # ---------- Base entity catalog ----------
 
-    @server.tool()
     async def catalog_search(
         query: str,
         limit: int = 10,
@@ -694,7 +680,6 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
         }
         return await _unwrap(await http.get("/catalog/search", params=params))
 
-    @server.tool()
     async def catalog_get_entity(catalog_id: str) -> Any:
         """Return one catalog entity with all nested data (systems, attributes,
         relationships, sources, synonyms).
@@ -705,7 +690,6 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
         """
         return await _unwrap(await http.get(f"/catalog/entities/{catalog_id}"))
 
-    @server.tool()
     async def catalog_get_cross_system_map(
         catalog_id: str,
         target_system: str | None = None,
@@ -725,7 +709,6 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
             )
         return await _unwrap(await http.get(path))
 
-    @server.tool()
     async def catalog_gap_check(
         based_on_catalog_id: str,
         draft_attribute_names: list[str],
@@ -745,3 +728,81 @@ def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
             "min_systems": min_systems,
         }
         return await _unwrap(await http.post("/catalog/gap-check", json=body))
+
+    # Declaration-ordered surface. Adding a tool = define it above and
+    # append it here; both the MCP server and the chat dispatcher pick it
+    # up automatically.
+    funcs: list[Callable[..., Any]] = [
+        get_current_charter,
+        get_charter_version,
+        list_charter_versions,
+        replace_charter,
+        get_current_status,
+        get_status_version,
+        list_status_versions,
+        replace_status,
+        get_decision,
+        list_decisions,
+        create_decision,
+        update_decision,
+        delete_decision,
+        get_session,
+        list_sessions,
+        list_recent_sessions,
+        create_session,
+        update_session,
+        delete_session,
+        list_conversations_for_session,
+        list_decisions_for_session,
+        get_conversation,
+        list_conversations,
+        create_conversation,
+        update_conversation,
+        delete_conversation,
+        get_risk,
+        list_risks,
+        create_risk,
+        update_risk,
+        delete_risk,
+        get_planning_item,
+        list_planning_items,
+        create_planning_item,
+        update_planning_item,
+        delete_planning_item,
+        get_topic,
+        list_topics,
+        create_topic,
+        update_topic,
+        delete_topic,
+        list_references,
+        add_reference,
+        delete_reference,
+        list_references_from,
+        list_references_to,
+        list_references_touching,
+        catalog_search,
+        catalog_get_entity,
+        catalog_get_cross_system_map,
+        catalog_gap_check,
+    ]
+    return [
+        ToolDefinition(
+            name=f.__name__,
+            func=f,
+            description=inspect.getdoc(f) or "",
+            is_write=_is_write(f.__name__),
+        )
+        for f in funcs
+    ]
+
+
+def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
+    """Register the full tool surface with a FastMCP server (stdio / HTTP).
+
+    Iterates :func:`tool_definitions` so the MCP surface and the chat UI
+    dispatcher stay in lock-step. FastMCP introspects each callable's
+    signature to build the input schema, exactly as the prior
+    per-function ``@server.tool()`` decorators did.
+    """
+    for td in tool_definitions(http):
+        server.tool(name=td.name, description=td.description)(td.func)

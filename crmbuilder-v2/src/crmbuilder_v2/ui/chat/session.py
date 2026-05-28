@@ -26,6 +26,47 @@ from typing import Any
 
 DEFAULT_MODEL = "claude-opus-4-7"
 DEFAULT_MODE = "full"
+SCHEMA_VERSION = 1
+
+
+def _empty_usage() -> dict[str, int]:
+    return {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+    }
+
+
+def _parse_dt(value: Any) -> datetime:
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value)
+        except ValueError:
+            pass
+    return datetime.now(UTC)
+
+
+def _block_to_jsonable(block: Any) -> Any:
+    """Convert one message content block to a JSON-serializable dict.
+
+    Assistant turns store the SDK's content-block models (TextBlock,
+    ToolUseBlock); ``model_dump(mode="json", exclude_none=True)`` yields
+    a dict the Messages API accepts back verbatim. User-text strings and
+    already-dict tool_result blocks pass through unchanged.
+    """
+    if isinstance(block, dict) or isinstance(block, str):
+        return block
+    dump = getattr(block, "model_dump", None)
+    if callable(dump):
+        return dump(mode="json", exclude_none=True)
+    return block
+
+
+def _content_to_jsonable(content: Any) -> Any:
+    if isinstance(content, list):
+        return [_block_to_jsonable(b) for b in content]
+    return content
 
 
 @dataclass
@@ -44,10 +85,52 @@ class ChatSession:
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     messages: list[dict[str, Any]] = field(default_factory=list)
+    usage: dict[str, int] = field(default_factory=_empty_usage)
 
     def messages_for_api(self) -> list[dict[str, Any]]:
         """Return the message list in the format the SDK expects."""
         return self.messages
+
+    # ------------------------------------------------------------------
+    # Serialization (Slice C persistence)
+    # ------------------------------------------------------------------
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to the on-disk JSON shape (design §6 file format)."""
+        return {
+            "chat_id": self.chat_id,
+            "schema_version": SCHEMA_VERSION,
+            "title": self.title,
+            "model": self.model,
+            "mode": self.mode,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+            "messages": [
+                {"role": m["role"], "content": _content_to_jsonable(m["content"])}
+                for m in self.messages
+            ],
+            "usage": dict(self.usage),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ChatSession:
+        """Rebuild a session from its on-disk JSON shape."""
+        usage = _empty_usage()
+        usage.update(data.get("usage") or {})
+        return cls(
+            chat_id=data["chat_id"],
+            title=data.get("title", "New chat"),
+            model=data.get("model", DEFAULT_MODEL),
+            mode=data.get("mode", DEFAULT_MODE),
+            created_at=_parse_dt(data.get("created_at")),
+            updated_at=_parse_dt(data.get("updated_at")),
+            messages=data.get("messages", []),
+            usage=usage,
+        )
+
+    def is_persistable(self) -> bool:
+        """A session is worth writing to disk once it has any messages."""
+        return bool(self.messages)
 
     def append_user(self, text: str) -> None:
         """Append a plain user text turn."""

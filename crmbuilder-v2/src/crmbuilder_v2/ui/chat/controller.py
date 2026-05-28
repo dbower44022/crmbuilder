@@ -17,6 +17,7 @@ import logging
 
 from PySide6.QtCore import QObject, Signal
 
+from crmbuilder_v2.ui.chat import persistence
 from crmbuilder_v2.ui.chat.session import ChatSession
 from crmbuilder_v2.ui.chat.worker import ChatWorker
 
@@ -43,6 +44,8 @@ class ChatController(QObject):
     tool_started = Signal(str, str)
     tool_completed = Signal(str, str, str)
     tool_failed = Signal(str, str)
+    confirm_write_requested = Signal(str, str)
+    usage_updated = Signal(object)
     turn_state_changed = Signal(bool)
     turn_finished = Signal(str)
     turn_failed = Signal(str)
@@ -59,6 +62,44 @@ class ChatController(QObject):
     def in_turn(self) -> bool:
         return self._in_turn
 
+    @property
+    def session(self) -> ChatSession:
+        return self._session
+
+    def new_session(self) -> ChatSession:
+        """Persist the current session and switch to a fresh one."""
+        persistence.save(self._session)
+        self._session = ChatSession()
+        self.usage_updated.emit(dict(self._session.usage))
+        return self._session
+
+    def switch_to(self, chat_id: str) -> ChatSession | None:
+        """Persist the current session and load another by id."""
+        if chat_id == self._session.chat_id:
+            return self._session
+        persistence.save(self._session)
+        loaded = persistence.load(chat_id)
+        if loaded is None:
+            return None
+        self._session = loaded
+        self.usage_updated.emit(dict(self._session.usage))
+        return loaded
+
+    def set_model(self, model_id: str) -> None:
+        """Set the model used for the next turn (in-flight turns finish on
+        the previously-selected model, per DEC-260)."""
+        self._session.model = model_id
+
+    def set_mode(self, mode: str) -> None:
+        """Set the tool-exposure mode: ``full`` / ``read_only`` /
+        ``ask_before_write`` (DEC-255)."""
+        self._session.mode = mode
+
+    def resolve_confirm(self, allowed: bool) -> None:
+        """Answer a pending ask-before-write confirmation."""
+        if self._worker is not None:
+            self._worker.resolve_confirm(allowed)
+
     def set_api_key(self, api_key: str) -> None:
         """Create and start the worker for ``api_key``. Idempotent-ish:
         a prior worker is shut down first (used by the 401 re-prompt)."""
@@ -68,6 +109,8 @@ class ChatController(QObject):
         worker.tool_started.connect(self.tool_started)
         worker.tool_completed.connect(self.tool_completed)
         worker.tool_failed.connect(self.tool_failed)
+        worker.confirm_requested.connect(self.confirm_write_requested)
+        worker.usage_updated.connect(self._on_worker_usage)
         worker.turn_finished.connect(self._on_worker_turn_finished)
         worker.turn_failed.connect(self._on_worker_turn_failed)
         worker.auth_failed.connect(self.auth_failed)
@@ -85,7 +128,9 @@ class ChatController(QObject):
         self._session.append_user(text)
         self._set_in_turn(True)
         self._worker.start_turn(
-            list(self._session.messages_for_api()), self._session.model
+            list(self._session.messages_for_api()),
+            self._session.model,
+            self._session.mode,
         )
 
     def stop(self) -> None:
@@ -101,14 +146,21 @@ class ChatController(QObject):
     # Worker signal handlers
     # ------------------------------------------------------------------
 
+    def _on_worker_usage(self, usage: dict) -> None:
+        for key in self._session.usage:
+            self._session.usage[key] += int(usage.get(key, 0) or 0)
+        self.usage_updated.emit(dict(self._session.usage))
+
     def _on_worker_turn_finished(self, stop_reason: str, messages) -> None:
         self._session.replace_messages(messages)
         self._set_in_turn(False)
+        persistence.save(self._session)
         self.turn_finished.emit(stop_reason)
 
     def _on_worker_turn_failed(self, error: str, messages) -> None:
         self._session.replace_messages(messages)
         self._set_in_turn(False)
+        persistence.save(self._session)
         self.turn_failed.emit(error)
 
     # ------------------------------------------------------------------
