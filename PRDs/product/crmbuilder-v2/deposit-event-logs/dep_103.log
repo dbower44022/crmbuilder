@@ -1,0 +1,31 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_110.json
+Label:  SES-110 / CNV-012 close-out — concurrent-write-safety architecture, draft phase. Authors DEC-325 (SessionDraftToken: per-session capability token for draft-phase write authorization with rotation-on-handoff and reaper-on-expiry) and files PI-100 (the deferred follow-on conversation: concurrency on promoted records + storage-substrate validation at scale), with kickoff WT-056. No code shipped; design + governance records + next-conversation kickoff. Attaches to WS-012.
+Deposit event: DEP-103
+
+Close-out payload validation: 0 error(s), 2 warning(s).
+  [WARN]  identifier_heads: SES-110 is at-or-below the live head (SES head's next free slot is SES-111). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+  [WARN]  identifier_heads: CNV-012 is at-or-below the live head (CNV head's next free slot is CNV-013). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+
+=== conversation (1 record) ===
+  · POST conversation  CNV-012 already present (HTTP 409) — skipping
+
+=== session (1 record) ===
+  · POST session  <unidentified record> already present (HTTP 409) — skipping
+
+=== work_tickets (1 record) ===
+  ✓ POST work_tickets  WT-056 (HTTP 201)
+
+=== planning_items (1 record) ===
+  ✓ POST planning_items  PI-100 (HTTP 201)
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-325 (HTTP 201)
+
+=== references (2 records) ===
+  · POST references  DEC-325 decided_in CNV-012 already present (HTTP 409) — skipping
+  · POST references  WT-056 addresses PI-100 already present (HTTP 409) — skipping
+
+✓ All 7 operations complete.
+
+✓ Recorded apply as deposit_event DEP-103 (HTTP 201).

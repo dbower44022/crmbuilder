@@ -2257,5 +2257,56 @@
       "work_tickets": 0
     },
     "deposit_event_title": "Apply of COP-109, 2026-05-28T03:02:19+00:00"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "0.7.0",
+      "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_110.json",
+      "runner": "claude_code"
+    },
+    "deposit_event_created_at": "2026-05-28T04:05:12.483977",
+    "deposit_event_description": "Applied COP-110. Outcome: failure at step work_tickets. Records written before failure: 1 conversations.",
+    "deposit_event_error_info": {
+      "http_status": 422,
+      "kind": "http_error",
+      "message": "[{\"code\": \"invalid_value\", \"field\": \"work_ticket_status\", \"message\": \"must be one of ['cancelled', 'consumed', 'drafted', 'ready', 'superseded']\"}]",
+      "step": "work_tickets"
+    },
+    "deposit_event_identifier": "DEP-102",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_102.log",
+    "deposit_event_outcome": "failure",
+    "deposit_event_records_summary": {
+      "commits": 0,
+      "conversations": 1,
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 0,
+      "work_tickets": 0
+    },
+    "deposit_event_title": "Apply of COP-110, 2026-05-28T04:05:12+00:00"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "0.7.0",
+      "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_110.json",
+      "runner": "claude_code"
+    },
+    "deposit_event_created_at": "2026-05-28T04:11:22.813925",
+    "deposit_event_description": "Applied COP-110. Outcome: success. 1 decisions, 1 planning_items, 1 work_tickets.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-103",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_103.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "commits": 0,
+      "conversations": 0,
+      "decisions": 1,
+      "planning_items": 1,
+      "references": 0,
+      "sessions": 0,
+      "work_tickets": 1
+    },
+    "deposit_event_title": "Apply of COP-110, 2026-05-28T04:11:22+00:00"
   }
 ]

@@ -1,0 +1,23 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_110.json
+Label:  SES-110 / CNV-012 close-out — concurrent-write-safety architecture, draft phase. Authors DEC-325 (SessionDraftToken: per-session capability token for draft-phase write authorization with rotation-on-handoff and reaper-on-expiry) and files PI-100 (the deferred follow-on conversation: concurrency on promoted records + storage-substrate validation at scale), with kickoff WT-056. No code shipped; design + governance records + next-conversation kickoff. Attaches to WS-012.
+Deposit event: DEP-102
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-012 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== work_tickets (1 record) ===
+
+=== planning_items (1 record) ===
+
+=== decisions (1 record) ===
+
+=== references (2 records) ===
+  ✓ POST references  DEC-325 decided_in CNV-012 (HTTP 201)
+  ✓ POST references  WT-056 addresses PI-100 (HTTP 201)
+
+
+✓ Recorded apply as deposit_event DEP-102 (HTTP 201).

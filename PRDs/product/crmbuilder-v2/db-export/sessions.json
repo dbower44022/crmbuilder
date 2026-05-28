@@ -1946,5 +1946,34 @@
     "session_superseded_at": null,
     "session_title": "PI-090 implementation — apply-pipeline validator for close-out payloads",
     "session_updated_at": "2026-05-28T03:02:18.541271"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-28T04:05:11.651265",
+    "session_created_at": "2026-05-28T04:05:11.650990",
+    "session_deleted_at": null,
+    "session_description": "Single Claude.ai web (sandbox) conversation. CNV-012. Parent workstream WS-012 (Parallel agent orchestrator).\n\nTopics covered:\n\nSeed prompt: \"We need to address the ID collision problems being encountered in multiple do sessions lately.\"\n\n1. Diagnosed the recurring identifier collisions against the live codebase, not memory. Root cause: governance close-out payloads bake EXPLICIT identifiers (DEC-NNN, PI-NNN) chosen read-time against a possibly-stale snapshot, while the access layer already supports collision-safe server-assignment (next_prefixed_identifier + SAVEPOINT-retry). Confirmed the migration is half-done: sessions adopted server-assignment (~ses_099) but decisions/PIs still bake explicit IDs because the references section needs stable handles. Evidence of live collisions in the repo: ses_098_dogfood_phase2.PENDING_REKEY.json and ses_100.json both claim DEC-319..DEC-324; git history shows three recent re-key episodes (SES-095/096, 097/098, 098/100).\n\n2. Surfaced a companion correctness bug: apply_close_out.py treats HTTP 409 as \"already present - skipping\" and exits 0, so a genuine collision (same identifier, different content) is silently dropped rather than failing loudly.\n\n3. Doug set the governing design constraint: design the concurrency-safety solution WITHOUT regard to which tool can interact. Live participation is the admission rule - a client that cannot follow the rules does not get to write; we either fix the MCP path or use other tools.\n\n4. Confirmed transport reality: claude.ai-web via remote MCP connector is blocked upstream (DEC-244 / PI-045 / PI-049, the ofid_ OAuth token-exchange bug). A live tool-load attempt from this conversation returned only github tools, confirming the CRM Builder MCP is not reachable here. Live-capable surfaces today: Claude Desktop (stdio MCP) and the chat-UI client (PI-052, in build); browser claude.ai only once Anthropic ships the connector fix.\n\n5. Decomposed the architecture into three layers: (1) crash-safe correctness floor - server-assigned identifiers for creates plus a write-precondition for modifies - which never leaks state; (2) advisory coordination registry - the check-out / who-holds-what; (3) admission gate - governance writes require an open live-session context.\n\n6. Reframed drafts as the STAGING mechanism for long-lived, multi-record agent work on a short-transaction substrate: an agent accumulates a unit of work as short writes in draft, then promotes atomically or discards on abandonment. Established that draft records should be private to their owner - invisible and non-referenceable to peer agents, writable only by the owner plus a privileged lifecycle (reaper) role. The only legitimate non-owner writer is the reaper reclaiming an abandoned draft.\n\n7. DECISION (DEC-325): draft-phase write authorization via a per-session capability token, the SessionDraftToken. One token per session, minted at session open, stamped on each draft via a direct FK (draft_token_id) set atomically at create; every draft write must present the token; handoff is server-side token rotation (new secret) so the prior holder is locked out; the token expires to a reaper that reclaims abandoned drafts without it. Session-scope (not per-record), direct FK (not a references edge, per DEC-199), token excluded from all logged output (DEC-164 logs are git-tracked).\n\n8. Confirmed substrate facts in db.py: SQLite with serialized writers (BEGIN IMMEDIATE, busy_timeout=5000, isolation_level=None), no WAL, one DB file per engagement. Concurrency is therefore per-engagement: across engagements it scales horizontally for free; within one engagement everything funnels through a single serialized writer. Distinguished logical concurrency (many partitioned agents, short writes - SQLite survives) from throughput concurrency (sustained rate beyond one writer - SQLite does not).\n\n9. Deferred two open threads to a separate conversation (PI-100): concurrency control for PROMOTED (already-real) records once the token retires, and substrate validation at the target peak number of concurrent writers against a single engagement.\n\nIn flight at end:\n- The two deferred threads are captured in PI-100 with kickoff WT-056; nothing left dangling.\n- Complementary existing planning items under WS-012, noted but NOT duplicated: PI-077 (claimed_by / claimed_at on planning_items), PI-078 (identifier reservation API endpoint), PI-079 (orchestration ready-batches). DEC-325's SessionDraftToken is a distinct, complementary facet (draft-phase write authorization), not a replacement for any of these.\n- The 409-as-silent-skip correctness bug in apply_close_out.py was surfaced but not filed as its own PI this conversation; it belongs to the same concurrency-safety effort and should be picked up alongside PI-100 (noted in PI-100's description).",
+    "session_ended_at": null,
+    "session_executive_summary": "Designed the draft phase of a concurrent-write-safety model for the V2 governance database, prompted by recurring identifier collisions traced to explicit read-time identifier allocation in close-out payloads and an apply path that silently skips genuine collisions. Decided on a SessionDraftToken: one per-session capability token, stamped on each draft record, required to edit it, rotated on handoff so ownership transfers cleanly, and expiring to a cleanup process for abandoned work. Correctness rests on a crash-safe floor (server-assigned identifiers plus draft staging) so a lost token degrades coordination, not data integrity. Concurrency on promoted records and storage-substrate validation at target scale were deferred to a follow-on conversation (PI-100).",
+    "session_identifier": "SES-110",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "chat_platform": "claude_ai",
+      "model": "claude-opus-4-7",
+      "surface": "claude_ai_web_sandbox"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.7, claude.ai)"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "Concurrent-write-safety architecture (draft phase) — SessionDraftToken decided; promoted-record concurrency + substrate deferred",
+    "session_updated_at": "2026-05-28T04:05:11.651346"
   }
 ]

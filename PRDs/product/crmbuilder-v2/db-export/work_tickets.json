@@ -878,5 +878,21 @@
     "work_ticket_superseded_at": null,
     "work_ticket_title": "Kickoff: PI-052 Slice B — PySide6 chat tab MVP, one tool wired, streaming on, in-memory only",
     "work_ticket_updated_at": "2026-05-26T19:55:57.519578"
+  },
+  {
+    "work_ticket_cancelled_at": null,
+    "work_ticket_consumed_at": null,
+    "work_ticket_created_at": "2026-05-28T04:11:21.955032",
+    "work_ticket_deleted_at": null,
+    "work_ticket_description": "Kickoff prompt for the follow-on conversation deferred from CNV-012. Frames the two open threads (promoted-record modify-modify mechanism once the draft token retires; SQLite-per-engagement vs alternative store at the target peak concurrent-writer count) plus the companion apply_close_out 409-skip fix, carries forward the facts already established in CNV-012 so they are not re-derived, and sets ARCHITECTURE operating mode. Addresses PI-100.",
+    "work_ticket_file_path": "PRDs/product/crmbuilder-v2/kickoff-concurrency-promoted-records-and-substrate.md",
+    "work_ticket_identifier": "WT-056",
+    "work_ticket_kind": "kickoff_prompt",
+    "work_ticket_notes": null,
+    "work_ticket_ready_at": "2026-05-28T04:11:21.955509",
+    "work_ticket_status": "ready",
+    "work_ticket_superseded_at": null,
+    "work_ticket_title": "Kickoff — concurrency for promoted records + substrate validation at scale (opens against PI-100)",
+    "work_ticket_updated_at": "2026-05-28T04:11:21.955902"
   }
 ]
