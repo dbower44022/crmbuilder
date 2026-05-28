@@ -720,5 +720,24 @@
     "commit_session_id": "SES-107",
     "commit_sha": "9f042666e7434b267c112f2607cd660f55d4ce62",
     "commit_updated_at": "2026-05-28T02:22:09.189166"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-27T22:58:57-04:00",
+    "commit_created_at": "2026-05-28T03:02:18.840476",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 3,
+    "commit_identifier": "CM-0039",
+    "commit_message_first_line": "v2: PI-090 — apply-pipeline validator for close-out payloads (post-PI-073)",
+    "commit_message_full": "v2: PI-090 — apply-pipeline validator for close-out payloads (post-PI-073)\n\nAdds a close-out-payload validator that runs in apply_close_out.py\npre-flight, checking every payload against the governance recording\nrules BEFORE any record is POSTed. Catches violations early with\nactionable errors instead of partial applies that leave orphan records.\n\nThe PI body's check list predated PI-073; this implementation adapts\nto the current session/conversation model:\n\n- Decisions are decided_in a CONVERSATION (CNV-NNN), not a session.\n- Conversation parentage is conversation_belongs_to_session, not the\n  retired conversation_belongs_to_workstream / conversation_records_session.\n- Sessions have no session_date field; that check is dropped.\n\nHard-reject checks (block the apply, exit non-zero before any POST):\nrequired payload sections; session block shape + session_medium vocab\n(would have caught SES-101's session_medium='claude_code'); conversation\nblock shape + conversation_belongs_to_session edge presence (makes the\ncomplete_session_requires_conversation rule satisfiable); decision\nstatus enum with explicit Final rejection (SES-067 class); decision\ndecided_in->conversation back-reference; PI item_type=pending_work;\nwork_ticket_file_path presence; reference field-key 'relationship' not\n'relationship_kind' (SES-051/052 class); executive_summary 200-800\nlength (PI-074 rule, caught pre-flight).\n\nWarning checks (print, do not block): identifier-head conflicts — a\nwarning rather than a reject because legitimate idempotent re-applies\nreuse existing identifiers; true collisions are caught by the API 409.\n\nArchitecture: closeout_validator.py is a standalone module with a\nvalidate_payload(payload, api_base=None) entry point. Shape checks run\noffline; the head check needs the API. apply_close_out.py calls it\nafter the reachability check and before the section loop; a\n--skip-validation flag bypasses it for emergencies.\n\nValidated against the three most recent real payloads (ses_103,\nses_105, ses_107) — all pass with zero errors.\n\nEnforcement layer #4 from the SES-096 strategy (DEC-310 layered\ngovernance enforcement). Complements PI-099 (which fixed the specific\nsection-ordering bug) by catching the broader payload-shape class.\n\nFrom PI-090.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "dd48832595fbe55f2cdf648514914e4db8444ba2"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-109",
+    "commit_sha": "2ca6e6f70d868f6dec22ac1bfd63eff13cbe7891",
+    "commit_updated_at": "2026-05-28T03:02:18.840479"
   }
 ]

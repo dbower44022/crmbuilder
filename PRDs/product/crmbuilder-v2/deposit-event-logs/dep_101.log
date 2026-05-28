@@ -1,0 +1,20 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_109.json
+Label:  PI-090 implementation — apply-pipeline validator for close-out payloads. Single autonomous sub-agent run. Builds closeout_validator.py: 9 hard-reject shape checks + 1 head-conflict warning, adapted from the PI body's pre-PI-073 check list to the current session/conversation model (decisions decided_in conversations not sessions; conversation_belongs_to_session parentage; no session_date). Wired into apply_close_out.py pre-flight after the reachability check. 46 validator tests pass; ses_103/105/107 validate clean; the SES-101 session_medium='claude_code' case is now caught with a fix-pointing message. Meta-validation: THIS close-out's own apply is the first to run through PI-090's validator.
+Deposit event: DEP-101
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-011 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-090 (HTTP 201)
+
+✓ All 4 operations complete.
+
+✓ Recorded apply as deposit_event DEP-101 (HTTP 201).
