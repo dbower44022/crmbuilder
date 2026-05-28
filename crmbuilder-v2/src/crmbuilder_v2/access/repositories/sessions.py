@@ -232,6 +232,7 @@ def _new_row(
     ended_at: datetime | None,
     participants: list,
     medium_metadata: dict,
+    executive_summary: str | None,
 ) -> SessionModel:
     return SessionModel(
         session_identifier=identifier,
@@ -245,6 +246,7 @@ def _new_row(
         session_ended_at=ended_at,
         session_participants=participants,
         session_medium_metadata=medium_metadata,
+        session_executive_summary=executive_summary,
     )
 
 
@@ -260,6 +262,7 @@ def _insert_with_autoassign(
     ended_at: datetime | None,
     participants: list,
     medium_metadata: dict,
+    executive_summary: str | None,
 ) -> SessionModel:
     candidate = next_session_identifier(session)
     last_error: IntegrityError | None = None
@@ -277,6 +280,7 @@ def _insert_with_autoassign(
             ended_at,
             participants,
             medium_metadata,
+            executive_summary,
         )
         session.add(row)
         try:
@@ -345,6 +349,7 @@ def create_session(
     ended_at: object = None,
     participants: object = None,
     medium_metadata: object = None,
+    executive_summary: str | None = None,
     identifier: str | None = None,
     references: list[dict] | None = None,
     timestamps: dict | None = None,
@@ -394,6 +399,7 @@ def create_session(
             ended_at_dt,
             participants_list,
             medium_metadata_dict,
+            executive_summary,
         )
     else:
         row = _new_row(
@@ -408,6 +414,7 @@ def create_session(
             ended_at_dt,
             participants_list,
             medium_metadata_dict,
+            executive_summary,
         )
         session.add(row)
         session.flush()
@@ -447,6 +454,7 @@ def update_session(
     ended_at: object = None,
     participants: object = None,
     medium_metadata: object = None,
+    executive_summary: str | None = None,
     references: list[dict] | None = None,
 ) -> dict:
     row = _get_row(session, identifier)
@@ -487,6 +495,7 @@ def update_session(
     row.session_ended_at = _coerce_datetime_optional(ended_at, "session_ended_at")
     row.session_participants = _coerce_participants(participants)
     row.session_medium_metadata = _coerce_medium_metadata(medium_metadata)
+    row.session_executive_summary = executive_summary
     session.flush()
     _validate_edges(session, identifier, row.session_status)
 

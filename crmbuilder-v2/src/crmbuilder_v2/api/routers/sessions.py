@@ -87,6 +87,7 @@ def create(body: SessionCreateIn):
                 ended_at=body.session_ended_at,
                 participants=body.session_participants,
                 medium_metadata=body.session_medium_metadata,
+                executive_summary=body.session_executive_summary,
                 identifier=body.session_identifier,
                 references=_edges(body),
                 timestamps=body.timestamps,
@@ -112,6 +113,7 @@ def replace(identifier: str, body: SessionReplaceIn):
                 ended_at=body.session_ended_at,
                 participants=body.session_participants,
                 medium_metadata=body.session_medium_metadata,
+                executive_summary=body.session_executive_summary,
                 references=_edges(body),
             )
         )

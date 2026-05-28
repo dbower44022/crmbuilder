@@ -1808,7 +1808,7 @@
     "session_deleted_at": null,
     "session_description": "Single Claude Code orchestration session. Doug picked PI-018 as the next autonomous-ready PI after the second orchestrator run (SES-103) closed. PI-018 had been held out of the SES-103 batch only because it touched the same config_loader.py as PI-019; with PI-019 landed, PI-018 ran clean as a singleton.\n\n---\n\nTopics covered:\n\nSeed prompt: \"lets knock out pi-018\"\n\n1. Pre-flight: pulled origin/main (already up to date), confirmed API healthy, read PI-018 body from the live API, verified the line references in the PI body had drifted (cited 72, 260, 280, 2143; actual 84, 260, 280, 2753) and noted this for the sub-agent. Confirmed next session identifier SES-105, next conversation CNV-007.\n\n2. Scope analysis: PI-018 has seven steps in its body. Step 7 (update CBM repo YAML files) is out of scope for the autonomous run because the CBM repo is a separate repository under different ownership; flagged as deferred for a CBM-repo follow-on session. Step 5's live-EspoCRM end-to-end deploy verification is also out of scope because no live EspoCRM is available in autonomous mode; sub-agent told to rely on unit + integration tests against fixtures and to xfail any tests that genuinely need a live round-trip.\n\n3. Dispatched a single general-purpose sub-agent with the explicit in-scope / out-of-scope split, drifted-line-number warning, and technique guidance on the LINK_TYPE_TO_METADATA restructure (two viable shapes — (a) two-key mapping or (b) inline conditional — with criteria for choosing).\n\n4. Sub-agent returned commit 122a9ac. Chose option (b) (inline conditional in _compare_link) because LINK_TYPE_TO_METADATA is consulted in exactly one location and restructuring would have scattered logic for zero expressive gain. Introduced a small ONE_TO_ONE_METADATA_TYPES = frozenset({\"hasOne\", \"belongsTo\"}) at module top to keep the asymmetric vocabulary explicit.\n\n5. Sub-agent also did not modify _build_payload — confirmed it already passes the YAML linkType string verbatim, which EspoCRM's createLink endpoint accepts for oneToOne in current versions per the PI body's claim.\n\n6. Soft-warning channel for the relationName-on-oneToOne case: chose program.condition_warnings (existing diagnostic infrastructure) over inventing a separate relationship_warnings list. Pre-existing YAML with a stray relationName on oneToOne still deploys; only the diagnostic surfaces.\n\n7. EspoCRM doesn't expose a YAML-level way to pick which side becomes hasOne vs belongsTo — the engine decides at createLink time. Documented this in app-yaml-schema.md Section 8.2 notes rather than inventing an owning-side YAML flag that would have been redundant with EspoCRM's behavior.\n\n8. Schema doc bumped 1.3 → 1.3.1 (point release for a small additive change, not a minor-version bump).\n\n9. Test verification: targeted run (-k \"relationship or link or one_to_one\") shows 34 passed including all 7 new tests. Full suite shows 3054 passed / 149 failed — all 149 failures are pre-existing on main (verified by stashing PI-018 changes and reproducing one of them independently); the v2 / DB / UI failures are infrastructure issues mentioned obliquely in CLAUDE.md and unrelated to v1 YAML schema work.\n\n---\n\nIn flight at end:\n\n- CBM repo follow-on (PI-018 step 7): update ~/Dropbox/Projects/ClevelandBusinessMentors/programs/MN-Partner-TEST.yaml and MN-Sponsor-TEST.yaml to use linkType: oneToOne and drop the manyToOne + manual-uniqueness workaround. Worth filing as its own PI against the CBM repo rather than re-opening PI-018.\n- Live EspoCRM end-to-end verification: deploy the updated MN-Partner-TEST.yaml against a fresh EspoCRM and confirm Account.partnerProfile is a single-record link (not a list panel), attempting to link a second PartnerProfile to the same Account is rejected by EspoCRM at the schema level, and deleting the linked PartnerProfile clears the link on Account. Couples naturally with the CBM follow-on above.\n- 60 Open PIs remain deferred for user input, plus the freshly-added PI-094/095 from SES-100 and PI-097/098 from SES-104 (if those weren't resolved by the parallel session's backfill — verify next session).",
     "session_ended_at": null,
-    "session_executive_summary": null,
+    "session_executive_summary": "Single Claude Code orchestration session. Doug picked PI-018 as the next autonomous-ready PI after the second orchestrator run (SES-103) closed. Pre-flight: pulled origin/main (already up to date), confirmed API healthy, read PI-018 body from the live API, verified the line references in the PI body had drifted (cited 72, 260, 280, 2143; actual 84, 260, 280, 2753) and noted this for the sub-agent. Confirmed next session identifier SES-105, next conversation CNV-007. 2.",
     "session_identifier": "SES-105",
     "session_in_flight_at": null,
     "session_medium": "chat",
@@ -1829,7 +1829,7 @@
     "session_status": "complete",
     "session_superseded_at": null,
     "session_title": "PI-018 implementation — oneToOne YAML link-type support",
-    "session_updated_at": "2026-05-27T23:11:54.179460"
+    "session_updated_at": "2026-05-28T02:25:56.393135"
   },
   {
     "session_cancelled_at": null,
@@ -1838,7 +1838,7 @@
     "session_deleted_at": null,
     "session_description": "Brief Claude Code session at Doug's terminal. Doug reviewed the heuristic-generated executive_summary content from the SES-102 (planning_items backfill, 96 PIs) and SES-104 (decisions + sessions backfill, 309 + 74 records) runs. Verdict: acceptable as-is, no edits needed. This session closes the loop on the three backfill PIs.",
     "session_ended_at": null,
-    "session_executive_summary": null,
+    "session_executive_summary": "Brief Claude Code session at Doug's terminal. Doug reviewed the heuristic-generated executive_summary content from the SES-102 (planning_items backfill, 96 PIs) and SES-104 (decisions + sessions backfill, 309 + 74 records) runs. Verdict: acceptable as-is, no edits needed. This session closes the loop on the three backfill PIs.",
     "session_identifier": "SES-106",
     "session_in_flight_at": "2026-05-28T02:15:54.687908",
     "session_medium": "chat",
@@ -1856,7 +1856,7 @@
     "session_status": "complete",
     "session_superseded_at": null,
     "session_title": "Resolve PI-096 + PI-097 + PI-098 — Doug reviewed and accepted the 481 backfilled executive_summary values",
-    "session_updated_at": "2026-05-28T02:16:09.507393"
+    "session_updated_at": "2026-05-28T02:25:56.681621"
   },
   {
     "session_cancelled_at": null,
@@ -1865,7 +1865,7 @@
     "session_deleted_at": null,
     "session_description": "Single Claude Code session. Doug's prompt after the SES-105 PI-018 close-out: 'lets file the apply_close_out ordering issue as a PI then knock it out.' Both halves done in this session: PI-099 authored AND resolved.\n\n---\n\nTopics covered:\n\nSeed prompt: \"yes\" (continuing from the prior turn's offer to file and fix the apply_close_out ordering issue).\n\n1. Surveyed apply_close_out.py to locate _SECTIONS (lines ~241-251). Confirmed current order: session, conversation, work_tickets, planning_items, commits, decisions, references, resolves_planning_items, addresses_planning_items. The session entry runs FIRST.\n\n2. Traced the failure mode: post-PI-073 / DEC-314 introduced the complete_session_requires_conversation validation rule — a session in complete status requires at least one inbound conversation_belongs_to_session edge at create-validation time. Apply_close_out POSTs the session before the conversation, so the inbound edge doesn't exist yet, and the session creation 422s.\n\n3. Reviewed context-population (lines 580-592): context['session_identifier'] and context['conversation_identifier'] are read from payload data BEFORE the section loop, not from POST responses. So shape helpers that read those (commits' _shape_commit; resolves' _shape_resolves_pi; addresses' _shape_addresses_pi) work regardless of section order.\n\n4. Reviewed the existing _inline_membership_edges hoisting (lines ~605-612): a prior fix hoists session_belongs_to_workstream into the session block's inline references and conversation_belongs_to_session into the conversation block's inline references so the access layer sees the membership edge at create-validation time. The hoisting handles outbound edges; the current bug is on the inbound edge side (session needs to see the inbound edge from the conversation, but the conversation hasn't been POSTed yet).\n\n5. Dispatched a single sub-agent with the technical scope (swap _SECTIONS[0] and _SECTIONS[1]; update the docstring's order diagram; add tests covering single-pass apply). Brief explicitly noted the empirical evidence — three first-apply failures in 24 hours — and the safe-because-X reasoning (conversation creation tolerates a not-yet-existent target).\n\n6. Sub-agent returned commit 9f04266. Verified the conversation access layer at conversations.py:115 has the explicit comment 'there is no complete-requires-session-edge rule' — the membership IS the session linkage and runs from create, but the target session row is NOT required to exist for the conversation POST. Confirms the swap is safe.\n\n7. Agent also surfaced four other inbound-edge requirements in the broader access layer (close_out_payloads.py:105 payload_requires_producing_conversation_edge; close_out_payloads.py:150 applied_payload_requires_successful_deposit_event_edge; work_tickets.py:102 consumed_work_ticket_requires_consumption_edge; deposit_events.py:213 deposit_event_requires_applies_close_out_payload_edge). None are tripping current close-outs because they're handled by lazy-create paths or atomic POSTs at apply time. Noted for a future apply-pipeline-validator PI (likely a PI-090 expansion or sibling) but out of scope for PI-099.\n\n8. Tests added in test_apply_close_out.py: TestPI099SectionOrdering with two tests — section-order assertion and a single-pass-apply test that authors a minimal payload (new-shape session_identifier/session_title/session_description/session_medium fields) and verifies the session lands in complete status without needing a retry. Both pass. Pre-existing 15 failures in the file remain (all PI-073-schema-mismatch — payloads use legacy identifier/title/topics_covered shape) but were verified non-regressing.\n\n9. Authoring this close-out as the meta-validation. The expectation: SES-107's own apply succeeds in ONE pass (no DEP retry pattern) because PI-099's fix is now active. The actual deposit_event sequence will be DEP-NNN single instead of DEP-NNN-failed plus DEP-(NNN+1)-success.\n\n---\n\nIn flight at end:\n\n- The four other inbound-edge requirements surfaced by the agent (close_out_payloads payload_requires_producing_conversation_edge; close_out_payloads applied_payload_requires_successful_deposit_event_edge; work_tickets consumed_work_ticket_requires_consumption_edge; deposit_events deposit_event_requires_applies_close_out_payload_edge) — none breaking today, structurally identical pattern. PI-090 (apply-pipeline validator) would catch ordering violations at pre-flight; a sibling PI could fix any future occurrences by either making the rules tolerant-of-deferred-edge-presence or by atomic-batch POSTing the linked records.\n- Sibling parallel session SES-106 landed during my agent's work (resolved PI-096 / PI-097 / PI-098 — the executive_summary backfill review pass). My SES-107 reservation re-keyed from SES-106 to SES-107, CNV-008 to CNV-009; PI-099 head unaffected.",
     "session_ended_at": null,
-    "session_executive_summary": null,
+    "session_executive_summary": "Single Claude Code session. Doug's prompt after the SES-105 PI-018 close-out: 'lets file the apply_close_out ordering issue as a PI then knock it out.' Both halves done in this session: PI-099 authored AND resolved. --- Topics covered: Seed prompt: \"yes\" (continuing from the prior turn's offer to file and fix the apply_close_out ordering issue). 1. Surveyed apply_close_out.py to locate _SECTIONS (lines ~241-251). Confirmed current order: session, conversation, work_tickets, planning_items, commits, decisions, references, resolves_planning_items, addresses_planning_items.",
     "session_identifier": "SES-107",
     "session_in_flight_at": null,
     "session_medium": "chat",
@@ -1887,6 +1887,33 @@
     "session_status": "complete",
     "session_superseded_at": null,
     "session_title": "PI-099 — fix apply_close_out section ordering; meta-validation via this session's own one-pass apply",
-    "session_updated_at": "2026-05-28T02:22:08.903483"
+    "session_updated_at": "2026-05-28T02:25:56.976439"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-28T02:33:33.546605",
+    "session_created_at": "2026-05-28T02:33:33.546181",
+    "session_deleted_at": null,
+    "session_description": "Brief Claude Code session at Doug's terminal. PI-075 scoped both the backfill (delivered via PI-096/097/098, resolved at SES-106) and the NOT NULL tightening. With every live row populated, the constraint switch is safe. Alembic migration 0023 applied cleanly; smoke-test confirmed too-short PATCH rejected and null PATCH no-op semantic.",
+    "session_ended_at": null,
+    "session_executive_summary": "Brief Claude Code session that resolves PI-075 by applying alembic migration 0023 to tighten executive_summary to NOT NULL on planning_items, decisions, and sessions. PI-075 was scoped at PI-074 authoring time to cover both the row-level backfill and the constraint tightening; the backfill was delivered via PI-096/097/098 and accepted by Doug at SES-106. Trailing soft-deleted DEC-312 backfilled inline at session start. The migration applied cleanly; smoke-test confirmed the NOT NULL constraint and length CHECK both fire as expected.",
+    "session_identifier": "SES-108",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "chat_platform": "claude_code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude Code"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "Resolve PI-075 — tighten executive_summary to NOT NULL via alembic migration 0023",
+    "session_updated_at": "2026-05-28T02:33:33.547191"
   }
 ]

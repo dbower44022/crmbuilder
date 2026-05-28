@@ -1,0 +1,52 @@
+{
+  "label": "PI-075 — tighten executive_summary to NOT NULL on planning_items, decisions, sessions. PI-074 deferred the NOT NULL pending row-level backfill; PI-096/097/098 (resolved at SES-106) delivered the backfill content; this session tightens the column constraint. Alembic migration 0023 adds NOT NULL and replaces the IS NULL OR ... CHECK with a stricter length-only form. Trailing soft-deleted DEC-312 backfilled inline before the migration runs so no row violates the new constraint. Conversations table not tightened (separate from PI-075 scope).",
+
+  "session": {
+    "session_identifier": "SES-108",
+    "session_title": "Resolve PI-075 — tighten executive_summary to NOT NULL via alembic migration 0023",
+    "session_description": "Brief Claude Code session at Doug's terminal. PI-075 scoped both the backfill (delivered via PI-096/097/098, resolved at SES-106) and the NOT NULL tightening. With every live row populated (98 PIs, 309 live decisions, 74 sessions) plus the trailing soft-deleted DEC-312 backfilled inline at this session's start, the constraint switch is safe. Alembic migration 0023_pi_075_executive_summary_not_null applied cleanly against main's CRMBUILDER.db; smoke-test confirmed: too-short PATCH (9 chars) rejected with invalid_length, null PATCH a no-op (PATCH semantic — null means leave alone, not blank to null). Conversations table not tightened; its conversation_executive_summary field carries NULLs from PI-073's migration (legacy SES-NNN rows that became conversations didn't all have executive_summary content), and PI-075's original scope predates the redesigned conversation entity — separate work item.",
+    "session_medium": "chat",
+    "session_status": "in_flight",
+    "session_medium_metadata": {"chat_platform": "claude_code"},
+    "session_participants": ["Doug Bower", "Claude Code"],
+    "references": [
+      {
+        "source_type": "session",
+        "source_id": "SES-108",
+        "target_type": "workstream",
+        "target_id": "WS-011",
+        "relationship": "session_belongs_to_workstream"
+      }
+    ]
+  },
+
+  "conversation": {
+    "conversation_identifier": "CNV-010",
+    "conversation_title": "Resolve PI-075 — NOT NULL tightening on executive_summary",
+    "conversation_purpose": "Author and apply the alembic migration that tightens executive_summary to NOT NULL, then resolve PI-075.",
+    "conversation_description": "Conversation that authors migration 0023, applies it to main's CRMBUILDER.db, smoke-tests the new constraints, and resolves PI-075 via the close-out's resolves_planning_items section. Pre-migration check found 4 NULLs (DEC-312 soft-deleted; SES-105, SES-106, SES-107 recent sessions) — all backfilled inline via existing scripts (sessions) and a direct PATCH (DEC-312) before the migration ran.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-010",
+        "target_type": "session",
+        "target_id": "SES-108",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+
+  "work_tickets": [],
+  "commits": [],
+  "decisions": [],
+  "planning_items": [],
+
+  "references": [],
+
+  "resolves_planning_items": [
+    {"planning_item_identifier": "PI-075"}
+  ],
+
+  "addresses_planning_items": []
+}

@@ -2178,5 +2178,61 @@
       "work_tickets": 0
     },
     "deposit_event_title": "Apply of COP-107, 2026-05-28T02:22:47+00:00"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "0.7.0",
+      "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_108.json",
+      "runner": "claude_code"
+    },
+    "deposit_event_created_at": "2026-05-28T02:28:31.473422",
+    "deposit_event_description": "Applied COP-108. Outcome: failure at step session. Records written before failure: 1 conversations.",
+    "deposit_event_error_info": {
+      "http_status": 500,
+      "kind": "http_error",
+      "message": "{'raw': 'Internal Server Error'}",
+      "step": "session"
+    },
+    "deposit_event_identifier": "DEP-099",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_099.log",
+    "deposit_event_outcome": "failure",
+    "deposit_event_records_summary": {
+      "commits": 0,
+      "conversations": 1,
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 0,
+      "work_tickets": 0
+    },
+    "deposit_event_title": "Apply of COP-108, 2026-05-28T02:28:31+00:00"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "0.7.0",
+      "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_108.json",
+      "runner": "claude_code"
+    },
+    "deposit_event_created_at": "2026-05-28T02:28:40.980923",
+    "deposit_event_description": "Applied COP-108. Outcome: failure at step session. Records written before failure: no records written.",
+    "deposit_event_error_info": {
+      "http_status": 500,
+      "kind": "http_error",
+      "message": "{'raw': 'Internal Server Error'}",
+      "step": "session"
+    },
+    "deposit_event_identifier": "DEP-100",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_100.log",
+    "deposit_event_outcome": "failure",
+    "deposit_event_records_summary": {
+      "commits": 0,
+      "conversations": 0,
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 0,
+      "work_tickets": 0
+    },
+    "deposit_event_title": "Apply of COP-108, 2026-05-28T02:28:40+00:00"
   }
 ]

@@ -1,0 +1,15 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_108.json
+Label:  PI-075 — tighten executive_summary to NOT NULL on planning_items, decisions, sessions. PI-074 deferred the NOT NULL pending row-level backfill; PI-096/097/098 (resolved at SES-106) delivered the backfill content; this session tightens the column constraint. Alembic migration 0023 adds NOT NULL and replaces the IS NULL OR ... CHECK with a stricter length-only form. Trailing soft-deleted DEC-312 backfilled inline before the migration runs so no row violates the new constraint. Conversations table not tightened (separate from PI-075 scope).
+Deposit event: DEP-099
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-010 (HTTP 201)
+
+=== session (1 record) ===
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-075 (HTTP 201)
+
+
+✓ Recorded apply as deposit_event DEP-099 (HTTP 201).
