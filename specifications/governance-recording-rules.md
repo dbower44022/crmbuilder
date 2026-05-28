@@ -69,7 +69,7 @@ A canonical kickoff prompt template that bakes these in by default is a follow-o
 
 **When created.** The session record is initialized at session start (the opening of the Claude.ai chat, Claude Code execution, etc.) and finalized at close-out. Pre-PI-073 schema: the SES record is authored at close-out time bundled into the close-out payload. Post-PI-073 schema: the session record is created via API at session open and updated as conversations complete; close-out finalizes status and bundles outputs. Both pre and post, the bundle-in-payload mechanism remains operative for the close-out moment — not via a desktop New Session dialog.
 
-**Required fields.** `identifier` (SES-NNN), `title`, `session_date`, `status` (only `Complete` is emitted at close-out), `conversation_reference` (descriptive text fallback — partially superseded once `conversation` is a first-class entity per PI-073), `topics_covered`, `artifacts_produced`, `in_flight_at_end`, `summary`.
+**Required fields.** `identifier` (SES-NNN), `title`, `session_date`, `status` (only `complete` is emitted at close-out — **lowercase**), `session_executive_summary` (**required**: NOT NULL, 200–800 chars, post-PI-075), `conversation_reference` (descriptive text fallback — partially superseded once `conversation` is a first-class entity per PI-073), `topics_covered`, `artifacts_produced`, `in_flight_at_end`, `summary`.
 
 **`topics_covered` opens with the verbatim seed prompt** rendered as:
 ```
@@ -142,7 +142,7 @@ Unclear cases get clarified, not assumed. The cost of asking is one turn; the co
 
 **Prose-vs-PI rule.** If the work is sufficiently routine that it will be executed in the same session, it stays in prose (the session summary captures it). If the work crosses a session boundary, it gets a PI. The fail mode is "captured only in `consequences` or `in_flight_at_end`" — that pattern means the work is invisible to backlog views and is forbidden. Every cross-session work item gets its own PI.
 
-**Required fields.** `identifier` (PI-NNN), `title`, `description`, `item_type`, `status` (initial: typically `Open` or `Planning`).
+**Required fields.** `identifier` (PI-NNN), `title`, `description`, `item_type`, `status` (initial: typically `Open` or `Planning`), `executive_summary` (**required**: NOT NULL, 200–800 chars, post-PI-075).
 
 **`item_type` values.** The universal value accepted across the apply path is `pending_work`. The CRMBUILDER engagement requires `item_type: "pending_work"` on every PI in a close-out payload — without it the apply errors with HTTP 422 (SES-069 precedent: PI-048 first apply 422'd). Other `item_type` values may exist for engagement-specific use, but `pending_work` is the safe default and the required value for close-out apply.
 
@@ -170,7 +170,7 @@ Unclear cases get clarified, not assumed. The cost of asking is one turn; the co
 
 **`work_ticket_file_path` is always required**, including for `work_ticket_kind: 'other'`. The PI-025 backfill rejected six `wt_kind='other'` records that omitted the field. For backfilled or path-less tickets, use a placeholder path (e.g., `n/a`) or an empty string — never omit the key. The work_ticket.md spec's "omits path-existence validation" language refers to whether the value points to a real file on disk, not to whether the field is required in the record.
 
-**Lifecycle.** `Ready` → `Consumed` (when the work has been picked up and executed) → terminal. Other states: `Cancelled`, `Superseded`, `Deleted`.
+**Lifecycle (lowercase enum).** `drafted` → `ready` → `consumed` → terminal. Terminal states: `cancelled`, `superseded` (soft-delete is separate). The wire values are **lowercase** (`vocab.py`: `{drafted, ready, consumed, cancelled, superseded}`); a kickoff_prompt WT is typically authored directly in `ready`. Emitting a capitalized value (`Ready`, `Consumed`, …) fails apply with 422.
 
 ---
 
@@ -238,6 +238,10 @@ A short catalog of patterns that produce broken governance records and how to av
 **`item_type` omitted on Planning Item.** PI emitted to close-out payload without `item_type: "pending_work"` 422s on apply (SES-069 / PI-048). Mitigation: every PI in a close-out payload carries `item_type: "pending_work"` unless an engagement-specific value applies.
 
 **`work_ticket_file_path` omitted on WT of kind `'other'`.** Rejected at access layer; the field is required for every WT regardless of kind (PI-025 backfill Stage C). Mitigation: use a placeholder path or empty string, never omit the key.
+
+**`executive_summary` omitted on a decision, planning item, or session.** Post-PI-075 the column is NOT NULL with a 200–800 char CHECK on `decisions`, `planning_items`, and `sessions`. Omitting it fails apply with HTTP 500 (SES-110 precedent: the decision and PI in ses_110.json both 500'd). Mitigation: every decision and planning item carries an `executive_summary`, and every session a `session_executive_summary`, of 200–800 chars authored from the record's own content. Note the trap for close-out authors mirroring older payloads (ses_104, ses_107): those predate PI-075 and carry no decision/PI `executive_summary`, so they are stale templates for this field.
+
+**Status value emitted capitalized.** All status enums are lowercase on the wire — `work_ticket`: `drafted`/`ready`/`consumed`/`cancelled`/`superseded`; `session`: `complete`; etc. A capitalized value (`Ready`, `Complete`, …) fails apply with HTTP 422 (SES-110 precedent: `work_ticket_status: "Ready"` 422'd). Mitigation: emit lowercase. The display-case in §3/§8 prose is descriptive; the wire value is lowercase.
 
 ---
 
