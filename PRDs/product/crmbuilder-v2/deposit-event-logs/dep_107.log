@@ -1,0 +1,28 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_115.json
+Label:  SES-115 / CNV-017 close-out — PI-102: reconcile executive_summary nullability across the SQLAlchemy models and the live database (commit 73e4f08). Authors DEC-330 (full-stack reconcile, no new migration). Resolves PI-102. Attaches to WS-012.
+Deposit event: DEP-107
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-017 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-330 (HTTP 201)
+
+=== references (3 records) ===
+  ✓ POST references  DEC-330 decided_in CNV-017 (HTTP 201)
+  ✓ POST references  DEC-330 is_about PI-102 (HTTP 201)
+  ✓ POST references  CNV-017 conversation_belongs_to_workstream WS-012 (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-102 (HTTP 201)
+
+✓ All 8 operations complete.
+
+✓ Recorded apply as deposit_event DEP-107 (HTTP 201).
