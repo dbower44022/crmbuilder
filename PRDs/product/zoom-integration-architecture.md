@@ -2,7 +2,9 @@
 
 **CRM Builder — Zoom Webinar Platform Integration**
 
-Last Updated: 04-30-26 17:00
+> **Product-neutral PRD reference.** Level 1 and Level 2 Product Requirements Documents reference this document by the product-neutral title **Virtual Meeting Platform Integration Architecture**. This document is the Zoom connector realization of that integration; future connectors (for example, Google Meet or Zoom Meetings) will be documented as parallel architecture documents on the shared Bridge Service (see `survey-integration-architecture.md` Section 4). Product names are intentional here, as this is implementation documentation.
+
+Last Updated: 05-29-26 14:00
 
 ---
 
@@ -10,10 +12,12 @@ Last Updated: 04-30-26 17:00
 
 | Version | Date | Author | Summary |
 |---|---|---|---|
+| 1.1 | 05-29-26 14:00 | Doug Bower | Added the product-neutral PRD-reference alias note in the header (see above). Product-neutral PRDs cite this document as the Virtual Meeting Platform Integration Architecture. No architectural content changed. |
 | 1.0 | 04-30-26 17:00 | Doug Bower | Initial draft. Defines bidirectional integration between EspoCRM Events and Zoom Webinars, including webinar provisioning at Draft → Scheduled, registrant push from EventRegistration records, and post-webinar attendance capture. Built on the shared Bridge Service from `survey-integration-architecture.md` via a new `MeetingConnector` interface. |
 
 ### Change Log
 
+- **1.1 (05-29-26):** Added the product-neutral PRD-reference alias note in the header. Product-neutral Product Requirements Documents (the Event and Event Registration Entity PRDs in the ClevelandBusinessMentoring repo) reference this document as the Virtual Meeting Platform Integration Architecture, and their integration fields were renamed to the platform-neutral `virtualMeeting*` form during the 05-29-26 CR-EVENTS reconciliation. This document is the Zoom connector realization of that integration; future connectors will be documented as parallel architecture documents on the shared Bridge Service. No architectural content changed.
 - **1.0 (04-30-26):** Initial draft. Establishes ten-section architecture covering Zoom Webinar provisioning at the Event Draft → Scheduled status transition; always-on update sync from Event record fields to the Webinar; registrant push at EventRegistration creation with backlog-and-flush handling for registrations created before the Webinar exists; auto-cancellation of Zoom registrants when EventRegistration is cancelled; auto-sync of Contact field changes to existing Zoom registrants; webhook + polling safety net for inbound attendance; coarse-grained attendance writeback (`attendanceStatus = Attended | No-Show`); walk-in capture only for matched Contacts; Zoom Webinar deletion on Event cancellation; Postponed Events leave Webinar in place. Server-to-Server OAuth authentication, single shared host user, HMAC-SHA256 webhook signature verification, exponential-backoff retry policy, three-layer failure visibility (logs + `ZoomIntegrationLog` entity for failures only + email alerts on permanent failures).
 
 ---
