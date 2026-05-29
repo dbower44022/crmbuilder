@@ -216,6 +216,51 @@ def test_validate_unknown_field_in_fields(loader, tmp_path):
     assert any("nonExistentField" in e and "not found" in e for e in errors)
 
 
+def test_validate_relationship_link_field_in_fields(loader, tmp_path):
+    """Link fields declared in the top-level relationships block are
+    valid duplicateCheck fields even though they are absent from the
+    entity 'fields:' block."""
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          EventRegistration:
+            action: create
+            type: Base
+            labelSingular: "Event Registration"
+            labelPlural: "Event Registrations"
+            fields:
+              - name: registrationDate
+                type: datetime
+                label: "Registration Date"
+            duplicateChecks:
+              - id: event-contact
+                fields: [event, contact]
+                onMatch: block
+                message: "Already registered."
+        relationships:
+          - name: eventRegistrationEvent
+            entity: EventRegistration
+            entityForeign: Event
+            linkType: manyToOne
+            link: event
+            linkForeign: registrations
+          - name: eventRegistrationContact
+            entity: EventRegistration
+            entityForeign: Contact
+            linkType: manyToOne
+            link: contact
+            linkForeign: eventRegistrations
+    """)
+    path = tmp_path / "rel_link_field.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert not any(
+        "duplicateChecks" in e and "not found" in e for e in errors
+    ), errors
+
+
 def test_validate_unknown_field_in_normalize(loader, tmp_path):
     """Normalize key not in fields: list is an error."""
     content = dedent("""\

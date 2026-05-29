@@ -408,6 +408,34 @@ class ConfigLoader:
 
         return frozenset(result)
 
+    def _relationship_link_names(
+        self, entity: EntityDefinition
+    ) -> frozenset[str]:
+        """Return the link-field names declared for this entity in the
+        top-level ``relationships:`` block.
+
+        A manyToOne/oneToOne/manyToMany link declared in ``relationships:``
+        creates a real, referenceable field on the entity even though it
+        does not appear in the entity's ``fields:`` block. Both sides of
+        each relationship are collected: ``link`` for the entity named in
+        ``entity``, and ``linkForeign`` for the entity named in
+        ``entityForeign``.
+
+        :param entity: Entity definition under validation.
+        :returns: Frozenset of link-field names. Never raises.
+        """
+        program = getattr(self, "_active_program", None)
+        if program is None:
+            return frozenset()
+
+        result: set[str] = set()
+        for rel in program.relationships:
+            if rel.entity == entity.name and rel.link:
+                result.add(rel.link)
+            if rel.entity_foreign == entity.name and rel.link_foreign:
+                result.add(rel.link_foreign)
+        return frozenset(result)
+
     def _validate_entity(self, entity: EntityDefinition) -> list[str]:
         """Validate an entity definition.
 
@@ -2623,6 +2651,7 @@ class ConfigLoader:
             {f.name for f in entity.fields}
             | self._active_context.field_names_for(entity.name)
             | self._native_field_names(entity)
+            | self._relationship_link_names(entity)
         )
         seen_ids: set[str] = set()
 
