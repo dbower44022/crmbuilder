@@ -75,6 +75,59 @@ def require_in(value: Any, allowed: frozenset[str], *, field: str) -> str:
     return value
 
 
+def validate_optional_value_list(
+    value: Any,
+    *,
+    field: str,
+    allowed: frozenset[str],
+) -> list[str] | None:
+    """Return ``None`` for None; validate a non-empty list of allowed strings.
+
+    Used by PI-076's ``area`` field on planning_items (a multi-valued
+    vocabulary-checked JSON column). The column is nullable until PI-083
+    backfills and tightens to NOT NULL; when the caller supplies a value
+    it must be a list with at least one element, every element a string
+    drawn from ``allowed``, with no duplicates. Element order is
+    preserved on the way through. Duplicates are rejected rather than
+    silently de-duplicated so authoring mistakes surface at the boundary.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, (list, tuple)):
+        raise ValidationError(
+            [FieldError(field, "invalid_type", "must be a list of strings or null")]
+        )
+    items = list(value)
+    if not items:
+        raise ValidationError(
+            [FieldError(field, "empty_list", "must contain at least one value")]
+        )
+    bad_types = [v for v in items if not isinstance(v, str)]
+    if bad_types:
+        raise ValidationError(
+            [FieldError(field, "invalid_type", "every element must be a string")]
+        )
+    seen: set[str] = set()
+    duplicates = sorted({v for v in items if v in seen or seen.add(v)})
+    if duplicates:
+        raise ValidationError(
+            [FieldError(field, "duplicate_value", f"duplicate values: {duplicates}")]
+        )
+    invalid = sorted(v for v in items if v not in allowed)
+    if invalid:
+        raise ValidationError(
+            [
+                FieldError(
+                    field,
+                    "invalid_value",
+                    f"unknown values {invalid}; must be drawn from "
+                    f"{sorted(allowed)}",
+                )
+            ]
+        )
+    return items
+
+
 def validate_optional_length(
     value: Any,
     *,

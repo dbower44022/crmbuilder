@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -14,6 +15,7 @@ from crmbuilder_v2.access._helpers import (
     require_string,
     to_dict,
     validate_optional_length,
+    validate_optional_value_list,
 )
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
@@ -24,7 +26,11 @@ from crmbuilder_v2.access.exceptions import (
     ValidationError,
 )
 from crmbuilder_v2.access.models import PlanningItem
-from crmbuilder_v2.access.vocab import PLANNING_ITEM_STATUSES, PLANNING_ITEM_TYPES
+from crmbuilder_v2.access.vocab import (
+    AREAS,
+    PLANNING_ITEM_STATUSES,
+    PLANNING_ITEM_TYPES,
+)
 
 _ENTITY_TYPE = "planning_item"
 _IDENTIFIER_PREFIX = "PI"
@@ -64,6 +70,7 @@ _UPDATABLE_FIELDS = frozenset(
         "status",
         "resolution_reference",
         "executive_summary",
+        "area",
     }
 )
 
@@ -93,6 +100,7 @@ def _new_planning_item_row(
     status: str,
     resolution_reference: str | None,
     executive_summary: str | None,
+    area: list[str] | None,
 ) -> PlanningItem:
     return PlanningItem(
         identifier=identifier,
@@ -102,6 +110,7 @@ def _new_planning_item_row(
         status=status,
         resolution_reference=resolution_reference,
         executive_summary=executive_summary,
+        area=area,
     )
 
 
@@ -113,6 +122,7 @@ def _insert_with_autoassign(
     status: str,
     resolution_reference: str | None,
     executive_summary: str | None,
+    area: list[str] | None,
 ) -> PlanningItem:
     """Insert a planning_item with a server-assigned identifier (PI-002)."""
     candidate = compute_next_identifier(session)
@@ -127,6 +137,7 @@ def _insert_with_autoassign(
             status,
             resolution_reference,
             executive_summary,
+            area,
         )
         session.add(row)
         try:
@@ -154,6 +165,7 @@ def create(
     status: str,
     resolution_reference: str | None = None,
     executive_summary: str | None = None,
+    area: list[str] | None = None,
 ) -> dict:
     """Create a planning_item.
 
@@ -163,6 +175,10 @@ def create(
     ``executive_summary`` (PI-074) is optional in v0.8; when supplied it
     must be a 200-800 character audience-facing summary. PI-075 will
     backfill and tighten the column to NOT NULL.
+
+    ``area`` (PI-076) is optional until PI-083 backfills open items and
+    tightens the column to NOT NULL; when supplied it must be a non-empty
+    list of distinct values drawn from :data:`vocab.AREAS`.
     """
     require_string(title, field="title")
     require_in(item_type, PLANNING_ITEM_TYPES, field="item_type")
@@ -173,6 +189,7 @@ def create(
         min_len=_EXECUTIVE_SUMMARY_MIN,
         max_len=_EXECUTIVE_SUMMARY_MAX,
     )
+    area = validate_optional_value_list(area, field="area", allowed=AREAS)
 
     if identifier is None:
         row = _insert_with_autoassign(
@@ -183,6 +200,7 @@ def create(
             status,
             resolution_reference,
             executive_summary,
+            area,
         )
     else:
         _require_identifier_format(identifier)
@@ -201,6 +219,7 @@ def create(
             status,
             resolution_reference,
             executive_summary,
+            area,
         )
         session.add(row)
         session.flush()
@@ -245,6 +264,10 @@ def update(session: Session, identifier: str, **fields) -> dict:
             min_len=_EXECUTIVE_SUMMARY_MIN,
             max_len=_EXECUTIVE_SUMMARY_MAX,
         )
+    if "area" in fields:
+        fields["area"] = validate_optional_value_list(
+            fields["area"], field="area", allowed=AREAS
+        )
     before = to_dict(row)
     for k, v in fields.items():
         setattr(row, k, v)
@@ -288,3 +311,87 @@ def upsert(session: Session, *, identifier: str, **fields) -> dict:
     if existing is None:
         return create(session, identifier=identifier, **fields)
     return update(session, identifier, **fields)
+
+
+# ---------------------------------------------------------------------------
+# PI-077 — orchestrator claim management (claimed_by / claimed_at)
+# ---------------------------------------------------------------------------
+
+
+def claim_planning_item(session: Session, identifier: str, claimant: str) -> dict:
+    """Atomically claim an unclaimed planning_item for ``claimant``.
+
+    ``claimant`` is the conversation identifier (``CONV-NNN``) of the
+    agent taking the item. Sets ``claimed_by`` + ``claimed_at`` together.
+
+    Optimistic concurrency: a claim on an item already held by a
+    *different* claimant raises :class:`ConflictError`. A re-claim by the
+    *same* claimant is idempotent (returns the row unchanged) so an agent
+    retrying after a transient failure does not fail. The access engine's
+    ``BEGIN IMMEDIATE`` + ``busy_timeout`` serialise concurrent writers,
+    so the read-check-write below is race-safe across processes.
+    """
+    require_string(claimant, field="claimant")
+    row = session.scalar(
+        select(PlanningItem).where(PlanningItem.identifier == identifier)
+    )
+    if row is None:
+        raise NotFoundError(_ENTITY_TYPE, identifier)
+    if row.claimed_by is not None:
+        if row.claimed_by == claimant:
+            return to_dict(row)
+        raise ConflictError(
+            f"planning_item {identifier!r} already claimed by {row.claimed_by!r}"
+        )
+    before = to_dict(row)
+    row.claimed_by = claimant
+    row.claimed_at = datetime.now(UTC)
+    session.flush()
+    after = to_dict(row)
+    emit(
+        session,
+        entity_type=_ENTITY_TYPE,
+        entity_identifier=identifier,
+        operation="update",
+        before=before,
+        after=after,
+    )
+    return after
+
+
+def release_planning_item(
+    session: Session, identifier: str, claimant: str | None = None
+) -> dict:
+    """Release a planning_item's claim, clearing ``claimed_by`` + ``claimed_at``.
+
+    When ``claimant`` is supplied the release only proceeds if the item
+    is held by that claimant (else :class:`ConflictError`) — this guards
+    an agent from releasing another agent's claim. Releasing an already-
+    unclaimed item is idempotent.
+    """
+    row = session.scalar(
+        select(PlanningItem).where(PlanningItem.identifier == identifier)
+    )
+    if row is None:
+        raise NotFoundError(_ENTITY_TYPE, identifier)
+    if row.claimed_by is None:
+        return to_dict(row)
+    if claimant is not None and row.claimed_by != claimant:
+        raise ConflictError(
+            f"planning_item {identifier!r} is claimed by {row.claimed_by!r}, "
+            f"not {claimant!r}"
+        )
+    before = to_dict(row)
+    row.claimed_by = None
+    row.claimed_at = None
+    session.flush()
+    after = to_dict(row)
+    emit(
+        session,
+        entity_type=_ENTITY_TYPE,
+        entity_identifier=identifier,
+        operation="update",
+        before=before,
+        after=after,
+    )
+    return after

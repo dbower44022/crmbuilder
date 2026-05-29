@@ -161,6 +161,7 @@ class PlanningItemCreateIn(_Base):
     status: str
     resolution_reference: str | None = None
     executive_summary: str | None = None  # PI-074
+    area: list[str] | None = None  # PI-076
 
 
 class PlanningItemUpdateIn(_Base):
@@ -170,6 +171,35 @@ class PlanningItemUpdateIn(_Base):
     status: str | None = None
     resolution_reference: str | None = None
     executive_summary: str | None = None  # PI-074
+    area: list[str] | None = None  # PI-076
+
+
+class PlanningItemClaimIn(_Base):
+    """POST /planning-items/{id}/claim body (PI-077). ``claimant`` is the
+    conversation identifier (CONV-NNN) of the agent taking the item."""
+
+    claimant: str
+
+
+class PlanningItemReleaseIn(_Base):
+    """POST /planning-items/{id}/release body (PI-077). When ``claimant``
+    is supplied the release only proceeds if the item is held by it."""
+
+    claimant: str | None = None
+
+
+# ---------- Identifier reservation (PI-078) ----------
+
+
+class IdentifierReserveIn(_Base):
+    """POST /identifiers/reserve body. Reserves a block of ``count``
+    identifiers of ``entity_type`` under the optional ``reserved_by``
+    conversation claim, held for ``ttl_seconds`` (default 1 hour)."""
+
+    entity_type: str
+    count: int
+    reserved_by: str | None = None
+    ttl_seconds: int | None = None
 
 
 # ---------- Topics ----------

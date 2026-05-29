@@ -311,6 +311,28 @@ class PlanningItem(Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False)
     resolution_reference: Mapped[str | None] = mapped_column(String(64), nullable=True)
     executive_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # PI-076: multi-valued work-area labels (JSON array) driving the
+    # parallel-agent orchestrator's file-disjoint partitioning. Nullable
+    # until PI-083 backfills open items and tightens to NOT NULL. The
+    # CHECK enforces structure only (valid non-empty array); element-level
+    # AREAS membership is enforced at the access layer because SQLite
+    # CHECK constraints cannot iterate array elements.
+    #
+    # ``none_as_null=True`` is load-bearing: without it SQLAlchemy's JSON
+    # type stores Python ``None`` as the JSON text ``'null'`` rather than
+    # SQL NULL, which fails the ``area IS NULL`` arm of the CHECK
+    # (``json_type('null')`` is ``'null'``, not ``'array'``).
+    area: Mapped[list | None] = mapped_column(
+        JSON(none_as_null=True), nullable=True
+    )
+    # PI-077: orchestrator claim. ``claimed_by`` holds the conversation
+    # identifier (CONV-NNN) of the agent working the item; both columns
+    # are NULL when the item is unclaimed and both set when claimed. The
+    # atomic claim/release transitions live in the access layer.
+    claimed_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    claimed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
@@ -329,6 +351,18 @@ class PlanningItem(Base):
             "executive_summary IS NULL OR "
             "(length(executive_summary) >= 200 AND length(executive_summary) <= 800)",
             name="ck_planning_executive_summary_length",
+        ),
+        CheckConstraint(
+            "area IS NULL OR ("
+            "json_valid(area) AND json_type(area) = 'array' "
+            "AND json_array_length(area) >= 1"
+            ")",
+            name="ck_planning_area_nonempty_array",
+        ),
+        CheckConstraint(
+            "(claimed_by IS NULL AND claimed_at IS NULL) OR "
+            "(claimed_by IS NOT NULL AND claimed_at IS NOT NULL)",
+            name="ck_planning_claim_pairing",
         ),
     )
 
@@ -1945,4 +1979,38 @@ class ChangeLog(Base):
         CheckConstraint(_check_in("actor", CHANGE_LOG_ACTORS), name="ck_changelog_actor"),
         Index("ix_changelog_timestamp", "timestamp"),
         Index("ix_changelog_entity", "entity_type", "entity_identifier"),
+    )
+
+
+class IdentifierReservation(Base):
+    """A server-side hold on a block of prefixed identifiers (PI-078).
+
+    The parallel-agent orchestrator reserves a block of identifiers (e.g.
+    the next five ``SES-NNN``) at the start of a run so concurrent child
+    agents never race on next-available numbers. Each row is one reserved
+    block for one ``entity_type``. ``max_number`` is the highest numeric
+    suffix in the block; the reservation logic treats an *unexpired* block
+    as "taken" when computing the next free number, so two reservations
+    never overlap. Expired blocks are ignored (and garbage-collected),
+    which is the TTL auto-release. Reservations are ephemeral runtime
+    state — not governance records — so they are not exported to the JSON
+    snapshots.
+    """
+
+    __tablename__ = "identifier_reservations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    entity_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    reserved_identifiers: Mapped[list] = mapped_column(JSON, nullable=False)
+    max_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    reserved_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    reserved_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+    __table_args__ = (
+        Index("ix_identifier_reservations_lookup", "entity_type", "expires_at"),
     )

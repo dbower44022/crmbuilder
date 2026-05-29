@@ -137,3 +137,216 @@ def test_autoassign_retries_on_identifier_collision(v2_env, monkeypatch):
             s, title="Second", item_type="open_question", status="Open"
         )
     assert row["identifier"] == "PI-002"
+
+
+# ---------------------------------------------------------------------------
+# PI-076 — multi-valued, vocabulary-checked ``area`` field
+# ---------------------------------------------------------------------------
+
+
+def test_create_with_valid_area(v2_env):
+    with session_scope() as s:
+        row = planning_items.create(
+            s, identifier="PI-010", title="Cross-cutting",
+            item_type="pending_work", status="Open",
+            area=["v2-access", "v2-api"],
+        )
+    assert row["area"] == ["v2-access", "v2-api"]
+    with session_scope() as s:
+        fetched = planning_items.get(s, "PI-010")
+    assert fetched["area"] == ["v2-access", "v2-api"]
+
+
+def test_create_without_area_defaults_to_none(v2_env):
+    with session_scope() as s:
+        row = planning_items.create(
+            s, identifier="PI-011", title="No area",
+            item_type="pending_work", status="Open",
+        )
+    assert row["area"] is None
+
+
+def test_create_with_unknown_area_value_rejected(v2_env):
+    with session_scope() as s, pytest.raises(ValidationError):
+        planning_items.create(
+            s, identifier="PI-012", title="Bad area",
+            item_type="pending_work", status="Open",
+            area=["v2-access", "not-an-area"],
+        )
+
+
+def test_create_with_empty_area_list_rejected(v2_env):
+    with session_scope() as s, pytest.raises(ValidationError):
+        planning_items.create(
+            s, identifier="PI-013", title="Empty area",
+            item_type="pending_work", status="Open",
+            area=[],
+        )
+
+
+def test_create_with_duplicate_area_values_rejected(v2_env):
+    with session_scope() as s, pytest.raises(ValidationError):
+        planning_items.create(
+            s, identifier="PI-014", title="Dup area",
+            item_type="pending_work", status="Open",
+            area=["v2-api", "v2-api"],
+        )
+
+
+def test_create_with_non_string_area_element_rejected(v2_env):
+    with session_scope() as s, pytest.raises(ValidationError):
+        planning_items.create(
+            s, identifier="PI-015", title="Non-string area",
+            item_type="pending_work", status="Open",
+            area=["v2-api", 7],
+        )
+
+
+def test_update_area(v2_env):
+    with session_scope() as s:
+        planning_items.create(
+            s, identifier="PI-016", title="Updatable",
+            item_type="pending_work", status="Open",
+            area=["v2-ui"],
+        )
+    with session_scope() as s:
+        row = planning_items.update(s, "PI-016", area=["v2-ui", "v2-mcp"])
+    assert row["area"] == ["v2-ui", "v2-mcp"]
+
+
+def test_update_with_unknown_area_value_rejected(v2_env):
+    with session_scope() as s:
+        planning_items.create(
+            s, identifier="PI-017", title="Updatable",
+            item_type="pending_work", status="Open",
+        )
+    with session_scope() as s, pytest.raises(ValidationError):
+        planning_items.update(s, "PI-017", area=["bogus"])
+
+
+def test_db_check_rejects_empty_array_directly(v2_env):
+    """Belt-and-braces: the structural CHECK rejects an empty array even
+    when the access-layer validator is bypassed (direct ORM insert)."""
+    from sqlalchemy.exc import IntegrityError
+
+    from crmbuilder_v2.access.models import PlanningItem
+
+    with pytest.raises(IntegrityError):
+        with session_scope() as s:
+            s.add(
+                PlanningItem(
+                    identifier="PI-099",
+                    title="Direct bad",
+                    item_type="open_question",
+                    description="",
+                    status="Open",
+                    area=[],
+                )
+            )
+            s.flush()
+
+
+# ---------------------------------------------------------------------------
+# PI-077 — claim / release (claimed_by / claimed_at)
+# ---------------------------------------------------------------------------
+
+
+def _seed(identifier: str = "PI-030") -> None:
+    with session_scope() as s:
+        planning_items.create(
+            s, identifier=identifier, title="Claimable",
+            item_type="pending_work", status="Open",
+        )
+
+
+def test_claim_sets_both_fields(v2_env):
+    _seed("PI-030")
+    with session_scope() as s:
+        row = planning_items.claim_planning_item(s, "PI-030", "CONV-100")
+    assert row["claimed_by"] == "CONV-100"
+    assert row["claimed_at"] is not None
+
+
+def test_claim_idempotent_for_same_claimant(v2_env):
+    _seed("PI-031")
+    with session_scope() as s:
+        planning_items.claim_planning_item(s, "PI-031", "CONV-100")
+    # Re-claim by the same claimant must not raise and must retain the claim.
+    with session_scope() as s:
+        again = planning_items.claim_planning_item(s, "PI-031", "CONV-100")
+    assert again["claimed_by"] == "CONV-100"
+    assert again["claimed_at"] is not None
+
+
+def test_claim_conflict_for_different_claimant(v2_env):
+    _seed("PI-032")
+    with session_scope() as s:
+        planning_items.claim_planning_item(s, "PI-032", "CONV-100")
+    with session_scope() as s, pytest.raises(ConflictError):
+        planning_items.claim_planning_item(s, "PI-032", "CONV-200")
+
+
+def test_release_clears_fields(v2_env):
+    _seed("PI-033")
+    with session_scope() as s:
+        planning_items.claim_planning_item(s, "PI-033", "CONV-100")
+    with session_scope() as s:
+        row = planning_items.release_planning_item(s, "PI-033", "CONV-100")
+    assert row["claimed_by"] is None
+    assert row["claimed_at"] is None
+
+
+def test_release_wrong_claimant_raises_conflict(v2_env):
+    _seed("PI-034")
+    with session_scope() as s:
+        planning_items.claim_planning_item(s, "PI-034", "CONV-100")
+    with session_scope() as s, pytest.raises(ConflictError):
+        planning_items.release_planning_item(s, "PI-034", "CONV-200")
+
+
+def test_release_unclaimed_is_idempotent(v2_env):
+    _seed("PI-035")
+    with session_scope() as s:
+        row = planning_items.release_planning_item(s, "PI-035")
+    assert row["claimed_by"] is None
+
+
+def test_db_check_rejects_half_claim(v2_env):
+    """Belt-and-braces: the pairing CHECK rejects claimed_by without
+    claimed_at when the access layer is bypassed (direct ORM insert)."""
+    from datetime import UTC, datetime
+
+    from sqlalchemy.exc import IntegrityError
+
+    from crmbuilder_v2.access.models import PlanningItem
+
+    with pytest.raises(IntegrityError):
+        with session_scope() as s:
+            s.add(
+                PlanningItem(
+                    identifier="PI-098",
+                    title="Half claim",
+                    item_type="open_question",
+                    description="",
+                    status="Open",
+                    claimed_by="CONV-1",
+                    claimed_at=None,
+                )
+            )
+            s.flush()
+
+    # The inverse half is rejected too.
+    with pytest.raises(IntegrityError):
+        with session_scope() as s:
+            s.add(
+                PlanningItem(
+                    identifier="PI-097",
+                    title="Half claim 2",
+                    item_type="open_question",
+                    description="",
+                    status="Open",
+                    claimed_by=None,
+                    claimed_at=datetime.now(UTC),
+                )
+            )
+            s.flush()
