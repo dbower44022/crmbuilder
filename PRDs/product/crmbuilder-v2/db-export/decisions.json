@@ -5336,5 +5336,22 @@
     "supersedes_id": null,
     "title": "claude.ai-web remains blocked by a distinct upstream connector bug (bearer token never attached post-OAuth); use Claude Code/Desktop and hold the server ready",
     "updated_at": "2026-05-28T05:07:34.136866"
+  },
+  {
+    "alternatives_considered": "(a) Keep Slice B's one-paragraph placeholder — rejected: too thin to teach the 51-tool surface, and the design always scheduled the real prompt for Slice C. (b) Generate per-entity verbose tool documentation into the prompt — rejected: redundant with the per-tool descriptions already in the tools block, and it would bloat the cached block. (c) No system prompt, rely on tool descriptions alone — rejected: leaves the model without the governance domain model, identifier conventions, or output discipline.",
+    "consequences": "The prompt lives in worker.SYSTEM_PROMPT and is editable in one place; it is cached on every call, so editing it invalidates the tier-1 system-block cache (a one-turn re-cache cost). It is intentionally model-agnostic across the Opus/Sonnet/Haiku picker. Future tool-surface growth (new entity types) should be reflected here so the model's mental model stays current. Delivered in commit e80ee7f.",
+    "context": "Design doc §13 outlined the chat UI system prompt in three sections but deferred full settlement to Slice C, to be issued as a DEC at that time. Slice B used a one-paragraph placeholder. Slice C wires the full tool surface, so the prompt now needs to teach the model the governance domain and the read/write tool conventions.",
+    "created_at": "2026-05-29T02:06:57.193984",
+    "decision": "Ship the system prompt as a single text block in crmbuilder_v2.ui.chat.worker.SYSTEM_PROMPT, sent as the cached tier-1 system block on every turn. It has three sections: (1) Role + scope — an assistant embedded in the crmbuilder-v2 desktop app with read/write access to Doug's governance DB; Doug is the sole operator and trusts routine reads without asking. (2) Tool-surface semantics — the entity types (charter, status, decision/DEC-NNN, session/SES-NNN, conversation/CNV-NNN, risk, planning_item, topic, references, the base entity catalog), their identifier conventions, the get_/list_ read vs create_/update_/delete_/add_/replace_ write naming, and that update_ tools take only changed fields. (3) Output preferences — terse answers, cite identifiers, batch tool calls in one assistant turn, and ask before consequential writes only when the operator has set ask-before-write mode.",
+    "decision_date": "2026-05-28",
+    "executive_summary": "Slice C settles the chat UI system prompt that design §13 outlined but deferred. It ships as a single cached system block (worker.SYSTEM_PROMPT) with three sections: an embedded-assistant role + single-operator trust model; tool-surface semantics (the governance entity types, their identifier conventions, and the get_/list_ read vs create_/update_/delete_ write naming); and output preferences (terse answers, cite DEC-NNN/SES-NNN identifiers, batch tool calls, ask before consequential writes only in ask-before-write mode). Being a stable single block, it is the tier-1 prompt-cache target and repays its cost on every turn; editing it invalidates that cache tier.",
+    "id": 316,
+    "identifier": "DEC-329",
+    "rationale": "A stable single block is the natural tier-1 prompt-cache target (design §8) and repays its cost on every turn. Teaching the entity types and identifier conventions up front lets the model chain tools (e.g. list_references_from → get_decision) without re-derivation. The single-operator trust framing matches DEC-254/DEC-255: read freely, write on request, and only gate writes when the mode demands it — so the prompt and the ask-before-write mode agree rather than conflict.",
+    "status": "Active",
+    "superseded_by_id": null,
+    "supersedes_id": null,
+    "title": "Chat UI system prompt — embedded-assistant role, governance tool-surface semantics, and terse identifier-citing output (design §13)",
+    "updated_at": "2026-05-29T02:06:57.193987"
   }
 ]

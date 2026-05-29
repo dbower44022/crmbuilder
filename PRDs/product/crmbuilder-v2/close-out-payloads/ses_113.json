@@ -16,10 +16,6 @@
       "Doug Bower",
       "Claude (Opus 4.7, Claude Code)"
     ],
-    "topics_covered": "Seed prompt: \"please proceed with wt-055\"\n\n(1) Resolved WT-055 to the PI-052 Slice B kickoff in crmbuilder-v2. (2) Branch hygiene — PI-074 work already merged to main by a parallel sandbox; dropped two stale auto-stashes after confirming they were superseded. (3) Slice B build + commit c07901f. (4) Slice C build (tool_definitions refactor, 51-tool dispatcher, caching, system prompt, persistence, pickers, usage) + commit e80ee7f. (5) Slice D build (conversation ops, error-recovery matrix, usage cache-ratio, 32-test suite) + commit 5ddc6e7. (6) Final verification offscreen + live readiness pass. Deferred and logged as PI-106: sidebar staleness-indicator integration and an interactive context-window Trim action.",
-    "artifacts_produced": "New source: crmbuilder-v2/src/crmbuilder_v2/ui/chat/{__init__,session,tools,widgets,worker,controller,auth,persistence}.py and ui/panels/chat.py. Modified: ui/sidebar.py, ui/main_window.py, mcp_server/tools.py (tool_definitions refactor). Tests: tests/crmbuilder_v2/ui/chat/{test_tools_dispatch,test_session_persistence,test_worker}.py (32 tests) and an updated test_smoke.py. Three commits on main: c07901f (Slice B), e80ee7f (Slice C), 5ddc6e7 (Slice D). This close-out payload.",
-    "in_flight_at_end": "Commits c07901f / e80ee7f / 5ddc6e7 and this close-out await Doug's push. Live interactive acceptance of the chat tab (real ANTHROPIC_API_KEY + GUI streaming / tool round-trips) is Doug's to run. WT-055 is PATCHed ready→consumed after this payload applies (apply_close_out.py does not auto-transition). Two deferred polish items are tracked by PI-106, not left only in prose.",
-    "session_date": "2026-05-28",
     "references": [
       {
         "source_type": "session",
@@ -116,6 +112,13 @@
     }
   ],
   "references": [
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-015",
+      "target_type": "session",
+      "target_id": "SES-113",
+      "relationship": "conversation_belongs_to_session"
+    },
     {
       "source_type": "decision",
       "source_id": "DEC-329",

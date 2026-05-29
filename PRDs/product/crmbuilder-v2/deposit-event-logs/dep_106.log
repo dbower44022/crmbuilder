@@ -1,0 +1,32 @@
+=== Applying close-out payload ===
+Source: PRDs/product/crmbuilder-v2/close-out-payloads/ses_113.json
+Label:  SES-113 / CNV-015 close-out — PI-052 chat UI on the Anthropic API delivered across Slices B, C, and D (commits c07901f, e80ee7f, 5ddc6e7). Authors DEC-329 (chat system prompt, design §13). Opens against and consumes WT-055. Resolves PI-052; files PI-106 for two deferred Slice-D polish items. Attaches to WS-010.
+Deposit event: DEP-106
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-015 (HTTP 201)
+
+=== session (1 record) ===
+
+=== planning_items (1 record) ===
+  ✓ POST planning_items  PI-106 (HTTP 201)
+
+=== commits (3 records) ===
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-329 (HTTP 201)
+
+=== references (4 records) ===
+  ✓ POST references  DEC-329 decided_in CNV-015 (HTTP 201)
+  ✓ POST references  DEC-329 is_about DEC-261 (HTTP 201)
+  ✓ POST references  CNV-015 conversation_opens_against_work_ticket WT-055 (HTTP 201)
+  ✓ POST references  CNV-015 conversation_belongs_to_workstream WS-010 (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-052 (HTTP 201)
+
+=== addresses_planning_items (1 record) ===
+  ✓ POST addresses_planning_items  → PI-106 (HTTP 201)
+
+
+✓ Recorded apply as deposit_event DEP-106 (HTTP 201).

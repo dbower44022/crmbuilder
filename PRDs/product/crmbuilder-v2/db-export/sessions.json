@@ -2034,5 +2034,34 @@
     "session_superseded_at": null,
     "session_title": "Reclaimed remote MCP access via own Google-backed OAuth 2.1 server — Cloudflare Managed OAuth replaced; claude.ai-web blocked by a distinct upstream bearer bug",
     "session_updated_at": "2026-05-28T05:07:32.608332"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-29T02:08:42.390644",
+    "session_created_at": "2026-05-29T02:08:42.390382",
+    "session_deleted_at": null,
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-015. Parent workstream WS-010 (v2 AI Surface Integration). Medium: claude_code.\n\nSeed prompt: \"please proceed with wt-055\"\n\nWT-055 pointed at the PI-052 Slice B kickoff (pi-052-slice-b-pyside6-tab-mvp-kickoff.md). The session built Slice B, then — at Doug's direction — continued straight into Slices C and D without separate kickoffs, so one session covers all three. The work lives in the crmbuilder repo, not the Cleveland Business Mentors repo the shell opened in.\n\nTopics covered, in order:\n\n1. Located WT-055 in the v2 work_tickets export and read its canonical kickoff body. Confirmed it targets crmbuilder-v2, not CBM.\n\n2. Branch hygiene: the repo opened on a stale-looking pi-074 branch view; a parallel sandbox had already merged the PI-074 executive_summary work to main and removed the branch, leaving the tree clean on main. Two 'Auto stash before merge' stashes were stale governance db-export snapshots fully superseded by main; dropped on Doug's confirmation. No PI-074 code was lost.\n\n3. Slice B (commit c07901f): authored ui/chat/{session,tools,widgets,worker,controller,auth}.py + panels/chat.py; added the AI sidebar group; wired the panel into main_window. One tool (get_current_status), streaming via AsyncAnthropic.messages.stream(), QThread + private asyncio loop per DEC-257, env→keyring→modal key bootstrap, cancel. Fixed a worker-loop-readiness race so aboutToQuit shutdown can't hang the thread (within DEC-257's model — no superseding decision).\n\n4. Slice C (commit e80ee7f): the load-bearing tool_definitions() refactor in mcp_server/tools.py — the MCP server and the chat dispatcher now read one shared list, so they cannot drift; FastMCP still registers all 51 tools (29 read / 22 write) with identical schemas. Built ui/chat/tools.ChatToolDispatcher (schema-from-signature, read/write partition), three-tier prompt caching (system / last-tool / rolling message breakpoints on per-call copies), the substantive system prompt (DEC-329), full/read_only/ask_before_write modes, the model picker, JSON persistence (ui/chat/persistence.py, ~/.crmbuilder-v2/chats/), the 240px conversation sidebar, and the usage display. Note: the live surface is 51 tools, not the design doc's stale '44'.\n\n5. Slice D (commit 5ddc6e7): conversation rename/delete/export-as-markdown via a right-click menu; the design-§12 error-recovery matrix in the worker (429 backoff 2/4/8s, one 500/network retry, clear inline messages for 402 and context-window overflow); the cache-hit usage readout; and tests/crmbuilder_v2/ui/chat/ — 32 tests covering schema generation, the dispatcher, session/persistence round-trips, and the worker turn loop including every error path.\n\n6. Verification throughout (no API key / no clicks available here): UI smoke 15/15, chat suite 32/32, WCAG token-contrast gate 9/9, ruff clean on all chat files, full app boots clean offscreen against the running API, and the AI▸Chat tab activates in a real MainWindow. The three pre-existing mcp/ui test failures (in-flight _session_schema refactor + an enable_auth mock) were confirmed failing at baseline.\n\nAuthored DEC-329 (chat system prompt). PI-052 resolved on Slice D close per the design slicing plan; PI-106 filed for the two deferred Slice-D polish items (sidebar staleness-indicator integration; interactive context-window Trim).\n\nIn flight at end: the three commits and this close-out await Doug's push; live interactive acceptance of the chat (real key + GUI streaming) is Doug's to run; WT-055 is PATCHed ready→consumed after this payload applies (apply_close_out.py does not auto-transition).",
+    "session_ended_at": null,
+    "session_executive_summary": "Built the PI-052 chat tab in the crmbuilder-v2 desktop app across three slices in one Claude Code session. Slice B (WT-055): PySide6 MVP tab — one tool, streaming, in-memory. Slice C: refactored mcp_server.tools into a shared tool_definitions() helper so the chat dispatcher and the MCP server expose the same 51-tool surface, then added three-tier prompt caching, JSON persistence, model/mode pickers, the usage display, and the ask-before-write confirm. Slice D: conversation rename/delete/export, the design-§12 error-recovery matrix, a cache-hit usage readout, and a 32-test suite. Authored DEC-329 (the chat system prompt). Resolves PI-052; filed PI-106 for two deferred polish items. Verified offscreen + mocked; live acceptance is Doug's.",
+    "session_identifier": "SES-113",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "model": "claude-opus-4-7",
+      "runner": "claude_code",
+      "surface": "claude_code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.7, Claude Code)"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "PI-052 chat UI on the Anthropic API — Slices B/C/D: MVP tab → full 51-tool surface + caching + persistence → polish, error recovery, and test suite",
+    "session_updated_at": "2026-05-29T02:08:42.390729"
   }
 ]
