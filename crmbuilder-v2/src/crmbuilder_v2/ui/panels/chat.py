@@ -11,8 +11,9 @@ and the ``keyring`` backend is never touched.
 
 Slice C wired the full tool surface, prompt caching, persistence, the
 active model + mode pickers, the usage display, and the ask-before-write
-confirm modal. The multi-conversation sidebar (rename/delete/export) is
-Slice D.
+confirm modal. Slice D added the conversation context menu
+(rename / delete / export-as-markdown), the error-recovery notices, and
+the cache-hit-ratio usage readout.
 """
 
 from __future__ import annotations
@@ -25,10 +26,13 @@ from PySide6.QtGui import QKeySequence, QShortcut, QShowEvent
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
+    QFileDialog,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QListWidget,
     QListWidgetItem,
+    QMenu,
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
@@ -153,6 +157,10 @@ class ChatPanel(QWidget):
         self._conv_list.setObjectName("chat_conv_list")
         self._conv_list.setStyleSheet("#chat_conv_list { border: none; }")
         self._conv_list.itemClicked.connect(self._on_conversation_selected)
+        self._conv_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._conv_list.customContextMenuRequested.connect(
+            self._on_conversation_context_menu
+        )
         col.addWidget(self._conv_list, stretch=1)
         return panel
 
@@ -241,6 +249,7 @@ class ChatPanel(QWidget):
         self._controller.auth_failed.connect(self._on_auth_failed)
         self._controller.confirm_write_requested.connect(self._on_confirm_write)
         self._controller.usage_updated.connect(self._on_usage_updated)
+        self._controller.retry_notice.connect(self._on_retry_notice)
 
     # ------------------------------------------------------------------
     # Header pickers + usage
@@ -255,11 +264,19 @@ class ChatPanel(QWidget):
             self._controller.set_mode(_MODES[index][1])
 
     def _on_usage_updated(self, usage: dict) -> None:
+        read = usage.get("cache_read_input_tokens", 0)
+        created = usage.get("cache_creation_input_tokens", 0)
+        cached_total = read + created
+        cacheable = cached_total + usage.get("input_tokens", 0)
+        ratio = f" {round(100 * read / cacheable)}% hit" if cacheable else ""
         self._usage_label.setText(
             f"↑{usage.get('input_tokens', 0)} "
             f"↓{usage.get('output_tokens', 0)} "
-            f"(cache {usage.get('cache_read_input_tokens', 0)})"
+            f"(cache {read}{ratio})"
         )
+
+    def _on_retry_notice(self, message: str) -> None:
+        self._transcript.add_item(NoticeItem(message))
 
     def _on_confirm_write(self, name: str, args_json: str) -> None:
         box = QMessageBox(self)
@@ -306,6 +323,70 @@ class ChatPanel(QWidget):
         if session is None:
             return
         self._render_session()
+
+    def _on_conversation_context_menu(self, pos) -> None:
+        item = self._conv_list.itemAt(pos)
+        if item is None:
+            return
+        chat_id = item.data(Qt.ItemDataRole.UserRole)
+        menu = QMenu(self._conv_list)
+        rename_action = menu.addAction("Rename")
+        export_action = menu.addAction("Export as Markdown…")
+        menu.addSeparator()
+        delete_action = menu.addAction("Delete")
+        chosen = menu.exec(self._conv_list.mapToGlobal(pos))
+        if chosen is rename_action:
+            self._rename_conversation(chat_id, item.text())
+        elif chosen is export_action:
+            self._export_conversation(chat_id, item.text())
+        elif chosen is delete_action:
+            self._delete_conversation(chat_id, item.text())
+
+    def _rename_conversation(self, chat_id: str, current_title: str) -> None:
+        title, ok = QInputDialog.getText(
+            self, "Rename chat", "Title:", text=current_title
+        )
+        if ok and title.strip():
+            self._controller.rename_session(chat_id, title.strip())
+            self._refresh_conversation_list()
+
+    def _delete_conversation(self, chat_id: str, title: str) -> None:
+        confirm = QMessageBox(self)
+        confirm.setWindowTitle("Delete chat")
+        confirm.setIcon(QMessageBox.Icon.Warning)
+        confirm.setText(f"Delete the chat “{title}”?")
+        confirm.setInformativeText("This permanently removes its saved file.")
+        confirm.setStandardButtons(
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        confirm.setDefaultButton(QMessageBox.StandardButton.No)
+        if confirm.exec() != QMessageBox.StandardButton.Yes:
+            return
+        was_active = self._controller.delete_session(chat_id)
+        if was_active:
+            self._transcript.clear()
+            self._close_live_assistant()
+            self._usage_label.setText("")
+        self._refresh_conversation_list()
+
+    def _export_conversation(self, chat_id: str, title: str) -> None:
+        session = self._controller.session_for_export(chat_id)
+        if session is None:
+            return
+        safe = "".join(c if c.isalnum() or c in " -_" else "_" for c in title)
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export chat as Markdown",
+            f"{safe[:60] or 'chat'}.md",
+            "Markdown (*.md)",
+        )
+        if not path:
+            return
+        try:
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write(persistence.to_markdown(session))
+        except OSError as exc:
+            QMessageBox.warning(self, "Export failed", str(exc))
 
     def _render_session(self) -> None:
         """Rebuild the transcript widgets from the active session's history."""

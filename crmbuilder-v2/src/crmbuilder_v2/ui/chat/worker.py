@@ -91,6 +91,11 @@ _SHUTDOWN = object()
 
 _CACHE_CONTROL = {"type": "ephemeral"}
 
+# Error-recovery tuning (design §12). Rate limits back off 2/4/8s then
+# give up; transient server/network errors get one retry after 2s.
+_RATE_LIMIT_BACKOFFS = (2, 4, 8)
+_SERVER_RETRY_DELAY = 2
+
 
 def _system_blocks() -> list[dict[str, Any]]:
     """Tier 1: the system prompt as a single cached text block."""
@@ -157,6 +162,7 @@ class ChatWorker(QThread):
     tool_failed = Signal(str, str)
     confirm_requested = Signal(str, str)
     usage_updated = Signal(object)
+    retry_notice = Signal(str)
     turn_finished = Signal(str, object)
     turn_failed = Signal(str, object)
     auth_failed = Signal(str)
@@ -273,7 +279,7 @@ class ChatWorker(QThread):
                 if self._cancel is not None and self._cancel.is_set():
                     self.turn_finished.emit("cancelled", working)
                     return
-                final = await self._stream_once(working, model, read_only)
+                final = await self._stream_with_retry(working, model, read_only)
                 working.append({"role": "assistant", "content": final.content})
 
                 if final.stop_reason != "tool_use":
@@ -288,9 +294,81 @@ class ChatWorker(QThread):
             _log.warning("Anthropic auth error during turn: %s", exc)
             self.auth_failed.emit(str(exc))
             self.turn_failed.emit("authentication failed", snapshot)
+        except anthropic.BadRequestError as exc:
+            self.turn_failed.emit(self._classify_bad_request(exc), snapshot)
+        except anthropic.APIStatusError as exc:
+            self.turn_failed.emit(self._classify_status_error(exc), snapshot)
+        except anthropic.APIConnectionError:
+            _log.warning("Network error reaching Anthropic after retry")
+            self.turn_failed.emit(
+                "Could not reach the Anthropic API. Check your connection "
+                "and try again.",
+                snapshot,
+            )
         except Exception as exc:  # noqa: BLE001 — surface to the UI
             _log.exception("Chat turn failed")
             self.turn_failed.emit(str(exc), snapshot)
+
+    @staticmethod
+    def _classify_bad_request(exc: anthropic.BadRequestError) -> str:
+        text = str(exc).lower()
+        if any(k in text for k in ("context", "too long", "max_tokens", "tokens")):
+            return (
+                "This conversation exceeded the model's context window. "
+                "Start a new chat (+ New) or switch to a model with a larger "
+                "context."
+            )
+        return f"Request rejected: {exc}"
+
+    @staticmethod
+    def _classify_status_error(exc: anthropic.APIStatusError) -> str:
+        status = getattr(exc, "status_code", None)
+        if status == 402:
+            return (
+                "Payment required (402). Check your Anthropic Console "
+                "billing, then try again."
+            )
+        return f"API error {status}: {exc}"
+
+    async def _stream_with_retry(
+        self, messages: list[dict[str, Any]], model: str, read_only: bool
+    ):
+        """Call the stream with bounded retries (design §12).
+
+        Rate limits back off 2/4/8s; transient server / network errors get
+        a single 2s retry. Cancellation interrupts any backoff sleep.
+        """
+        rate_attempts = 0
+        server_retried = False
+        while True:
+            self._raise_if_cancelled()
+            try:
+                return await self._stream_once(messages, model, read_only)
+            except anthropic.RateLimitError:
+                if rate_attempts >= len(_RATE_LIMIT_BACKOFFS):
+                    raise
+                delay = _RATE_LIMIT_BACKOFFS[rate_attempts]
+                rate_attempts += 1
+                self.retry_notice.emit(f"Rate limited — retrying in {delay}s…")
+                await self._cancellable_sleep(delay)
+            except (anthropic.APIConnectionError, anthropic.InternalServerError):
+                if server_retried:
+                    raise
+                server_retried = True
+                self.retry_notice.emit(
+                    f"Connection problem — retrying in {_SERVER_RETRY_DELAY}s…"
+                )
+                await self._cancellable_sleep(_SERVER_RETRY_DELAY)
+
+    def _raise_if_cancelled(self) -> None:
+        if self._cancel is not None and self._cancel.is_set():
+            raise _Cancelled
+
+    async def _cancellable_sleep(self, seconds: float) -> None:
+        steps = max(1, int(seconds / 0.1))
+        for _ in range(steps):
+            self._raise_if_cancelled()
+            await asyncio.sleep(0.1)
 
     async def _stream_once(
         self, messages: list[dict[str, Any]], model: str, read_only: bool

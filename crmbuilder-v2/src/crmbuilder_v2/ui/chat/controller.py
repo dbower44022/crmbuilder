@@ -46,6 +46,7 @@ class ChatController(QObject):
     tool_failed = Signal(str, str)
     confirm_write_requested = Signal(str, str)
     usage_updated = Signal(object)
+    retry_notice = Signal(str)
     turn_state_changed = Signal(bool)
     turn_finished = Signal(str)
     turn_failed = Signal(str)
@@ -85,6 +86,30 @@ class ChatController(QObject):
         self.usage_updated.emit(dict(self._session.usage))
         return loaded
 
+    def rename_session(self, chat_id: str, title: str) -> None:
+        """Rename a chat. Updates the live session if it's the active one."""
+        if chat_id == self._session.chat_id:
+            self._session.title = title
+            persistence.save(self._session)
+        else:
+            persistence.rename(chat_id, title)
+
+    def delete_session(self, chat_id: str) -> bool:
+        """Delete a chat. If it's the active one, replace it with a fresh
+        session and return True so the panel can clear the transcript."""
+        persistence.delete(chat_id)
+        if chat_id == self._session.chat_id:
+            self._session = ChatSession()
+            self.usage_updated.emit(dict(self._session.usage))
+            return True
+        return False
+
+    def session_for_export(self, chat_id: str) -> ChatSession | None:
+        """Return the session for ``chat_id`` (the live one if active)."""
+        if chat_id == self._session.chat_id:
+            return self._session
+        return persistence.load(chat_id)
+
     def set_model(self, model_id: str) -> None:
         """Set the model used for the next turn (in-flight turns finish on
         the previously-selected model, per DEC-260)."""
@@ -111,6 +136,7 @@ class ChatController(QObject):
         worker.tool_failed.connect(self.tool_failed)
         worker.confirm_requested.connect(self.confirm_write_requested)
         worker.usage_updated.connect(self._on_worker_usage)
+        worker.retry_notice.connect(self.retry_notice)
         worker.turn_finished.connect(self._on_worker_turn_finished)
         worker.turn_failed.connect(self._on_worker_turn_failed)
         worker.auth_failed.connect(self.auth_failed)
