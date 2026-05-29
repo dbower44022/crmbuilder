@@ -1,0 +1,158 @@
+{
+  "label": "SES-113 / CNV-015 close-out — PI-052 chat UI on the Anthropic API delivered across Slices B, C, and D (commits c07901f, e80ee7f, 5ddc6e7). Authors DEC-329 (chat system prompt, design §13). Opens against and consumes WT-055. Resolves PI-052; files PI-106 for two deferred Slice-D polish items. Attaches to WS-010.",
+  "session": {
+    "session_identifier": "SES-113",
+    "session_title": "PI-052 chat UI on the Anthropic API — Slices B/C/D: MVP tab → full 51-tool surface + caching + persistence → polish, error recovery, and test suite",
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-015. Parent workstream WS-010 (v2 AI Surface Integration). Medium: claude_code.\n\nSeed prompt: \"please proceed with wt-055\"\n\nWT-055 pointed at the PI-052 Slice B kickoff (pi-052-slice-b-pyside6-tab-mvp-kickoff.md). The session built Slice B, then — at Doug's direction — continued straight into Slices C and D without separate kickoffs, so one session covers all three. The work lives in the crmbuilder repo, not the Cleveland Business Mentors repo the shell opened in.\n\nTopics covered, in order:\n\n1. Located WT-055 in the v2 work_tickets export and read its canonical kickoff body. Confirmed it targets crmbuilder-v2, not CBM.\n\n2. Branch hygiene: the repo opened on a stale-looking pi-074 branch view; a parallel sandbox had already merged the PI-074 executive_summary work to main and removed the branch, leaving the tree clean on main. Two 'Auto stash before merge' stashes were stale governance db-export snapshots fully superseded by main; dropped on Doug's confirmation. No PI-074 code was lost.\n\n3. Slice B (commit c07901f): authored ui/chat/{session,tools,widgets,worker,controller,auth}.py + panels/chat.py; added the AI sidebar group; wired the panel into main_window. One tool (get_current_status), streaming via AsyncAnthropic.messages.stream(), QThread + private asyncio loop per DEC-257, env→keyring→modal key bootstrap, cancel. Fixed a worker-loop-readiness race so aboutToQuit shutdown can't hang the thread (within DEC-257's model — no superseding decision).\n\n4. Slice C (commit e80ee7f): the load-bearing tool_definitions() refactor in mcp_server/tools.py — the MCP server and the chat dispatcher now read one shared list, so they cannot drift; FastMCP still registers all 51 tools (29 read / 22 write) with identical schemas. Built ui/chat/tools.ChatToolDispatcher (schema-from-signature, read/write partition), three-tier prompt caching (system / last-tool / rolling message breakpoints on per-call copies), the substantive system prompt (DEC-329), full/read_only/ask_before_write modes, the model picker, JSON persistence (ui/chat/persistence.py, ~/.crmbuilder-v2/chats/), the 240px conversation sidebar, and the usage display. Note: the live surface is 51 tools, not the design doc's stale '44'.\n\n5. Slice D (commit 5ddc6e7): conversation rename/delete/export-as-markdown via a right-click menu; the design-§12 error-recovery matrix in the worker (429 backoff 2/4/8s, one 500/network retry, clear inline messages for 402 and context-window overflow); the cache-hit usage readout; and tests/crmbuilder_v2/ui/chat/ — 32 tests covering schema generation, the dispatcher, session/persistence round-trips, and the worker turn loop including every error path.\n\n6. Verification throughout (no API key / no clicks available here): UI smoke 15/15, chat suite 32/32, WCAG token-contrast gate 9/9, ruff clean on all chat files, full app boots clean offscreen against the running API, and the AI▸Chat tab activates in a real MainWindow. The three pre-existing mcp/ui test failures (in-flight _session_schema refactor + an enable_auth mock) were confirmed failing at baseline.\n\nAuthored DEC-329 (chat system prompt). PI-052 resolved on Slice D close per the design slicing plan; PI-106 filed for the two deferred Slice-D polish items (sidebar staleness-indicator integration; interactive context-window Trim).\n\nIn flight at end: the three commits and this close-out await Doug's push; live interactive acceptance of the chat (real key + GUI streaming) is Doug's to run; WT-055 is PATCHed ready→consumed after this payload applies (apply_close_out.py does not auto-transition).",
+    "session_medium": "chat",
+    "session_status": "complete",
+    "session_executive_summary": "Built the PI-052 chat tab in the crmbuilder-v2 desktop app across three slices in one Claude Code session. Slice B (WT-055): PySide6 MVP tab — one tool, streaming, in-memory. Slice C: refactored mcp_server.tools into a shared tool_definitions() helper so the chat dispatcher and the MCP server expose the same 51-tool surface, then added three-tier prompt caching, JSON persistence, model/mode pickers, the usage display, and the ask-before-write confirm. Slice D: conversation rename/delete/export, the design-§12 error-recovery matrix, a cache-hit usage readout, and a 32-test suite. Authored DEC-329 (the chat system prompt). Resolves PI-052; filed PI-106 for two deferred polish items. Verified offscreen + mocked; live acceptance is Doug's.",
+    "session_medium_metadata": {
+      "surface": "claude_code",
+      "runner": "claude_code",
+      "model": "claude-opus-4-7"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.7, Claude Code)"
+    ],
+    "topics_covered": "Seed prompt: \"please proceed with wt-055\"\n\n(1) Resolved WT-055 to the PI-052 Slice B kickoff in crmbuilder-v2. (2) Branch hygiene — PI-074 work already merged to main by a parallel sandbox; dropped two stale auto-stashes after confirming they were superseded. (3) Slice B build + commit c07901f. (4) Slice C build (tool_definitions refactor, 51-tool dispatcher, caching, system prompt, persistence, pickers, usage) + commit e80ee7f. (5) Slice D build (conversation ops, error-recovery matrix, usage cache-ratio, 32-test suite) + commit 5ddc6e7. (6) Final verification offscreen + live readiness pass. Deferred and logged as PI-106: sidebar staleness-indicator integration and an interactive context-window Trim action.",
+    "artifacts_produced": "New source: crmbuilder-v2/src/crmbuilder_v2/ui/chat/{__init__,session,tools,widgets,worker,controller,auth,persistence}.py and ui/panels/chat.py. Modified: ui/sidebar.py, ui/main_window.py, mcp_server/tools.py (tool_definitions refactor). Tests: tests/crmbuilder_v2/ui/chat/{test_tools_dispatch,test_session_persistence,test_worker}.py (32 tests) and an updated test_smoke.py. Three commits on main: c07901f (Slice B), e80ee7f (Slice C), 5ddc6e7 (Slice D). This close-out payload.",
+    "in_flight_at_end": "Commits c07901f / e80ee7f / 5ddc6e7 and this close-out await Doug's push. Live interactive acceptance of the chat tab (real ANTHROPIC_API_KEY + GUI streaming / tool round-trips) is Doug's to run. WT-055 is PATCHed ready→consumed after this payload applies (apply_close_out.py does not auto-transition). Two deferred polish items are tracked by PI-106, not left only in prose.",
+    "session_date": "2026-05-28",
+    "references": [
+      {
+        "source_type": "session",
+        "source_id": "SES-113",
+        "target_type": "workstream",
+        "target_id": "WS-010",
+        "relationship": "session_belongs_to_workstream"
+      }
+    ]
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-015",
+    "conversation_title": "Building the PI-052 chat tab end to end — MVP, full tool surface, and polish across Slices B/C/D",
+    "conversation_purpose": "Deliver the PI-052 chat UI: ship the MVP tab (Slice B), wire the full governance tool surface with caching and persistence (Slice C), and add conversation operations, error recovery, and a test suite (Slice D).",
+    "conversation_description": "Single-conversation Claude Code session that built PI-052 across its three implementation slices. Opened against WT-055 (the Slice B kickoff) and continued into Slices C and D at Doug's direction. Slice B: PySide6 MVP chat tab (one tool, streaming, in-memory). Slice C: a tool_definitions() refactor in mcp_server/tools.py that the MCP server and the chat dispatcher share (so they cannot drift), the full 51-tool surface, three-tier prompt caching, JSON persistence, model/mode pickers, the usage display, the system prompt (DEC-329), and the ask-before-write confirm. Slice D: conversation rename/delete/export, the design-§12 error-recovery matrix, the cache-hit usage readout, and a 32-test suite. Verified offscreen + with a mocked SDK throughout; live interactive acceptance is Doug's. Resolves PI-052; files PI-106 for two deferred polish items.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-015",
+        "target_type": "session",
+        "target_id": "SES-113",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [
+    {
+      "identifier": "PI-106",
+      "title": "Chat UI (PI-052) Slice-D follow-ups: sidebar staleness-indicator integration and interactive context-window Trim",
+      "description": "Two polish items scoped to PI-052 Slice D but deferred. (1) Sidebar staleness-indicator integration (design §10): the chat tab subscribes to the existing RefreshService for cross-tab 'decisions changed' hints (informational only, not a re-call); needs RefreshService threaded from MainWindow into ChatPanel. (2) Interactive context-window Trim action (design §12): the overflow case currently surfaces a clear message and '+ New chat' recovers it without restart, but the design's Trim-oldest-N affordance is unbuilt. Neither blocks chat use; both are refinements on a working surface. Resolves when both ship or are formally dropped.",
+      "item_type": "pending_work",
+      "status": "Open",
+      "executive_summary": "Two polish items were scoped to PI-052 Slice D but deferred as low-value / higher-coupling, and are tracked here rather than buried in prose. (1) Sidebar staleness-indicator integration (design §10): the chat tab would subscribe to the existing RefreshService for cross-tab 'decisions changed' hints — informational only, no re-call — which needs RefreshService threaded from MainWindow into ChatPanel. (2) An interactive Trim action for context-window overflow: today the overflow surfaces a clear message and '+ New chat' makes it recoverable without restart, but the design's Trim-oldest-N affordance is not yet built. Neither blocks use of the chat tab; both are UX refinements on an already-working surface."
+    }
+  ],
+  "commits": [
+    {
+      "commit_sha": "c07901fabc75cd5d8b4d193129270cddc864fb6b",
+      "commit_message_first_line": "v2: PI-052 Slice B — PySide6 chat tab MVP (one tool wired, streaming on, in-memory only)",
+      "commit_message_full": "v2: PI-052 Slice B — PySide6 chat tab MVP (one tool wired, streaming on, in-memory only)\n\nWT-055. Per DEC-261 (slicing plan) and DEC-257 (streaming on; QThread +\nprivate asyncio loop, no qasync). Second slice of PI-052: PySide6 chat\ntab MVP with one tool (`get_current_status`), live streaming via\n`AsyncAnthropic.messages.stream()`, API-key bootstrap (env -> keyring ->\nmodal), and cancel-button support. No persistence, no prompt caching,\nno mode-toggle/model-picker functionality, no usage display, no\nmulti-conversation sidebar — all lift in Slice C / D per design doc §10.\n\nNew files:\n- ui/chat/__init__.py, session.py, tools.py, widgets.py, worker.py,\n  controller.py, auth.py\n- ui/panels/chat.py\nTouched:\n- ui/sidebar.py (new \"AI\" group with \"Chat\", above Engagements)\n- ui/main_window.py (chat panel dispatch)\n- tests/crmbuilder_v2/ui/test_smoke.py (add \"Chat\" to EXPECTED_ENTRIES)\n\npyproject.toml already carried keyring>=25.0 and anthropic; no dependency\nedit was needed (the kickoff's \"add keyring\" step was already satisfied).\n\nImplementation notes:\n- ChatPanel consumes the existing FastAPI surface via the API base_url\n  (DEC-253 / design §2.8), not the StorageClient. It is not a\n  ListDetailPanel, so it is excluded from the connection_lost /\n  navigate / on-select-refresh wiring in MainWindow.\n- ChatWorker runs asyncio.run(_main()) inside QThread.run(); start_turn /\n  stop / shutdown marshal onto the worker loop via call_soon_threadsafe.\n  A threading.Event gates loop-readiness so a shutdown requested via\n  QApplication.aboutToQuit immediately after activation cannot race a\n  still-starting loop and block the thread.\n- chat/tools.py exposes a module-level TOOL_DEFINITIONS: list[dict] (the\n  forward-compatible shape from the kickoff's open question). Slice C\n  replaces it with the shared tool_definitions() helper (design App. A)\n  and grows invoke()'s dispatch table to all 44 tools — no other chat\n  module change required.\n- Transcript renders as a QScrollArea + QVBoxLayout of item widgets\n  rather than QListWidget + item delegates (design §2.7); simpler for an\n  append-only transcript.\n- keyring is imported lazily inside chat/auth.py, never at app startup.\n\nSmoke-test summary (offscreen + mocked SDK; live key/GUI acceptance is\nDoug's interactive run):\n- Construction + sidebar wiring verified; UI smoke suite 15/15 green.\n- Mocked-SDK worker turn: streaming deltas concatenate; one-tool round\n  trip dispatches and threads tool_result back into history\n  (user/assistant/user/assistant) for multi-turn.\n- Cancellation mid-stream yields turn \"cancelled\" with partial text and\n  the user message preserved; the next turn runs clean.\n- Worker teardown leaves no running thread (race fix verified).\n- ruff check + ruff format clean on all new files.\n- 14 pre-existing UI-suite failures (in-flight _session_schema refactor)\n  are unrelated and confirmed to fail without this change.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-28T11:20:04-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "7a46e4911e37a56c5ba352205383a5df50a64c53"
+      ],
+      "commit_files_changed_count": 11
+    },
+    {
+      "commit_sha": "e80ee7f2527df516ca512d6ef2050dfc85e7f9ff",
+      "commit_message_first_line": "v2: PI-052 Slice C — full tool surface + caching + persistence + modes",
+      "commit_message_full": "v2: PI-052 Slice C — full tool surface + caching + persistence + modes\n\nBuilds on Slice B (WT-055, c07901f). The chat tab now drives the full\ngovernance tool surface instead of one hardcoded tool, so it can do real\nread/write work against the v2 database.\n\nTool-surface refactor (load-bearing, design Appendix A):\n- mcp_server/tools.py extracts tool_definitions(http) -> list[\n  ToolDefinition] (name, callable, cleaned docstring, is_write by\n  name-prefix). register_tools now iterates it. The MCP stdio/HTTP\n  server and the chat dispatcher consume the same list, so they can't\n  drift. Verified: FastMCP still registers all 51 tools with identical\n  schemas; 29 read / 22 write.\n\nChat dispatcher (ui/chat/tools.py):\n- ChatToolDispatcher builds the Anthropic tools block from\n  tool_definitions via _schema_from_signature (inspect + get_type_hints\n  → JSONSchema). invoke() dispatches by name; read_names/write_names\n  drive the mode toggle. Verified live: list_decisions → 313 records.\n\nWorker (ui/chat/worker.py):\n- Full surface via the dispatcher; three-tier prompt caching (system\n  block, last-tool breakpoint, rolling last-message breakpoint — applied\n  on per-call copies so stored history isn't mutated); the substantive\n  system prompt (design §13); mode handling (full / read_only filters\n  writes / ask_before_write confirms each write via a cross-thread\n  round-trip); per-turn usage emission.\n\nPersistence (ui/chat/persistence.py + session.py):\n- Sessions persist as JSON under ~/.crmbuilder-v2/chats/<chat_id>.json\n  (DEC-256), atomic tmp+os.replace. ChatSession.to_dict/from_dict;\n  assistant content-block models serialize via model_dump to API-safe\n  dicts. Saved on every turn close; usage rolled up on the session.\n\nPanel (ui/panels/chat.py):\n- Model + mode pickers now active (were inert in Slice B); 240px\n  conversation sidebar (DEC-258) with \"+ New chat\", switch, and\n  transcript replay from stored history; header usage display\n  (↑in ↓out (cache R)); ask-before-write confirm modal.\n\nDeferred to Slice D: conversation rename/delete/export-as-markdown, the\nerror-recovery matrix (rate-limit/context-overflow), the test suite.\n\nVerification (offscreen + mocked SDK; live GUI acceptance is Doug's):\n- MCP refactor preserves the surface (40 mcp tests pass; 3 failures are\n  pre-existing — in-flight _session_schema work + an enable_auth mock,\n  confirmed failing at baseline).\n- Streaming, tool round-trip + multi-turn history, cancellation,\n  read-only filtering, ask-before-write allow+deny paths, usage capture,\n  caching breakpoint shapes, persistence save/load round-trip, sidebar\n  list + replay, picker wiring — all verified offscreen.\n- UI smoke suite 15/15; ruff check + format clean on all new chat files\n  (tools.py carries 9 pre-existing C408 in unchanged bodies — left as-is).\n\nNote: the system prompt (worker.SYSTEM_PROMPT) should be recorded as a\nDEC at close-out per design §13.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-28T13:22:37-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "c07901fabc75cd5d8b4d193129270cddc864fb6b"
+      ],
+      "commit_files_changed_count": 7
+    },
+    {
+      "commit_sha": "5ddc6e73dcb5514020967b7a7cae32641bd67a6d",
+      "commit_message_first_line": "v2: PI-052 Slice D — conversation ops, error recovery, test suite",
+      "commit_message_full": "v2: PI-052 Slice D — conversation ops, error recovery, test suite\n\nPolish slice for the chat tab (design §10 Slice D), on top of Slice C\n(e80ee7f).\n\nConversation operations (design §6/§9):\n- Right-click the conversation list for Rename / Export as Markdown /\n  Delete. persistence gains rename(), delete(), and to_markdown()\n  (front-matter + linearized transcript). Deleting the active chat\n  replaces it with a fresh session and clears the transcript.\n\nError-recovery matrix (design §12), in ChatWorker:\n- 429 rate limits back off 2/4/8s then surface a clear failure; transient\n  500 / network errors get one 2s retry. Both emit a transient\n  retry_notice rendered inline. Backoff sleeps are cancellable.\n- 402 → \"Payment required — check Anthropic Console billing\"; 400 that\n  looks like a context-window overflow → \"exceeded the model's context\n  window. Start a new chat (+ New)…\"; other status/connection errors get\n  clear inline messages. 401 still re-prompts for the key (Slice C).\n- Tool-call REST errors continue to feed back as is_error tool_results.\n\nUsage display:\n- Header now shows cache-hit ratio alongside ↑in ↓out (cache R).\n\nTest suite (was deferred from Slice B per the kickoff):\n- tests/crmbuilder_v2/ui/chat/ — 32 tests, all green:\n  - schema generation (required/optional/union/generics),\n  - dispatcher tools_block + read/write partition + invoke (MockTransport)\n    + error-envelope handling,\n  - session to_dict/from_dict round-trip (SDK blocks → dicts), persistence\n    save/load/list/rename/delete/markdown (tmp chats dir),\n  - worker turn loop via a faked AsyncAnthropic + dispatcher: streaming,\n    tool round-trip + multi-turn history, read-only/full tool filtering,\n    ask-before-write allow + deny, usage accumulation, and the full error-\n    recovery matrix (retry-then-succeed, exhaustion, 402, context-window).\n\nVerification: chat suite 32/32, UI smoke 15/15, WCAG token-contrast gate\n9/9, ruff check + format clean on all new/changed chat files. MCP\nrefactor surface unchanged from Slice C.\n\nDeferred (not in scope here): the sidebar staleness-indicator integration\n(RefreshService cross-tab hints, design §10) — informational-only and\nneeds RefreshService threaded into the panel; and an interactive Trim\naction for context-window overflow (the message + \"+ New chat\" already\nmake it recoverable without restart).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-28T21:39:12-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "e80ee7f2527df516ca512d6ef2050dfc85e7f9ff"
+      ],
+      "commit_files_changed_count": 7
+    }
+  ],
+  "decisions": [
+    {
+      "identifier": "DEC-329",
+      "title": "Chat UI system prompt — embedded-assistant role, governance tool-surface semantics, and terse identifier-citing output (design §13)",
+      "decision_date": "2026-05-28",
+      "status": "Active",
+      "context": "Design doc §13 outlined the chat UI system prompt in three sections but deferred full settlement to Slice C, to be issued as a DEC at that time. Slice B used a one-paragraph placeholder. Slice C wires the full tool surface, so the prompt now needs to teach the model the governance domain and the read/write tool conventions.",
+      "decision": "Ship the system prompt as a single text block in crmbuilder_v2.ui.chat.worker.SYSTEM_PROMPT, sent as the cached tier-1 system block on every turn. It has three sections: (1) Role + scope — an assistant embedded in the crmbuilder-v2 desktop app with read/write access to Doug's governance DB; Doug is the sole operator and trusts routine reads without asking. (2) Tool-surface semantics — the entity types (charter, status, decision/DEC-NNN, session/SES-NNN, conversation/CNV-NNN, risk, planning_item, topic, references, the base entity catalog), their identifier conventions, the get_/list_ read vs create_/update_/delete_/add_/replace_ write naming, and that update_ tools take only changed fields. (3) Output preferences — terse answers, cite identifiers, batch tool calls in one assistant turn, and ask before consequential writes only when the operator has set ask-before-write mode.",
+      "rationale": "A stable single block is the natural tier-1 prompt-cache target (design §8) and repays its cost on every turn. Teaching the entity types and identifier conventions up front lets the model chain tools (e.g. list_references_from → get_decision) without re-derivation. The single-operator trust framing matches DEC-254/DEC-255: read freely, write on request, and only gate writes when the mode demands it — so the prompt and the ask-before-write mode agree rather than conflict.",
+      "alternatives_considered": "(a) Keep Slice B's one-paragraph placeholder — rejected: too thin to teach the 51-tool surface, and the design always scheduled the real prompt for Slice C. (b) Generate per-entity verbose tool documentation into the prompt — rejected: redundant with the per-tool descriptions already in the tools block, and it would bloat the cached block. (c) No system prompt, rely on tool descriptions alone — rejected: leaves the model without the governance domain model, identifier conventions, or output discipline.",
+      "consequences": "The prompt lives in worker.SYSTEM_PROMPT and is editable in one place; it is cached on every call, so editing it invalidates the tier-1 system-block cache (a one-turn re-cache cost). It is intentionally model-agnostic across the Opus/Sonnet/Haiku picker. Future tool-surface growth (new entity types) should be reflected here so the model's mental model stays current. Delivered in commit e80ee7f.",
+      "executive_summary": "Slice C settles the chat UI system prompt that design §13 outlined but deferred. It ships as a single cached system block (worker.SYSTEM_PROMPT) with three sections: an embedded-assistant role + single-operator trust model; tool-surface semantics (the governance entity types, their identifier conventions, and the get_/list_ read vs create_/update_/delete_ write naming); and output preferences (terse answers, cite DEC-NNN/SES-NNN identifiers, batch tool calls, ask before consequential writes only in ask-before-write mode). Being a stable single block, it is the tier-1 prompt-cache target and repays its cost on every turn; editing it invalidates that cache tier."
+    }
+  ],
+  "references": [
+    {
+      "source_type": "decision",
+      "source_id": "DEC-329",
+      "target_type": "conversation",
+      "target_id": "CNV-015",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-329",
+      "target_type": "decision",
+      "target_id": "DEC-261",
+      "relationship": "is_about"
+    },
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-015",
+      "target_type": "work_ticket",
+      "target_id": "WT-055",
+      "relationship": "conversation_opens_against_work_ticket"
+    },
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-015",
+      "target_type": "workstream",
+      "target_id": "WS-010",
+      "relationship": "conversation_belongs_to_workstream"
+    }
+  ],
+  "resolves_planning_items": [
+    {
+      "planning_item_identifier": "PI-052"
+    }
+  ],
+  "addresses_planning_items": [
+    {
+      "planning_item_identifier": "PI-106"
+    }
+  ]
+}
