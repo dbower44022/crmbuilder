@@ -325,6 +325,14 @@ class PlanningItem(Base):
     area: Mapped[list | None] = mapped_column(
         JSON(none_as_null=True), nullable=True
     )
+    # PI-077: orchestrator claim. ``claimed_by`` holds the conversation
+    # identifier (CONV-NNN) of the agent working the item; both columns
+    # are NULL when the item is unclaimed and both set when claimed. The
+    # atomic claim/release transitions live in the access layer.
+    claimed_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    claimed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
@@ -350,6 +358,11 @@ class PlanningItem(Base):
             "AND json_array_length(area) >= 1"
             ")",
             name="ck_planning_area_nonempty_array",
+        ),
+        CheckConstraint(
+            "(claimed_by IS NULL AND claimed_at IS NULL) OR "
+            "(claimed_by IS NOT NULL AND claimed_at IS NOT NULL)",
+            name="ck_planning_claim_pairing",
         ),
     )
 

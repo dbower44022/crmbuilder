@@ -170,3 +170,43 @@ def test_post_planning_item_without_area_is_null(client):
     )
     assert r.status_code == 201, r.json()
     assert r.json()["data"]["area"] is None
+
+
+# ---------------------------------------------------------------------------
+# PI-077 — claim / release endpoints
+# ---------------------------------------------------------------------------
+
+
+def test_planning_item_claim_release_roundtrip(client):
+    client.post(
+        "/planning-items",
+        json={
+            "identifier": "PI-040",
+            "title": "Claimable",
+            "item_type": "pending_work",
+            "status": "Open",
+        },
+    )
+    r = client.post("/planning-items/PI-040/claim", json={"claimant": "CONV-100"})
+    assert r.status_code == 200, r.json()
+    assert r.json()["data"]["claimed_by"] == "CONV-100"
+    assert r.json()["data"]["claimed_at"] is not None
+
+    r = client.post("/planning-items/PI-040/release", json={"claimant": "CONV-100"})
+    assert r.status_code == 200, r.json()
+    assert r.json()["data"]["claimed_by"] is None
+
+
+def test_claim_conflict_returns_409(client):
+    client.post(
+        "/planning-items",
+        json={
+            "identifier": "PI-041",
+            "title": "Contended",
+            "item_type": "pending_work",
+            "status": "Open",
+        },
+    )
+    client.post("/planning-items/PI-041/claim", json={"claimant": "CONV-100"})
+    r = client.post("/planning-items/PI-041/claim", json={"claimant": "CONV-200"})
+    assert r.status_code == 409, r.json()

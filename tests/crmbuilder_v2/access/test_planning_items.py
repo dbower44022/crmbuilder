@@ -244,3 +244,109 @@ def test_db_check_rejects_empty_array_directly(v2_env):
                 )
             )
             s.flush()
+
+
+# ---------------------------------------------------------------------------
+# PI-077 — claim / release (claimed_by / claimed_at)
+# ---------------------------------------------------------------------------
+
+
+def _seed(identifier: str = "PI-030") -> None:
+    with session_scope() as s:
+        planning_items.create(
+            s, identifier=identifier, title="Claimable",
+            item_type="pending_work", status="Open",
+        )
+
+
+def test_claim_sets_both_fields(v2_env):
+    _seed("PI-030")
+    with session_scope() as s:
+        row = planning_items.claim_planning_item(s, "PI-030", "CONV-100")
+    assert row["claimed_by"] == "CONV-100"
+    assert row["claimed_at"] is not None
+
+
+def test_claim_idempotent_for_same_claimant(v2_env):
+    _seed("PI-031")
+    with session_scope() as s:
+        planning_items.claim_planning_item(s, "PI-031", "CONV-100")
+    # Re-claim by the same claimant must not raise and must retain the claim.
+    with session_scope() as s:
+        again = planning_items.claim_planning_item(s, "PI-031", "CONV-100")
+    assert again["claimed_by"] == "CONV-100"
+    assert again["claimed_at"] is not None
+
+
+def test_claim_conflict_for_different_claimant(v2_env):
+    _seed("PI-032")
+    with session_scope() as s:
+        planning_items.claim_planning_item(s, "PI-032", "CONV-100")
+    with session_scope() as s, pytest.raises(ConflictError):
+        planning_items.claim_planning_item(s, "PI-032", "CONV-200")
+
+
+def test_release_clears_fields(v2_env):
+    _seed("PI-033")
+    with session_scope() as s:
+        planning_items.claim_planning_item(s, "PI-033", "CONV-100")
+    with session_scope() as s:
+        row = planning_items.release_planning_item(s, "PI-033", "CONV-100")
+    assert row["claimed_by"] is None
+    assert row["claimed_at"] is None
+
+
+def test_release_wrong_claimant_raises_conflict(v2_env):
+    _seed("PI-034")
+    with session_scope() as s:
+        planning_items.claim_planning_item(s, "PI-034", "CONV-100")
+    with session_scope() as s, pytest.raises(ConflictError):
+        planning_items.release_planning_item(s, "PI-034", "CONV-200")
+
+
+def test_release_unclaimed_is_idempotent(v2_env):
+    _seed("PI-035")
+    with session_scope() as s:
+        row = planning_items.release_planning_item(s, "PI-035")
+    assert row["claimed_by"] is None
+
+
+def test_db_check_rejects_half_claim(v2_env):
+    """Belt-and-braces: the pairing CHECK rejects claimed_by without
+    claimed_at when the access layer is bypassed (direct ORM insert)."""
+    from datetime import UTC, datetime
+
+    from sqlalchemy.exc import IntegrityError
+
+    from crmbuilder_v2.access.models import PlanningItem
+
+    with pytest.raises(IntegrityError):
+        with session_scope() as s:
+            s.add(
+                PlanningItem(
+                    identifier="PI-098",
+                    title="Half claim",
+                    item_type="open_question",
+                    description="",
+                    status="Open",
+                    claimed_by="CONV-1",
+                    claimed_at=None,
+                )
+            )
+            s.flush()
+
+    # The inverse half is rejected too.
+    with pytest.raises(IntegrityError):
+        with session_scope() as s:
+            s.add(
+                PlanningItem(
+                    identifier="PI-097",
+                    title="Half claim 2",
+                    item_type="open_question",
+                    description="",
+                    status="Open",
+                    claimed_by=None,
+                    claimed_at=datetime.now(UTC),
+                )
+            )
+            s.flush()

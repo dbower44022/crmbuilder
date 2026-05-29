@@ -7,7 +7,12 @@ from fastapi import APIRouter
 from crmbuilder_v2.access.repositories import planning_items
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
-from crmbuilder_v2.api.schemas import PlanningItemCreateIn, PlanningItemUpdateIn
+from crmbuilder_v2.api.schemas import (
+    PlanningItemClaimIn,
+    PlanningItemCreateIn,
+    PlanningItemReleaseIn,
+    PlanningItemUpdateIn,
+)
 
 router = APIRouter(prefix="/planning-items", tags=["planning_items"])
 
@@ -42,6 +47,22 @@ def update(identifier: str, body: PlanningItemUpdateIn):
     with writable_session() as s:
         fields = {k: v for k, v in body.model_dump().items() if v is not None}
         return ok(planning_items.update(s, identifier, **fields))
+
+
+@router.post("/{identifier}/claim")
+def claim(identifier: str, body: PlanningItemClaimIn):
+    """Atomically claim an item for an orchestrator agent (PI-077)."""
+    with writable_session() as s:
+        return ok(planning_items.claim_planning_item(s, identifier, body.claimant))
+
+
+@router.post("/{identifier}/release")
+def release(identifier: str, body: PlanningItemReleaseIn):
+    """Release an item's claim (PI-077)."""
+    with writable_session() as s:
+        return ok(
+            planning_items.release_planning_item(s, identifier, body.claimant)
+        )
 
 
 @router.delete("/{identifier}")

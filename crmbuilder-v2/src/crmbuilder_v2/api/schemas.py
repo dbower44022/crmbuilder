@@ -174,6 +174,20 @@ class PlanningItemUpdateIn(_Base):
     area: list[str] | None = None  # PI-076
 
 
+class PlanningItemClaimIn(_Base):
+    """POST /planning-items/{id}/claim body (PI-077). ``claimant`` is the
+    conversation identifier (CONV-NNN) of the agent taking the item."""
+
+    claimant: str
+
+
+class PlanningItemReleaseIn(_Base):
+    """POST /planning-items/{id}/release body (PI-077). When ``claimant``
+    is supplied the release only proceeds if the item is held by it."""
+
+    claimant: str | None = None
+
+
 # ---------- Topics ----------
 
 

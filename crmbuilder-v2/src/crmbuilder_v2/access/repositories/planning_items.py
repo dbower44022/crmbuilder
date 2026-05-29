@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -310,3 +311,87 @@ def upsert(session: Session, *, identifier: str, **fields) -> dict:
     if existing is None:
         return create(session, identifier=identifier, **fields)
     return update(session, identifier, **fields)
+
+
+# ---------------------------------------------------------------------------
+# PI-077 — orchestrator claim management (claimed_by / claimed_at)
+# ---------------------------------------------------------------------------
+
+
+def claim_planning_item(session: Session, identifier: str, claimant: str) -> dict:
+    """Atomically claim an unclaimed planning_item for ``claimant``.
+
+    ``claimant`` is the conversation identifier (``CONV-NNN``) of the
+    agent taking the item. Sets ``claimed_by`` + ``claimed_at`` together.
+
+    Optimistic concurrency: a claim on an item already held by a
+    *different* claimant raises :class:`ConflictError`. A re-claim by the
+    *same* claimant is idempotent (returns the row unchanged) so an agent
+    retrying after a transient failure does not fail. The access engine's
+    ``BEGIN IMMEDIATE`` + ``busy_timeout`` serialise concurrent writers,
+    so the read-check-write below is race-safe across processes.
+    """
+    require_string(claimant, field="claimant")
+    row = session.scalar(
+        select(PlanningItem).where(PlanningItem.identifier == identifier)
+    )
+    if row is None:
+        raise NotFoundError(_ENTITY_TYPE, identifier)
+    if row.claimed_by is not None:
+        if row.claimed_by == claimant:
+            return to_dict(row)
+        raise ConflictError(
+            f"planning_item {identifier!r} already claimed by {row.claimed_by!r}"
+        )
+    before = to_dict(row)
+    row.claimed_by = claimant
+    row.claimed_at = datetime.now(UTC)
+    session.flush()
+    after = to_dict(row)
+    emit(
+        session,
+        entity_type=_ENTITY_TYPE,
+        entity_identifier=identifier,
+        operation="update",
+        before=before,
+        after=after,
+    )
+    return after
+
+
+def release_planning_item(
+    session: Session, identifier: str, claimant: str | None = None
+) -> dict:
+    """Release a planning_item's claim, clearing ``claimed_by`` + ``claimed_at``.
+
+    When ``claimant`` is supplied the release only proceeds if the item
+    is held by that claimant (else :class:`ConflictError`) — this guards
+    an agent from releasing another agent's claim. Releasing an already-
+    unclaimed item is idempotent.
+    """
+    row = session.scalar(
+        select(PlanningItem).where(PlanningItem.identifier == identifier)
+    )
+    if row is None:
+        raise NotFoundError(_ENTITY_TYPE, identifier)
+    if row.claimed_by is None:
+        return to_dict(row)
+    if claimant is not None and row.claimed_by != claimant:
+        raise ConflictError(
+            f"planning_item {identifier!r} is claimed by {row.claimed_by!r}, "
+            f"not {claimant!r}"
+        )
+    before = to_dict(row)
+    row.claimed_by = None
+    row.claimed_at = None
+    session.flush()
+    after = to_dict(row)
+    emit(
+        session,
+        entity_type=_ENTITY_TYPE,
+        entity_identifier=identifier,
+        operation="update",
+        before=before,
+        after=after,
+    )
+    return after
