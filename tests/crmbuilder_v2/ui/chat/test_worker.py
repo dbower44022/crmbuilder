@@ -194,6 +194,9 @@ def _drive(qapp, monkeypatch, steps, *, mode="full", confirm=None, fast=True):
     worker.turn_failed.connect(
         lambda e, m: (result.update(error=e, messages=m), loop.quit())
     )
+    worker.context_overflow.connect(
+        lambda m: (result.update(overflow=m), loop.quit())
+    )
 
     worker.start()
     deadline = time.time() + 3
@@ -374,7 +377,11 @@ def test_payment_required_message(qapp, monkeypatch):
     assert "Payment required" in result["error"]
 
 
-def test_context_window_message(qapp, monkeypatch):
+def test_context_window_routes_to_overflow_signal(qapp, monkeypatch):
+    # PI-106: a context-window 400 now routes to the dedicated
+    # context_overflow signal (carrying the pre-turn snapshot) so the
+    # panel can offer the interactive Trim affordance, instead of a
+    # dead-end turn_failed error.
     req = httpx.Request("POST", "http://test.invalid")
     err = anthropic.BadRequestError(
         "prompt is too long: maximum context length exceeded",
@@ -382,4 +389,16 @@ def test_context_window_message(qapp, monkeypatch):
         body=None,
     )
     _collected, result, *_ = _drive(qapp, monkeypatch, [err])
-    assert "context window" in result["error"]
+    assert "error" not in result
+    assert result["overflow"] == [{"role": "user", "content": "hi"}]
+
+
+def test_other_bad_request_still_fails(qapp, monkeypatch):
+    req = httpx.Request("POST", "http://test.invalid")
+    err = anthropic.BadRequestError(
+        "some unrelated validation problem",
+        response=httpx.Response(400, request=req),
+        body=None,
+    )
+    _collected, result, *_ = _drive(qapp, monkeypatch, [err])
+    assert "Request rejected" in result["error"]

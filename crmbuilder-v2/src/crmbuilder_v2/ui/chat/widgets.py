@@ -20,7 +20,7 @@ and the transcript is append-only.
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -221,6 +221,42 @@ class NoticeItem(QWidget):
         row.addStretch(1)
         row.addWidget(label)
         row.addStretch(1)
+
+
+class ActionNoticeItem(QWidget):
+    """A centered notice line with a single action button (PI-106).
+
+    Used for the context-window-overflow Trim affordance: shows an
+    explanatory message and a button that emits :data:`triggered` when
+    clicked. The button can be disabled via :meth:`set_active` once the
+    action is under way.
+    """
+
+    triggered = Signal()
+
+    def __init__(
+        self, text: str, button_label: str, parent: QWidget | None = None
+    ) -> None:
+        super().__init__(parent)
+        row = QHBoxLayout(self)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(8)
+        label = QLabel(text)
+        label.setWordWrap(True)
+        label.setStyleSheet(
+            f"color: {t('color.neutral.500')};font-size: {t('font.size.caption')};"
+        )
+        self._button = QPushButton(button_label)
+        self._button.setObjectName("chat_trim_button")
+        self._button.clicked.connect(self.triggered)
+        row.addStretch(1)
+        row.addWidget(label)
+        row.addWidget(self._button)
+        row.addStretch(1)
+
+    def set_active(self, active: bool) -> None:
+        """Enable or disable the action button."""
+        self._button.setEnabled(active)
 
 
 class TranscriptView(QScrollArea):

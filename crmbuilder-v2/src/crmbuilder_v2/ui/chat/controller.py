@@ -18,7 +18,8 @@ import logging
 from PySide6.QtCore import QObject, Signal
 
 from crmbuilder_v2.ui.chat import persistence
-from crmbuilder_v2.ui.chat.session import ChatSession
+from crmbuilder_v2.ui.chat.session import ChatSession, trim_oldest_turns
+from crmbuilder_v2.ui.chat.tools import entity_type_for_tool
 from crmbuilder_v2.ui.chat.worker import ChatWorker
 
 _log = logging.getLogger("crmbuilder_v2.ui.chat.controller")
@@ -50,6 +51,7 @@ class ChatController(QObject):
     turn_state_changed = Signal(bool)
     turn_finished = Signal(str)
     turn_failed = Signal(str)
+    context_overflow = Signal()
     auth_failed = Signal(str)
 
     def __init__(self, base_url: str, parent: QObject | None = None) -> None:
@@ -58,6 +60,10 @@ class ChatController(QObject):
         self._session = ChatSession()
         self._worker: ChatWorker | None = None
         self._in_turn = False
+        # Entity types this session has read via a tool call during this
+        # app run; drives the staleness indicator (PI-106). Reset whenever
+        # the active session changes.
+        self._read_entity_types: set[str] = set()
 
     @property
     def in_turn(self) -> bool:
@@ -67,10 +73,16 @@ class ChatController(QObject):
     def session(self) -> ChatSession:
         return self._session
 
+    def has_read(self, entity_type: str) -> bool:
+        """Whether the active session has read this entity type via a tool
+        call during this app run (drives the staleness indicator, PI-106)."""
+        return entity_type in self._read_entity_types
+
     def new_session(self) -> ChatSession:
         """Persist the current session and switch to a fresh one."""
         persistence.save(self._session)
         self._session = ChatSession()
+        self._read_entity_types.clear()
         self.usage_updated.emit(dict(self._session.usage))
         return self._session
 
@@ -83,6 +95,7 @@ class ChatController(QObject):
         if loaded is None:
             return None
         self._session = loaded
+        self._read_entity_types.clear()
         self.usage_updated.emit(dict(self._session.usage))
         return loaded
 
@@ -100,6 +113,7 @@ class ChatController(QObject):
         persistence.delete(chat_id)
         if chat_id == self._session.chat_id:
             self._session = ChatSession()
+            self._read_entity_types.clear()
             self.usage_updated.emit(dict(self._session.usage))
             return True
         return False
@@ -132,13 +146,14 @@ class ChatController(QObject):
         worker = ChatWorker(api_key=api_key, base_url=self._base_url)
         worker.assistant_delta.connect(self.assistant_delta)
         worker.tool_started.connect(self.tool_started)
-        worker.tool_completed.connect(self.tool_completed)
+        worker.tool_completed.connect(self._on_tool_completed)
         worker.tool_failed.connect(self.tool_failed)
         worker.confirm_requested.connect(self.confirm_write_requested)
         worker.usage_updated.connect(self._on_worker_usage)
         worker.retry_notice.connect(self.retry_notice)
         worker.turn_finished.connect(self._on_worker_turn_finished)
         worker.turn_failed.connect(self._on_worker_turn_failed)
+        worker.context_overflow.connect(self._on_worker_context_overflow)
         worker.auth_failed.connect(self.auth_failed)
         worker.start()
         self._worker = worker
@@ -164,6 +179,28 @@ class ChatController(QObject):
         if self._worker is not None:
             self._worker.stop()
 
+    def trim_and_retry(self) -> bool:
+        """Drop the oldest turns and re-dispatch the failed turn (PI-106).
+
+        Returns False (changing nothing) when no turn can be safely
+        dropped — only the most recent turn remains, so the caller advises
+        starting a new chat instead.
+        """
+        if self._worker is None or self._in_turn:
+            return False
+        trimmed = trim_oldest_turns(self._session.messages)
+        if len(trimmed) == len(self._session.messages):
+            return False
+        self._session.replace_messages(trimmed)
+        persistence.save(self._session)
+        self._set_in_turn(True)
+        self._worker.start_turn(
+            list(self._session.messages_for_api()),
+            self._session.model,
+            self._session.mode,
+        )
+        return True
+
     def shutdown(self) -> None:
         """Tear down the worker thread cleanly (called at panel/app close)."""
         self._teardown_worker()
@@ -171,6 +208,18 @@ class ChatController(QObject):
     # ------------------------------------------------------------------
     # Worker signal handlers
     # ------------------------------------------------------------------
+
+    def _on_tool_completed(self, name: str, summary: str, result_json: str) -> None:
+        entity_type = entity_type_for_tool(name)
+        if entity_type is not None:
+            self._read_entity_types.add(entity_type)
+        self.tool_completed.emit(name, summary, result_json)
+
+    def _on_worker_context_overflow(self, messages) -> None:
+        self._session.replace_messages(messages)
+        self._set_in_turn(False)
+        persistence.save(self._session)
+        self.context_overflow.emit()
 
     def _on_worker_usage(self, usage: dict) -> None:
         for key in self._session.usage:

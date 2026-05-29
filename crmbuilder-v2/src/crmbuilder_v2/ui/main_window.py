@@ -143,6 +143,14 @@ class MainWindow(QMainWindow):
         # and ``_on_panel_connection_lost`` flip it back to False.
         self._lifecycle_ready = False
 
+        # Construct the file-watch service before the panel loop so the
+        # chat tab can subscribe to it (PI-106). It is connected and
+        # started at the end of __init__, after the sidebar exists.
+        watched_dir = (
+            snapshot_dir if snapshot_dir is not None else get_settings().export_dir
+        )
+        self._refresh_service = RefreshService(watched_dir, self)
+
         for entry in SIDEBAR_ENTRIES:
             if entry == "Chat":
                 # PI-052 Slice B: the chat tab consumes the existing
@@ -151,7 +159,9 @@ class MainWindow(QMainWindow):
                 # ListDetailPanel, so it is excluded from the
                 # connection_lost / navigate wiring and the on-select
                 # refresh below.
-                page: QWidget = ChatPanel(get_settings().api_base_url)
+                page: QWidget = ChatPanel(
+                    get_settings().api_base_url, self._refresh_service
+                )
             elif entry == "Charter":
                 page = CharterPanel(self._client)
             elif entry == "Status":
@@ -264,8 +274,6 @@ class MainWindow(QMainWindow):
 
         self._sidebar.select_entry(_DEFAULT_ENTRY)
 
-        watched_dir = snapshot_dir if snapshot_dir is not None else get_settings().export_dir
-        self._refresh_service = RefreshService(watched_dir, self)
         self._refresh_service.data_changed.connect(self._on_data_changed)
         self._refresh_service.watch_failed.connect(self._on_watch_failed)
         self._refresh_service.start()
