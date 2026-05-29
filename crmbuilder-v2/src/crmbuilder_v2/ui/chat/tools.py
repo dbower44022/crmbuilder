@@ -31,6 +31,38 @@ import httpx
 
 from crmbuilder_v2.mcp_server.tools import ToolDefinition, tool_definitions
 
+# Maps a read-tool name to the RefreshService entity_type its result
+# depends on, for the chat staleness indicator (PI-106). Ordered most-
+# specific first so ``list_decisions_for_session`` resolves to
+# ``decision`` (the data read), not ``session``. Tools with no
+# file-watched entity (the ``catalog_*`` base-entity reads) match
+# nothing and return None.
+_ENTITY_TOKENS: tuple[tuple[str, str], ...] = (
+    ("planning_item", "planning_item"),
+    ("charter", "charter"),
+    ("status", "status"),
+    ("decision", "decision"),
+    ("session", "session"),
+    ("risk", "risk"),
+    ("topic", "topic"),
+    ("reference", "reference"),
+)
+
+
+def entity_type_for_tool(name: str) -> str | None:
+    """Return the RefreshService entity_type a tool's result depends on.
+
+    Used by the chat staleness indicator to flag that an earlier read
+    (e.g. ``list_decisions``) may be stale after another surface rewrote
+    that entity's snapshot. Returns None for tools with no file-watched
+    entity (the ``catalog_*`` base-entity reads).
+    """
+    for token, entity_type in _ENTITY_TOKENS:
+        if token in name:
+            return entity_type
+    return None
+
+
 _JSON_TYPES: dict[type, str] = {
     str: "string",
     int: "integer",

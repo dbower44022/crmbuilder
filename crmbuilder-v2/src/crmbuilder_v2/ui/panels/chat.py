@@ -45,6 +45,7 @@ from crmbuilder_v2.ui.chat import persistence
 from crmbuilder_v2.ui.chat.auth import ApiKeyDialog, resolve_api_key
 from crmbuilder_v2.ui.chat.controller import ChatController
 from crmbuilder_v2.ui.chat.widgets import (
+    ActionNoticeItem,
     AssistantMessageItem,
     NoticeItem,
     ToolResultItem,
@@ -52,6 +53,7 @@ from crmbuilder_v2.ui.chat.widgets import (
     TranscriptView,
     UserMessageItem,
 )
+from crmbuilder_v2.ui.refresh import RefreshService
 from crmbuilder_v2.ui.styling import t
 from crmbuilder_v2.ui.widgets.form_helpers import primary_button
 
@@ -73,12 +75,18 @@ _MODES: tuple[tuple[str, str], ...] = (
 class ChatPanel(QWidget):
     """The AI chat tab widget."""
 
-    def __init__(self, base_url: str, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        refresh_service: RefreshService | None = None,
+        parent: QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
         self.setObjectName("chat_panel")
         self._controller = ChatController(base_url, self)
         self._bootstrapped = False
         self._live_assistant: AssistantMessageItem | None = None
+        self._active_trim_notice: ActionNoticeItem | None = None
 
         self._stack = QStackedWidget()
         self._stack.addWidget(self._build_empty_state())  # index 0
@@ -89,6 +97,13 @@ class ChatPanel(QWidget):
         outer.addWidget(self._stack)
 
         self._connect_controller()
+
+        # PI-106: subscribe to the existing file-watch service for
+        # cross-tab "entity changed" hints. Informational only — the chat
+        # tab never re-calls a tool in response, it just flags that an
+        # earlier read may now be stale.
+        if refresh_service is not None:
+            refresh_service.data_changed.connect(self._on_external_data_changed)
 
         app = QApplication.instance()
         if app is not None:
@@ -191,6 +206,17 @@ class ChatPanel(QWidget):
 
         row.addStretch(1)
 
+        # PI-106 staleness badge: hidden until a read entity changes
+        # elsewhere; cleared on the next send.
+        self._stale_label = QLabel("")
+        self._stale_label.setObjectName("chat_stale_label")
+        self._stale_label.setVisible(False)
+        self._stale_label.setStyleSheet(
+            f"color: {t('color.warning.default')};"
+            f"font-size: {t('font.size.caption')};"
+        )
+        row.addWidget(self._stale_label)
+
         self._usage_label = QLabel("")
         self._usage_label.setObjectName("chat_usage_label")
         self._usage_label.setStyleSheet(
@@ -250,6 +276,7 @@ class ChatPanel(QWidget):
         self._controller.confirm_write_requested.connect(self._on_confirm_write)
         self._controller.usage_updated.connect(self._on_usage_updated)
         self._controller.retry_notice.connect(self._on_retry_notice)
+        self._controller.context_overflow.connect(self._on_context_overflow)
 
     # ------------------------------------------------------------------
     # Header pickers + usage
@@ -277,6 +304,52 @@ class ChatPanel(QWidget):
 
     def _on_retry_notice(self, message: str) -> None:
         self._transcript.add_item(NoticeItem(message))
+
+    # ------------------------------------------------------------------
+    # Staleness indicator (PI-106)
+    # ------------------------------------------------------------------
+
+    def _on_external_data_changed(self, entity_type: str) -> None:
+        """Flag that an earlier read may be stale after a cross-tab write.
+
+        Informational only — never re-calls a tool. Suppressed while a
+        turn is in flight (the running turn reads fresh data) and unless
+        this session actually read the changed entity type.
+        """
+        if self._controller.in_turn:
+            return
+        if not self._controller.has_read(entity_type):
+            return
+        label = entity_type.replace("_", " ").title()
+        self._stale_label.setText(f"⚠ {label} changed elsewhere — results may be stale")
+        self._stale_label.setVisible(True)
+
+    def _clear_stale(self) -> None:
+        self._stale_label.setText("")
+        self._stale_label.setVisible(False)
+
+    # ------------------------------------------------------------------
+    # Context-window Trim (PI-106, design §12)
+    # ------------------------------------------------------------------
+
+    def _on_context_overflow(self) -> None:
+        self._close_live_assistant()
+        notice = ActionNoticeItem(
+            "This conversation exceeded the model's context window.",
+            "Trim oldest messages & retry",
+        )
+        notice.triggered.connect(self._on_trim_requested)
+        self._transcript.add_item(notice)
+        self._active_trim_notice = notice
+
+    def _on_trim_requested(self) -> None:
+        if self._active_trim_notice is not None:
+            self._active_trim_notice.set_active(False)
+            self._active_trim_notice = None
+        if not self._controller.trim_and_retry():
+            self._transcript.add_item(
+                NoticeItem("Couldn't trim further — start a new chat (+ New).")
+            )
 
     def _on_confirm_write(self, name: str, args_json: str) -> None:
         box = QMessageBox(self)
@@ -311,6 +384,7 @@ class ChatPanel(QWidget):
         self._controller.new_session()
         self._transcript.clear()
         self._close_live_assistant()
+        self._clear_stale()
         self._usage_label.setText("")
         self._refresh_conversation_list()
         self._input.setFocus()
@@ -322,6 +396,7 @@ class ChatPanel(QWidget):
         session = self._controller.switch_to(chat_id)
         if session is None:
             return
+        self._clear_stale()
         self._render_session()
 
     def _on_conversation_context_menu(self, pos) -> None:
@@ -497,6 +572,7 @@ class ChatPanel(QWidget):
         self._transcript.add_item(UserMessageItem(text))
         self._input.clear()
         self._close_live_assistant()
+        self._clear_stale()
         self._controller.send(text)
 
     # ------------------------------------------------------------------

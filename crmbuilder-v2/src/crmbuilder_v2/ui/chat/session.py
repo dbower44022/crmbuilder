@@ -167,3 +167,51 @@ class ChatSession:
 
     def _touch(self) -> None:
         self.updated_at = datetime.now(UTC)
+
+
+# ----------------------------------------------------------------------
+# Context-window trimming (PI-106, design §12)
+# ----------------------------------------------------------------------
+
+
+def _is_fresh_user_turn(content: Any) -> bool:
+    """True if a user message begins a fresh turn (not a tool_result carrier).
+
+    The Messages API requires the list to start with a user turn and
+    forbids a ``tool_result`` block whose matching ``tool_use`` is absent.
+    A fresh user turn is plain text, or a content list with no
+    ``tool_result`` block — trimming to such a boundary keeps the
+    remaining list valid.
+    """
+    if isinstance(content, str):
+        return True
+    if isinstance(content, list):
+        return not any(
+            isinstance(b, dict) and b.get("type") == "tool_result" for b in content
+        )
+    return False
+
+
+def turn_start_indices(messages: list[dict[str, Any]]) -> list[int]:
+    """Indices of the messages that begin a fresh user turn."""
+    return [
+        i
+        for i, m in enumerate(messages)
+        if m.get("role") == "user" and _is_fresh_user_turn(m.get("content"))
+    ]
+
+
+def trim_oldest_turns(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Drop the oldest ~third of turns (at least one), preserving validity.
+
+    Returns a new list that still begins on a fresh user turn and never
+    orphans a ``tool_result`` from its ``tool_use``; the most recent turn
+    is always kept. Returns an equal-length copy when nothing can be
+    safely dropped (one turn or fewer remain) — the caller treats that as
+    "trim could not help, start a new chat".
+    """
+    starts = turn_start_indices(messages)
+    if len(starts) <= 1:
+        return list(messages)
+    drop = min(max(1, len(starts) // 3), len(starts) - 1)
+    return list(messages[starts[drop] :])

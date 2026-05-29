@@ -153,6 +153,9 @@ class ChatWorker(QThread):
     * ``usage_updated(object)`` — token usage dict after each stream.
     * ``turn_finished(str, object)`` — ``(stop_reason, messages)``.
     * ``turn_failed(str, object)`` — ``(error, messages)``.
+    * ``context_overflow(object)`` — ``messages``; the turn's context
+      window was exceeded (PI-106). Carries the pre-turn snapshot so the
+      controller can trim and retry.
     * ``auth_failed(str)`` — a 401 from Anthropic.
     """
 
@@ -165,6 +168,7 @@ class ChatWorker(QThread):
     retry_notice = Signal(str)
     turn_finished = Signal(str, object)
     turn_failed = Signal(str, object)
+    context_overflow = Signal(object)
     auth_failed = Signal(str)
 
     def __init__(self, api_key: str, base_url: str, parent=None) -> None:
@@ -295,7 +299,12 @@ class ChatWorker(QThread):
             self.auth_failed.emit(str(exc))
             self.turn_failed.emit("authentication failed", snapshot)
         except anthropic.BadRequestError as exc:
-            self.turn_failed.emit(self._classify_bad_request(exc), snapshot)
+            if self._is_context_overflow(exc):
+                # Distinct path so the panel can offer the interactive
+                # Trim affordance (PI-106) instead of a dead-end notice.
+                self.context_overflow.emit(snapshot)
+            else:
+                self.turn_failed.emit(f"Request rejected: {exc}", snapshot)
         except anthropic.APIStatusError as exc:
             self.turn_failed.emit(self._classify_status_error(exc), snapshot)
         except anthropic.APIConnectionError:
@@ -310,15 +319,10 @@ class ChatWorker(QThread):
             self.turn_failed.emit(str(exc), snapshot)
 
     @staticmethod
-    def _classify_bad_request(exc: anthropic.BadRequestError) -> str:
+    def _is_context_overflow(exc: anthropic.BadRequestError) -> bool:
+        """Whether a 400 is the model's context window being exceeded."""
         text = str(exc).lower()
-        if any(k in text for k in ("context", "too long", "max_tokens", "tokens")):
-            return (
-                "This conversation exceeded the model's context window. "
-                "Start a new chat (+ New) or switch to a model with a larger "
-                "context."
-            )
-        return f"Request rejected: {exc}"
+        return any(k in text for k in ("context", "too long", "max_tokens", "tokens"))
 
     @staticmethod
     def _classify_status_error(exc: anthropic.APIStatusError) -> str:
