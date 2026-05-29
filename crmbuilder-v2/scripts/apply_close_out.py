@@ -427,7 +427,7 @@ def _record_target_id(entity_type: str, response_data: dict) -> str | None:
     apply doesn't fall through to a missing field.
     """
     field_by_type = {
-        "session": "identifier",
+        "session": "session_identifier",
         "decision": "identifier",
         "planning_item": "identifier",
         "reference": "reference_identifier",
