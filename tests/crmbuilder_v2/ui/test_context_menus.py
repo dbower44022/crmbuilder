@@ -130,16 +130,23 @@ def test_sessions_context_menu_whitespace_offers_new_session(
 def test_sessions_context_menu_row(qtbot, client_stub):
     panel = SessionsPanel(client=client_stub)
     qtbot.addWidget(panel)
-    record = {"identifier": "SES-008", "title": "v0.3 planning"}
+    # PI-073 / DEC-314 — sessions are now full-lifecycle CRUD containers,
+    # so the row context menu offers New / Edit / Delete / Copy identifier.
+    record = {"session_identifier": "SES-008", "session_title": "v0.3 planning"}
     index = _seed_table_records(panel, [record])
     menu = panel._build_context_menu(index)
-    assert _action_labels(menu) == ["Go to references", "Copy identifier"]
+    assert _action_labels(menu) == [
+        "New session",
+        "Edit",
+        "Delete",
+        "Copy identifier",
+    ]
 
 
 def test_sessions_copy_identifier_writes_clipboard(qtbot, client_stub):
     panel = SessionsPanel(client=client_stub)
     qtbot.addWidget(panel)
-    record = {"identifier": "SES-008", "title": "v0.3 planning"}
+    record = {"session_identifier": "SES-008", "session_title": "v0.3 planning"}
     index = _seed_table_records(panel, [record])
     menu = panel._build_context_menu(index)
     copy_action = next(a for a in menu.actions() if a.text() == "Copy identifier")

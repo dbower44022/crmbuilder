@@ -3,12 +3,21 @@
 from __future__ import annotations
 
 
+_EXEC_SUMMARY = (
+    "This planning item reconciles stale test fixtures with the current "
+    "governance schema so the suite validates real behavior; it carries no "
+    "production code change and exists purely to keep the regression net "
+    "aligned with the PI-073 and PI-102 data-model decisions now in effect."
+)
+
+
 def _mk(client, ident, **extra):
     body = {
         "identifier": ident,
         "title": ident,
         "item_type": "pending_work",
         "status": "Open",
+        "executive_summary": _EXEC_SUMMARY,
     }
     body.update(extra)
     r = client.post("/planning-items", json=body)

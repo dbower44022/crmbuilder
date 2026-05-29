@@ -55,6 +55,44 @@ def _wait_loaded(qtbot, panel, count: int) -> None:
     qtbot.waitUntil(lambda: panel._model.rowCount() == count, timeout=3000)
 
 
+# Reusable executive_summary satisfying the 200-800 char requirement
+# introduced by PI-074/PI-075 (sessions) and PI-102 (planning items,
+# decisions). Conversations belong to a session under the PI-073 redesign.
+_EXEC_SUMMARY = (
+    "This planning item reconciles stale test fixtures with the current "
+    "governance schema so the suite validates real behavior; it carries no "
+    "production code change and exists purely to keep the regression net "
+    "aligned with the PI-073 and PI-102 data-model decisions now in effect."
+)
+
+
+def _make_session(client: StorageClient) -> str:
+    """Create a minimal valid session and return its identifier.
+
+    Conversations are topical sub-units within a session (PI-073), so the
+    governance fixtures that previously hung a conversation off a workstream
+    now hang it off a session via ``conversation_belongs_to_session``. A
+    session itself requires exactly one ``session_belongs_to_workstream``
+    edge, so this helper provisions the parent workstream first.
+    """
+    ws = client.create_workstream(
+        {"workstream_name": "WS", "workstream_purpose": "p", "workstream_description": "d"}
+    )["workstream_identifier"]
+    result = client.create_session({
+        "session_title": "S",
+        "session_description": "d",
+        "session_medium": "chat",
+        "session_executive_summary": _EXEC_SUMMARY,
+        "session_identifier": "SES-001",
+        "references": [{
+            "source_type": "session", "source_id": "SES-001",
+            "target_type": "workstream", "target_id": ws,
+            "relationship": "session_belongs_to_workstream",
+        }],
+    })
+    return result["session_identifier"]
+
+
 def test_sidebar_governance_group_appends_six_new_entries():
     for label, entries in SIDEBAR_GROUPS:
         if label == "Governance":
@@ -113,18 +151,16 @@ def test_workstream_dialogs_construct(qtbot, gov_client):
 
 
 def test_conversations_panel_boots_with_membership(qtbot, gov_client):
-    ws = gov_client.create_workstream(
-        {"workstream_name": "WS", "workstream_purpose": "p", "workstream_description": "d"}
-    )["workstream_identifier"]
+    sess = _make_session(gov_client)
     gov_client.create_conversation({
         "conversation_title": "C1",
         "conversation_purpose": "p",
         "conversation_description": "d",
-        "conversation_identifier": "CONV-001",
+        "conversation_identifier": "CNV-001",
         "references": [{
-            "source_type": "conversation", "source_id": "CONV-001",
-            "target_type": "workstream", "target_id": ws,
-            "relationship": "conversation_belongs_to_workstream",
+            "source_type": "conversation", "source_id": "CNV-001",
+            "target_type": "session", "target_id": sess,
+            "relationship": "conversation_belongs_to_session",
         }],
     })
     panel = ConversationsPanel(gov_client)
@@ -132,14 +168,14 @@ def test_conversations_panel_boots_with_membership(qtbot, gov_client):
     _wait_loaded(qtbot, panel, 1)
 
 
-def test_conversation_create_dialog_populates_workstream_picker(qtbot, gov_client):
-    gov_client.create_workstream(
-        {"workstream_name": "WS A", "workstream_purpose": "p", "workstream_description": "d"}
-    )
+def test_conversation_create_dialog_populates_session_picker(qtbot, gov_client):
+    # PI-073: a conversation belongs to a session, so the create dialog's
+    # membership picker is now a session picker fed by list_sessions().
+    _make_session(gov_client)
     dialog = ConversationCreateDialog(gov_client)
     qtbot.addWidget(dialog)
-    # 1 placeholder + 1 workstream
-    assert dialog._workstream_combo.count() == 2
+    # 1 placeholder + 1 session
+    assert dialog._session_combo.count() == 2
 
 
 # --- reference_books --------------------------------------------------------
@@ -199,18 +235,16 @@ def test_close_out_payloads_panel_boots(qtbot, gov_client):
 
 
 def test_cop_create_dialog_populates_conversation_picker(qtbot, gov_client):
-    ws = gov_client.create_workstream(
-        {"workstream_name": "WS", "workstream_purpose": "p", "workstream_description": "d"}
-    )["workstream_identifier"]
+    sess = _make_session(gov_client)
     gov_client.create_conversation({
         "conversation_title": "C",
         "conversation_purpose": "p",
         "conversation_description": "d",
-        "conversation_identifier": "CONV-001",
+        "conversation_identifier": "CNV-001",
         "references": [{
-            "source_type": "conversation", "source_id": "CONV-001",
-            "target_type": "workstream", "target_id": ws,
-            "relationship": "conversation_belongs_to_workstream",
+            "source_type": "conversation", "source_id": "CNV-001",
+            "target_type": "session", "target_id": sess,
+            "relationship": "conversation_belongs_to_session",
         }],
     })
     dialog = CloseOutPayloadCreateDialog(gov_client)
@@ -220,18 +254,16 @@ def test_cop_create_dialog_populates_conversation_picker(qtbot, gov_client):
 
 def test_cop_edit_dialog_constructs(qtbot, gov_client):
     # Manually create a COP with a conversation produced edge.
-    ws = gov_client.create_workstream(
-        {"workstream_name": "WS", "workstream_purpose": "p", "workstream_description": "d"}
-    )["workstream_identifier"]
+    sess = _make_session(gov_client)
     conv = gov_client.create_conversation({
         "conversation_title": "C",
         "conversation_purpose": "p",
         "conversation_description": "d",
-        "conversation_identifier": "CONV-001",
+        "conversation_identifier": "CNV-001",
         "references": [{
-            "source_type": "conversation", "source_id": "CONV-001",
-            "target_type": "workstream", "target_id": ws,
-            "relationship": "conversation_belongs_to_workstream",
+            "source_type": "conversation", "source_id": "CNV-001",
+            "target_type": "session", "target_id": sess,
+            "relationship": "conversation_belongs_to_session",
         }],
     })["conversation_identifier"]
     record = gov_client.create_close_out_payload({

@@ -164,6 +164,7 @@ def test_create_with_valid_area(v2_env):
         row = planning_items.create(
             s, identifier="PI-010", title="Cross-cutting",
             item_type="pending_work", status="Open",
+            executive_summary=_VALID_EXEC_SUMMARY,
             area=["v2-access", "v2-api"],
         )
     assert row["area"] == ["v2-access", "v2-api"]
@@ -177,6 +178,7 @@ def test_create_without_area_defaults_to_none(v2_env):
         row = planning_items.create(
             s, identifier="PI-011", title="No area",
             item_type="pending_work", status="Open",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
     assert row["area"] is None
 
@@ -186,6 +188,7 @@ def test_create_with_unknown_area_value_rejected(v2_env):
         planning_items.create(
             s, identifier="PI-012", title="Bad area",
             item_type="pending_work", status="Open",
+            executive_summary=_VALID_EXEC_SUMMARY,
             area=["v2-access", "not-an-area"],
         )
 
@@ -195,6 +198,7 @@ def test_create_with_empty_area_list_rejected(v2_env):
         planning_items.create(
             s, identifier="PI-013", title="Empty area",
             item_type="pending_work", status="Open",
+            executive_summary=_VALID_EXEC_SUMMARY,
             area=[],
         )
 
@@ -204,6 +208,7 @@ def test_create_with_duplicate_area_values_rejected(v2_env):
         planning_items.create(
             s, identifier="PI-014", title="Dup area",
             item_type="pending_work", status="Open",
+            executive_summary=_VALID_EXEC_SUMMARY,
             area=["v2-api", "v2-api"],
         )
 
@@ -213,6 +218,7 @@ def test_create_with_non_string_area_element_rejected(v2_env):
         planning_items.create(
             s, identifier="PI-015", title="Non-string area",
             item_type="pending_work", status="Open",
+            executive_summary=_VALID_EXEC_SUMMARY,
             area=["v2-api", 7],
         )
 
@@ -222,6 +228,7 @@ def test_update_area(v2_env):
         planning_items.create(
             s, identifier="PI-016", title="Updatable",
             item_type="pending_work", status="Open",
+            executive_summary=_VALID_EXEC_SUMMARY,
             area=["v2-ui"],
         )
     with session_scope() as s:
@@ -234,6 +241,7 @@ def test_update_with_unknown_area_value_rejected(v2_env):
         planning_items.create(
             s, identifier="PI-017", title="Updatable",
             item_type="pending_work", status="Open",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
     with session_scope() as s, pytest.raises(ValidationError):
         planning_items.update(s, "PI-017", area=["bogus"])
@@ -271,6 +279,7 @@ def _seed(identifier: str = "PI-030") -> None:
         planning_items.create(
             s, identifier=identifier, title="Claimable",
             item_type="pending_work", status="Open",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
 
 

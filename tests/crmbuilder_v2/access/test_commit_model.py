@@ -44,7 +44,7 @@ def test_commits_table_has_expected_columns(v2_env):
         "commit_branch",
         "commit_parent_shas",
         "commit_files_changed_count",
-        "commit_conversation_id",
+        "commit_session_id",
         "commit_created_at",
         "commit_updated_at",
         "commit_deleted_at",
@@ -72,7 +72,7 @@ def test_commits_identifier_format_check_rejects_wrong_width(v2_env):
                     "commit_author_name, commit_author_email, "
                     "commit_committed_at, commit_repository, commit_branch, "
                     "commit_parent_shas, commit_files_changed_count, "
-                    "commit_conversation_id, commit_created_at, "
+                    "commit_session_id, commit_created_at, "
                     "commit_updated_at) "
                     "VALUES "
                     "('CM-001', "
@@ -97,7 +97,7 @@ def test_commits_sha_format_check_rejects_wrong_length(v2_env):
                     "commit_author_name, commit_author_email, "
                     "commit_committed_at, commit_repository, commit_branch, "
                     "commit_parent_shas, commit_files_changed_count, "
-                    "commit_conversation_id, commit_created_at, "
+                    "commit_session_id, commit_created_at, "
                     "commit_updated_at) "
                     "VALUES "
                     "('CM-0001', 'TOO_SHORT', "
@@ -121,7 +121,7 @@ def test_commits_sha_format_check_rejects_uppercase(v2_env):
                     "commit_author_name, commit_author_email, "
                     "commit_committed_at, commit_repository, commit_branch, "
                     "commit_parent_shas, commit_files_changed_count, "
-                    "commit_conversation_id, commit_created_at, "
+                    "commit_session_id, commit_created_at, "
                     "commit_updated_at) "
                     "VALUES "
                     "('CM-0001', "
@@ -146,7 +146,7 @@ def test_commits_files_changed_count_check_rejects_negative(v2_env):
                     "commit_author_name, commit_author_email, "
                     "commit_committed_at, commit_repository, commit_branch, "
                     "commit_parent_shas, commit_files_changed_count, "
-                    "commit_conversation_id, commit_created_at, "
+                    "commit_session_id, commit_created_at, "
                     "commit_updated_at) "
                     "VALUES "
                     "('CM-0001', "
@@ -170,7 +170,7 @@ def test_commits_well_formed_insert_round_trips(v2_env):
                 "commit_author_name, commit_author_email, "
                 "commit_committed_at, commit_repository, commit_branch, "
                 "commit_parent_shas, commit_files_changed_count, "
-                "commit_conversation_id, commit_created_at, "
+                "commit_session_id, commit_created_at, "
                 "commit_updated_at) "
                 "VALUES "
                 "('CM-0001', "

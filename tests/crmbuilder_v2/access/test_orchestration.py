@@ -9,10 +9,18 @@ from crmbuilder_v2.access.exceptions import ValidationError
 from crmbuilder_v2.access.repositories import planning_items, references
 
 
+_EXEC_SUMMARY = (
+    "This planning item reconciles stale test fixtures with the current governance "
+    "schema so the suite validates real behavior; it carries no production code change "
+    "and exists purely to keep the regression net aligned with the PI-073 and PI-102 "
+    "data-model decisions now in effect."
+)
+
+
 def _pi(s, ident, *, status="Open", area=None):
     planning_items.create(
         s, identifier=ident, title=ident, item_type="pending_work",
-        status=status, area=area,
+        status=status, executive_summary=_EXEC_SUMMARY, area=area,
     )
 
 

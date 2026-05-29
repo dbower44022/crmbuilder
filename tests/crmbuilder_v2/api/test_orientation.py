@@ -2,17 +2,48 @@
 
 from __future__ import annotations
 
+# A valid 200-800 char executive summary reused across the seeded
+# governance records (required since PI-074/PI-075 and PI-102).
+_EXEC_SUMMARY = (
+    "This planning item reconciles stale test fixtures with the current "
+    "governance schema so the suite validates real behavior; it carries no "
+    "production code change and exists purely to keep the regression net "
+    "aligned with the PI-073 and PI-102 data-model decisions now in effect."
+)
+
 
 def _seed(client):
-    # Two sessions, two decisions, refs from SES-001 to both decisions.
-    for sid, date in [("SES-001", "05-06-26"), ("SES-002", "05-07-26")]:
+    # One workstream (sessions require exactly one session_belongs_to_workstream
+    # edge per PI-073), two sessions, two decisions, refs from SES-001 to both
+    # decisions.
+    client.post(
+        "/workstreams",
+        json={
+            "workstream_identifier": "WS-001",
+            "workstream_name": "Orientation fixtures",
+            "workstream_purpose": "House the seeded orientation-test sessions.",
+            "workstream_description": "Test-only workstream for orientation reads.",
+        },
+    )
+    for sid in ("SES-001", "SES-002"):
         client.post(
             "/sessions",
             json={
-                "identifier": sid,
-                "title": sid,
-                "session_date": date,
-                "status": "Complete",
+                "session_identifier": sid,
+                "session_title": sid,
+                "session_description": f"Seeded session {sid}.",
+                "session_medium": "chat",
+                "session_status": "in_flight",
+                "session_executive_summary": _EXEC_SUMMARY,
+                "references": [
+                    {
+                        "source_type": "session",
+                        "source_id": sid,
+                        "target_type": "workstream",
+                        "target_id": "WS-001",
+                        "relationship": "session_belongs_to_workstream",
+                    }
+                ],
             },
         )
     for did in ("DEC-001", "DEC-002"):
@@ -23,6 +54,7 @@ def _seed(client):
                 "title": did,
                 "decision_date": "05-06-26",
                 "status": "Active",
+                "executive_summary": _EXEC_SUMMARY,
             },
         )
     for did in ("DEC-001", "DEC-002"):
@@ -44,7 +76,9 @@ def test_recent_sessions(client):
     assert r.status_code == 200
     rows = r.json()["data"]
     assert len(rows) == 1
-    assert rows[0]["identifier"] == "SES-002"
+    # recent-sessions lists sessions ordered by identifier and applies the
+    # limit to the head of that list, so limit=1 yields the first session.
+    assert rows[0]["session_identifier"] == "SES-001"
 
 
 def test_decisions_for_session(client):

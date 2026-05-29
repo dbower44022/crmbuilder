@@ -25,7 +25,53 @@ def _ws(client, name="WS A"):
     return r.json()["data"]["workstream_identifier"]
 
 
-def _conv(client, ws_id, identifier="CONV-001", title="Conv A"):
+# A reusable, schema-valid 200-800 char executive summary (PI-074/PI-075).
+_EXEC_SUMMARY = (
+    "This planning item reconciles stale test fixtures with the current "
+    "governance schema so the suite validates real behavior; it carries no "
+    "production code change and exists purely to keep the regression net "
+    "aligned with the PI-073 and PI-102 data-model decisions now in effect."
+)
+
+
+def _session(client, ws_id, identifier="SES-100", title="Sess A"):
+    """Create a session (PI-073: medium-agnostic communication container).
+
+    Requires exactly one ``session_belongs_to_workstream`` edge.
+    """
+    r = client.post(
+        "/sessions",
+        json={
+            "session_identifier": identifier,
+            "session_title": title,
+            "session_description": "d",
+            "session_medium": "chat",
+            "session_executive_summary": _EXEC_SUMMARY,
+            "references": [{
+                "source_type": "session", "source_id": identifier,
+                "target_type": "workstream", "target_id": ws_id,
+                "relationship": "session_belongs_to_workstream",
+            }],
+        },
+    )
+    assert r.status_code == 201, r.text
+    return r.json()["data"]["session_identifier"]
+
+
+def _conv(client, ws_id, identifier="CNV-001", title="Conv A", session_id=None):
+    """Create a conversation (PI-073: topical sub-unit within a session).
+
+    New ``CNV-NNN`` prefix; requires exactly one
+    ``conversation_belongs_to_session`` edge. When ``session_id`` is not
+    supplied, a session is created under ``ws_id`` first.
+    """
+    if session_id is None:
+        # Derive a distinct session identifier from the conversation number
+        # so repeated _conv calls within one test get distinct sessions
+        # (offset into the SES-2NN band to avoid colliding with _session's
+        # SES-100 default). Stays within the ^SES-\d{3}$ format.
+        num = int(identifier.split("-", 1)[1])
+        session_id = _session(client, ws_id, identifier=f"SES-2{num:02d}")
     r = client.post(
         "/conversations",
         json={
@@ -33,8 +79,8 @@ def _conv(client, ws_id, identifier="CONV-001", title="Conv A"):
             "conversation_description": "d", "conversation_identifier": identifier,
             "references": [{
                 "source_type": "conversation", "source_id": identifier,
-                "target_type": "workstream", "target_id": ws_id,
-                "relationship": "conversation_belongs_to_workstream",
+                "target_type": "session", "target_id": session_id,
+                "relationship": "conversation_belongs_to_session",
             }],
         },
     )
@@ -81,18 +127,22 @@ def test_workstream_validation_failure_envelope(client):
 
 def test_conversation_membership_and_filters(client):
     ws = _ws(client)
-    # missing membership -> 422
+    # missing membership (no conversation_belongs_to_session edge) -> 422
     r = client.post(
         "/conversations",
-        json={"conversation_title": "No WS", "conversation_purpose": "p",
+        json={"conversation_title": "No session", "conversation_purpose": "p",
               "conversation_description": "d"},
     )
     assert r.status_code == 422
-    _conv(client, ws, "CONV-001", "A")
-    _conv(client, ws, "CONV-002", "B")
-    assert len(client.get(f"/conversations?workstream_identifier={ws}").json()["data"]) == 2
-    client.patch("/conversations/CONV-001", json={"conversation_status": "kickoff_drafted"})
-    assert len(client.get("/conversations?status=kickoff_drafted").json()["data"]) == 1
+    # Two conversations under one shared session; the session_identifier
+    # filter replaces the removed workstream_identifier filter (PI-073:
+    # conversations belong to sessions, not workstreams).
+    ses = _session(client, ws)
+    _conv(client, ws, "CNV-001", "A", session_id=ses)
+    _conv(client, ws, "CNV-002", "B", session_id=ses)
+    assert len(client.get(f"/conversations?session_identifier={ses}").json()["data"]) == 2
+    client.patch("/conversations/CNV-001", json={"conversation_status": "in_flight"})
+    assert len(client.get("/conversations?status=in_flight").json()["data"]) == 1
 
 
 # --- reference_books + version sub-endpoints --------------------------------

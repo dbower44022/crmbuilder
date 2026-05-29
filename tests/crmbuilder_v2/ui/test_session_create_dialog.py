@@ -1,87 +1,87 @@
-"""Tests for ``SessionCreateDialog`` (v0.3 slice D — DEC-034)."""
+"""Tests for the Session create/edit/delete dialogs (PI-073 / DEC-314 redesign).
+
+Sessions are the medium-agnostic communication container. The dialog is
+now schema-driven on ``EntityCrudDialog`` (DEC-028) rather than the old
+bespoke v0.3 slice D implementation. Required fields per ``session-v2.md``
+§3.2: ``session_title``, ``session_description``, ``session_executive_summary``
+(200-800 chars, PI-075/PI-102), ``session_medium`` (vocab), and
+``session_status`` (vocab). The create dialog prepends a required
+workstream-membership selector; the identifier is server-assigned via
+``client.next_session_identifier()`` and attached to the create body
+alongside the ``session_belongs_to_workstream`` reference edge.
+"""
 
 from __future__ import annotations
 
-from datetime import date
 from typing import Any
 from unittest.mock import MagicMock
 
-from crmbuilder_v2.access.vocab import SESSION_STATUSES
-from crmbuilder_v2.ui.dialogs._session_schema import (
-    SESSION_CONVERSATION_REF_PLACEHOLDER,
-    SESSION_TOPICS_PLACEHOLDER,
-)
+from crmbuilder_v2.access.vocab import SESSION_MEDIUMS, SESSION_STATUSES
 from crmbuilder_v2.ui.dialogs.error import ErrorDialog
 from crmbuilder_v2.ui.dialogs.session_create import (
     SessionCreateDialog,
-    compute_next_session_identifier,
+    SessionDeleteDialog,
+    SessionEditDialog,
 )
-from crmbuilder_v2.ui.exceptions import ConflictError, ValidationError
+from crmbuilder_v2.ui.exceptions import ConflictError, NotFoundError, ValidationError
 from PySide6.QtWidgets import QComboBox, QLineEdit, QPlainTextEdit
 
-# Field key order from PRD §2.4 — this ordering is the contract.
+# A valid 200-800 character executive summary reused across the suite.
+_VALID_EXEC_SUMMARY = (
+    "This planning item reconciles stale test fixtures with the current "
+    "governance schema so the suite validates real behavior; it carries no "
+    "production code change and exists purely to keep the regression net "
+    "aligned with the PI-073 and PI-102 data-model decisions now in effect."
+)
+
+# Field key order from the create schema — workstream selector is inserted
+# as row 0 by the dialog and is not part of the FieldSchema list.
 _EXPECTED_FIELD_ORDER = [
-    "identifier",
-    "session_date",
-    "status",
-    "title",
-    "summary",
-    "topics_covered",
-    "artifacts_produced",
-    "in_flight_at_end",
-    "conversation_reference",
+    "session_title",
+    "session_description",
+    "session_executive_summary",
+    "session_medium",
+    "session_status",
+    "session_notes",
 ]
 
 
-def _stub_client(sessions: list[dict] | None = None) -> MagicMock:
+def _stub_client(
+    *,
+    next_identifier: str = "SES-009",
+    workstreams: list[dict] | None = None,
+) -> MagicMock:
     client = MagicMock()
-    client.list_sessions.return_value = list(sessions or [])
+    client.next_session_identifier.return_value = next_identifier
+    client.list_workstreams.return_value = list(
+        workstreams
+        if workstreams is not None
+        else [{"workstream_identifier": "WS-001", "workstream_name": "Schema"}]
+    )
     return client
 
 
+def _select_workstream(dialog: SessionCreateDialog, identifier: str = "WS-001") -> None:
+    combo = dialog._workstream_combo
+    for index in range(combo.count()):
+        if combo.itemData(index) == identifier:
+            combo.setCurrentIndex(index)
+            return
+    raise AssertionError(f"workstream {identifier} not in combo")
+
+
 def _fill_required(dialog: SessionCreateDialog) -> None:
-    """Fill every required field with non-empty values.
+    """Fill every required field with valid values.
 
-    The identifier is auto-assigned and read-only; ``session_date``
-    defaults to today; ``status`` defaults to "Complete"; the long-text
-    fields are explicitly populated so required-field validation passes.
+    ``session_medium`` defaults to ``chat`` and ``session_status`` defaults
+    to ``planned`` via the schema; the title, description, and executive
+    summary are explicitly populated so required-field and length
+    validation pass. A workstream is selected so the create body builds.
     """
-    dialog._widgets.title.setText("Title")
-    dialog._widgets.summary.setPlainText("Summary body")
-    dialog._widgets.topics_covered.setPlainText("Topics body")
-    dialog._widgets.artifacts_produced.setPlainText("Artifacts body")
-    dialog._widgets.conversation_reference.setPlainText(
-        "Conversation reference body"
-    )
-
-
-# ---------------------------------------------------------------------------
-# compute_next_session_identifier
-# ---------------------------------------------------------------------------
-
-
-def test_compute_next_identifier_increments_max():
-    sessions = [
-        {"identifier": "SES-008"},
-        {"identifier": "SES-007"},
-        {"identifier": "SES-001"},
-    ]
-    assert compute_next_session_identifier(sessions) == "SES-009"
-
-
-def test_compute_next_identifier_empty_list_yields_001():
-    assert compute_next_session_identifier([]) == "SES-001"
-
-
-def test_compute_next_identifier_skips_invalid_records():
-    sessions = [
-        {"identifier": None},
-        {},  # no identifier key at all
-        {"identifier": "SES-bogus"},
-        {"identifier": "OTHER-005"},
-        {"identifier": "SES-002"},
-    ]
-    assert compute_next_session_identifier(sessions) == "SES-003"
+    dialog._widgets.session_title.setText("Title")
+    dialog._widgets.session_description.setPlainText("Description body")
+    dialog._widgets.session_executive_summary.setPlainText(_VALID_EXEC_SUMMARY)
+    _select_workstream(dialog)
 
 
 # ---------------------------------------------------------------------------
@@ -89,7 +89,7 @@ def test_compute_next_identifier_skips_invalid_records():
 # ---------------------------------------------------------------------------
 
 
-def test_dialog_has_nine_fields_in_correct_order(qtbot):
+def test_dialog_has_expected_fields_in_correct_order(qtbot):
     dialog = SessionCreateDialog(_stub_client())
     qtbot.addWidget(dialog)
     keys = [schema.key for schema in dialog._fields]
@@ -99,85 +99,67 @@ def test_dialog_has_nine_fields_in_correct_order(qtbot):
 def test_dialog_widget_kinds_match_schema(qtbot):
     dialog = SessionCreateDialog(_stub_client())
     qtbot.addWidget(dialog)
-    assert isinstance(dialog._widgets.identifier, QLineEdit)
-    assert isinstance(dialog._widgets.title, QLineEdit)
-    assert isinstance(dialog._widgets.status, QComboBox)
-    assert isinstance(dialog._widgets.summary, QPlainTextEdit)
-    assert isinstance(dialog._widgets.topics_covered, QPlainTextEdit)
-    assert isinstance(dialog._widgets.artifacts_produced, QPlainTextEdit)
-    assert isinstance(dialog._widgets.in_flight_at_end, QPlainTextEdit)
+    assert isinstance(dialog._widgets.session_title, QLineEdit)
+    assert isinstance(dialog._widgets.session_description, QPlainTextEdit)
     assert isinstance(
-        dialog._widgets.conversation_reference, QPlainTextEdit
+        dialog._widgets.session_executive_summary, QPlainTextEdit
     )
+    assert isinstance(dialog._widgets.session_medium, QComboBox)
+    assert isinstance(dialog._widgets.session_status, QComboBox)
+    assert isinstance(dialog._widgets.session_notes, QPlainTextEdit)
 
 
-def test_identifier_auto_assigned_from_latest_session(qtbot):
-    client = _stub_client(
-        [{"identifier": "SES-008"}, {"identifier": "SES-007"}]
-    )
-    dialog = SessionCreateDialog(client)
+def test_create_mode_has_no_identifier_field(qtbot):
+    # In create mode the identifier is server-assigned; the schema omits it.
+    dialog = SessionCreateDialog(_stub_client())
     qtbot.addWidget(dialog)
-    assert dialog._widgets.identifier.text() == "SES-009"
+    assert "session_identifier" not in dialog._widgets
 
 
-def test_identifier_skips_invalid_records_during_open(qtbot):
+def test_workstream_selector_present_with_options(qtbot):
     client = _stub_client(
-        [
-            {"identifier": "SES-005"},
-            {"identifier": "SES-bogus"},
-            {"identifier": None},
+        workstreams=[
+            {"workstream_identifier": "WS-001", "workstream_name": "Schema"},
+            {"workstream_identifier": "WS-002", "workstream_name": "Other"},
         ]
     )
     dialog = SessionCreateDialog(client)
     qtbot.addWidget(dialog)
-    assert dialog._widgets.identifier.text() == "SES-006"
+    values = [
+        dialog._workstream_combo.itemData(i)
+        for i in range(dialog._workstream_combo.count())
+    ]
+    # The placeholder (None) plus the two workstreams.
+    assert values == [None, "WS-001", "WS-002"]
 
 
-def test_identifier_is_read_only(qtbot):
+def test_medium_combo_bound_to_session_mediums_vocab(qtbot):
     dialog = SessionCreateDialog(_stub_client())
     qtbot.addWidget(dialog)
-    assert dialog._widgets.identifier.isReadOnly() is True
-
-
-def test_session_date_defaults_to_today(qtbot):
-    dialog = SessionCreateDialog(_stub_client())
-    qtbot.addWidget(dialog)
-    today_text = date.today().strftime("%m-%d-%y")
-    assert dialog._widgets.session_date.date_text() == today_text
-
-
-def test_status_defaults_to_Complete(qtbot):
-    dialog = SessionCreateDialog(_stub_client())
-    qtbot.addWidget(dialog)
-    assert dialog._widgets.status.currentText() == "Complete"
+    items = [
+        dialog._widgets.session_medium.itemText(i)
+        for i in range(dialog._widgets.session_medium.count())
+    ]
+    assert items == sorted(SESSION_MEDIUMS)
+    assert dialog._widgets.session_medium.currentText() == "chat"
 
 
 def test_status_combo_bound_to_session_statuses_vocab(qtbot):
     dialog = SessionCreateDialog(_stub_client())
     qtbot.addWidget(dialog)
     items = [
-        dialog._widgets.status.itemText(i)
-        for i in range(dialog._widgets.status.count())
+        dialog._widgets.session_status.itemText(i)
+        for i in range(dialog._widgets.session_status.count())
     ]
-    assert items == sorted(SESSION_STATUSES)
-
-
-def test_topics_covered_placeholder_present(qtbot):
-    dialog = SessionCreateDialog(_stub_client())
-    qtbot.addWidget(dialog)
-    assert (
-        dialog._widgets.topics_covered.placeholderText()
-        == SESSION_TOPICS_PLACEHOLDER
+    # The status field is transition-aware (compute_options=status_choices):
+    # from the default "planned" the offered choices are "planned" plus its
+    # legal transitions, which excludes "complete". Every offered value is a
+    # member of the SESSION_STATUSES vocab.
+    assert set(items) <= set(SESSION_STATUSES)
+    assert items == sorted(
+        {"planned", "in_flight", "cancelled", "not_started", "superseded"}
     )
-
-
-def test_conversation_reference_placeholder_present(qtbot):
-    dialog = SessionCreateDialog(_stub_client())
-    qtbot.addWidget(dialog)
-    assert (
-        dialog._widgets.conversation_reference.placeholderText()
-        == SESSION_CONVERSATION_REF_PLACEHOLDER
-    )
+    assert dialog._widgets.session_status.currentText() == "planned"
 
 
 # ---------------------------------------------------------------------------
@@ -189,67 +171,127 @@ def test_required_fields_block_save_with_inline_error(qtbot):
     client = _stub_client()
     dialog = SessionCreateDialog(client)
     qtbot.addWidget(dialog)
-    # All long-text fields and title are required-empty at construction
-    # except identifier (auto), session_date (today), status (Complete).
+    # Title, description, and executive_summary are required-empty at
+    # construction; medium and status carry schema defaults.
 
     dialog._on_save_clicked()
 
     client.create_session.assert_not_called()
     for f_key in (
-        "title",
-        "summary",
-        "topics_covered",
-        "artifacts_produced",
-        "conversation_reference",
+        "session_title",
+        "session_description",
+        "session_executive_summary",
     ):
         label = dialog._widgets.error_labels[f_key]
         assert label.text() == "This field is required."
 
 
-def test_in_flight_at_end_optional(qtbot):
+def test_short_executive_summary_blocks_save(qtbot):
+    client = _stub_client()
+    dialog = SessionCreateDialog(client)
+    qtbot.addWidget(dialog)
+    dialog._widgets.session_title.setText("Title")
+    dialog._widgets.session_description.setPlainText("Description body")
+    dialog._widgets.session_executive_summary.setPlainText("too short")
+    _select_workstream(dialog)
+
+    dialog._on_save_clicked()
+
+    client.create_session.assert_not_called()
+    err = dialog._widgets.error_labels["session_executive_summary"].text()
+    assert "200-800 characters" in err
+
+
+def test_missing_workstream_blocks_save(qtbot):
+    client = _stub_client()
+    dialog = SessionCreateDialog(client)
+    qtbot.addWidget(dialog)
+    dialog._widgets.session_title.setText("Title")
+    dialog._widgets.session_description.setPlainText("Description body")
+    dialog._widgets.session_executive_summary.setPlainText(_VALID_EXEC_SUMMARY)
+    # Leave the workstream combo on its placeholder (None).
+
+    dialog._on_save_clicked()
+
+    client.create_session.assert_not_called()
+    assert (
+        dialog._widgets.error_labels["session_title"].text()
+        == "Select a workstream for this session."
+    )
+
+
+def test_session_notes_optional(qtbot):
     client = _stub_client()
     client.create_session.return_value = {
-        "identifier": "SES-001",
-        "title": "Title",
+        "session_identifier": "SES-009",
+        "session_title": "Title",
     }
     dialog = SessionCreateDialog(client)
     qtbot.addWidget(dialog)
     _fill_required(dialog)
-    # Leave in_flight_at_end empty.
-    assert dialog._widgets.in_flight_at_end.toPlainText() == ""
+    # Leave session_notes empty.
+    assert dialog._widgets.session_notes.toPlainText() == ""
 
     with qtbot.waitSignal(dialog.accepted, timeout=2000):
         dialog._on_save_clicked()
 
     client.create_session.assert_called_once()
     body = client.create_session.call_args[0][0]
-    assert body["in_flight_at_end"] == ""
+    assert body["session_notes"] == ""
 
 
 def test_save_calls_client_with_all_field_values(qtbot):
-    client = _stub_client([{"identifier": "SES-008"}])
+    client = _stub_client(next_identifier="SES-009")
     client.create_session.return_value = {
-        "identifier": "SES-009",
-        "title": "Title",
+        "session_identifier": "SES-009",
+        "session_title": "Title",
     }
     dialog = SessionCreateDialog(client)
     qtbot.addWidget(dialog)
     _fill_required(dialog)
-    dialog._widgets.in_flight_at_end.setPlainText("Some pending work")
+    dialog._widgets.session_notes.setPlainText("Some pending work")
 
     with qtbot.waitSignal(dialog.accepted, timeout=2000):
         dialog._on_save_clicked()
 
     body = client.create_session.call_args[0][0]
-    assert body["identifier"] == "SES-009"
-    assert body["title"] == "Title"
-    assert body["status"] == "Complete"
-    assert body["session_date"] == date.today().strftime("%m-%d-%y")
-    assert body["summary"] == "Summary body"
-    assert body["topics_covered"] == "Topics body"
-    assert body["artifacts_produced"] == "Artifacts body"
-    assert body["in_flight_at_end"] == "Some pending work"
-    assert body["conversation_reference"] == "Conversation reference body"
+    # Identifier is server-assigned via next_session_identifier and attached.
+    assert body["session_identifier"] == "SES-009"
+    assert body["session_title"] == "Title"
+    assert body["session_description"] == "Description body"
+    assert body["session_executive_summary"] == _VALID_EXEC_SUMMARY
+    assert body["session_medium"] == "chat"
+    assert body["session_status"] == "planned"
+    assert body["session_notes"] == "Some pending work"
+    # The workstream-membership edge is attached to the create body.
+    assert body["references"] == [
+        {
+            "source_type": "session",
+            "source_id": "SES-009",
+            "target_type": "workstream",
+            "target_id": "WS-001",
+            "relationship": "session_belongs_to_workstream",
+        }
+    ]
+
+
+def test_save_uses_server_assigned_identifier(qtbot):
+    client = _stub_client(next_identifier="SES-042")
+    client.create_session.return_value = {
+        "session_identifier": "SES-042",
+        "session_title": "Title",
+    }
+    dialog = SessionCreateDialog(client)
+    qtbot.addWidget(dialog)
+    _fill_required(dialog)
+
+    with qtbot.waitSignal(dialog.accepted, timeout=2000):
+        dialog._on_save_clicked()
+
+    client.next_session_identifier.assert_called_once()
+    body = client.create_session.call_args[0][0]
+    assert body["session_identifier"] == "SES-042"
+    assert dialog.created_identifier() == "SES-042"
 
 
 def test_save_handles_validation_error_envelope(qtbot):
@@ -258,8 +300,8 @@ def test_save_handles_validation_error_envelope(qtbot):
         errors=[
             {
                 "code": "validation_error",
-                "field": "summary",
-                "message": "Summary too short",
+                "field": "session_description",
+                "message": "Description too short",
             }
         ],
         message="Validation failed",
@@ -270,68 +312,21 @@ def test_save_handles_validation_error_envelope(qtbot):
 
     dialog._on_save_clicked()
     qtbot.waitUntil(
-        lambda: dialog._widgets.error_labels["summary"].text() != "",
+        lambda: dialog._widgets.error_labels["session_description"].text()
+        != "",
         timeout=2000,
     )
     assert (
-        dialog._widgets.error_labels["summary"].text()
-        == "Summary too short"
+        dialog._widgets.error_labels["session_description"].text()
+        == "Description too short"
     )
     assert dialog.result() == 0
 
 
-def test_save_handles_identifier_collision_retry(qtbot):
-    """A 409 on first save → recompute identifier and retry once."""
+def test_save_conflict_routes_to_error_dialog(qtbot, monkeypatch):
+    """The create schema has no identifier field, so a 409 falls back to
+    the generic ErrorDialog rather than an inline identifier error."""
     client = _stub_client()
-    # First open: SES-008 is the latest, so dialog opens with SES-009.
-    # Then another writer creates SES-009 (collision). On retry, the
-    # client returns [SES-008, SES-009] so we propose SES-010.
-    list_responses = [
-        [{"identifier": "SES-008"}],
-        [{"identifier": "SES-008"}, {"identifier": "SES-009"}],
-    ]
-    client.list_sessions.side_effect = lambda: list_responses.pop(0)
-
-    create_responses: list[Any] = [
-        ConflictError(
-            errors=[{"code": "conflict", "message": "exists"}],
-            message="exists",
-        ),
-        {"identifier": "SES-010", "title": "Title"},
-    ]
-
-    def fake_create(_body):
-        result = create_responses.pop(0)
-        if isinstance(result, Exception):
-            raise result
-        return result
-
-    client.create_session.side_effect = fake_create
-
-    dialog = SessionCreateDialog(client)
-    qtbot.addWidget(dialog)
-    assert dialog._widgets.identifier.text() == "SES-009"
-
-    _fill_required(dialog)
-
-    with qtbot.waitSignal(dialog.accepted, timeout=2000):
-        dialog._on_save_clicked()
-
-    # Two POSTs: first 409, second 201.
-    assert client.create_session.call_count == 2
-    # Second call was made with the recomputed identifier.
-    second_body = client.create_session.call_args_list[1][0][0]
-    assert second_body["identifier"] == "SES-010"
-    # Dialog ends up showing the new identifier.
-    assert dialog._widgets.identifier.text() == "SES-010"
-    assert dialog.created_identifier() == "SES-010"
-
-
-def test_save_repeated_collision_after_retry_shows_inline_error(
-    qtbot, monkeypatch
-):
-    """If the retry also collides, fall back to the base inline error."""
-    client = _stub_client([{"identifier": "SES-008"}])
     client.create_session.side_effect = ConflictError(
         errors=[{"code": "conflict", "message": "exists"}],
         message="exists",
@@ -339,7 +334,10 @@ def test_save_repeated_collision_after_retry_shows_inline_error(
 
     captured: dict[str, Any] = {}
 
-    class _StubErrorDialog(ErrorDialog):
+    class _StubErrorDialog:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
         def exec(self):  # noqa: A003 — match Qt API
             captured["exec"] = True
             return 0
@@ -353,15 +351,120 @@ def test_save_repeated_collision_after_retry_shows_inline_error(
     _fill_required(dialog)
 
     dialog._on_save_clicked()
-    qtbot.waitUntil(
-        lambda: client.create_session.call_count == 2, timeout=2000
-    )
-    # Second 409 -> inline identifier error from the base class.
-    qtbot.waitUntil(
-        lambda: dialog._widgets.error_labels["identifier"].text() != "",
-        timeout=2000,
-    )
+    qtbot.waitUntil(lambda: captured.get("exec") is True, timeout=2000)
+    assert captured["title"] == "Could not save"
+
+
+# ---------------------------------------------------------------------------
+# SessionEditDialog
+# ---------------------------------------------------------------------------
+
+
+def _record() -> dict[str, Any]:
+    return {
+        "session_identifier": "SES-001",
+        "session_title": "Kickoff chat",
+        "session_description": "Description body",
+        "session_executive_summary": _VALID_EXEC_SUMMARY,
+        "session_medium": "chat",
+        "session_status": "planned",
+        "session_notes": "notes body",
+    }
+
+
+def test_edit_construct_pre_populates_from_record(qtbot):
+    dialog = SessionEditDialog(_stub_client(), _record())
+    qtbot.addWidget(dialog)
+    assert dialog._widgets.session_identifier.text() == "SES-001"
+    assert dialog._widgets.session_title.text() == "Kickoff chat"
     assert (
-        dialog._widgets.error_labels["identifier"].text()
-        == "An identifier with this value already exists."
+        dialog._widgets.session_description.toPlainText() == "Description body"
     )
+    assert dialog._widgets.session_medium.currentText() == "chat"
+    assert dialog._widgets.session_status.currentText() == "planned"
+    assert dialog._widgets.session_notes.toPlainText() == "notes body"
+
+
+def test_edit_identifier_is_read_only(qtbot):
+    dialog = SessionEditDialog(_stub_client(), _record())
+    qtbot.addWidget(dialog)
+    assert dialog._widgets.session_identifier.isReadOnly() is True
+
+
+def test_edit_single_field_change_sends_one_field_patch(qtbot):
+    client = _stub_client()
+    client.patch_session.return_value = {
+        "session_identifier": "SES-001",
+        "session_title": "new",
+    }
+    dialog = SessionEditDialog(client, _record())
+    qtbot.addWidget(dialog)
+    dialog._widgets.session_title.setText("new title")
+
+    with qtbot.waitSignal(dialog.accepted, timeout=2000):
+        dialog._on_save_clicked()
+
+    args, _kwargs = client.patch_session.call_args
+    assert args[0] == "SES-001"
+    assert args[1] == {"session_title": "new title"}
+
+
+def test_edit_not_found_shows_dialog_and_accepts(qtbot, monkeypatch):
+    captured: dict[str, Any] = {}
+
+    class _Recorder(ErrorDialog):
+        def exec(self):  # noqa: A003
+            captured["exec_called"] = True
+            return 1
+
+    monkeypatch.setattr(
+        "crmbuilder_v2.ui.base.crud_dialog.ErrorDialog", _Recorder
+    )
+
+    client = _stub_client()
+    client.patch_session.side_effect = NotFoundError(
+        errors=[{"code": "not_found", "message": "missing"}],
+        message="missing",
+    )
+    dialog = SessionEditDialog(client, _record())
+    qtbot.addWidget(dialog)
+    dialog._widgets.session_title.setText("changed")
+
+    with qtbot.waitSignal(dialog.accepted, timeout=2000):
+        dialog._on_save_clicked()
+    assert captured.get("exec_called") is True
+
+
+# ---------------------------------------------------------------------------
+# SessionDeleteDialog
+# ---------------------------------------------------------------------------
+
+
+def test_delete_construct_shows_identifier_and_title(qtbot):
+    dialog = SessionDeleteDialog(_stub_client(), "SES-001", "Kickoff chat")
+    qtbot.addWidget(dialog)
+    text = dialog._body_label.text()
+    assert "SES-001" in text
+    assert "Kickoff chat" in text
+
+
+def test_delete_requires_typed_identifier(qtbot):
+    dialog = SessionDeleteDialog(_stub_client(), "SES-001", "Kickoff chat")
+    qtbot.addWidget(dialog)
+    # Delete is disabled until the identifier is typed back.
+    assert dialog._delete_btn.isEnabled() is False
+    dialog._confirm_edit.setText("SES-001")
+    assert dialog._delete_btn.isEnabled() is True
+
+
+def test_delete_successful_accepts(qtbot):
+    client = _stub_client()
+    client.delete_session.return_value = {"session_identifier": "SES-001"}
+    dialog = SessionDeleteDialog(client, "SES-001", "Kickoff chat")
+    qtbot.addWidget(dialog)
+    dialog._confirm_edit.setText("SES-001")
+
+    with qtbot.waitSignal(dialog.accepted, timeout=2000):
+        dialog._on_delete_clicked()
+
+    client.delete_session.assert_called_once_with("SES-001")

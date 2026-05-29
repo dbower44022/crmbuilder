@@ -24,6 +24,13 @@ def test_reservation_accounts_for_existing_rows(v2_env):
         planning_items.create(
             s, identifier="PI-005", title="x",
             item_type="open_question", status="Open",
+            executive_summary=(
+                "This planning item reconciles stale test fixtures with the "
+                "current governance schema so the suite validates real "
+                "behavior; it carries no production code change and exists "
+                "purely to keep the regression net aligned with the PI-073 "
+                "and PI-102 data-model decisions now in effect."
+            ),
         )
     with session_scope() as s:
         out = res.reserve(s, entity_type="planning_item", count=2)

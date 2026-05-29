@@ -14,20 +14,40 @@ from crmbuilder_v2.access.repositories import close_out_payloads as cop
 from crmbuilder_v2.access.repositories import conversations as cr
 from crmbuilder_v2.access.repositories import deposit_events as dep
 from crmbuilder_v2.access.repositories import references as refs
+from crmbuilder_v2.access.repositories import sessions as sess
 from crmbuilder_v2.access.repositories import workstreams as ws
 from sqlalchemy import inspect
+
+_EXEC_SUMMARY = (
+    "This planning item reconciles stale test fixtures with the current "
+    "governance schema so the suite validates real behavior; it carries no "
+    "production code change and exists purely to keep the regression net "
+    "aligned with the PI-073 and PI-102 data-model decisions now in effect."
+)
 
 
 def _ready_cop(s, identifier="COP-001"):
     wid = ws.create_workstream(s, name="WS", purpose="p", description="d")[
         "workstream_identifier"
     ]
-    conv = cr.create_conversation(
-        s, title="C", purpose="p", description="d", identifier="CONV-001",
+    # Under PI-073, conversations nest within a session via a mandatory
+    # conversation_belongs_to_session edge. Create the containing session
+    # (anchored to the workstream) first.
+    sid = sess.create_session(
+        s, title="S", description="d", medium="chat",
+        executive_summary=_EXEC_SUMMARY, identifier="SES-001",
         references=[{
-            "source_type": "conversation", "source_id": "CONV-001",
+            "source_type": "session", "source_id": "SES-001",
             "target_type": "workstream", "target_id": wid,
-            "relationship": "conversation_belongs_to_workstream",
+            "relationship": "session_belongs_to_workstream",
+        }],
+    )["session_identifier"]
+    conv = cr.create_conversation(
+        s, title="C", purpose="p", description="d", identifier="CNV-001",
+        references=[{
+            "source_type": "conversation", "source_id": "CNV-001",
+            "target_type": "session", "target_id": sid,
+            "relationship": "conversation_belongs_to_session",
         }],
     )["conversation_identifier"]
     cop.create_close_out_payload(

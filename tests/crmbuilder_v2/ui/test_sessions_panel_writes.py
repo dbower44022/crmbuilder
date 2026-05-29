@@ -1,10 +1,15 @@
-"""v0.3 slice D: integration tests for SessionsPanel write surfaces.
+"""SessionsPanel write-surface integration tests — PI-073 / DEC-314.
 
-Per DEC-013 / DEC-034, sessions are append-only and user-authorable
-through the UI. This file covers the create-only write surface (toolbar
-button, whitespace right-click, refresh integration) and asserts the
-absence of any Edit / Delete / Restore affordance on the detail pane
-or context menu.
+Originally written against the legacy append-only model (DEC-013 /
+DEC-034), where sessions were user-authorable but never editable. The
+PI-073 / DEC-314 redesign makes sessions the medium-agnostic
+communication container with a schedulable, stateful six-status
+lifecycle, and the panel now supports the full create / edit / delete /
+restore surface. These tests are updated to the new model: they cover
+the create write surface (toolbar button, whitespace right-click,
+refresh integration) and assert that the row context menu and detail
+pane now expose the lifecycle affordances (Edit / Delete / Restore) the
+redesign introduced.
 """
 
 from __future__ import annotations
@@ -19,18 +24,27 @@ from PySide6.QtWidgets import QDialog, QPushButton
 
 from .conftest import build_client, envelope_ok
 
+# A valid executive summary (200-800 chars) per the PI-102 schema.
+_EXEC_SUMMARY = (
+    "This planning item reconciles stale test fixtures with the current "
+    "governance schema so the suite validates real behavior; it carries no "
+    "production code change and exists purely to keep the regression net "
+    "aligned with the PI-073 and PI-102 data-model decisions now in effect."
+)
+
 
 def _stub_record(identifier: str = "SES-008") -> dict[str, Any]:
     return {
-        "identifier": identifier,
-        "title": "v0.3 planning",
-        "session_date": "05-08-26",
-        "status": "Complete",
-        "summary": "summary body",
-        "topics_covered": "topics body",
-        "artifacts_produced": "artifacts body",
-        "in_flight_at_end": "",
-        "conversation_reference": "ref body",
+        "session_identifier": identifier,
+        "session_title": "v0.3 planning",
+        "session_description": "session description body",
+        "session_medium": "chat",
+        "session_status": "complete",
+        "session_executive_summary": _EXEC_SUMMARY,
+        "session_notes": "internal notes body",
+        "session_participants": [],
+        "session_medium_metadata": {},
+        "session_deleted_at": None,
     }
 
 
@@ -49,7 +63,7 @@ def _sessions_only_handler(records: list[dict]):
         if req.method == "GET" and req.url.path.startswith("/sessions/"):
             ident = req.url.path.split("/", 2)[-1]
             for record in records:
-                if record["identifier"] == ident:
+                if record["session_identifier"] == ident:
                     return httpx.Response(200, json=envelope_ok(record))
             return httpx.Response(
                 404,
@@ -104,7 +118,7 @@ def test_new_session_button_opens_create_dialog(qtbot, monkeypatch):
         def exec(self):  # noqa: A003 — match Qt API
             return QDialog.DialogCode.Rejected
 
-        def created_identifier(self):
+        def saved_identifier(self):
             return None
 
     monkeypatch.setattr(
@@ -134,7 +148,7 @@ def test_create_dialog_save_selects_new_row_by_identifier(
         def exec(self):  # noqa: A003
             return QDialog.DialogCode.Accepted
 
-        def created_identifier(self):
+        def saved_identifier(self):
             return "SES-009"
 
     monkeypatch.setattr(
@@ -152,7 +166,7 @@ def test_create_dialog_save_selects_new_row_by_identifier(
         panel, "select_record_by_identifier", _stub_select
     )
 
-    panel._on_new_session_clicked()
+    panel._on_new_clicked()
 
     assert captured["selected"] == "SES-009"
 
@@ -172,7 +186,7 @@ def test_create_dialog_save_without_identifier_falls_back_to_refresh(
         def exec(self):  # noqa: A003
             return QDialog.DialogCode.Accepted
 
-        def created_identifier(self):
+        def saved_identifier(self):
             return None
 
     monkeypatch.setattr(
@@ -187,7 +201,7 @@ def test_create_dialog_save_without_identifier_falls_back_to_refresh(
 
     monkeypatch.setattr(panel, "refresh", _refresh)
 
-    panel._on_new_session_clicked()
+    panel._on_new_clicked()
 
     assert refresh_calls["count"] == 1
 
@@ -219,7 +233,7 @@ def test_context_menu_whitespace_action_invokes_new_session_handler(
     def _on_clicked():
         captured["called"] = True
 
-    monkeypatch.setattr(panel, "_on_new_session_clicked", _on_clicked)
+    monkeypatch.setattr(panel, "_on_new_clicked", _on_clicked)
 
     # Re-build the menu so the patched handler is bound.
     menu = panel._build_context_menu(QModelIndex())
@@ -230,7 +244,7 @@ def test_context_menu_whitespace_action_invokes_new_session_handler(
 
 
 # ---------------------------------------------------------------------------
-# Row context menu — append-only assertions
+# Row context menu — lifecycle CRUD assertions (PI-073 / DEC-314)
 # ---------------------------------------------------------------------------
 
 
@@ -242,8 +256,10 @@ def _seed_table_records(panel: SessionsPanel, records: list[dict]):
     return panel._model.index(0, 0)
 
 
-def test_context_menu_row_does_not_include_edit_or_delete(qtbot):
-    """Row right-click stays read-only per DEC-013 / DEC-034."""
+def test_context_menu_row_includes_lifecycle_actions(qtbot):
+    """Row right-click now exposes the editable lifecycle surface
+    introduced by the PI-073 / DEC-314 redesign (Edit / Delete), in
+    addition to the always-present New session and Copy identifier."""
     client = build_client(_sessions_only_handler([]))
     panel = SessionsPanel(client)
     qtbot.addWidget(panel)
@@ -251,14 +267,30 @@ def test_context_menu_row_does_not_include_edit_or_delete(qtbot):
     index = _seed_table_records(panel, [_stub_record()])
     menu = panel._build_context_menu(index)
     actions = [a.text() for a in menu.actions()]
-    assert actions == ["Go to references", "Copy identifier"]
-    assert "Edit" not in actions
-    assert "Delete" not in actions
+    assert actions == ["New session", "Edit", "Delete", "Copy identifier"]
+    assert "Edit" in actions
+    assert "Delete" in actions
+    # A live (non-deleted) record offers Delete, not Restore.
     assert "Restore" not in actions
 
 
+def test_context_menu_deleted_row_offers_restore(qtbot):
+    """A soft-deleted row offers Restore instead of Delete."""
+    client = build_client(_sessions_only_handler([]))
+    panel = SessionsPanel(client)
+    qtbot.addWidget(panel)
+
+    deleted = _stub_record()
+    deleted["session_deleted_at"] = "2026-05-29T00:00:00"
+    index = _seed_table_records(panel, [deleted])
+    menu = panel._build_context_menu(index)
+    actions = [a.text() for a in menu.actions()]
+    assert actions == ["New session", "Edit", "Restore", "Copy identifier"]
+    assert "Delete" not in actions
+
+
 # ---------------------------------------------------------------------------
-# Detail pane — append-only assertions
+# Detail pane — lifecycle CRUD assertions (PI-073 / DEC-314)
 # ---------------------------------------------------------------------------
 
 
@@ -275,7 +307,7 @@ def _select_first_row(qtbot, panel: SessionsPanel) -> None:
     )
 
 
-def test_detail_pane_has_no_edit_button(qtbot):
+def test_detail_pane_has_edit_button(qtbot):
     record = _stub_record()
     client = build_client(_sessions_only_handler([record]))
     panel = SessionsPanel(client)
@@ -284,18 +316,16 @@ def test_detail_pane_has_no_edit_button(qtbot):
     _select_first_row(qtbot, panel)
     detail = panel._detail_stack.currentWidget()
 
-    # Walk every QPushButton in the detail tree; assert none read "Edit"
-    # or carry an edit-style objectName. A blanket scan is safer than a
-    # findChild on a single name because future styling changes could
-    # introduce different identifiers.
-    for btn in detail.findChildren(QPushButton):
-        text = (btn.text() or "").strip().lower()
-        name = (btn.objectName() or "").lower()
-        assert text != "edit"
-        assert "edit" not in name
+    # The redesigned detail pane carries an Edit affordance. Walk every
+    # QPushButton in the detail tree and assert one reads "Edit".
+    texts = [
+        (btn.text() or "").strip().lower()
+        for btn in detail.findChildren(QPushButton)
+    ]
+    assert "edit" in texts
 
 
-def test_detail_pane_has_no_delete_button(qtbot):
+def test_detail_pane_has_delete_button(qtbot):
     record = _stub_record()
     client = build_client(_sessions_only_handler([record]))
     panel = SessionsPanel(client)
@@ -305,9 +335,9 @@ def test_detail_pane_has_no_delete_button(qtbot):
     detail = panel._detail_stack.currentWidget()
 
     # The ReferencesSection on the detail pane carries its own per-row
-    # "Delete" affordance for individual references; skip buttons that
-    # belong to that subtree (those delete *references*, not the
-    # *session* record itself).
+    # "Delete" affordance for individual references; the session-level
+    # Delete button lives outside that subtree. A live (non-deleted)
+    # record exposes a session-level Delete.
     refs_section = detail.findChild(ReferencesSection)
     refs_descendants = (
         set(refs_section.findChildren(QPushButton))
@@ -315,17 +345,17 @@ def test_detail_pane_has_no_delete_button(qtbot):
         else set()
     )
 
-    for btn in detail.findChildren(QPushButton):
-        if btn in refs_descendants:
-            continue
-        text = (btn.text() or "").strip().lower()
-        name = (btn.objectName() or "").lower()
-        assert text != "delete"
-        assert "delete" not in name
+    session_level_texts = [
+        (btn.text() or "").strip().lower()
+        for btn in detail.findChildren(QPushButton)
+        if btn not in refs_descendants
+    ]
+    assert "delete" in session_level_texts
 
 
-def test_detail_pane_has_no_restore_button(qtbot):
+def test_detail_pane_deleted_record_has_restore_button(qtbot):
     record = _stub_record()
+    record["session_deleted_at"] = "2026-05-29T00:00:00"
     client = build_client(_sessions_only_handler([record]))
     panel = SessionsPanel(client)
     qtbot.addWidget(panel)
@@ -333,8 +363,8 @@ def test_detail_pane_has_no_restore_button(qtbot):
     _select_first_row(qtbot, panel)
     detail = panel._detail_stack.currentWidget()
 
-    for btn in detail.findChildren(QPushButton):
-        text = (btn.text() or "").strip().lower()
-        name = (btn.objectName() or "").lower()
-        assert text != "restore"
-        assert "restore" not in name
+    texts = [
+        (btn.text() or "").strip().lower()
+        for btn in detail.findChildren(QPushButton)
+    ]
+    assert "restore" in texts

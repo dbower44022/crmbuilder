@@ -10,21 +10,44 @@ from crmbuilder_v2.access.exceptions import (
 )
 from crmbuilder_v2.access.repositories import close_out_payloads as cop
 from crmbuilder_v2.access.repositories import conversations as cr
+from crmbuilder_v2.access.repositories import sessions as sr
 from crmbuilder_v2.access.repositories import workstreams as ws
 from sqlalchemy import inspect
 
+# A 200-800 character audience-facing summary required by the PI-073/PI-074
+# session schema and reusable for any other executive_summary field.
+_EXEC_SUMMARY = (
+    "This planning item reconciles stale test fixtures with the current "
+    "governance schema so the suite validates real behavior; it carries no "
+    "production code change and exists purely to keep the regression net "
+    "aligned with the PI-073 and PI-102 data-model decisions now in effect."
+)
 
-def _conv(s, identifier="CONV-001"):
+
+def _conv(s, identifier="CNV-001"):
     wid = ws.create_workstream(s, name="WS", purpose="p", description="d")[
         "workstream_identifier"
     ]
+    # Under PI-073 a conversation is a topical sub-unit that must belong to a
+    # session via a mandatory ``conversation_belongs_to_session`` edge; the
+    # session in turn must belong to a workstream.
+    sid = sr.next_session_identifier(s)
+    sr.create_session(
+        s, title="S " + identifier, description="d", medium="chat",
+        executive_summary=_EXEC_SUMMARY, identifier=sid,
+        references=[{
+            "source_type": "session", "source_id": sid,
+            "target_type": "workstream", "target_id": wid,
+            "relationship": "session_belongs_to_workstream",
+        }],
+    )
     return cr.create_conversation(
         s, title="C " + identifier, purpose="p", description="d",
         identifier=identifier,
         references=[{
             "source_type": "conversation", "source_id": identifier,
-            "target_type": "workstream", "target_id": wid,
-            "relationship": "conversation_belongs_to_workstream",
+            "target_type": "session", "target_id": sid,
+            "relationship": "conversation_belongs_to_session",
         }],
     )["conversation_identifier"]
 

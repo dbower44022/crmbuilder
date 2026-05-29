@@ -138,6 +138,7 @@ def test_planning_item_area_roundtrip(client):
             "item_type": "pending_work",
             "status": "Open",
             "area": ["v2-access", "v2-api"],
+            "executive_summary": _VALID_EXEC_SUMMARY,
         },
     )
     assert r.status_code == 201, r.json()
@@ -159,6 +160,7 @@ def test_post_planning_item_with_unknown_area_returns_400(client):
             "item_type": "pending_work",
             "status": "Open",
             "area": ["not-a-real-area"],
+            "executive_summary": _VALID_EXEC_SUMMARY,
         },
     )
     assert r.status_code == 400, r.json()
@@ -171,6 +173,7 @@ def test_post_planning_item_without_area_is_null(client):
             "title": "No area",
             "item_type": "pending_work",
             "status": "Open",
+            "executive_summary": _VALID_EXEC_SUMMARY,
         },
     )
     assert r.status_code == 201, r.json()
@@ -190,6 +193,7 @@ def test_planning_item_claim_release_roundtrip(client):
             "title": "Claimable",
             "item_type": "pending_work",
             "status": "Open",
+            "executive_summary": _VALID_EXEC_SUMMARY,
         },
     )
     r = client.post("/planning-items/PI-040/claim", json={"claimant": "CONV-100"})
@@ -210,6 +214,7 @@ def test_claim_conflict_returns_409(client):
             "title": "Contended",
             "item_type": "pending_work",
             "status": "Open",
+            "executive_summary": _VALID_EXEC_SUMMARY,
         },
     )
     client.post("/planning-items/PI-041/claim", json={"claimant": "CONV-100"})

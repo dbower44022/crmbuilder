@@ -65,15 +65,22 @@ def _make_handler():
     ]
     sessions_payload = [
         {
-            "identifier": "SES-004",
-            "title": "Storage v0.1 build",
-            "session_date": "2026-05-07",
-            "status": "Closed",
-            "topics_covered": "everything",
-            "summary": "summary",
-            "artifacts_produced": "artifacts",
-            "in_flight_at_end": "none",
-            "conversation_reference": "conv-ref",
+            "session_identifier": "SES-004",
+            "session_title": "Storage v0.1 build",
+            "session_description": "Storage v0.1 build session",
+            "session_medium": "chat",
+            "session_executive_summary": (
+                "This session built storage v0.1: the structured database, "
+                "access layer, and governance entities that make the project "
+                "queryable; it is captured here purely so the cross-panel "
+                "navigation regression net exercises a realistically shaped "
+                "session record under the PI-073 medium-agnostic data model."
+            ),
+            "session_status": "complete",
+            "session_notes": "notes",
+            "session_participants": [],
+            "session_medium_metadata": {},
+            "session_deleted_at": None,
         }
     ]
     refs_for_decision = {

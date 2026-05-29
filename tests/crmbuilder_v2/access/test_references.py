@@ -13,7 +13,17 @@ from crmbuilder_v2.access.repositories import (
     conversations as cr,
     planning_items as pi,
     references,
+    sessions as se,
     workstreams as ws,
+)
+
+# A 200-800 character audience-facing executive summary, required on
+# planning_items (PI-102) and sessions (PI-073/PI-075).
+_EXEC_SUMMARY = (
+    "This planning item reconciles stale test fixtures with the current "
+    "governance schema so the suite validates real behavior; it carries no "
+    "production code change and exists purely to keep the regression net "
+    "aligned with the PI-073 and PI-102 data-model decisions now in effect."
 )
 
 
@@ -158,17 +168,42 @@ class TestResolvesStatusFlip:
     target planning_item status to Resolved in the same transaction."""
 
     @staticmethod
-    def _conv(s, identifier="CONV-991"):
+    def _conv(s, identifier="CNV-991"):
+        """Create a conversation linked into the redesigned governance
+        hierarchy (PI-073): workstream <- session <- conversation.
+
+        A conversation requires exactly one outbound
+        ``conversation_belongs_to_session`` edge, and the parent session
+        requires exactly one outbound ``session_belongs_to_workstream``
+        edge. Build that chain so the conversation create validates.
+        """
         wid = ws.create_workstream(
             s, name="WS " + identifier, purpose="p", description="d"
         )["workstream_identifier"]
+        # Derive an explicit session identifier from the conversation's
+        # numeric suffix (e.g. CNV-991 -> SES-991) so the membership edge
+        # can name its source before the row is persisted.
+        ses_id = "SES-" + identifier.split("-", 1)[1]
+        se.create_session(
+            s,
+            title="Session " + identifier,
+            description="d",
+            medium="chat",
+            executive_summary=_EXEC_SUMMARY,
+            identifier=ses_id,
+            references=[{
+                "source_type": "session", "source_id": ses_id,
+                "target_type": "workstream", "target_id": wid,
+                "relationship": "session_belongs_to_workstream",
+            }],
+        )
         return cr.create_conversation(
             s, title="Conv " + identifier, purpose="p", description="d",
             identifier=identifier,
             references=[{
                 "source_type": "conversation", "source_id": identifier,
-                "target_type": "workstream", "target_id": wid,
-                "relationship": "conversation_belongs_to_workstream",
+                "target_type": "session", "target_id": ses_id,
+                "relationship": "conversation_belongs_to_session",
             }],
         )["conversation_identifier"]
 
@@ -181,12 +216,13 @@ class TestResolvesStatusFlip:
             item_type="pending_work",
             description="",
             status=status,
+            executive_summary=_EXEC_SUMMARY,
         )["identifier"]
 
     def test_resolves_flips_open_to_resolved(self, v2_env):
         """Happy path: Open planning_item -> Resolved on resolves edge."""
         with session_scope() as s:
-            conv_id = self._conv(s, "CONV-991")
+            conv_id = self._conv(s, "CNV-991")
             pi_id = self._pi(s, "PI-991", status="Open")
         with session_scope() as s:
             references.create(
@@ -204,7 +240,7 @@ class TestResolvesStatusFlip:
     def test_resolves_idempotent_on_already_resolved(self, v2_env):
         """Resolved -> Resolved: no-op update; reference still created."""
         with session_scope() as s:
-            conv_id = self._conv(s, "CONV-992")
+            conv_id = self._conv(s, "CNV-992")
             pi_id = self._pi(s, "PI-992", status="Resolved")
         with session_scope() as s:
             created = references.create(
@@ -224,7 +260,7 @@ class TestResolvesStatusFlip:
         """Second resolves edge with same source/target/kind raises
         ConflictError; planning_item status remains Resolved."""
         with session_scope() as s:
-            conv_id = self._conv(s, "CONV-993")
+            conv_id = self._conv(s, "CNV-993")
             pi_id = self._pi(s, "PI-993", status="Open")
         with session_scope() as s:
             references.create(
@@ -253,7 +289,7 @@ class TestResolvesStatusFlip:
         NOT change the planning_item's status; the flip is gated on the
         relationship kind, not on the target type."""
         with session_scope() as s:
-            conv_id = self._conv(s, "CONV-994")
+            conv_id = self._conv(s, "CNV-994")
             pi_id = self._pi(s, "PI-994", status="Open")
         with session_scope() as s:
             references.create(

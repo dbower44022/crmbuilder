@@ -51,11 +51,13 @@ def patched_build_server(monkeypatch: pytest.MonkeyPatch):
         *,
         host: str = "127.0.0.1",
         port: int | None = None,
+        enable_auth: bool = False,
     ) -> _Recorder:
         rec = _Recorder(host=host, port=port)
         captured["instance"] = rec
         captured["host"] = host
         captured["port"] = port
+        captured["enable_auth"] = enable_auth
         return rec
 
     monkeypatch.setattr(server_mod, "build_server", fake_build)
@@ -75,6 +77,8 @@ def test_main_streamable_http_uses_settings_port(patched_build_server):
     server_mod.main(transport="streamable-http")
     assert patched_build_server["host"] == "127.0.0.1"
     assert patched_build_server["port"] is None
+    # HTTP transport enables the OAuth authorization server.
+    assert patched_build_server["enable_auth"] is True
     rec = patched_build_server["instance"]
     assert rec.run_args == ("streamable-http",)
 
@@ -82,6 +86,7 @@ def test_main_streamable_http_uses_settings_port(patched_build_server):
 def test_main_streamable_http_explicit_port_overrides(patched_build_server):
     server_mod.main(transport="streamable-http", port=9999)
     assert patched_build_server["port"] == 9999
+    assert patched_build_server["enable_auth"] is True
     rec = patched_build_server["instance"]
     assert rec.run_args == ("streamable-http",)
 

@@ -1,8 +1,14 @@
-"""Cross-entity integration tests for the v0.7 governance entities.
+"""Cross-entity integration tests for the governance entities.
 
-Exercises a full workstream → conversation → work_ticket → close_out_payload
-→ deposit_event chain end-to-end, and the two transition rules the
-implementation plan §2.1 calls out explicitly.
+Exercises a full workstream → session → conversation → work_ticket →
+close_out_payload → deposit_event chain end-to-end, and the two transition
+rules the implementation plan §2.1 calls out explicitly.
+
+Updated for the PI-073 / DEC-314 session-conversation redesign: a session
+is the medium-agnostic communication container (belongs to a workstream)
+and a conversation is a topical sub-unit nested within a session (1:N).
+Conversations use the ``CNV-NNN`` identifier prefix and carry a mandatory
+outbound ``conversation_belongs_to_session`` membership edge.
 """
 
 from __future__ import annotations
@@ -11,8 +17,17 @@ from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.repositories import close_out_payloads as cop
 from crmbuilder_v2.access.repositories import conversations as cr
 from crmbuilder_v2.access.repositories import deposit_events as dep
+from crmbuilder_v2.access.repositories import sessions as se
 from crmbuilder_v2.access.repositories import work_tickets as wt
 from crmbuilder_v2.access.repositories import workstreams as ws
+
+# A valid 200-800 char executive summary reused across the session creates.
+_EXEC_SUMMARY = (
+    "This planning item reconciles stale test fixtures with the current "
+    "governance schema so the suite validates real behavior; it carries no "
+    "production code change and exists purely to keep the regression net "
+    "aligned with the PI-073 and PI-102 data-model decisions now in effect."
+)
 
 
 def test_full_governance_chain(v2_env):
@@ -22,14 +37,26 @@ def test_full_governance_chain(v2_env):
             timestamps={"workstream_started_at": "2026-05-20T00:00:00"},
         )["workstream_identifier"]
 
-        # Conversation belonging to the workstream.
+        # Session belonging to the workstream (the communication container).
+        sid = se.create_session(
+            s, title="Build planning session", description="d",
+            medium="chat", executive_summary=_EXEC_SUMMARY,
+            identifier="SES-901", status="in_flight",
+            references=[{
+                "source_type": "session", "source_id": "SES-901",
+                "target_type": "workstream", "target_id": wid,
+                "relationship": "session_belongs_to_workstream",
+            }],
+        )["session_identifier"]
+
+        # Conversation nested within the session (topical sub-unit).
         conv = cr.create_conversation(
             s, title="Build planning", purpose="p", description="d",
-            identifier="CONV-001",
+            identifier="CNV-001",
             references=[{
-                "source_type": "conversation", "source_id": "CONV-001",
-                "target_type": "workstream", "target_id": wid,
-                "relationship": "conversation_belongs_to_workstream",
+                "source_type": "conversation", "source_id": "CNV-001",
+                "target_type": "session", "target_id": sid,
+                "relationship": "conversation_belongs_to_session",
             }],
         )["conversation_identifier"]
 
@@ -69,7 +96,7 @@ def test_full_governance_chain(v2_env):
             references=[
                 {"target_type": "close_out_payload", "target_id": "COP-001",
                  "relationship": "deposit_event_applies_close_out_payload"},
-                {"target_type": "session", "target_id": "SES-055",
+                {"target_type": "session", "target_id": sid,
                  "relationship": "deposit_event_wrote_record"},
             ],
         )
@@ -77,20 +104,14 @@ def test_full_governance_chain(v2_env):
             "close_out_payload_status"
         ] == "applied"
 
+        # Conversation runs and completes (planned -> in_flight -> complete).
+        cr.patch_conversation(s, conv, status="in_flight")
+        cr.patch_conversation(s, conv, status="complete")
+        assert cr.get_conversation(s, conv)[
+            "conversation_status"
+        ] == "complete"
+
         # Workstream completes.
-        cr.patch_conversation(
-            s, conv, status="kickoff_drafted",
-        )
-        for st in ("ready", "in_flight"):
-            cr.patch_conversation(s, conv, status=st)
-        cr.patch_conversation(
-            s, conv, status="complete",
-            references=[{
-                "source_type": "conversation", "source_id": conv,
-                "target_type": "session", "target_id": "SES-055",
-                "relationship": "conversation_records_session",
-            }],
-        )
         ws.patch_workstream(s, wid, status="complete")
         assert ws.get_workstream(s, wid)["workstream_status"] == "complete"
 
@@ -101,12 +122,21 @@ def test_first_success_transition_then_failure_reconfirm(v2_env):
         wid = ws.create_workstream(s, name="W", purpose="p", description="d")[
             "workstream_identifier"
         ]
-        conv = cr.create_conversation(
-            s, title="C", purpose="p", description="d", identifier="CONV-001",
+        sid = se.create_session(
+            s, title="Apply session", description="d", medium="chat",
+            executive_summary=_EXEC_SUMMARY, identifier="SES-901",
             references=[{
-                "source_type": "conversation", "source_id": "CONV-001",
+                "source_type": "session", "source_id": "SES-901",
                 "target_type": "workstream", "target_id": wid,
-                "relationship": "conversation_belongs_to_workstream",
+                "relationship": "session_belongs_to_workstream",
+            }],
+        )["session_identifier"]
+        conv = cr.create_conversation(
+            s, title="C", purpose="p", description="d", identifier="CNV-001",
+            references=[{
+                "source_type": "conversation", "source_id": "CNV-001",
+                "target_type": "session", "target_id": sid,
+                "relationship": "conversation_belongs_to_session",
             }],
         )["conversation_identifier"]
         cop.create_close_out_payload(

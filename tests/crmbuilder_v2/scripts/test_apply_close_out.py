@@ -51,6 +51,17 @@ def routed(api_client, monkeypatch):
     return api_client
 
 
+# A valid 200-800 char executive_summary, reused across fixtures for the
+# PI-074/PI-075 (now-required) executive_summary columns on sessions,
+# planning_items, and decisions.
+_EXEC_SUMMARY = (
+    "This planning item reconciles stale test fixtures with the current "
+    "governance schema so the suite validates real behavior; it carries no "
+    "production code change and exists purely to keep the regression net "
+    "aligned with the PI-073 and PI-102 data-model decisions now in effect."
+)
+
+
 def _payload_path(tmp_path: Path, name: str, payload: dict) -> Path:
     """Write a payload JSON at ``<tmp>/PRDs/product/.../close-out-payloads/<name>``."""
     close_out_dir = (
@@ -62,19 +73,47 @@ def _payload_path(tmp_path: Path, name: str, payload: dict) -> Path:
     return path
 
 
+def _create_workstream(client, name="WS for tests"):
+    """Helper: create a workstream and return its identifier."""
+    r = client.post("/workstreams", json={
+        "workstream_name": name,
+        "workstream_purpose": "p",
+        "workstream_description": "d",
+    })
+    assert r.status_code == 201, r.text
+    return r.json()["data"]["workstream_identifier"]
+
+
+def _session_block(identifier="SES-200", title="Test session", ws_id="WS-001",
+                   status=None):
+    """Build a PI-073-shape session block with its mandatory inline
+    ``session_belongs_to_workstream`` membership edge."""
+    block = {
+        "session_identifier": identifier,
+        "session_title": title,
+        "session_description": "Test session description.",
+        "session_medium": "chat",
+        "session_executive_summary": _EXEC_SUMMARY,
+        "references": [
+            {
+                "source_type": "session", "source_id": identifier,
+                "target_type": "workstream", "target_id": ws_id,
+                "relationship": "session_belongs_to_workstream",
+            },
+        ],
+    }
+    if status is not None:
+        block["session_status"] = status
+    return block
+
+
 def test_happy_path_lazy_creates_cop_and_records_deposit_event(
     routed, tmp_path, monkeypatch
 ):
+    ws_id = _create_workstream(routed)
     payload = {
         "label": "Test payload for SES-099",
-        "session": {
-            "identifier": "SES-099",
-            "title": "Test session",
-            "session_date": "2026-05-22",
-            "status": "Complete",
-            "topics_covered": "tests",
-            "summary": "ok",
-        },
+        "session": _session_block("SES-099", "Test session", ws_id),
     }
     path = _payload_path(tmp_path, "ses_099.json", payload)
     monkeypatch.setattr("sys.argv", ["apply_close_out.py", str(path)])
@@ -107,16 +146,10 @@ def test_failure_path_records_error_info_and_leaves_cop_ready(
     routed, tmp_path, monkeypatch
 ):
     # First record (session) succeeds; second (a malformed decision) fails 422.
+    ws_id = _create_workstream(routed)
     payload = {
         "label": "Test failure",
-        "session": {
-            "identifier": "SES-100",
-            "title": "Test session",
-            "session_date": "2026-05-22",
-            "status": "Complete",
-            "topics_covered": "x",
-            "summary": "x",
-        },
+        "session": _session_block("SES-100", "Test session", ws_id),
         "decisions": [
             {
                 # Missing required fields → API rejects.
@@ -151,22 +184,17 @@ def test_references_in_payload_do_not_break_deposit_event_post(
     # target_type against the governance vocab, which does not include
     # 'reference'. If reference rows leak into wrote_records, the
     # deposit_event POST 400s and the apply leaves no audit row.
+    ws_id = _create_workstream(routed)
     payload = {
         "label": "Test payload with references",
-        "session": {
-            "identifier": "SES-102",
-            "title": "Session with refs",
-            "session_date": "2026-05-22",
-            "status": "Complete",
-            "topics_covered": "x",
-            "summary": "x",
-        },
+        "session": _session_block("SES-102", "Session with refs", ws_id),
         "decisions": [
             {
                 "identifier": "DEC-300",
                 "title": "Test decision",
                 "decision_date": "2026-05-22",
                 "status": "Active",
+                "executive_summary": _EXEC_SUMMARY,
             }
         ],
         "references": [
@@ -210,16 +238,10 @@ def test_references_in_payload_do_not_break_deposit_event_post(
 def test_skip_deposit_event_flag_runs_apply_without_log_or_event(
     routed, tmp_path, monkeypatch
 ):
+    ws_id = _create_workstream(routed)
     payload = {
         "label": "Skip deposit",
-        "session": {
-            "identifier": "SES-101",
-            "title": "x",
-            "session_date": "2026-05-22",
-            "status": "Complete",
-            "topics_covered": "x",
-            "summary": "x",
-        },
+        "session": _session_block("SES-101", "x", ws_id),
     }
     path = _payload_path(tmp_path, "ses_101.json", payload)
     monkeypatch.setattr(
@@ -240,29 +262,16 @@ def test_skip_deposit_event_flag_runs_apply_without_log_or_event(
 # ---------------------------------------------------------------------------
 
 
-def _create_workstream(client, name="WS for tests"):
-    """Helper: create a workstream and return its identifier."""
-    r = client.post("/workstreams", json={
-        "workstream_name": name,
-        "workstream_purpose": "p",
-        "workstream_description": "d",
-    })
-    assert r.status_code == 201, r.text
-    return r.json()["data"]["workstream_identifier"]
+def _conversation_block(identifier="CNV-200", ws_id="WS-001", session_id="SES-200"):
+    """Build a PI-073-shape conversation block.
 
-
-def _session_block(identifier="SES-200", title="Test session"):
-    return {
-        "identifier": identifier,
-        "title": title,
-        "session_date": "2026-05-22",
-        "status": "Complete",
-        "topics_covered": "x",
-        "summary": "x",
-    }
-
-
-def _conversation_block(identifier="CONV-200", ws_id="WS-001", session_id="SES-200"):
+    Under DEC-314 the conversation is a topical sub-unit nested within a
+    session (1:N), so its mandatory parent edge is the outbound
+    ``conversation_belongs_to_session`` edge to the owning session. The
+    legacy ``conversation_belongs_to_workstream`` + ``conversation_records_
+    session`` pair is retired; ``ws_id`` is retained as an accepted (unused)
+    parameter so existing call sites still work.
+    """
     return {
         "conversation_identifier": identifier,
         "conversation_title": f"Conv {identifier}",
@@ -272,13 +281,8 @@ def _conversation_block(identifier="CONV-200", ws_id="WS-001", session_id="SES-2
         "references": [
             {
                 "source_type": "conversation", "source_id": identifier,
-                "target_type": "workstream", "target_id": ws_id,
-                "relationship": "conversation_belongs_to_workstream",
-            },
-            {
-                "source_type": "conversation", "source_id": identifier,
                 "target_type": "session", "target_id": session_id,
-                "relationship": "conversation_records_session",
+                "relationship": "conversation_belongs_to_session",
             },
         ],
     }
@@ -289,14 +293,14 @@ class TestPI030NewSections:
     close-out payload sections (conversation, work_tickets, commits,
     resolves_planning_items, addresses_planning_items)."""
 
-    def test_conversation_block_creates_record_with_records_session_edge(
+    def test_conversation_block_creates_record_with_belongs_to_session_edge(
         self, routed, tmp_path, monkeypatch
     ):
         ws_id = _create_workstream(routed)
         payload = {
             "label": "Conversation test",
             "session": _session_block("SES-201"),
-            "conversation": _conversation_block("CONV-201", ws_id, "SES-201"),
+            "conversation": _conversation_block("CNV-201", ws_id, "SES-201"),
         }
         path = _payload_path(tmp_path, "ses_201.json", payload)
         monkeypatch.setattr("sys.argv", ["apply_close_out.py", str(path)])
@@ -304,23 +308,24 @@ class TestPI030NewSections:
         assert rc == 0
 
         # Conversation created
-        conv = routed.get("/conversations/CONV-201").json()["data"]
-        assert conv["conversation_identifier"] == "CONV-201"
-        # conversation_records_session edge exists
+        conv = routed.get("/conversations/CNV-201").json()["data"]
+        assert conv["conversation_identifier"] == "CNV-201"
+        # conversation_belongs_to_session edge exists (PI-073 replaces the
+        # legacy conversation_records_session edge)
         refs = routed.get(
-            "/references?source_id=CONV-201&target_id=SES-201"
+            "/references?source_id=CNV-201&target_id=SES-201"
         ).json()["data"]
         kinds = [r["relationship"] for r in refs]
-        assert "conversation_records_session" in kinds
+        assert "conversation_belongs_to_session" in kinds
 
-    def test_commits_section_propagates_conversation_id(
+    def test_commits_section_propagates_session_id(
         self, routed, tmp_path, monkeypatch
     ):
         ws_id = _create_workstream(routed)
         payload = {
             "label": "Commits test",
             "session": _session_block("SES-202"),
-            "conversation": _conversation_block("CONV-202", ws_id, "SES-202"),
+            "conversation": _conversation_block("CNV-202", ws_id, "SES-202"),
             "commits": [{
                 "commit_sha": "a" * 40,
                 "commit_message_first_line": "first line",
@@ -332,7 +337,9 @@ class TestPI030NewSections:
                 "commit_branch": "main",
                 "commit_parent_shas": ["1" * 40],
                 "commit_files_changed_count": 3,
-                # NOTE: no commit_conversation_id — apply should inject it
+                # NOTE: no commit_session_id — apply should inject it from
+                # the payload's session block (PI-073 renamed the FK from
+                # commit_conversation_id to commit_session_id).
             }],
         }
         path = _payload_path(tmp_path, "ses_202.json", payload)
@@ -342,14 +349,16 @@ class TestPI030NewSections:
 
         commits = routed.get("/commits").json()["data"]
         assert len(commits) == 1
-        assert commits[0]["commit_conversation_id"] == "CONV-202"
+        assert commits[0]["commit_session_id"] == "SES-202"
 
-    def test_commits_without_conversation_block_raises_clear_error(
+    def test_commits_without_session_block_raises_clear_error(
         self, routed, tmp_path, monkeypatch
     ):
+        # PI-073: commits derive their FK (commit_session_id) from the
+        # payload's session block. With no session block, the commit shape
+        # function raises a clear ValueError at the "commits" step.
         payload = {
-            "label": "Commits no conversation",
-            "session": _session_block("SES-203"),
+            "label": "Commits no session",
             "commits": [{
                 "commit_sha": "b" * 40,
                 "commit_message_first_line": "x",
@@ -372,7 +381,7 @@ class TestPI030NewSections:
         assert deposits[0]["deposit_event_outcome"] == "failure"
         err = deposits[0]["deposit_event_error_info"]
         assert err["kind"] == "shape_error"
-        assert "conversation block" in err["message"]
+        assert "session block" in err["message"]
         assert err["step"] == "commits"
 
     def test_work_ticket_addresses_pi_becomes_embedded_reference(
@@ -386,6 +395,7 @@ class TestPI030NewSections:
                 "title": "Test PI",
                 "item_type": "pending_work",
                 "status": "Open",
+                "executive_summary": _EXEC_SUMMARY,
             }],
             "work_tickets": [{
                 "work_ticket_identifier": "WT-001",
@@ -419,12 +429,13 @@ class TestPI030NewSections:
         payload = {
             "label": "Resolves test",
             "session": _session_block("SES-205"),
-            "conversation": _conversation_block("CONV-205", ws_id, "SES-205"),
+            "conversation": _conversation_block("CNV-205", ws_id, "SES-205"),
             "planning_items": [{
                 "identifier": "PI-205",
                 "title": "Test PI",
                 "item_type": "pending_work",
                 "status": "Open",
+                "executive_summary": _EXEC_SUMMARY,
             }],
             "resolves_planning_items": [{"planning_item_identifier": "PI-205"}],
         }
@@ -435,7 +446,7 @@ class TestPI030NewSections:
 
         # Reference row created
         refs = routed.get(
-            "/references?source_id=CONV-205&target_id=PI-205"
+            "/references?source_id=CNV-205&target_id=PI-205"
         ).json()["data"]
         kinds = [r["relationship"] for r in refs]
         assert "resolves" in kinds
@@ -450,12 +461,13 @@ class TestPI030NewSections:
         payload = {
             "label": "Addresses test",
             "session": _session_block("SES-206"),
-            "conversation": _conversation_block("CONV-206", ws_id, "SES-206"),
+            "conversation": _conversation_block("CNV-206", ws_id, "SES-206"),
             "planning_items": [{
                 "identifier": "PI-206",
                 "title": "Test PI",
                 "item_type": "pending_work",
                 "status": "Open",
+                "executive_summary": _EXEC_SUMMARY,
             }],
             "addresses_planning_items": [{"planning_item_identifier": "PI-206"}],
         }
@@ -465,7 +477,7 @@ class TestPI030NewSections:
         assert rc == 0
 
         refs = routed.get(
-            "/references?source_id=CONV-206&target_id=PI-206"
+            "/references?source_id=CNV-206&target_id=PI-206"
         ).json()["data"]
         kinds = [r["relationship"] for r in refs]
         assert "addresses" in kinds
@@ -482,7 +494,7 @@ class TestPI030NewSections:
         payload = {
             "label": "Ordering test",
             "session": _session_block("SES-207"),
-            "conversation": _conversation_block("CONV-207", ws_id, "SES-207"),
+            "conversation": _conversation_block("CNV-207", ws_id, "SES-207"),
             "work_tickets": [{
                 "work_ticket_identifier": "WT-207",
                 "work_ticket_title": "Test WT 207",
@@ -496,12 +508,14 @@ class TestPI030NewSections:
                 "title": "Test PI 207",
                 "item_type": "pending_work",
                 "status": "Open",
+                "executive_summary": _EXEC_SUMMARY,
             }],
             "decisions": [{
                 "identifier": "DEC-207",
                 "title": "Test decision",
                 "decision_date": "2026-05-22",
                 "status": "Active",
+                "executive_summary": _EXEC_SUMMARY,
             }],
         }
         path = _payload_path(tmp_path, "ses_207.json", payload)
@@ -528,12 +542,13 @@ class TestPI030NewSections:
         payload = {
             "label": "Idempotent test",
             "session": _session_block("SES-208"),
-            "conversation": _conversation_block("CONV-208", ws_id, "SES-208"),
+            "conversation": _conversation_block("CNV-208", ws_id, "SES-208"),
             "planning_items": [{
                 "identifier": "PI-208",
                 "title": "Test PI 208",
                 "item_type": "pending_work",
                 "status": "Open",
+                "executive_summary": _EXEC_SUMMARY,
             }],
             "resolves_planning_items": [{"planning_item_identifier": "PI-208"}],
         }
@@ -550,6 +565,7 @@ class TestPI030NewSections:
     ):
         """Backward compatibility: v0.7 payload (no conversation, no
         work_tickets/commits/resolves/addresses) applies cleanly."""
+        _create_workstream(routed)
         payload = {
             "label": "v0.7 backward compat",
             "session": _session_block("SES-209"),
@@ -558,12 +574,14 @@ class TestPI030NewSections:
                 "title": "Test decision",
                 "decision_date": "2026-05-22",
                 "status": "Active",
+                "executive_summary": _EXEC_SUMMARY,
             }],
             "planning_items": [{
                 "identifier": "PI-209",
                 "title": "Test PI",
                 "item_type": "pending_work",
                 "status": "Open",
+                "executive_summary": _EXEC_SUMMARY,
             }],
             "references": [{
                 "source_type": "decision",
@@ -590,7 +608,7 @@ class TestPI030NewSections:
         payload = {
             "label": "Audit chain test",
             "session": _session_block("SES-210"),
-            "conversation": _conversation_block("CONV-210", ws_id, "SES-210"),
+            "conversation": _conversation_block("CNV-210", ws_id, "SES-210"),
             "work_tickets": [{
                 "work_ticket_identifier": "WT-210",
                 "work_ticket_title": "Test WT 210",
@@ -639,7 +657,7 @@ class TestPI030NewSections:
         """If the conversation POST fails (missing required nonempty field),
         no orphan refs row is left."""
         ws_id = _create_workstream(routed)
-        bad_conv = _conversation_block("CONV-211", ws_id, "SES-211")
+        bad_conv = _conversation_block("CNV-211", ws_id, "SES-211")
         bad_conv["conversation_purpose"] = ""  # required nonempty → 422
         payload = {
             "label": "Atomic conv test",
@@ -652,10 +670,10 @@ class TestPI030NewSections:
         assert rc == 1
 
         # Conversation didn't land
-        r = routed.get("/conversations/CONV-211")
+        r = routed.get("/conversations/CNV-211")
         assert r.status_code == 404
         # No refs row landed for the conversation
-        refs = routed.get("/references?source_id=CONV-211").json()["data"]
+        refs = routed.get("/references?source_id=CNV-211").json()["data"]
         assert refs == []
 
     def test_resolves_for_already_resolved_pi_is_idempotent(
@@ -667,12 +685,13 @@ class TestPI030NewSections:
         payload = {
             "label": "Resolves idempotent",
             "session": _session_block("SES-212"),
-            "conversation": _conversation_block("CONV-212", ws_id, "SES-212"),
+            "conversation": _conversation_block("CNV-212", ws_id, "SES-212"),
             "planning_items": [{
                 "identifier": "PI-212",
                 "title": "Test PI",
                 "item_type": "pending_work",
                 "status": "Open",
+                "executive_summary": _EXEC_SUMMARY,
             }],
             "resolves_planning_items": [{"planning_item_identifier": "PI-212"}],
         }
@@ -740,6 +759,7 @@ class TestPI099SectionOrdering:
                 "with an inbound conversation_belongs_to_session edge "
                 "applies in one pass.",
                 "session_medium": "chat",
+                "session_executive_summary": _EXEC_SUMMARY,
                 "session_status": "complete",
                 "references": [
                     {
