@@ -5353,5 +5353,39 @@
     "supersedes_id": null,
     "title": "Chat UI system prompt — embedded-assistant role, governance tool-surface semantics, and terse identifier-citing output (design §13)",
     "updated_at": "2026-05-29T02:06:57.193987"
+  },
+  {
+    "alternatives_considered": "(a) Add a new Alembic migration to formalize the constraint — rejected: 0023 already did it; a second migration would be a redundant no-op on the live DB. (b) Only correct the model's nullable flag — rejected: it still breaks ~40 create-path tests and leaves the access/schema/MCP/UI layers permissive and the 500-vs-422 gap open. (c) Defer entirely — rejected: the drift is a standing correctness/maintainability defect in the source of record.",
+    "consequences": "Callers of the decision/planning_item/session create paths must now supply a 200-800 character executive_summary; ~68 access+api and ~29 ui+mcp tests were updated and a dedicated contract test file was added. Fresh test DBs (create_all) now match the live engagement DBs. conversations.conversation_executive_summary remains nullable until a future PI backfills it and tightens it. Delivered in commit 73e4f08 on branch pi-102-exec-summary-nullability, pending push and merge.",
+    "context": "PI-102 found models.py declaring executive_summary nullable on decisions (and the same drift on planning_items and sessions) while migration 0023 (PI-075) had already tightened the live columns to NOT NULL with a 200-800 character CHECK and no IS NULL arm. The SQLAlchemy source — and the access, API-schema, MCP-tool, and UI layers built on it — disagreed with the database they describe. Engagement DBs run the Alembic chain (already correct); test DBs use create_all from the models, so they were wrongly nullable.",
+    "created_at": "2026-05-29T17:56:48.632887",
+    "decision": "Reconcile every source layer to the live schema rather than add a new migration (0023 already formalized the constraint). models.py: the three columns become Mapped[str], nullable=False, with the CHECK's IS NULL arm removed. Add a validate_required_length helper; the decisions, planning_items, and sessions create paths require executive_summary, and update/patch require a valid value when the key is present (a NOT NULL column cannot be cleared). API create bodies and SessionReplaceIn require the field; partial update/patch bodies stay optional. The three MCP create tools take a required executive_summary argument. The three UI dialog fields become required=True. conversations.conversation_executive_summary is deliberately left nullable because migration 0023 excluded it pending its own backfill.",
+    "decision_date": "2026-05-29",
+    "executive_summary": "PI-102 found the SQLAlchemy models declaring executive_summary nullable while migration 0023 (PI-075) had already tightened the live columns to NOT NULL with a 200-800 char CHECK. Rather than add a redundant migration, this decision reconciles every source layer to the live schema: model nullable=False plus a no-NULL-arm CHECK, a new validate_required_length helper backing required create paths in the access layer, required create-body fields in the API and MCP tool schemas, and required=True on the three UI dialog fields. It converts a silent database 500 on an omitted summary into a clean 422/400. conversations.conversation_executive_summary stays nullable because migration 0023 deliberately excluded it pending its own backfill.",
+    "id": 317,
+    "identifier": "DEC-330",
+    "rationale": "The source of record must match the database it describes, or future authors are misled. Making the create paths required converts a silent database IntegrityError (HTTP 500) into a clean validation error (422 for an omitted field, 400 for an out-of-range value). A full-stack reconcile keeps all five layers consistent rather than leaving the access/schema/MCP/UI layers permissive while only the model is correct.",
+    "status": "Active",
+    "superseded_by_id": null,
+    "supersedes_id": null,
+    "title": "Reconcile executive_summary nullability to the live schema across all source layers — no new migration (PI-102)",
+    "updated_at": "2026-05-29T17:56:48.632890"
+  },
+  {
+    "alternatives_considered": "claimed_by = session identifier (simpler to write at start-of-work) — rejected as less semantically accurate. Dropping one area to honor the 'seventeen' count — rejected as arbitrary. Adding NOT NULL now — rejected: it would fail on the all-null existing rows and block the migration chain. Auto-running --execute — rejected: unsupervised swarm spawn is unsafe for a first run.",
+    "consequences": "claimed_by stores CNV-NNN as a free string (no cross-table FK). Adding a future area requires editing vocab.AREAS only. Activating NOT NULL is a documented git-mv of the deferred migration after backfill. The driver's --execute spawn invocation must be wired to the local Claude Code setup before the first real run.",
+    "context": "The WS-012 orchestrator track (PI-076–083) left one design question open in orchestrator-planning.md §6 (whether claimed_by references a conversation or a session identifier) and required two scope calls about what to finish now vs defer to Doug-gated follow-ups.",
+    "created_at": "2026-05-29T18:29:01.750743",
+    "decision": "(1) planning_items.claimed_by holds the conversation identifier (CNV-NNN). (2) The `area` vocabulary registers all 18 enumerated names from orchestrator-planning.md §2.1 (the prose says 'seventeen' but lists eighteen; names win). (3) The area column's NOT NULL tightening is parked as a deferred migration (migrations/deferred/0027_*) out of the alembic chain until PI-083's backfill gives every open item an area; the orchestrator's live --execute path is implemented but guarded — the first real run is the human-driven acceptance test per the design doc §7.",
+    "decision_date": "2026-05-29",
+    "executive_summary": "Records the foundational design calls for the WS-012 parallel-agent orchestrator, built across PI-076–083. (1) Resolves the orchestrator-planning.md §6 open question: a planning item's claimed_by holds the CONVERSATION identifier (CNV-NNN), not the session identifier — per DEC-248 the conversation is the unit of coherent work that holds the claim. (2) The `area` vocabulary has 18 values: orchestrator-planning.md §2.1 and the PI-076 text both say 'seventeen' but enumerate eighteen names, and the enumerated names are authoritative. (3) Two completion steps are deferred and Doug-gated: the area column's NOT NULL tightening (parked as a deferred migration until PI-083's backfill runs) and the orchestrator's live --execute run (guarded as the human-driven acceptance test per the design doc §7).",
+    "id": 318,
+    "identifier": "DEC-331",
+    "rationale": "Per DEC-248 each child agent owns one conversation + one session, and the conversation is the unit of coherent work, so it is the semantically accurate claim-holder. The 18 enumerated area names are the authoritative source over a miscounted prose word. Deferring NOT NULL avoids a chain-breaking migration on a DB whose rows all start null; deferring --execute avoids spawning a real multi-agent swarm before a human can supervise the first run.",
+    "status": "Active",
+    "superseded_by_id": null,
+    "supersedes_id": null,
+    "title": "Parallel-agent orchestrator foundation — claimed_by references the conversation identifier; 18-value area vocabulary; live NOT NULL and --execute deferred",
+    "updated_at": "2026-05-29T18:29:01.750746"
   }
 ]

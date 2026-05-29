@@ -907,9 +907,9 @@
     "identifier": "PI-076",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Add area field to planning_items (multi-valued JSON, vocabulary-checked)",
-    "updated_at": "2026-05-27T18:20:45.578680"
+    "updated_at": "2026-05-29T18:29:02.343566"
   },
   {
     "created_at": "2026-05-27T01:28:34.872048",
@@ -919,9 +919,9 @@
     "identifier": "PI-077",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Add claimed_by and claimed_at fields to planning_items",
-    "updated_at": "2026-05-27T18:20:45.814900"
+    "updated_at": "2026-05-29T18:29:02.621188"
   },
   {
     "created_at": "2026-05-27T01:28:35.065500",
@@ -931,9 +931,9 @@
     "identifier": "PI-078",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Implement identifier reservation API endpoint",
-    "updated_at": "2026-05-27T18:20:46.062312"
+    "updated_at": "2026-05-29T18:29:02.919815"
   },
   {
     "created_at": "2026-05-27T01:28:35.217361",
@@ -943,9 +943,9 @@
     "identifier": "PI-079",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Implement orchestration ready-batches API endpoint",
-    "updated_at": "2026-05-27T18:20:46.252995"
+    "updated_at": "2026-05-29T18:29:03.215809"
   },
   {
     "created_at": "2026-05-27T01:28:35.402588",
@@ -979,9 +979,9 @@
     "identifier": "PI-082",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Build child agent kickoff prompt template",
-    "updated_at": "2026-05-27T18:20:46.977007"
+    "updated_at": "2026-05-29T18:29:03.520041"
   },
   {
     "created_at": "2026-05-27T01:28:35.865501",
@@ -1219,9 +1219,9 @@
     "identifier": "PI-102",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Reconcile the executive_summary column nullability between the SQLAlchemy models and the live database",
-    "updated_at": "2026-05-28T04:55:03.208505"
+    "updated_at": "2026-05-29T17:56:49.824109"
   },
   {
     "created_at": "2026-05-28T04:55:03.512953",
@@ -1249,7 +1249,7 @@
   },
   {
     "created_at": "2026-05-29T01:52:20.303003",
-    "description": "PI-074 added the executive_summary column to planning_items, decisions, and sessions; PI-075 tightened it to NOT NULL with a 200..800 char CHECK. The desktop UI surfaces it via PI-091/092/093. The MCP tool surface, however, does not accept executive_summary as a parameter on at least three tools — confirmed empirically during the SES-113 close-out attempt:\n\n(1) update_planning_item: returned \"got an unexpected keyword argument 'executive_summary'\" when refreshing PI-031's stale summary.\n(2) create_planning_item: returned HTTP 500 when filing PI-105 itself (and PI-106) because executive_summary could not be supplied to an entity with a NOT NULL column.\n(3) create_conversation: returned HTTP 422 when authoring CNV-015 for the SES-113 close-out, regardless of status (in_flight or complete), strongly suggesting conversations also have a NOT NULL conversation_executive_summary column post-PI-073 that the tool can't populate.\n\nThe empirical pattern: every MCP tool that wraps a POST or PATCH for an entity carrying executive_summary (or its equivalent) appears to have the gap. The REST API itself accepts the field on POST and PATCH — confirmed by successfully curl-creating PI-105 with executive_summary supplied — so the gap is purely the MCP tool definition layer, not the API.\n\nPI-097's pre-condition note documents that DecisionUpdateIn was patched ad-hoc during SES-104's backfill and \"may be reverted by the parallel Option A session.\" Whether that patch survived is one of the audit questions.\n\nScope:\n\n(1) Audit current state across every MCP tool that wraps a write (POST/PATCH) for an entity carrying executive_summary or its parent-prefixed variant. Entities known to have such a column: planning_items (executive_summary), decisions (executive_summary), sessions (session_executive_summary), conversations (conversation_executive_summary likely, given the 422 above). Verify both the MCP tool parameter list in crmbuilder-v2/src/crmbuilder_v2/mcp_server/tools.py and the API Pydantic schemas in crmbuilder-v2/src/crmbuilder_v2/api/schemas.py (CreateIn / PatchIn / UpdateIn variants).\n\n(2) Patch API schemas where missing — add executive_summary (or session_executive_summary / conversation_executive_summary) with the 200..800 char validator.\n\n(3) Patch MCP tools where missing — add the parameter to every relevant create_* and update_* tool. At minimum: create_planning_item, update_planning_item, create_decision, update_decision, create_session, update_session, create_conversation, update_conversation. Audit may surface more.\n\n(4) Add test coverage at both layers — API and MCP — for happy path and length-validation failure on both create and update for every entity touched.\n\n(5) Smoke-verify end-to-end with real updates: refresh PI-031's stale executive_summary; close out SES-113 properly through MCP rather than curl.\n\n(6) Optional: if the audit surfaces other column-vs-tool-parameter gaps beyond executive_summary, either expand this PI's scope or file follow-ons. The empirical pattern this conversation discovered suggests a systemic risk — any column added to an entity table without a parallel update to mcp_server/tools.py creates a silent write-blockage that only surfaces when someone tries to use the affected tool.\n\nOut of scope:\n- Desktop UI changes (owned by PI-091/092/093)\n- apply_close_out.py changes (already handles executive_summary in payloads)\n- The systemic-gap question (column-vs-tool-parameter audit beyond executive_summary) — file separately if the audit surfaces evidence it's worth its own PI\n\nAcceptance: every MCP create_* and update_* tool for an entity carrying executive_summary or its parent-prefixed variant accepts the field; corresponding REST endpoints accept it via Pydantic; both reject out-of-range lengths with structured 422; tests cover create and update paths at both layers; SES-113's close-out can be filed end-to-end via MCP as the final smoke test.</parameter>\n</invoke>",
+    "description": "PI-074 added the executive_summary column to planning_items, decisions, and sessions; PI-075 tightened it to NOT NULL with a 200..800 char CHECK. PI-073 added conversation_executive_summary to conversations (and possibly other prefixed entity tables). The desktop UI surfaces some via PI-091/092/093. The write surfaces — MCP tools, API endpoint schemas, and access-layer patchable-fields lists — are not consistently updated to match.\n\nEmpirical evidence from the SES-114 close-out attempt (CNV-016) documents the gap at FIVE distinct layers:\n\n(1) MCP update_planning_item: returned \"got an unexpected keyword argument 'executive_summary'\" — tool parameter list lacks the field.\n\n(2) MCP create_planning_item: returned HTTP 500 when filing PI-105/106 because executive_summary could not be supplied to a NOT NULL column — tool parameter list lacks the field for create too.\n\n(3) MCP create_conversation: returned HTTP 422 because the API Pydantic schema rejected the call without conversation_executive_summary, and the MCP tool didn't even attempt to pass it.\n\n(4) Curl POST /conversations with conversation_executive_summary in the body: succeeded but SILENTLY DROPPED the field — the response showed conversation_executive_summary: null despite a 600-char value being submitted. The API's POST handler accepts the field in the request schema but does not persist it.\n\n(5) Curl PATCH /conversations/{id} with either conversation_executive_summary or executive_summary: rejected with either 'unknown_field' (the prefixed name hits the access-layer's _PATCHABLE_FIELDS check which apparently has the bare name listed) or 'Extra inputs are not permitted' (the bare name hits the Pydantic UpdateIn schema which only knows the prefixed name). The field is not patchable on conversations through any layer.\n\nNet effect: PI-105's CNV-016 will permanently have conversation_executive_summary=null until this PI lands. The REST API itself is inconsistent across CreateIn / UpdateIn schemas, access-layer _PATCHABLE_FIELDS, and the actual persistence path.\n\nPI-097's pre-condition note documents that DecisionUpdateIn was patched ad-hoc during SES-104's backfill and \"may be reverted by the parallel Option A session.\" Whether that patch survived is one of the audit questions.\n\nScope:\n\n(1) FULL AUDIT across every write path for every entity carrying executive_summary or its parent-prefixed variant. Entities confirmed to have such a column: planning_items (executive_summary, NOT NULL), decisions (executive_summary, NOT NULL), sessions (session_executive_summary, NOT NULL probably), conversations (conversation_executive_summary, currently allows NULL given CNV-016 was created without it). Audit each entity across: API POST schema (CreateIn), API PATCH schema (UpdateIn/PatchIn), API PUT schema (ReplaceIn if separate), access-layer create function, access-layer update function, access-layer _PATCHABLE_FIELDS, and MCP tool parameter lists for create_* and update_*.\n\n(2) The audit should produce a matrix: for each entity × each layer, does the field exist, accept the right name (bare vs prefixed), persist correctly, and validate the 200..800 length range?\n\n(3) Patch the API where the schema rejects valid input or where the persistence path silently drops a accepted field.\n\n(4) Patch the access layer where _PATCHABLE_FIELDS is missing entries or uses the wrong name.\n\n(5) Patch the MCP tools where create_* or update_* parameter lists lack the field.\n\n(6) Add test coverage at every layer (API, access, MCP) for happy path AND length-validation failure on create AND update for every entity touched.\n\n(7) Smoke-verify end-to-end: refresh PI-031's stale executive_summary via MCP; refresh CNV-016's null conversation_executive_summary via MCP; close out a new session entirely through MCP rather than curl.\n\n(8) Investigate whether the parent-prefix field-naming convention has been applied consistently across the API surface. Possible follow-on: the convention drift between MCP (bare names), API POST (prefixed names), API PATCH (mixed?), and access layer (mixed?) may itself need a consolidating refactor or at minimum a documented mapping layer.\n\nOut of scope:\n- Desktop UI changes (owned by PI-091/092/093)\n- apply_close_out.py changes (already handles executive_summary in payloads)\n- A systemic column-vs-write-surface audit beyond executive_summary — file as a follow-on if the audit work surfaces evidence other fields drift similarly\n\nAcceptance: every entity × write-path × field-name combination is validated by tests; every MCP create/update tool accepts and persists executive_summary correctly; every REST endpoint accepts both POST and PATCH of the field; CNV-016 gets its conversation_executive_summary populated through the same tool surface a future close-out would use.</parameter>\n</invoke>",
     "executive_summary": "MCP create_planning_item and update_planning_item do not accept executive_summary as a parameter, and PI-097 notes the parallel gap on the API PatchIn schemas was patched ad-hoc and may have been reverted. PI-074 made the column NOT NULL, so the gap blocks both refreshing stale summaries and filing new PIs via MCP. This PI audits all three entity types and patches both layers.",
     "id": 105,
     "identifier": "PI-105",
@@ -1257,7 +1257,7 @@
     "resolution_reference": null,
     "status": "Open",
     "title": "Expose executive_summary on MCP create/update tools for planning_items, decisions, and sessions (and verify API schemas)",
-    "updated_at": "2026-05-29T02:06:30.082708"
+    "updated_at": "2026-05-29T02:17:11.448922"
   },
   {
     "created_at": "2026-05-29T02:06:56.912646",

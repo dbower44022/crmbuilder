@@ -815,5 +815,157 @@
     "commit_session_id": "SES-113",
     "commit_sha": "5ddc6e73dcb5514020967b7a7cae32641bd67a6d",
     "commit_updated_at": "2026-05-29T02:08:43.257373"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-102-exec-summary-nullability",
+    "commit_committed_at": "2026-05-29T03:07:57-04:00",
+    "commit_created_at": "2026-05-29T17:56:48.343075",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 28,
+    "commit_identifier": "CM-0044",
+    "commit_message_first_line": "v2: PI-102 — reconcile executive_summary nullability across source layers",
+    "commit_message_full": "v2: PI-102 — reconcile executive_summary nullability across source layers\n\nThe live CRMBUILDER database has enforced NOT NULL + a 200-800 char CHECK\non executive_summary (decisions, planning_items) and\nsession_executive_summary (sessions) since migration 0023 (PI-075), but\nthe SQLAlchemy models still declared the columns nullable with a\npermissive \"IS NULL OR (length...)\" CHECK. The model — and the access,\nschema, MCP, and UI layers built on it — disagreed with the database it\ndescribes. This reconciles all of them to the live schema. No new\nmigration: 0023 already formalized the constraint; this is the\nsource-of-record catch-up.\n\n- models.py: three columns -> Mapped[str], nullable=False; CHECK drops\n  the IS NULL arm. conversations.conversation_executive_summary is left\n  nullable (migration 0023 deliberately excluded it; not yet backfilled).\n- _helpers.py: add validate_required_length (rejects None/empty/short).\n- decisions / planning_items / sessions repos: create paths now require\n  executive_summary; update/patch require a valid value when the key is\n  present (a NOT NULL column cannot be cleared). Turns an omitted summary\n  into a clean 400/422 instead of a DB IntegrityError (500).\n- api/schemas.py: create bodies + SessionReplaceIn (PUT) require the\n  field; partial update/patch bodies stay optional.\n- mcp_server/tools.py: create_decision / create_planning_item /\n  create_session tools take a required executive_summary argument.\n- UI schemas (decision / planning_item / session): Executive Summary\n  field is required=True (was required=False + omit_when_empty_in_create),\n  making the form honest about the NOT NULL constraint.\n- tests: thread a valid summary through the affected create/POST/dialog\n  sites; add test_executive_summary_required.py (access + api) locking in\n  the NOT-NULL schema shape, access-layer rejection, the 422/400 API\n  contract, and that conversations stays nullable.\n\nVerified: full access+api and ui+mcp suites show zero new failures vs the\nb13707c baseline; the 14 new contract tests pass.\n\nGovernance close-out (resolving PI-102 in the DB via close-out payload +\napply_close_out.py) is deferred: apply_close_out is currently broken on\nthis base for the PI-073 session shape.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "b13707c6e882d16b4a24bfb4f755b651ff8fe8a0"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-115",
+    "commit_sha": "73e4f08142704be001da2aa979b9ecb940ade913",
+    "commit_updated_at": "2026-05-29T17:56:48.343077"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-076-area-field",
+    "commit_committed_at": "2026-05-29T01:47:23-04:00",
+    "commit_created_at": "2026-05-29T18:28:59.758185",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 9,
+    "commit_identifier": "CM-0045",
+    "commit_message_first_line": "v2: PI-076 — add area field to planning_items (multi-valued JSON, vocabulary-checked)",
+    "commit_message_full": "v2: PI-076 — add area field to planning_items (multi-valued JSON, vocabulary-checked)\n\nAdds a nullable JSON `area` column to planning_items so each item can\ndeclare which codebase/methodology areas it touches, enabling the\nparallel-agent orchestrator (WS-012) to partition the open backlog into\nfile-disjoint clusters (DEC-246 area-level parallelism; DEC-247\nmulti-valued area sets).\n\n- migration 0024: nullable JSON column + structural CHECK (valid\n  non-empty array). Element-level vocabulary is enforced at the access\n  layer because SQLite CHECK constraints cannot iterate array elements.\n- vocab.AREAS: the 18 area labels from orchestrator-planning.md §2.1\n  (the prose says \"seventeen\" but enumerates 18; the names are\n  authoritative, so all 18 are registered).\n- _helpers.validate_optional_value_list + access-layer enforcement on\n  planning_item create/update (non-empty, distinct, string, in-vocab).\n- Pydantic `area` on create/update; the snapshot exporter is generic.\n- JSON(none_as_null=True) so Python None stores as SQL NULL (otherwise\n  the text 'null' fails the `area IS NULL` arm of the CHECK).\n\nNOT NULL is deferred to PI-083 (area backfill on currently-open items).\nValidated: 61 access/api tests green; migration 0024 applies cleanly to\na copy of the live CRMBUILDER.db (0023 -> 0024, 106 rows preserved).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "b13707c6e882d16b4a24bfb4f755b651ff8fe8a0"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-116",
+    "commit_sha": "290c37f471020d705ad224cb84cde312b754ddea",
+    "commit_updated_at": "2026-05-29T18:28:59.758188"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-076-area-field",
+    "commit_committed_at": "2026-05-29T01:54:12-04:00",
+    "commit_created_at": "2026-05-29T18:29:00.003825",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 7,
+    "commit_identifier": "CM-0046",
+    "commit_message_first_line": "v2: PI-077 — add claimed_by/claimed_at to planning_items + claim/release",
+    "commit_message_full": "v2: PI-077 — add claimed_by/claimed_at to planning_items + claim/release\n\nLets the orchestrator (WS-012) mark a planning item as held by a\nspecific agent so two agents never grab the same item. Resolves the\ndesign-doc open question (orchestrator-planning.md §6) in favour of the\nconversation identifier (CONV-NNN) as the claim-holder per DEC-248 (the\nconversation is the unit of coherent work).\n\n- migration 0025: nullable claimed_by (TEXT) + claimed_at (DATETIME) with\n  a both-or-neither pairing CHECK. No backfill — existing rows stay null.\n- model columns + ck_planning_claim_pairing.\n- access helpers claim_planning_item / release_planning_item with\n  optimistic concurrency: claim fails (409) if held by a different\n  claimant, is idempotent for the same claimant; release optionally\n  guarded by claimant. Race-safe under the engine's BEGIN IMMEDIATE.\n- POST /planning-items/{id}/claim and /release endpoints + request models.\n\nValidated: 46 access/api tests green; migrations 0024+0025 chain cleanly\nonto a copy of the live CRMBUILDER.db, pairing CHECK enforced.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "290c37f471020d705ad224cb84cde312b754ddea"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-116",
+    "commit_sha": "61cc6e98e8b8a556db5ec10e0fca246c31eaf69f",
+    "commit_updated_at": "2026-05-29T18:29:00.003827"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-076-area-field",
+    "commit_committed_at": "2026-05-29T01:58:06-04:00",
+    "commit_created_at": "2026-05-29T18:29:00.289194",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 5,
+    "commit_identifier": "CM-0047",
+    "commit_message_first_line": "v2: PI-079 — GET /orchestration/ready-batches endpoint",
+    "commit_message_full": "v2: PI-079 — GET /orchestration/ready-batches endpoint\n\nThe single call the orchestrator makes at the start of every run to learn\nwhat is safe to dispatch. Returns open planning items grouped by\ndependency depth, each carrying identifier/title/executive_summary/area/\nclaimed_by, plus a cyclic bucket and warnings.\n\n- access/orchestration.compute_ready_batches: builds the blocked_by graph\n  (planning_item -> planning_item) counting only open blockers (a\n  blocked_by edge to a resolved item is treated as satisfied), computes\n  longest-path depth via DFS, surfaces cycles (and anything transitively\n  depending on one) in a separate cyclic bucket rather than failing.\n  Optional area filter (intersection; vocab-validated) and max_depth cutoff.\n- GET /orchestration/ready-batches router, registered in main.\n\nDepends on PI-076 (area) + PI-077 (claimed_by). 14 access/api tests green.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "61cc6e98e8b8a556db5ec10e0fca246c31eaf69f"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-116",
+    "commit_sha": "743c935d2506a8c5e3a89471898e1cd1f5eb40ce",
+    "commit_updated_at": "2026-05-29T18:29:00.289196"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-076-area-field",
+    "commit_committed_at": "2026-05-29T01:59:42-04:00",
+    "commit_created_at": "2026-05-29T18:29:00.575429",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0048",
+    "commit_message_first_line": "v2: PI-082 — child-agent kickoff prompt template",
+    "commit_message_full": "v2: PI-082 — child-agent kickoff prompt template\n\nThe standardized kickoff each child agent receives when the orchestrator\ndispatches it. Markdown template at\nPRDs/product/crmbuilder-v2/orchestrator/child-agent-kickoff-template.md\nwith a documented {{placeholder}} contract the driver (PI-081) fills at\ndispatch time.\n\nBody sections per PI-082: operating mode (DETAIL default), engagement +\nworkstream context, pre-allocated identifiers, planning items in scope\n(full inlined descriptions from ready-batches), areas claimed + the hard\nconflict rule (stay inside claimed areas), close-out payload requirements\n(own nine-section ses_NNN.json + apply prompt), branch/commit\nconventions. Notes that the orchestrator — not the child — writes the\nconversation_orchestrates_conversation edge.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "743c935d2506a8c5e3a89471898e1cd1f5eb40ce"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-116",
+    "commit_sha": "268e4a7f6030dfc7ca301058f669043a465609e1",
+    "commit_updated_at": "2026-05-29T18:29:00.575432"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-076-area-field",
+    "commit_committed_at": "2026-05-29T02:06:36-04:00",
+    "commit_created_at": "2026-05-29T18:29:00.879210",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 8,
+    "commit_identifier": "CM-0049",
+    "commit_message_first_line": "v2: PI-078 — POST /identifiers/reserve endpoint",
+    "commit_message_full": "v2: PI-078 — POST /identifiers/reserve endpoint\n\nLets the orchestrator atomically reserve a block of prefixed identifiers\n(e.g. the next five SES) at the start of a run so concurrent child agents\nnever race on next-available numbers when posting close-out records.\n\n- migration 0026 + IdentifierReservation model: one row per reserved\n  block (entity_type, reserved_identifiers, max_number, reserved_by,\n  reserved_at, expires_at). Ephemeral runtime state — deliberately not in\n  the snapshot exporter.\n- access/repositories/identifier_reservations.reserve: head =\n  max(table_max, active_reservation_max) + 1, reusing each entity type's\n  canonical next-identifier function and parsing prefix/width from it\n  (so CM-0001 width-4 etc. are respected). Once a reserved id becomes a\n  row, table_max covers it (implicit consume); expired blocks are purged\n  and ignored (TTL auto-release, default 1h). Reservable: session,\n  decision, planning_item, risk, topic, conversation (charter/status are\n  version singletons, references are numeric — excluded).\n- POST /identifiers/reserve router + IdentifierReserveIn schema.\n\n15 access/api tests green; migrations 0024-0026 chain cleanly on a copy\nof the live CRMBUILDER.db.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "268e4a7f6030dfc7ca301058f669043a465609e1"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-116",
+    "commit_sha": "fbf08f31696872d9563e7c1cc25e0ae512c95422",
+    "commit_updated_at": "2026-05-29T18:29:00.879213"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-076-area-field",
+    "commit_committed_at": "2026-05-29T02:10:19-04:00",
+    "commit_created_at": "2026-05-29T18:29:01.190074",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 4,
+    "commit_identifier": "CM-0050",
+    "commit_message_first_line": "v2: PI-083 — area backfill tooling + deferred NOT NULL migration",
+    "commit_message_full": "v2: PI-083 — area backfill tooling + deferred NOT NULL migration\n\nPI-083 requires a Doug spot-check and mutates live governance data, so\nthis lands the tooling and gates the live steps:\n\n- scripts/backfill_pi_083_area.py: two-phase, Doug-in-the-loop.\n  `propose` fetches every Open planning item with a null area, infers\n  area set(s) via a deterministic keyword/path heuristic (infer_areas,\n  never proposes an unregistered area), and writes an editable proposal\n  JSON. `apply` PATCHes areas from the reviewed proposal. Items with no\n  heuristic signal are flagged needs_review.\n- migrations/deferred/0027_*_area_not_null.py: the NOT NULL tightening,\n  parked OUT of the active chain (alembic does not scan deferred/) since\n  every row starts null; it guards against NULL rows and documents the\n  git-mv activation procedure. README explains the deferred convention.\n\nNot resolving PI-083: the live backfill PATCH + NOT NULL activation are\nDoug-gated follow-ups. 7 heuristic tests green; alembic head unchanged\nat 0026 (deferred migration confirmed out of chain).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "fbf08f31696872d9563e7c1cc25e0ae512c95422"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-116",
+    "commit_sha": "1866f72adf67e3959170b511559494a5238ef706",
+    "commit_updated_at": "2026-05-29T18:29:01.190076"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-076-area-field",
+    "commit_committed_at": "2026-05-29T02:16:11-04:00",
+    "commit_created_at": "2026-05-29T18:29:01.493126",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 6,
+    "commit_identifier": "CM-0051",
+    "commit_message_first_line": "v2: PI-081 — orchestrator driver script (dry-run complete; execute guarded)",
+    "commit_message_full": "v2: PI-081 — orchestrator driver script (dry-run complete; execute guarded)\n\nThe capstone driver under crmbuilder-v2/scripts/orchestrator/. Reads the\nready-batches API (PI-079), plans area-disjoint child clusters, reserves\nidentifiers (PI-078), claims items (PI-077), and renders a kickoff per\nchild from the PI-082 template.\n\n- planning.py: pure wave partitioning. Connected components over \"shares\n  an area\" (union-find) => one cluster (one child agent) per component;\n  claimed items skipped, area-less items set aside as unparallelisable.\n  assert_clusters_disjoint guards parallel safety before dispatch.\n- kickoff.py: pure template rendering — substitute {{markers}}, strip the\n  contract comment, inline planning-item descriptions; fails loud on\n  missing/leftover placeholders.\n- run.py: CLI. --dry-run (DEFAULT, safe) does pre-flight + fetch + plan +\n  renders every child kickoff to --out-dir with no reserve/claim/spawn.\n  File-lock (~/.crmbuilder-v2/) ensures a single orchestrator. --execute\n  is the human-driven WS-012 acceptance test (design doc §7) and refuses\n  to run silently until the local Claude Code spawn invocation is wired.\n\n16 pure-core tests green (clustering, rendering, plan/summary, real\ntemplate contract). A live dry-run against the API and the first real\n--execute run are Doug-driven follow-ups (require the API restarted with\nthis code; --execute spawns real subagents).\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "1866f72adf67e3959170b511559494a5238ef706"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-116",
+    "commit_sha": "f99d9ac60e2bba92f727db926ee89f8459419702",
+    "commit_updated_at": "2026-05-29T18:29:01.493128"
   }
 ]

@@ -2063,5 +2063,92 @@
     "session_superseded_at": null,
     "session_title": "PI-052 chat UI on the Anthropic API — Slices B/C/D: MVP tab → full 51-tool surface + caching + persistence → polish, error recovery, and test suite",
     "session_updated_at": "2026-05-29T02:08:42.390729"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-29T02:14:16.501807",
+    "session_created_at": "2026-05-29T02:14:16.501535",
+    "session_deleted_at": null,
+    "session_description": "Claude.ai sandbox conversation via the v2 MCP server (Claude Desktop transport). Doug asked about PI-031; sandbox investigated, found the entity is fully specified, amended PI-031 to cite the spec docs and pin down UI underspec. Refreshing the stale executive_summary surfaced an MCP write-surface gap; filed PI-105. Close-out itself ran into the same gap (create_conversation rejected for missing executive_summary), curl-driven instead, re-keyed CNV-015→CNV-016 / SES-113→SES-114 after parallel Claude Code session collision.",
+    "session_ended_at": null,
+    "session_executive_summary": "Single MCP-driven sandbox session. Substantive output: PI-031 description amended to cite commit.md, code-change-lifecycle methodology, and DEC-183/185/186/187/198/199/200/211/212/213/214 (closing the data-contract gap I initially mis-diagnosed); PI-105 filed capturing the MCP write-surface gap (create_planning_item, update_planning_item, create_conversation, and parallels) discovered when the same conversation tried to refresh PI-031's stale executive_summary and curl-close itself. Re-keyed mid-session from SES-113 to SES-114 after parallel Claude Code session claimed CNV-015.",
+    "session_identifier": "SES-114",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "chat_platform": "claude_ai",
+      "model": "claude-opus-4-7",
+      "surface": "claude_ai_web_sandbox"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.7, claude.ai)"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "Amend PI-031 description; file PI-105 — empirical discovery of MCP write-surface gap",
+    "session_updated_at": "2026-05-29T02:14:16.501893"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-29T17:56:48.078962",
+    "session_created_at": "2026-05-29T17:56:48.078688",
+    "session_deleted_at": null,
+    "session_description": "Single Claude Code execution at Doug's terminal (CNV-017). Parent workstream WS-012 (Parallel agent orchestrator and executive summary). Medium: chat via Claude Code. Seed prompt: \"review pi-102 and plan how to execute the pi\", then \"start executing\", then \"organize the closeout payload and execute\".\n\nPI-102 (filed by SES-111 via DEP-104/COP-111) flagged that models.py declared decisions.executive_summary nullable while the live CRMBUILDER database enforces NOT NULL with a 200-800 char CHECK (tightened by migration 0023 / PI-075). The SQLAlchemy source no longer described the actual schema.\n\nWork, in order:\n1. Investigation: confirmed the live DB (CRMBUILDER.db, Alembic head) has NOT NULL + 200-800 CHECK with no IS NULL arm on decisions, planning_items, and sessions; the models still carried nullable=True with a permissive 'IS NULL OR (length...)' CHECK. Established that engagement DBs are built by running the Alembic chain (already correct) while test DBs use create_all from the models (wrongly nullable). Resolved PI-102's open question: NO new migration — 0023 already formalized it; this is the source-of-record catch-up.\n2. Full-stack reconcile (Doug chose full-stack over model-only): models.py three columns -> Mapped[str], nullable=False, CHECK drops the IS NULL arm; new validate_required_length helper; decisions / planning_items / sessions create paths require executive_summary, update/patch require a valid value when present; API create bodies + SessionReplaceIn require it (partial update/patch stay optional); the three MCP create tools take a required executive_summary; the three UI dialog fields become required=True. conversations.conversation_executive_summary is left nullable — migration 0023 deliberately excluded it (not yet backfilled).\n3. Test reconciliation: established a baseline at b13707c (105 pre-existing access+api failures and 17 ui+mcp failures, unrelated to PI-102 — old session shapes, commit/conversation/deposit machinery, a dangling import). Fixed the 68 access+api and 29 ui+mcp delta tests by threading a valid summary through their create/POST/dialog sites; verified the suites return exactly to baseline with zero new failures. Added test_executive_summary_required.py (access + api) locking in the NOT-NULL schema shape, access-layer rejection, the 422/400 API contract, and that conversations stays nullable.\n4. Authored DEC-330. Lint clean on all changed files.\n\nThe code deliverable is commit 73e4f08 on branch pi-102-exec-summary-nullability (an isolated worktree based on the clean b13707c, not main's 'abandoned commit'), pending Doug's push and merge. This governance close-out was applied from the main repo because the worktree's db-export baseline (b13707c) is stale relative to the live DB; the db-export diff here is exactly the PI-102 records.\n\nIn flight at end: commit 73e4f08 awaits Doug's push/merge.",
+    "session_ended_at": null,
+    "session_executive_summary": "Reconciled the executive_summary column's nullability between the SQLAlchemy source and the live governance database, which has enforced NOT NULL with a 200-800 character CHECK since migration 0023 (PI-075). The models, access-layer create paths, API create schemas, MCP create tools, and the UI dialog fields were all brought into agreement so the source accurately describes the schema and omitting the summary now yields a clean 422/400 instead of a database 500. conversations.conversation_executive_summary was intentionally left nullable (migration 0023 excluded it). No new migration was needed. Resolves PI-102.",
+    "session_identifier": "SES-115",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "model": "claude-opus-4-8",
+      "runner": "claude_code",
+      "surface": "claude_code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.8, Claude Code)"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "PI-102 — reconcile executive_summary nullability between the SQLAlchemy models and the live database (full-stack reconcile)",
+    "session_updated_at": "2026-05-29T17:56:48.079053"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-29T18:28:59.464822",
+    "session_created_at": "2026-05-29T18:28:59.464542",
+    "session_deleted_at": null,
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-018. Parent workstream WS-012 (Parallel agent orchestrator and executive summary). Medium: chat (claude_code runner).\n\nSeed: \"I would like to work on pi-076 and related tasks.\" The session delivered the remaining open WS-012 orchestrator track — PI-076, 077, 078, 079, 081, 082, 083 (PI-080 was already Resolved; PI-074/075 exec-summary track already done).\n\nBranch isolation: a parallel chat-UI orchestrator was actively committing and switching branches in the main working copy (it swept this session's first-saved files into a commit literally titled 'abandoned commit' and checked out pi-106-chat-slice-d-followups). To stay clear of it, all work was done in a dedicated git worktree (crmbuilder-pi076) on branch pi-076-area-field cut from origin/main (b13707c) — a clean pre-breakage baseline. The main working copy was left untouched.\n\nDelivered (seven commits, see commits[]):\n1. PI-076 (290c37f): nullable JSON `area` column on planning_items (migration 0024) + structural CHECK + an 18-value `area` vocabulary + access-layer validator + Pydantic + tests.\n2. PI-077 (61cc6e9): claimed_by/claimed_at (migration 0025, both-or-neither CHECK) + claim/release access helpers (optimistic concurrency) + claim/release endpoints.\n3. PI-079 (743c935): GET /orchestration/ready-batches — blocked_by topological depth batching with area/claimed_by attached, cycle bucket, area + max_depth filters.\n4. PI-082 (268e4a7): child-agent kickoff template with a documented placeholder contract.\n5. PI-078 (fbf08f3): POST /identifiers/reserve (migration 0026 + reservations table) — atomic identifier blocks with TTL auto-release and implicit consume.\n6. PI-083 (1866f72): area backfill tooling (propose/apply) + the NOT NULL tightening migration parked under migrations/deferred/ (out of the alembic chain until backfill runs).\n7. PI-081 (f99d9ac): the orchestrator driver — pure area-disjoint wave clustering + kickoff rendering + file lock + a fully-functional --dry-run; live --execute is guarded as the human-driven WS-012 acceptance test.\n\nValidation: migrations 0024-0026 chain cleanly onto a copy of the live CRMBUILDER.db (106 rows preserved, CHECKs enforced); all new access/api/migration/scripts tests green (~90 added). The ~120 pre-existing non-UI baseline failures are the PI-073 session-schema debt in test fixtures, unrelated to this work.\n\nResolves PI-076/077/078/079/082. Addresses PI-081 (its live --execute run is the acceptance test) and PI-083 (its live area backfill + NOT NULL activation are Doug-gated follow-ups). Authored DEC-331. In flight at end: commits sit on pi-076-area-field awaiting Doug's review/push; this close-out's identifiers (SES-116/CNV-018/DEC-331) must be re-verified against live heads at apply time (parallel sessions are active) and re-keyed if claimed.",
+    "session_ended_at": null,
+    "session_executive_summary": "Delivered the remaining WS-012 parallel-agent orchestrator track in one Claude Code session, working in an isolated git worktree off origin/main to avoid a concurrently running orchestrator. Seven commits: PI-076 (area field on planning_items), PI-077 (claim fields + claim/release), PI-079 (ready-batches API), PI-082 (child kickoff template), PI-078 (identifier reservation API), PI-083 (area backfill tooling + a deferred NOT NULL migration), and PI-081 (the orchestrator driver — dry-run complete, live execute guarded as the human acceptance test). Migrations 0024-0026 validated against a copy of the live CRMBUILDER DB; ~90 new tests pass. Resolves PI-076/077/078/079/082; addresses PI-081 and PI-083, whose live-run and live-backfill steps are Doug-gated follow-ups.",
+    "session_identifier": "SES-116",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "model": "claude-opus-4-7",
+      "runner": "claude_code",
+      "surface": "claude_code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.7, Claude Code)"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "WS-012 orchestrator track — PI-076 through PI-083: area + claim fields on planning_items, ready-batches + identifier-reservation APIs, child kickoff template, area backfill tooling, and the orchestrator driver",
+    "session_updated_at": "2026-05-29T18:28:59.464907"
   }
 ]
