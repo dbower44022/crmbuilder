@@ -161,6 +161,7 @@ class PlanningItemCreateIn(_Base):
     status: str
     resolution_reference: str | None = None
     executive_summary: str | None = None  # PI-074
+    area: list[str] | None = None  # PI-076
 
 
 class PlanningItemUpdateIn(_Base):
@@ -170,6 +171,7 @@ class PlanningItemUpdateIn(_Base):
     status: str | None = None
     resolution_reference: str | None = None
     executive_summary: str | None = None  # PI-074
+    area: list[str] | None = None  # PI-076
 
 
 # ---------- Topics ----------

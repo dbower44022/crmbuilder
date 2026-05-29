@@ -311,6 +311,20 @@ class PlanningItem(Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False)
     resolution_reference: Mapped[str | None] = mapped_column(String(64), nullable=True)
     executive_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # PI-076: multi-valued work-area labels (JSON array) driving the
+    # parallel-agent orchestrator's file-disjoint partitioning. Nullable
+    # until PI-083 backfills open items and tightens to NOT NULL. The
+    # CHECK enforces structure only (valid non-empty array); element-level
+    # AREAS membership is enforced at the access layer because SQLite
+    # CHECK constraints cannot iterate array elements.
+    #
+    # ``none_as_null=True`` is load-bearing: without it SQLAlchemy's JSON
+    # type stores Python ``None`` as the JSON text ``'null'`` rather than
+    # SQL NULL, which fails the ``area IS NULL`` arm of the CHECK
+    # (``json_type('null')`` is ``'null'``, not ``'array'``).
+    area: Mapped[list | None] = mapped_column(
+        JSON(none_as_null=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
@@ -329,6 +343,13 @@ class PlanningItem(Base):
             "executive_summary IS NULL OR "
             "(length(executive_summary) >= 200 AND length(executive_summary) <= 800)",
             name="ck_planning_executive_summary_length",
+        ),
+        CheckConstraint(
+            "area IS NULL OR ("
+            "json_valid(area) AND json_type(area) = 'array' "
+            "AND json_array_length(area) >= 1"
+            ")",
+            name="ck_planning_area_nonempty_array",
         ),
     )
 

@@ -14,6 +14,7 @@ from crmbuilder_v2.access._helpers import (
     require_string,
     to_dict,
     validate_optional_length,
+    validate_optional_value_list,
 )
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
@@ -24,7 +25,11 @@ from crmbuilder_v2.access.exceptions import (
     ValidationError,
 )
 from crmbuilder_v2.access.models import PlanningItem
-from crmbuilder_v2.access.vocab import PLANNING_ITEM_STATUSES, PLANNING_ITEM_TYPES
+from crmbuilder_v2.access.vocab import (
+    AREAS,
+    PLANNING_ITEM_STATUSES,
+    PLANNING_ITEM_TYPES,
+)
 
 _ENTITY_TYPE = "planning_item"
 _IDENTIFIER_PREFIX = "PI"
@@ -64,6 +69,7 @@ _UPDATABLE_FIELDS = frozenset(
         "status",
         "resolution_reference",
         "executive_summary",
+        "area",
     }
 )
 
@@ -93,6 +99,7 @@ def _new_planning_item_row(
     status: str,
     resolution_reference: str | None,
     executive_summary: str | None,
+    area: list[str] | None,
 ) -> PlanningItem:
     return PlanningItem(
         identifier=identifier,
@@ -102,6 +109,7 @@ def _new_planning_item_row(
         status=status,
         resolution_reference=resolution_reference,
         executive_summary=executive_summary,
+        area=area,
     )
 
 
@@ -113,6 +121,7 @@ def _insert_with_autoassign(
     status: str,
     resolution_reference: str | None,
     executive_summary: str | None,
+    area: list[str] | None,
 ) -> PlanningItem:
     """Insert a planning_item with a server-assigned identifier (PI-002)."""
     candidate = compute_next_identifier(session)
@@ -127,6 +136,7 @@ def _insert_with_autoassign(
             status,
             resolution_reference,
             executive_summary,
+            area,
         )
         session.add(row)
         try:
@@ -154,6 +164,7 @@ def create(
     status: str,
     resolution_reference: str | None = None,
     executive_summary: str | None = None,
+    area: list[str] | None = None,
 ) -> dict:
     """Create a planning_item.
 
@@ -163,6 +174,10 @@ def create(
     ``executive_summary`` (PI-074) is optional in v0.8; when supplied it
     must be a 200-800 character audience-facing summary. PI-075 will
     backfill and tighten the column to NOT NULL.
+
+    ``area`` (PI-076) is optional until PI-083 backfills open items and
+    tightens the column to NOT NULL; when supplied it must be a non-empty
+    list of distinct values drawn from :data:`vocab.AREAS`.
     """
     require_string(title, field="title")
     require_in(item_type, PLANNING_ITEM_TYPES, field="item_type")
@@ -173,6 +188,7 @@ def create(
         min_len=_EXECUTIVE_SUMMARY_MIN,
         max_len=_EXECUTIVE_SUMMARY_MAX,
     )
+    area = validate_optional_value_list(area, field="area", allowed=AREAS)
 
     if identifier is None:
         row = _insert_with_autoassign(
@@ -183,6 +199,7 @@ def create(
             status,
             resolution_reference,
             executive_summary,
+            area,
         )
     else:
         _require_identifier_format(identifier)
@@ -201,6 +218,7 @@ def create(
             status,
             resolution_reference,
             executive_summary,
+            area,
         )
         session.add(row)
         session.flush()
@@ -244,6 +262,10 @@ def update(session: Session, identifier: str, **fields) -> dict:
             field="executive_summary",
             min_len=_EXECUTIVE_SUMMARY_MIN,
             max_len=_EXECUTIVE_SUMMARY_MAX,
+        )
+    if "area" in fields:
+        fields["area"] = validate_optional_value_list(
+            fields["area"], field="area", allowed=AREAS
         )
     before = to_dict(row)
     for k, v in fields.items():

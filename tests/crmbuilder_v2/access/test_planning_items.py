@@ -137,3 +137,110 @@ def test_autoassign_retries_on_identifier_collision(v2_env, monkeypatch):
             s, title="Second", item_type="open_question", status="Open"
         )
     assert row["identifier"] == "PI-002"
+
+
+# ---------------------------------------------------------------------------
+# PI-076 — multi-valued, vocabulary-checked ``area`` field
+# ---------------------------------------------------------------------------
+
+
+def test_create_with_valid_area(v2_env):
+    with session_scope() as s:
+        row = planning_items.create(
+            s, identifier="PI-010", title="Cross-cutting",
+            item_type="pending_work", status="Open",
+            area=["v2-access", "v2-api"],
+        )
+    assert row["area"] == ["v2-access", "v2-api"]
+    with session_scope() as s:
+        fetched = planning_items.get(s, "PI-010")
+    assert fetched["area"] == ["v2-access", "v2-api"]
+
+
+def test_create_without_area_defaults_to_none(v2_env):
+    with session_scope() as s:
+        row = planning_items.create(
+            s, identifier="PI-011", title="No area",
+            item_type="pending_work", status="Open",
+        )
+    assert row["area"] is None
+
+
+def test_create_with_unknown_area_value_rejected(v2_env):
+    with session_scope() as s, pytest.raises(ValidationError):
+        planning_items.create(
+            s, identifier="PI-012", title="Bad area",
+            item_type="pending_work", status="Open",
+            area=["v2-access", "not-an-area"],
+        )
+
+
+def test_create_with_empty_area_list_rejected(v2_env):
+    with session_scope() as s, pytest.raises(ValidationError):
+        planning_items.create(
+            s, identifier="PI-013", title="Empty area",
+            item_type="pending_work", status="Open",
+            area=[],
+        )
+
+
+def test_create_with_duplicate_area_values_rejected(v2_env):
+    with session_scope() as s, pytest.raises(ValidationError):
+        planning_items.create(
+            s, identifier="PI-014", title="Dup area",
+            item_type="pending_work", status="Open",
+            area=["v2-api", "v2-api"],
+        )
+
+
+def test_create_with_non_string_area_element_rejected(v2_env):
+    with session_scope() as s, pytest.raises(ValidationError):
+        planning_items.create(
+            s, identifier="PI-015", title="Non-string area",
+            item_type="pending_work", status="Open",
+            area=["v2-api", 7],
+        )
+
+
+def test_update_area(v2_env):
+    with session_scope() as s:
+        planning_items.create(
+            s, identifier="PI-016", title="Updatable",
+            item_type="pending_work", status="Open",
+            area=["v2-ui"],
+        )
+    with session_scope() as s:
+        row = planning_items.update(s, "PI-016", area=["v2-ui", "v2-mcp"])
+    assert row["area"] == ["v2-ui", "v2-mcp"]
+
+
+def test_update_with_unknown_area_value_rejected(v2_env):
+    with session_scope() as s:
+        planning_items.create(
+            s, identifier="PI-017", title="Updatable",
+            item_type="pending_work", status="Open",
+        )
+    with session_scope() as s, pytest.raises(ValidationError):
+        planning_items.update(s, "PI-017", area=["bogus"])
+
+
+def test_db_check_rejects_empty_array_directly(v2_env):
+    """Belt-and-braces: the structural CHECK rejects an empty array even
+    when the access-layer validator is bypassed (direct ORM insert)."""
+    from sqlalchemy.exc import IntegrityError
+
+    from crmbuilder_v2.access.models import PlanningItem
+
+    with pytest.raises(IntegrityError):
+        with session_scope() as s:
+            s.add(
+                PlanningItem(
+                    identifier="PI-099",
+                    title="Direct bad",
+                    item_type="open_question",
+                    description="",
+                    status="Open",
+                    area=[],
+                )
+            )
+            s.flush()

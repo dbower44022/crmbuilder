@@ -117,3 +117,56 @@ def test_post_topic_without_identifier_assigns_one(client):
 def test_post_topic_with_invalid_format_returns_422(client):
     r = client.post("/topics", json={"identifier": "TOP-1", "name": "Bad"})
     assert r.status_code == 422, r.json()
+
+
+# ---------------------------------------------------------------------------
+# PI-076 — ``area`` field on planning items, end-to-end through the API
+# ---------------------------------------------------------------------------
+
+
+def test_planning_item_area_roundtrip(client):
+    r = client.post(
+        "/planning-items",
+        json={
+            "identifier": "PI-020",
+            "title": "Area-bearing",
+            "item_type": "pending_work",
+            "status": "Open",
+            "area": ["v2-access", "v2-api"],
+        },
+    )
+    assert r.status_code == 201, r.json()
+    assert r.json()["data"]["area"] == ["v2-access", "v2-api"]
+
+    r = client.get("/planning-items/PI-020")
+    assert r.json()["data"]["area"] == ["v2-access", "v2-api"]
+
+    r = client.patch("/planning-items/PI-020", json={"area": ["v2-ui"]})
+    assert r.status_code == 200, r.json()
+    assert r.json()["data"]["area"] == ["v2-ui"]
+
+
+def test_post_planning_item_with_unknown_area_returns_400(client):
+    r = client.post(
+        "/planning-items",
+        json={
+            "title": "Bad area",
+            "item_type": "pending_work",
+            "status": "Open",
+            "area": ["not-a-real-area"],
+        },
+    )
+    assert r.status_code == 400, r.json()
+
+
+def test_post_planning_item_without_area_is_null(client):
+    r = client.post(
+        "/planning-items",
+        json={
+            "title": "No area",
+            "item_type": "pending_work",
+            "status": "Open",
+        },
+    )
+    assert r.status_code == 201, r.json()
+    assert r.json()["data"]["area"] is None
