@@ -1,0 +1,69 @@
+{
+  "label": "SES-117 / CNV-019 close-out — files PI-107 (surface planning_item created/updated timestamps in the Planning Items UI panel). No decisions, no commits — a PI-filing session. Investigation finding: the created_at/updated_at columns and their API exposure already exist; the gap is UI-only. Attaches to WS-011. Identifiers re-verify at apply time.",
+  "session": {
+    "session_identifier": "SES-117",
+    "session_title": "File PI-107 — surface planning_item created/updated timestamps in the Planning Items UI panel",
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-019. Parent workstream WS-011 (V2 storage API refinements). Medium: chat (claude_code runner).\n\nSeed: \"I would like to create a PI that is to create a PI create date time field, and last edit date time field so we can determine when a PI was created and add it to the UI.\"\n\nThe session filed a single planning item (PI-107) and made no other governance changes. Before authoring, the session investigated the current state and found that the premise (that the timestamp fields need to be created) is only partly accurate: the planning_items table already carries created_at and updated_at columns (access/models.py PlanningItem, default=_utcnow / onupdate=_utcnow, present since the PI-075/PI-077 migration era) and GET /planning-items already returns both keys (verified live against PI-076 — keys include created_at and updated_at). The genuine gap is in the desktop UI only: PlanningItemsPanel (ui/panels/planning_items.py) neither lists nor displays either timestamp — its list_columns are identifier/title/type/status and its detail render shows identifier/type/status/resolution_reference/executive_summary/description/references with no created or updated field. PI-107 is therefore scoped as a UI-only surfacing task with an explicit note that no schema migration or API change is required.\n\nNo decisions were authored (this is work-to-schedule, not a choice between alternatives). No commits were produced (no code was changed; only the governance PI was filed). The PI is created via the planning_items section, so it appears in neither resolves_planning_items nor addresses_planning_items.",
+    "session_medium": "chat",
+    "session_status": "complete",
+    "session_executive_summary": "Claude Code session at Doug's terminal that filed one planning item, PI-107, to surface the planning_item created/updated timestamps in the desktop Planning Items panel. Investigation found the user's premise only partly holds: the created_at and updated_at columns already exist on the planning_items model (default/onupdate _utcnow) and the REST API already returns both, so no schema migration or API work is needed — the gap is UI-only. PI-107 is scoped accordingly: add a created (and optionally updated) field to the detail render and a created-date list column to PlanningItemsPanel. No decisions or commits were produced; the session's sole output is the filed PI.",
+    "session_medium_metadata": {
+      "surface": "claude_code",
+      "runner": "claude_code",
+      "model": "claude-opus-4-8"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.8, Claude Code)"
+    ],
+    "references": [
+      {
+        "source_type": "session",
+        "source_id": "SES-117",
+        "target_type": "workstream",
+        "target_id": "WS-011",
+        "relationship": "session_belongs_to_workstream"
+      }
+    ]
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-019",
+    "conversation_title": "File PI-107 — show planning_item created/updated timestamps in the UI",
+    "conversation_purpose": "Capture, as a planning item, the work to display each planning item's creation and last-edited datetime in the V2 desktop Planning Items panel.",
+    "conversation_description": "Investigated the current state, established that the created_at/updated_at columns and their API exposure already exist and only the UI display is missing, and filed PI-107 scoped as a UI-only surfacing task. No decisions, no code commits.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-019",
+        "target_type": "session",
+        "target_id": "SES-117",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [
+    {
+      "identifier": "PI-107",
+      "title": "Surface planning_item created/updated timestamps in the Planning Items UI panel",
+      "item_type": "pending_work",
+      "status": "Open",
+      "executive_summary": "The planning_items table already carries created_at and updated_at columns (access/models.py PlanningItem, default=_utcnow / onupdate=_utcnow) and the REST API already returns both keys in GET /planning-items responses (verified live). The only gap is the desktop UI: the Planning Items panel neither lists nor displays either timestamp. This item surfaces the existing values — add a Created (and optionally Updated) field to the detail render in PlanningItemsPanel and a created-date list column — so an operator can see when a planning item was filed and last edited without querying the API. No schema migration or API change is required; the work is UI-only and should format the timestamps for display (local time, human-readable) consistent with the v0.6 styling pass.",
+      "description": "Show each planning item's creation datetime and last-edited datetime in the V2 desktop Planning Items panel so operators can tell when a PI was filed and last changed.\n\n## Current state (investigated 2026-05-29)\n\n- **Model:** `crmbuilder-v2/src/crmbuilder_v2/access/models.py` — `PlanningItem` already defines `created_at` (`default=_utcnow`) and `updated_at` (`default=_utcnow, onupdate=_utcnow`), both `DateTime(timezone=True)`, NOT NULL.\n- **API:** `GET /planning-items` and `GET /planning-items/{id}` already return `created_at` and `updated_at` (confirmed live against PI-076; the access layer's `to_dict` emits them).\n- **UI gap:** `crmbuilder-v2/src/crmbuilder_v2/ui/panels/planning_items.py` `PlanningItemsPanel` does NOT surface them. `list_columns()` returns identifier/title/type/status only; `render_detail()` shows identifier/type/status/resolution_reference/executive_summary/description/references and no timestamps.\n\n**Therefore no migration and no API change are needed.** This is a UI-only task. Do not add new columns.\n\n## Scope\n\n1. In `PlanningItemsPanel.render_detail()`, add a metadata section (or form rows) showing `Created` and `Last Updated`, formatted for human reading (local time, e.g. `YYYY-MM-DD HH:MM`). Handle missing/null defensively.\n2. Optionally add a `Created` list column (`ColumnSpec(field=\"created_at\", ...)`) — consider a date-only render and a sensible width.\n3. Match the v0.6 styling pass conventions used elsewhere in the panel (label/value form rows, separators, dim styling for secondary metadata).\n4. If a shared datetime-formatting helper does not already exist in the UI layer, add a small one rather than inlining `strftime` per call site; check whether other panels (sessions, decisions) need the same display so the helper is reusable.\n\n## Acceptance\n\n- Opening a planning item in the desktop app shows its created and last-updated datetimes.\n- The values match what the API returns for that PI.\n- No schema migration is introduced; `alembic heads` is unchanged.\n\n## Notes\n\nSibling timestamp-bearing entities (sessions: `session_created_at`/`session_updated_at`; decisions: `created_at`/`updated_at`; conversations, workstreams, etc.) have the same UI-surfacing gap. Generalizing the display helper across panels could be a natural follow-on, but is out of scope for PI-107 unless trivially free."
+    }
+  ],
+  "commits": [],
+  "decisions": [],
+  "references": [
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-019",
+      "target_type": "session",
+      "target_id": "SES-117",
+      "relationship": "conversation_belongs_to_session"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": []
+}

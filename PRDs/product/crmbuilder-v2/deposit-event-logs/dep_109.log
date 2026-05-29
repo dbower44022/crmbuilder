@@ -1,0 +1,17 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_117.json
+Label:  SES-117 / CNV-019 close-out — files PI-107 (surface planning_item created/updated timestamps in the Planning Items UI panel). No decisions, no commits — a PI-filing session. Investigation finding: the created_at/updated_at columns and their API exposure already exist; the gap is UI-only. Attaches to WS-011. Identifiers re-verify at apply time.
+Deposit event: DEP-109
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-019 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== planning_items (1 record) ===
+  ✓ POST planning_items  PI-107 (HTTP 201)
+
+✓ All 3 operations complete.
+
+✓ Recorded apply as deposit_event DEP-109 (HTTP 201).

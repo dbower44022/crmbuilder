@@ -2150,5 +2150,34 @@
     "session_superseded_at": null,
     "session_title": "WS-012 orchestrator track — PI-076 through PI-083: area + claim fields on planning_items, ready-batches + identifier-reservation APIs, child kickoff template, area backfill tooling, and the orchestrator driver",
     "session_updated_at": "2026-05-29T18:28:59.464907"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-29T23:35:52.886983",
+    "session_created_at": "2026-05-29T23:35:52.886715",
+    "session_deleted_at": null,
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-019. Parent workstream WS-011 (V2 storage API refinements). Medium: chat (claude_code runner).\n\nSeed: \"I would like to create a PI that is to create a PI create date time field, and last edit date time field so we can determine when a PI was created and add it to the UI.\"\n\nThe session filed a single planning item (PI-107) and made no other governance changes. Before authoring, the session investigated the current state and found that the premise (that the timestamp fields need to be created) is only partly accurate: the planning_items table already carries created_at and updated_at columns (access/models.py PlanningItem, default=_utcnow / onupdate=_utcnow, present since the PI-075/PI-077 migration era) and GET /planning-items already returns both keys (verified live against PI-076 — keys include created_at and updated_at). The genuine gap is in the desktop UI only: PlanningItemsPanel (ui/panels/planning_items.py) neither lists nor displays either timestamp — its list_columns are identifier/title/type/status and its detail render shows identifier/type/status/resolution_reference/executive_summary/description/references with no created or updated field. PI-107 is therefore scoped as a UI-only surfacing task with an explicit note that no schema migration or API change is required.\n\nNo decisions were authored (this is work-to-schedule, not a choice between alternatives). No commits were produced (no code was changed; only the governance PI was filed). The PI is created via the planning_items section, so it appears in neither resolves_planning_items nor addresses_planning_items.",
+    "session_ended_at": null,
+    "session_executive_summary": "Claude Code session at Doug's terminal that filed one planning item, PI-107, to surface the planning_item created/updated timestamps in the desktop Planning Items panel. Investigation found the user's premise only partly holds: the created_at and updated_at columns already exist on the planning_items model (default/onupdate _utcnow) and the REST API already returns both, so no schema migration or API work is needed — the gap is UI-only. PI-107 is scoped accordingly: add a created (and optionally updated) field to the detail render and a created-date list column to PlanningItemsPanel. No decisions or commits were produced; the session's sole output is the filed PI.",
+    "session_identifier": "SES-117",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "model": "claude-opus-4-8",
+      "runner": "claude_code",
+      "surface": "claude_code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.8, Claude Code)"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "File PI-107 — surface planning_item created/updated timestamps in the Planning Items UI panel",
+    "session_updated_at": "2026-05-29T23:35:52.887069"
   }
 ]
