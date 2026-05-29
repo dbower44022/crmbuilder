@@ -19,7 +19,7 @@ from crmbuilder_v2.access._helpers import (
     require_in,
     require_string,
     to_dict,
-    validate_optional_length,
+    validate_required_length,
 )
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
@@ -129,7 +129,7 @@ def _new_decision_row(
     consequences: str,
     supersedes_id: int | None,
     superseded_by_id: int | None,
-    executive_summary: str | None,
+    executive_summary: str,
 ) -> Decision:
     return Decision(
         identifier=identifier,
@@ -159,7 +159,7 @@ def _insert_with_autoassign(
     consequences: str,
     supersedes_id: int | None,
     superseded_by_id: int | None,
-    executive_summary: str | None,
+    executive_summary: str,
 ) -> Decision:
     """Insert a decision with a server-assigned identifier, collision-safe.
 
@@ -216,21 +216,22 @@ def create(
     consequences: str = "",
     supersedes: str | None = None,
     superseded_by: str | None = None,
-    executive_summary: str | None = None,
+    executive_summary: str,
 ) -> dict:
     """Create a decision.
 
     ``identifier`` is server-assigned when omitted (``None``). When
     supplied it must match ``^DEC-\\d{3}$`` and not already exist.
 
-    ``executive_summary`` (PI-074) is optional in v0.8; when supplied it
-    must be a 200-800 character audience-facing summary. PI-075 will
-    backfill and tighten the column to NOT NULL.
+    ``executive_summary`` (PI-074) is required since PI-075 (migration
+    0023 tightened the column to NOT NULL): a 200-800 character
+    audience-facing summary. Omitting it raises a ``ValidationError``
+    (422) rather than a database ``IntegrityError`` (500).
     """
     require_string(title, field="title")
     require_string(decision_date, field="decision_date")
     require_in(status, DECISION_STATUSES, field="status")
-    executive_summary = validate_optional_length(
+    executive_summary = validate_required_length(
         executive_summary,
         field="executive_summary",
         min_len=_EXECUTIVE_SUMMARY_MIN,
@@ -318,7 +319,9 @@ def update(
     if "status" in fields:
         require_in(fields["status"], DECISION_STATUSES, field="status")
     if "executive_summary" in fields:
-        fields["executive_summary"] = validate_optional_length(
+        # NOT NULL since PI-075 — a present value must be a valid
+        # 200-800 char string; the column cannot be cleared via update.
+        fields["executive_summary"] = validate_required_length(
             fields["executive_summary"],
             field="executive_summary",
             min_len=_EXECUTIVE_SUMMARY_MIN,
@@ -326,11 +329,7 @@ def update(
         )
 
     for key, value in fields.items():
-        if key == "executive_summary":
-            # Nullable column — preserve explicit None instead of coercing to "".
-            setattr(row, key, value)
-        else:
-            setattr(row, key, value if value is not None else "")
+        setattr(row, key, value if value is not None else "")
 
     if supersedes is not None:
         row.supersedes_id = _resolve_decision_id(session, supersedes)

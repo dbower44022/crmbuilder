@@ -73,6 +73,10 @@ def _seed_decision(client: StorageClient, identifier: str, **overrides) -> dict:
         "title": overrides.pop("title", "A decision"),
         "decision_date": overrides.pop("decision_date", "2026-05-14"),
         "status": overrides.pop("status", "Active"),
+        "executive_summary": overrides.pop(
+            "executive_summary",
+            "PI-102 test executive summary. " * 7,
+        ),
         "context": overrides.pop("context", ""),
         "decision": overrides.pop("decision", ""),
         "rationale": overrides.pop("rationale", ""),

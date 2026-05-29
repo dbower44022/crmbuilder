@@ -20,6 +20,8 @@ from crmbuilder_v2.ui.exceptions import (
 )
 from PySide6.QtWidgets import QComboBox, QLineEdit, QPlainTextEdit
 
+_VALID_EXEC_SUMMARY = "PI-102 test executive summary. " * 7
+
 
 def _stub_client() -> MagicMock:
     return MagicMock()
@@ -32,6 +34,7 @@ def _record() -> dict[str, Any]:
         "description": "desc",
         "item_type": "planning_dimension",
         "status": "Open",
+        "executive_summary": _VALID_EXEC_SUMMARY,
         "resolution_reference": "DEC-027",
     }
 
@@ -41,6 +44,7 @@ def _fill_required(dialog: PlanningItemCreateDialog) -> None:
     dialog._widgets.title.setText("Pacing dimension")
     # item_type has no default; pick the first item.
     dialog._widgets.item_type.setCurrentIndex(0)
+    dialog._widgets.executive_summary.setPlainText(_VALID_EXEC_SUMMARY)
     # status defaults to Open via the schema.
 
 
@@ -100,6 +104,7 @@ def test_invalid_identifier_format_blocks_submission(qtbot):
 
     dialog._widgets.identifier.setText("abc")
     dialog._widgets.title.setText("title")
+    dialog._widgets.executive_summary.setPlainText(_VALID_EXEC_SUMMARY)
 
     dialog._on_save_clicked()
 

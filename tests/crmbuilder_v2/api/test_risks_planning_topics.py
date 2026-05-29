@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+_VALID_EXEC_SUMMARY = "PI-102 test executive summary. " * 7
+
 
 def test_risks_crud(client):
     body = {
@@ -27,6 +29,7 @@ def test_planning_items_crud(client):
         "title": "Division of labor",
         "item_type": "planning_dimension",
         "status": "Open",
+        "executive_summary": _VALID_EXEC_SUMMARY,
     }
     r = client.post("/planning-items", json=body)
     assert r.status_code == 201
@@ -89,7 +92,8 @@ def test_post_risk_with_invalid_format_returns_422(client):
 def test_post_planning_item_without_identifier_assigns_one(client):
     r = client.post(
         "/planning-items",
-        json={"title": "Auto", "item_type": "open_question", "status": "Open"},
+        json={"title": "Auto", "item_type": "open_question", "status": "Open",
+              "executive_summary": _VALID_EXEC_SUMMARY},
     )
     assert r.status_code == 201, r.json()
     assert r.json()["data"]["identifier"] == "PI-001"
@@ -103,6 +107,7 @@ def test_post_planning_item_with_invalid_format_returns_422(client):
             "title": "Bad",
             "item_type": "open_question",
             "status": "Open",
+            "executive_summary": _VALID_EXEC_SUMMARY,
         },
     )
     assert r.status_code == 422, r.json()

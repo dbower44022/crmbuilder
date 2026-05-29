@@ -18,6 +18,8 @@ from __future__ import annotations
 from crmbuilder_v2.config import reset_settings_cache
 from crmbuilder_v2.runtime.engagement_routing import UNCONFIGURED_SENTINEL
 
+_VALID_EXEC_SUMMARY = "PI-102 test executive summary. " * 7
+
 
 def _decision_body(identifier: str = "DEC-001") -> dict:
     return {
@@ -25,6 +27,7 @@ def _decision_body(identifier: str = "DEC-001") -> dict:
         "title": f"{identifier} title",
         "decision_date": "05-07-26",
         "status": "Active",
+        "executive_summary": _VALID_EXEC_SUMMARY,
     }
 
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+_VALID_EXEC_SUMMARY = "PI-102 test executive summary. " * 7
+
 
 def _add_session_decision_ref(client, sid="SES-001", did="DEC-001"):
     return client.post(
@@ -140,6 +142,7 @@ def test_post_references_resolves_flips_status(client):
         "title": "Test PI for resolves",
         "item_type": "pending_work",
         "status": "Open",
+        "executive_summary": _VALID_EXEC_SUMMARY,
     })
 
     r = client.post("/references", json={

@@ -8,6 +8,8 @@ from crmbuilder_v2.access.models import ChangeLog
 from crmbuilder_v2.access.repositories import decisions
 from sqlalchemy import select
 
+_VALID_EXEC_SUMMARY = "PI-102 test executive summary. " * 7
+
 
 def test_insert_emits_change_log(v2_env):
     with session_scope() as s:
@@ -17,6 +19,7 @@ def test_insert_emits_change_log(v2_env):
             title="t",
             decision_date="05-07-26",
             status="Active",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
     with session_scope() as s:
         rows = s.scalars(select(ChangeLog).order_by(ChangeLog.id)).all()
@@ -36,6 +39,7 @@ def test_update_records_before_and_after(v2_env):
             title="t",
             decision_date="05-07-26",
             status="Active",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
     with session_scope() as s:
         decisions.update(s, "DEC-001", status="Superseded")
@@ -57,6 +61,7 @@ def test_soft_delete_emits_status_update(v2_env):
             title="t",
             decision_date="05-07-26",
             status="Active",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
         decisions.delete(s, "DEC-001")
     with session_scope() as s:
@@ -83,6 +88,7 @@ def test_actor_propagation(v2_env):
                 title="t",
                 decision_date="05-07-26",
                 status="Active",
+                executive_summary=_VALID_EXEC_SUMMARY,
             )
         with session_scope() as s:
             row = s.scalars(

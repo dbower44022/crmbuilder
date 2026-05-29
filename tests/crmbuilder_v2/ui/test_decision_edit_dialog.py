@@ -9,6 +9,8 @@ from crmbuilder_v2.ui.dialogs.decision_edit import DecisionEditDialog
 from crmbuilder_v2.ui.dialogs.error import ErrorDialog
 from crmbuilder_v2.ui.exceptions import NotFoundError, ValidationError
 
+_VALID_EXEC_SUMMARY = "PI-102 test executive summary. " * 7
+
 
 def _record() -> dict[str, Any]:
     return {
@@ -16,6 +18,7 @@ def _record() -> dict[str, Any]:
         "title": "Universal references pattern",
         "decision_date": "05-06-26",
         "status": "Active",
+        "executive_summary": _VALID_EXEC_SUMMARY,
         "context": "ctx",
         "decision": "dec",
         "rationale": "rat",

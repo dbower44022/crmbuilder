@@ -41,7 +41,7 @@ class DecisionCreateIn(_Base):
     consequences: str = ""
     supersedes: str | None = None
     superseded_by: str | None = None
-    executive_summary: str | None = None  # PI-074
+    executive_summary: str  # PI-074; required since PI-075 (NOT NULL)
 
 
 class DecisionUpdateIn(_Base):
@@ -76,7 +76,7 @@ class SessionCreateIn(_Base):
     session_description: str
     session_medium: str
     session_notes: str | None = None
-    session_executive_summary: str | None = None  # PI-074
+    session_executive_summary: str  # PI-074; required since PI-075 (NOT NULL)
     session_status: str | None = None
     session_scheduled_for: datetime | None = None
     session_started_at: datetime | None = None
@@ -95,7 +95,7 @@ class SessionReplaceIn(_Base):
     session_description: str
     session_medium: str
     session_notes: str | None = None
-    session_executive_summary: str | None = None  # PI-074
+    session_executive_summary: str  # PI-074; required since PI-075 (NOT NULL)
     session_status: str
     session_scheduled_for: datetime | None = None
     session_started_at: datetime | None = None
@@ -160,7 +160,7 @@ class PlanningItemCreateIn(_Base):
     description: str = ""
     status: str
     resolution_reference: str | None = None
-    executive_summary: str | None = None  # PI-074
+    executive_summary: str  # PI-074; required since PI-075 (NOT NULL)
     area: list[str] | None = None  # PI-076
 
 

@@ -11,6 +11,8 @@ from crmbuilder_v2.access.exceptions import (
 )
 from crmbuilder_v2.access.repositories import decisions
 
+_VALID_EXEC_SUMMARY = "PI-102 test executive summary. " * 7
+
 
 def _make(s, identifier="DEC-001", **kw):
     payload = dict(
@@ -18,6 +20,7 @@ def _make(s, identifier="DEC-001", **kw):
         title=f"{identifier} title",
         decision_date="05-07-26",
         status="Active",
+        executive_summary=_VALID_EXEC_SUMMARY,
     )
     payload.update(kw)
     return decisions.create(s, **payload)
@@ -214,12 +217,14 @@ def test_supersedes_unknown_target_rejected(v2_env):
 def test_create_with_omitted_identifier_assigns_next(v2_env):
     with session_scope() as s:
         row = decisions.create(
-            s, title="Auto", decision_date="05-25-26", status="Active"
+            s, title="Auto", decision_date="05-25-26", status="Active",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
     assert row["identifier"] == "DEC-001"
     with session_scope() as s:
         row2 = decisions.create(
-            s, title="Auto2", decision_date="05-25-26", status="Active"
+            s, title="Auto2", decision_date="05-25-26", status="Active",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
     assert row2["identifier"] == "DEC-002"
 
@@ -229,6 +234,7 @@ def test_create_with_supplied_identifier_uses_it(v2_env):
         row = decisions.create(
             s, identifier="DEC-042", title="Explicit",
             decision_date="05-25-26", status="Active",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
     assert row["identifier"] == "DEC-042"
 
@@ -238,6 +244,7 @@ def test_create_with_invalid_identifier_format_rejected(v2_env):
         decisions.create(
             s, identifier="DEC-1", title="Bad",
             decision_date="05-25-26", status="Active",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
 
 
@@ -247,6 +254,7 @@ def test_create_with_empty_string_identifier_rejected(v2_env):
         decisions.create(
             s, identifier="", title="Bad",
             decision_date="05-25-26", status="Active",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
 
 
@@ -255,11 +263,13 @@ def test_create_explicit_duplicate_identifier_raises_conflict(v2_env):
         decisions.create(
             s, identifier="DEC-001", title="First",
             decision_date="05-25-26", status="Active",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
     with session_scope() as s, pytest.raises(ConflictError):
         decisions.create(
             s, identifier="DEC-001", title="Second",
             decision_date="05-25-26", status="Active",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
 
 
@@ -270,10 +280,14 @@ def test_autoassign_retries_on_identifier_collision(v2_env, monkeypatch):
         decisions.create(
             s, identifier="DEC-001", title="First",
             decision_date="05-25-26", status="Active",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
     monkeypatch.setattr(decisions, "compute_next_identifier", lambda _s: "DEC-001")
     with session_scope() as s:
-        row = decisions.create(s, title="Second", decision_date="05-25-26", status="Active")
+        row = decisions.create(
+            s, title="Second", decision_date="05-25-26", status="Active",
+            executive_summary=_VALID_EXEC_SUMMARY,
+        )
     assert row["identifier"] == "DEC-002"
 
 
@@ -286,6 +300,7 @@ def test_upsert_idempotent(v2_env):
             decision_date="05-06-26",
             status="Active",
             context="ctx",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
         decisions.upsert(
             s,
@@ -294,6 +309,7 @@ def test_upsert_idempotent(v2_env):
             decision_date="05-06-26",
             status="Active",
             context="ctx",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
     with session_scope() as s:
         rows = decisions.list_all(s)

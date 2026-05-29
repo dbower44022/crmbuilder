@@ -164,3 +164,46 @@ def validate_optional_length(
             ]
         )
     return value
+
+
+def validate_required_length(
+    value: Any,
+    *,
+    field: str,
+    min_len: int,
+    max_len: int,
+) -> str:
+    """Require a non-empty string whose length sits in ``[min_len, max_len]``.
+
+    The required counterpart to :func:`validate_optional_length`. Used by
+    the create paths for ``executive_summary`` on planning_items,
+    decisions, and sessions, which became NOT NULL in PI-075 (migration
+    0023). ``None``, non-strings, and empty/whitespace-only strings are
+    all rejected, giving callers a clean ``ValidationError`` (422 at the
+    API) instead of a database ``IntegrityError`` (500) when the field is
+    omitted.
+    """
+    if value is None:
+        raise ValidationError(
+            [FieldError(field, "required", "must not be null")]
+        )
+    if not isinstance(value, str):
+        raise ValidationError(
+            [FieldError(field, "invalid_type", "must be a string")]
+        )
+    if value.strip() == "":
+        raise ValidationError(
+            [FieldError(field, "required", "must not be empty")]
+        )
+    n = len(value)
+    if n < min_len or n > max_len:
+        raise ValidationError(
+            [
+                FieldError(
+                    field,
+                    "invalid_length",
+                    f"must be {min_len}-{max_len} characters (got {n})",
+                )
+            ]
+        )
+    return value

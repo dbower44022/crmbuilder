@@ -35,7 +35,11 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as DbSession
 
-from crmbuilder_v2.access._helpers import next_prefixed_identifier, to_dict
+from crmbuilder_v2.access._helpers import (
+    next_prefixed_identifier,
+    to_dict,
+    validate_required_length,
+)
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
@@ -55,6 +59,9 @@ _ENTITY_TYPE = "session"
 _IDENTIFIER_PREFIX = "SES"
 _IDENTIFIER_RE = re.compile(r"^SES-\d{3}$")
 _MAX_AUTOASSIGN_ATTEMPTS = 50
+# PI-074 length bounds; column is NOT NULL since PI-075 (migration 0023).
+_EXECUTIVE_SUMMARY_MIN = 200
+_EXECUTIVE_SUMMARY_MAX = 800
 _PATCHABLE_FIELDS = frozenset(
     {
         "title",
@@ -232,7 +239,7 @@ def _new_row(
     ended_at: datetime | None,
     participants: list,
     medium_metadata: dict,
-    executive_summary: str | None,
+    executive_summary: str,
 ) -> SessionModel:
     return SessionModel(
         session_identifier=identifier,
@@ -262,7 +269,7 @@ def _insert_with_autoassign(
     ended_at: datetime | None,
     participants: list,
     medium_metadata: dict,
-    executive_summary: str | None,
+    executive_summary: str,
 ) -> SessionModel:
     candidate = next_session_identifier(session)
     last_error: IntegrityError | None = None
@@ -349,7 +356,7 @@ def create_session(
     ended_at: object = None,
     participants: object = None,
     medium_metadata: object = None,
-    executive_summary: str | None = None,
+    executive_summary: str,
     identifier: str | None = None,
     references: list[dict] | None = None,
     timestamps: dict | None = None,
@@ -358,10 +365,20 @@ def create_session(
 
     ``identifier`` is server-assigned when omitted (``None``). When
     supplied it must match ``^SES-\\d{3}$`` and not already exist.
+
+    ``session_executive_summary`` (PI-074) is required since PI-075
+    (migration 0023 tightened the column to NOT NULL): a 200-800
+    character audience-facing summary.
     """
     title = gov.require_nonempty(title, field="session_title")
     description = gov.require_nonempty(description, field="session_description")
     medium = _require_medium(medium)
+    executive_summary = validate_required_length(
+        executive_summary,
+        field="session_executive_summary",
+        min_len=_EXECUTIVE_SUMMARY_MIN,
+        max_len=_EXECUTIVE_SUMMARY_MAX,
+    )
     if status is None:
         status = "planned"
     _require_status(status)
@@ -454,7 +471,7 @@ def update_session(
     ended_at: object = None,
     participants: object = None,
     medium_metadata: object = None,
-    executive_summary: str | None = None,
+    executive_summary: str,
     references: list[dict] | None = None,
 ) -> dict:
     row = _get_row(session, identifier)
@@ -473,6 +490,12 @@ def update_session(
     title = gov.require_nonempty(title, field="session_title")
     description = gov.require_nonempty(description, field="session_description")
     medium = _require_medium(medium)
+    executive_summary = validate_required_length(
+        executive_summary,
+        field="session_executive_summary",
+        min_len=_EXECUTIVE_SUMMARY_MIN,
+        max_len=_EXECUTIVE_SUMMARY_MAX,
+    )
     if title.lower() != row.session_title.lower():
         _reject_duplicate_title(session, title, exclude_identifier=identifier)
 
@@ -564,7 +587,14 @@ def patch_session(
     if "medium_metadata" in fields:
         row.session_medium_metadata = _coerce_medium_metadata(fields["medium_metadata"])
     if "executive_summary" in fields:
-        row.session_executive_summary = fields["executive_summary"]
+        # NOT NULL since PI-075 — a present value must be a valid
+        # 200-800 char string; the column cannot be cleared via patch.
+        row.session_executive_summary = validate_required_length(
+            fields["executive_summary"],
+            field="session_executive_summary",
+            min_len=_EXECUTIVE_SUMMARY_MIN,
+            max_len=_EXECUTIVE_SUMMARY_MAX,
+        )
     if "status" in fields:
         status = _require_status(fields["status"])
         if status != row.session_status:

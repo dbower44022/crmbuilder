@@ -54,14 +54,14 @@ _DECISION_FIELDS_TEMPLATE: list[FieldSchema] = [
         key="executive_summary",
         label="Executive Summary",
         widget="text",
-        required=False,
+        # Required since PI-075 (migration 0023): the column is NOT NULL.
+        required=True,
         min_length=200,
         max_length=800,
         placeholder=(
             "200-800 character audience-facing summary for non-technical "
             "reviewers."
         ),
-        omit_when_empty_in_create=True,
     ),
     FieldSchema(key="context", label="Context", widget="text"),
     FieldSchema(key="decision", label="Decision", widget="text"),

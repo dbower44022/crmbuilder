@@ -14,8 +14,8 @@ from crmbuilder_v2.access._helpers import (
     require_in,
     require_string,
     to_dict,
-    validate_optional_length,
     validate_optional_value_list,
+    validate_required_length,
 )
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
@@ -99,7 +99,7 @@ def _new_planning_item_row(
     description: str,
     status: str,
     resolution_reference: str | None,
-    executive_summary: str | None,
+    executive_summary: str,
     area: list[str] | None,
 ) -> PlanningItem:
     return PlanningItem(
@@ -121,7 +121,7 @@ def _insert_with_autoassign(
     description: str,
     status: str,
     resolution_reference: str | None,
-    executive_summary: str | None,
+    executive_summary: str,
     area: list[str] | None,
 ) -> PlanningItem:
     """Insert a planning_item with a server-assigned identifier (PI-002)."""
@@ -164,7 +164,7 @@ def create(
     description: str = "",
     status: str,
     resolution_reference: str | None = None,
-    executive_summary: str | None = None,
+    executive_summary: str,
     area: list[str] | None = None,
 ) -> dict:
     """Create a planning_item.
@@ -172,9 +172,10 @@ def create(
     ``identifier`` is server-assigned when omitted (``None``). When
     supplied it must match ``^PI-\\d{3}$`` and not already exist.
 
-    ``executive_summary`` (PI-074) is optional in v0.8; when supplied it
-    must be a 200-800 character audience-facing summary. PI-075 will
-    backfill and tighten the column to NOT NULL.
+    ``executive_summary`` (PI-074) is required since PI-075 (migration
+    0023 tightened the column to NOT NULL): a 200-800 character
+    audience-facing summary. Omitting it raises a ``ValidationError``
+    (422) rather than a database ``IntegrityError`` (500).
 
     ``area`` (PI-076) is optional until PI-083 backfills open items and
     tightens the column to NOT NULL; when supplied it must be a non-empty
@@ -183,7 +184,7 @@ def create(
     require_string(title, field="title")
     require_in(item_type, PLANNING_ITEM_TYPES, field="item_type")
     require_in(status, PLANNING_ITEM_STATUSES, field="status")
-    executive_summary = validate_optional_length(
+    executive_summary = validate_required_length(
         executive_summary,
         field="executive_summary",
         min_len=_EXECUTIVE_SUMMARY_MIN,
@@ -258,7 +259,9 @@ def update(session: Session, identifier: str, **fields) -> dict:
     if "status" in fields:
         require_in(fields["status"], PLANNING_ITEM_STATUSES, field="status")
     if "executive_summary" in fields:
-        fields["executive_summary"] = validate_optional_length(
+        # NOT NULL since PI-075 — a present value must be a valid
+        # 200-800 char string; the column cannot be cleared via update.
+        fields["executive_summary"] = validate_required_length(
             fields["executive_summary"],
             field="executive_summary",
             min_len=_EXECUTIVE_SUMMARY_MIN,

@@ -88,6 +88,7 @@ async def test_decision_lifecycle(mcp_server):
             "title": "Smoke decision",
             "decision_date": "05-07-26",
             "status": "Active",
+            "executive_summary": "PI-102 test executive summary. " * 7,
         },
     )
     assert out["identifier"] == "DEC-001"

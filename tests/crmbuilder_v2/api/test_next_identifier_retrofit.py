@@ -8,6 +8,8 @@ charter and status return their next integer version.
 
 from __future__ import annotations
 
+_VALID_EXEC_SUMMARY = "PI-102 test executive summary. " * 7
+
 # (path, repository plural prefix) for the six prefix-NNN style endpoints.
 # planning-items uses a hyphenated router prefix.
 _PREFIX_ENDPOINTS = [
@@ -76,6 +78,7 @@ def test_decisions_next_increments_after_create(client):
         "title": "first decision",
         "decision_date": "05-14-26",
         "status": "Active",
+        "executive_summary": _VALID_EXEC_SUMMARY,
     }
     assert client.post("/decisions", json=body).status_code == 201
 
@@ -101,6 +104,7 @@ def test_planning_items_next_increments_after_create(client):
         "title": "first item",
         "item_type": "planning_dimension",
         "status": "Open",
+        "executive_summary": _VALID_EXEC_SUMMARY,
     }
     assert client.post("/planning-items", json=body).status_code == 201
     r = client.get("/planning-items/next-identifier")
@@ -149,6 +153,7 @@ def test_concurrent_fetch_then_atomic_consume(client):
         "title": "winner",
         "decision_date": "05-14-26",
         "status": "Active",
+        "executive_summary": _VALID_EXEC_SUMMARY,
     }
     assert client.post("/decisions", json=body).status_code == 201
     # The second consumer of the same identifier loses.

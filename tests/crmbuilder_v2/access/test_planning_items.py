@@ -11,6 +11,8 @@ from crmbuilder_v2.access.exceptions import (
 )
 from crmbuilder_v2.access.repositories import planning_items
 
+_VALID_EXEC_SUMMARY = "PI-102 test executive summary. " * 7
+
 
 def test_create_and_resolve(v2_env):
     with session_scope() as s:
@@ -20,6 +22,7 @@ def test_create_and_resolve(v2_env):
             title="Pacing dimension",
             item_type="planning_dimension",
             status="Open",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
     with session_scope() as s:
         planning_items.update(
@@ -42,6 +45,7 @@ def test_invalid_type(v2_env):
             title="Bad",
             item_type="not_a_type",
             status="Open",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
 
 
@@ -53,6 +57,7 @@ def test_upsert(v2_env):
             title="t1",
             item_type="open_question",
             status="Open",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
         planning_items.upsert(
             s,
@@ -60,6 +65,7 @@ def test_upsert(v2_env):
             title="t2",
             item_type="open_question",
             status="Open",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
     with session_scope() as s:
         rows = planning_items.list_all(s)
@@ -75,12 +81,14 @@ def test_upsert(v2_env):
 def test_create_with_omitted_identifier_assigns_next(v2_env):
     with session_scope() as s:
         row = planning_items.create(
-            s, title="Auto", item_type="open_question", status="Open"
+            s, title="Auto", item_type="open_question", status="Open",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
     assert row["identifier"] == "PI-001"
     with session_scope() as s:
         row2 = planning_items.create(
-            s, title="Auto2", item_type="open_question", status="Open"
+            s, title="Auto2", item_type="open_question", status="Open",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
     assert row2["identifier"] == "PI-002"
 
@@ -90,6 +98,7 @@ def test_create_with_supplied_identifier_uses_it(v2_env):
         row = planning_items.create(
             s, identifier="PI-042", title="Explicit",
             item_type="open_question", status="Open",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
     assert row["identifier"] == "PI-042"
 
@@ -99,6 +108,7 @@ def test_create_with_invalid_identifier_format_rejected(v2_env):
         planning_items.create(
             s, identifier="PI-1", title="Bad",
             item_type="open_question", status="Open",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
 
 
@@ -107,6 +117,7 @@ def test_create_with_empty_string_identifier_rejected(v2_env):
         planning_items.create(
             s, identifier="", title="Bad",
             item_type="open_question", status="Open",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
 
 
@@ -115,11 +126,13 @@ def test_create_explicit_duplicate_identifier_raises_conflict(v2_env):
         planning_items.create(
             s, identifier="PI-001", title="First",
             item_type="open_question", status="Open",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
     with session_scope() as s, pytest.raises(ConflictError):
         planning_items.create(
             s, identifier="PI-001", title="Second",
             item_type="open_question", status="Open",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
 
 
@@ -128,13 +141,15 @@ def test_autoassign_retries_on_identifier_collision(v2_env, monkeypatch):
         planning_items.create(
             s, identifier="PI-001", title="First",
             item_type="open_question", status="Open",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
     monkeypatch.setattr(
         planning_items, "compute_next_identifier", lambda _s: "PI-001"
     )
     with session_scope() as s:
         row = planning_items.create(
-            s, title="Second", item_type="open_question", status="Open"
+            s, title="Second", item_type="open_question", status="Open",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
     assert row["identifier"] == "PI-002"
 

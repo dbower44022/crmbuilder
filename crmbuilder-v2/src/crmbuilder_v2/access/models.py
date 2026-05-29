@@ -137,7 +137,11 @@ class Decision(Base):
         Text, nullable=False, default=""
     )
     consequences: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    executive_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # NOT NULL since PI-075 (migration 0023). PI-074 added the column as
+    # nullable; PI-096/097/098 backfilled every live row and migration
+    # 0023 tightened it to NOT NULL with a no-NULL-arm length CHECK. This
+    # model now matches the live schema.
+    executive_summary: Mapped[str] = mapped_column(Text, nullable=False)
     supersedes_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("decisions.id"), nullable=True
     )
@@ -161,8 +165,7 @@ class Decision(Base):
     __table_args__ = (
         CheckConstraint(_check_in("status", DECISION_STATUSES), name="ck_decision_status"),
         CheckConstraint(
-            "executive_summary IS NULL OR "
-            "(length(executive_summary) >= 200 AND length(executive_summary) <= 800)",
+            "length(executive_summary) >= 200 AND length(executive_summary) <= 800",
             name="ck_decision_executive_summary_length",
         ),
         Index("ix_decisions_identifier", "identifier"),
@@ -194,12 +197,13 @@ class Session(Base):
         String(20), nullable=False, default="planned"
     )
     session_medium: Mapped[str] = mapped_column(String(20), nullable=False)
-    # PI-074 carry-over field (TEXT NULL with 200–800 length CHECK).
-    # Reconciles with PI-073's redesign: legacy_sessions retains
-    # executive_summary post-migration; the new sessions entity exposes
-    # session_executive_summary for the same audience-readable purpose.
-    session_executive_summary: Mapped[str | None] = mapped_column(
-        Text, nullable=True
+    # PI-074 carry-over field. Reconciles with PI-073's redesign:
+    # legacy_sessions retains executive_summary post-migration; the new
+    # sessions entity exposes session_executive_summary for the same
+    # audience-readable purpose. NOT NULL since PI-075 (migration 0023);
+    # this model now matches the live schema.
+    session_executive_summary: Mapped[str] = mapped_column(
+        Text, nullable=False
     )
     session_scheduled_for: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -259,12 +263,12 @@ class Session(Base):
             _check_in("session_medium", SESSION_MEDIUMS),
             name="ck_session_medium",
         ),
-        # PI-074 CHECK on executive_summary length (200..800 inclusive
-        # when set; PI-075 will backfill + tighten to NOT NULL).
+        # PI-074 CHECK on executive_summary length (200..800 inclusive).
+        # PI-075 (migration 0023) backfilled all rows and dropped the
+        # IS NULL arm when tightening the column to NOT NULL.
         CheckConstraint(
-            "session_executive_summary IS NULL OR "
-            "(length(session_executive_summary) >= 200 "
-            "AND length(session_executive_summary) <= 800)",
+            "length(session_executive_summary) >= 200 "
+            "AND length(session_executive_summary) <= 800",
             name="ck_session_executive_summary_length",
         ),
         Index("ix_sessions_session_status", "session_status"),
@@ -310,7 +314,8 @@ class PlanningItem(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     status: Mapped[str] = mapped_column(String(16), nullable=False)
     resolution_reference: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    executive_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # NOT NULL since PI-075 (migration 0023); see Decision.executive_summary.
+    executive_summary: Mapped[str] = mapped_column(Text, nullable=False)
     # PI-076: multi-valued work-area labels (JSON array) driving the
     # parallel-agent orchestrator's file-disjoint partitioning. Nullable
     # until PI-083 backfills open items and tightens to NOT NULL. The
@@ -348,8 +353,7 @@ class PlanningItem(Base):
             _check_in("status", PLANNING_ITEM_STATUSES), name="ck_planning_status"
         ),
         CheckConstraint(
-            "executive_summary IS NULL OR "
-            "(length(executive_summary) >= 200 AND length(executive_summary) <= 800)",
+            "length(executive_summary) >= 200 AND length(executive_summary) <= 800",
             name="ck_planning_executive_summary_length",
         ),
         CheckConstraint(

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+_VALID_EXEC_SUMMARY = "PI-102 test executive summary. " * 7
+
 
 def _create(client, identifier="DEC-001", **overrides):
     body = {
@@ -9,6 +11,7 @@ def _create(client, identifier="DEC-001", **overrides):
         "title": f"{identifier} title",
         "decision_date": "05-07-26",
         "status": "Active",
+        "executive_summary": _VALID_EXEC_SUMMARY,
     }
     body.update(overrides)
     return client.post("/decisions", json=body)
@@ -36,6 +39,7 @@ def test_create_unknown_field_rejected(client):
         "title": "x",
         "decision_date": "05-07-26",
         "status": "Active",
+        "executive_summary": _VALID_EXEC_SUMMARY,
         "extra_field": "nope",
     }
     r = client.post("/decisions", json=body)
@@ -141,7 +145,8 @@ def test_patch_supersedes_empty_string_clears_link(client):
 def test_post_without_identifier_assigns_one(client):
     r = client.post(
         "/decisions",
-        json={"title": "Auto", "decision_date": "05-25-26", "status": "Active"},
+        json={"title": "Auto", "decision_date": "05-25-26", "status": "Active",
+              "executive_summary": _VALID_EXEC_SUMMARY},
     )
     assert r.status_code == 201, r.json()
     assert r.json()["data"]["identifier"] == "DEC-001"
@@ -155,6 +160,7 @@ def test_post_with_invalid_identifier_format_returns_422(client):
             "title": "Bad",
             "decision_date": "05-25-26",
             "status": "Active",
+            "executive_summary": _VALID_EXEC_SUMMARY,
         },
     )
     assert r.status_code == 422, r.json()

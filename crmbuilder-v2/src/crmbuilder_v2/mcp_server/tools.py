@@ -114,6 +114,7 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         title: str,
         decision_date: str,
         status: str,
+        executive_summary: str,
         context: str = "",
         decision: str = "",
         rationale: str = "",
@@ -123,12 +124,14 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         superseded_by: str | None = None,
     ) -> Any:
         """Create a decision record. Status must be one of Active, Superseded,
-        Withdrawn."""
+        Withdrawn. ``executive_summary`` is required (PI-075): a 200-800
+        character audience-facing summary."""
         body = {
             "identifier": identifier,
             "title": title,
             "decision_date": decision_date,
             "status": status,
+            "executive_summary": executive_summary,
             "context": context,
             "decision": decision,
             "rationale": rationale,
@@ -219,6 +222,7 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         title: str,
         description: str,
         medium: str,
+        executive_summary: str,
         identifier: str | None = None,
         notes: str | None = None,
         status: str = "planned",
@@ -231,7 +235,8 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """Create a session record in the redesigned shape (PI-073 / DEC-314).
 
         Required: ``title``, ``description``, ``medium`` (one of chat,
-        email, phone, zoom, in_person, slack, other).
+        email, phone, zoom, in_person, slack, other), and
+        ``executive_summary`` (PI-075: a 200-800 character summary).
 
         Status defaults to ``planned`` — pass ``in_flight`` to mark an
         actively-happening session, or ``complete`` for one already over.
@@ -250,6 +255,7 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
                 session_title=title,
                 session_description=description,
                 session_medium=medium,
+                session_executive_summary=executive_summary,
                 session_notes=notes,
                 session_status=status,
                 session_scheduled_for=scheduled_for,
@@ -492,11 +498,13 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         title: str,
         item_type: str,
         status: str,
+        executive_summary: str,
         description: str = "",
         resolution_reference: str | None = None,
     ) -> Any:
         """Create a planning item. item_type ∈ {planning_dimension, open_question,
-        pending_work}; status ∈ {Open, Resolved, Deferred}."""
+        pending_work}; status ∈ {Open, Resolved, Deferred}. ``executive_summary``
+        is required (PI-075): a 200-800 character audience-facing summary."""
         return await _unwrap(
             await http.post(
                 "/planning-items",
@@ -506,6 +514,7 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
                     "item_type": item_type,
                     "description": description,
                     "status": status,
+                    "executive_summary": executive_summary,
                     "resolution_reference": resolution_reference,
                 },
             )

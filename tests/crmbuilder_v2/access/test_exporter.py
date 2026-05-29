@@ -9,6 +9,8 @@ import pytest
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.repositories import decisions
 
+_VALID_EXEC_SUMMARY = "PI-102 test executive summary. " * 7
+
 
 def test_bootstrap_creates_all_export_files(v2_env, export_dir: Path):
     expected = {
@@ -77,6 +79,7 @@ def test_export_reflects_writes(v2_env, export_dir: Path):
             title="The Answer",
             decision_date="05-07-26",
             status="Active",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
     rows = json.loads((export_dir / "decisions.json").read_text())
     assert len(rows) == 1
@@ -96,6 +99,7 @@ def test_failed_write_does_not_affect_exports(
                 title="t",
                 decision_date="05-07-26",
                 status="Active",
+                executive_summary=_VALID_EXEC_SUMMARY,
             )
             raise RuntimeError("simulated failure")
     after = (export_dir / "decisions.json").read_text()
@@ -110,6 +114,7 @@ def test_no_temp_files_remain_after_success(v2_env, export_dir: Path):
             title="t",
             decision_date="05-07-26",
             status="Active",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
     leftovers = list(export_dir.glob("*.tmp"))
     assert leftovers == []
@@ -126,6 +131,7 @@ def test_no_temp_files_remain_after_rollback(
                 title="t",
                 decision_date="05-07-26",
                 status="Active",
+                executive_summary=_VALID_EXEC_SUMMARY,
             )
             raise RuntimeError("boom")
     leftovers = list(export_dir.glob("*.tmp"))
@@ -151,6 +157,7 @@ def test_export_failure_rolls_back_db(
                 title="t",
                 decision_date="05-07-26",
                 status="Active",
+                executive_summary=_VALID_EXEC_SUMMARY,
             )
 
     # DB transaction should have rolled back: no DEC-999 row.

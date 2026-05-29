@@ -55,11 +55,12 @@ _CONTENT_FIELDS: list[FieldSchema] = [
         key="session_executive_summary",
         label="Executive Summary",
         widget="text",
-        required=False,
+        # Required since PI-075 (migration 0023): the column is NOT NULL
+        # on every session regardless of status.
+        required=True,
         min_length=200,
         max_length=800,
         placeholder="200-800 character audience-facing summary for non-technical reviewers.",
-        omit_when_empty_in_create=True,
     ),
     FieldSchema(
         key="session_medium",

@@ -76,6 +76,7 @@ def _make_decision(identifier: str, title: str) -> None:
             title=title,
             decision_date="05-07-26",
             status="Active",
+            executive_summary="PI-102 test executive summary. " * 7,
         )
 
 

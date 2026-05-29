@@ -17,6 +17,8 @@ from crmbuilder_v2.ui.exceptions import (
 from crmbuilder_v2.ui.widgets.date_field import DateField
 from PySide6.QtWidgets import QComboBox, QLineEdit, QPlainTextEdit
 
+_VALID_EXEC_SUMMARY = "PI-102 test executive summary. " * 7
+
 
 def _stub_client():
     return MagicMock()
@@ -26,6 +28,7 @@ def _fill_required(dialog: DecisionCreateDialog) -> None:
     dialog._widgets.identifier.setText("DEC-100")
     dialog._widgets.title.setText("Some title")
     dialog._widgets.decision_date.set_date("05-08-26")
+    dialog._widgets.executive_summary.setPlainText(_VALID_EXEC_SUMMARY)
     # status is preselected to Active.
 
 
@@ -201,6 +204,7 @@ def test_invalid_identifier_format_blocks_submission(qtbot):
     dialog._widgets.identifier.setText("abc")
     dialog._widgets.title.setText("Some title")
     dialog._widgets.decision_date.set_date("05-08-26")
+    dialog._widgets.executive_summary.setPlainText(_VALID_EXEC_SUMMARY)
 
     dialog._on_save_clicked()
     # No API call.
@@ -223,6 +227,7 @@ def test_invalid_supersedes_format_blocks_submission(qtbot):
     dialog._widgets.identifier.setText("DEC-100")
     dialog._widgets.title.setText("t")
     dialog._widgets.decision_date.set_date("05-08-26")
+    dialog._widgets.executive_summary.setPlainText(_VALID_EXEC_SUMMARY)
     dialog._widgets.supersedes.setText("abc")
 
     dialog._on_save_clicked()
@@ -240,6 +245,7 @@ def test_valid_formats_pass_through_to_api(qtbot):
     dialog._widgets.identifier.setText("DEC-099")
     dialog._widgets.title.setText("t")
     dialog._widgets.decision_date.set_date("05-09-26")
+    dialog._widgets.executive_summary.setPlainText(_VALID_EXEC_SUMMARY)
 
     with qtbot.waitSignal(dialog.accepted, timeout=2000):
         dialog._on_save_clicked()

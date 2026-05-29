@@ -16,6 +16,8 @@ from crmbuilder_v2.access.repositories import catalog, decisions, references
 from crmbuilder_v2.access.vocab import ENTITY_TYPES
 from crmbuilder_v2.bootstrap.catalog_loader import load_catalog
 
+_VALID_EXEC_SUMMARY = "PI-102 test executive summary. " * 7
+
 
 _FIXTURE_CATALOG = (
     Path(__file__).resolve().parents[1] / "bootstrap" / "fixtures" / "catalog"
@@ -37,6 +39,7 @@ def test_create_reference_decision_to_catalog_entity(v2_env):
             title="Use Account model from catalog",
             decision_date="05-14-26",
             status="Active",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
     with session_scope() as s:
         ref = references.create(
@@ -60,6 +63,7 @@ def test_create_reference_to_catalog_attribute(v2_env):
             title="Adopt accountName.api_name overrides",
             decision_date="05-14-26",
             status="Active",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
     with session_scope() as s:
         references.create(
@@ -82,6 +86,7 @@ def test_inbound_references_surface_on_entity(v2_env):
             title="x",
             decision_date="05-14-26",
             status="Active",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
         decisions.create(
             s,
@@ -89,6 +94,7 @@ def test_inbound_references_surface_on_entity(v2_env):
             title="y",
             decision_date="05-14-26",
             status="Active",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
         references.create(
             s,
@@ -123,6 +129,7 @@ def test_inbound_references_surface_on_attribute(v2_env):
             title="Use accountName as primary",
             decision_date="05-14-26",
             status="Active",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
         references.create(
             s,
@@ -152,6 +159,7 @@ def test_catalog_can_be_reference_source(v2_env):
             title="x",
             decision_date="05-14-26",
             status="Active",
+            executive_summary=_VALID_EXEC_SUMMARY,
         )
         # Doesn't error — catalog_entity is in source_type vocabulary.
         references.create(
