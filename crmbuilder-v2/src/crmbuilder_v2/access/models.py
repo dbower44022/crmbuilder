@@ -1980,3 +1980,37 @@ class ChangeLog(Base):
         Index("ix_changelog_timestamp", "timestamp"),
         Index("ix_changelog_entity", "entity_type", "entity_identifier"),
     )
+
+
+class IdentifierReservation(Base):
+    """A server-side hold on a block of prefixed identifiers (PI-078).
+
+    The parallel-agent orchestrator reserves a block of identifiers (e.g.
+    the next five ``SES-NNN``) at the start of a run so concurrent child
+    agents never race on next-available numbers. Each row is one reserved
+    block for one ``entity_type``. ``max_number`` is the highest numeric
+    suffix in the block; the reservation logic treats an *unexpired* block
+    as "taken" when computing the next free number, so two reservations
+    never overlap. Expired blocks are ignored (and garbage-collected),
+    which is the TTL auto-release. Reservations are ephemeral runtime
+    state — not governance records — so they are not exported to the JSON
+    snapshots.
+    """
+
+    __tablename__ = "identifier_reservations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    entity_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    reserved_identifiers: Mapped[list] = mapped_column(JSON, nullable=False)
+    max_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    reserved_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    reserved_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+    __table_args__ = (
+        Index("ix_identifier_reservations_lookup", "entity_type", "expires_at"),
+    )

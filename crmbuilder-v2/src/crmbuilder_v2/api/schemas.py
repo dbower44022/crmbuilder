@@ -188,6 +188,20 @@ class PlanningItemReleaseIn(_Base):
     claimant: str | None = None
 
 
+# ---------- Identifier reservation (PI-078) ----------
+
+
+class IdentifierReserveIn(_Base):
+    """POST /identifiers/reserve body. Reserves a block of ``count``
+    identifiers of ``entity_type`` under the optional ``reserved_by``
+    conversation claim, held for ``ttl_seconds`` (default 1 hour)."""
+
+    entity_type: str
+    count: int
+    reserved_by: str | None = None
+    ttl_seconds: int | None = None
+
+
 # ---------- Topics ----------
 
 
