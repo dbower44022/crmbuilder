@@ -2179,5 +2179,34 @@
     "session_superseded_at": null,
     "session_title": "File PI-107 — surface planning_item created/updated timestamps in the Planning Items UI panel",
     "session_updated_at": "2026-05-29T23:35:52.887069"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-30T03:05:45.444710",
+    "session_created_at": "2026-05-30T03:05:45.444366",
+    "session_deleted_at": null,
+    "session_description": "Single Claude Code execution at Doug's terminal (continuation of the same terminal session that filed PI-107 under SES-117; the implementation is logged as its own session since SES-117 was already finalized at the filing close-out). CNV-020. Parent workstream WS-011 (V2 storage API refinements). Medium: chat (claude_code runner).\n\nSeed: \"Now implement PI-107\".\n\nPI-107 was scoped as UI-only: the planning_items created_at/updated_at columns and their REST API exposure already existed, so the only gap was the desktop UI not displaying them. Implemented in one commit (f690bde):\n\n1. New reusable helper crmbuilder-v2/src/crmbuilder_v2/ui/widgets/datetime_format.py — format_timestamp() parses an ISO-8601 string or datetime and renders 'YYYY-MM-DD HH:MM' in local time, degrading to an em dash for missing/unparseable values; naive inputs are assumed UTC per the _utcnow storage convention. Placed in a shared module rather than inlined because the Sessions and Decisions panels have the identical surfacing gap and can reuse it.\n2. PlanningItemsPanel (ui/panels/planning_items.py) — added a 'Created' list column rendered via a synthetic created_at_display field computed in fetch_records (mirroring ReferencesPanel's _source_display pattern, since the list model stringifies the column field verbatim and would otherwise show raw ISO text), plus 'Created' and 'Last Updated' dim metadata rows in the detail form.\n3. Tests — tests/crmbuilder_v2/ui/test_datetime_format.py (null/garbage fallback, render shape, local-conversion equivalence) and tests/crmbuilder_v2/ui/test_planning_items_timestamps.py (Created column present + formatted and not raw ISO, detail rows shown, missing timestamps render em dash).\n\nValidation: the full UI suite (788 tests) passes; ruff clean on the touched files. No schema migration introduced; no API change.\n\nNo decisions were authored. Resolves PI-107. The implementation commit sits on main awaiting Doug's push (Claude Code push convention).",
+    "session_ended_at": null,
+    "session_executive_summary": "Implemented PI-107 in one commit (f690bde): surfaced the planning_item created/updated timestamps in the desktop Planning Items panel. Added a reusable ui/widgets/datetime_format.py format_timestamp() helper (ISO/datetime -> local 'YYYY-MM-DD HH:MM', em dash for missing/unparseable, naive-assumed-UTC), a formatted 'Created' list column (via a synthetic display field, since the list model stringifies columns verbatim), and Created / Last Updated dim rows in the detail form. Added helper unit tests and panel tests; the full 788-test UI suite passes and ruff is clean. No schema migration and no API change were needed — the columns and their API exposure already existed. Resolves PI-107; no decisions authored.",
+    "session_identifier": "SES-118",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "model": "claude-opus-4-8",
+      "runner": "claude_code",
+      "surface": "claude_code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.8, Claude Code)"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "Implement PI-107 — surface planning_item created/updated timestamps in the Planning Items UI panel",
+    "session_updated_at": "2026-05-30T03:05:45.444803"
   }
 ]

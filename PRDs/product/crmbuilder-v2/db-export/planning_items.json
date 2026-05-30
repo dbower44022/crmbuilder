@@ -1279,8 +1279,8 @@
     "identifier": "PI-107",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Surface planning_item created/updated timestamps in the Planning Items UI panel",
-    "updated_at": "2026-05-29T23:35:53.169306"
+    "updated_at": "2026-05-30T03:05:46.050214"
   }
 ]
