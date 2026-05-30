@@ -19108,5 +19108,75 @@
     "source_type": "deposit_event",
     "target_id": "CM-0055",
     "target_type": "commit"
+  },
+  {
+    "created_at": "2026-05-30T04:11:57.620920",
+    "id": 1919,
+    "reference_identifier": "REF-1915",
+    "relationship_kind": "conversation_belongs_to_session",
+    "source_id": "CNV-025",
+    "source_type": "conversation",
+    "target_id": "SES-123",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-30T04:11:57.928876",
+    "id": 1920,
+    "reference_identifier": "REF-1916",
+    "relationship_kind": "session_belongs_to_workstream",
+    "source_id": "SES-123",
+    "source_type": "session",
+    "target_id": "WS-011",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-30T04:11:58.509481",
+    "id": 1921,
+    "reference_identifier": "REF-1917",
+    "relationship_kind": "addresses",
+    "source_id": "WT-058",
+    "source_type": "work_ticket",
+    "target_id": "PI-101",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-30T04:11:58.815669",
+    "id": 1922,
+    "reference_identifier": "REF-1918",
+    "relationship_kind": "deposit_event_applies_close_out_payload",
+    "source_id": "DEP-115",
+    "source_type": "deposit_event",
+    "target_id": "COP-123",
+    "target_type": "close_out_payload"
+  },
+  {
+    "created_at": "2026-05-30T04:11:58.819491",
+    "id": 1923,
+    "reference_identifier": "REF-1919",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-115",
+    "source_type": "deposit_event",
+    "target_id": "CNV-025",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-30T04:11:58.823052",
+    "id": 1924,
+    "reference_identifier": "REF-1920",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-115",
+    "source_type": "deposit_event",
+    "target_id": "SES-123",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-30T04:11:58.826656",
+    "id": 1925,
+    "reference_identifier": "REF-1921",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-115",
+    "source_type": "deposit_event",
+    "target_id": "WT-058",
+    "target_type": "work_ticket"
   }
 ]

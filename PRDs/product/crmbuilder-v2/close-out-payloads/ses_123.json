@@ -1,0 +1,76 @@
+{
+  "label": "SES-123 / CNV-025 close-out — governance backfill: author WT-058 (kickoff_prompt for PI-101) with an addresses edge to PI-101, closing the missing kickoff-ticket trail. No code change, no decisions. Attaches to WS-011. Identifiers re-verify at apply time.",
+  "session": {
+    "session_identifier": "SES-123",
+    "session_title": "Backfill the PI-101 kickoff work ticket (WT-058 addresses PI-101)",
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-025. Parent workstream WS-011 (V2 storage API refinements). Medium: chat (claude_code runner).\n\nSeed: \"yes, backfill a work ticket for PI-101\".\n\nContext: PI-101 (and the earlier PI-031, PI-107 this session) was selected ad hoc in conversation and implemented directly from its planning-item description, so no kickoff work ticket was ever authored to anchor it — the standard v2 lifecycle anchors a unit of work as a planning_item plus an associated work_ticket of kind kickoff_prompt with an addresses edge to the PI. Doug asked to backfill that ticket for PI-101.\n\nDelivered:\n- Authored a retroactive kickoff document at PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-kickoff-pi-101.md, clearly marked as a backfill, summarizing PI-101's goal, scope, acceptance, and resolution (commit 947da63, resolved by SES-122 / CNV-024).\n- Created work_ticket WT-058 (kind kickoff_prompt, status ready — the conventional authored state for a kickoff_prompt WT per CLAUDE.md; not consumed, which would require a consumption edge), work_ticket_file_path pointing at that kickoff doc, with an addresses reference edge to PI-101.\n\nThis is a governance-only backfill: no code changed. The work_ticket and its addresses edge land via this close-out payload (the sanctioned path; record creation goes through apply_close_out, not direct POST), and the payload is itself checked by the PI-101 pre-flight validator at apply time. No decisions authored (this is a record backfill, not a choice between alternatives); PI-101 is already Resolved, so this session neither resolves nor addresses it at the session level — the WT carries the addresses edge.",
+    "session_medium": "chat",
+    "session_status": "complete",
+    "session_executive_summary": "Governance backfill session. PI-101 was implemented ad hoc without a kickoff work ticket, so the standard planning_item -> work_ticket(kickoff_prompt) -> session trail was missing. This session authored a retroactive kickoff document (CLAUDE-CODE-PROMPT-kickoff-pi-101.md, clearly marked as a backfill) and created work_ticket WT-058 (kind kickoff_prompt, status ready, file_path pointing at that doc) with an addresses reference edge to PI-101. No code changed and no decisions were authored — this is purely a governance record backfill, delivered via close-out payload (the sanctioned path) and validated by the very PI-101 pre-flight checks shipped earlier this session. PI-101 remains Resolved; the new WT supplies the kickoff-ticket anchor it had lacked.",
+    "session_medium_metadata": {
+      "surface": "claude_code",
+      "runner": "claude_code",
+      "model": "claude-opus-4-8"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.8, Claude Code)"
+    ],
+    "references": [
+      {
+        "source_type": "session",
+        "source_id": "SES-123",
+        "target_type": "workstream",
+        "target_id": "WS-011",
+        "relationship": "session_belongs_to_workstream"
+      }
+    ]
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-025",
+    "conversation_title": "Backfilling the PI-101 kickoff work ticket",
+    "conversation_purpose": "Supply the missing kickoff work ticket for PI-101 so it has the standard planning_item -> work_ticket -> session governance trail.",
+    "conversation_description": "Authored a retroactive kickoff doc for PI-101 and created WT-058 (kickoff_prompt, ready) with an addresses edge to PI-101. Governance-only backfill; no code change, no decisions.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-025",
+        "target_type": "session",
+        "target_id": "SES-123",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [
+    {
+      "work_ticket_identifier": "WT-058",
+      "work_ticket_title": "Kickoff — PI-101: harden the close-out pre-flight validator",
+      "work_ticket_description": "Retroactively-authored kickoff ticket anchoring PI-101 (harden the close-out pre-flight validator to reject missing required fields and wrong-case status values). Backfilled on 2026-05-30 because PI-101 was implemented ad hoc without a kickoff ticket; the work shipped in commit 947da63 and was resolved by SES-122 / CNV-024. Authored in 'ready' status per the kickoff_prompt convention (not 'consumed', which would require a consumption edge). Addresses PI-101.",
+      "work_ticket_kind": "kickoff_prompt",
+      "work_ticket_file_path": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-kickoff-pi-101.md",
+      "work_ticket_status": "ready"
+    }
+  ],
+  "planning_items": [],
+  "commits": [],
+  "decisions": [],
+  "references": [
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-025",
+      "target_type": "session",
+      "target_id": "SES-123",
+      "relationship": "conversation_belongs_to_session"
+    },
+    {
+      "source_type": "work_ticket",
+      "source_id": "WT-058",
+      "target_type": "planning_item",
+      "target_id": "PI-101",
+      "relationship": "addresses"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": []
+}

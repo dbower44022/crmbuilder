@@ -910,5 +910,21 @@
     "work_ticket_superseded_at": null,
     "work_ticket_title": "Implement universal created/last-edited timestamp visibility across all entity panels",
     "work_ticket_updated_at": "2026-05-30T03:47:22.151822"
+  },
+  {
+    "work_ticket_cancelled_at": null,
+    "work_ticket_consumed_at": null,
+    "work_ticket_created_at": "2026-05-30T04:11:58.221571",
+    "work_ticket_deleted_at": null,
+    "work_ticket_description": "Retroactively-authored kickoff ticket anchoring PI-101 (harden the close-out pre-flight validator to reject missing required fields and wrong-case status values). Backfilled on 2026-05-30 because PI-101 was implemented ad hoc without a kickoff ticket; the work shipped in commit 947da63 and was resolved by SES-122 / CNV-024. Authored in 'ready' status per the kickoff_prompt convention (not 'consumed', which would require a consumption edge). Addresses PI-101.",
+    "work_ticket_file_path": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-kickoff-pi-101.md",
+    "work_ticket_identifier": "WT-058",
+    "work_ticket_kind": "kickoff_prompt",
+    "work_ticket_notes": null,
+    "work_ticket_ready_at": "2026-05-30T04:11:58.221796",
+    "work_ticket_status": "ready",
+    "work_ticket_superseded_at": null,
+    "work_ticket_title": "Kickoff — PI-101: harden the close-out pre-flight validator",
+    "work_ticket_updated_at": "2026-05-30T04:11:58.221878"
   }
 ]
