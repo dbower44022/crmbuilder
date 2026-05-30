@@ -29,7 +29,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from crmbuilder_v2.config import get_settings
+from crmbuilder_v2.config import api_log_path, get_settings
 from crmbuilder_v2.ui.about_dialog import AboutDialog
 from crmbuilder_v2.ui.base.list_detail_panel import ListDetailPanel
 from crmbuilder_v2.ui.client import StorageClient
@@ -66,6 +66,13 @@ from crmbuilder_v2.ui.sidebar import SIDEBAR_ENTRIES, Sidebar
 
 _log = logging.getLogger("crmbuilder_v2.ui.main_window")
 _DEFAULT_ENTRY = "Decisions"
+
+# Bounded auto-reconnect: on connection loss or an owned-subprocess
+# crash, the window drives ``ServerLifecycle.start()`` (probe-then-spawn)
+# up to this many times before falling back to the manual-Reconnect
+# banner. Each attempt itself probes (1s) then polls a fresh spawn for up
+# to 10s, so this is a hard ceiling on automatic recovery effort.
+_MAX_RECONNECT_ATTEMPTS = 3
 
 # Maps reference ``entity_type`` values (as stored in the database) to
 # sidebar entry labels so the navigation router (cross-panel link
@@ -145,6 +152,17 @@ class MainWindow(QMainWindow):
         # ``_on_lifecycle_ready`` flips this to True; ``handle_crash``
         # and ``_on_panel_connection_lost`` flip it back to False.
         self._lifecycle_ready = False
+
+        # Auto-reconnect state. ``_had_first_ready`` lets app.py route a
+        # *runtime* spawn failure to the in-window banner instead of the
+        # fatal startup dialog. ``_auto_reconnecting`` dedupes overlapping
+        # triggers (e.g. several panels reporting connection loss at once);
+        # ``_reconnect_attempts`` bounds the retry loop.
+        self._had_first_ready = False
+        self._auto_reconnecting = False
+        self._reconnect_attempts = 0
+        self._base_url = get_settings().api_base_url
+        self._log_path = api_log_path()
 
         # Construct the file-watch service before the panel loop so the
         # chat tab can subscribe to it (PI-106). It is connected and
@@ -283,17 +301,86 @@ class MainWindow(QMainWindow):
         self._refresh_service.watch_failed.connect(self._on_watch_failed)
         self._refresh_service.start()
 
+    def had_first_ready(self) -> bool:
+        """True once the API has been reachable at least once this session.
+
+        Read by ``app.py``'s ``on_spawn_failed`` to decide whether a spawn
+        failure is a fatal *startup* failure (exit the app) or a runtime
+        reconnect failure (fall back to the in-window banner).
+        """
+        return self._had_first_ready
+
     def handle_crash(self, stderr_text: str) -> None:
-        """Slot for ``ServerLifecycle.crashed``: show banner, disable content."""
+        """Slot for ``ServerLifecycle.crashed``: log, then auto-reconnect."""
         if stderr_text:
             _log.warning(
                 "Storage server stopped; captured output:\n%s", stderr_text
             )
         else:
             _log.warning("Storage server stopped (no captured output)")
+        self._begin_auto_reconnect("storage server stopped")
+
+    def _begin_auto_reconnect(self, reason: str) -> None:
+        """Disable content and kick off a bounded probe-then-spawn recovery.
+
+        Idempotent while a cycle is in flight: overlapping triggers (a
+        crash plus several panels each reporting connection loss) collapse
+        into one retry loop. Recovery reuses the existing
+        ``ServerLifecycle`` machinery, which spawns a fresh owned API even
+        when the dead instance was external (manually launched) — so this
+        self-heals the 05-30 "external API died, UI only noticed on click"
+        case without operator action.
+        """
         self._lifecycle_ready = False
-        self._crash_banner.show_with_message("Storage server stopped.")
         self._set_content_enabled(False)
+        if self._auto_reconnecting:
+            return
+        self._auto_reconnecting = True
+        self._reconnect_attempts = 0
+        _log.info("Auto-reconnect starting (%s)", reason)
+        self._crash_banner.show_with_message(
+            f"Storage API at {self._base_url} stopped responding "
+            "— restarting…"
+        )
+        self._attempt_reconnect()
+
+    def _attempt_reconnect(self) -> None:
+        self._reconnect_attempts += 1
+        _log.info(
+            "Auto-reconnect attempt %d of %d",
+            self._reconnect_attempts,
+            _MAX_RECONNECT_ATTEMPTS,
+        )
+        if self._reconnect_attempts > 1:
+            self._crash_banner.show_with_message(
+                f"Restarting storage API… "
+                f"(attempt {self._reconnect_attempts} of "
+                f"{_MAX_RECONNECT_ATTEMPTS})"
+            )
+        self._lifecycle.start()
+
+    def handle_reconnect_failed(self, stderr_text: str) -> None:
+        """Route a *runtime* spawn failure from app.py into the retry loop.
+
+        Retries up to ``_MAX_RECONNECT_ATTEMPTS``; on exhaustion shows an
+        actionable banner pointing at the manual Reconnect button, the
+        standalone launch command, and the rotating log file.
+        """
+        if stderr_text:
+            _log.warning("Reconnect attempt failed:\n%s", stderr_text)
+        if (
+            self._auto_reconnecting
+            and self._reconnect_attempts < _MAX_RECONNECT_ATTEMPTS
+        ):
+            self._attempt_reconnect()
+            return
+        self._auto_reconnecting = False
+        self._crash_banner.show_with_message(
+            f"Couldn't restart the storage API after "
+            f"{self._reconnect_attempts} attempt(s). Click Reconnect to "
+            f"retry, or run 'uv run crmbuilder-v2-api' in a terminal. "
+            f"Logs: {self._log_path}"
+        )
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802 (Qt naming)
         try:
@@ -334,22 +421,27 @@ class MainWindow(QMainWindow):
             page.refresh()
 
     def _on_reconnect_requested(self) -> None:
-        _log.info("Reconnect requested; restarting lifecycle")
-        self._lifecycle.start()
+        # Manual Reconnect button. Reset any exhausted auto-reconnect
+        # cycle so the click gets a fresh bounded round of attempts.
+        _log.info("Manual reconnect requested")
+        self._auto_reconnecting = False
+        self._begin_auto_reconnect("manual reconnect")
 
     def _on_lifecycle_ready(self) -> None:
         # Fires on initial readiness AND on successful reconnect.
         self._lifecycle_ready = True
-        if self._crash_banner.isVisible():
-            self._crash_banner.hide()
+        self._had_first_ready = True
+        self._auto_reconnecting = False
+        self._reconnect_attempts = 0
+        # Unconditional hide: a no-op when already hidden, and avoids
+        # depending on isVisible() (which is False for an unshown parent).
+        self._crash_banner.hide()
         self._set_content_enabled(True)
         self._refresh_current_panel()
 
     def _on_panel_connection_lost(self, message: str) -> None:
         _log.warning("Panel reported connection lost: %s", message)
-        self._lifecycle_ready = False
-        self._crash_banner.show_with_message("Storage server unreachable.")
-        self._set_content_enabled(False)
+        self._begin_auto_reconnect("panel connection lost")
 
     def _on_data_changed(self, entity_type: str) -> None:
         """Route a file-watch event to either a silent refresh or a stale dot."""

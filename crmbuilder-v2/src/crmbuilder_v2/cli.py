@@ -25,6 +25,64 @@ def _fail_loud(message: str) -> None:
     sys.exit(2)
 
 
+def _build_api_log_config() -> tuple[object, dict]:
+    """Return ``(log_path, dict_config)`` for the API process logging.
+
+    The dict is uvicorn's default ``LOGGING_CONFIG`` extended with a
+    ``RotatingFileHandler``, wired into the root logger and the uvicorn
+    loggers so *everything* — application logs (``crmbuilder_v2.*``),
+    startup tracebacks, and access logs — lands in the rotating file as
+    well as the console. uvicorn calls ``logging.config.dictConfig`` on
+    this when passed as ``log_config=``, so handlers are installed once,
+    consistently, for both standalone and UI-spawned launches.
+
+    Built just before ``uvicorn.run`` so the ``--check-only`` and
+    fail-loud paths (which return earlier) create no log file. Rotation
+    keeps post-mortems possible after a crash — the gap that made the
+    05-30 outage undiagnosable.
+    """
+    import copy
+
+    from uvicorn.config import LOGGING_CONFIG
+
+    from crmbuilder_v2.config import api_log_path
+
+    log_path = api_log_path()
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+
+    cfg = copy.deepcopy(LOGGING_CONFIG)
+    cfg.setdefault("formatters", {})["file"] = {
+        "format": "%(asctime)s %(levelname)s %(name)s — %(message)s",
+    }
+    cfg.setdefault("handlers", {})["file"] = {
+        "formatter": "file",
+        "class": "logging.handlers.RotatingFileHandler",
+        "filename": str(log_path),
+        "maxBytes": 2_000_000,
+        "backupCount": 5,
+        "encoding": "utf-8",
+    }
+    # A plain console handler for the root logger so application logs are
+    # visible on stdout/stderr (uvicorn's own console handlers cover only
+    # its loggers). The UI captures this stream as crash diagnostics.
+    cfg["handlers"]["console"] = {
+        "formatter": "file",
+        "class": "logging.StreamHandler",
+        "stream": "ext://sys.stderr",
+    }
+    # Tee the uvicorn loggers (uvicorn.error propagates through "uvicorn")
+    # and the access logger into the file alongside their console output.
+    for logger_name in ("uvicorn", "uvicorn.access"):
+        handlers = cfg.setdefault("loggers", {}).setdefault(
+            logger_name, {}
+        ).setdefault("handlers", [])
+        if "file" not in handlers:
+            handlers.append("file")
+    # Root captures application loggers (crmbuilder_v2.*) that propagate up.
+    cfg["root"] = {"level": "INFO", "handlers": ["console", "file"]}
+    return log_path, cfg
+
+
 def run_api() -> None:
     import argparse
     import logging
@@ -145,7 +203,16 @@ def run_api() -> None:
     # read by EngagementMarkerGuardMiddleware on every non-exempt request.
     set_marker_at_start(active_code)
 
-    uvicorn.run(create_app(), host=settings.api_host, port=settings.api_port)
+    log_path, log_config = _build_api_log_config()
+    # Printed before uvicorn configures logging so the operator sees the
+    # log location at startup (uvicorn.run blocks until shutdown).
+    print(f"crmbuilder-v2-api: logging to {log_path} (rotating)")
+    uvicorn.run(
+        create_app(),
+        host=settings.api_host,
+        port=settings.api_port,
+        log_config=log_config,
+    )
 
 
 def run_mcp() -> None:

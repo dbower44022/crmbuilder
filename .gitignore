@@ -52,6 +52,10 @@ crmbuilder-v2/data/engagements/
 crmbuilder-v2/data/current_engagement.json
 crmbuilder-v2/data/v2.db.pre-v0.5-backup
 
+# Rotating API process logs (crmbuilder-v2-api). Runtime diagnostics,
+# regenerated on every run — never committed.
+crmbuilder-v2/data/logs/
+
 # MCP OAuth authorization-server secrets (never commit)
 crmbuilder-v2/data/oauth_jwt_secret
 crmbuilder-v2/data/oauth_secrets.env
