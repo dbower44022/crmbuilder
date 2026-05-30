@@ -1,0 +1,23 @@
+=== Applying close-out payload ===
+Source: PRDs/product/crmbuilder-v2/close-out-payloads/ses_119.json
+Label:  SES-119 / CNV-021 close-out — PI-106 chat UI Slice-D follow-ups: sidebar staleness-indicator integration (design §10) and interactive context-window Trim (design §12), delivered in commit 9a98167 (merged to main as 09ce4af). Resolves PI-106. Attaches to WS-010. No DEC authored.
+Deposit event: DEP-111
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-021 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== references (1 record) ===
+  ✓ POST references  CNV-021 conversation_belongs_to_workstream WS-010 (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-106 (HTTP 201)
+
+✓ All 5 operations complete.
+
+✓ Recorded apply as deposit_event DEP-111 (HTTP 201).
