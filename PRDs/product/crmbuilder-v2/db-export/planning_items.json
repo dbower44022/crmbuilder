@@ -1618,5 +1618,22 @@
     "status": "Open",
     "title": "Surface created/last-edited timestamps for all first-class V2 object types in the UI",
     "updated_at": "2026-05-30T03:47:22.445520"
+  },
+  {
+    "area": [
+      "v2-access"
+    ],
+    "claimed_at": null,
+    "claimed_by": null,
+    "created_at": "2026-05-30T04:30:10.239818",
+    "description": "**Problem.** The slice-A pattern flips a planning_item Open→Resolved atomically when a `resolves` reference is POSTed (server-side side-effect on POST /references). Work_ticket consumption was supposed to follow the same shape: when a session or conversation opens-against a work_ticket, that act IS the consumption — the ticket should transition ready→consumed automatically as the side-effect of the opens-against edge landing. The SES-082 apply prompt for the persona build explicitly claimed this: 'WT-049 transitions ready → consumed via the conversation_opens_against_work_ticket edge processing.' The claim was aspirational; no such side-effect was ever implemented. The persona, field, requirement, manual_config, test_spec, and process-v2 build sessions (SES-082..086) all shipped code and Resolved their PIs cleanly, but every one of them left its kickoff WT stuck at ready. The drift surfaced when WT-049 was investigated four days later and the deposit_event log for SES-082 (dep_064.log) was found to contain no PATCH on /work-tickets/WT-049. For WT-048 (SES-087) the operator caught the gap and issued an explicit PATCH; the explicit-PATCH discipline is fragile by design — it relies on the apply prompt's verification step being run AND acted on.\n\n**Scope of the structural fix.** Add a side-effect to POST /references (or to apply_close_out.py's references shaper, whichever is the cleaner extension point) that: when an inserted reference has `relationship_kind` in {`session_opens_against_work_ticket`, `conversation_opens_against_work_ticket`} AND the target work_ticket is currently at status=ready, atomically transition to status=consumed with consumed_at=now(). The existing `_validate_edges` consumed-requires-edge rule already enforces the precondition; the side-effect simply runs the transition that the rule was set up to permit. Single-use violation continues to take precedence — if the work_ticket already has a consumption edge of either kind, the new POST should still 422 with `work_ticket_single_use_violation` rather than silently re-flipping.\n\n**Decision points.** Where the side-effect lives: (a) in the references repository on upsert — purest semantics but couples two unrelated entities; (b) in the apply_close_out.py pipeline after the references section completes — easier to scope and audit but doesn't fire for references created outside the apply pipeline; (c) as an event-handler-style hook the references repo emits and the work_tickets repo consumes. Option (a) parallels the slice-A `resolves` → planning_item flip pattern most directly. Whichever site is chosen, document with a regression test: POST a session_opens_against_work_ticket edge to a ready work_ticket and assert status=consumed without an explicit PATCH.\n\n**Backfill scope.** Commit 2c9759d retired WT-049..054. WT-056, WT-057 are currently ready and unrelated to this drift (they're future-anticipated tickets from the current orchestrator workstream, not stale). No other backfill needed.",
+    "executive_summary": "apply_close_out.py treats `conversation_opens_against_work_ticket` and `session_opens_against_work_ticket` references as ordinary edges with no side-effect. Six SES-082..086 apply prompts assumed those edges would auto-flip the target work_ticket from ready to consumed (mirroring slice-A's `resolves` → planning_item flip), and the assumption silently left WT-049..054 stuck at ready for four days until commit 2c9759d caught up the data. Implement the auto-transition as a structural fix so the next cohort can't drift the same way.",
+    "id": 109,
+    "identifier": "PI-109",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Auto-transition work_tickets on inbound opens-against edge in apply pipeline",
+    "updated_at": "2026-05-30T04:30:10.239820"
   }
 ]
