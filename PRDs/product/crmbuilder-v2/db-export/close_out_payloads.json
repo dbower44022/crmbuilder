@@ -1423,5 +1423,20 @@
     "close_out_payload_superseded_at": null,
     "close_out_payload_title": "COP-120 (lazy)",
     "close_out_payload_updated_at": "2026-05-30T03:45:29.638828"
+  },
+  {
+    "close_out_payload_applied_at": "2026-05-30T03:47:23.923533",
+    "close_out_payload_cancelled_at": null,
+    "close_out_payload_created_at": "2026-05-30T03:47:23.922664",
+    "close_out_payload_deleted_at": null,
+    "close_out_payload_description": "Lazily created on a deposit_event apply targeting COP-121.",
+    "close_out_payload_file_path": "PRDs/product/crmbuilder-v2/close-out-payloads/ses_121.json",
+    "close_out_payload_identifier": "COP-121",
+    "close_out_payload_notes": null,
+    "close_out_payload_ready_at": "2026-05-30T03:47:23.922524",
+    "close_out_payload_status": "applied",
+    "close_out_payload_superseded_at": null,
+    "close_out_payload_title": "COP-121 (lazy)",
+    "close_out_payload_updated_at": "2026-05-30T03:47:23.979860"
   }
 ]

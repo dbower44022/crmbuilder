@@ -1282,5 +1282,17 @@
     "status": "Resolved",
     "title": "Surface planning_item created/updated timestamps in the Planning Items UI panel",
     "updated_at": "2026-05-30T03:05:46.050214"
+  },
+  {
+    "created_at": "2026-05-30T03:47:22.445517",
+    "description": "Make created/last-edited timestamp visibility universal across the V2 desktop UI, realizing REQ-002 and extending PI-107 (commit f690bde, Planning Items panel) to every first-class entity panel. Scope: first-class UI entities only (governance + methodology entities with a browsable panel); subsidiary catalog/edge/log tables excluded. Each in-scope panel gains a formatted Created list column and Created / Last Updated detail rows via the existing ui/widgets/datetime_format.format_timestamp helper; Sessions/Workstreams/Conversations have their raw unformatted updated_at replaced with the formatted value. Immutable/append-only types (deposit_event, reference, topic, charter, status, reference_book_version) render created + an em-dash last-edited and are not given an updated_at column. Storage is already ~95% complete (24/24 carry created_at, 23 carry updated_at); add an Alembic migration only if a browsable type is found lacking a column. Per-panel tests mirror test_planning_items_timestamps.py. Anchored by kickoff WT-057. May be sliced into multiple sessions/commits; the final delivering session resolves this PI.",
+    "executive_summary": "Make created and last-edited timestamps visible across the whole V2 desktop UI, realizing REQ-002 by extending the PI-107 pattern (commit f690bde) from the Planning Items panel to every first-class entity panel. Each in-scope panel gains a formatted Created list column and Created / Last Updated detail rows via the existing datetime_format helper; Sessions/Workstreams/Conversations replace their raw ISO updated_at. Immutable types show created + an em-dash edited and gain no updated_at column. Storage is already near-complete, so this is primarily UI work plus a storage-gap sweep; per-panel tests mirror the PI-107 test. Anchored by kickoff WT-057, may be sliced across sessions.",
+    "id": 108,
+    "identifier": "PI-108",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Surface created/last-edited timestamps for all first-class V2 object types in the UI",
+    "updated_at": "2026-05-30T03:47:22.445520"
   }
 ]

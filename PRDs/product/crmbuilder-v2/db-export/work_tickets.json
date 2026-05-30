@@ -894,5 +894,21 @@
     "work_ticket_superseded_at": null,
     "work_ticket_title": "Kickoff — concurrency for promoted records + substrate validation at scale (opens against PI-100)",
     "work_ticket_updated_at": "2026-05-28T04:11:21.955902"
+  },
+  {
+    "work_ticket_cancelled_at": null,
+    "work_ticket_consumed_at": null,
+    "work_ticket_created_at": "2026-05-30T03:47:22.151506",
+    "work_ticket_deleted_at": null,
+    "work_ticket_description": "Kickoff for PI-108 / REQ-002. Replicate the PI-107 datetime_format helper + list-column + detail-row pattern (commit f690bde) across every first-class entity panel so each shows a formatted Created column and Created / Last Updated detail rows. Replace the raw unformatted updated_at currently shown by Sessions/Workstreams/Conversations. Immutable types (deposit_event, reference, topic, charter, status, reference_book_version) show created + an em-dash last-edited. Confirm no in-scope browsable type lacks a created_at/updated_at column (audit expects none; add a migration only if a gap is found). Per-panel tests mirroring test_planning_items_timestamps.py; full UI suite green. Full task breakdown, batches, and open questions are in the file at work_ticket_file_path.",
+    "work_ticket_file_path": "PRDs/product/crmbuilder-v2/universal-timestamp-visibility-kickoff.md",
+    "work_ticket_identifier": "WT-057",
+    "work_ticket_kind": "kickoff_prompt",
+    "work_ticket_notes": null,
+    "work_ticket_ready_at": "2026-05-30T03:47:22.151741",
+    "work_ticket_status": "ready",
+    "work_ticket_superseded_at": null,
+    "work_ticket_title": "Implement universal created/last-edited timestamp visibility across all entity panels",
+    "work_ticket_updated_at": "2026-05-30T03:47:22.151822"
   }
 ]

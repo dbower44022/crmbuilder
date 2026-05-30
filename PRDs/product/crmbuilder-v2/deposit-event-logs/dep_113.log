@@ -1,0 +1,27 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_121.json
+Label:  SES-121 / CNV-023 close-out — establishes WS-013 + REQ-002 (created directly via API), files PI-108 and its kickoff WT-057. Sets up the universal created/last-edited timestamp visibility work (replicate PI-107 across all entity panels). No code commit, no decisions. Attaches to WS-013. Files PI-108 Open (not resolved). RE-KEYED from SES-120/CNV-022 because an unapplied PI-031 close-out (ses_120.json) already claims SES-120/CNV-022/DEC-332. Identifiers re-verify at apply time.
+Deposit event: DEP-113
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-023 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== work_tickets (1 record) ===
+  ✓ POST work_tickets  WT-057 (HTTP 201)
+
+=== planning_items (1 record) ===
+  ✓ POST planning_items  PI-108 (HTTP 201)
+
+=== references (5 records) ===
+  · POST references  CNV-023 conversation_belongs_to_workstream WS-013 already present (HTTP 409) — skipping
+  ✓ POST references  WT-057 addresses PI-108 (HTTP 201)
+  ✓ POST references  PI-108 is_about REQ-002 (HTTP 201)
+  ✓ POST references  PI-108 is_about WS-013 (HTTP 201)
+  ✓ POST references  REQ-002 is_about WS-013 (HTTP 201)
+
+✓ All 9 operations complete.
+
+✓ Recorded apply as deposit_event DEP-113 (HTTP 201).

@@ -2266,5 +2266,34 @@
     "session_superseded_at": null,
     "session_title": "Implement PI-031 — Commits panel and planning_item resolution chain in the V2 desktop UI",
     "session_updated_at": "2026-05-30T03:45:27.851081"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-30T03:47:21.860208",
+    "session_created_at": "2026-05-30T03:47:21.859890",
+    "session_deleted_at": null,
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-023. Parent workstream WS-013 (Universal created/last-edited timestamp visibility), established this session. Medium: chat (claude_code runner).\n\nSeed: \"Create a new requirement in the V2 system, and a related PI, Workstream and Work Tasks to make sure that every object type in the system has a created datetime and last-edited datetime stored and visible on the UI.\"\n\nThe session is planning/scaffolding only — it authors no implementation code. It first audited timestamp coverage across the V2 schema and UI (delegated explore): the storage side is largely complete (24/24 first-class governance + methodology entities carry created_at; 23 carry updated_at; the created-only set deposit_event/reference/topic/charter/status/reference_book_version is intentional), and the real gap is UI surfacing — only PlanningItemsPanel displays formatted Created/Last Updated (PI-107, commit f690bde), with Sessions/Workstreams/Conversations showing a raw unformatted updated_at and everything else nothing.\n\nTwo scoping decisions were taken with Doug (folded into REQ-002 rather than separate DEC records): (1) scope = first-class UI entities only, excluding subsidiary catalog/edge/log tables; (2) immutable/append-only types surface created + an em-dash last-edited and are not forced to gain an updated_at column.\n\nIdentifier re-keying: at payload-authoring time an unapplied PI-031 close-out (untracked ses_120.json) was found already claiming SES-120, CNV-022, and DEC-332. Per the identifier-collision contingency this session re-keyed itself from SES-120/CNV-022 to SES-121/CNV-023; PI-108 and WT-057 were unaffected (the PI-031 payload creates neither).\n\nRecords created: WS-013 (workstream) and REQ-002 (requirement) via direct API POST per governance-recording-rules section 2 and the methodology-artifact convention; PI-108 (implementation work item) and WT-057 (kickoff_prompt, file PRDs/product/crmbuilder-v2/universal-timestamp-visibility-kickoff.md) via this close-out payload. References tie WT-057 addresses PI-108, PI-108 is_about REQ-002 and WS-013, and REQ-002 is_about WS-013. PI-108 is filed Open for a future implementing session; this session does not resolve it.\n\nNo decisions authored. No code commit (the deliverable is the governance scaffolding + the kickoff document, committed with the regenerated snapshots).",
+    "session_ended_at": null,
+    "session_executive_summary": "Set up the universal created/last-edited timestamp visibility work. Audited V2 timestamp coverage (storage ~95% complete across 24 first-class entities; the gap is UI surfacing — only the Planning Items panel shows formatted timestamps via PI-107/f690bde). Created WS-013 (workstream) and REQ-002 (requirement, MoSCoW must) via direct API POST, and filed PI-108 (implementation work item) plus its kickoff WT-057 via this close-out. Two scoping calls folded into REQ-002: first-class UI entities only; immutable types show created + an em-dash last-edited. Re-keyed from SES-120/CNV-022 to SES-121/CNV-023 because an unapplied PI-031 close-out already claimed those. No code commit, no decisions; PI-108 filed Open for a future implementing session.",
+    "session_identifier": "SES-121",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "model": "claude-opus-4-8",
+      "runner": "claude_code",
+      "surface": "claude_code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.8, Claude Code)"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "Set up universal created/last-edited timestamp visibility — WS-013, REQ-002, PI-108, WT-057",
+    "session_updated_at": "2026-05-30T03:47:21.860314"
   }
 ]

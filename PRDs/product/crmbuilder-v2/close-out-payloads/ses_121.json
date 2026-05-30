@@ -1,0 +1,120 @@
+{
+  "label": "SES-121 / CNV-023 close-out — establishes WS-013 + REQ-002 (created directly via API), files PI-108 and its kickoff WT-057. Sets up the universal created/last-edited timestamp visibility work (replicate PI-107 across all entity panels). No code commit, no decisions. Attaches to WS-013. Files PI-108 Open (not resolved). RE-KEYED from SES-120/CNV-022 because an unapplied PI-031 close-out (ses_120.json) already claims SES-120/CNV-022/DEC-332. Identifiers re-verify at apply time.",
+  "session": {
+    "session_identifier": "SES-121",
+    "session_title": "Set up universal created/last-edited timestamp visibility — WS-013, REQ-002, PI-108, WT-057",
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-023. Parent workstream WS-013 (Universal created/last-edited timestamp visibility), established this session. Medium: chat (claude_code runner).\n\nSeed: \"Create a new requirement in the V2 system, and a related PI, Workstream and Work Tasks to make sure that every object type in the system has a created datetime and last-edited datetime stored and visible on the UI.\"\n\nThe session is planning/scaffolding only — it authors no implementation code. It first audited timestamp coverage across the V2 schema and UI (delegated explore): the storage side is largely complete (24/24 first-class governance + methodology entities carry created_at; 23 carry updated_at; the created-only set deposit_event/reference/topic/charter/status/reference_book_version is intentional), and the real gap is UI surfacing — only PlanningItemsPanel displays formatted Created/Last Updated (PI-107, commit f690bde), with Sessions/Workstreams/Conversations showing a raw unformatted updated_at and everything else nothing.\n\nTwo scoping decisions were taken with Doug (folded into REQ-002 rather than separate DEC records): (1) scope = first-class UI entities only, excluding subsidiary catalog/edge/log tables; (2) immutable/append-only types surface created + an em-dash last-edited and are not forced to gain an updated_at column.\n\nIdentifier re-keying: at payload-authoring time an unapplied PI-031 close-out (untracked ses_120.json) was found already claiming SES-120, CNV-022, and DEC-332. Per the identifier-collision contingency this session re-keyed itself from SES-120/CNV-022 to SES-121/CNV-023; PI-108 and WT-057 were unaffected (the PI-031 payload creates neither).\n\nRecords created: WS-013 (workstream) and REQ-002 (requirement) via direct API POST per governance-recording-rules section 2 and the methodology-artifact convention; PI-108 (implementation work item) and WT-057 (kickoff_prompt, file PRDs/product/crmbuilder-v2/universal-timestamp-visibility-kickoff.md) via this close-out payload. References tie WT-057 addresses PI-108, PI-108 is_about REQ-002 and WS-013, and REQ-002 is_about WS-013. PI-108 is filed Open for a future implementing session; this session does not resolve it.\n\nNo decisions authored. No code commit (the deliverable is the governance scaffolding + the kickoff document, committed with the regenerated snapshots).",
+    "session_medium": "chat",
+    "session_status": "complete",
+    "session_executive_summary": "Set up the universal created/last-edited timestamp visibility work. Audited V2 timestamp coverage (storage ~95% complete across 24 first-class entities; the gap is UI surfacing — only the Planning Items panel shows formatted timestamps via PI-107/f690bde). Created WS-013 (workstream) and REQ-002 (requirement, MoSCoW must) via direct API POST, and filed PI-108 (implementation work item) plus its kickoff WT-057 via this close-out. Two scoping calls folded into REQ-002: first-class UI entities only; immutable types show created + an em-dash last-edited. Re-keyed from SES-120/CNV-022 to SES-121/CNV-023 because an unapplied PI-031 close-out already claimed those. No code commit, no decisions; PI-108 filed Open for a future implementing session.",
+    "session_medium_metadata": {
+      "surface": "claude_code",
+      "runner": "claude_code",
+      "model": "claude-opus-4-8"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.8, Claude Code)"
+    ],
+    "references": [
+      {
+        "source_type": "session",
+        "source_id": "SES-121",
+        "target_type": "workstream",
+        "target_id": "WS-013",
+        "relationship": "session_belongs_to_workstream"
+      }
+    ]
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-023",
+    "conversation_title": "Setting up universal created/last-edited timestamp visibility",
+    "conversation_purpose": "Establish the requirement, workstream, planning item, and kickoff work ticket for making every first-class V2 object type surface created and last-edited timestamps in the UI.",
+    "conversation_description": "Audited timestamp coverage (storage near-complete; UI is the gap, only Planning Items surfaces them per PI-107). Confirmed two scoping decisions with Doug (first-class UI entities only; immutable types show created + em-dash edited). Created WS-013 and REQ-002 via direct API POST; filed PI-108 and kickoff WT-057 via the close-out payload, with references tying them together. Re-keyed from CNV-022 to CNV-023 to avoid the unapplied PI-031 close-out's identifiers. Planning/scaffolding only — no implementation code, no decisions.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-023",
+        "target_type": "session",
+        "target_id": "SES-121",
+        "relationship": "conversation_belongs_to_session"
+      },
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-023",
+        "target_type": "workstream",
+        "target_id": "WS-013",
+        "relationship": "conversation_belongs_to_workstream"
+      }
+    ]
+  },
+  "work_tickets": [
+    {
+      "work_ticket_identifier": "WT-057",
+      "work_ticket_title": "Implement universal created/last-edited timestamp visibility across all entity panels",
+      "work_ticket_description": "Kickoff for PI-108 / REQ-002. Replicate the PI-107 datetime_format helper + list-column + detail-row pattern (commit f690bde) across every first-class entity panel so each shows a formatted Created column and Created / Last Updated detail rows. Replace the raw unformatted updated_at currently shown by Sessions/Workstreams/Conversations. Immutable types (deposit_event, reference, topic, charter, status, reference_book_version) show created + an em-dash last-edited. Confirm no in-scope browsable type lacks a created_at/updated_at column (audit expects none; add a migration only if a gap is found). Per-panel tests mirroring test_planning_items_timestamps.py; full UI suite green. Full task breakdown, batches, and open questions are in the file at work_ticket_file_path.",
+      "work_ticket_kind": "kickoff_prompt",
+      "work_ticket_file_path": "PRDs/product/crmbuilder-v2/universal-timestamp-visibility-kickoff.md",
+      "work_ticket_status": "ready"
+    }
+  ],
+  "planning_items": [
+    {
+      "identifier": "PI-108",
+      "title": "Surface created/last-edited timestamps for all first-class V2 object types in the UI",
+      "item_type": "pending_work",
+      "status": "Open",
+      "description": "Make created/last-edited timestamp visibility universal across the V2 desktop UI, realizing REQ-002 and extending PI-107 (commit f690bde, Planning Items panel) to every first-class entity panel. Scope: first-class UI entities only (governance + methodology entities with a browsable panel); subsidiary catalog/edge/log tables excluded. Each in-scope panel gains a formatted Created list column and Created / Last Updated detail rows via the existing ui/widgets/datetime_format.format_timestamp helper; Sessions/Workstreams/Conversations have their raw unformatted updated_at replaced with the formatted value. Immutable/append-only types (deposit_event, reference, topic, charter, status, reference_book_version) render created + an em-dash last-edited and are not given an updated_at column. Storage is already ~95% complete (24/24 carry created_at, 23 carry updated_at); add an Alembic migration only if a browsable type is found lacking a column. Per-panel tests mirror test_planning_items_timestamps.py. Anchored by kickoff WT-057. May be sliced into multiple sessions/commits; the final delivering session resolves this PI.",
+      "executive_summary": "Make created and last-edited timestamps visible across the whole V2 desktop UI, realizing REQ-002 by extending the PI-107 pattern (commit f690bde) from the Planning Items panel to every first-class entity panel. Each in-scope panel gains a formatted Created list column and Created / Last Updated detail rows via the existing datetime_format helper; Sessions/Workstreams/Conversations replace their raw ISO updated_at. Immutable types show created + an em-dash edited and gain no updated_at column. Storage is already near-complete, so this is primarily UI work plus a storage-gap sweep; per-panel tests mirror the PI-107 test. Anchored by kickoff WT-057, may be sliced across sessions."
+    }
+  ],
+  "commits": [],
+  "decisions": [],
+  "references": [
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-023",
+      "target_type": "session",
+      "target_id": "SES-121",
+      "relationship": "conversation_belongs_to_session"
+    },
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-023",
+      "target_type": "workstream",
+      "target_id": "WS-013",
+      "relationship": "conversation_belongs_to_workstream"
+    },
+    {
+      "source_type": "work_ticket",
+      "source_id": "WT-057",
+      "target_type": "planning_item",
+      "target_id": "PI-108",
+      "relationship": "addresses"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-108",
+      "target_type": "requirement",
+      "target_id": "REQ-002",
+      "relationship": "is_about"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-108",
+      "target_type": "workstream",
+      "target_id": "WS-013",
+      "relationship": "is_about"
+    },
+    {
+      "source_type": "requirement",
+      "source_id": "REQ-002",
+      "target_type": "workstream",
+      "target_id": "WS-013",
+      "relationship": "is_about"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": []
+}
