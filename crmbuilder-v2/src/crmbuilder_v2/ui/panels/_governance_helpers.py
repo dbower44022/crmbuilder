@@ -1,8 +1,10 @@
-"""Shared widget helpers for the v0.7 governance entity panels.
+"""Shared detail-pane widget helpers for the V2 entity panels.
 
-The six governance panels share enough detail-pane scaffolding (heading,
-read-only line/text editors, separators, lifecycle-timestamp section) that
-factoring the helpers here avoids ~30 lines of duplication per panel.
+Originally factored for the six v0.7 governance panels (heading, read-only
+line/text editors, separators, lifecycle-timestamp section); the
+``created_updated_section`` helper (PI-108) is shared by every first-class
+entity panel — governance and methodology alike — so the module is now
+general panel detail scaffolding rather than governance-specific.
 """
 
 from __future__ import annotations
@@ -17,6 +19,8 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QWidget,
 )
+
+from crmbuilder_v2.ui.widgets.datetime_format import format_timestamp
 
 LONG_TEXT_MIN_HEIGHT = 80
 READ_ONLY_STYLE = "color: #444; background: #f4f4f4;"
@@ -59,6 +63,36 @@ def separator() -> QFrame:
     line.setFrameShape(QFrame.Shape.HLine)
     line.setFrameShadow(QFrame.Shadow.Sunken)
     return line
+
+
+def created_updated_section(
+    record: dict,
+    created_field: str,
+    updated_field: str | None = None,
+) -> QWidget:
+    """Return a 'Created' / 'Last Updated' audit-timestamp section (PI-108).
+
+    Renders each value through :func:`format_timestamp` (local
+    ``YYYY-MM-DD HH:MM``, em dash for missing/unparseable). ``created_field``
+    / ``updated_field`` are the record's prefixed column keys (e.g.
+    ``domain_created_at``). Pass ``updated_field=None`` for immutable /
+    append-only types (deposit_event, topic, charter, status, …): the Last
+    Updated row then renders ``—`` and the type keeps no ``updated_at``.
+    """
+    container = QWidget()
+    layout = QFormLayout(container)
+    layout.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
+    layout.setContentsMargins(0, 0, 0, 0)
+    created = QLabel(format_timestamp(record.get(created_field)))
+    created.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+    created.setStyleSheet(READ_ONLY_STYLE)
+    layout.addRow("Created", created)
+    updated_value = record.get(updated_field) if updated_field else None
+    updated = QLabel(format_timestamp(updated_value))
+    updated.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+    updated.setStyleSheet(READ_ONLY_STYLE)
+    layout.addRow("Last Updated", updated)
+    return container
 
 
 def lifecycle_timestamps_section(

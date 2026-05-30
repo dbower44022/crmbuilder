@@ -38,6 +38,7 @@ from PySide6.QtWidgets import (
 from crmbuilder_v2.ui.base.list_detail_panel import ColumnSpec, ListDetailPanel
 from crmbuilder_v2.ui.exceptions import StorageClientError, StorageConnectionError
 from crmbuilder_v2.ui.panels._governance_helpers import (
+    created_updated_section,
     heading_label,
     read_only_line,
     read_only_text,
@@ -298,6 +299,15 @@ class CommitsPanel(ListDetailPanel):
                 read_only_line(", ".join(p[:10] for p in parents)),
             )
         outer.addLayout(form)
+
+        # PI-108: governance record audit timestamps (distinct from the git
+        # commit_committed_at shown above — these are when the commit record
+        # was ingested/last edited in the V2 DB).
+        outer.addWidget(separator())
+        outer.addWidget(QLabel("<b>Record timestamps</b>"))
+        outer.addWidget(
+            created_updated_section(record, "commit_created_at", "commit_updated_at")
+        )
 
         outer.addWidget(separator())
         outer.addWidget(QLabel("<b>Commit message</b>"))
