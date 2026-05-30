@@ -79,6 +79,9 @@ SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "Work Tickets",
             "Close-Out Payloads",
             "Deposit Events",
+            # PI-031: code change lifecycle browse surface, appended after
+            # Deposit Events per the DEC-163 governance-group convention.
+            "Commits",
         ),
     ),
     (

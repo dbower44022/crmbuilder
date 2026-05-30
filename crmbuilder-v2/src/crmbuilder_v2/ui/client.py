@@ -2519,3 +2519,96 @@ class StorageClient:
         return self._next_identifier_for(
             "deposit-events", "next_deposit_event_identifier"
         )
+
+    # ----- commits (read-only in the UI; ingested via close-out) ------------
+    # PI-031: the Commits panel browses commits and the planning_items
+    # resolution chain walks session -> commits. Commits are documentary
+    # records ingested through close-out payloads (DEC-185); the UI exposes
+    # no write path, only these read accessors.
+
+    def list_commits(
+        self,
+        *,
+        include_deleted: bool = False,
+        commit_repository: str | None = None,
+        commit_session_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return commits, newest first (API default sort per DEC-214).
+
+        ``commit_repository`` / ``commit_session_id`` map to the server-side
+        list filters; the Commits panel additionally filters client-side.
+        """
+        params: list[str] = []
+        if include_deleted:
+            params.append("include_deleted=true")
+        if commit_repository:
+            params.append(f"commit_repository={commit_repository}")
+        if commit_session_id:
+            params.append(f"commit_session_id={commit_session_id}")
+        path = "/commits" + ("?" + "&".join(params) if params else "")
+        return self._expect_list(self._request("GET", path))
+
+    def get_commit(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("GET", f"/commits/{identifier}"),
+            op="get_commit",
+        )
+
+    def list_commits_for_session(
+        self, session_identifier: str
+    ) -> list[dict[str, Any]]:
+        """Commits attributed to a session (PI-073 session-grain, DEC-211 successor)."""
+        return self._expect_list(
+            self._request("GET", f"/sessions/{session_identifier}/commits")
+        )
+
+    def find_commit_by_sha(self, sha: str) -> tuple[str, Any]:
+        """Natural-key SHA lookup with four-case behavior (DEC-213).
+
+        Returns one of:
+
+        * ``("found", record)`` — full-SHA hit or unambiguous prefix
+        * ``("not_found", None)`` — 404 miss
+        * ``("ambiguous", candidates)`` — 409, ``candidates`` is the list
+          of candidate SHA strings (possibly empty if the body omits them)
+
+        Implemented against the raw client because the ``/by-sha`` endpoint
+        returns FastAPI's ``{"detail": ...}`` shape (status-bearing,
+        non-envelope), so the typed-exception path would discard the
+        409 candidate list.
+        """
+        try:
+            resp = self._client.request("GET", f"/commits/by-sha/{sha}")
+        except (
+            httpx.ConnectError,
+            httpx.ConnectTimeout,
+            httpx.ReadTimeout,
+            httpx.ReadError,
+            httpx.NetworkError,
+        ) as exc:
+            raise StorageConnectionError(
+                message=str(exc) or exc.__class__.__name__, original=exc
+            ) from exc
+        if resp.status_code == 404:
+            return ("not_found", None)
+        if resp.status_code == 409:
+            candidates: list[str] = []
+            try:
+                detail = resp.json().get("detail") or {}
+                if isinstance(detail, dict):
+                    candidates = list(detail.get("candidates") or [])
+            except (json.JSONDecodeError, ValueError):
+                candidates = []
+            return ("ambiguous", candidates)
+        if 200 <= resp.status_code < 300:
+            try:
+                body = resp.json()
+            except (json.JSONDecodeError, ValueError) as exc:
+                raise ServerError(
+                    status_code=resp.status_code,
+                    errors=[],
+                    message="by-sha body was not parseable JSON",
+                ) from exc
+            record = body.get("data") if isinstance(body, dict) else None
+            return ("found", record)
+        raise from_response(resp)

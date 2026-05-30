@@ -235,6 +235,19 @@ class ReferencesSection(QWidget):
         button_row.addStretch(1)
         layout.addLayout(button_row)
 
+    def set_add_enabled(self, enabled: bool) -> None:
+        """Show or hide the Add-reference affordance.
+
+        Read-only sections (audit-log panels like Deposit Events and the
+        PI-031 Commits panel, where records are ingested via close-out
+        rather than authored in the UI) call ``set_add_enabled(False)``
+        after construction to suppress the button. No-op when the section
+        was built without a client (the button was never rendered).
+        """
+        button = getattr(self, "_add_button", None)
+        if button is not None:
+            button.setVisible(enabled)
+
     def _heading(self, text: str) -> QLabel:
         label = QLabel(text)
         label.setObjectName("references_section_heading")

@@ -37,6 +37,7 @@ from crmbuilder_v2.ui.crash_banner import CrashBanner
 from crmbuilder_v2.ui.panels.charter import CharterPanel
 from crmbuilder_v2.ui.panels.chat import ChatPanel
 from crmbuilder_v2.ui.panels.close_out_payloads import CloseOutPayloadsPanel
+from crmbuilder_v2.ui.panels.commits import CommitsPanel
 from crmbuilder_v2.ui.panels.conversations import ConversationsPanel
 from crmbuilder_v2.ui.panels.crm_candidates import CrmCandidatesPanel
 from crmbuilder_v2.ui.panels.decisions import DecisionsPanel
@@ -106,6 +107,8 @@ ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
     "work_ticket": "Work Tickets",
     "close_out_payload": "Close-Out Payloads",
     "deposit_event": "Deposit Events",
+    # PI-031: code change lifecycle.
+    "commit": "Commits",
 }
 
 
@@ -216,6 +219,8 @@ class MainWindow(QMainWindow):
                 page = CloseOutPayloadsPanel(self._client)
             elif entry == "Deposit Events":
                 page = DepositEventsPanel(self._client)
+            elif entry == "Commits":
+                page = CommitsPanel(self._client)
             else:
                 placeholder = QLabel(
                     f"Panel for {entry} — not yet implemented."

@@ -126,11 +126,73 @@ class PlanningItemsPanel(ListDetailPanel):
         identifier = record.get("identifier")
         if not identifier:
             return {"references": {"as_source": [], "as_target": []}}
-        return {
-            "references": self._client.list_references_touching(
-                "planning_item", identifier
-            ),
-        }
+        touching = self._client.list_references_touching(
+            "planning_item", identifier
+        )
+        extras: dict[str, Any] = {"references": touching}
+        # PI-031: for a resolved item, trace the governance chain back to
+        # the delivering commits. Runs on the worker thread (this method),
+        # so the extra client calls are safe.
+        if (record.get("status") or "") == "Resolved":
+            extras["resolution_chain"] = self._build_resolution_chain(touching)
+        return extras
+
+    def _build_resolution_chain(
+        self, touching: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Trace PI ←resolves← conversation → (deposit_event) → session → commits.
+
+        Adapts PI-031's pre-PI-073 chain (which assumed
+        ``commit_resolves_planning_item`` / close_out_payload edges) to the
+        current session-grain schema, where resolution is a ``resolves``
+        edge from a conversation and commits attribute to that
+        conversation's session. Returns ``{"traced": False}`` for legacy
+        manual status flips that carry no ``resolves`` edge.
+        """
+        resolvers = [
+            r
+            for r in (touching.get("as_target") or [])
+            if (r.get("relationship") == "resolves")
+            and r.get("source_type") == "conversation"
+        ]
+        if not resolvers:
+            return {"traced": False}
+
+        links: list[dict[str, Any]] = []
+        for ref in resolvers:
+            conv_id = ref.get("source_id") or ""
+            session_id = ""
+            deposit_id = ""
+            commits: list[dict[str, str]] = []
+            if conv_id:
+                conv_touching = self._client.list_references_touching(
+                    "conversation", conv_id
+                )
+                for edge in conv_touching.get("as_source") or []:
+                    if edge.get("relationship") == "conversation_belongs_to_session":
+                        session_id = edge.get("target_id") or ""
+                        break
+                for edge in conv_touching.get("as_target") or []:
+                    if edge.get("relationship") == "deposit_event_wrote_record":
+                        deposit_id = edge.get("source_id") or ""
+                        break
+            if session_id:
+                commits = [
+                    {
+                        "identifier": c.get("commit_identifier") or "",
+                        "first_line": c.get("commit_message_first_line") or "",
+                    }
+                    for c in self._client.list_commits_for_session(session_id)
+                ]
+            links.append(
+                {
+                    "conversation": conv_id,
+                    "deposit_event": deposit_id,
+                    "session": session_id,
+                    "commits": commits,
+                }
+            )
+        return {"traced": True, "links": links}
 
     def render_detail(
         self, record: dict[str, Any], extras: dict[str, Any]
@@ -203,6 +265,13 @@ class PlanningItemsPanel(ListDetailPanel):
         outer.addWidget(_label("Description", bold=True))
         outer.addWidget(_long_text(record.get("description") or ""))
 
+        # PI-031: resolution chain for resolved items.
+        chain = extras.get("resolution_chain")
+        if chain is not None:
+            outer.addWidget(_separator())
+            outer.addWidget(_label("Resolution chain", bold=True))
+            outer.addWidget(self._render_resolution_chain(chain))
+
         outer.addWidget(_separator())
         identifier = record.get("identifier") or ""
         references_section = ReferencesSection(
@@ -218,6 +287,76 @@ class PlanningItemsPanel(ListDetailPanel):
         outer.addStretch(1)
         scroll.setWidget(container)
         return scroll
+
+    # ------------------------------------------------------------------
+    # Resolution chain (PI-031)
+    # ------------------------------------------------------------------
+
+    def _chain_link(self, prefix: str, entity_type: str, identifier: str) -> QLabel:
+        """A '{prefix}: <link>' row that navigates on click; dim if no id."""
+        if identifier:
+            label = QLabel(
+                f'{prefix}: <a href="{entity_type}:{identifier}">{identifier}</a>'
+            )
+            label.setTextFormat(Qt.TextFormat.RichText)
+            label.linkActivated.connect(self._emit_link_navigation)
+        else:
+            label = _label(f"{prefix}: —", dim=True)
+        return label
+
+    def _render_resolution_chain(self, chain: dict[str, Any]) -> QWidget:
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+
+        if not chain.get("traced"):
+            # Legacy manual status flip with no resolves edge (PI-033).
+            note = QLabel(
+                "Resolved without a governance trace "
+                '(see <a href="planning_item:PI-033">PI-033</a>).'
+            )
+            note.setTextFormat(Qt.TextFormat.RichText)
+            note.setWordWrap(True)
+            note.linkActivated.connect(self._emit_link_navigation)
+            layout.addWidget(note)
+            return container
+
+        links = chain.get("links") or []
+        for index, link in enumerate(links):
+            if index > 0:
+                layout.addWidget(_separator())
+            layout.addWidget(
+                self._chain_link(
+                    "Resolving conversation", "conversation", link.get("conversation") or ""
+                )
+            )
+            layout.addWidget(
+                self._chain_link(
+                    "Applied via", "deposit_event", link.get("deposit_event") or ""
+                )
+            )
+            layout.addWidget(
+                self._chain_link(
+                    "Produced in session", "session", link.get("session") or ""
+                )
+            )
+            commits = link.get("commits") or []
+            if commits:
+                layout.addWidget(_label("Commits:", bold=True))
+                for c in commits:
+                    ident = c.get("identifier") or ""
+                    first = c.get("first_line") or ""
+                    row = QLabel(
+                        f'• <a href="commit:{ident}">{ident}</a> — {first}'
+                    )
+                    row.setTextFormat(Qt.TextFormat.RichText)
+                    row.setWordWrap(True)
+                    row.linkActivated.connect(self._emit_link_navigation)
+                    layout.addWidget(row)
+            else:
+                layout.addWidget(_label("Commits: (none recorded)", dim=True))
+        return container
 
     # ------------------------------------------------------------------
     # Right-click context menu (v0.3 — DEC-036)

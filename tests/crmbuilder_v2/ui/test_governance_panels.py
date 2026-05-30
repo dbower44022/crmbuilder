@@ -94,17 +94,20 @@ def _make_session(client: StorageClient) -> str:
 
 
 def test_sidebar_governance_group_appends_six_new_entries():
+    six = (
+        "Workstreams",
+        "Conversations",
+        "Reference Books",
+        "Work Tickets",
+        "Close-Out Payloads",
+        "Deposit Events",
+    )
     for label, entries in SIDEBAR_GROUPS:
         if label == "Governance":
-            tail = entries[-6:]
-            assert tail == (
-                "Workstreams",
-                "Conversations",
-                "Reference Books",
-                "Work Tickets",
-                "Close-Out Payloads",
-                "Deposit Events",
-            )
+            # The six v0.7 entries are contiguous and end at "Deposit
+            # Events"; PI-031 later appended "Commits" after them.
+            idx = entries.index("Deposit Events")
+            assert entries[idx - 5 : idx + 1] == six
             return
     raise AssertionError("Governance group not found in sidebar")
 
