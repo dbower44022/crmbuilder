@@ -277,6 +277,43 @@ def create(
                 ]
             )
 
+    # PI-109: enforce the work_ticket single-use rule at the edge level
+    # so it fires regardless of the target's current status. A work_ticket
+    # admits at most one inbound consumption edge of either kind
+    # (legacy `conversation_opens_against_work_ticket` or post-PI-073
+    # `session_opens_against_work_ticket`); the downstream
+    # ``_validate_edges`` check in work_tickets.py is reached only via the
+    # PATCH path and via the auto-consume side-effect below, neither of
+    # which fires when the target is already terminal — so without this
+    # pre-insert guard a second opens edge against a consumed/cancelled/
+    # superseded work_ticket would silently land.
+    if relationship in {
+        "session_opens_against_work_ticket",
+        "conversation_opens_against_work_ticket",
+    } and target_type == "work_ticket":
+        existing_consumption = session.scalar(
+            select(func.count(Reference.id)).where(
+                Reference.target_type == "work_ticket",
+                Reference.target_id == target_id,
+                Reference.relationship_kind.in_(
+                    [
+                        "session_opens_against_work_ticket",
+                        "conversation_opens_against_work_ticket",
+                    ]
+                ),
+            )
+        )
+        if existing_consumption and existing_consumption > 0:
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "references",
+                        "work_ticket_single_use_violation",
+                        "a work_ticket admits at most one consumption edge",
+                    )
+                ]
+            )
+
     # PI-010 / DEC-291: `entity_variant_of_entity` is many-to-one at
     # the source side — an entity may be a variant of at most one
     # other entity. Reject a second outgoing edge of this kind from
@@ -363,6 +400,44 @@ def create(
         target_record = planning_items.get(session, target_id)
         if target_record["status"] != "Resolved":
             planning_items.update(session, target_id, status="Resolved")
+    # PI-109: atomic edge + status flip for the two opens-against kinds.
+    # When a session/conversation opens against a work_ticket, the act of
+    # opening IS the consumption: the work_ticket transitions ready →
+    # consumed in the same transaction (mirror of the resolves-edge flip
+    # above). Only fires when the target is exactly at `ready`; drafted,
+    # terminal-state, soft-deleted, and missing targets are no-ops so the
+    # side-effect never invents an illegal transition. The single-use
+    # rule is enforced downstream by `_validate_edges` in work_tickets.py,
+    # which sees both the just-inserted reference and any prior consume
+    # edge under either kind and raises `work_ticket_single_use_violation`
+    # before the row commits.
+    if relationship in {
+        "session_opens_against_work_ticket",
+        "conversation_opens_against_work_ticket",
+    }:
+        from crmbuilder_v2.access.repositories import work_tickets
+        wt_row = work_tickets._get_row(session, target_id)
+        if (
+            wt_row.work_ticket_deleted_at is None
+            and wt_row.work_ticket_status == "ready"
+        ):
+            wt_before = to_dict(wt_row)
+            wt_row.work_ticket_status = "consumed"
+            from crmbuilder_v2.access.repositories import _governance as gov
+            gov.set_status_timestamp(
+                wt_row, "consumed", work_tickets._STATUS_TIMESTAMP
+            )
+            session.flush()
+            work_tickets._validate_edges(session, target_id, "consumed")
+            wt_after = to_dict(wt_row)
+            emit(
+                session,
+                entity_type="work_ticket",
+                entity_identifier=target_id,
+                operation="update",
+                before=wt_before,
+                after=wt_after,
+            )
     emit(
         session,
         entity_type=_ENTITY_TYPE,

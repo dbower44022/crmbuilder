@@ -9,11 +9,13 @@ from crmbuilder_v2.access.exceptions import (
     NotFoundError,
     ValidationError,
 )
+from crmbuilder_v2.access.exceptions import UnprocessableError
 from crmbuilder_v2.access.repositories import (
     conversations as cr,
     planning_items as pi,
     references,
     sessions as se,
+    work_tickets as wt,
     workstreams as ws,
 )
 
@@ -303,3 +305,169 @@ class TestResolvesStatusFlip:
         with session_scope() as s:
             row = pi.get(s, pi_id)
         assert row["status"] == "Open"
+
+
+class TestOpensAgainstStatusFlip:
+    """PI-109: POST /references with relationship=session_opens_against_work_ticket
+    or =conversation_opens_against_work_ticket flips a target work_ticket
+    from `ready` to `consumed` in the same transaction. Mirror of the
+    slice-A `resolves` → planning_item pattern in TestResolvesStatusFlip
+    above. Closes the drift that left WT-049..054 stuck at ready after
+    SES-082..086 shipped (commit 2c9759d retired the data; this side-
+    effect retires the manual PATCH step those apply prompts had
+    implicitly relied on)."""
+
+    @staticmethod
+    def _ws_ses_conv(s, identifier):
+        """Build the PI-073 workstream <- session <- conversation chain
+        used by every test in this class."""
+        wid = ws.create_workstream(
+            s, name="WS " + identifier, purpose="p", description="d"
+        )["workstream_identifier"]
+        ses_id = "SES-" + identifier.split("-", 1)[1]
+        se.create_session(
+            s,
+            title="Session " + identifier,
+            description="d",
+            medium="chat",
+            executive_summary=_EXEC_SUMMARY,
+            identifier=ses_id,
+            references=[{
+                "source_type": "session", "source_id": ses_id,
+                "target_type": "workstream", "target_id": wid,
+                "relationship": "session_belongs_to_workstream",
+            }],
+        )
+        cr.create_conversation(
+            s, title="Conv " + identifier, purpose="p", description="d",
+            identifier=identifier,
+            references=[{
+                "source_type": "conversation", "source_id": identifier,
+                "target_type": "session", "target_id": ses_id,
+                "relationship": "conversation_belongs_to_session",
+            }],
+        )
+        return ses_id, identifier
+
+    @staticmethod
+    def _ready_wt(s, title="OA-Test WT"):
+        """Create a work_ticket and walk it to `ready` (the only status
+        from which the auto-consume side-effect fires)."""
+        wt.create_work_ticket(
+            s, title=title, description="d", kind="kickoff_prompt",
+            file_path="PRDs/oa.md",
+        )
+        wt.patch_work_ticket(s, "WT-001", status="ready")
+        return "WT-001"
+
+    def test_session_opens_against_flips_ready_to_consumed(self, v2_env):
+        """Happy path: session_opens_against_work_ticket against a ready
+        target flips status to consumed without an explicit PATCH."""
+        with session_scope() as s:
+            ses_id, _ = self._ws_ses_conv(s, "CNV-981")
+            wt_id = self._ready_wt(s)
+        with session_scope() as s:
+            references.create(
+                s,
+                source_type="session", source_id=ses_id,
+                target_type="work_ticket", target_id=wt_id,
+                relationship="session_opens_against_work_ticket",
+            )
+        with session_scope() as s:
+            row = wt.get_work_ticket(s, wt_id)
+        assert row["work_ticket_status"] == "consumed"
+        assert row["work_ticket_consumed_at"]
+
+    def test_conversation_opens_against_flips_ready_to_consumed(self, v2_env):
+        """Same flip semantics for the legacy kind. Both kinds remain
+        valid edges (vocab.py registers both); the side-effect treats
+        them identically."""
+        with session_scope() as s:
+            _, conv_id = self._ws_ses_conv(s, "CNV-982")
+            wt_id = self._ready_wt(s)
+        with session_scope() as s:
+            references.create(
+                s,
+                source_type="conversation", source_id=conv_id,
+                target_type="work_ticket", target_id=wt_id,
+                relationship="conversation_opens_against_work_ticket",
+            )
+        with session_scope() as s:
+            row = wt.get_work_ticket(s, wt_id)
+        assert row["work_ticket_status"] == "consumed"
+
+    def test_drafted_target_no_flip(self, v2_env):
+        """Side-effect must not fire when the work_ticket is at `drafted`;
+        drafted → consumed isn't a valid transition and the edge is
+        a legitimate authoring-time link (the kickoff_prompt was
+        attached before the ticket was marked ready)."""
+        with session_scope() as s:
+            ses_id, _ = self._ws_ses_conv(s, "CNV-983")
+            wt.create_work_ticket(
+                s, title="Drafted WT", description="d",
+                kind="kickoff_prompt", file_path="PRDs/oa-drafted.md",
+            )
+        with session_scope() as s:
+            references.create(
+                s,
+                source_type="session", source_id=ses_id,
+                target_type="work_ticket", target_id="WT-001",
+                relationship="session_opens_against_work_ticket",
+            )
+        with session_scope() as s:
+            row = wt.get_work_ticket(s, "WT-001")
+        assert row["work_ticket_status"] == "drafted"
+        assert row["work_ticket_consumed_at"] is None
+
+    def test_already_consumed_target_no_double_flip(self, v2_env):
+        """Idempotency: a second opens-against edge against an already-
+        consumed work_ticket is rejected by the single-use rule (the
+        edge insertion itself fails before the side-effect would run),
+        so the consumed_at timestamp is preserved."""
+        with session_scope() as s:
+            ses_id, conv_id = self._ws_ses_conv(s, "CNV-984")
+            wt_id = self._ready_wt(s)
+        with session_scope() as s:
+            references.create(
+                s,
+                source_type="session", source_id=ses_id,
+                target_type="work_ticket", target_id=wt_id,
+                relationship="session_opens_against_work_ticket",
+            )
+        with session_scope() as s:
+            row = wt.get_work_ticket(s, wt_id)
+            first_consumed_at = row["work_ticket_consumed_at"]
+        # Second opens edge of the OTHER kind from a different source —
+        # the single-use rule sees both kinds and raises.
+        with session_scope() as s, pytest.raises(UnprocessableError) as exc:
+            references.create(
+                s,
+                source_type="conversation", source_id=conv_id,
+                target_type="work_ticket", target_id=wt_id,
+                relationship="conversation_opens_against_work_ticket",
+            )
+        assert exc.value.errors[0].code == "work_ticket_single_use_violation"
+        with session_scope() as s:
+            row = wt.get_work_ticket(s, wt_id)
+        assert row["work_ticket_status"] == "consumed"
+        assert row["work_ticket_consumed_at"] == first_consumed_at
+
+    def test_soft_deleted_target_no_flip(self, v2_env):
+        """A soft-deleted work_ticket is not in the active corpus; the
+        side-effect skips it (the get_row lookup still finds the row but
+        the deleted_at guard prevents the flip)."""
+        with session_scope() as s:
+            ses_id, _ = self._ws_ses_conv(s, "CNV-985")
+            wt_id = self._ready_wt(s)
+            wt.delete_work_ticket(s, wt_id)
+        with session_scope() as s:
+            references.create(
+                s,
+                source_type="session", source_id=ses_id,
+                target_type="work_ticket", target_id=wt_id,
+                relationship="session_opens_against_work_ticket",
+            )
+        with session_scope() as s:
+            row = wt.get_work_ticket(s, wt_id, include_deleted=True)
+        assert row["work_ticket_status"] == "ready"
+        assert row["work_ticket_consumed_at"] is None
