@@ -1,0 +1,91 @@
+{
+  "label": "SES-124 / CNV-026 close-out — governance backfill: author WT-059 (kickoff_prompt for PI-107) and WT-060 (kickoff_prompt for PI-031), each with an addresses edge to its PI, completing the ad-hoc-implemented PIs' kickoff-ticket trail. No code change, no decisions. Attaches to WS-011. Identifiers re-verify at apply time.",
+  "session": {
+    "session_identifier": "SES-124",
+    "session_title": "Backfill the PI-107 and PI-031 kickoff work tickets (WT-059, WT-060)",
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-026. Parent workstream WS-011 (V2 storage API refinements). Medium: chat (claude_code runner).\n\nSeed: \"fix the other PI\".\n\nContext: PI-107 and PI-031 (like PI-101, backfilled in SES-123) were selected ad hoc in conversation and implemented directly from their planning-item descriptions, so neither had a kickoff work ticket anchoring it — the standard v2 lifecycle anchors a unit of work as a planning_item plus an associated work_ticket of kind kickoff_prompt with an addresses edge to the PI. Doug asked to fix the remaining two.\n\nDelivered (mirrors the SES-123 / WT-058 backfill pattern):\n- Authored two retroactive kickoff documents, each clearly marked as a backfill: PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-kickoff-pi-107.md and CLAUDE-CODE-PROMPT-kickoff-pi-031.md, summarizing each PI's goal, scope, acceptance, and resolution.\n- Created work_ticket WT-059 (kind kickoff_prompt, status ready) for PI-107 — surface planning_item created/updated timestamps in the UI (commit f690bde, resolved by SES-118 / CNV-020) — with an addresses edge to PI-107.\n- Created work_ticket WT-060 (kind kickoff_prompt, status ready) for PI-031 — Commits panel + planning_item resolution chain, schema-reconciled by DEC-332 (commit f5381966, resolved by SES-120 / CNV-022) — with an addresses edge to PI-031.\n\nGovernance-only backfill: no code changed and no decisions authored. The work_tickets and their addresses edges land via this close-out payload (the sanctioned path; creation goes through apply_close_out, not direct POST), which is itself checked by the PI-101 pre-flight validator at apply time. PI-107 and PI-031 remain Resolved; this session neither resolves nor addresses them at the session level — each WT carries the addresses edge. With WT-058 (SES-123), all three ad-hoc-implemented PIs this conversation produced now have the standard kickoff-ticket trail.",
+    "session_medium": "chat",
+    "session_status": "complete",
+    "session_executive_summary": "Governance backfill completing the kickoff-ticket trail for the two remaining ad-hoc-implemented PIs (after PI-101 / WT-058 in SES-123). Authored two retroactive kickoff documents and created work_ticket WT-059 (kickoff_prompt, ready) for PI-107 — surface planning_item timestamps in the UI — and WT-060 (kickoff_prompt, ready) for PI-031 — Commits panel + resolution chain — each with an addresses reference edge to its planning item. No code changed and no decisions were authored; a pure governance record backfill delivered via close-out payload and validated by the PI-101 pre-flight checks. PI-107 and PI-031 remain Resolved; all three PIs from this conversation now carry the standard planning_item -> work_ticket -> session trail.",
+    "session_medium_metadata": {
+      "surface": "claude_code",
+      "runner": "claude_code",
+      "model": "claude-opus-4-8"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.8, Claude Code)"
+    ],
+    "references": [
+      {
+        "source_type": "session",
+        "source_id": "SES-124",
+        "target_type": "workstream",
+        "target_id": "WS-011",
+        "relationship": "session_belongs_to_workstream"
+      }
+    ]
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-026",
+    "conversation_title": "Backfilling the PI-107 and PI-031 kickoff work tickets",
+    "conversation_purpose": "Supply the missing kickoff work tickets for PI-107 and PI-031 so each has the standard planning_item -> work_ticket -> session governance trail.",
+    "conversation_description": "Authored retroactive kickoff docs for PI-107 and PI-031 and created WT-059 (kickoff_prompt, ready, addresses PI-107) and WT-060 (kickoff_prompt, ready, addresses PI-031). Governance-only backfill; no code change, no decisions.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-026",
+        "target_type": "session",
+        "target_id": "SES-124",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [
+    {
+      "work_ticket_identifier": "WT-059",
+      "work_ticket_title": "Kickoff — PI-107: surface planning_item timestamps in the UI",
+      "work_ticket_description": "Retroactively-authored kickoff ticket anchoring PI-107 (surface planning_item created/updated timestamps in the Planning Items UI panel). Backfilled on 2026-05-30 because PI-107 was implemented ad hoc without a kickoff ticket; the work shipped in commit f690bde and was resolved by SES-118 / CNV-020. Authored in 'ready' status per the kickoff_prompt convention. Addresses PI-107.",
+      "work_ticket_kind": "kickoff_prompt",
+      "work_ticket_file_path": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-kickoff-pi-107.md",
+      "work_ticket_status": "ready"
+    },
+    {
+      "work_ticket_identifier": "WT-060",
+      "work_ticket_title": "Kickoff — PI-031: commits panel + planning_item resolution chain",
+      "work_ticket_description": "Retroactively-authored kickoff ticket anchoring PI-031 (commits panel + planning_item resolution chain in the V2 desktop UI). Backfilled on 2026-05-30 because PI-031 was implemented ad hoc without a kickoff ticket; the work shipped in commit f5381966 (schema reconciliation in DEC-332) and was resolved by SES-120 / CNV-022. Authored in 'ready' status per the kickoff_prompt convention. Addresses PI-031.",
+      "work_ticket_kind": "kickoff_prompt",
+      "work_ticket_file_path": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-kickoff-pi-031.md",
+      "work_ticket_status": "ready"
+    }
+  ],
+  "planning_items": [],
+  "commits": [],
+  "decisions": [],
+  "references": [
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-026",
+      "target_type": "session",
+      "target_id": "SES-124",
+      "relationship": "conversation_belongs_to_session"
+    },
+    {
+      "source_type": "work_ticket",
+      "source_id": "WT-059",
+      "target_type": "planning_item",
+      "target_id": "PI-107",
+      "relationship": "addresses"
+    },
+    {
+      "source_type": "work_ticket",
+      "source_id": "WT-060",
+      "target_type": "planning_item",
+      "target_id": "PI-031",
+      "relationship": "addresses"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": []
+}

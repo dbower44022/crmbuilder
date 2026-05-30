@@ -926,5 +926,37 @@
     "work_ticket_superseded_at": null,
     "work_ticket_title": "Kickoff — PI-101: harden the close-out pre-flight validator",
     "work_ticket_updated_at": "2026-05-30T04:11:58.221878"
+  },
+  {
+    "work_ticket_cancelled_at": null,
+    "work_ticket_consumed_at": null,
+    "work_ticket_created_at": "2026-05-30T04:17:56.601345",
+    "work_ticket_deleted_at": null,
+    "work_ticket_description": "Retroactively-authored kickoff ticket anchoring PI-107 (surface planning_item created/updated timestamps in the Planning Items UI panel). Backfilled on 2026-05-30 because PI-107 was implemented ad hoc without a kickoff ticket; the work shipped in commit f690bde and was resolved by SES-118 / CNV-020. Authored in 'ready' status per the kickoff_prompt convention. Addresses PI-107.",
+    "work_ticket_file_path": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-kickoff-pi-107.md",
+    "work_ticket_identifier": "WT-059",
+    "work_ticket_kind": "kickoff_prompt",
+    "work_ticket_notes": null,
+    "work_ticket_ready_at": "2026-05-30T04:17:56.601608",
+    "work_ticket_status": "ready",
+    "work_ticket_superseded_at": null,
+    "work_ticket_title": "Kickoff — PI-107: surface planning_item timestamps in the UI",
+    "work_ticket_updated_at": "2026-05-30T04:17:56.601692"
+  },
+  {
+    "work_ticket_cancelled_at": null,
+    "work_ticket_consumed_at": null,
+    "work_ticket_created_at": "2026-05-30T04:17:56.919066",
+    "work_ticket_deleted_at": null,
+    "work_ticket_description": "Retroactively-authored kickoff ticket anchoring PI-031 (commits panel + planning_item resolution chain in the V2 desktop UI). Backfilled on 2026-05-30 because PI-031 was implemented ad hoc without a kickoff ticket; the work shipped in commit f5381966 (schema reconciliation in DEC-332) and was resolved by SES-120 / CNV-022. Authored in 'ready' status per the kickoff_prompt convention. Addresses PI-031.",
+    "work_ticket_file_path": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-kickoff-pi-031.md",
+    "work_ticket_identifier": "WT-060",
+    "work_ticket_kind": "kickoff_prompt",
+    "work_ticket_notes": null,
+    "work_ticket_ready_at": "2026-05-30T04:17:56.919288",
+    "work_ticket_status": "ready",
+    "work_ticket_superseded_at": null,
+    "work_ticket_title": "Kickoff — PI-031: commits panel + planning_item resolution chain",
+    "work_ticket_updated_at": "2026-05-30T04:17:56.919373"
   }
 ]

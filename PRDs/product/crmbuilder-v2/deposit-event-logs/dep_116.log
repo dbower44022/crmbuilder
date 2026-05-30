@@ -1,0 +1,22 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_124.json
+Label:  SES-124 / CNV-026 close-out — governance backfill: author WT-059 (kickoff_prompt for PI-107) and WT-060 (kickoff_prompt for PI-031), each with an addresses edge to its PI, completing the ad-hoc-implemented PIs' kickoff-ticket trail. No code change, no decisions. Attaches to WS-011. Identifiers re-verify at apply time.
+Deposit event: DEP-116
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-026 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== work_tickets (2 records) ===
+  ✓ POST work_tickets  WT-059 (HTTP 201)
+  ✓ POST work_tickets  WT-060 (HTTP 201)
+
+=== references (2 records) ===
+  ✓ POST references  WT-059 addresses PI-107 (HTTP 201)
+  ✓ POST references  WT-060 addresses PI-031 (HTTP 201)
+
+✓ All 6 operations complete.
+
+✓ Recorded apply as deposit_event DEP-116 (HTTP 201).
