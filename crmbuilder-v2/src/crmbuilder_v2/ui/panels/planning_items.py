@@ -38,6 +38,7 @@ from crmbuilder_v2.ui.exceptions import (
     StorageClientError,
     StorageConnectionError,
 )
+from crmbuilder_v2.ui.widgets.datetime_format import format_timestamp
 from crmbuilder_v2.ui.widgets.form_helpers import (
     destructive_button,
     primary_button,
@@ -103,7 +104,14 @@ class PlanningItemsPanel(ListDetailPanel):
         return "Planning Items"
 
     def fetch_records(self) -> list[dict[str, Any]]:
-        return self._client.list_planning_items()
+        records = self._client.list_planning_items()
+        # PI-107: synthetic display field so the "Created" list column
+        # renders a formatted local-time string rather than raw ISO text
+        # (the list model stringifies the column field verbatim). Mirrors
+        # the synthetic ``_source_display`` pattern used by ReferencesPanel.
+        for record in records:
+            record["created_at_display"] = format_timestamp(record.get("created_at"))
+        return records
 
     def list_columns(self) -> list[ColumnSpec]:
         return [
@@ -111,6 +119,7 @@ class PlanningItemsPanel(ListDetailPanel):
             ColumnSpec(field="title", title="Title"),
             ColumnSpec(field="item_type", title="Type", width=140),
             ColumnSpec(field="status", title="Status", width=100),
+            ColumnSpec(field="created_at_display", title="Created", width=140),
         ]
 
     def fetch_detail_extras(self, record: dict[str, Any]) -> dict[str, Any]:
@@ -173,6 +182,16 @@ class PlanningItemsPanel(ListDetailPanel):
         form.addRow(
             "Resolution Reference",
             _label(resolution_ref) if resolution_ref else _label("—", dim=True),
+        )
+        # PI-107: surface the record's audit timestamps (already carried by
+        # the model and returned by the API) as read-only dim metadata.
+        form.addRow(
+            "Created",
+            _label(format_timestamp(record.get("created_at")), dim=True),
+        )
+        form.addRow(
+            "Last Updated",
+            _label(format_timestamp(record.get("updated_at")), dim=True),
         )
         outer.addLayout(form)
 
