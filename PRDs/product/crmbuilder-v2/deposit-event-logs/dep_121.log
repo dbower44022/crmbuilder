@@ -1,0 +1,20 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_129.json
+Label:  SES-129 / CNV-031 close-out — implements and resolves PI-105 (expose executive_summary on MCP create/update tools + fix conversation persistence). Commit 8293a06 on branch pi-105-exec-summary-claude. No decisions. Attaches to WS-011. Resolves PI-105. Identifiers re-verify at apply time.
+Deposit event: DEP-121
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-031 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-105 (HTTP 201)
+
+✓ All 4 operations complete.
+
+✓ Recorded apply as deposit_event DEP-121 (HTTP 201).

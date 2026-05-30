@@ -1,0 +1,79 @@
+{
+  "label": "SES-129 / CNV-031 close-out — implements and resolves PI-105 (expose executive_summary on MCP create/update tools + fix conversation persistence). Commit 8293a06 on branch pi-105-exec-summary-claude. No decisions. Attaches to WS-011. Resolves PI-105. Identifiers re-verify at apply time.",
+  "session": {
+    "session_identifier": "SES-129",
+    "session_title": "Implement PI-105 — executive_summary on MCP write tools and conversation persistence",
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-031. Parent workstream WS-011 (V2 storage API refinements). Medium: chat (claude_code runner).\n\nSeed: \"whats next\" -> selected PI-105.\n\nPI-105 audited every write surface for executive_summary across planning_items, decisions, sessions, and conversations (the four entities carrying the field or its parent-prefixed variant), then patched the gaps.\n\nAudit finding (the PI's core ask): the API CreateIn/UpdateIn/PatchIn schemas and the access-layer create/update/_UPDATABLE_FIELDS for decisions, sessions, and planning_items ALREADY carry executive_summary — DecisionUpdateIn was not reverted by the parallel Option-A session, resolving PI-097's open question. The only real gaps were (a) the MCP update tools and conversation-create tool, and (b) the conversation persistence path, where the API schema accepted conversation_executive_summary but the access-layer create dropped it silently and the patch path rejected it (unknown_field).\n\nDelivered in one commit (8293a06):\n- MCP tools (tools.py): added executive_summary to update_decision, update_session, update_planning_item, create_conversation, update_conversation (the create_* for decision/session/planning_item already had it).\n- Conversations access (conversations.py): create_conversation accepts and persists conversation_executive_summary (was dropped in _new_row/_insert_with_autoassign); _PATCHABLE_FIELDS gains executive_summary; the patch and PUT paths set it; all length-checked (nullable, 200-800) via validate_optional_length.\n- Conversations API router: forwards conversation_executive_summary in the POST create and PUT replace handlers; PATCH already strips the conversation_ prefix.\n\nTests: 7 access-layer (conversation create/patch/PUT persistence + length validation) and 4 MCP end-to-end (update_planning_item/update_decision/update_conversation/update_session forward executive_summary through MCP -> API -> access). 11 PI-105 tests pass; the access+api+mcp governance regression set (52 tests) stays green; no new ruff errors (the 9 pre-existing C408 dict() warnings in tools.py predate this work).\n\nParallel-orchestrator hazard: a concurrent orchestrator hijacked the pi-105-exec-summary branch (committing unrelated PI-108 test fixes onto it) and repeatedly reset the working tree, flip-flopping the uncommitted source edits between present and reverted between individual commands. The work was rescued by committing atomically to a dedicated branch pi-105-exec-summary-claude (8293a06) per the commit-immediately rule for parallel-orchestrator environments.\n\nNo decisions authored (the audit produced a finding, not a choice between alternatives). Resolves PI-105. Deferred follow-up (acceptance #7): the live CNV-016 refresh via MCP requires the running API restarted with this code; the capability itself is proven by the MCP end-to-end tests. The commit sits on pi-105-exec-summary-claude awaiting Doug's review/merge and push; branch reconciliation across the parallel work is a separate cleanup.",
+    "session_medium": "chat",
+    "session_status": "complete",
+    "session_executive_summary": "Implemented PI-105 in one commit (8293a06): exposed executive_summary on the MCP write tools and fixed conversation persistence. The audit found the API schemas and access layer for decisions/sessions/planning_items already carried the field (DecisionUpdateIn was not reverted, resolving PI-097's open question); the real gaps were the MCP update tools plus create/update_conversation, and the conversation path where the schema accepted conversation_executive_summary but create dropped it silently and patch rejected it. Patched tools.py, the conversations access layer (create/patch/PUT persist it, _PATCHABLE_FIELDS, nullable 200-800 length check), and the API router forwarding. 11 new tests (7 access + 4 MCP end-to-end) pass; 52-test governance regression green. Resolves PI-105.",
+    "session_medium_metadata": {
+      "surface": "claude_code",
+      "runner": "claude_code",
+      "model": "claude-opus-4-8"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.8, Claude Code)"
+    ],
+    "references": [
+      {
+        "source_type": "session",
+        "source_id": "SES-129",
+        "target_type": "workstream",
+        "target_id": "WS-011",
+        "relationship": "session_belongs_to_workstream"
+      }
+    ]
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-031",
+    "conversation_title": "Auditing and closing the executive_summary write-surface gaps (PI-105)",
+    "conversation_purpose": "Audit every executive_summary write path across planning_items/decisions/sessions/conversations and patch the MCP tool and conversation-persistence gaps so the field can be set and refreshed through the same surfaces a close-out uses.",
+    "conversation_description": "Audited API schemas, access layer, and MCP tools for executive_summary across the four entities; found most layers already complete and the gaps concentrated in the MCP update tools and the conversation create/patch persistence path. Patched tools.py, conversations access + router, added 11 tests. Committed to a dedicated branch to survive an active parallel-orchestrator race. Resolves PI-105.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-031",
+        "target_type": "session",
+        "target_id": "SES-129",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [],
+  "commits": [
+    {
+      "commit_sha": "8293a06cf7e0354cd95dad4fc79e45f76b64dc98",
+      "commit_message_first_line": "v2: PI-105 — expose executive_summary on MCP create/update tools + fix conversation persistence",
+      "commit_message_full": "v2: PI-105 — expose executive_summary on MCP create/update tools + fix conversation persistence\n\nCloses the SES-114 multi-layer gap where executive_summary could not be set via MCP and conversation_executive_summary was silently dropped. MCP tools: add executive_summary to update_decision, update_session, update_planning_item, create_conversation, update_conversation. Conversations access: create_conversation persists conversation_executive_summary; _PATCHABLE_FIELDS gains it; patch and PUT set it (nullable, 200-800 length-checked). API router: forward the field in POST create and PUT replace. Audit finding: the API schemas and access layer for decisions/sessions/planning_items already carried executive_summary (DecisionUpdateIn was NOT reverted, resolving PI-097's open question). Tests: 7 access-layer + 4 MCP end-to-end.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-30T10:54:34-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "pi-105-exec-summary-claude",
+      "commit_parent_shas": [
+        "9fd649c933f2b33ab94c291bad5e435ad62110f5"
+      ],
+      "commit_files_changed_count": 5
+    }
+  ],
+  "decisions": [],
+  "references": [
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-031",
+      "target_type": "session",
+      "target_id": "SES-129",
+      "relationship": "conversation_belongs_to_session"
+    }
+  ],
+  "resolves_planning_items": [
+    {
+      "planning_item_identifier": "PI-105"
+    }
+  ],
+  "addresses_planning_items": []
+}
