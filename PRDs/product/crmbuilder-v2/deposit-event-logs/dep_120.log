@@ -1,0 +1,20 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_128.json
+Label:  SES-128 / CNV-030 close-out — ran the PI-052 Slice C-early prompt, found the tool-surface refactor + full chat tab already shipped, dropped the prompt as superseded, retired the dead Slice A spike (commit 74d4195), verified PI-052/PI-106 Resolved + WT-055 consumed (governance already accurate), and refreshed the stale v0.6 status singleton to v0.7.0 current reality. One commit. No decisions, no PIs. Attaches to WS-010. Identifiers re-verify at apply time.
+Deposit event: DEP-120
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-030 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== references (1 record) ===
+  ✓ POST references  CNV-030 is_about PI-052 (HTTP 201)
+
+✓ All 4 operations complete.
+
+✓ Recorded apply as deposit_event DEP-120 (HTTP 201).

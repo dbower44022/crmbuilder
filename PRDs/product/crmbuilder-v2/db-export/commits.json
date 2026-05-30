@@ -1157,5 +1157,43 @@
     "commit_session_id": "SES-127",
     "commit_sha": "2915393f997d7e6104bda0ab93796b6715d7e765",
     "commit_updated_at": "2026-05-30T14:30:58.540826"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-30T10:41:23-04:00",
+    "commit_created_at": "2026-05-30T14:53:06.582590",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0062",
+    "commit_message_first_line": "v2: PI-052 — retire Slice A chat_spike.py (superseded by shipped chat tab)",
+    "commit_message_full": "v2: PI-052 — retire Slice A chat_spike.py (superseded by shipped chat tab)\n\nThe shared tool-surface refactor (tool_definitions factory) and the full\nchat tab (ui/chat/) already shipped; the Slice A terminal spike is dead\nscaffolding the docs explicitly mark \"do not import from it\".\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "01c948d8037bc7a63337c1001f5344d12331d86a"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-128",
+    "commit_sha": "74d4195746756f33507b3df6104f8a6d47358d9a",
+    "commit_updated_at": "2026-05-30T14:53:06.582593"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-105-exec-summary-claude",
+    "commit_committed_at": "2026-05-30T10:54:34-04:00",
+    "commit_created_at": "2026-05-30T15:04:48.505010",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 5,
+    "commit_identifier": "CM-0063",
+    "commit_message_first_line": "v2: PI-105 — expose executive_summary on MCP create/update tools + fix conversation persistence",
+    "commit_message_full": "v2: PI-105 — expose executive_summary on MCP create/update tools + fix conversation persistence\n\nCloses the SES-114 multi-layer gap where executive_summary could not be set via MCP and conversation_executive_summary was silently dropped. MCP tools: add executive_summary to update_decision, update_session, update_planning_item, create_conversation, update_conversation. Conversations access: create_conversation persists conversation_executive_summary; _PATCHABLE_FIELDS gains it; patch and PUT set it (nullable, 200-800 length-checked). API router: forward the field in POST create and PUT replace. Audit finding: the API schemas and access layer for decisions/sessions/planning_items already carried executive_summary (DecisionUpdateIn was NOT reverted, resolving PI-097's open question). Tests: 7 access-layer + 4 MCP end-to-end.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "9fd649c933f2b33ab94c291bad5e435ad62110f5"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-129",
+    "commit_sha": "8293a06cf7e0354cd95dad4fc79e45f76b64dc98",
+    "commit_updated_at": "2026-05-30T15:04:48.505012"
   }
 ]

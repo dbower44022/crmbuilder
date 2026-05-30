@@ -1,0 +1,82 @@
+{
+  "label": "SES-128 / CNV-030 close-out — ran the PI-052 Slice C-early prompt, found the tool-surface refactor + full chat tab already shipped, dropped the prompt as superseded, retired the dead Slice A spike (commit 74d4195), verified PI-052/PI-106 Resolved + WT-055 consumed (governance already accurate), and refreshed the stale v0.6 status singleton to v0.7.0 current reality. One commit. No decisions, no PIs. Attaches to WS-010. Identifiers re-verify at apply time.",
+  "session": {
+    "session_identifier": "SES-128",
+    "session_title": "Retire the PI-052 Slice A chat spike and refresh the v2 status singleton to current reality",
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-030. Parent workstream WS-010 (v2 AI Surface Integration). Medium: chat (claude_code runner).\n\nSeed: a multi-section Claude Code prompt titled 'PI-052 Slice C early: extract tool surface, rewire chat spike' that directed the session to extract the closure-pattern tool surface in mcp_server/tools.py into shared tool_definitions.py / tool_schemas.py modules and rewire scripts/chat_spike.py onto the shared registry, gated by a four-point stop-and-ask premise check.\n\nThe stop-and-ask gate failed on premise 1: mcp_server/tools.py no longer contains closure-style @server.tool()-decorated functions — it had already been refactored into exactly the target shape (a frozen ToolDefinition dataclass with fields name/func/description/is_write, a tool_definitions(http) factory holding all 51 tool closures plus the _unwrap and _is_write helpers, and register_tools reduced to a thin loop). The MCP suite was green (24 passed). The bigger finding: the full chat tab (Slice B/C) had already shipped at ui/chat/ (controller, persistence, session, worker, widgets, auth, tools) with a production ui/chat/tools.py that imports tool_definitions and carries its own _schema_from_signature — the production equivalent of the tool_schemas.py the prompt wanted created — plus a chat test suite at tests/crmbuilder_v2/ui/chat/. The prompt, dated 05-30-26 05:40, predated the Slice B/C build; performing its sections 3-5 would have regressed the shipped imports and the 24 green tests for zero gain. The session reported this and Doug elected to drop the prompt as superseded and retire the throwaway Slice A spike.\n\nThe session removed crmbuilder-v2/scripts/chat_spike.py (git rm) after confirming no code references — only the kickoff/design docs, which already label it throwaway ('do not import from it'). Committed as 74d4195 and pushed to origin/main.\n\nThe session then verified the governance DB against its discoveries: PI-052 (chat UI build) is Resolved, PI-106 (Slice D follow-ups) is Resolved, and WT-055 (Slice B kickoff) is consumed — all already accurate, requiring no flip. The only stale governance object was the status singleton, sitting at version 16 / phase 'v0.6 complete' / version_label 0.6.0 / Last Updated 05-18-26, predating the entire chat-UI arc, the PI-073 session/conversation redesign, the v0.7 governance-entity release, and PI-108/109/110. The session refreshed it via PUT /status to v0.7.0 current reality (__version__ confirmed at 0.7.0).\n\nNet observable change: the dead Slice A spike is gone from the tree, and the v2 status singleton once again reflects current reality. No code logic changed beyond the spike deletion; no decisions or planning items were warranted (the prompt was superseded, not a choice between alternatives; the spike retirement and status refresh both completed in-session).",
+    "session_medium": "chat",
+    "session_status": "complete",
+    "session_executive_summary": "Ran the PI-052 'Slice C early' Claude Code prompt; its stop-and-ask gate failed because the tool-surface refactor it asked for had already shipped in mcp_server/tools.py (ToolDefinition + tool_definitions factory, 51 tools, 24 MCP tests green) and the full chat tab (Slice B/C) already exists at ui/chat/. Doug dropped the prompt as superseded. Retired the throwaway Slice A spike chat_spike.py (commit 74d4195, pushed). Verified PI-052/PI-106 Resolved and WT-055 consumed — governance already accurate. Refreshed the stale v0.6 status singleton to v0.7.0 current reality via PUT /status. No decisions, no PIs.",
+    "session_medium_metadata": {
+      "surface": "claude_code",
+      "runner": "claude_code",
+      "model": "claude-opus-4-8"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.8, Claude Code)"
+    ],
+    "references": [
+      {
+        "source_type": "session",
+        "source_id": "SES-128",
+        "target_type": "workstream",
+        "target_id": "WS-010",
+        "relationship": "session_belongs_to_workstream"
+      }
+    ]
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-030",
+    "conversation_title": "Dropping the superseded PI-052 Slice C-early prompt, retiring the chat spike, and refreshing the status singleton",
+    "conversation_purpose": "Execute the PI-052 Slice C-early prompt; on discovering its target refactor and the full chat tab had already shipped, report the supersession, retire the dead Slice A spike, confirm the governance DB already reflected the shipped state, and refresh the long-stale status singleton to current reality.",
+    "conversation_description": "The Slice C-early prompt's stop-and-ask gate failed on premise 1 — mcp_server/tools.py was already refactored into the ToolDefinition + tool_definitions(http) factory shape the prompt asked for (51 tools, 24 MCP tests green), and the full chat tab existed at ui/chat/ with its own schema generator and test suite. Doing the prompt's sections 3-5 would have regressed the shipped ui/chat/tools.py imports and the green tests. Doug dropped the prompt as superseded. The session removed scripts/chat_spike.py (commit 74d4195, pushed), verified PI-052/PI-106 Resolved and WT-055 consumed (no governance flip needed), and refreshed the v0.6/05-18-26 status singleton to v0.7.0 via PUT /status. No decisions, no planning items.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-030",
+        "target_type": "session",
+        "target_id": "SES-128",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [],
+  "commits": [
+    {
+      "commit_sha": "74d4195746756f33507b3df6104f8a6d47358d9a",
+      "commit_message_first_line": "v2: PI-052 — retire Slice A chat_spike.py (superseded by shipped chat tab)",
+      "commit_message_full": "v2: PI-052 — retire Slice A chat_spike.py (superseded by shipped chat tab)\n\nThe shared tool-surface refactor (tool_definitions factory) and the full\nchat tab (ui/chat/) already shipped; the Slice A terminal spike is dead\nscaffolding the docs explicitly mark \"do not import from it\".\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-30T10:41:23-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "01c948d8037bc7a63337c1001f5344d12331d86a"
+      ],
+      "commit_files_changed_count": 1
+    }
+  ],
+  "decisions": [],
+  "references": [
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-030",
+      "target_type": "session",
+      "target_id": "SES-128",
+      "relationship": "conversation_belongs_to_session"
+    },
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-030",
+      "target_type": "planning_item",
+      "target_id": "PI-052",
+      "relationship": "is_about"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": []
+}

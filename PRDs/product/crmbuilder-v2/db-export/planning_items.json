@@ -1570,9 +1570,9 @@
     "identifier": "PI-105",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Expose executive_summary on MCP create/update tools for planning_items, decisions, and sessions (and verify API schemas)",
-    "updated_at": "2026-05-29T02:17:11.448922"
+    "updated_at": "2026-05-30T15:04:48.804721"
   },
   {
     "area": null,

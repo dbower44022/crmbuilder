@@ -2469,5 +2469,63 @@
     "session_superseded_at": null,
     "session_title": "Implement and resolve PI-108 — universal created/last-edited timestamp visibility across the V2 desktop UI",
     "session_updated_at": "2026-05-30T14:30:57.954874"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-30T14:53:06.277646",
+    "session_created_at": "2026-05-30T14:53:06.277369",
+    "session_deleted_at": null,
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-030. Parent workstream WS-010 (v2 AI Surface Integration). Medium: chat (claude_code runner).\n\nSeed: a multi-section Claude Code prompt titled 'PI-052 Slice C early: extract tool surface, rewire chat spike' that directed the session to extract the closure-pattern tool surface in mcp_server/tools.py into shared tool_definitions.py / tool_schemas.py modules and rewire scripts/chat_spike.py onto the shared registry, gated by a four-point stop-and-ask premise check.\n\nThe stop-and-ask gate failed on premise 1: mcp_server/tools.py no longer contains closure-style @server.tool()-decorated functions — it had already been refactored into exactly the target shape (a frozen ToolDefinition dataclass with fields name/func/description/is_write, a tool_definitions(http) factory holding all 51 tool closures plus the _unwrap and _is_write helpers, and register_tools reduced to a thin loop). The MCP suite was green (24 passed). The bigger finding: the full chat tab (Slice B/C) had already shipped at ui/chat/ (controller, persistence, session, worker, widgets, auth, tools) with a production ui/chat/tools.py that imports tool_definitions and carries its own _schema_from_signature — the production equivalent of the tool_schemas.py the prompt wanted created — plus a chat test suite at tests/crmbuilder_v2/ui/chat/. The prompt, dated 05-30-26 05:40, predated the Slice B/C build; performing its sections 3-5 would have regressed the shipped imports and the 24 green tests for zero gain. The session reported this and Doug elected to drop the prompt as superseded and retire the throwaway Slice A spike.\n\nThe session removed crmbuilder-v2/scripts/chat_spike.py (git rm) after confirming no code references — only the kickoff/design docs, which already label it throwaway ('do not import from it'). Committed as 74d4195 and pushed to origin/main.\n\nThe session then verified the governance DB against its discoveries: PI-052 (chat UI build) is Resolved, PI-106 (Slice D follow-ups) is Resolved, and WT-055 (Slice B kickoff) is consumed — all already accurate, requiring no flip. The only stale governance object was the status singleton, sitting at version 16 / phase 'v0.6 complete' / version_label 0.6.0 / Last Updated 05-18-26, predating the entire chat-UI arc, the PI-073 session/conversation redesign, the v0.7 governance-entity release, and PI-108/109/110. The session refreshed it via PUT /status to v0.7.0 current reality (__version__ confirmed at 0.7.0).\n\nNet observable change: the dead Slice A spike is gone from the tree, and the v2 status singleton once again reflects current reality. No code logic changed beyond the spike deletion; no decisions or planning items were warranted (the prompt was superseded, not a choice between alternatives; the spike retirement and status refresh both completed in-session).",
+    "session_ended_at": null,
+    "session_executive_summary": "Ran the PI-052 'Slice C early' Claude Code prompt; its stop-and-ask gate failed because the tool-surface refactor it asked for had already shipped in mcp_server/tools.py (ToolDefinition + tool_definitions factory, 51 tools, 24 MCP tests green) and the full chat tab (Slice B/C) already exists at ui/chat/. Doug dropped the prompt as superseded. Retired the throwaway Slice A spike chat_spike.py (commit 74d4195, pushed). Verified PI-052/PI-106 Resolved and WT-055 consumed — governance already accurate. Refreshed the stale v0.6 status singleton to v0.7.0 current reality via PUT /status. No decisions, no PIs.",
+    "session_identifier": "SES-128",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "model": "claude-opus-4-8",
+      "runner": "claude_code",
+      "surface": "claude_code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.8, Claude Code)"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "Retire the PI-052 Slice A chat spike and refresh the v2 status singleton to current reality",
+    "session_updated_at": "2026-05-30T14:53:06.277731"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-30T15:04:48.225537",
+    "session_created_at": "2026-05-30T15:04:48.225268",
+    "session_deleted_at": null,
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-031. Parent workstream WS-011 (V2 storage API refinements). Medium: chat (claude_code runner).\n\nSeed: \"whats next\" -> selected PI-105.\n\nPI-105 audited every write surface for executive_summary across planning_items, decisions, sessions, and conversations (the four entities carrying the field or its parent-prefixed variant), then patched the gaps.\n\nAudit finding (the PI's core ask): the API CreateIn/UpdateIn/PatchIn schemas and the access-layer create/update/_UPDATABLE_FIELDS for decisions, sessions, and planning_items ALREADY carry executive_summary — DecisionUpdateIn was not reverted by the parallel Option-A session, resolving PI-097's open question. The only real gaps were (a) the MCP update tools and conversation-create tool, and (b) the conversation persistence path, where the API schema accepted conversation_executive_summary but the access-layer create dropped it silently and the patch path rejected it (unknown_field).\n\nDelivered in one commit (8293a06):\n- MCP tools (tools.py): added executive_summary to update_decision, update_session, update_planning_item, create_conversation, update_conversation (the create_* for decision/session/planning_item already had it).\n- Conversations access (conversations.py): create_conversation accepts and persists conversation_executive_summary (was dropped in _new_row/_insert_with_autoassign); _PATCHABLE_FIELDS gains executive_summary; the patch and PUT paths set it; all length-checked (nullable, 200-800) via validate_optional_length.\n- Conversations API router: forwards conversation_executive_summary in the POST create and PUT replace handlers; PATCH already strips the conversation_ prefix.\n\nTests: 7 access-layer (conversation create/patch/PUT persistence + length validation) and 4 MCP end-to-end (update_planning_item/update_decision/update_conversation/update_session forward executive_summary through MCP -> API -> access). 11 PI-105 tests pass; the access+api+mcp governance regression set (52 tests) stays green; no new ruff errors (the 9 pre-existing C408 dict() warnings in tools.py predate this work).\n\nParallel-orchestrator hazard: a concurrent orchestrator hijacked the pi-105-exec-summary branch (committing unrelated PI-108 test fixes onto it) and repeatedly reset the working tree, flip-flopping the uncommitted source edits between present and reverted between individual commands. The work was rescued by committing atomically to a dedicated branch pi-105-exec-summary-claude (8293a06) per the commit-immediately rule for parallel-orchestrator environments.\n\nNo decisions authored (the audit produced a finding, not a choice between alternatives). Resolves PI-105. Deferred follow-up (acceptance #7): the live CNV-016 refresh via MCP requires the running API restarted with this code; the capability itself is proven by the MCP end-to-end tests. The commit sits on pi-105-exec-summary-claude awaiting Doug's review/merge and push; branch reconciliation across the parallel work is a separate cleanup.",
+    "session_ended_at": null,
+    "session_executive_summary": "Implemented PI-105 in one commit (8293a06): exposed executive_summary on the MCP write tools and fixed conversation persistence. The audit found the API schemas and access layer for decisions/sessions/planning_items already carried the field (DecisionUpdateIn was not reverted, resolving PI-097's open question); the real gaps were the MCP update tools plus create/update_conversation, and the conversation path where the schema accepted conversation_executive_summary but create dropped it silently and patch rejected it. Patched tools.py, the conversations access layer (create/patch/PUT persist it, _PATCHABLE_FIELDS, nullable 200-800 length check), and the API router forwarding. 11 new tests (7 access + 4 MCP end-to-end) pass; 52-test governance regression green. Resolves PI-105.",
+    "session_identifier": "SES-129",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "model": "claude-opus-4-8",
+      "runner": "claude_code",
+      "surface": "claude_code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.8, Claude Code)"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "Implement PI-105 — executive_summary on MCP write tools and conversation persistence",
+    "session_updated_at": "2026-05-30T15:04:48.225619"
   }
 ]
