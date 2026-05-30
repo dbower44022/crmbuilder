@@ -2440,5 +2440,34 @@
     "session_superseded_at": null,
     "session_title": "Investigate WT-049 drift, retire the WT-049..054 stale-ready cohort, file and resolve PI-109 (auto-consume work_tickets on inbound opens-against edge)",
     "session_updated_at": "2026-05-30T05:32:56.212891"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-30T14:30:57.954773",
+    "session_created_at": "2026-05-30T14:30:57.954495",
+    "session_deleted_at": null,
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-029. Parent workstream WS-013 (Universal created/last-edited timestamp visibility). Medium: chat (claude_code runner). Opened against PI-108 via kickoff WT-057.\n\nSeed: \"whats next\" -> selected PI-108.\n\nPI-108 / REQ-002 requires that every first-class V2 entity (24 governance + methodology panels with a browsable desktop UI) surface a formatted created timestamp and, for mutable types, a last-edited timestamp, extending the PI-107 pattern (commit f690bde, the Planning Items panel) to the whole UI.\n\nDelivered across two commits on branch pi-108-finish:\n1. Slice A (550e10e): a shared created_updated_section() helper in _governance_helpers.py (formats via the PI-107 datetime_format.format_timestamp helper; updated_field=None renders an em dash for immutable types) plus the four panels that previously showed a raw unformatted updated_at or nothing — Sessions, Workstreams, Conversations (formatted Created + Updated list columns replacing the raw ISO column; created/last-edited detail section) and Commits (a Record-timestamps detail section for the governance commit_created_at/updated_at, kept distinct from the git commit_committed_at).\n2. Slices B/C (2915393): the remaining nine panels not yet on main — the immutable/singleton types topics, deposit_events, charter, status (created + em-dash edited) and the methodology panels processes, manual_config, test_spec, crm_candidates, engagements.\n\nParallel co-implementation: a concurrent orchestrator independently implemented PI-108 for ~14 panels (decisions, risks, reference_books, work_tickets, close_out_payloads, domains, entities, field, requirements, persona) which landed on main (e8d0c19) while this work was in flight, and it was actively switching the working-copy branch between main and pi-111-heartbeat. To avoid clobbering, this session preserved its subagents' work in a git stash, branched pi-108-finish from main once the tree settled, and extracted only the nine complementary panels. It also repaired two defects the parallel work left on main: persona.py imported the helper but never used it (dangling import, no display) — replaced with a complete implementation + matching test; and test_domains/test_entities/test_requirements asserted the pre-Created column sets though their panels had gained the column — updated to match.\n\nValidation: all 24 first-class panels now display timestamps; full 834-test UI suite green; ruff clean. The implementing slices used parallel subagents over disjoint panel batches with a shared, tested helper.\n\nNo decisions authored (straightforward replication of an approved pattern; the race handling was operational). Resolves PI-108. The commits sit on pi-108-finish (one commit ahead of main) awaiting Doug's review/merge and push.",
+    "session_ended_at": null,
+    "session_executive_summary": "Implemented and resolved PI-108 / REQ-002: universal created/last-edited timestamp visibility across all 24 first-class V2 desktop panels, extending the PI-107 pattern via a shared helper. Slice A (550e10e) added the helper plus the four raw-ISO panels (Sessions/Workstreams/Conversations/Commits); slices B/C (2915393) added the remaining nine (topics, deposit_events, charter, status immutable; processes, manual_config, test_spec, crm_candidates, engagements). A parallel orchestrator co-implemented ~14 panels onto main while racing the branch; this session preserved its work in a stash, branched pi-108-finish off the settled tree, extracted only complementary panels, and repaired the parallel work's broken persona and three stale tests. Full 834-test UI suite green. Resolves PI-108.",
+    "session_identifier": "SES-127",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "model": "claude-opus-4-8",
+      "runner": "claude_code",
+      "surface": "claude_code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.8, Claude Code)"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "Implement and resolve PI-108 — universal created/last-edited timestamp visibility across the V2 desktop UI",
+    "session_updated_at": "2026-05-30T14:30:57.954874"
   }
 ]

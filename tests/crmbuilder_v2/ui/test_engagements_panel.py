@@ -24,9 +24,6 @@ from crmbuilder_v2.access.meta_db import (
 from crmbuilder_v2.api.main import create_app
 from crmbuilder_v2.ui.active_engagement_context import ActiveEngagementContext
 from crmbuilder_v2.ui.client import StorageClient
-from crmbuilder_v2.ui.dialogs.engagement_crud import (
-    EngagementCreateDialog,
-)
 from crmbuilder_v2.ui.main_window import (
     ENTITY_TYPE_TO_SIDEBAR_LABEL,
     MainWindow,
@@ -134,6 +131,7 @@ def test_master_pane_five_columns(qtbot, engagement_client):
         "Name",
         "Status",
         "Last Opened",
+        "Created",
     ]
 
 

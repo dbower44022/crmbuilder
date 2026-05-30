@@ -160,13 +160,13 @@ def test_master_pane_columns_and_order(qtbot, process_client):
         "Identifier",
         "Name",
         "Classification",
-        "Updated",
+        "Created",
     ]
     assert [c.field for c in columns] == [
         "process_identifier",
         "process_name",
         "process_classification",
-        "process_updated_at",
+        "created_at_display",
     ]
     # No Domain column in v0.4 (spec 3.6.2, PI-007).
     assert "process_domain_identifier" not in [c.field for c in columns]

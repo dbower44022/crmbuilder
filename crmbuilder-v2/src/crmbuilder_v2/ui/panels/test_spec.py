@@ -47,8 +47,8 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QStyle,
-    QStyleOptionViewItem,
     QStyledItemDelegate,
+    QStyleOptionViewItem,
     QVBoxLayout,
     QWidget,
 )
@@ -70,7 +70,9 @@ from crmbuilder_v2.ui.exceptions import (
     StorageClientError,
     StorageConnectionError,
 )
+from crmbuilder_v2.ui.panels._governance_helpers import created_updated_section
 from crmbuilder_v2.ui.styling import t as _T
+from crmbuilder_v2.ui.widgets.datetime_format import format_timestamp
 from crmbuilder_v2.ui.widgets.form_helpers import (
     CollapsibleSection,
     destructive_button,
@@ -260,9 +262,15 @@ class TestSpecsPanel(ListDetailPanel):
         return "Test Specs"
 
     def fetch_records(self) -> list[dict[str, Any]]:
-        return self._client.list_test_specs(
+        records = self._client.list_test_specs(
             include_deleted=self._include_deleted
         )
+        # PI-108: formatted Created synthetic column for the master pane.
+        for r in records:
+            r["created_at_display"] = format_timestamp(
+                r.get("test_spec_created_at")
+            )
+        return records
 
     def list_columns(self) -> list[ColumnSpec]:
         # Five-column master pane per spec §3.6.2 + AC-12. The Last
@@ -284,9 +292,9 @@ class TestSpecsPanel(ListDetailPanel):
                 width=110,
             ),
             ColumnSpec(
-                field="test_spec_updated_at",
-                title="Updated",
-                width=180,
+                field="created_at_display",
+                title="Created",
+                width=140,
             ),
         ]
 
@@ -509,6 +517,14 @@ class TestSpecsPanel(ListDetailPanel):
         )
         notes_section.setObjectName("test_spec_notes_toggle")
         outer.addWidget(notes_section)
+
+        # PI-108: created / last-edited audit timestamps.
+        outer.addWidget(_separator())
+        outer.addWidget(
+            created_updated_section(
+                record, "test_spec_created_at", "test_spec_updated_at"
+            )
+        )
 
         outer.addWidget(_separator())
 

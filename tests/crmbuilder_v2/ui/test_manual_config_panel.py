@@ -82,20 +82,20 @@ def test_manual_configs_json_refresh_mapping_present():
 
 
 def test_panel_master_pane_columns(qtbot, manual_config_client):
-    """AC-12: master pane shows Identifier / Name / Category / Status / Updated."""
+    """AC-12: master pane shows Identifier / Name / Category / Status / Created."""
     panel = ManualConfigPanel(manual_config_client)
     qtbot.addWidget(panel)
     cols = panel.list_columns()
     assert len(cols) == 5
     titles = [c.title for c in cols]
-    assert titles == ["Identifier", "Name", "Category", "Status", "Updated"]
+    assert titles == ["Identifier", "Name", "Category", "Status", "Created"]
     fields = [c.field for c in cols]
     assert fields == [
         "manual_config_identifier",
         "manual_config_name",
         "manual_config_category",
         "manual_config_status",
-        "manual_config_updated_at",
+        "created_at_display",
     ]
 
 

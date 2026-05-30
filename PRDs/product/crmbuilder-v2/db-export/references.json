@@ -19548,5 +19548,85 @@
     "source_type": "deposit_event",
     "target_id": "DEC-335",
     "target_type": "decision"
+  },
+  {
+    "created_at": "2026-05-30T14:30:57.655738",
+    "id": 1963,
+    "reference_identifier": "REF-1959",
+    "relationship_kind": "conversation_belongs_to_session",
+    "source_id": "CNV-029",
+    "source_type": "conversation",
+    "target_id": "SES-127",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-30T14:30:57.958288",
+    "id": 1964,
+    "reference_identifier": "REF-1960",
+    "relationship_kind": "session_belongs_to_workstream",
+    "source_id": "SES-127",
+    "source_type": "session",
+    "target_id": "WS-013",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-30T14:30:58.831340",
+    "id": 1965,
+    "reference_identifier": "REF-1961",
+    "relationship_kind": "resolves",
+    "source_id": "CNV-029",
+    "source_type": "conversation",
+    "target_id": "PI-108",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-30T14:30:59.149279",
+    "id": 1966,
+    "reference_identifier": "REF-1962",
+    "relationship_kind": "deposit_event_applies_close_out_payload",
+    "source_id": "DEP-119",
+    "source_type": "deposit_event",
+    "target_id": "COP-127",
+    "target_type": "close_out_payload"
+  },
+  {
+    "created_at": "2026-05-30T14:30:59.153142",
+    "id": 1967,
+    "reference_identifier": "REF-1963",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-119",
+    "source_type": "deposit_event",
+    "target_id": "CNV-029",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-30T14:30:59.156595",
+    "id": 1968,
+    "reference_identifier": "REF-1964",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-119",
+    "source_type": "deposit_event",
+    "target_id": "SES-127",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-30T14:30:59.160207",
+    "id": 1969,
+    "reference_identifier": "REF-1965",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-119",
+    "source_type": "deposit_event",
+    "target_id": "CM-0060",
+    "target_type": "commit"
+  },
+  {
+    "created_at": "2026-05-30T14:30:59.163603",
+    "id": 1970,
+    "reference_identifier": "REF-1966",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-119",
+    "source_type": "deposit_event",
+    "target_id": "CM-0061",
+    "target_type": "commit"
   }
 ]

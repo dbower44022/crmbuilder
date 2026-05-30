@@ -59,7 +59,9 @@ from crmbuilder_v2.ui.exceptions import (
     StorageClientError,
     StorageConnectionError,
 )
+from crmbuilder_v2.ui.panels._governance_helpers import created_updated_section
 from crmbuilder_v2.ui.styling import t
+from crmbuilder_v2.ui.widgets.datetime_format import format_timestamp
 from crmbuilder_v2.ui.widgets.form_helpers import (
     destructive_button,
     primary_button,
@@ -363,6 +365,9 @@ class EngagementsPanel(ListDetailPanel):
             ColumnSpec(
                 field="_display_last_opened", title="Last Opened", width=130
             ),
+            ColumnSpec(
+                field="created_at_display", title="Created", width=140
+            ),
         ]
 
     def _strikethrough_for_record(self, record: dict[str, Any]) -> bool:
@@ -402,6 +407,10 @@ class EngagementsPanel(ListDetailPanel):
                     "_display_last_opened": display_last_opened,
                     "_is_active_engagement": is_active,
                     "_last_opened_dt": last_opened,
+                    # PI-108: formatted Created column for the master pane.
+                    "created_at_display": format_timestamp(
+                        r.get("engagement_created_at")
+                    ),
                 }
             )
 
@@ -652,6 +661,17 @@ class EngagementsPanel(ListDetailPanel):
             form.addRow("Deleted at", deleted_value)
 
         outer.addLayout(form)
+
+        # PI-108: created / last-edited audit timestamps (absolute local
+        # time, in addition to the relative "Created at" / "Updated at"
+        # rows above).
+        outer.addWidget(_separator())
+        outer.addWidget(
+            created_updated_section(
+                record, "engagement_created_at", "engagement_updated_at"
+            )
+        )
+
         outer.addWidget(_separator())
         # No References section: engagement has no relationships in v0.5
         # per engagement.md §3.8.
