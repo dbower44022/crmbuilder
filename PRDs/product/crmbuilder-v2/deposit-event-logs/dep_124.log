@@ -1,0 +1,34 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_132.json
+Label:  SES-132 / CNV-034 close-out — governance & delivery model redesign (planning, Claude.ai). Records five architectural decisions (DEC-340..DEC-344): drop the area version prefix; rename the `workstream` entity to `Project`; restructure areas into immutable System Areas + per-engagement Engagement Areas and relocate `area` onto a new single-area Work Task; adopt a three-tier pull-based agent-delivery model (Planning Item -> Workstreams-as-delivery-phases -> single-area Work Tasks; general-purpose / discipline-manager / area-specialist agents) as the target architecture; and shelve the WS-012 batch orchestrator (PI-081 implemented-but-superseded, PI-083 area backfill held). Creates the migration umbrella PI-112 and its kickoff WT-063 pointing at the target-model design doc. Opens a new Project, WS-014 (Governance & Delivery Redesign), via the apply pre-step. No code commits. Identifiers re-verify at apply time; re-key on collision.
+Deposit event: DEP-124
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-034 (HTTP 201)
+
+=== session (1 record) ===
+
+=== work_tickets (1 record) ===
+  ✓ POST work_tickets  WT-063 (HTTP 201)
+
+=== planning_items (1 record) ===
+  ✓ POST planning_items  PI-112 (HTTP 201)
+
+=== decisions (5 records) ===
+  ✓ POST decisions  DEC-340 (HTTP 201)
+  ✓ POST decisions  DEC-341 (HTTP 201)
+  ✓ POST decisions  DEC-342 (HTTP 201)
+  ✓ POST decisions  DEC-343 (HTTP 201)
+  ✓ POST decisions  DEC-344 (HTTP 201)
+
+=== references (7 records) ===
+  ✓ POST references  CNV-034 conversation_belongs_to_workstream WS-014 (HTTP 201)
+  ✓ POST references  DEC-340 decided_in CNV-034 (HTTP 201)
+  ✓ POST references  DEC-341 decided_in CNV-034 (HTTP 201)
+  ✓ POST references  DEC-342 decided_in CNV-034 (HTTP 201)
+  ✓ POST references  DEC-343 decided_in CNV-034 (HTTP 201)
+  ✓ POST references  DEC-344 decided_in CNV-034 (HTTP 201)
+  ✓ POST references  WT-063 addresses PI-112 (HTTP 201)
+
+
+✓ Recorded apply as deposit_event DEP-124 (HTTP 201).

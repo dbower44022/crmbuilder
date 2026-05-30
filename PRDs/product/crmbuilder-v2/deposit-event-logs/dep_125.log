@@ -1,0 +1,44 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_132.json
+Label:  SES-132 / CNV-034 close-out — governance & delivery model redesign (planning, Claude.ai). Records five architectural decisions (DEC-340..DEC-344): drop the area version prefix; rename the `workstream` entity to `Project`; restructure areas into immutable System Areas + per-engagement Engagement Areas and relocate `area` onto a new single-area Work Task; adopt a three-tier pull-based agent-delivery model (Planning Item -> Workstreams-as-delivery-phases -> single-area Work Tasks; general-purpose / discipline-manager / area-specialist agents) as the target architecture; and shelve the WS-012 batch orchestrator (PI-081 implemented-but-superseded, PI-083 area backfill held). Creates the migration umbrella PI-112 and its kickoff WT-063 pointing at the target-model design doc. Opens a new Project, WS-014 (Governance & Delivery Redesign), via the apply pre-step. No code commits. Identifiers re-verify at apply time; re-key on collision.
+Deposit event: DEP-125
+
+Close-out payload validation: 0 error(s), 8 warning(s).
+  [WARN]  identifier_heads: CNV-034 is at-or-below the live head (CNV head's next free slot is CNV-035). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+  [WARN]  identifier_heads: DEC-340 is at-or-below the live head (DEC head's next free slot is DEC-345). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+  [WARN]  identifier_heads: DEC-341 is at-or-below the live head (DEC head's next free slot is DEC-345). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+  [WARN]  identifier_heads: DEC-342 is at-or-below the live head (DEC head's next free slot is DEC-345). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+  [WARN]  identifier_heads: DEC-343 is at-or-below the live head (DEC head's next free slot is DEC-345). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+  [WARN]  identifier_heads: DEC-344 is at-or-below the live head (DEC head's next free slot is DEC-345). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+  [WARN]  identifier_heads: PI-112 is at-or-below the live head (PI head's next free slot is PI-113). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+  [WARN]  identifier_heads: WT-063 is at-or-below the live head (WT head's next free slot is WT-064). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+
+=== conversation (1 record) ===
+  · POST conversation  CNV-034 already present (HTTP 409) — skipping
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== work_tickets (1 record) ===
+
+=== planning_items (1 record) ===
+  · POST planning_items  PI-112 already present (HTTP 409) — skipping
+
+=== decisions (5 records) ===
+  · POST decisions  DEC-340 already present (HTTP 409) — skipping
+  · POST decisions  DEC-341 already present (HTTP 409) — skipping
+  · POST decisions  DEC-342 already present (HTTP 409) — skipping
+  · POST decisions  DEC-343 already present (HTTP 409) — skipping
+  · POST decisions  DEC-344 already present (HTTP 409) — skipping
+
+=== references (7 records) ===
+  · POST references  CNV-034 conversation_belongs_to_workstream WS-014 already present (HTTP 409) — skipping
+  · POST references  DEC-340 decided_in CNV-034 already present (HTTP 409) — skipping
+  · POST references  DEC-341 decided_in CNV-034 already present (HTTP 409) — skipping
+  · POST references  DEC-342 decided_in CNV-034 already present (HTTP 409) — skipping
+  · POST references  DEC-343 decided_in CNV-034 already present (HTTP 409) — skipping
+  · POST references  DEC-344 decided_in CNV-034 already present (HTTP 409) — skipping
+  · POST references  WT-063 addresses PI-112 already present (HTTP 409) — skipping
+
+
+✓ Recorded apply as deposit_event DEP-125 (HTTP 201).

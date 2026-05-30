@@ -15,6 +15,7 @@
     "conversation_identifier": "CNV-034",
     "conversation_title": "Redesigning the governance & delivery model around Areas",
     "conversation_purpose": "Decide how Areas should be structured and used, and what governance/delivery data model the project should migrate toward.",
+    "conversation_status": "complete",
     "conversation_description": "Started from a question about whether to run the WS-012 orchestrator acceptance and broadened into a model redesign. Settled the area version-prefix drop, the workstream->Project rename, the System/Engagement area tiers with area relocated onto a single-area Work Task, the three-tier pull-based agent-delivery target, and the shelving of WS-012. Produced the target data-model design doc as the destination. Refinement-level decisions (identifier prefixes, Work Task vs work_ticket, PI lifecycle states, Engagement-Area storage, area priority representation) were deliberately deferred to the new Project's first work rather than settled here.",
     "references": []
   },
@@ -97,6 +98,7 @@
     }
   ],
   "references": [
+    {"source_type": "session", "source_id": "SES-132", "target_type": "workstream", "target_id": "WS-014", "relationship": "session_belongs_to_workstream"},
     {"source_type": "conversation", "source_id": "CNV-034", "target_type": "session", "target_id": "SES-132", "relationship": "conversation_belongs_to_session"},
     {"source_type": "conversation", "source_id": "CNV-034", "target_type": "workstream", "target_id": "WS-014", "relationship": "conversation_belongs_to_workstream"},
     {"source_type": "decision", "source_id": "DEC-340", "target_type": "conversation", "target_id": "CNV-034", "relationship": "decided_in"},

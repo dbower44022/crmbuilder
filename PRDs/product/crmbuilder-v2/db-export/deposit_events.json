@@ -2773,5 +2773,61 @@
       "work_tickets": 0
     },
     "deposit_event_title": "Apply of COP-131, 2026-05-30T19:42:59+00:00"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "0.7.0",
+      "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_132.json",
+      "runner": "claude_code"
+    },
+    "deposit_event_created_at": "2026-05-30T22:34:03.482433",
+    "deposit_event_description": "Applied COP-132. Outcome: failure at step session. Records written before failure: 1 conversations, 5 decisions, 1 planning_items, 1 work_tickets.",
+    "deposit_event_error_info": {
+      "http_status": 422,
+      "kind": "http_error",
+      "message": "[{\"code\": \"missing_workstream_membership_edge\", \"field\": \"references\", \"message\": \"exactly one session_belongs_to_workstream edge is required\"}]",
+      "step": "session"
+    },
+    "deposit_event_identifier": "DEP-124",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_124.log",
+    "deposit_event_outcome": "failure",
+    "deposit_event_records_summary": {
+      "commits": 0,
+      "conversations": 1,
+      "decisions": 5,
+      "planning_items": 1,
+      "references": 0,
+      "sessions": 0,
+      "work_tickets": 1
+    },
+    "deposit_event_title": "Apply of COP-132, 2026-05-30T22:34:03+00:00"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "0.7.0",
+      "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_132.json",
+      "runner": "claude_code"
+    },
+    "deposit_event_created_at": "2026-05-30T22:34:51.880075",
+    "deposit_event_description": "Applied COP-132. Outcome: failure at step work_tickets. Records written before failure: 1 sessions.",
+    "deposit_event_error_info": {
+      "http_status": 422,
+      "kind": "http_error",
+      "message": "[{\"code\": \"duplicate\", \"field\": \"work_ticket_title\", \"message\": \"a work_ticket titled 'Kickoff \\u2014 PI-112: governance & delivery model migration' already exists\"}]",
+      "step": "work_tickets"
+    },
+    "deposit_event_identifier": "DEP-125",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_125.log",
+    "deposit_event_outcome": "failure",
+    "deposit_event_records_summary": {
+      "commits": 0,
+      "conversations": 0,
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1,
+      "work_tickets": 0
+    },
+    "deposit_event_title": "Apply of COP-132, 2026-05-30T22:34:51+00:00"
   }
 ]

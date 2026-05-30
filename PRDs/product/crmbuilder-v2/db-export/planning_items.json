@@ -1665,5 +1665,20 @@
     "status": "Resolved",
     "title": "Optional /health heartbeat for proactive detection of an external API's death",
     "updated_at": "2026-05-30T15:31:05.011000"
+  },
+  {
+    "area": null,
+    "claimed_at": null,
+    "claimed_by": null,
+    "created_at": "2026-05-30T22:33:59.107168",
+    "description": "Execute the migration described in PRDs/product/crmbuilder-v2/governance-redesign-target-model.md, in the order set out in its section 9 so the governance database stays internally consistent at each step: (1) rename the `workstream` entity to `Project` (pure rename; wide blast radius across table, REST routes, MCP tools, desktop panel, reference-kind names, and WS- identifiers); (2) restructure the area vocabulary — drop the version prefix, split into immutable System Areas and per-engagement Engagement Areas, migrate cbm-* into the CBM engagement; (3) add the Planning Item lifecycle statuses; (4) introduce the Workstream (delivery-phase) and single-area Work Task entities and relocate `area` from the Planning Item onto the Work Task; (5) reconcile/retire the shelved WS-012 orchestrator. The runtime agent organization (general-purpose / discipline-manager / area-specialist agents) is a separate downstream build, out of scope for this PI. The open schema/naming decisions in section 11 of the design doc are this PI's first work.",
+    "executive_summary": "Carries the governance/delivery model redesign from design to implementation. Renames the current `workstream` container to `Project`, restructures Areas into a fixed System set plus per-engagement Engagement areas and moves the area tag onto a new fine-grained single-area Work Task, adds a real Planning Item lifecycle, and introduces Workstreams as delivery phases. Sequenced so the database stays consistent at every step. The standing-agent organization that consumes this model is a later, separate effort.",
+    "id": 112,
+    "identifier": "PI-112",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Migrate the governance & delivery model to the target data model (Project rename, two-tier areas + relocation, Planning Item lifecycle, Workstream-as-phase, Work Task)",
+    "updated_at": "2026-05-30T22:33:59.107171"
   }
 ]
