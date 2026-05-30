@@ -1,0 +1,28 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_130.json
+Label:  SES-130 / CNV-032 close-out — implement and resolve PI-111: /health heartbeat for proactive API-death detection (MainWindow QTimer -> StorageClient.health -> _begin_auto_reconnect). Commit 01c948d. Also records the incidental fix 9fd649c (3 stale PI-108 panel-column tests). No decisions (heartbeat is DEC-333's deferred option). Anchors PI-111 with kickoff WT-062. Attaches to WS-011. Resolves PI-111. Identifiers re-verify at apply time.
+Deposit event: DEP-122
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-032 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== work_tickets (1 record) ===
+  ✓ POST work_tickets  WT-062 (HTTP 201)
+
+=== commits (2 records) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== references (2 records) ===
+  ✓ POST references  CNV-032 conversation_belongs_to_workstream WS-011 (HTTP 201)
+  ✓ POST references  WT-062 addresses PI-111 (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-111 (HTTP 201)
+
+✓ All 8 operations complete.
+
+✓ Recorded apply as deposit_event DEP-122 (HTTP 201).

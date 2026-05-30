@@ -1662,8 +1662,8 @@
     "identifier": "PI-111",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Optional /health heartbeat for proactive detection of an external API's death",
-    "updated_at": "2026-05-30T05:12:08.371320"
+    "updated_at": "2026-05-30T15:31:05.011000"
   }
 ]

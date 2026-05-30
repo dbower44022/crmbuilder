@@ -1,0 +1,116 @@
+{
+  "label": "SES-130 / CNV-032 close-out — implement and resolve PI-111: /health heartbeat for proactive API-death detection (MainWindow QTimer -> StorageClient.health -> _begin_auto_reconnect). Commit 01c948d. Also records the incidental fix 9fd649c (3 stale PI-108 panel-column tests). No decisions (heartbeat is DEC-333's deferred option). Anchors PI-111 with kickoff WT-062. Attaches to WS-011. Resolves PI-111. Identifiers re-verify at apply time.",
+  "session": {
+    "session_identifier": "SES-130",
+    "session_title": "Implement PI-111 — /health heartbeat for proactive API-death detection",
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-032. Parent workstream WS-011 (V2 storage API refinements). Medium: chat (claude_code runner).\n\nSeed: \"what's next?\" — selected PI-111 from the open backlog, the deferred follow-on to PI-110 / DEC-333.\n\nPI-111 closes the last gap in the API-resilience arc. PI-110 made an API drop self-heal reactively (the UI auto-restarts on a panel connection_lost), but an external API the UI does not own that dies while the user is idle is not noticed until the next request fails. The heartbeat detects that proactively.\n\nDelivered in one commit (01c948d, cherry-picked to main from the protective branch pi-111-heartbeat/beeaa25):\n1. StorageClient.health() — GET /health, returns the payload on success and raises StorageConnectionError when unreachable.\n2. MainWindow heartbeat: a QTimer (_HEARTBEAT_INTERVAL_MS = 15000) that, while ready, probes /health off the GUI thread via run_in_thread. On a StorageConnectionError it calls _begin_auto_reconnect (the PI-110 bounded probe-then-spawn path). The timer starts on first ready, pauses during a reconnect cycle, resumes on the next ready; one probe in flight at a time; non-connection errors are ignored (not a death signal).\n3. Tests: 6 cases added to test_auto_reconnect.py (timer lifecycle, connection-failure restart, non-connection ignore, ignore-while-reconnecting, ok-clears-in-flight, tick guards). 13 auto-reconnect tests pass; full v2 UI suite green; ruff clean.\n\nParallel-work note: this session overlapped heavy parallel orchestration (PI-108 timestamps, PI-105 exec-summary, PI-106/PI-109 close-outs) churning main. Per the commit-immediately rule for parallel work, the heartbeat was committed to a protective branch first, then cherry-picked onto the settled main once parallel work finished. StorageClient.health() rode onto main inside a parallel 'Auto stash before merge' commit (e8d0c19), so it is not in 01c948d's diff but is present in main's history beneath it.\n\nIncidental fix (commit 9fd649c, recorded here): the merged PI-108 timestamp work renamed the master-pane 4th column from *_updated_at ('Updated') to created_at_display ('Created') on the Domains, Entities, and Requirements panels but left three column tests asserting the old layout, leaving main red. This session aligned those three tests with the panels (test-only, 7 lines); full UI suite green (825).\n\nNo decisions authored — the heartbeat is the implementation of DEC-333's deferred option, not a new choice between alternatives. Resolves PI-111, completing the PI-110 / PI-111 API-resilience arc.",
+    "session_medium": "chat",
+    "session_status": "complete",
+    "session_executive_summary": "Implemented and resolved PI-111, the deferred follow-on to PI-110 / DEC-333, closing the API-resilience arc. Added StorageClient.health() and a MainWindow QTimer heartbeat (15s) that probes /health off the GUI thread while ready and, on a StorageConnectionError, reuses the PI-110 _begin_auto_reconnect path — so an external API dying while the user is idle is detected and auto-restarted before the next click fails. The timer pauses during reconnects and resumes on ready; one probe in flight at a time; non-connection errors are ignored. One commit 01c948d; 6 new tests (13 auto-reconnect pass). Also records incidental fix 9fd649c aligning 3 stale PI-108 panel-column tests (Updated->Created) that had left main red. No decisions. Resolves PI-111.",
+    "session_medium_metadata": {
+      "surface": "claude_code",
+      "runner": "claude_code",
+      "model": "claude-opus-4-8"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.8, Claude Code)"
+    ],
+    "references": [
+      {
+        "source_type": "session",
+        "source_id": "SES-130",
+        "target_type": "workstream",
+        "target_id": "WS-011",
+        "relationship": "session_belongs_to_workstream"
+      }
+    ]
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-032",
+    "conversation_title": "Implementing the /health heartbeat (PI-111)",
+    "conversation_purpose": "Close the last API-resilience gap: proactively detect an external API's death between user actions and auto-restart before the next request fails.",
+    "conversation_description": "Added StorageClient.health() and a MainWindow QTimer heartbeat that probes /health off-thread while ready and reuses the PI-110 _begin_auto_reconnect path on a connection failure. Timer pauses during reconnects, resumes on ready; one probe at a time; non-connection errors ignored. One commit 01c948d; 6 new tests. Also fixed 3 stale PI-108 panel-column tests (commit 9fd649c) that had left main red. Committed to a protective branch during heavy parallel orchestration, then cherry-picked onto settled main. No decisions. Resolves PI-111.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-032",
+        "target_type": "session",
+        "target_id": "SES-130",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [
+    {
+      "work_ticket_identifier": "WT-062",
+      "work_ticket_title": "Kickoff — PI-111: /health heartbeat for proactive API-death detection",
+      "work_ticket_description": "Kickoff ticket anchoring PI-111 (UI heartbeat that proactively detects an external API's death and auto-restarts via the PI-110 path). PI-111 was filed as a deferred follow-on in the SES-125 close-out; implemented here. Work shipped in commit 01c948d and resolved by SES-130 / CNV-032. Authored in 'ready' status per the kickoff_prompt convention. Addresses PI-111.",
+      "work_ticket_kind": "kickoff_prompt",
+      "work_ticket_file_path": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-kickoff-pi-111.md",
+      "work_ticket_status": "ready"
+    }
+  ],
+  "planning_items": [],
+  "commits": [
+    {
+      "commit_sha": "01c948d8037bc7a63337c1001f5344d12331d86a",
+      "commit_message_first_line": "v2: PI-111 — /health heartbeat for proactive API-death detection",
+      "commit_message_full": "v2: PI-111 — /health heartbeat for proactive API-death detection\n\nMainWindow polls GET /health every 15s while ready (off the GUI thread\nvia run_in_thread on StorageClient.health, added to client.py in the\npreceding auto-stash commit). On a StorageConnectionError it reuses the\nPI-110 _begin_auto_reconnect path, so an external API that dies between\nuser actions is detected and auto-restarted before the next click fails\n— not only reactively on a panel connection_lost. The timer starts on\nfirst ready, pauses during a reconnect cycle, and resumes on the next\nready; a single probe is in flight at a time; non-connection errors are\nignored (not a death signal). Adds 6 tests to test_auto_reconnect.py\n(timer lifecycle, connection-failure restart, non-connection ignore,\nignore-while-reconnecting, ok-clears-in-flight, tick guards). 13 tests\npass; ruff clean.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-30T10:40:13-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "def5845279f640e8c7a0669a349c790bcf368670"
+      ],
+      "commit_files_changed_count": 2
+    },
+    {
+      "commit_sha": "9fd649c933f2b33ab94c291bad5e435ad62110f5",
+      "commit_message_first_line": "v2: fix 3 stale panel-column tests after PI-108 (Updated → Created)",
+      "commit_message_full": "v2: fix 3 stale panel-column tests after PI-108 (Updated → Created)\n\nPI-108 renamed the master-pane 4th column from the entity-specific\n*_updated_at (\"Updated\") to created_at_display (\"Created\") on the\nDomains, Entities, and Requirements panels but left these three column\ntests asserting the old layout, leaving main red. Align the expected\ntitles/fields with the panels (matching the sibling panel tests PI-108\ndid update). Test-only; no behavior change. Full UI suite green (825).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-30T10:50:23-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "74d4195746756f33507b3df6104f8a6d47358d9a"
+      ],
+      "commit_files_changed_count": 3
+    }
+  ],
+  "decisions": [],
+  "references": [
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-032",
+      "target_type": "session",
+      "target_id": "SES-130",
+      "relationship": "conversation_belongs_to_session"
+    },
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-032",
+      "target_type": "workstream",
+      "target_id": "WS-011",
+      "relationship": "conversation_belongs_to_workstream"
+    },
+    {
+      "source_type": "work_ticket",
+      "source_id": "WT-062",
+      "target_type": "planning_item",
+      "target_id": "PI-111",
+      "relationship": "addresses"
+    }
+  ],
+  "resolves_planning_items": [
+    {
+      "planning_item_identifier": "PI-111"
+    }
+  ],
+  "addresses_planning_items": []
+}

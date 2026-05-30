@@ -1195,5 +1195,43 @@
     "commit_session_id": "SES-129",
     "commit_sha": "8293a06cf7e0354cd95dad4fc79e45f76b64dc98",
     "commit_updated_at": "2026-05-30T15:04:48.505012"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-30T10:40:13-04:00",
+    "commit_created_at": "2026-05-30T15:31:03.735411",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 2,
+    "commit_identifier": "CM-0064",
+    "commit_message_first_line": "v2: PI-111 — /health heartbeat for proactive API-death detection",
+    "commit_message_full": "v2: PI-111 — /health heartbeat for proactive API-death detection\n\nMainWindow polls GET /health every 15s while ready (off the GUI thread\nvia run_in_thread on StorageClient.health, added to client.py in the\npreceding auto-stash commit). On a StorageConnectionError it reuses the\nPI-110 _begin_auto_reconnect path, so an external API that dies between\nuser actions is detected and auto-restarted before the next click fails\n— not only reactively on a panel connection_lost. The timer starts on\nfirst ready, pauses during a reconnect cycle, and resumes on the next\nready; a single probe is in flight at a time; non-connection errors are\nignored (not a death signal). Adds 6 tests to test_auto_reconnect.py\n(timer lifecycle, connection-failure restart, non-connection ignore,\nignore-while-reconnecting, ok-clears-in-flight, tick guards). 13 tests\npass; ruff clean.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "def5845279f640e8c7a0669a349c790bcf368670"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-130",
+    "commit_sha": "01c948d8037bc7a63337c1001f5344d12331d86a",
+    "commit_updated_at": "2026-05-30T15:31:03.735414"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-30T10:50:23-04:00",
+    "commit_created_at": "2026-05-30T15:31:04.057130",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 3,
+    "commit_identifier": "CM-0065",
+    "commit_message_first_line": "v2: fix 3 stale panel-column tests after PI-108 (Updated → Created)",
+    "commit_message_full": "v2: fix 3 stale panel-column tests after PI-108 (Updated → Created)\n\nPI-108 renamed the master-pane 4th column from the entity-specific\n*_updated_at (\"Updated\") to created_at_display (\"Created\") on the\nDomains, Entities, and Requirements panels but left these three column\ntests asserting the old layout, leaving main red. Align the expected\ntitles/fields with the panels (matching the sibling panel tests PI-108\ndid update). Test-only; no behavior change. Full UI suite green (825).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "74d4195746756f33507b3df6104f8a6d47358d9a"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-130",
+    "commit_sha": "9fd649c933f2b33ab94c291bad5e435ad62110f5",
+    "commit_updated_at": "2026-05-30T15:31:04.057132"
   }
 ]

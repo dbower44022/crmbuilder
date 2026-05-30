@@ -974,5 +974,21 @@
     "work_ticket_superseded_at": null,
     "work_ticket_title": "Kickoff — PI-110: harden the v2 API lifecycle (rotating logs + UI auto-restart)",
     "work_ticket_updated_at": "2026-05-30T05:12:07.716562"
+  },
+  {
+    "work_ticket_cancelled_at": null,
+    "work_ticket_consumed_at": null,
+    "work_ticket_created_at": "2026-05-30T15:31:03.419448",
+    "work_ticket_deleted_at": null,
+    "work_ticket_description": "Kickoff ticket anchoring PI-111 (UI heartbeat that proactively detects an external API's death and auto-restarts via the PI-110 path). PI-111 was filed as a deferred follow-on in the SES-125 close-out; implemented here. Work shipped in commit 01c948d and resolved by SES-130 / CNV-032. Authored in 'ready' status per the kickoff_prompt convention. Addresses PI-111.",
+    "work_ticket_file_path": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-kickoff-pi-111.md",
+    "work_ticket_identifier": "WT-062",
+    "work_ticket_kind": "kickoff_prompt",
+    "work_ticket_notes": null,
+    "work_ticket_ready_at": "2026-05-30T15:31:03.419825",
+    "work_ticket_status": "ready",
+    "work_ticket_superseded_at": null,
+    "work_ticket_title": "Kickoff — PI-111: /health heartbeat for proactive API-death detection",
+    "work_ticket_updated_at": "2026-05-30T15:31:03.420276"
   }
 ]
