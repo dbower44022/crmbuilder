@@ -1635,5 +1635,35 @@
     "status": "Open",
     "title": "Auto-transition work_tickets on inbound opens-against edge in apply pipeline",
     "updated_at": "2026-05-30T04:30:10.239820"
+  },
+  {
+    "area": null,
+    "claimed_at": null,
+    "claimed_by": null,
+    "created_at": "2026-05-30T05:12:08.063654",
+    "description": "Make a v2 API outage both diagnosable and self-healing. Trigger: an externally-launched, detached crmbuilder-v2-api died with no captured logs, and the desktop UI — which only crash-monitors API subprocesses it spawns itself — discovered the death only reactively, when a panel click hit Connection refused. Scope: (1) write a rotating API log file (crmbuilder-v2/data/logs/api.log) capturing app logs, startup tracebacks, and access logs for both standalone and UI-spawned launches, built just before uvicorn.run so --check-only / fail-loud stay side-effect-free; (2) MainWindow auto-restarts the API on a panel connection_lost or an owned-subprocess crashed via bounded ServerLifecycle.start() retries, with specific/actionable banners and a runtime-spawn-failure path that does not kill a live session. Anchored by kickoff WT-061. Resolved by SES-125 / CNV-027 (commit 9f8ec27, PR #3).",
+    "executive_summary": "Make a v2 API outage diagnosable and self-healing after an externally-launched detached crmbuilder-v2-api died with no log trail and the UI only noticed on the next failed click. Two parts: rotating API logs at data/logs/api.log (via cli._build_api_log_config wiring a RotatingFileHandler into uvicorn's log_config, side-effect-free on --check-only), capturing app/startup/access logs for standalone and UI-spawned launches; and MainWindow bounded auto-restart on connection_lost/crashed driving ServerLifecycle.start() up to 3 times with actionable banners and a non-fatal runtime-spawn-failure path. Anchored by kickoff WT-061; resolved by SES-125 in commit 9f8ec27 (PR #3).",
+    "id": 110,
+    "identifier": "PI-110",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Resolved",
+    "title": "Harden the v2 API lifecycle — rotating logs + UI auto-restart on connection loss",
+    "updated_at": "2026-05-30T05:12:10.569081"
+  },
+  {
+    "area": null,
+    "claimed_at": null,
+    "claimed_by": null,
+    "created_at": "2026-05-30T05:12:08.371317",
+    "description": "Deferred follow-on from PI-110 / DEC-333 (the scope option not chosen). Add a low-frequency periodic GET /health poll in the desktop UI so an *external* API instance's death is detected proactively (between user actions) and the UI auto-relaunches an owned API before the next request fails, rather than only recovering reactively on a panel connection_lost. The PI-110 auto-restart machinery (MainWindow._begin_auto_reconnect / ServerLifecycle.start) is reused as the recovery path; this PI adds only the heartbeat trigger and a sensible interval/backoff. Lower priority — the reactive path already self-heals on the next interaction; this closes the gap where the UI sits idle and unaware that an external API has gone away.",
+    "executive_summary": "Deferred follow-on from PI-110 (DEC-333's unchosen option): add a low-frequency periodic GET /health poll in the desktop UI so an external API instance's death is detected proactively, between user actions, and the UI auto-relaunches an owned API before the next request fails. Reuses the PI-110 auto-restart recovery path (MainWindow._begin_auto_reconnect / ServerLifecycle.start); this PI adds only the heartbeat trigger plus a sensible interval and backoff. Lower priority because the reactive connection_lost path already self-heals on the next interaction; the heartbeat closes only the idle-and-unaware window for externally-launched APIs the UI does not own and therefore cannot crash-monitor.",
+    "id": 111,
+    "identifier": "PI-111",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Open",
+    "title": "Optional /health heartbeat for proactive detection of an external API's death",
+    "updated_at": "2026-05-30T05:12:08.371320"
   }
 ]

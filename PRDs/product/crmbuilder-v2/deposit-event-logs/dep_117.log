@@ -1,0 +1,36 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_125.json
+Label:  SES-125 / CNV-027 close-out — harden the v2 API lifecycle: rotating logs (cli._build_api_log_config -> data/logs/api.log) + UI auto-restart on connection loss/crash (MainWindow bounded ServerLifecycle.start). One commit 9f8ec27 (PR #3, merged 07b9313). DEC-333 records the scope choice. Creates and resolves PI-110; files deferred follow-on PI-111; anchors PI-110 with kickoff WT-061. Attaches to WS-011. Identifiers re-verify at apply time.
+Deposit event: DEP-117
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-027 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== work_tickets (1 record) ===
+  ✓ POST work_tickets  WT-061 (HTTP 201)
+
+=== planning_items (2 records) ===
+  ✓ POST planning_items  PI-110 (HTTP 201)
+  ✓ POST planning_items  PI-111 (HTTP 201)
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-333 (HTTP 201)
+
+=== references (4 records) ===
+  ✓ POST references  CNV-027 conversation_belongs_to_workstream WS-011 (HTTP 201)
+  ✓ POST references  WT-061 addresses PI-110 (HTTP 201)
+  ✓ POST references  DEC-333 decided_in CNV-027 (HTTP 201)
+  ✓ POST references  DEC-333 is_about PI-110 (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-110 (HTTP 201)
+
+✓ All 12 operations complete.
+
+✓ Recorded apply as deposit_event DEP-117 (HTTP 201).

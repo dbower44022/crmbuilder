@@ -5404,5 +5404,22 @@
     "supersedes_id": null,
     "title": "Adapt PI-031 code-change-lifecycle UI to the post-PI-073 session-grain schema",
     "updated_at": "2026-05-30T03:45:28.393437"
+  },
+  {
+    "alternatives_considered": "(a) Logs + better message only, manual Reconnect for recovery — lowest behavioral change but does not self-heal, contrary to the request. (b) Full option: everything plus a periodic /health heartbeat for proactive external-API-death detection — most robust but most new code/behavior; the heartbeat's marginal value (only the idle window on un-owned APIs) did not justify bundling it into the fix, so it became PI-111.",
+    "consequences": "The UI now self-heals an API drop and an API outage is diagnosable via data/logs/api.log. Recovery is bounded at _MAX_RECONNECT_ATTEMPTS (3); a runtime spawn failure post first-ready routes to the in-window banner (never the fatal startup dialog), so app.py's startup-failure path is now gated on MainWindow.had_first_ready(). An externally-launched API on 8765 is still only recovered reactively (no heartbeat yet) — PI-111 holds that gap. The most robust workflow is to let the desktop UI own the API so crashes are detected and auto-restarted directly.",
+    "context": "A Work Tickets panel failed to display with [Errno 111] Connection refused: an externally-launched, detached crmbuilder-v2-api had died with no captured logs, and the desktop UI only noticed reactively (the UI crash-monitors only API subprocesses it spawns itself; an external one is invisible until a request fails). Two fixes were possible and the question was how far to take the self-resolution: minimal (better messaging + a manual Reconnect), moderate (automatically restart the API), or maximal (also poll /health to detect death proactively).",
+    "created_at": "2026-05-30T05:12:08.973772",
+    "decision": "Implement auto-restart + rotating logs + a better message: on a panel connection_lost or an owned-subprocess crash, automatically run the existing probe-then-spawn lifecycle with bounded retries (3) before falling back to manual Reconnect; redirect the API to a rotating log file (data/logs/api.log); and make the banner specific and actionable (URL, attempt count, log path, standalone-launch hint). Defer the periodic /health heartbeat to a separate follow-on (PI-111).",
+    "decision_date": "2026-05-30",
+    "executive_summary": "Records Doug's choice of how far the v2 UI should go to self-resolve a dropped API connection. The Work Tickets panel failed with Connection refused because a detached external API died unlogged and the UI noticed only on the next request. Chosen: auto-restart + rotating logs + an actionable banner — bounded ServerLifecycle.start() retries on connection_lost/crashed, a rotating data/logs/api.log, and a specific message naming URL/attempts/log path — over logs-only (no self-heal, contrary to the ask) and over additionally adding a periodic /health heartbeat (most new code; marginal value only for the idle window on un-owned APIs), which was deferred to PI-111.",
+    "id": 320,
+    "identifier": "DEC-333",
+    "rationale": "This is the best balance: rotating logs fix the diagnosability gap that made the outage unexplainable, and reusing the existing ServerLifecycle.start() machinery for bounded auto-restart recovers without a click (including spawning a fresh owned API when the dead one was external) for little new code. The heartbeat adds real value only for the idle-and-unaware window on externally-owned APIs and is more new code/behavior, so it is worth deferring rather than blocking the fix. Logs-only would leave the UI sitting disabled until a manual click — failing the explicit ask to 'try to resolve the issue'.",
+    "status": "Active",
+    "superseded_by_id": null,
+    "supersedes_id": null,
+    "title": "How aggressively the v2 UI should self-resolve a dropped API connection",
+    "updated_at": "2026-05-30T05:12:08.973776"
   }
 ]

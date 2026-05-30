@@ -1,0 +1,146 @@
+{
+  "label": "SES-125 / CNV-027 close-out — harden the v2 API lifecycle: rotating logs (cli._build_api_log_config -> data/logs/api.log) + UI auto-restart on connection loss/crash (MainWindow bounded ServerLifecycle.start). One commit 9f8ec27 (PR #3, merged 07b9313). DEC-333 records the scope choice. Creates and resolves PI-110; files deferred follow-on PI-111; anchors PI-110 with kickoff WT-061. Attaches to WS-011. Identifiers re-verify at apply time.",
+  "session": {
+    "session_identifier": "SES-125",
+    "session_title": "Harden the v2 API lifecycle — rotating logs + UI auto-restart on connection loss",
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-027. Parent workstream WS-011 (V2 storage API refinements). Medium: chat (claude_code runner).\n\nSeed: \"when trying to access a work ticket in V2, it failed to display when clicked on, and this message was displayed in the console ... Connection lost during refresh: [Errno 111] Connection refused\". Doug then asked to look at two areas: (1) why the API process went offline, and (2) how to make the UI reporting more informative, including trying to resolve the issue.\n\nDiagnosis. The dead instance was an externally-launched, detached crmbuilder-v2-api (PPID systemd --user) that produced no logs (stdout went to a closed terminal); journald/dmesg showed no OOM/signal, so the exact cause was unrecoverable. Two structural gaps: (a) no persistent API logs, so post-mortem was impossible; (b) the UI's ServerLifecycle only crash-monitors API subprocesses it spawns itself (QProcess) — an externally-run API is marked 'external' and is noticed dead only reactively, on the next failed request (the Connection refused the panel hit).\n\nDecision (DEC-333). Asked Doug to choose the self-heal scope; he chose auto-restart + rotating logs + actionable banner over logs-only and over additionally adding a /health heartbeat (the heartbeat deferred to PI-111).\n\nDelivered in one commit (9f8ec27, merged to main via PR #3 as 07b9313):\n1. Rotating API logs at crmbuilder-v2/data/logs/api.log (config.api_log_path, gitignored). cli._build_api_log_config deep-copies uvicorn's LOGGING_CONFIG and adds a RotatingFileHandler (2 MB x 5) on the root and uvicorn/uvicorn.access loggers, passed as uvicorn.run(..., log_config=...). Built just before uvicorn.run so --check-only / fail-loud create no log file. Captures app logs, startup tracebacks, and access logs for both standalone and UI-spawned launches.\n2. UI auto-restart in MainWindow: a panel connection_lost or an owned-subprocess crashed drives ServerLifecycle.start() up to _MAX_RECONNECT_ATTEMPTS (3), then a manual-Reconnect fallback banner. Banners name the URL, attempt count, log path, and standalone-launch hint; overlapping triggers dedupe; a runtime spawn failure (post first-ready, gated on had_first_ready()) routes to the in-window banner via app.py instead of the fatal startup dialog, so a failed reconnect never kills a live session. The _on_lifecycle_ready hide is now unconditional (more correct, deterministic).\n3. Tests: new tests/crmbuilder_v2/ui/test_auto_reconnect.py (7 cases). Full v2 UI + CLI suites green (818 pass); changed files lint clean (one pre-existing I001 in main_window.py left untouched).\n\nVerified end-to-end: a real API run wrote startup + access (incl. a 404) + shutdown lines to data/logs/api.log while --check-only created none. After the fix the API was restarted on 8765 with the new code and the UI reconnected (access log shows the UI's /health + /decisions startup signature).\n\nGovernance: PI-110 created and resolved by this session (anchored by kickoff WT-061, file CLAUDE-CODE-PROMPT-kickoff-pi-110.md). PI-111 filed Open for the deferred /health heartbeat follow-on. CLAUDE.md updated with the logging + auto-restart note. The feature commit sits on main (pushed); this close-out commit follows the Claude Code convention (Claude commits, Doug pushes).",
+    "session_medium": "chat",
+    "session_status": "complete",
+    "session_executive_summary": "Diagnosed and fixed the 'work ticket failed to display; Connection refused' outage. A detached external crmbuilder-v2-api died with no log trail, and the UI (which only crash-monitors APIs it spawns) noticed only on the next failed click. Per DEC-333 (Doug's scope choice), delivered in one commit (9f8ec27, PR #3): rotating API logs at data/logs/api.log via cli._build_api_log_config wiring a RotatingFileHandler into uvicorn's log_config, and MainWindow auto-restart driving ServerLifecycle.start() up to 3 times on connection loss/crash with actionable banners and a non-fatal runtime-spawn-failure path. New test_auto_reconnect.py (7 cases); 818 tests pass. Creates and resolves PI-110 (anchored by WT-061); files PI-111 for the deferred /health heartbeat; updates CLAUDE.md.",
+    "session_medium_metadata": {
+      "surface": "claude_code",
+      "runner": "claude_code",
+      "model": "claude-opus-4-8"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.8, Claude Code)"
+    ],
+    "references": [
+      {
+        "source_type": "session",
+        "source_id": "SES-125",
+        "target_type": "workstream",
+        "target_id": "WS-011",
+        "relationship": "session_belongs_to_workstream"
+      }
+    ]
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-027",
+    "conversation_title": "Diagnosing the API outage and hardening the v2 API lifecycle",
+    "conversation_purpose": "Find why the v2 API went offline and make an API drop both diagnosable (durable logs) and self-resolving (UI auto-restart), with informative operator reporting.",
+    "conversation_description": "Diagnosed an externally-launched, detached crmbuilder-v2-api dying with no log trail (UI only noticing reactively on a failed click). Per DEC-333 delivered rotating API logs (cli._build_api_log_config -> data/logs/api.log) and MainWindow bounded auto-restart on connection_lost/crashed with actionable banners and a non-fatal runtime-spawn-failure path. One commit 9f8ec27 (PR #3, merged 07b9313); new test_auto_reconnect.py; 818 tests pass. Created and resolved PI-110 (anchored by WT-061), filed PI-111 (deferred /health heartbeat), updated CLAUDE.md. Restarted the API on 8765 with the new code and confirmed the UI reconnected.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-027",
+        "target_type": "session",
+        "target_id": "SES-125",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [
+    {
+      "work_ticket_identifier": "WT-061",
+      "work_ticket_title": "Kickoff — PI-110: harden the v2 API lifecycle (rotating logs + UI auto-restart)",
+      "work_ticket_description": "Kickoff ticket anchoring PI-110 (make a v2 API outage diagnosable via rotating logs and self-resolving via UI auto-restart). Authored alongside the work it anchors (the PI was picked up reactively from a bug report); the work shipped in commit 9f8ec27 (PR #3, merged 07b9313) and was resolved by SES-125 / CNV-027. Authored in 'ready' status per the kickoff_prompt convention. Addresses PI-110.",
+      "work_ticket_kind": "kickoff_prompt",
+      "work_ticket_file_path": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-kickoff-pi-110.md",
+      "work_ticket_status": "ready"
+    }
+  ],
+  "planning_items": [
+    {
+      "identifier": "PI-110",
+      "title": "Harden the v2 API lifecycle — rotating logs + UI auto-restart on connection loss",
+      "item_type": "pending_work",
+      "status": "Open",
+      "description": "Make a v2 API outage both diagnosable and self-healing. Trigger: an externally-launched, detached crmbuilder-v2-api died with no captured logs, and the desktop UI — which only crash-monitors API subprocesses it spawns itself — discovered the death only reactively, when a panel click hit Connection refused. Scope: (1) write a rotating API log file (crmbuilder-v2/data/logs/api.log) capturing app logs, startup tracebacks, and access logs for both standalone and UI-spawned launches, built just before uvicorn.run so --check-only / fail-loud stay side-effect-free; (2) MainWindow auto-restarts the API on a panel connection_lost or an owned-subprocess crashed via bounded ServerLifecycle.start() retries, with specific/actionable banners and a runtime-spawn-failure path that does not kill a live session. Anchored by kickoff WT-061. Resolved by SES-125 / CNV-027 (commit 9f8ec27, PR #3).",
+      "executive_summary": "Make a v2 API outage diagnosable and self-healing after an externally-launched detached crmbuilder-v2-api died with no log trail and the UI only noticed on the next failed click. Two parts: rotating API logs at data/logs/api.log (via cli._build_api_log_config wiring a RotatingFileHandler into uvicorn's log_config, side-effect-free on --check-only), capturing app/startup/access logs for standalone and UI-spawned launches; and MainWindow bounded auto-restart on connection_lost/crashed driving ServerLifecycle.start() up to 3 times with actionable banners and a non-fatal runtime-spawn-failure path. Anchored by kickoff WT-061; resolved by SES-125 in commit 9f8ec27 (PR #3)."
+    },
+    {
+      "identifier": "PI-111",
+      "title": "Optional /health heartbeat for proactive detection of an external API's death",
+      "item_type": "pending_work",
+      "status": "Open",
+      "description": "Deferred follow-on from PI-110 / DEC-333 (the scope option not chosen). Add a low-frequency periodic GET /health poll in the desktop UI so an *external* API instance's death is detected proactively (between user actions) and the UI auto-relaunches an owned API before the next request fails, rather than only recovering reactively on a panel connection_lost. The PI-110 auto-restart machinery (MainWindow._begin_auto_reconnect / ServerLifecycle.start) is reused as the recovery path; this PI adds only the heartbeat trigger and a sensible interval/backoff. Lower priority — the reactive path already self-heals on the next interaction; this closes the gap where the UI sits idle and unaware that an external API has gone away.",
+      "executive_summary": "Deferred follow-on from PI-110 (DEC-333's unchosen option): add a low-frequency periodic GET /health poll in the desktop UI so an external API instance's death is detected proactively, between user actions, and the UI auto-relaunches an owned API before the next request fails. Reuses the PI-110 auto-restart recovery path (MainWindow._begin_auto_reconnect / ServerLifecycle.start); this PI adds only the heartbeat trigger plus a sensible interval and backoff. Lower priority because the reactive connection_lost path already self-heals on the next interaction; the heartbeat closes only the idle-and-unaware window for externally-launched APIs the UI does not own and therefore cannot crash-monitor."
+    }
+  ],
+  "commits": [
+    {
+      "commit_sha": "9f8ec27ca0c9883701c7ee96662ce169b552e566",
+      "commit_message_first_line": "v2: API rotating logs + UI auto-restart on connection loss",
+      "commit_message_full": "v2: API rotating logs + UI auto-restart on connection loss\n\nTwo fixes for the \"work ticket failed to display; Connection refused\"\noutage where an externally-launched, detached crmbuilder-v2-api died\nwith no log trail and the UI only noticed on the next click.\n\nDiagnosability:\n- run_api now configures a RotatingFileHandler at\n  crmbuilder-v2/data/logs/api.log (config.api_log_path), wired into the\n  root + uvicorn loggers via uvicorn's log_config so app logs, startup\n  tracebacks, and access logs all persist. Built just before\n  uvicorn.run, so --check-only / fail-loud paths create no log file.\n  gitignore the logs dir.\n\nSelf-resolution:\n- main_window auto-restarts the API on a panel connection_lost OR an\n  owned-subprocess crash, driving the existing probe-then-spawn lifecycle\n  up to _MAX_RECONNECT_ATTEMPTS (3) before falling back to a manual\n  Reconnect banner. Banners are now specific/actionable (URL, attempt\n  count, log path, standalone-launch hint). Overlapping triggers dedupe.\n- app.py routes a runtime spawn failure (post first-ready) to the\n  in-window banner instead of the fatal startup dialog, so a failed\n  reconnect never tears down a live session.\n\nTests: new test_auto_reconnect.py (7 cases: retry bound, dedupe,\nexhaustion, manual reset, crash path, had_first_ready gate). 818 pass.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-30T00:53:15-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "1d6aedfae7070baf4b5d3d045c0cc36bf65f4eaf"
+      ],
+      "commit_files_changed_count": 6
+    }
+  ],
+  "decisions": [
+    {
+      "identifier": "DEC-333",
+      "title": "How aggressively the v2 UI should self-resolve a dropped API connection",
+      "decision_date": "2026-05-30",
+      "status": "Active",
+      "context": "A Work Tickets panel failed to display with [Errno 111] Connection refused: an externally-launched, detached crmbuilder-v2-api had died with no captured logs, and the desktop UI only noticed reactively (the UI crash-monitors only API subprocesses it spawns itself; an external one is invisible until a request fails). Two fixes were possible and the question was how far to take the self-resolution: minimal (better messaging + a manual Reconnect), moderate (automatically restart the API), or maximal (also poll /health to detect death proactively).",
+      "decision": "Implement auto-restart + rotating logs + a better message: on a panel connection_lost or an owned-subprocess crash, automatically run the existing probe-then-spawn lifecycle with bounded retries (3) before falling back to manual Reconnect; redirect the API to a rotating log file (data/logs/api.log); and make the banner specific and actionable (URL, attempt count, log path, standalone-launch hint). Defer the periodic /health heartbeat to a separate follow-on (PI-111).",
+      "rationale": "This is the best balance: rotating logs fix the diagnosability gap that made the outage unexplainable, and reusing the existing ServerLifecycle.start() machinery for bounded auto-restart recovers without a click (including spawning a fresh owned API when the dead one was external) for little new code. The heartbeat adds real value only for the idle-and-unaware window on externally-owned APIs and is more new code/behavior, so it is worth deferring rather than blocking the fix. Logs-only would leave the UI sitting disabled until a manual click — failing the explicit ask to 'try to resolve the issue'.",
+      "alternatives_considered": "(a) Logs + better message only, manual Reconnect for recovery — lowest behavioral change but does not self-heal, contrary to the request. (b) Full option: everything plus a periodic /health heartbeat for proactive external-API-death detection — most robust but most new code/behavior; the heartbeat's marginal value (only the idle window on un-owned APIs) did not justify bundling it into the fix, so it became PI-111.",
+      "consequences": "The UI now self-heals an API drop and an API outage is diagnosable via data/logs/api.log. Recovery is bounded at _MAX_RECONNECT_ATTEMPTS (3); a runtime spawn failure post first-ready routes to the in-window banner (never the fatal startup dialog), so app.py's startup-failure path is now gated on MainWindow.had_first_ready(). An externally-launched API on 8765 is still only recovered reactively (no heartbeat yet) — PI-111 holds that gap. The most robust workflow is to let the desktop UI own the API so crashes are detected and auto-restarted directly.",
+      "executive_summary": "Records Doug's choice of how far the v2 UI should go to self-resolve a dropped API connection. The Work Tickets panel failed with Connection refused because a detached external API died unlogged and the UI noticed only on the next request. Chosen: auto-restart + rotating logs + an actionable banner — bounded ServerLifecycle.start() retries on connection_lost/crashed, a rotating data/logs/api.log, and a specific message naming URL/attempts/log path — over logs-only (no self-heal, contrary to the ask) and over additionally adding a periodic /health heartbeat (most new code; marginal value only for the idle window on un-owned APIs), which was deferred to PI-111."
+    }
+  ],
+  "references": [
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-027",
+      "target_type": "session",
+      "target_id": "SES-125",
+      "relationship": "conversation_belongs_to_session"
+    },
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-027",
+      "target_type": "workstream",
+      "target_id": "WS-011",
+      "relationship": "conversation_belongs_to_workstream"
+    },
+    {
+      "source_type": "work_ticket",
+      "source_id": "WT-061",
+      "target_type": "planning_item",
+      "target_id": "PI-110",
+      "relationship": "addresses"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-333",
+      "target_type": "conversation",
+      "target_id": "CNV-027",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-333",
+      "target_type": "planning_item",
+      "target_id": "PI-110",
+      "relationship": "is_about"
+    }
+  ],
+  "resolves_planning_items": [
+    {
+      "planning_item_identifier": "PI-110"
+    }
+  ],
+  "addresses_planning_items": []
+}

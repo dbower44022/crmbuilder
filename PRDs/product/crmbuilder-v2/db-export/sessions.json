@@ -2382,5 +2382,34 @@
     "session_superseded_at": null,
     "session_title": "Backfill the PI-107 and PI-031 kickoff work tickets (WT-059, WT-060)",
     "session_updated_at": "2026-05-30T04:17:56.287045"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-30T05:12:07.363637",
+    "session_created_at": "2026-05-30T05:12:07.363116",
+    "session_deleted_at": null,
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-027. Parent workstream WS-011 (V2 storage API refinements). Medium: chat (claude_code runner).\n\nSeed: \"when trying to access a work ticket in V2, it failed to display when clicked on, and this message was displayed in the console ... Connection lost during refresh: [Errno 111] Connection refused\". Doug then asked to look at two areas: (1) why the API process went offline, and (2) how to make the UI reporting more informative, including trying to resolve the issue.\n\nDiagnosis. The dead instance was an externally-launched, detached crmbuilder-v2-api (PPID systemd --user) that produced no logs (stdout went to a closed terminal); journald/dmesg showed no OOM/signal, so the exact cause was unrecoverable. Two structural gaps: (a) no persistent API logs, so post-mortem was impossible; (b) the UI's ServerLifecycle only crash-monitors API subprocesses it spawns itself (QProcess) — an externally-run API is marked 'external' and is noticed dead only reactively, on the next failed request (the Connection refused the panel hit).\n\nDecision (DEC-333). Asked Doug to choose the self-heal scope; he chose auto-restart + rotating logs + actionable banner over logs-only and over additionally adding a /health heartbeat (the heartbeat deferred to PI-111).\n\nDelivered in one commit (9f8ec27, merged to main via PR #3 as 07b9313):\n1. Rotating API logs at crmbuilder-v2/data/logs/api.log (config.api_log_path, gitignored). cli._build_api_log_config deep-copies uvicorn's LOGGING_CONFIG and adds a RotatingFileHandler (2 MB x 5) on the root and uvicorn/uvicorn.access loggers, passed as uvicorn.run(..., log_config=...). Built just before uvicorn.run so --check-only / fail-loud create no log file. Captures app logs, startup tracebacks, and access logs for both standalone and UI-spawned launches.\n2. UI auto-restart in MainWindow: a panel connection_lost or an owned-subprocess crashed drives ServerLifecycle.start() up to _MAX_RECONNECT_ATTEMPTS (3), then a manual-Reconnect fallback banner. Banners name the URL, attempt count, log path, and standalone-launch hint; overlapping triggers dedupe; a runtime spawn failure (post first-ready, gated on had_first_ready()) routes to the in-window banner via app.py instead of the fatal startup dialog, so a failed reconnect never kills a live session. The _on_lifecycle_ready hide is now unconditional (more correct, deterministic).\n3. Tests: new tests/crmbuilder_v2/ui/test_auto_reconnect.py (7 cases). Full v2 UI + CLI suites green (818 pass); changed files lint clean (one pre-existing I001 in main_window.py left untouched).\n\nVerified end-to-end: a real API run wrote startup + access (incl. a 404) + shutdown lines to data/logs/api.log while --check-only created none. After the fix the API was restarted on 8765 with the new code and the UI reconnected (access log shows the UI's /health + /decisions startup signature).\n\nGovernance: PI-110 created and resolved by this session (anchored by kickoff WT-061, file CLAUDE-CODE-PROMPT-kickoff-pi-110.md). PI-111 filed Open for the deferred /health heartbeat follow-on. CLAUDE.md updated with the logging + auto-restart note. The feature commit sits on main (pushed); this close-out commit follows the Claude Code convention (Claude commits, Doug pushes).",
+    "session_ended_at": null,
+    "session_executive_summary": "Diagnosed and fixed the 'work ticket failed to display; Connection refused' outage. A detached external crmbuilder-v2-api died with no log trail, and the UI (which only crash-monitors APIs it spawns) noticed only on the next failed click. Per DEC-333 (Doug's scope choice), delivered in one commit (9f8ec27, PR #3): rotating API logs at data/logs/api.log via cli._build_api_log_config wiring a RotatingFileHandler into uvicorn's log_config, and MainWindow auto-restart driving ServerLifecycle.start() up to 3 times on connection loss/crash with actionable banners and a non-fatal runtime-spawn-failure path. New test_auto_reconnect.py (7 cases); 818 tests pass. Creates and resolves PI-110 (anchored by WT-061); files PI-111 for the deferred /health heartbeat; updates CLAUDE.md.",
+    "session_identifier": "SES-125",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "model": "claude-opus-4-8",
+      "runner": "claude_code",
+      "surface": "claude_code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.8, Claude Code)"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "Harden the v2 API lifecycle — rotating logs + UI auto-restart on connection loss",
+    "session_updated_at": "2026-05-30T05:12:07.364050"
   }
 ]

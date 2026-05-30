@@ -1043,5 +1043,24 @@
     "commit_session_id": "SES-122",
     "commit_sha": "947da63f7cd9ba37bd1fec4d82a5f1f6fd8b3316",
     "commit_updated_at": "2026-05-30T04:00:49.969148"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-30T00:53:15-04:00",
+    "commit_created_at": "2026-05-30T05:12:08.665422",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 6,
+    "commit_identifier": "CM-0056",
+    "commit_message_first_line": "v2: API rotating logs + UI auto-restart on connection loss",
+    "commit_message_full": "v2: API rotating logs + UI auto-restart on connection loss\n\nTwo fixes for the \"work ticket failed to display; Connection refused\"\noutage where an externally-launched, detached crmbuilder-v2-api died\nwith no log trail and the UI only noticed on the next click.\n\nDiagnosability:\n- run_api now configures a RotatingFileHandler at\n  crmbuilder-v2/data/logs/api.log (config.api_log_path), wired into the\n  root + uvicorn loggers via uvicorn's log_config so app logs, startup\n  tracebacks, and access logs all persist. Built just before\n  uvicorn.run, so --check-only / fail-loud paths create no log file.\n  gitignore the logs dir.\n\nSelf-resolution:\n- main_window auto-restarts the API on a panel connection_lost OR an\n  owned-subprocess crash, driving the existing probe-then-spawn lifecycle\n  up to _MAX_RECONNECT_ATTEMPTS (3) before falling back to a manual\n  Reconnect banner. Banners are now specific/actionable (URL, attempt\n  count, log path, standalone-launch hint). Overlapping triggers dedupe.\n- app.py routes a runtime spawn failure (post first-ready) to the\n  in-window banner instead of the fatal startup dialog, so a failed\n  reconnect never tears down a live session.\n\nTests: new test_auto_reconnect.py (7 cases: retry bound, dedupe,\nexhaustion, manual reset, crash path, had_first_ready gate). 818 pass.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "1d6aedfae7070baf4b5d3d045c0cc36bf65f4eaf"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-125",
+    "commit_sha": "9f8ec27ca0c9883701c7ee96662ce169b552e566",
+    "commit_updated_at": "2026-05-30T05:12:08.665424"
   }
 ]

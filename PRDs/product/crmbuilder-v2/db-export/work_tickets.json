@@ -958,5 +958,21 @@
     "work_ticket_superseded_at": null,
     "work_ticket_title": "Kickoff — PI-031: commits panel + planning_item resolution chain",
     "work_ticket_updated_at": "2026-05-30T04:17:56.919373"
+  },
+  {
+    "work_ticket_cancelled_at": null,
+    "work_ticket_consumed_at": null,
+    "work_ticket_created_at": "2026-05-30T05:12:07.715653",
+    "work_ticket_deleted_at": null,
+    "work_ticket_description": "Kickoff ticket anchoring PI-110 (make a v2 API outage diagnosable via rotating logs and self-resolving via UI auto-restart). Authored alongside the work it anchors (the PI was picked up reactively from a bug report); the work shipped in commit 9f8ec27 (PR #3, merged 07b9313) and was resolved by SES-125 / CNV-027. Authored in 'ready' status per the kickoff_prompt convention. Addresses PI-110.",
+    "work_ticket_file_path": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-kickoff-pi-110.md",
+    "work_ticket_identifier": "WT-061",
+    "work_ticket_kind": "kickoff_prompt",
+    "work_ticket_notes": null,
+    "work_ticket_ready_at": "2026-05-30T05:12:07.715978",
+    "work_ticket_status": "ready",
+    "work_ticket_superseded_at": null,
+    "work_ticket_title": "Kickoff — PI-110: harden the v2 API lifecycle (rotating logs + UI auto-restart)",
+    "work_ticket_updated_at": "2026-05-30T05:12:07.716562"
   }
 ]
