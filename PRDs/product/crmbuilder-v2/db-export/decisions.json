@@ -5509,12 +5509,12 @@
   },
   {
     "alternatives_considered": "Unbounded first run across the whole ready backlog — rejected: maximal blast radius for an unproven unattended-dispatch path. No bound at all, relying only on halt-on-failure — rejected: halt-on-failure limits damage after a failure but does not bound how much is dispatched before one.",
-    "consequences": "Acceptance requires the depth-0 wave to yield >=2 area-disjoint clusters. The bounded dry-run surfaced that the current backlog cannot (0 PIs carry an area), so the acceptance run is deferred and PI-081 is recorded blocked_by PI-062 (area backfill) rather than resolved.",
+    "consequences": "Acceptance requires the depth-0 wave to yield >=2 area-disjoint clusters. The bounded dry-run surfaced that the current backlog cannot (0 PIs carry an area), so the acceptance run is deferred and PI-081 is recorded blocked_by PI-083 (area backfill) rather than resolved.",
     "context": "The first live orchestrator dispatch is also the WS-012 §7.2 acceptance test and spawns unattended agents with broad autonomy on the live repo. The kickoff requires this first run to be bounded and human-watched.",
     "created_at": "2026-05-30T19:42:57.113842",
     "decision": "The first --execute run uses --max-depth 0 (depth-0 wave only), is preceded by a --dry-run plan + rendered-kickoff review, and proceeds only on an explicit human go. Multi-wave (wider --max-depth) runs are deferred to later sessions once the bounded run is proven.",
     "decision_date": "2026-05-30",
-    "executive_summary": "The first live --execute run is bounded to a single depth-0 wave (--max-depth 0) and gated behind an explicit human go after a dry-run plan review; wider multi-wave runs come in later sessions. The intent is to minimize blast radius for the first unattended-agent dispatch on the real repo. A full-backlog first run was rejected as too risky. Applying this gate is what surfaced the PI-062 area-backfill gap: the depth-0 dry-run showed 0 of 54 open PIs carry an area, so the wave partitions into 0 clusters and cannot meet the >=2-concurrent-children acceptance bar — deferring the acceptance run rather than improvising a workaround.",
+    "executive_summary": "The first live --execute run is bounded to a single depth-0 wave (--max-depth 0) and gated behind an explicit human go after a dry-run plan review; wider multi-wave runs come in later sessions. The intent is to minimize blast radius for the first unattended-agent dispatch on the real repo. A full-backlog first run was rejected as too risky. Applying this gate is what surfaced the PI-083 area-backfill gap: the depth-0 dry-run showed 0 of 54 open PIs carry an area, so the wave partitions into 0 clusters and cannot meet the >=2-concurrent-children acceptance bar — deferring the acceptance run rather than improvising a workaround.",
     "id": 326,
     "identifier": "DEC-339",
     "rationale": "",
@@ -5522,6 +5522,6 @@
     "superseded_by_id": null,
     "supersedes_id": null,
     "title": "Bounded, human-watched first orchestrator run (--max-depth 0)",
-    "updated_at": "2026-05-30T19:42:57.113845"
+    "updated_at": "2026-05-30T19:52:01.138585"
   }
 ]

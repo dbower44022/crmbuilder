@@ -16,7 +16,8 @@ wave yields 0 clusters). Records:
   first run)
 - 2 commits (800e329 `_execute` + tests, 3ba1875 `--dry-run` flag)
 - references: conversation→session + conversation→workstream membership,
-  4× `decided_in` (DEC→CNV-033), and **`PI-081 blocked_by PI-062`**
+  4× `decided_in` (DEC→CNV-033). (PI-081 is already `blocked_by PI-083`
+  in the dependency graph — this session adds no new blocked_by edge.)
 - `addresses_planning_items: [PI-081]` (no status flip — PI-081 stays Open)
 - 1 deposit_event + lazy-created COP-131 + dep log
 
@@ -44,7 +45,7 @@ uv run python scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out
 ```
 
 Expected: conversation ✓, session ✓, 4 decisions ✓, 2 commits ✓,
-7 references ✓ (membership ×2, decided_in ×4, blocked_by ×1),
+6 references ✓ (membership ×2, decided_in ×4),
 addresses_planning_items ✓ (1 edge), deposit_event DEP-NNN ✓. The
 membership edges hoist into the singular blocks automatically.
 
@@ -53,7 +54,7 @@ membership edges hoist into the singular blocks automatically.
 ```bash
 curl -s http://127.0.0.1:8765/sessions/SES-131 | python3 -c "import sys,json;d=json.load(sys.stdin)['data'];print(d['session_status'])"   # complete
 curl -s http://127.0.0.1:8765/planning-items/PI-081 | python3 -c "import sys,json;d=json.load(sys.stdin)['data'];print(d['status'])"      # Open (addressed, not resolved)
-curl -s "http://127.0.0.1:8765/references/from/planning_item/PI-081" | python3 -c "import sys,json;[print(r['relationship'],r['target_id']) for r in json.load(sys.stdin)['data']]"  # blocked_by PI-062
+curl -s "http://127.0.0.1:8765/references/from/planning_item/PI-081" | python3 -c "import sys,json;[print(r['relationship'],r['target_id']) for r in json.load(sys.stdin)['data']]"  # blocked_by PI-083
 curl -s "http://127.0.0.1:8765/references/from/decision/DEC-336" | python3 -c "import sys,json;[print(r['relationship'],r['target_type'],r['target_id']) for r in json.load(sys.stdin)['data']]"  # decided_in conversation CNV-033
 ```
 
@@ -68,7 +69,7 @@ git add PRDs/product/crmbuilder-v2/db-export/ \
         PRDs/product/crmbuilder-v2/deposit-event-logs/ \
         PRDs/product/crmbuilder-v2/close-out-payloads/ses_131.json \
         PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-apply-close-out-ses-131.md
-git commit -m "v2: SES-131 close-out — address PI-081 (orchestrator _execute); defer §7.2 acceptance pending PI-062 area backfill"
+git commit -m "v2: SES-131 close-out — address PI-081 (orchestrator _execute); defer §7.2 acceptance pending PI-083 area backfill"
 ```
 
 **Doug pushes.**

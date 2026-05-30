@@ -580,7 +580,7 @@
     "conversation_completed_at": "2026-05-30T19:42:54.805699",
     "conversation_created_at": "2026-05-30T19:42:54.805165",
     "conversation_deleted_at": null,
-    "conversation_description": "Replaced the NotImplementedError stub in run.py::_execute with the full dispatch glue (orchestrator session+conversation, per-cluster reserve/claim/worktree/render/spawn, static-wave join, child verification, halt-on-failure, orchestrates-edge recording, supervising close-out). 24 unit tests green; ruff clean; commits 800e329 and 3ba1875. The dry-run checkpoint found 0 of 54 open PIs carry an area, so the depth-0 wave yields 0 clusters and cannot satisfy the >=2 concurrent-children acceptance condition; per the Step-4.3 guard no workaround was improvised and (Doug's call) the acceptance run is deferred. Four wiring decisions DEC-336..DEC-339. Addresses PI-081; PI-081 blocked_by PI-062.",
+    "conversation_description": "Replaced the NotImplementedError stub in run.py::_execute with the full dispatch glue (orchestrator session+conversation, per-cluster reserve/claim/worktree/render/spawn, static-wave join, child verification, halt-on-failure, orchestrates-edge recording, supervising close-out). 24 unit tests green; ruff clean; commits 800e329 and 3ba1875. The dry-run checkpoint found 0 of 54 open PIs carry an area, so the depth-0 wave yields 0 clusters and cannot satisfy the >=2 concurrent-children acceptance condition; per the Step-4.3 guard no workaround was improvised and (Doug's call) the acceptance run is deferred. Four wiring decisions DEC-336..DEC-339. Addresses PI-081; PI-081 blocked_by PI-083.",
     "conversation_executive_summary": null,
     "conversation_identifier": "CNV-033",
     "conversation_in_flight_at": null,
@@ -591,7 +591,7 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Implementing the orchestrator _execute() dispatch path (PI-081)",
-    "conversation_updated_at": "2026-05-30T19:42:54.806161"
+    "conversation_updated_at": "2026-05-30T19:52:00.776793"
   },
   {
     "conversation_cancelled_at": null,
