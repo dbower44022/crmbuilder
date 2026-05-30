@@ -1,0 +1,86 @@
+{
+  "label": "SES-117 / CNV-019 close-out — PI-106 chat UI Slice-D follow-ups: sidebar staleness-indicator integration (design §10) and interactive context-window Trim (design §12), delivered in commit 9a98167 (merged to main as 09ce4af). Resolves PI-106. Attaches to WS-010. No DEC authored.",
+  "session": {
+    "session_identifier": "SES-117",
+    "session_title": "PI-106 — chat UI Slice-D follow-ups: sidebar staleness indicator and interactive context-window Trim",
+    "session_description": "Single Claude Code execution at Doug's terminal (CNV-019). Parent workstream WS-010 (v2 AI Surface Integration). Medium: chat via Claude Code. Seed prompt: \"please review pi-106, and define a plan to execute it.\"\n\nPI-106 (filed by SES-113 alongside the PI-052 close-out) tracked the two polish items that were scoped to Slice D of the chat UI but deferred: (1) the sidebar staleness-indicator integration described in design §10 — the chat tab subscribing to the existing RefreshService for cross-tab 'entity changed' hints, informational only, never re-calling a tool — and (2) the interactive context-window Trim affordance from design §12, since the existing overflow path only surfaced a dead-end notice and required a '+ New chat' to recover.\n\nWork, in order:\n\n1. Reviewed the PI-052 design end-to-end (§10 Slice D bullet, §12 error-recovery matrix) and the current implementation: ui/refresh.py (the existing QFileSystemWatcher-backed RefreshService emitting per-entity-type data_changed signals); ui/main_window.py (the single RefreshService owner, with its existing routing to ListDetailPanels for silent-refresh-or-stale-dot behavior); ui/panels/chat.py (ChatPanel, deliberately excluded from the ListDetailPanel refresh wiring because chat must not auto-recall); ui/chat/controller.py and ui/chat/worker.py (the streaming loop, with context-overflow currently routed to the generic turn_failed path via _classify_bad_request).\n\n2. Resolved two scope forks before building: (a) work in the main clone on a branch off main rather than a per-PI worktree, and (b) place the staleness indicator as an in-chat header badge rather than a transcript notice or per-conversation marker, since the design says 'flag a session' and chat must not recall.\n\n3. Implemented Item 1 (staleness indicator). Threaded the existing RefreshService into ChatPanel via the constructor (creating it once before the panel loop in MainWindow and passing it in). The controller now records which entity_types the active session reads via a tool call, mapping tool names to RefreshService entity_types (entity_type_for_tool in ui/chat/tools.py, ordered so list_decisions_for_session resolves to decision rather than session). The panel connects to data_changed and, when the changed entity_type is in the read-set and no turn is in flight, shows a warning-toned header label that clears on send / new chat / switch.\n\n4. Implemented Item 2 (interactive Trim). The worker now emits a dedicated context_overflow signal carrying the pre-turn snapshot when a BadRequestError is identified as context overflow, instead of overloading turn_failed. The controller exposes a context_overflow signal to the panel and a trim_and_retry() method. trim_oldest_turns (session.py) is a pure helper that drops the oldest ~third of turns while preserving Messages-API validity: the trimmed list always begins on a fresh user turn and never orphans a tool_result block from its tool_use parent. The panel adds a new ActionNoticeItem widget (centered label + button) wired so the overflow surfaces 'Trim oldest messages & retry'; on click, controller.trim_and_retry() trims, persists, and re-dispatches the failed turn. If only one turn remains, the panel advises starting a new chat.\n\n5. Tests. Added test_trim_and_staleness.py (pure-logic: trim preserves the first-fresh-user-turn invariant; never orphans tool_result; entity_type_for_tool disambiguates list_decisions_for_session as decision). Added test_panel_pi106.py (Qt-level wiring using the explicit isHidden() flag since the panel is never shown: badge appears only for read entities and only while no turn is in flight; clears on send; overflow surfaces ActionNoticeItem; Trim with no worker degrades gracefully without raising). Renamed test_context_window_message to test_context_window_routes_to_overflow_signal asserting the new signal path; added test_other_bad_request_still_fails covering the non-overflow 400. Total: 66 chat + refresh + main_window startup tests green; ruff clean on changed files. The 14 pre-existing UI suite failures (sessions/conversations refactor in flight elsewhere) were verified to reproduce on a clean checkout with PI-106 stashed, confirming they are unrelated.\n\n6. Branch hygiene complication. The first commit attempt landed locally on a branch named pi-106-chat-slice-d-followups created off the local main, which carried an 'abandoned commit' (30d8088) — PI-076 db-export, design-tokens, and migration 0024 junk — ahead of origin/main. A concurrent session in the same Dropbox-synced clone then reset that branch and pushed PI-076/PI-105 commits to it on the remote, orphaning the PI-106 commit (a7fa813). The first 'git push' reported 'Everything up-to-date' because the local ref had already been moved before the push ran. Recovery: pinned a7fa813 to a new local branch pi-106-followups; rebased it with 'git rebase --onto origin/main 30d8088 pi-106-followups' inside an isolated worktree (crmbuilder-pi106, matching the per-PI worktree pattern) so the main clone's working tree and the concurrent session were never disturbed; verified the rebased branch contains exactly the 10 chat files with no migration / db-export / design-token junk; pushed pi-106-followups to origin as a new remote branch (9a98167). Doug subsequently merged it to main as 09ce4af. The mislabeled remote branch pi-106-chat-slice-d-followups was left untouched per Doug's direction.\n\nNot done (deliberately): no interactive GUI smoke test from this headless session — the desktop app requires a display, the storage server, and a real Anthropic API key; the wiring is covered by Qt-level tests and the MainWindow startup test, and the interactive verification is left for Doug. No new DEC: the design (PI-052 §10 and §12) already settled the approach; PI-106 is polish on an existing surface, not a new architectural commitment.\n\nResolves PI-106.",
+    "session_medium": "chat",
+    "session_status": "complete",
+    "session_executive_summary": "Built the two polish items scoped to PI-052 Slice D but deferred. (1) Threaded the existing RefreshService into ChatPanel; the controller tracks which entity types the chat has read this session, and the panel shows an in-header informational badge when one of them changes elsewhere — never re-calling a tool. (2) Routed context-window 400s to a dedicated context_overflow signal so the panel can surface an interactive 'Trim oldest messages & retry' affordance; the trim helper drops the oldest ~third of turns while preserving Messages-API validity (always starts on a fresh user turn, never orphans a tool_result). Pure-logic and Qt-level wiring tests added; chat + refresh + main-window startup suites green; ruff clean on changed files. Delivered in commit 9a98167, merged to main as 09ce4af. Resolves PI-106. No DEC authored — the design (PI-052 §10 and §12) had already settled the approach.",
+    "session_medium_metadata": {
+      "surface": "claude_code",
+      "runner": "claude_code",
+      "model": "claude-opus-4-7"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.7, Claude Code)"
+    ],
+    "references": [
+      {
+        "source_type": "session",
+        "source_id": "SES-117",
+        "target_type": "workstream",
+        "target_id": "WS-010",
+        "relationship": "session_belongs_to_workstream"
+      }
+    ]
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-019",
+    "conversation_title": "PI-106 — chat slice-D polish: staleness indicator and interactive context-window Trim",
+    "conversation_purpose": "Execute PI-106: build the two PI-052 Slice D polish items (sidebar staleness-indicator integration per design §10 and interactive context-window Trim per design §12), test, commit, merge, and close out.",
+    "conversation_description": "Single Claude Code conversation that planned and executed PI-106. Resolved two scope forks (work in the main clone on a branch off main; in-chat header badge as the indicator placement) before building. Threaded RefreshService from MainWindow into ChatPanel; the controller records read entity-types per session via tool_completed and a tool-name → entity-type map; the panel shows a header staleness badge that never re-calls. Distinguished context-overflow from generic 400s via a dedicated worker signal; added a pure trim_oldest_turns helper that drops the oldest ~third of turns while keeping the message list valid (begins on a fresh user turn, never orphans a tool_result); the panel surfaces an ActionNoticeItem with Trim-and-retry. Added pure-logic and Qt-level tests; the 14 pre-existing UI failures (sessions/conversations refactor) were verified to reproduce on a clean tree with PI-106 stashed and are unrelated. Branch-collision recovery: orphaned commit a7fa813 was pinned to pi-106-followups, rebased onto origin/main inside an isolated worktree (crmbuilder-pi106) to drop the abandoned-commit base 30d8088 (PI-076 / migration 0024 / db-export junk), pushed as a new branch (9a98167), and merged to main as 09ce4af. Resolves PI-106. No DEC authored.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-019",
+        "target_type": "session",
+        "target_id": "SES-117",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [],
+  "commits": [
+    {
+      "commit_sha": "9a98167f3e53b88337ce006e3cb0793b1b04aa65",
+      "commit_message_first_line": "v2: PI-106 — chat Slice-D follow-ups: staleness indicator + context-window Trim",
+      "commit_message_full": "v2: PI-106 — chat Slice-D follow-ups: staleness indicator + context-window Trim\n\nBuilds the two affordances deferred from PI-052 Slice D.\n\nStaleness indicator (design §10): thread the existing RefreshService from\nMainWindow into ChatPanel; the controller records which entity types the\nactive session read (via tool_completed -> entity_type_for_tool) and the\npanel shows an informational header badge when a read entity changes\nelsewhere and no turn is in flight. Never re-calls a tool; clears on\nsend / new chat / switch.\n\nInteractive Trim (design §12): context-window 400s now route to a\ndedicated context_overflow signal (worker -> controller -> panel) instead\nof a dead-end notice. The panel offers a Trim-and-retry affordance;\ntrim_oldest_turns drops the oldest ~third of turns while preserving\nMessages-API validity (always starts on a fresh user turn, never orphans\na tool_result) and re-dispatches the failed turn.\n\nTests: pure-logic coverage for trim validity + tool->entity\ndisambiguation; Qt-level wiring tests for the badge and Trim affordance;\nupdated the worker overflow test for the new signal path.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-29T01:44:39-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "pi-106-followups",
+      "commit_parent_shas": [
+        "b13707c6e882d16b4a24bfb4f755b651ff8fe8a0"
+      ],
+      "commit_files_changed_count": 10
+    }
+  ],
+  "decisions": [],
+  "references": [
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-019",
+      "target_type": "session",
+      "target_id": "SES-117",
+      "relationship": "conversation_belongs_to_session"
+    },
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-019",
+      "target_type": "workstream",
+      "target_id": "WS-010",
+      "relationship": "conversation_belongs_to_workstream"
+    }
+  ],
+  "resolves_planning_items": [
+    {
+      "planning_item_identifier": "PI-106"
+    }
+  ],
+  "addresses_planning_items": []
+}
