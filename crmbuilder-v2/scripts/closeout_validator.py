@@ -17,9 +17,17 @@ the session/conversation redesign. The checks here are reconciled against the
     kinds are NOT validated for.
   - Sessions have no ``session_date`` field; that PI-body check is dropped.
 
+**PI-101 hardening.** Two gaps the SES-110 apply exposed are now closed:
+``executive_summary`` is REQUIRED (not merely length-checked) on sessions,
+decisions, and planning_items (NOT NULL since PI-075 — check 9); and every
+status-bearing entity's status is validated against its live vocab set
+(check 11), which rejects wrong-case values like ``work_ticket_status``
+"Ready" exactly like unknown ones. Check 12 adds identifier/title/status
+presence for decisions and planning_items.
+
 **Architecture.** ``validate_payload(payload, api_base=None)`` is the public
-entry point. The pure-shape checks (1-9) run WITHOUT an API. Only the
-identifier-head check (10) needs the API; it is skipped when ``api_base`` is
+entry point. The pure-shape checks (1-9, plus PI-101's 11-12) run WITHOUT an
+API. Only the identifier-head check (10) needs the API; it is skipped when ``api_base`` is
 None (offline mode for unit tests) or can be driven by a caller-supplied
 ``head_fetcher`` callable for testability without a live server. The module
 uses ``urllib`` only — no access-layer imports — mirroring
@@ -60,12 +68,27 @@ if sys.modules.get(__name__) is None:  # pragma: no cover - loader-dependent
 # values captured at authoring time — a deliberate, documented duplicate kept
 # in lock-step with vocab.py.
 try:
-    from crmbuilder_v2.access.vocab import DECISION_STATUSES, SESSION_MEDIUMS
+    from crmbuilder_v2.access.vocab import (
+        CONVERSATION_STATUSES,
+        DECISION_STATUSES,
+        PLANNING_ITEM_STATUSES,
+        SESSION_MEDIUMS,
+        SESSION_STATUSES,
+        WORK_TICKET_STATUSES,
+    )
 except Exception:  # pragma: no cover - exercised only when package isn't importable
     SESSION_MEDIUMS = frozenset(
         {"chat", "email", "phone", "zoom", "in_person", "slack", "other"}
     )
     DECISION_STATUSES = frozenset({"Active", "Superseded", "Withdrawn", "Deleted"})
+    SESSION_STATUSES = frozenset(
+        {"planned", "in_flight", "complete", "cancelled", "not_started", "superseded"}
+    )
+    CONVERSATION_STATUSES = SESSION_STATUSES
+    WORK_TICKET_STATUSES = frozenset(
+        {"drafted", "ready", "consumed", "cancelled", "superseded"}
+    )
+    PLANNING_ITEM_STATUSES = frozenset({"Open", "Resolved", "Deferred"})
 
 
 # ---------------------------------------------------------------------------
@@ -505,27 +528,39 @@ def check_reference_field_key(payload: dict) -> list[Violation]:
 
 
 def _check_one_exec_summary(
-    value: object, where: str, out: list[Violation]
+    value: object, where: str, out: list[Violation], *, required: bool = True
 ) -> None:
-    """Apply the 200-800 length rule to one executive_summary value.
+    """Validate one executive_summary value: required presence + 200-800 length.
 
-    Mirrors validate_optional_length: None / empty / whitespace-only passes
-    (treated as absent); a present non-empty value must be 200-800 chars
-    inclusive (length measured on the full string, not the trimmed one).
+    Post-PI-075 ``executive_summary`` is NOT NULL on sessions, decisions, and
+    planning_items, so ``required=True`` (the default and the close-out case):
+    a None / empty / whitespace-only value is a hard error (PI-101 — the
+    SES-110 missing-field class the validator previously let through). A
+    present value must be 200-800 chars inclusive (length on the full string).
+    ``required=False`` restores the legacy optional semantics for any
+    caller that needs it.
     """
-    if value is None:
+    if value is None or (isinstance(value, str) and value.strip() == ""):
+        if required:
+            out.append(
+                Violation(
+                    SEVERITY_ERROR,
+                    "executive_summary_required",
+                    f"{where} executive_summary is required and must be a "
+                    f"non-empty string (NOT NULL since PI-075). This is the "
+                    f"SES-110 missing-field class the apply 500s on.",
+                )
+            )
         return
     if not isinstance(value, str):
         out.append(
             Violation(
                 SEVERITY_ERROR,
                 "executive_summary_length",
-                f"{where} executive_summary must be a string or null; "
+                f"{where} executive_summary must be a string; "
                 f"got {type(value).__name__}.",
             )
         )
-        return
-    if value.strip() == "":
         return
     n = len(value)
     if n < _EXEC_SUMMARY_MIN or n > _EXEC_SUMMARY_MAX:
@@ -541,10 +576,12 @@ def _check_one_exec_summary(
 
 
 def check_executive_summary_length(payload: dict) -> list[Violation]:
-    """Check 9 (HARD): any present executive_summary is 200-800 chars.
+    """Check 9 (HARD): executive_summary is present and 200-800 chars.
 
     Applies to the session block's ``session_executive_summary`` and to each
-    planning_item's / decision's ``executive_summary``. Absent / null passes.
+    planning_item's / decision's ``executive_summary``. Post-PI-075 these are
+    NOT NULL, so an absent / null / empty value is rejected (PI-101), and a
+    present value must be 200-800 chars.
     """
     out: list[Violation] = []
     block = payload.get("session")
@@ -560,6 +597,102 @@ def check_executive_summary_length(payload: dict) -> list[Violation]:
                 continue
             ident = rec.get("identifier", f"<unidentified {label}>")
             _check_one_exec_summary(rec.get("executive_summary"), str(ident), out)
+    return out
+
+
+# Status-bearing entities whose wire enum the validator checks against vocab.
+# (entity_label, payload_section_or_None, status_field, allowed_set). A None
+# section means the singular top-level block of that name. Decisions are
+# omitted — check_decision_status already covers them. The allowed_set encodes
+# the correct CASE, so a wrong-case value (e.g. work_ticket_status "Ready" vs
+# "ready", the SES-110 defect) is rejected exactly like an unknown value.
+_STATUS_SPECS: tuple[tuple[str, str | None, str, frozenset[str]], ...] = (
+    ("session", None, "session_status", SESSION_STATUSES),
+    ("conversation", None, "conversation_status", CONVERSATION_STATUSES),
+    ("work_ticket", "work_tickets", "work_ticket_status", WORK_TICKET_STATUSES),
+    ("planning_item", "planning_items", "status", PLANNING_ITEM_STATUSES),
+)
+
+
+def check_status_values(payload: dict) -> list[Violation]:
+    """Check 11 (HARD, PI-101): every present status is in its lowercase enum.
+
+    Validates session/conversation/work_ticket/planning_item status fields
+    against the live vocab sets. Because the vocab encodes the exact case, this
+    catches wrong-case values (work_ticket_status "Ready" — the SES-110 defect
+    that apply 422'd on) as well as outright-invalid values. A missing status
+    is left to :func:`check_required_fields`; this check only fires on a
+    present value so the two don't double-report.
+    """
+    out: list[Violation] = []
+    for label, section, field, allowed in _STATUS_SPECS:
+        if section is None:
+            records: list[dict] = []
+            block = payload.get(label)
+            if isinstance(block, dict):
+                records = [block]
+        else:
+            records = [r for r in (payload.get(section) or []) if isinstance(r, dict)]
+        for rec in records:
+            if field not in rec or rec.get(field) is None:
+                continue
+            value = rec.get(field)
+            if value not in allowed:
+                ident = (
+                    rec.get("identifier")
+                    or rec.get(f"{label}_identifier")
+                    or f"<unidentified {label}>"
+                )
+                out.append(
+                    Violation(
+                        SEVERITY_ERROR,
+                        "status_value",
+                        f"{ident} {field}={value!r} is not a valid {label} "
+                        f"status. Allowed (note exact case): "
+                        f"{sorted(allowed)}. Status enums are lowercase on the "
+                        f"wire for session/conversation/work_ticket; a "
+                        f"capitalized value 422s on apply (SES-110).",
+                    )
+                )
+    return out
+
+
+# Required scalar fields per record type that the existing shape checks don't
+# already cover. session/conversation core fields live in checks 2/3;
+# item_type in check 6; executive_summary in check 9; status values in check
+# 11. This fills the remaining identifier/title/status presence gaps so a
+# record missing one is caught at pre-flight rather than 4xx/500-ing on apply.
+_REQUIRED_FIELDS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
+    ("decisions", "DEC", ("identifier", "title", "status")),
+    ("planning_items", "PI", ("identifier", "title", "status")),
+)
+
+
+def check_required_fields(payload: dict) -> list[Violation]:
+    """Check 12 (HARD, PI-101): core required scalar fields are present.
+
+    Rejects a decision or planning_item missing its identifier, title, or
+    status. Complements check 9 (executive_summary) and check 11 (status
+    value) — together they close the 'record missing a required field' class
+    PI-101 targets.
+    """
+    out: list[Violation] = []
+    for section, label, fields in _REQUIRED_FIELDS:
+        for rec in payload.get(section) or []:
+            if not isinstance(rec, dict):
+                continue
+            ident = rec.get("identifier", f"<unidentified {label}>")
+            for field in fields:
+                val = rec.get(field)
+                if not isinstance(val, str) or not val.strip():
+                    out.append(
+                        Violation(
+                            SEVERITY_ERROR,
+                            "required_field",
+                            f"{ident} ({label}) is missing required field "
+                            f"'{field}' (must be a non-empty string).",
+                        )
+                    )
     return out
 
 
@@ -711,6 +844,8 @@ _SHAPE_CHECKS: tuple[Callable[[dict], list[Violation]], ...] = (
     check_work_ticket_file_path,
     check_reference_field_key,
     check_executive_summary_length,
+    check_status_values,
+    check_required_fields,
 )
 
 
@@ -722,7 +857,7 @@ def validate_payload(
 ) -> list[Violation]:
     """Validate a close-out payload against the governance recording rules.
 
-    Runs the nine pure-shape checks unconditionally (no API needed), then the
+    Runs the eleven pure-shape checks unconditionally (no API needed), then the
     identifier-head check only when an API is reachable (``api_base`` set, or a
     ``head_fetcher`` supplied for tests). Returns a flat list of
     :class:`Violation`. Callers decide what to do with each by severity:

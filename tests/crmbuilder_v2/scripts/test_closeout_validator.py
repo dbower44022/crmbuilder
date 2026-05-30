@@ -26,15 +26,21 @@ _spec = importlib.util.spec_from_file_location("closeout_validator", _VALIDATOR_
 cv = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(cv)
 
-# A real applied payload, used as a known-good template.
+# A real applied payload, used as a known-good template. ses_116 is a recent,
+# fully PI-075-compliant payload (executive_summary present on its session and
+# decision); ses_107 predates PI-075 and now correctly fails the required-
+# executive_summary check (PI-101), so it is no longer a clean template.
 _REAL_PAYLOAD_PATH = (
     Path(__file__).resolve().parents[3]
     / "PRDs"
     / "product"
     / "crmbuilder-v2"
     / "close-out-payloads"
-    / "ses_107.json"
+    / "ses_116.json"
 )
+
+# A 250-char filler that satisfies the 200-800 executive_summary bound.
+_EXEC = "x" * 250
 
 
 # ---------------------------------------------------------------------------
@@ -70,6 +76,7 @@ def _valid_payload() -> dict:
             "session_description": "A complete, valid post-PI-073 session.",
             "session_medium": "chat",
             "session_status": "complete",
+            "session_executive_summary": _EXEC,
             "references": [
                 {
                     "source_type": "session",
@@ -111,6 +118,7 @@ def _valid_payload() -> dict:
                 "description": "d",
                 "item_type": "pending_work",
                 "status": "Open",
+                "executive_summary": _EXEC,
             }
         ],
         "commits": [],
@@ -120,6 +128,7 @@ def _valid_payload() -> dict:
                 "title": "Test decision",
                 "decision_date": "2026-05-27",
                 "status": "Active",
+                "executive_summary": _EXEC,
             }
         ],
         "references": [
@@ -146,9 +155,9 @@ def test_constructed_valid_payload_passes_offline():
     assert _errors(violations) == [], cv.format_report(violations)
 
 
-def test_real_ses107_payload_passes_offline():
-    """A real applied payload (ses_107.json) has zero error-severity
-    violations — the validator doesn't reject clean payloads."""
+def test_real_ses116_payload_passes_offline():
+    """A real, PI-075-compliant applied payload (ses_116.json) has zero
+    error-severity violations — the validator doesn't reject clean payloads."""
     payload = json.loads(_REAL_PAYLOAD_PATH.read_text())
     violations = cv.validate_payload(payload, api_base=None)
     assert _errors(violations) == [], cv.format_report(violations)
@@ -411,17 +420,27 @@ def test_resolves_pi_missing_identifier_key_rejected():
 # ---------------------------------------------------------------------------
 
 
-def test_exec_summary_absent_passes():
+def test_exec_summary_absent_now_rejected():
+    # PI-101: executive_summary is NOT NULL post-PI-075; an absent value on
+    # the session, the decision, and the PI is rejected (was previously OK).
     payload = _valid_payload()
-    # No executive_summary anywhere.
-    assert cv.check_executive_summary_length(payload) == []
+    del payload["session"]["session_executive_summary"]
+    del payload["decisions"][0]["executive_summary"]
+    del payload["planning_items"][0]["executive_summary"]
+    violations = cv.check_executive_summary_length(payload)
+    errors = _errors(violations)
+    assert len(errors) == 3
+    assert all(v.check_name == "executive_summary_required" for v in errors)
 
 
-def test_exec_summary_null_passes():
+def test_exec_summary_null_now_rejected():
     payload = _valid_payload()
     payload["session"]["session_executive_summary"] = None
     payload["decisions"][0]["executive_summary"] = None
-    assert cv.check_executive_summary_length(payload) == []
+    violations = cv.check_executive_summary_length(payload)
+    errors = _errors(violations)
+    assert len(errors) == 2
+    assert all(v.check_name == "executive_summary_required" for v in errors)
 
 
 def test_exec_summary_150_chars_rejected():
@@ -587,3 +606,85 @@ def test_valid_payload_template_is_actually_valid_offline():
     the negative tests above are testing against a poisoned baseline."""
     payload = copy.deepcopy(_valid_payload())
     assert cv.validate_payload(payload, api_base=None) == []
+
+
+# ---------------------------------------------------------------------------
+# Check 11 — status enum/case values (PI-101)
+# ---------------------------------------------------------------------------
+
+
+def test_work_ticket_status_wrong_case_rejected_ses110_case():
+    # The exact SES-110 defect: capitalized "Ready" vs the lowercase enum.
+    payload = _valid_payload()
+    payload["work_tickets"][0]["work_ticket_status"] = "Ready"
+    violations = cv.check_status_values(payload)
+    errors = _errors(violations)
+    assert len(errors) == 1
+    assert errors[0].check_name == "status_value"
+    assert "ready" in errors[0].message
+
+
+def test_session_status_capitalized_rejected():
+    payload = _valid_payload()
+    payload["session"]["session_status"] = "Complete"
+    violations = cv.check_status_values(payload)
+    assert any(v.check_name == "status_value" for v in _errors(violations))
+
+
+def test_conversation_status_invalid_rejected():
+    payload = _valid_payload()
+    payload["conversation"]["conversation_status"] = "done"
+    assert len(_errors(cv.check_status_values(payload))) == 1
+
+
+def test_planning_item_status_lowercase_rejected():
+    # PI statuses are capitalized (Open/Resolved/Deferred); "open" is wrong.
+    payload = _valid_payload()
+    payload["planning_items"][0]["status"] = "open"
+    assert len(_errors(cv.check_status_values(payload))) == 1
+
+
+def test_valid_statuses_pass():
+    assert cv.check_status_values(_valid_payload()) == []
+
+
+def test_status_absent_not_double_reported():
+    # A missing status is a required_fields concern, not a status_value one.
+    payload = _valid_payload()
+    del payload["planning_items"][0]["status"]
+    assert cv.check_status_values(payload) == []
+
+
+# ---------------------------------------------------------------------------
+# Check 12 — required scalar fields (PI-101)
+# ---------------------------------------------------------------------------
+
+
+def test_decision_missing_title_rejected():
+    payload = _valid_payload()
+    del payload["decisions"][0]["title"]
+    violations = cv.check_required_fields(payload)
+    errors = _errors(violations)
+    assert len(errors) == 1
+    assert errors[0].check_name == "required_field"
+    assert "title" in errors[0].message
+
+
+def test_planning_item_missing_status_rejected():
+    payload = _valid_payload()
+    del payload["planning_items"][0]["status"]
+    violations = cv.check_required_fields(payload)
+    assert any("status" in v.message for v in _errors(violations))
+
+
+def test_required_fields_valid_payload_passes():
+    assert cv.check_required_fields(_valid_payload()) == []
+
+
+def test_missing_exec_summary_blocks_full_validate():
+    # End-to-end: a payload missing a decision executive_summary is rejected
+    # by the aggregate validator (the SES-110 class PI-101 targets).
+    payload = _valid_payload()
+    del payload["decisions"][0]["executive_summary"]
+    errors = _errors(cv.validate_payload(payload, api_base=None))
+    assert any(v.check_name == "executive_summary_required" for v in errors)
