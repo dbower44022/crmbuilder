@@ -23,6 +23,18 @@ def _default_export_dir() -> Path:
     return _repo_root() / "PRDs" / "product" / "crmbuilder-v2" / "db-export"
 
 
+def api_log_path() -> Path:
+    """Return the rotating-log file path for the API process.
+
+    Repo-rooted (not engagement-scoped) so a single durable log captures
+    every API run regardless of which engagement is active or how the
+    process was launched (standalone ``crmbuilder-v2-api`` or the desktop
+    UI's spawned subprocess). Both write here; only one API runs at a
+    time, so there is no concurrent-writer contention in practice.
+    """
+    return _repo_root() / "crmbuilder-v2" / "data" / "logs" / "api.log"
+
+
 class Settings(BaseSettings):
     # ``export_dir`` binds from ``CRMBUILDER_V2_EXPORT_DIR`` (sibling of
     # ``CRMBUILDER_V2_DB_PATH``) via the ``env_prefix`` mechanism below.

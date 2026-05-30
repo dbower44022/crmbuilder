@@ -412,6 +412,18 @@ def main(argv: list[str] | None = None) -> int:
             splash.finish(window)
 
     def on_spawn_failed(stderr_text: str) -> None:
+        # A spawn failure *before* the API was ever reachable is a fatal
+        # startup failure — show the modal dialog and exit. Once the app
+        # has been live, the same signal means a runtime auto-reconnect
+        # attempt failed; route it to the in-window banner (which retries
+        # up to its bound, then offers manual Reconnect) instead of
+        # tearing down the running session.
+        if window.had_first_ready():
+            log.warning(
+                "Runtime reconnect spawn failed; deferring to in-window banner"
+            )
+            window.handle_reconnect_failed(stderr_text)
+            return
         log.error("Spawn failed; showing failure dialog and exiting")
         if splash.isVisible():
             splash.hide()
