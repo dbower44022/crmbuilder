@@ -33,14 +33,27 @@ Land the SES-128 close-out: a Claude Code maintenance session that ran the super
 
 ## Step 1 — refresh the status singleton (before apply)
 
+The status body is inlined here (the `{"payload": {...}}` shape `PUT /status` expects). Expect version `16 → 17`:
+
 ```bash
 curl -s -X PUT http://127.0.0.1:8765/status \
   -H 'Content-Type: application/json' \
-  -d @PRDs/product/crmbuilder-v2/close-out-payloads/_ses_128_status.json \
+  -d @- <<'JSON' \
   | python3 -c "import sys,json; d=json.load(sys.stdin)['data']; print('status version now', d.get('version'))"
+{
+  "payload": {
+    "title": "CRMBuilder v2 status",
+    "phase": "v0.7 governance entities shipped; chat UI + session/conversation redesign + API-lifecycle hardening landed",
+    "version_label": "0.7.0",
+    "metadata": {
+      "Last Updated": "05-30-26",
+      "Status": "v0.7.0. Master CRMBuilder PRD consolidation is the active direction; CRMBuilder dogfood is the current validation case."
+    },
+    "active_work": "Active direction per CLAUDE.md: consolidate into a single canonical Master CRMBuilder PRD at specifications/master-crmbuilder-PRD.md, authored by running its own process against CRMBuilder itself (dogfood). CBM is the next-phase validation case. Approach is iterative: draft enough PRD to make the next phase runnable, execute it against CRMBuilder, refine.\n\nShipped since the v0.6 styling rollout (this status was last refreshed at v0.6 / 05-18-26 and had drifted ~12 sessions; refreshed at SES-128 / 05-30-26):\n\n- PI-052 — Chat UI on the Anthropic API with native tool definitions. Resolved. The chat tab is fully built at ui/chat/ (controller, persistence, session, worker, widgets, auth, tools) consuming the shared mcp_server.tools.tool_definitions(http) registry (ToolDefinition dataclass; 51 tools; read/write partition by name-prefix). PI-106 (Slice D follow-ups — sidebar staleness indicator + interactive context-window Trim) Resolved. The throwaway Slice A terminal spike (chat_spike.py) was retired at SES-128 (commit 74d4195) once the production tab made it dead scaffolding.\n\n- PI-073 / DEC-314 — Session/Conversation redesign. Session is now the medium-agnostic communication container (one chat / email / call / meeting = one session) with a six-status lifecycle and schedulability; Conversation is a topical sub-unit nested 1:N within a session. New conversations use the CNV-NNN prefix.\n\n- v0.7 governance-entity release — six new entity types (workstream, conversation, reference_book, work_ticket, close_out_payload, deposit_event) with tables, REST endpoints, desktop panels under the Governance group, and access-layer edge-rule enforcement. deposit_event POST is atomic and lazy-creates its close_out_payload.\n\n- PI-075 — executive_summary is NOT NULL (200-800 chars) on decisions, planning_items, and sessions.\n\n- PI-090 / PI-101 — close-out pre-flight + apply-pipeline validator hardening against governance-recording-rules.md.\n\n- PI-108 — universal created/last-edited timestamp visibility across the V2 desktop UI.\n\n- PI-109 — references.create auto-consumes ready work_tickets on inbound opens-against edges of either kind (replacing the fragile explicit-PATCH discipline).\n\n- PI-110 / DEC-333 — API rotating log file (data/logs/api.log) + desktop UI auto-restart of the API on connection loss / subprocess crash.\n\nNotable open work: PI-084 (author the canonical governance-recording-rules.md to released status), PI-104 (re-test/enable the claude.ai-web custom connector once Anthropic ships the post-OAuth bearer-attachment fix — DEC-244/DEC-245 record the upstream block and the chat-UI-on-API pivot that succeeded it), PI-111 (optional periodic /health heartbeat to proactively detect an external API's death).\n\n__version__ is 0.7.0 (crmbuilder-v2/src/crmbuilder_v2/__init__.py)."
+  }
+}
+JSON
 ```
-
-The new status payload body (`{"payload": {...}}`) is `_ses_128_status.json` alongside the close-out payload. Expect version `16 → 17`.
 
 ## Step 2 — apply
 
