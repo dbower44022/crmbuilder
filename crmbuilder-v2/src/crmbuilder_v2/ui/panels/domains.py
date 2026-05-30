@@ -54,7 +54,9 @@ from crmbuilder_v2.ui.exceptions import (
     StorageClientError,
     StorageConnectionError,
 )
+from crmbuilder_v2.ui.panels._governance_helpers import created_updated_section
 from crmbuilder_v2.ui.styling import t as _T
+from crmbuilder_v2.ui.widgets.datetime_format import format_timestamp
 from crmbuilder_v2.ui.widgets.form_helpers import (
     CollapsibleSection,
     destructive_button,
@@ -131,7 +133,13 @@ class DomainsPanel(ListDetailPanel):
         return "Domains"
 
     def fetch_records(self) -> list[dict[str, Any]]:
-        return self._client.list_domains(include_deleted=self._include_deleted)
+        records = self._client.list_domains(
+            include_deleted=self._include_deleted
+        )
+        # PI-108: formatted Created synthetic column for the master pane.
+        for r in records:
+            r["created_at_display"] = format_timestamp(r.get("domain_created_at"))
+        return records
 
     def list_columns(self) -> list[ColumnSpec]:
         return [
@@ -141,7 +149,7 @@ class DomainsPanel(ListDetailPanel):
             ColumnSpec(field="domain_name", title="Name"),
             ColumnSpec(field="domain_status", title="Status", width=110),
             ColumnSpec(
-                field="domain_updated_at", title="Updated", width=180
+                field="created_at_display", title="Created", width=140
             ),
         ]
 
@@ -283,6 +291,14 @@ class DomainsPanel(ListDetailPanel):
         status_layout.addWidget(status_hint)
         status_row.addRow(required_label("Status"), status_container)
         outer.addLayout(status_row)
+
+        # PI-108: created / last-edited audit timestamps.
+        outer.addWidget(_separator())
+        outer.addWidget(
+            created_updated_section(
+                record, "domain_created_at", "domain_updated_at"
+            )
+        )
 
         outer.addWidget(_separator())
 

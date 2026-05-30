@@ -38,12 +38,14 @@ from crmbuilder_v2.ui.exceptions import (
     StorageConnectionError,
 )
 from crmbuilder_v2.ui.panels._governance_helpers import (
+    created_updated_section,
     heading_label,
     lifecycle_timestamps_section,
     read_only_line,
     read_only_text,
     separator,
 )
+from crmbuilder_v2.ui.widgets.datetime_format import format_timestamp
 from crmbuilder_v2.ui.widgets.form_helpers import (
     CollapsibleSection,
     destructive_button,
@@ -84,7 +86,18 @@ class WorkTicketsPanel(ListDetailPanel):
         return "Work Tickets"
 
     def fetch_records(self) -> list[dict[str, Any]]:
-        return self._client.list_work_tickets(include_deleted=self._include_deleted)
+        records = self._client.list_work_tickets(
+            include_deleted=self._include_deleted
+        )
+        # PI-108: formatted Created/Updated synthetic columns.
+        for r in records:
+            r["created_at_display"] = format_timestamp(
+                r.get("work_ticket_created_at")
+            )
+            r["updated_at_display"] = format_timestamp(
+                r.get("work_ticket_updated_at")
+            )
+        return records
 
     def list_columns(self) -> list[ColumnSpec]:
         return [
@@ -92,7 +105,8 @@ class WorkTicketsPanel(ListDetailPanel):
             ColumnSpec(field="work_ticket_title", title="Title"),
             ColumnSpec(field="work_ticket_kind", title="Kind", width=160),
             ColumnSpec(field="work_ticket_status", title="Status", width=110),
-            ColumnSpec(field="work_ticket_updated_at", title="Updated", width=180),
+            ColumnSpec(field="created_at_display", title="Created", width=140),
+            ColumnSpec(field="updated_at_display", title="Updated", width=140),
         ]
 
     def _strikethrough_for_record(self, record: dict[str, Any]) -> bool:
@@ -168,6 +182,14 @@ class WorkTicketsPanel(ListDetailPanel):
         status_combo.setEnabled(False)
         status_row.addRow(required_label("Status"), status_combo)
         outer.addLayout(status_row)
+
+        # PI-108: created / last-edited audit timestamps.
+        outer.addWidget(separator())
+        outer.addWidget(
+            created_updated_section(
+                record, "work_ticket_created_at", "work_ticket_updated_at"
+            )
+        )
 
         ts_section = lifecycle_timestamps_section(record, _LIFECYCLE_TIMESTAMPS)
         if ts_section is not None:

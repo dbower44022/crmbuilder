@@ -48,6 +48,8 @@ from crmbuilder_v2.ui.exceptions import (
     StorageClientError,
     StorageConnectionError,
 )
+from crmbuilder_v2.ui.panels._governance_helpers import created_updated_section
+from crmbuilder_v2.ui.widgets.datetime_format import format_timestamp
 from crmbuilder_v2.ui.widgets.form_helpers import (
     destructive_button,
     primary_button,
@@ -126,7 +128,12 @@ class DecisionsPanel(ListDetailPanel):
         return "Decisions"
 
     def fetch_records(self) -> list[dict[str, Any]]:
-        return self._client.list_decisions(include_deleted=self._include_deleted)
+        records = self._client.list_decisions(include_deleted=self._include_deleted)
+        # PI-108: formatted Created/Updated synthetic columns.
+        for r in records:
+            r["created_at_display"] = format_timestamp(r.get("created_at"))
+            r["updated_at_display"] = format_timestamp(r.get("updated_at"))
+        return records
 
     def _strikethrough_for_record(self, record: dict[str, Any]) -> bool:
         return record.get("status") == "Deleted"
@@ -146,6 +153,7 @@ class DecisionsPanel(ListDetailPanel):
                 title="Superseded By",
                 width=140,
             ),
+            ColumnSpec(field="created_at_display", title="Created", width=140),
         ]
 
     def fetch_detail_extras(self, record: dict[str, Any]) -> dict[str, Any]:
@@ -230,6 +238,12 @@ class DecisionsPanel(ListDetailPanel):
             section_label = _label(label_text, bold=True)
             outer.addWidget(section_label)
             outer.addWidget(_long_text(record.get(field) or ""))
+
+        # PI-108: created / last-edited audit timestamps.
+        outer.addWidget(_separator())
+        outer.addWidget(
+            created_updated_section(record, "created_at", "updated_at")
+        )
 
         outer.addWidget(_separator())
         # ReferencesSection renders inbound and outbound references via the

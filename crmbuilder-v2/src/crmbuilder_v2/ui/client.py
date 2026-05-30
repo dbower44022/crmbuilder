@@ -84,6 +84,18 @@ class StorageClient:
     ) -> None:
         self.close()
 
+    def health(self) -> dict[str, Any]:
+        """GET /health — liveness probe.
+
+        Returns the health payload (e.g. ``{"ok": True}``) on success.
+        Raises :class:`StorageConnectionError` when the API is
+        unreachable (the signal the heartbeat acts on). Used by the main
+        window's periodic heartbeat to detect an API that has gone away
+        between user actions (PI-111).
+        """
+        result = self._request("GET", "/health")
+        return result if isinstance(result, dict) else {}
+
     def list_decisions(
         self, *, include_deleted: bool = False
     ) -> list[dict[str, Any]]:
