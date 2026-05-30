@@ -2295,5 +2295,34 @@
     "session_superseded_at": null,
     "session_title": "Set up universal created/last-edited timestamp visibility — WS-013, REQ-002, PI-108, WT-057",
     "session_updated_at": "2026-05-30T03:47:21.860314"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-30T04:00:49.655747",
+    "session_created_at": "2026-05-30T04:00:49.655488",
+    "session_deleted_at": null,
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-024. Parent workstream WS-011 (V2 storage API refinements). Medium: chat (claude_code runner).\n\nSeed: \"lets do pi-101\" (selected as the next item; PI-101 was surfaced earlier this session when the close-out pre-flight validator caught two over-length executive summaries in the PI-031 close-out).\n\nPI-101 hardens the PI-090 close-out validator (crmbuilder-v2/scripts/closeout_validator.py) to reject the two SES-110-class defects it previously let through as warnings only: missing required fields (executive_summary, now NOT NULL on sessions/decisions/planning_items since PI-075) and wrong-case status values (work_ticket_status 'Ready' vs the lowercase enum 'ready').\n\nDelivered in one commit (947da63):\n1. executive_summary is now REQUIRED, not merely length-checked. _check_one_exec_summary gained a required flag (default True); an absent/null/empty value on the session, a decision, or a planning_item is a hard error (check_name executive_summary_required) instead of silently passing. This is the exact SES-110 missing-field class that 500s on apply.\n2. New check 11 (check_status_values): validates session/conversation/work_ticket/planning_item status against the live vocab sets imported from vocab.py. Because the vocab encodes the correct case, a wrong-case value is rejected exactly like an unknown one (catching the SES-110 work_ticket_status 'Ready' 422). Decisions remain covered by check 4. Only fires on a present value, so a missing status doesn't double-report.\n3. New check 12 (check_required_fields): identifier/title/status presence on decisions and planning_items, closing the remaining missing-required-field holes.\n\nThe status vocab sets (SESSION/CONVERSATION/WORK_TICKET/PLANNING_ITEM_STATUSES) are imported live from vocab.py with the module's existing authored-time fallback, so the validator never drifts from the access-layer enums.\n\nTest updates: the exec-summary absent/null tests now assert rejection (the behavior reversal PI-101 mandates); the _valid_payload() fixture gains the now-required executive summaries; the known-good real-payload template moved from ses_107 (pre-PI-075, no exec summaries, now correctly fails) to ses_116 (compliant). Added status-value and required-field coverage. 56 validator tests and the full 114-test scripts suite pass; ruff clean. Verified end-to-end against the loaded module: a payload with a missing decision exec summary, work_ticket_status 'Ready', a wrong-case PI status, and a missing PI title yields four targeted errors, while clean ses_116 yields zero. This close-out is itself validated by the hardened checks at apply time.\n\nNo decisions authored (well-scoped implementation, not a choice between alternatives). Resolves PI-101. The commit sits on main awaiting Doug's push (Claude Code push convention).",
+    "session_ended_at": null,
+    "session_executive_summary": "Implemented PI-101 in one commit (947da63): hardened the close-out pre-flight validator to reject the two SES-110-class defects it previously let through. executive_summary is now REQUIRED on sessions, decisions, and planning_items — an absent/null/empty value is a hard error. New check 11 validates every status-bearing entity's status against the live vocab sets, so a wrong-case value like work_ticket_status 'Ready' is rejected like an unknown one; new check 12 enforces identifier/title/status presence on decisions and planning_items. Tests reversed the old absent/null-passes assertions, repointed the real-payload template to ses_116, and added coverage; 56 validator and 114 scripts tests pass, ruff clean, verified end-to-end. Resolves PI-101.",
+    "session_identifier": "SES-122",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "model": "claude-opus-4-8",
+      "runner": "claude_code",
+      "surface": "claude_code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.8, Claude Code)"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "Implement PI-101 — harden the close-out pre-flight validator (required fields + status-case enforcement)",
+    "session_updated_at": "2026-05-30T04:00:49.655832"
   }
 ]

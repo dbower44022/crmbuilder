@@ -1207,9 +1207,9 @@
     "identifier": "PI-101",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Harden the close-out pre-flight validator to reject missing required fields and wrong-case status values",
-    "updated_at": "2026-05-28T04:55:02.932114"
+    "updated_at": "2026-05-30T04:00:50.266852"
   },
   {
     "created_at": "2026-05-28T04:55:03.208502",

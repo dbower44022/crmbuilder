@@ -1024,5 +1024,24 @@
     "commit_session_id": "SES-120",
     "commit_sha": "f5381966c202f6182c5f2f478bdfb726e9d4d0ea",
     "commit_updated_at": "2026-05-30T03:45:28.105276"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-29T23:58:38-04:00",
+    "commit_created_at": "2026-05-30T04:00:49.969146",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 2,
+    "commit_identifier": "CM-0055",
+    "commit_message_first_line": "v2: PI-101 — harden close-out pre-flight validator (required fields + status case)",
+    "commit_message_full": "v2: PI-101 — harden close-out pre-flight validator (required fields + status case)\n\nCloses the two gaps the SES-110 apply exposed, which the validator\npreviously let through as warnings-only:\n\n1. executive_summary is now REQUIRED (not merely length-checked) on\n   sessions, decisions, and planning_items — NOT NULL since PI-075.\n   An absent/null/empty value is a hard error (check 9,\n   executive_summary_required), the exact missing-field class that\n   500s on apply.\n2. New check 11 (check_status_values): every status-bearing entity's\n   status is validated against its live vocab set imported from\n   vocab.py. Because the vocab encodes the correct case, a wrong-case\n   value (work_ticket_status \"Ready\" vs \"ready\" — the SES-110 422)\n   is rejected exactly like an unknown value. Covers session,\n   conversation, work_ticket, planning_item; decisions stay in check 4.\n3. New check 12 (check_required_fields): identifier/title/status\n   presence for decisions and planning_items.\n\nStatus sets (SESSION/CONVERSATION/WORK_TICKET/PLANNING_ITEM_STATUSES)\nare imported live from vocab.py with the same authored-time fallback\nthe module already uses, so the validator never drifts from the\naccess-layer enums.\n\nTests: the exec-summary absent/null tests now assert rejection (the\nbehavior reversal PI-101 mandates); the _valid_payload() fixture gains\nthe now-required exec summaries; the real-payload template moves from\nses_107 (pre-PI-075, no exec summaries) to ses_116 (compliant). Adds\nstatus-value and required-field test coverage. 56 validator / 114\nscripts tests green; ruff clean. Verified end-to-end: a payload with a\nmissing decision exec summary, work_ticket_status \"Ready\", a wrong-case\nPI status, and a missing PI title yields 4 targeted errors; clean\nses_116 yields 0.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "d599fcdaca1205bba01aa698d11bc692cf650860"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-122",
+    "commit_sha": "947da63f7cd9ba37bd1fec4d82a5f1f6fd8b3316",
+    "commit_updated_at": "2026-05-30T04:00:49.969148"
   }
 ]

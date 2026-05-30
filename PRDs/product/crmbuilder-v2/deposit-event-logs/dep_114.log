@@ -1,0 +1,20 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_122.json
+Label:  SES-122 / CNV-024 close-out — implements and resolves PI-101 (harden close-out pre-flight validator: required executive_summary + status-case + required-field checks). One commit 947da63. No decisions. Attaches to WS-011. Resolves PI-101. Identifiers re-verify at apply time.
+Deposit event: DEP-114
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-024 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-101 (HTTP 201)
+
+✓ All 4 operations complete.
+
+✓ Recorded apply as deposit_event DEP-114 (HTTP 201).

@@ -19038,5 +19038,75 @@
     "source_type": "deposit_event",
     "target_id": "PI-108",
     "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-30T04:00:49.394688",
+    "id": 1912,
+    "reference_identifier": "REF-1908",
+    "relationship_kind": "conversation_belongs_to_session",
+    "source_id": "CNV-024",
+    "source_type": "conversation",
+    "target_id": "SES-122",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-30T04:00:49.658810",
+    "id": 1913,
+    "reference_identifier": "REF-1909",
+    "relationship_kind": "session_belongs_to_workstream",
+    "source_id": "SES-122",
+    "source_type": "session",
+    "target_id": "WS-011",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-30T04:00:50.266062",
+    "id": 1914,
+    "reference_identifier": "REF-1910",
+    "relationship_kind": "resolves",
+    "source_id": "CNV-024",
+    "source_type": "conversation",
+    "target_id": "PI-101",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-30T04:00:50.574332",
+    "id": 1915,
+    "reference_identifier": "REF-1911",
+    "relationship_kind": "deposit_event_applies_close_out_payload",
+    "source_id": "DEP-114",
+    "source_type": "deposit_event",
+    "target_id": "COP-122",
+    "target_type": "close_out_payload"
+  },
+  {
+    "created_at": "2026-05-30T04:00:50.577796",
+    "id": 1916,
+    "reference_identifier": "REF-1912",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-114",
+    "source_type": "deposit_event",
+    "target_id": "CNV-024",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-05-30T04:00:50.581030",
+    "id": 1917,
+    "reference_identifier": "REF-1913",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-114",
+    "source_type": "deposit_event",
+    "target_id": "SES-122",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-05-30T04:00:50.584476",
+    "id": 1918,
+    "reference_identifier": "REF-1914",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-114",
+    "source_type": "deposit_event",
+    "target_id": "CM-0055",
+    "target_type": "commit"
   }
 ]
