@@ -19768,5 +19768,15 @@
     "source_type": "deposit_event",
     "target_id": "CM-0063",
     "target_type": "commit"
+  },
+  {
+    "created_at": "2026-05-30T15:26:28.227233",
+    "id": 1985,
+    "reference_identifier": "REF-1981",
+    "relationship_kind": "session_opens_against_work_ticket",
+    "source_id": "SES-127",
+    "source_type": "session",
+    "target_id": "WT-057",
+    "target_type": "work_ticket"
   }
 ]
