@@ -85,6 +85,7 @@ def create(body: ConversationCreateIn):
                 notes=body.conversation_notes,
                 status=body.conversation_status or "planned",
                 identifier=body.conversation_identifier,
+                executive_summary=body.conversation_executive_summary,
                 references=_edges(body),
                 timestamps=body.timestamps,
             )
@@ -105,6 +106,7 @@ def replace(identifier: str, body: ConversationReplaceIn):
                 summary=body.conversation_summary,
                 notes=body.conversation_notes,
                 status=body.conversation_status,
+                executive_summary=body.conversation_executive_summary,
                 references=_edges(body),
             )
         )

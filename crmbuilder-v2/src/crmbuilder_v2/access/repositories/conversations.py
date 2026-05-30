@@ -39,7 +39,11 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from crmbuilder_v2.access._helpers import next_prefixed_identifier, to_dict
+from crmbuilder_v2.access._helpers import (
+    next_prefixed_identifier,
+    to_dict,
+    validate_optional_length,
+)
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
@@ -59,7 +63,8 @@ _IDENTIFIER_PREFIX = "CNV"
 _IDENTIFIER_RE = re.compile(r"^CNV-\d{3}$")
 _MAX_AUTOASSIGN_ATTEMPTS = 50
 _PATCHABLE_FIELDS = frozenset(
-    {"title", "purpose", "description", "summary", "notes", "status"}
+    {"title", "purpose", "description", "summary", "notes", "status",
+     "executive_summary"}  # PI-105
 )
 
 _STATUS_TIMESTAMP = {
@@ -222,6 +227,7 @@ def _new_row(
     summary: str | None,
     notes: str | None,
     status: str,
+    executive_summary: str | None = None,
 ) -> Conversation:
     return Conversation(
         conversation_identifier=identifier,
@@ -231,6 +237,7 @@ def _new_row(
         conversation_summary=summary,
         conversation_notes=notes,
         conversation_status=status,
+        conversation_executive_summary=executive_summary,
     )
 
 
@@ -242,12 +249,16 @@ def _insert_with_autoassign(
     summary: str | None,
     notes: str | None,
     status: str,
+    executive_summary: str | None = None,
 ) -> Conversation:
     candidate = next_conversation_identifier(session)
     last_error: IntegrityError | None = None
     for _ in range(_MAX_AUTOASSIGN_ATTEMPTS):
         savepoint = session.begin_nested()
-        row = _new_row(candidate, title, purpose, description, summary, notes, status)
+        row = _new_row(
+            candidate, title, purpose, description, summary, notes, status,
+            executive_summary,
+        )
         session.add(row)
         try:
             session.flush()
@@ -274,6 +285,7 @@ def create_conversation(
     notes: str | None = None,
     status: str = "planned",
     identifier: str | None = None,
+    executive_summary: str | None = None,
     references: list[dict] | None = None,
     timestamps: dict | None = None,
 ) -> dict:
@@ -281,6 +293,15 @@ def create_conversation(
     purpose = gov.require_nonempty(purpose, field="conversation_purpose")
     description = gov.require_nonempty(
         description, field="conversation_description"
+    )
+    # PI-105: conversation_executive_summary is nullable but length-checked
+    # (200-800) when provided — the API schema accepts it but the create
+    # path previously dropped it silently.
+    executive_summary = validate_optional_length(
+        executive_summary,
+        field="conversation_executive_summary",
+        min_len=200,
+        max_len=800,
     )
     if status is None:
         status = "planned"
@@ -300,10 +321,14 @@ def create_conversation(
 
     if identifier is None:
         row = _insert_with_autoassign(
-            session, title, purpose, description, summary, notes, status
+            session, title, purpose, description, summary, notes, status,
+            executive_summary,
         )
     else:
-        row = _new_row(identifier, title, purpose, description, summary, notes, status)
+        row = _new_row(
+            identifier, title, purpose, description, summary, notes, status,
+            executive_summary,
+        )
         session.add(row)
         session.flush()
 
@@ -338,6 +363,7 @@ def update_conversation(
     summary: str | None = None,
     notes: str | None = None,
     status: str | None = None,
+    executive_summary: str | None = None,
     references: list[dict] | None = None,
 ) -> dict:
     row = _get_row(session, identifier)
@@ -379,6 +405,13 @@ def update_conversation(
     row.conversation_description = description
     row.conversation_summary = summary
     row.conversation_notes = notes
+    # PI-105: PUT replaces the executive summary (nullable, length-checked).
+    row.conversation_executive_summary = validate_optional_length(
+        executive_summary,
+        field="conversation_executive_summary",
+        min_len=200,
+        max_len=800,
+    )
     session.flush()
     _validate_edges(session, identifier, row.conversation_status)
 
@@ -432,6 +465,13 @@ def patch_conversation(
         )
     if "summary" in fields:
         row.conversation_summary = fields["summary"]
+    if "executive_summary" in fields:  # PI-105
+        row.conversation_executive_summary = validate_optional_length(
+            fields["executive_summary"],
+            field="conversation_executive_summary",
+            min_len=200,
+            max_len=800,
+        )
     if "notes" in fields:
         row.conversation_notes = fields["notes"]
     if "status" in fields:

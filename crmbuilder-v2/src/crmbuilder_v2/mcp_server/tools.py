@@ -152,10 +152,15 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         rationale: str | None = None,
         alternatives_considered: str | None = None,
         consequences: str | None = None,
+        executive_summary: str | None = None,
         supersedes: str | None = None,
         superseded_by: str | None = None,
     ) -> Any:
-        """Update fields on a decision. Pass only the fields to change."""
+        """Update fields on a decision. Pass only the fields to change.
+
+        ``executive_summary`` (PI-074/PI-075) is a 200-800 character summary
+        that is required and NOT NULL — this is the path to refresh a stale one.
+        """
         body = {
             k: v
             for k, v in dict(
@@ -167,6 +172,7 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
                 rationale=rationale,
                 alternatives_considered=alternatives_considered,
                 consequences=consequences,
+                executive_summary=executive_summary,
                 supersedes=supersedes,
                 superseded_by=superseded_by,
             ).items()
@@ -280,13 +286,15 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         ended_at: str | None = None,
         participants: list | None = None,
         medium_metadata: dict | None = None,
+        executive_summary: str | None = None,
     ) -> Any:
         """Update fields on a session (PATCH). Pass only the fields to change.
 
         Sessions are now editable throughout their lifecycle (DEC-013
         superseded by DEC-314). Lifecycle transitions are validated:
         planned → in_flight → complete, with cancelled/not_started/
-        superseded as terminal alternatives.
+        superseded as terminal alternatives. ``executive_summary``
+        (PI-074/PI-075, required NOT NULL, 200-800 chars) refreshes a stale one.
         """
         body = {
             f"session_{k}": v
@@ -301,6 +309,7 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
                 ended_at=ended_at,
                 participants=participants,
                 medium_metadata=medium_metadata,
+                executive_summary=executive_summary,
             ).items()
             if v is not None
         }
@@ -362,12 +371,15 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         summary: str | None = None,
         notes: str | None = None,
         status: str = "planned",
+        executive_summary: str | None = None,
     ) -> Any:
         """Create a conversation (topical sub-unit) record.
 
         Required: ``title``, ``purpose``, ``description``. Identifier is
         server-assigned (CNV-NNN) when omitted. ``summary`` is the
         per-topic outcome captured at conversation close (status=complete).
+        ``executive_summary`` (PI-105) is an optional 200-800 character
+        summary persisted to ``conversation_executive_summary``.
 
         A conversation must be linked to its parent session via a
         ``conversation_belongs_to_session`` reference edge — author the
@@ -384,6 +396,7 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
                 conversation_summary=summary,
                 conversation_notes=notes,
                 conversation_status=status,
+                conversation_executive_summary=executive_summary,
             ).items()
             if v is not None
         }
@@ -397,8 +410,13 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         summary: str | None = None,
         notes: str | None = None,
         status: str | None = None,
+        executive_summary: str | None = None,
     ) -> Any:
-        """Update fields on a conversation (PATCH)."""
+        """Update fields on a conversation (PATCH).
+
+        ``executive_summary`` (PI-105, 200-800 chars) refreshes
+        ``conversation_executive_summary``.
+        """
         body = {
             f"conversation_{k}": v
             for k, v in dict(
@@ -408,6 +426,7 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
                 summary=summary,
                 notes=notes,
                 status=status,
+                executive_summary=executive_summary,
             ).items()
             if v is not None
         }
@@ -527,8 +546,13 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         description: str | None = None,
         status: str | None = None,
         resolution_reference: str | None = None,
+        executive_summary: str | None = None,
     ) -> Any:
-        """Update a planning item."""
+        """Update a planning item.
+
+        ``executive_summary`` (PI-074/PI-075, required NOT NULL, 200-800 chars)
+        refreshes a stale summary — the gap PI-105 closed.
+        """
         body = {
             k: v
             for k, v in dict(
@@ -537,6 +561,7 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
                 description=description,
                 status=status,
                 resolution_reference=resolution_reference,
+                executive_summary=executive_summary,
             ).items()
             if v is not None
         }
