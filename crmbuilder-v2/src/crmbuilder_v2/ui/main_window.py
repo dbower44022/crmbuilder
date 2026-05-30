@@ -18,7 +18,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from PySide6.QtCore import QTimer, Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAction, QCloseEvent
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -34,6 +34,7 @@ from crmbuilder_v2.ui.about_dialog import AboutDialog
 from crmbuilder_v2.ui.base.list_detail_panel import ListDetailPanel
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.crash_banner import CrashBanner
+from crmbuilder_v2.ui.exceptions import StorageConnectionError
 from crmbuilder_v2.ui.panels.charter import CharterPanel
 from crmbuilder_v2.ui.panels.chat import ChatPanel
 from crmbuilder_v2.ui.panels.close_out_payloads import CloseOutPayloadsPanel
@@ -63,6 +64,7 @@ from crmbuilder_v2.ui.panels.workstreams import WorkstreamsPanel
 from crmbuilder_v2.ui.refresh import RefreshService
 from crmbuilder_v2.ui.server_lifecycle import ServerLifecycle
 from crmbuilder_v2.ui.sidebar import SIDEBAR_ENTRIES, Sidebar
+from crmbuilder_v2.ui.workers import run_in_thread
 
 _log = logging.getLogger("crmbuilder_v2.ui.main_window")
 _DEFAULT_ENTRY = "Decisions"
@@ -73,6 +75,13 @@ _DEFAULT_ENTRY = "Decisions"
 # banner. Each attempt itself probes (1s) then polls a fresh spawn for up
 # to 10s, so this is a hard ceiling on automatic recovery effort.
 _MAX_RECONNECT_ATTEMPTS = 3
+
+# Heartbeat: how often the window probes ``GET /health`` while ready, so
+# an API that died between user actions (PI-111) — especially an external
+# one the lifecycle doesn't crash-monitor — is detected proactively and
+# auto-restarted before the next request fails. Probe runs off the GUI
+# thread; only a connection failure triggers recovery.
+_HEARTBEAT_INTERVAL_MS = 15000
 
 # Maps reference ``entity_type`` values (as stored in the database) to
 # sidebar entry labels so the navigation router (cross-panel link
@@ -163,6 +172,14 @@ class MainWindow(QMainWindow):
         self._reconnect_attempts = 0
         self._base_url = get_settings().api_base_url
         self._log_path = api_log_path()
+
+        # Heartbeat (PI-111). Started once the API is first ready, paused
+        # during a reconnect cycle, restarted on the next ready. A single
+        # probe is in flight at a time (``_heartbeat_in_flight``).
+        self._heartbeat_in_flight = False
+        self._heartbeat_timer = QTimer(self)
+        self._heartbeat_timer.setInterval(_HEARTBEAT_INTERVAL_MS)
+        self._heartbeat_timer.timeout.connect(self._on_heartbeat_tick)
 
         # Construct the file-watch service before the panel loop so the
         # chat tab can subscribe to it (PI-106). It is connected and
@@ -333,6 +350,10 @@ class MainWindow(QMainWindow):
         """
         self._lifecycle_ready = False
         self._set_content_enabled(False)
+        # Pause the heartbeat while recovering; ``_on_lifecycle_ready``
+        # restarts it. ``_on_heartbeat_tick`` also guards on these flags,
+        # so an in-flight probe completing mid-reconnect is a no-op.
+        self._heartbeat_timer.stop()
         if self._auto_reconnecting:
             return
         self._auto_reconnecting = True
@@ -382,7 +403,48 @@ class MainWindow(QMainWindow):
             f"Logs: {self._log_path}"
         )
 
+    def _on_heartbeat_tick(self) -> None:
+        """Probe ``/health`` off-thread; trigger recovery on a connection miss.
+
+        Skips while not ready, while a reconnect is already in flight, or
+        while a prior probe is still outstanding — so it never stacks
+        probes or fights the auto-reconnect loop.
+        """
+        if (
+            not self._lifecycle_ready
+            or self._auto_reconnecting
+            or self._heartbeat_in_flight
+        ):
+            return
+        self._heartbeat_in_flight = True
+        run_in_thread(
+            self._client.health,
+            on_success=self._on_heartbeat_ok,
+            on_error=self._on_heartbeat_failed,
+            parent=self,
+        )
+
+    def _on_heartbeat_ok(self, _result) -> None:
+        self._heartbeat_in_flight = False
+
+    def _on_heartbeat_failed(self, exc: Exception) -> None:
+        self._heartbeat_in_flight = False
+        # Only a connection failure means the API is gone; a transient
+        # domain/5xx error is not a death signal and is left to normal
+        # request paths. Re-check the guards — state may have changed
+        # while the probe was in flight.
+        if not isinstance(exc, StorageConnectionError):
+            return
+        if not self._lifecycle_ready or self._auto_reconnecting:
+            return
+        _log.warning("Heartbeat: API unreachable (%s); auto-restarting", exc)
+        self._begin_auto_reconnect("health heartbeat: API unreachable")
+
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802 (Qt naming)
+        try:
+            self._heartbeat_timer.stop()
+        except Exception:
+            _log.exception("Heartbeat timer stop failed during closeEvent")
         try:
             self._refresh_service.stop()
         except Exception:
@@ -433,10 +495,14 @@ class MainWindow(QMainWindow):
         self._had_first_ready = True
         self._auto_reconnecting = False
         self._reconnect_attempts = 0
+        self._heartbeat_in_flight = False
         # Unconditional hide: a no-op when already hidden, and avoids
         # depending on isVisible() (which is False for an unshown parent).
         self._crash_banner.hide()
         self._set_content_enabled(True)
+        # Begin (or resume) proactive health polling now the API is up.
+        if not self._heartbeat_timer.isActive():
+            self._heartbeat_timer.start()
         self._refresh_current_panel()
 
     def _on_panel_connection_lost(self, message: str) -> None:
@@ -561,11 +627,12 @@ class MainWindow(QMainWindow):
         except Exception:
             _log.exception("Failed to fetch engagement %s for activation", identifier)
             return
+        from datetime import UTC, datetime
+
         from crmbuilder_v2.access.engagement_models import (
             Engagement,
             EngagementStatus,
         )
-        from datetime import UTC, datetime
 
         def _maybe_dt(v):
             if v is None:

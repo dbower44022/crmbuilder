@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import httpx
 import pytest
+from crmbuilder_v2.ui.exceptions import StorageConnectionError
 from crmbuilder_v2.ui.main_window import _MAX_RECONNECT_ATTEMPTS, MainWindow
 from PySide6.QtCore import QObject, Signal
 
@@ -174,3 +175,82 @@ def test_had_first_ready_is_false_before_any_ready(window):
     win, _lifecycle = window
     # Gates app.py's fatal-vs-banner decision on a runtime spawn failure.
     assert win.had_first_ready() is False
+
+
+# --- heartbeat (PI-111) -------------------------------------------------
+
+
+def test_heartbeat_timer_starts_on_ready_and_stops_on_reconnect(window):
+    win, lifecycle = window
+    assert not win._heartbeat_timer.isActive()
+
+    win._on_lifecycle_ready()
+    assert win._heartbeat_timer.isActive()  # polling once the API is up
+
+    win._on_panel_connection_lost("boom")
+    assert not win._heartbeat_timer.isActive()  # paused during recovery
+
+    win._on_lifecycle_ready()
+    assert win._heartbeat_timer.isActive()  # resumes on the next ready
+
+
+def test_heartbeat_connection_failure_triggers_auto_restart(window):
+    win, lifecycle = window
+    _make_ready_once(win, lifecycle)
+    win._heartbeat_in_flight = True  # a probe was outstanding
+
+    win._on_heartbeat_failed(StorageConnectionError("refused"))
+
+    assert win._heartbeat_in_flight is False
+    assert lifecycle.start_calls == 1
+    assert win._auto_reconnecting is True
+
+
+def test_heartbeat_non_connection_error_does_not_restart(window):
+    win, lifecycle = window
+    _make_ready_once(win, lifecycle)
+    win._heartbeat_in_flight = True
+
+    # A domain/5xx error is not a death signal — leave it to request paths.
+    win._on_heartbeat_failed(ValueError("transient"))
+
+    assert win._heartbeat_in_flight is False
+    assert lifecycle.start_calls == 0
+    assert win._auto_reconnecting is False
+
+
+def test_heartbeat_failure_while_reconnecting_is_ignored(window):
+    win, lifecycle = window
+    _make_ready_once(win, lifecycle)
+    win._on_panel_connection_lost("boom")  # already reconnecting
+    starts = lifecycle.start_calls
+
+    win._on_heartbeat_failed(StorageConnectionError("refused"))
+
+    # No second cycle kicked off; the in-flight reconnect owns recovery.
+    assert lifecycle.start_calls == starts
+
+
+def test_heartbeat_ok_clears_in_flight_without_restart(window):
+    win, lifecycle = window
+    _make_ready_once(win, lifecycle)
+    win._heartbeat_in_flight = True
+
+    win._on_heartbeat_ok({"ok": True})
+
+    assert win._heartbeat_in_flight is False
+    assert lifecycle.start_calls == 0
+
+
+def test_heartbeat_tick_skips_when_not_ready_or_in_flight(window):
+    win, _lifecycle = window
+    # Not ready yet → no probe.
+    win._lifecycle_ready = False
+    win._on_heartbeat_tick()
+    assert win._heartbeat_in_flight is False
+
+    # Ready but a probe already outstanding → no second probe.
+    win._lifecycle_ready = True
+    win._heartbeat_in_flight = True
+    win._on_heartbeat_tick()
+    assert win._heartbeat_in_flight is True
