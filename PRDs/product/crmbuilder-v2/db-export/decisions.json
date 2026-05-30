@@ -5421,5 +5421,39 @@
     "supersedes_id": null,
     "title": "How aggressively the v2 UI should self-resolve a dropped API connection",
     "updated_at": "2026-05-30T05:12:08.973776"
+  },
+  {
+    "alternatives_considered": "Option (b) apply_close_out.py post-process — rejected because it would fail for any references created outside the apply pipeline (UI panel reference creation, direct REST POSTs, embedded references inside other entity creates); the side-effect would only fire for one of several legitimate entry points. Option (c) generalized event bus from references repo to subscribers — rejected as over-engineering for two known consumers (resolves and opens-against); a generalized hook has cost without a third subscriber to amortize it.",
+    "consequences": "Future opens-against-style lifecycle-consummation kinds added to the references vocab will land near the resolves and opens-against blocks in references.create, growing a small but explicit dispatch. The pattern is greppable (search for 'PI-030' or 'PI-109' to find the precedent) and the same-transaction guarantee is preserved by default.",
+    "context": "PI-109 added an atomic flip on opens-against edges. Three candidate sites were considered: (a) inside references.create immediately after session.add+flush, in the same block style the PI-030 slice-A resolves → planning_item flip uses; (b) inside apply_close_out.py after the references section completes, as a post-process pass over the just-inserted edges; (c) as a generalized event-handler the references repo emits and the work_tickets repo subscribes to. The decision needed to be made before any code landed in commit e4246e2.",
+    "created_at": "2026-05-30T05:32:57.564242",
+    "decision": "Use option (a). Implement the side-effect inside references.create immediately after the existing PI-030 slice-A resolves block, with the same flush ordering and the same emit pattern. The just-inserted edge is visible to the same-session SELECT in work_tickets._validate_edges, so the consumed-requires-edge precondition is satisfied without special casing.",
+    "decision_date": "2026-05-30",
+    "executive_summary": "Chose the references.create site (option a) for the work_ticket auto-consume side-effect, immediately after the existing slice-A resolves block. Parallelism with the established resolves → planning_item flip is the strongest signal: both opens-against and resolves consummate a lifecycle target in the same transaction the edge lands in. Apply-pipeline-only (option b) was rejected because it would miss UI-created and direct-REST references. A generalized event bus (option c) over-engineers for two known consumers.",
+    "id": 321,
+    "identifier": "DEC-334",
+    "rationale": "Parallelism with the established resolves-edge pattern is the strongest signal: both opens-against and resolves express the same semantic shape — this conversation/session is doing the thing the target was filed to track — and both should consummate the target's lifecycle in the same transaction the edge lands in. The chosen site is the only one of the three that fires for every legitimate edge-creation entry point.",
+    "status": "Active",
+    "superseded_by_id": null,
+    "supersedes_id": null,
+    "title": "Auto-consume side-effect lives in references.create, mirroring the slice-A resolves pattern",
+    "updated_at": "2026-05-30T05:32:57.564246"
+  },
+  {
+    "alternatives_considered": "Relax the side-effect to fire on non-ready targets too (then downstream _validate_edges catches the violation) — rejected because firing on terminal targets would invent illegal status transitions (consumed → consumed via overwrite, etc.). Move the single-use check into the side-effect's validate path — rejected because edges that don't reach the side-effect path (terminal targets) would still skip the check; cleanest is at insert time.",
+    "consequences": "POST /references is slightly stricter than before: a second opens edge against any work_ticket (ready or terminal) is rejected at insert time with a clear error code. No prior fixture relied on the lax behavior (no tests broke). The downstream _validate_edges check in work_tickets.py is now defense-in-depth rather than primary enforcement; can be slimmed in a future cleanup but kept for now to preserve any non-references-create entry path.",
+    "context": "PI-109's auto-consume side-effect short-circuits on non-ready targets. The work_ticket single-use rule (at most one inbound consumption edge of either kind) was previously enforced only by work_tickets._validate_edges, which runs on PATCH and on the new side-effect's own validate call. Both entry points are gated on the target being at status=ready or transitioning to consumed; neither fires when the target is already terminal. The test_already_consumed_target_no_double_flip regression caught this: a second opens edge of the other kind from a different source landed silently because the side-effect early-exited and no downstream check ran.",
+    "created_at": "2026-05-30T05:32:57.908914",
+    "decision": "Add a pre-insert guard in references.create, immediately before the row is added, that counts existing inbound consumption edges of EITHER kind (legacy conversation_opens_against_work_ticket or PI-073 successor session_opens_against_work_ticket) on the target work_ticket. If any exist, raise UnprocessableError with code work_ticket_single_use_violation. The downstream _validate_edges in work_tickets.py is retained as a defense-in-depth check.",
+    "decision_date": "2026-05-30",
+    "executive_summary": "Added a pre-insert single-use guard in references.create that counts inbound consumption edges of EITHER kind on the target work_ticket and rejects the new edge with work_ticket_single_use_violation before the row is added. Without this, the downstream _validate_edges check in work_tickets.py is only reached via PATCH and via the side-effect's own validate call — neither fires when the target is already terminal, so a second opens edge against a consumed work_ticket would silently land. Mirrors the field_belongs_to_entity and entity_variant_of_entity cardinality checks already in references.create.",
+    "id": 322,
+    "identifier": "DEC-335",
+    "rationale": "Invariants that must hold regardless of target state belong at the references layer, not downstream — the same pattern the existing field_belongs_to_entity and entity_variant_of_entity cardinality checks in references.create use. Layering the rule at edge insertion ensures the invariant holds even when the downstream lifecycle check can't reach it.",
+    "status": "Active",
+    "superseded_by_id": null,
+    "supersedes_id": null,
+    "title": "Pre-insert single-use guard for opens-against edges at the references layer, not solely downstream",
+    "updated_at": "2026-05-30T05:32:57.908917"
   }
 ]

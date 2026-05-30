@@ -2411,5 +2411,34 @@
     "session_superseded_at": null,
     "session_title": "Harden the v2 API lifecycle — rotating logs + UI auto-restart on connection loss",
     "session_updated_at": "2026-05-30T05:12:07.364050"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-30T05:32:56.212621",
+    "session_created_at": "2026-05-30T05:32:56.212231",
+    "session_deleted_at": null,
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-028. Parent workstream WS-011 (V2 storage API refinements). Medium: chat (claude_code runner).\n\nSeed: \"please review wt-049 and devise a plan to execute all tasks necessary to complete the task.\" The WT-049 kickoff body said to build the `persona` methodology entity end-to-end, but PI-003 was already Resolved and the persona code had already shipped under commit d6fd7c1d (SES-082). WT-049's own pre-flight step 11 says: 'If [PI-003 is] already Resolved, a parallel session has shipped this work — stop and investigate.' So this session investigated rather than built.\n\nThe investigation surfaced a three-part defect. (1) WT-049's status had never been flipped from `ready` to `consumed`, even though the underlying work shipped four days earlier. (2) The same drift had silently caught the entire WT-049..054 cohort — all six methodology-entity build kickoffs filed by SES-081 for PI-003 (persona), PI-004 (field/requirement/manual_config/test_spec), and PI-005 (process v2). Every PI is Resolved; every WT is still `ready`. (3) The cause was a missing side-effect: the SES-082..086 apply prompts assumed `apply_close_out.py` would auto-flip the target work_ticket via the `conversation_opens_against_work_ticket` reference (the way slice-A's `resolves` edge flips a planning_item from Open to Resolved); no such side-effect existed. For WT-048 (SES-087) the operator caught the gap and added an explicit `PATCH /work-tickets/WT-048` step to the apply (dep_069.log explicitly notes `apply_close_out.py does not auto-transition`); WT-049..054 fell through the gap because their applies happened before the discovery.\n\nThe session produced three commits closing this defect end-to-end.\n\nCommit 2c9759d — data fix + validator widening. The validator's `_CONSUMPTION_KIND` was hardcoded to the legacy `conversation_opens_against_work_ticket` even though the PI-073 session/conversation redesign had introduced `session_opens_against_work_ticket` and migrated edges to it. Widened to `_CONSUMPTION_KINDS = {legacy, successor}` accepting either as a valid consumption edge in both the single-use and the consumed-requires-edge rules. Added `test_consumed_accepts_session_opens_edge` regression. Then PATCHed WT-049..054 from `ready` to `consumed` against the running API (consumed_at = today, mirroring the WT-048 convention; no backdating). Engagement DB was 3 migrations behind code head (0023 vs 0026); brought to head via `alembic upgrade head` with a pre-upgrade backup (`CRMBUILDER.db.before-wt049-fix-*`). Five files: validator + new test + regenerated snapshots for `work_tickets.json` (the six flips), `change_log.json` (the six audit lines), and `planning_items.json` (incidental shape addition of the three nullable columns from migrations 0024/0025).\n\nCommit 1d6aedf — filed PI-109 as the structural follow-up. The data fix retired the symptom; PI-109 captures the cause (no auto-transition on opens-against edges) as Open work in area v2-access. Description and executive_summary author the slice-A-parallel design proposal so the next session has the build prompt in-record.\n\nCommit e4246e2 — implements PI-109. In `references.create()`, immediately after the existing PI-030 `resolves` block, the side-effect mirrors the slice-A pattern verbatim: when the inserted edge is of either consumption kind, the target work_ticket exists and is not soft-deleted, and the current status is exactly `ready`, mutate the row to `consumed`, stamp `work_ticket_consumed_at`, re-flush, run `_validate_edges` so any single-use violation surfaces from inside this transaction, and emit a work_ticket update audit row. A pre-insert single-use guard is added at the references layer (parallel to the existing `field_belongs_to_entity` and `entity_variant_of_entity` cardinality checks in `create`) because the side-effect short-circuits on already-terminal targets — without the pre-insert guard, a second opens edge against a consumed work_ticket would silently land. New `TestOpensAgainstStatusFlip` class with five tests covers both kinds, drafted/soft-deleted/terminal no-ops, and single-use violation. Full v2 access + API + scripts suite: 1279 passed.\n\nNet observable change: the next session that opens against a fresh work_ticket via the standard apply pipeline will see the ticket auto-flip to consumed without an explicit PATCH step. The fragile process discipline of remembering the PATCH is replaced by the structural fix. Two decisions authored. Resolves PI-109. Three commits sit on main awaiting Doug's push.",
+    "session_ended_at": null,
+    "session_executive_summary": "Investigated WT-049 (PI-003 was already Resolved under commit d6fd7c1d / SES-082 four days earlier; WT-049 stuck at ready). Same drift across the WT-049..054 cohort. Root cause: SES-082..086 apply prompts assumed POSTing an opens-against edge would auto-flip the target work_ticket; no such side-effect existed. Three commits: 2c9759d retired the cohort data and widened the consumption-edge validator to accept the PI-073 successor kind; 1d6aedf filed PI-109; e4246e2 implements PI-109 — references.create now auto-consumes ready work_tickets on inbound opens-against edges of either kind, with a pre-insert single-use guard. 1279 tests pass.",
+    "session_identifier": "SES-126",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "model": "claude-opus-4-7",
+      "runner": "claude_code",
+      "surface": "claude_code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.7, Claude Code)"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "Investigate WT-049 drift, retire the WT-049..054 stale-ready cohort, file and resolve PI-109 (auto-consume work_tickets on inbound opens-against edge)",
+    "session_updated_at": "2026-05-30T05:32:56.212891"
   }
 ]

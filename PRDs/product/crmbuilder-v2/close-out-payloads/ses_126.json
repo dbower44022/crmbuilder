@@ -1,0 +1,146 @@
+{
+  "label": "SES-126 / CNV-028 close-out — investigates WT-049 drift, retires WT-049..054 stale `ready` cohort (commit 2c9759d), files PI-109 (commit 1d6aedf), implements + resolves PI-109 (commit e4246e2). Three commits. Two decisions (DEC-334 side-effect placement at references layer mirroring slice-A; DEC-335 pre-insert single-use guard at the references layer). Attaches to WS-011. Resolves PI-109. Identifiers re-verify at apply time.",
+  "session": {
+    "session_identifier": "SES-126",
+    "session_title": "Investigate WT-049 drift, retire the WT-049..054 stale-ready cohort, file and resolve PI-109 (auto-consume work_tickets on inbound opens-against edge)",
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-028. Parent workstream WS-011 (V2 storage API refinements). Medium: chat (claude_code runner).\n\nSeed: \"please review wt-049 and devise a plan to execute all tasks necessary to complete the task.\" The WT-049 kickoff body said to build the `persona` methodology entity end-to-end, but PI-003 was already Resolved and the persona code had already shipped under commit d6fd7c1d (SES-082). WT-049's own pre-flight step 11 says: 'If [PI-003 is] already Resolved, a parallel session has shipped this work — stop and investigate.' So this session investigated rather than built.\n\nThe investigation surfaced a three-part defect. (1) WT-049's status had never been flipped from `ready` to `consumed`, even though the underlying work shipped four days earlier. (2) The same drift had silently caught the entire WT-049..054 cohort — all six methodology-entity build kickoffs filed by SES-081 for PI-003 (persona), PI-004 (field/requirement/manual_config/test_spec), and PI-005 (process v2). Every PI is Resolved; every WT is still `ready`. (3) The cause was a missing side-effect: the SES-082..086 apply prompts assumed `apply_close_out.py` would auto-flip the target work_ticket via the `conversation_opens_against_work_ticket` reference (the way slice-A's `resolves` edge flips a planning_item from Open to Resolved); no such side-effect existed. For WT-048 (SES-087) the operator caught the gap and added an explicit `PATCH /work-tickets/WT-048` step to the apply (dep_069.log explicitly notes `apply_close_out.py does not auto-transition`); WT-049..054 fell through the gap because their applies happened before the discovery.\n\nThe session produced three commits closing this defect end-to-end.\n\nCommit 2c9759d — data fix + validator widening. The validator's `_CONSUMPTION_KIND` was hardcoded to the legacy `conversation_opens_against_work_ticket` even though the PI-073 session/conversation redesign had introduced `session_opens_against_work_ticket` and migrated edges to it. Widened to `_CONSUMPTION_KINDS = {legacy, successor}` accepting either as a valid consumption edge in both the single-use and the consumed-requires-edge rules. Added `test_consumed_accepts_session_opens_edge` regression. Then PATCHed WT-049..054 from `ready` to `consumed` against the running API (consumed_at = today, mirroring the WT-048 convention; no backdating). Engagement DB was 3 migrations behind code head (0023 vs 0026); brought to head via `alembic upgrade head` with a pre-upgrade backup (`CRMBUILDER.db.before-wt049-fix-*`). Five files: validator + new test + regenerated snapshots for `work_tickets.json` (the six flips), `change_log.json` (the six audit lines), and `planning_items.json` (incidental shape addition of the three nullable columns from migrations 0024/0025).\n\nCommit 1d6aedf — filed PI-109 as the structural follow-up. The data fix retired the symptom; PI-109 captures the cause (no auto-transition on opens-against edges) as Open work in area v2-access. Description and executive_summary author the slice-A-parallel design proposal so the next session has the build prompt in-record.\n\nCommit e4246e2 — implements PI-109. In `references.create()`, immediately after the existing PI-030 `resolves` block, the side-effect mirrors the slice-A pattern verbatim: when the inserted edge is of either consumption kind, the target work_ticket exists and is not soft-deleted, and the current status is exactly `ready`, mutate the row to `consumed`, stamp `work_ticket_consumed_at`, re-flush, run `_validate_edges` so any single-use violation surfaces from inside this transaction, and emit a work_ticket update audit row. A pre-insert single-use guard is added at the references layer (parallel to the existing `field_belongs_to_entity` and `entity_variant_of_entity` cardinality checks in `create`) because the side-effect short-circuits on already-terminal targets — without the pre-insert guard, a second opens edge against a consumed work_ticket would silently land. New `TestOpensAgainstStatusFlip` class with five tests covers both kinds, drafted/soft-deleted/terminal no-ops, and single-use violation. Full v2 access + API + scripts suite: 1279 passed.\n\nNet observable change: the next session that opens against a fresh work_ticket via the standard apply pipeline will see the ticket auto-flip to consumed without an explicit PATCH step. The fragile process discipline of remembering the PATCH is replaced by the structural fix. Two decisions authored. Resolves PI-109. Three commits sit on main awaiting Doug's push.",
+    "session_medium": "chat",
+    "session_status": "complete",
+    "session_executive_summary": "Investigated WT-049 (PI-003 was already Resolved under commit d6fd7c1d / SES-082 four days earlier; WT-049 stuck at ready). Same drift across the WT-049..054 cohort. Root cause: SES-082..086 apply prompts assumed POSTing an opens-against edge would auto-flip the target work_ticket; no such side-effect existed. Three commits: 2c9759d retired the cohort data and widened the consumption-edge validator to accept the PI-073 successor kind; 1d6aedf filed PI-109; e4246e2 implements PI-109 — references.create now auto-consumes ready work_tickets on inbound opens-against edges of either kind, with a pre-insert single-use guard. 1279 tests pass.",
+    "session_medium_metadata": {
+      "surface": "claude_code",
+      "runner": "claude_code",
+      "model": "claude-opus-4-7"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.7, Claude Code)"
+    ],
+    "references": [
+      {
+        "source_type": "session",
+        "source_id": "SES-126",
+        "target_type": "workstream",
+        "target_id": "WS-011",
+        "relationship": "session_belongs_to_workstream"
+      }
+    ]
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-028",
+    "conversation_title": "Investigating the WT-049 drift and closing the auto-consume gap (PI-109)",
+    "conversation_purpose": "Diagnose why WT-049 remained at status=ready four days after its underlying work (PI-003 persona build) shipped, retire the stale-ready cohort, and replace the fragile explicit-PATCH discipline with the structural auto-consume side-effect that the apply prompts had quietly assumed all along.",
+    "conversation_description": "Three commits land in sequence. 2c9759d widens the work_ticket consumption-edge validator to accept either the legacy conversation_opens_against_work_ticket or the PI-073 successor session_opens_against_work_ticket, and PATCHes WT-049..054 from ready to consumed against the running API (engagement DB brought from 0023 to 0026 via alembic upgrade head, pre-upgrade backup taken). 1d6aedf files PI-109 as the structural follow-up. e4246e2 implements PI-109 — references.create gains a slice-A-parallel side-effect that auto-consumes ready work_tickets on inbound opens-against edges of either kind, plus a pre-insert single-use guard at the references layer so the rule fires regardless of target state. Two decisions (DEC-334 side-effect placement, DEC-335 pre-insert guard). 1279 v2 tests pass. Resolves PI-109.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-028",
+        "target_type": "session",
+        "target_id": "SES-126",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [],
+  "commits": [
+    {
+      "commit_sha": "2c9759d526f89ccc3b9a1a940c667c1545a32e77",
+      "commit_message_first_line": "v2: widen work_ticket consumption-edge validator + retire WT-049..054 stale ready",
+      "commit_message_full": "v2: widen work_ticket consumption-edge validator + retire WT-049..054 stale ready\n\nThe validator in access/repositories/work_tickets.py hardcoded the legacy\nrelationship kind `conversation_opens_against_work_ticket` as the single\n'consumption edge' for the consumed-requires-edge rule and the single-use\nconstraint. The PI-073 session/conversation redesign introduced the\nsuccessor kind `session_opens_against_work_ticket` for the new\n(session, work_ticket) pair and registered it in vocab.py, but the\nvalidator was never widened. As a result, work_tickets whose only\ninbound opening edge was the successor kind could not transition to\n`consumed` — the PATCH returned 422\n`consumed_work_ticket_requires_consumption_edge`.\n\nThe gap silently produced six stale work_tickets:\n\n  WT-049..054 — the v0.5+ methodology-entity build cohort filed by\n  SES-081 for PI-003 (persona), PI-004 (field/requirement/manual_config/\n  test_spec), and PI-005 (process v2). All six underlying PIs are now\n  Resolved and the code shipped, but each ticket was stuck at\n  status=ready with consumed_at=NULL because the SES-082..086 apply\n  prompts assumed apply_close_out.py would auto-flip the target ticket\n  via the inserted opens-against edge.\n\nChanges: _CONSUMPTION_KIND → _CONSUMPTION_KINDS (frozenset). New\nregression test test_consumed_accepts_session_opens_edge. WT-049..054\nPATCHed to consumed against the running API. Snapshots regenerated.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-30T00:28:56-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "cf756eced41691acdf87f0f38a62354c41603b42"
+      ],
+      "commit_files_changed_count": 5
+    },
+    {
+      "commit_sha": "1d6aedfae7070baf4b5d3d045c0cc36bf65f4eaf",
+      "commit_message_first_line": "v2: file PI-109 — auto-transition work_tickets on inbound opens-against edge",
+      "commit_message_full": "v2: file PI-109 — auto-transition work_tickets on inbound opens-against edge\n\nFollow-up to commit 2c9759d. That commit closed the WT-049..054 data\ngap and widened the consumption-edge validator, but left the structural\ndefect that caused the drift in place: apply_close_out.py treats\n`conversation_opens_against_work_ticket` and\n`session_opens_against_work_ticket` references as ordinary edges with no\nside-effect, even though the SES-082 apply prompt and (by quiet\nconvention) the apply pattern in general had assumed those edges would\nauto-flip the target work_ticket from ready to consumed — the mirror of\nthe slice-A `resolves`-edge atomic flip on planning_items.\n\nPI-109 captures the structural fix as Open work: implement the\nauto-transition in the access layer (favoring the POST /references\nside-effect site for parallelism with the resolves-edge pattern) so that\nthe next time a methodology-entity build cohort opens against fresh\nWTs, those WTs transition consumed automatically and operators do not\nhave to remember the explicit PATCH step.\n\nNo code change in this commit — only the planning_item record and its\nchange_log audit line in the regenerated db-export snapshots.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-30T00:30:30-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "2c9759d526f89ccc3b9a1a940c667c1545a32e77"
+      ],
+      "commit_files_changed_count": 2
+    },
+    {
+      "commit_sha": "e4246e26e9e8d22f43a1cebdc3027be2d5dc2583",
+      "commit_message_first_line": "v2: PI-109 — auto-consume work_tickets on inbound opens-against edge",
+      "commit_message_full": "v2: PI-109 — auto-consume work_tickets on inbound opens-against edge\n\nCloses the drift surfaced by commit 2c9759d. Side-effect added to\nreferences.create immediately after the existing PI-030 `resolves`\nblock: when the inserted edge is of either consumption kind AND the\ntarget work_ticket is exactly at `ready` AND not soft-deleted, mutate\nthe row to status=consumed, stamp work_ticket_consumed_at, re-flush,\nrun _validate_edges, and emit an audit row. Drafted, soft-deleted,\nmissing, and terminal-state targets are no-ops.\n\nPre-insert single-use guard added at the references layer (parallels\nfield_belongs_to_entity and entity_variant_of_entity cardinality\nchecks): counts inbound consumption edges of EITHER kind on the\ntarget work_ticket and rejects the new edge with\nwork_ticket_single_use_violation before the row is added. Without\nthis guard the side-effect would silently skip terminal-state targets\nand a second opens edge would land.\n\nNew TestOpensAgainstStatusFlip class with five tests covers both\nkinds, drafted/soft-deleted/terminal no-ops, and single-use violation.\nFull v2 access + API + scripts suite: 1279 passed.\n\nResolves PI-109.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-30T01:25:28-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "d8730ff9da3f31db34f67f7640c6e6d3c4b49528"
+      ],
+      "commit_files_changed_count": 2
+    }
+  ],
+  "decisions": [
+    {
+      "identifier": "DEC-334",
+      "title": "Auto-consume side-effect lives in references.create, mirroring the slice-A resolves pattern",
+      "decision_date": "2026-05-30",
+      "status": "Active",
+      "executive_summary": "Chose the references.create site (option a) for the work_ticket auto-consume side-effect, immediately after the existing slice-A resolves block. Parallelism with the established resolves → planning_item flip is the strongest signal: both opens-against and resolves consummate a lifecycle target in the same transaction the edge lands in. Apply-pipeline-only (option b) was rejected because it would miss UI-created and direct-REST references. A generalized event bus (option c) over-engineers for two known consumers.",
+      "context": "PI-109 added an atomic flip on opens-against edges. Three candidate sites were considered: (a) inside references.create immediately after session.add+flush, in the same block style the PI-030 slice-A resolves → planning_item flip uses; (b) inside apply_close_out.py after the references section completes, as a post-process pass over the just-inserted edges; (c) as a generalized event-handler the references repo emits and the work_tickets repo subscribes to. The decision needed to be made before any code landed in commit e4246e2.",
+      "decision": "Use option (a). Implement the side-effect inside references.create immediately after the existing PI-030 slice-A resolves block, with the same flush ordering and the same emit pattern. The just-inserted edge is visible to the same-session SELECT in work_tickets._validate_edges, so the consumed-requires-edge precondition is satisfied without special casing.",
+      "rationale": "Parallelism with the established resolves-edge pattern is the strongest signal: both opens-against and resolves express the same semantic shape — this conversation/session is doing the thing the target was filed to track — and both should consummate the target's lifecycle in the same transaction the edge lands in. The chosen site is the only one of the three that fires for every legitimate edge-creation entry point.",
+      "alternatives_considered": "Option (b) apply_close_out.py post-process — rejected because it would fail for any references created outside the apply pipeline (UI panel reference creation, direct REST POSTs, embedded references inside other entity creates); the side-effect would only fire for one of several legitimate entry points. Option (c) generalized event bus from references repo to subscribers — rejected as over-engineering for two known consumers (resolves and opens-against); a generalized hook has cost without a third subscriber to amortize it.",
+      "consequences": "Future opens-against-style lifecycle-consummation kinds added to the references vocab will land near the resolves and opens-against blocks in references.create, growing a small but explicit dispatch. The pattern is greppable (search for 'PI-030' or 'PI-109' to find the precedent) and the same-transaction guarantee is preserved by default."
+    },
+    {
+      "identifier": "DEC-335",
+      "title": "Pre-insert single-use guard for opens-against edges at the references layer, not solely downstream",
+      "decision_date": "2026-05-30",
+      "status": "Active",
+      "executive_summary": "Added a pre-insert single-use guard in references.create that counts inbound consumption edges of EITHER kind on the target work_ticket and rejects the new edge with work_ticket_single_use_violation before the row is added. Without this, the downstream _validate_edges check in work_tickets.py is only reached via PATCH and via the side-effect's own validate call — neither fires when the target is already terminal, so a second opens edge against a consumed work_ticket would silently land. Mirrors the field_belongs_to_entity and entity_variant_of_entity cardinality checks already in references.create.",
+      "context": "PI-109's auto-consume side-effect short-circuits on non-ready targets. The work_ticket single-use rule (at most one inbound consumption edge of either kind) was previously enforced only by work_tickets._validate_edges, which runs on PATCH and on the new side-effect's own validate call. Both entry points are gated on the target being at status=ready or transitioning to consumed; neither fires when the target is already terminal. The test_already_consumed_target_no_double_flip regression caught this: a second opens edge of the other kind from a different source landed silently because the side-effect early-exited and no downstream check ran.",
+      "decision": "Add a pre-insert guard in references.create, immediately before the row is added, that counts existing inbound consumption edges of EITHER kind (legacy conversation_opens_against_work_ticket or PI-073 successor session_opens_against_work_ticket) on the target work_ticket. If any exist, raise UnprocessableError with code work_ticket_single_use_violation. The downstream _validate_edges in work_tickets.py is retained as a defense-in-depth check.",
+      "rationale": "Invariants that must hold regardless of target state belong at the references layer, not downstream — the same pattern the existing field_belongs_to_entity and entity_variant_of_entity cardinality checks in references.create use. Layering the rule at edge insertion ensures the invariant holds even when the downstream lifecycle check can't reach it.",
+      "alternatives_considered": "Relax the side-effect to fire on non-ready targets too (then downstream _validate_edges catches the violation) — rejected because firing on terminal targets would invent illegal status transitions (consumed → consumed via overwrite, etc.). Move the single-use check into the side-effect's validate path — rejected because edges that don't reach the side-effect path (terminal targets) would still skip the check; cleanest is at insert time.",
+      "consequences": "POST /references is slightly stricter than before: a second opens edge against any work_ticket (ready or terminal) is rejected at insert time with a clear error code. No prior fixture relied on the lax behavior (no tests broke). The downstream _validate_edges check in work_tickets.py is now defense-in-depth rather than primary enforcement; can be slimmed in a future cleanup but kept for now to preserve any non-references-create entry path."
+    }
+  ],
+  "references": [
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-028",
+      "target_type": "session",
+      "target_id": "SES-126",
+      "relationship": "conversation_belongs_to_session"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-334",
+      "target_type": "conversation",
+      "target_id": "CNV-028",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-335",
+      "target_type": "conversation",
+      "target_id": "CNV-028",
+      "relationship": "decided_in"
+    }
+  ],
+  "resolves_planning_items": [
+    {
+      "planning_item_identifier": "PI-109"
+    }
+  ],
+  "addresses_planning_items": []
+}

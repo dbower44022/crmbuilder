@@ -1632,9 +1632,9 @@
     "identifier": "PI-109",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Auto-transition work_tickets on inbound opens-against edge in apply pipeline",
-    "updated_at": "2026-05-30T04:30:10.239820"
+    "updated_at": "2026-05-30T05:32:58.944581"
   },
   {
     "area": null,

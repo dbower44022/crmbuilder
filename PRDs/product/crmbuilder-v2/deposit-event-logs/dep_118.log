@@ -1,0 +1,30 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_126.json
+Label:  SES-126 / CNV-028 close-out — investigates WT-049 drift, retires WT-049..054 stale `ready` cohort (commit 2c9759d), files PI-109 (commit 1d6aedf), implements + resolves PI-109 (commit e4246e2). Three commits. Two decisions (DEC-334 side-effect placement at references layer mirroring slice-A; DEC-335 pre-insert single-use guard at the references layer). Attaches to WS-011. Resolves PI-109. Identifiers re-verify at apply time.
+Deposit event: DEP-118
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-028 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== commits (3 records) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (2 records) ===
+  ✓ POST decisions  DEC-334 (HTTP 201)
+  ✓ POST decisions  DEC-335 (HTTP 201)
+
+=== references (2 records) ===
+  ✓ POST references  DEC-334 decided_in CNV-028 (HTTP 201)
+  ✓ POST references  DEC-335 decided_in CNV-028 (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-109 (HTTP 201)
+
+✓ All 10 operations complete.
+
+✓ Recorded apply as deposit_event DEP-118 (HTTP 201).

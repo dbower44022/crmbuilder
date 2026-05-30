@@ -1062,5 +1062,62 @@
     "commit_session_id": "SES-125",
     "commit_sha": "9f8ec27ca0c9883701c7ee96662ce169b552e566",
     "commit_updated_at": "2026-05-30T05:12:08.665424"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-30T00:28:56-04:00",
+    "commit_created_at": "2026-05-30T05:32:56.552157",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 5,
+    "commit_identifier": "CM-0057",
+    "commit_message_first_line": "v2: widen work_ticket consumption-edge validator + retire WT-049..054 stale ready",
+    "commit_message_full": "v2: widen work_ticket consumption-edge validator + retire WT-049..054 stale ready\n\nThe validator in access/repositories/work_tickets.py hardcoded the legacy\nrelationship kind `conversation_opens_against_work_ticket` as the single\n'consumption edge' for the consumed-requires-edge rule and the single-use\nconstraint. The PI-073 session/conversation redesign introduced the\nsuccessor kind `session_opens_against_work_ticket` for the new\n(session, work_ticket) pair and registered it in vocab.py, but the\nvalidator was never widened. As a result, work_tickets whose only\ninbound opening edge was the successor kind could not transition to\n`consumed` — the PATCH returned 422\n`consumed_work_ticket_requires_consumption_edge`.\n\nThe gap silently produced six stale work_tickets:\n\n  WT-049..054 — the v0.5+ methodology-entity build cohort filed by\n  SES-081 for PI-003 (persona), PI-004 (field/requirement/manual_config/\n  test_spec), and PI-005 (process v2). All six underlying PIs are now\n  Resolved and the code shipped, but each ticket was stuck at\n  status=ready with consumed_at=NULL because the SES-082..086 apply\n  prompts assumed apply_close_out.py would auto-flip the target ticket\n  via the inserted opens-against edge.\n\nChanges: _CONSUMPTION_KIND → _CONSUMPTION_KINDS (frozenset). New\nregression test test_consumed_accepts_session_opens_edge. WT-049..054\nPATCHed to consumed against the running API. Snapshots regenerated.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "cf756eced41691acdf87f0f38a62354c41603b42"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-126",
+    "commit_sha": "2c9759d526f89ccc3b9a1a940c667c1545a32e77",
+    "commit_updated_at": "2026-05-30T05:32:56.552160"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-30T00:30:30-04:00",
+    "commit_created_at": "2026-05-30T05:32:56.877312",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 2,
+    "commit_identifier": "CM-0058",
+    "commit_message_first_line": "v2: file PI-109 — auto-transition work_tickets on inbound opens-against edge",
+    "commit_message_full": "v2: file PI-109 — auto-transition work_tickets on inbound opens-against edge\n\nFollow-up to commit 2c9759d. That commit closed the WT-049..054 data\ngap and widened the consumption-edge validator, but left the structural\ndefect that caused the drift in place: apply_close_out.py treats\n`conversation_opens_against_work_ticket` and\n`session_opens_against_work_ticket` references as ordinary edges with no\nside-effect, even though the SES-082 apply prompt and (by quiet\nconvention) the apply pattern in general had assumed those edges would\nauto-flip the target work_ticket from ready to consumed — the mirror of\nthe slice-A `resolves`-edge atomic flip on planning_items.\n\nPI-109 captures the structural fix as Open work: implement the\nauto-transition in the access layer (favoring the POST /references\nside-effect site for parallelism with the resolves-edge pattern) so that\nthe next time a methodology-entity build cohort opens against fresh\nWTs, those WTs transition consumed automatically and operators do not\nhave to remember the explicit PATCH step.\n\nNo code change in this commit — only the planning_item record and its\nchange_log audit line in the regenerated db-export snapshots.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "2c9759d526f89ccc3b9a1a940c667c1545a32e77"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-126",
+    "commit_sha": "1d6aedfae7070baf4b5d3d045c0cc36bf65f4eaf",
+    "commit_updated_at": "2026-05-30T05:32:56.877316"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-30T01:25:28-04:00",
+    "commit_created_at": "2026-05-30T05:32:57.222849",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 2,
+    "commit_identifier": "CM-0059",
+    "commit_message_first_line": "v2: PI-109 — auto-consume work_tickets on inbound opens-against edge",
+    "commit_message_full": "v2: PI-109 — auto-consume work_tickets on inbound opens-against edge\n\nCloses the drift surfaced by commit 2c9759d. Side-effect added to\nreferences.create immediately after the existing PI-030 `resolves`\nblock: when the inserted edge is of either consumption kind AND the\ntarget work_ticket is exactly at `ready` AND not soft-deleted, mutate\nthe row to status=consumed, stamp work_ticket_consumed_at, re-flush,\nrun _validate_edges, and emit an audit row. Drafted, soft-deleted,\nmissing, and terminal-state targets are no-ops.\n\nPre-insert single-use guard added at the references layer (parallels\nfield_belongs_to_entity and entity_variant_of_entity cardinality\nchecks): counts inbound consumption edges of EITHER kind on the\ntarget work_ticket and rejects the new edge with\nwork_ticket_single_use_violation before the row is added. Without\nthis guard the side-effect would silently skip terminal-state targets\nand a second opens edge would land.\n\nNew TestOpensAgainstStatusFlip class with five tests covers both\nkinds, drafted/soft-deleted/terminal no-ops, and single-use violation.\nFull v2 access + API + scripts suite: 1279 passed.\n\nResolves PI-109.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "d8730ff9da3f31db34f67f7640c6e6d3c4b49528"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-126",
+    "commit_sha": "e4246e26e9e8d22f43a1cebdc3027be2d5dc2583",
+    "commit_updated_at": "2026-05-30T05:32:57.222852"
   }
 ]
