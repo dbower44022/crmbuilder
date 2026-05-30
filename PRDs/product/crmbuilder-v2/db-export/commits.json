@@ -1119,5 +1119,43 @@
     "commit_session_id": "SES-126",
     "commit_sha": "e4246e26e9e8d22f43a1cebdc3027be2d5dc2583",
     "commit_updated_at": "2026-05-30T05:32:57.222852"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-108-finish",
+    "commit_committed_at": "2026-05-30T01:37:50-04:00",
+    "commit_created_at": "2026-05-30T14:30:58.247554",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 6,
+    "commit_identifier": "CM-0060",
+    "commit_message_first_line": "v2: PI-108 slice A — created/last-edited timestamps on the raw-ISO panels",
+    "commit_message_full": "v2: PI-108 slice A — created/last-edited timestamps on the raw-ISO panels\n\nAdds a shared created_updated_section() helper (_governance_helpers) that renders formatted Created / Last Updated rows via the PI-107 format_timestamp helper, em dash for missing (so immutable types pass updated_field=None). Applies the PI-107 pattern to Sessions, Workstreams, Conversations (formatted Created + Updated list columns replacing the raw ISO updated_at; created/last-edited detail section) and Commits (a Record-timestamps detail section for commit_created_at/updated_at, distinct from the git commit_committed_at column). Addresses PI-108 (WS-013); slices B and C follow.",
+    "commit_parent_shas": [
+      "3f6f66db1fcf8736248ec31a4ac99ba96ce1c084"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-127",
+    "commit_sha": "550e10e5fcf18e3d84ee5c5fd5cbb2d7fa8eebb3",
+    "commit_updated_at": "2026-05-30T14:30:58.247556"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-108-finish",
+    "commit_committed_at": "2026-05-30T10:27:54-04:00",
+    "commit_created_at": "2026-05-30T14:30:58.540823",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 21,
+    "commit_identifier": "CM-0061",
+    "commit_message_first_line": "v2: PI-108 slices B/C — finish universal timestamp visibility (remaining 9 panels)",
+    "commit_message_full": "v2: PI-108 slices B/C — finish universal timestamp visibility (remaining 9 panels)\n\nCompletes PI-108 by adding the created/last-edited timestamp pattern to the 9 panels not yet done on main: the immutable/singleton types (topics, deposit_events, charter, status — created + em-dash edited) and the methodology panels (processes, manual_config, test_spec, crm_candidates, engagements). Also repairs two inconsistencies left in the parallel PI-108 work already on main: persona.py imported created_updated_section but never used it (dangling import) — replaced with a complete implementation + matching test; and test_domains/test_entities/test_requirements asserted the old column sets though their panels had gained the Created column — updated to match. All 24 first-class panels now show created (and, for mutable types, last-edited) timestamps. Full 834-test UI suite green; ruff clean.",
+    "commit_parent_shas": [
+      "e8d0c19d9851b741f6a74b455d98cbfc57d49ca7"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-127",
+    "commit_sha": "2915393f997d7e6104bda0ab93796b6715d7e765",
+    "commit_updated_at": "2026-05-30T14:30:58.540826"
   }
 ]

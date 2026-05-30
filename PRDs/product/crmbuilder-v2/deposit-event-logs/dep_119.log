@@ -1,0 +1,21 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_127.json
+Label:  SES-127 / CNV-029 close-out — resolves PI-108 (universal created/last-edited timestamp visibility across all 24 first-class V2 UI panels). Commits 550e10e (slice A) and 2915393 (slices B/C). Co-implemented with a parallel orchestrator whose ~14 panel commits landed separately on main. No decisions. Attaches to WS-013. Resolves PI-108. Identifiers re-verify at apply time.
+Deposit event: DEP-119
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-029 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== commits (2 records) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-108 (HTTP 201)
+
+✓ All 5 operations complete.
+
+✓ Recorded apply as deposit_event DEP-119 (HTTP 201).
