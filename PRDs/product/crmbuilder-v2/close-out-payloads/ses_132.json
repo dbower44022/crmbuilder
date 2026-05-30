@@ -1,0 +1,111 @@
+{
+  "label": "SES-132 / CNV-034 close-out — governance & delivery model redesign (planning, Claude.ai). Records five architectural decisions (DEC-340..DEC-344): drop the area version prefix; rename the `workstream` entity to `Project`; restructure areas into immutable System Areas + per-engagement Engagement Areas and relocate `area` onto a new single-area Work Task; adopt a three-tier pull-based agent-delivery model (Planning Item -> Workstreams-as-delivery-phases -> single-area Work Tasks; general-purpose / discipline-manager / area-specialist agents) as the target architecture; and shelve the WS-012 batch orchestrator (PI-081 implemented-but-superseded, PI-083 area backfill held). Creates the migration umbrella PI-112 and its kickoff WT-063 pointing at the target-model design doc. Opens a new Project, WS-014 (Governance & Delivery Redesign), via the apply pre-step. No code commits. Identifiers re-verify at apply time; re-key on collision.",
+  "session": {
+    "session_identifier": "SES-132",
+    "session_title": "Governance & delivery model redesign — target data model and WS-012 disposition",
+    "session_medium": "chat",
+    "session_medium_metadata": {"runner": "claude.ai", "kind": "planning"},
+    "session_participants": ["Doug Bower", "Claude"],
+    "session_status": "complete",
+    "session_executive_summary": "A planning conversation that reshaped the governance/delivery model. It resolved that area labels should shed their version prefix, that the existing `workstream` entity should be renamed `Project`, and that areas should split into immutable System Areas plus per-engagement Engagement Areas with `area` relocated onto a new single-area Work Task. It adopted a three-tier, pull-based agent-delivery organization as the target architecture and shelved the WS-012 batch orchestrator in favor of that target. It produced a target data-model design document and opened a migration Project to carry the changes.",
+    "session_description": "Single Claude.ai planning conversation. CNV-034. New parent Project WS-014 (Governance & Delivery Redesign). Medium: chat (claude.ai).\n\nSeed: \"Should I run pi-081 in claude code or have you do it?\" — which opened into a full review of how Areas are used and a redesign of the governance/delivery model.\n\nArc: (1) corrected a prior session's PI mislabel (the area-backfill item is PI-083, not PI-062), confirmed 54 open PIs carry no area. (2) Reviewed the goal of Areas (collision-avoidance for parallel agents) and surfaced that some areas are engagement-agnostic (System) and some engagement-specific (the cbm-* set). (3) Resolved to drop the version prefix (DEC-340) and rename workstream->Project (DEC-341). (4) Designed the two-tier area model and relocation of area onto a single-area Work Task (DEC-342). (5) Articulated and adopted the three-tier agent-delivery target (DEC-343). (6) Shelved WS-012 (DEC-344). Produced PRDs/product/crmbuilder-v2/governance-redesign-target-model.md (v0.2) as the design destination and the kickoff artifact for the migration. Remaining schema/naming refinements parked as open decisions in that doc, to be resolved as the new Project's first work.",
+    "references": []
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-034",
+    "conversation_title": "Redesigning the governance & delivery model around Areas",
+    "conversation_purpose": "Decide how Areas should be structured and used, and what governance/delivery data model the project should migrate toward.",
+    "conversation_description": "Started from a question about whether to run the WS-012 orchestrator acceptance and broadened into a model redesign. Settled the area version-prefix drop, the workstream->Project rename, the System/Engagement area tiers with area relocated onto a single-area Work Task, the three-tier pull-based agent-delivery target, and the shelving of WS-012. Produced the target data-model design doc as the destination. Refinement-level decisions (identifier prefixes, Work Task vs work_ticket, PI lifecycle states, Engagement-Area storage, area priority representation) were deliberately deferred to the new Project's first work rather than settled here.",
+    "references": []
+  },
+  "work_tickets": [
+    {
+      "work_ticket_identifier": "WT-063",
+      "work_ticket_title": "Kickoff — PI-112: governance & delivery model migration",
+      "work_ticket_description": "Kickoff ticket anchoring PI-112 (migrate the governance & delivery model to the target data model: Project rename, two-tier areas + relocation, Planning Item lifecycle, Workstream-as-phase, single-area Work Task). The canonical kickoff/design artifact is the target data-model document. Authored in 'ready' status per the kickoff_prompt convention. Addresses PI-112.",
+      "work_ticket_kind": "kickoff_prompt",
+      "work_ticket_status": "ready",
+      "work_ticket_file_path": "PRDs/product/crmbuilder-v2/governance-redesign-target-model.md"
+    }
+  ],
+  "planning_items": [
+    {
+      "identifier": "PI-112",
+      "title": "Migrate the governance & delivery model to the target data model (Project rename, two-tier areas + relocation, Planning Item lifecycle, Workstream-as-phase, Work Task)",
+      "item_type": "pending_work",
+      "status": "Open",
+      "description": "Execute the migration described in PRDs/product/crmbuilder-v2/governance-redesign-target-model.md, in the order set out in its section 9 so the governance database stays internally consistent at each step: (1) rename the `workstream` entity to `Project` (pure rename; wide blast radius across table, REST routes, MCP tools, desktop panel, reference-kind names, and WS- identifiers); (2) restructure the area vocabulary — drop the version prefix, split into immutable System Areas and per-engagement Engagement Areas, migrate cbm-* into the CBM engagement; (3) add the Planning Item lifecycle statuses; (4) introduce the Workstream (delivery-phase) and single-area Work Task entities and relocate `area` from the Planning Item onto the Work Task; (5) reconcile/retire the shelved WS-012 orchestrator. The runtime agent organization (general-purpose / discipline-manager / area-specialist agents) is a separate downstream build, out of scope for this PI. The open schema/naming decisions in section 11 of the design doc are this PI's first work.",
+      "executive_summary": "Carries the governance/delivery model redesign from design to implementation. Renames the current `workstream` container to `Project`, restructures Areas into a fixed System set plus per-engagement Engagement areas and moves the area tag onto a new fine-grained single-area Work Task, adds a real Planning Item lifecycle, and introduces Workstreams as delivery phases. Sequenced so the database stays consistent at every step. The standing-agent organization that consumes this model is a later, separate effort."
+    }
+  ],
+  "commits": [],
+  "decisions": [
+    {
+      "identifier": "DEC-340",
+      "title": "Drop the version prefix from area labels",
+      "context": "Area labels were version-stamped (v2-storage, v2-access, v2-api, v2-mcp, v2-ui; v1-espo, v1-automation, v1-programs). With a V3 anticipated, the prefix bakes a version into labels whose meaning — storage, access, api, mcp, ui — is version-independent. Critically, V1 and V2 already use entirely distinct area names rather than the same names under different prefixes, so the prefix was performing no disambiguation; it was only a version stamp that would age.",
+      "decision": "Strip the version prefix from all area labels. The platform System areas become storage, access, api, mcp, ui; the legacy engine areas become espo, automation, programs.",
+      "alternatives_considered": "Keep the v2- prefix and add a v3- family when V3 arrives (assumes V2 and V3 coexist in-tree; rejected because the prefix carries no disambiguation value today and only ages). Drop only the v2- prefix while leaving v1- as a legacy marker (rejected for asymmetry; a full strip is cleaner and equally safe).",
+      "consequences": "A one-time rename of the area vocabulary frozenset; migration of already-tagged records; updates to orchestrator-planning.md section 2.1 and any code referencing label strings. If V2 and V3 ever live in the same repository during a transition, a namespace can be reintroduced at that point.",
+      "executive_summary": "Removes the version number (v1-/v2-) from Area labels so the vocabulary doesn't go stale when the next platform generation arrives. The area names describe subsystems (storage, api, ui, and so on), which don't change across versions, so the version stamp added no value and only created future cleanup. A one-time rename with a small migration of existing tags.",
+      "decision_date": "2026-05-30",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-341",
+      "title": "Rename the `workstream` entity to `Project`",
+      "context": "The redesign needs the word 'Workstream' for a new concept (a delivery phase within a single Planning Item), but `workstream` already names the long-running thematic container that holds many Planning Items, requirements, and decisions (for example WS-012). Reusing one word for both — with inverted containment, since today one container holds many Planning Items while the new concept means one Planning Item holds many phases — would be persistently confusing in the schema and in conversation.",
+      "decision": "Rename the existing `workstream` entity to `Project`: a long-running thematic container delivering a coherent body of functionality. This frees the term 'Workstream' for the new per-Planning-Item delivery-phase concept.",
+      "alternatives_considered": "Keep 'workstream' for the container and give the new delivery-phase concept a different name (rejected; 'Project' fits the container better and 'Workstream' fits the per-PI phase better). Keep both concepts named 'workstream' (rejected; ambiguous, with inverted containment).",
+      "consequences": "A pure rename with no change to existing data semantics, but a wide mechanical blast radius: the table, REST routes, MCP tools, the desktop panel, every reference-kind name containing 'workstream', and the WS- identifiers. The identifier-prefix choice (keep WS- versus move to PRJ-) is deferred to the migration.",
+      "executive_summary": "Renames today's `workstream` — the long-running container that groups many planning items and decisions — to `Project`, so the word 'Workstream' can be reused for the redesign's new idea of a delivery phase inside one planning item. It's a rename only, no change to what the records mean, but it touches many places in the code and identifiers.",
+      "decision_date": "2026-05-30",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-342",
+      "title": "Two-tier area model (System / Engagement) with area relocated onto a single-area Work Task",
+      "context": "The flat area vocabulary mixes engagement-agnostic regions (the platform layers, the methodology, infrastructure, the deploy engine) with engagement-specific ones (the cbm-* domains, meaningful only inside the CBM engagement). Separately, under the agent-delivery target an area is a property of fine-grained execution units, not of a whole Planning Item; today's open Planning Items confirm this, none of the 54 carry an area and all the dogfood work is System-area work.",
+      "decision": "Split areas into two tiers: System Areas (global, the standard set covering CRMBuilder's own product and method, immutable except by deliberate developer change) and Engagement Areas (per-engagement, defined at engagement initialization). Relocate the `area` field from the Planning Item onto a new single-area Work Task. A Work Task's area must be a member of System Areas union that engagement's Engagement Areas.",
+      "alternatives_considered": "Keep one flat global area vocabulary (rejected; it becomes a junk drawer as each new client adds its own domains). Keep a multi-valued area set on the Planning Item (rejected; the target dispatches at the Work-Task level, so a single area per task is the correct granularity).",
+      "consequences": "Requires per-engagement area storage and a validation rule of System union Engagement; the cbm-* areas migrate into the CBM engagement's Engagement Areas; the Planning Item sheds its live area, with an optional derived roll-up later from its Work Tasks. Supersedes the held area-on-Planning-Item backfill (PI-083).",
+      "executive_summary": "Separates Areas into a fixed, shared System set (the platform, methodology, infrastructure, deploy engine — the same for every client) and per-engagement Engagement areas defined when an engagement is set up (a client's own domains). It also moves the area tag off the broad planning item and onto a new fine-grained, single-area Work Task, which is where parallel agents actually collide.",
+      "decision_date": "2026-05-30",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-343",
+      "title": "Adopt a three-tier pull-based agent-delivery model as the target architecture",
+      "context": "Working the backlog serially through single-conversation sessions scales linearly with developer time. The desired end state is a pull-based, role-specialized organization of agents that mirrors a real software delivery team.",
+      "decision": "Adopt the target in which a Planning Item carries a lifecycle status with a 'ready for development' state; standing agents watch for ready items; planning agents decompose a Planning Item into Workstreams (delivery phases — Development, Testing, Documentation, Data Migration, Deployment — sequenced so a phase never runs before its prerequisite), each holding single-area Work Tasks; and dispatch is three-tier: a general-purpose agent per Planning Item assigns a discipline-manager agent per Workstream, which assigns an area-specialist agent per Work Task. Area priority (storage before access before api before ui) provides the default intra-Workstream sequencing.",
+      "alternatives_considered": "Continue the single-level WS-012 batch orchestrator as the end state (rejected; superseded by this model). Use per-Planning-Item feature-team agents only (rejected; loses layer specialization and contends on shared layers).",
+      "consequences": "Depends on the Project rename, the area restructuring and relocation, a Planning Item lifecycle, and the new Workstream and Work Task entities (DEC-340/341/342 plus the migration PI-112). The runtime agent organization itself is a major separate build — named here, specified later, out of scope for the immediate data-model migration.",
+      "executive_summary": "Sets the destination: instead of one agent working a whole item, the system will pull each ready planning item into a small organization of agents — a lead per item, a manager per delivery phase (build, test, document, and so on), and a specialist per subsystem task — so work runs in parallel and safely. This decision fixes the target shape; building the agent organization itself is a separate, later effort.",
+      "decision_date": "2026-05-30",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-344",
+      "title": "Shelve the WS-012 batch orchestrator; commit to the agent-delivery target",
+      "context": "The WS-012 orchestrator driver (PI-081) is built and unit-tested, but its section 7.2 acceptance run is pending and depends on the area-on-Planning-Item backfill (PI-083), which is now held because area is relocating to the Work Task. WS-012's single-level batch-dispatch model is superseded by the agent-delivery target, and it runs on exactly the schema (the workstream entity, the Planning Item status set, area on the Planning Item) that the redesign is about to change.",
+      "decision": "Shelve WS-012 as a standalone tool: do not run its section 7.2 acceptance, and direct effort to the agent-delivery target. The orchestrator driver item (PI-081) is treated as implemented-but-superseded; the area backfill item (PI-083) is held and superseded by the area relocation. The orchestrator's reusable substrate — claiming, the ready-batches query, and the per-agent conversation/session pattern — carries forward into the target.",
+      "alternatives_considered": "Finish WS-012 as an interim 'walk' capability and use it to clear backlog while building the target (rejected; it would re-open the area-on-Planning-Item backfill drift and tether effort to the schema being replaced, against the stated priority of migrating quickly).",
+      "consequences": "No interim parallel-throughput capability until the target's agent organization exists. PI-081 and PI-083 remain Open in the database, governed as shelved per this decision; a clean status change to Deferred follows once the Planning Item lifecycle lands (itself part of the redesign). The wave-driver loop is the part most clearly superseded; the substrate is preserved.",
+      "executive_summary": "Stops work on the existing batch orchestrator (WS-012) rather than finishing it, because its approach is replaced by the new agent-delivery target and it depends on data structures the redesign is about to change. The valuable, reusable pieces it produced are kept; only the top-level dispatch loop is set aside. The two related planning items stay open for now, recorded as shelved.",
+      "decision_date": "2026-05-30",
+      "status": "Active"
+    }
+  ],
+  "references": [
+    {"source_type": "conversation", "source_id": "CNV-034", "target_type": "session", "target_id": "SES-132", "relationship": "conversation_belongs_to_session"},
+    {"source_type": "conversation", "source_id": "CNV-034", "target_type": "workstream", "target_id": "WS-014", "relationship": "conversation_belongs_to_workstream"},
+    {"source_type": "decision", "source_id": "DEC-340", "target_type": "conversation", "target_id": "CNV-034", "relationship": "decided_in"},
+    {"source_type": "decision", "source_id": "DEC-341", "target_type": "conversation", "target_id": "CNV-034", "relationship": "decided_in"},
+    {"source_type": "decision", "source_id": "DEC-342", "target_type": "conversation", "target_id": "CNV-034", "relationship": "decided_in"},
+    {"source_type": "decision", "source_id": "DEC-343", "target_type": "conversation", "target_id": "CNV-034", "relationship": "decided_in"},
+    {"source_type": "decision", "source_id": "DEC-344", "target_type": "conversation", "target_id": "CNV-034", "relationship": "decided_in"},
+    {"source_type": "work_ticket", "source_id": "WT-063", "target_type": "planning_item", "target_id": "PI-112", "relationship": "addresses"}
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": []
+}
