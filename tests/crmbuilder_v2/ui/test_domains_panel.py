@@ -124,13 +124,13 @@ def test_master_pane_columns_and_order(qtbot, domain_client):
         "Identifier",
         "Name",
         "Status",
-        "Updated",
+        "Created",
     ]
     assert [c.field for c in columns] == [
         "domain_identifier",
         "domain_name",
         "domain_status",
-        "domain_updated_at",
+        "created_at_display",
     ]
 
 

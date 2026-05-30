@@ -50,12 +50,12 @@ from PySide6.QtWidgets import (
 
 from crmbuilder_v2.ui.base.list_detail_panel import ColumnSpec, ListDetailPanel
 from crmbuilder_v2.ui.dialogs._persona_schema import status_choices
+from crmbuilder_v2.ui.dialogs.error import ErrorDialog
 from crmbuilder_v2.ui.dialogs.persona_crud import (
     PersonaCreateDialog,
     PersonaDeleteDialog,
     PersonaEditDialog,
 )
-from crmbuilder_v2.ui.dialogs.error import ErrorDialog
 from crmbuilder_v2.ui.exceptions import (
     NotFoundError,
     StorageClientError,
@@ -143,7 +143,15 @@ class PersonasPanel(ListDetailPanel):
         return "Personas"
 
     def fetch_records(self) -> list[dict[str, Any]]:
-        return self._client.list_personas(include_deleted=self._include_deleted)
+        records = self._client.list_personas(
+            include_deleted=self._include_deleted
+        )
+        # PI-108: formatted Created synthetic column for the master pane.
+        for r in records:
+            r["created_at_display"] = format_timestamp(
+                r.get("persona_created_at")
+            )
+        return records
 
     def list_columns(self) -> list[ColumnSpec]:
         # Per persona.md §3.6.2: four columns; no Domains or
@@ -155,7 +163,7 @@ class PersonasPanel(ListDetailPanel):
             ColumnSpec(field="persona_name", title="Name"),
             ColumnSpec(field="persona_status", title="Status", width=110),
             ColumnSpec(
-                field="persona_updated_at", title="Updated", width=180
+                field="created_at_display", title="Created", width=140
             ),
         ]
 
@@ -304,6 +312,14 @@ class PersonasPanel(ListDetailPanel):
         status_layout.addWidget(status_hint)
         status_row.addRow(required_label("Status"), status_container)
         outer.addLayout(status_row)
+
+        # PI-108: created / last-edited audit timestamps.
+        outer.addWidget(_separator())
+        outer.addWidget(
+            created_updated_section(
+                record, "persona_created_at", "persona_updated_at"
+            )
+        )
 
         outer.addWidget(_separator())
 

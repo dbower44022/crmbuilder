@@ -49,20 +49,20 @@ def test_requirements_json_refresh_mapping_present():
 
 
 def test_panel_master_has_five_columns(qtbot, requirement_client):
-    """AC-11: master pane shows Identifier / Name / Priority / Status / Updated."""
+    """AC-11: master pane shows Identifier / Name / Priority / Status / Created."""
     panel = RequirementsPanel(requirement_client)
     qtbot.addWidget(panel)
     cols = panel.list_columns()
     assert len(cols) == 5
     titles = [c.title for c in cols]
-    assert titles == ["Identifier", "Name", "Priority", "Status", "Updated"]
+    assert titles == ["Identifier", "Name", "Priority", "Status", "Created"]
     fields = [c.field for c in cols]
     assert fields == [
         "requirement_identifier",
         "requirement_name",
         "requirement_priority",
         "requirement_status",
-        "requirement_updated_at",
+        "created_at_display",
     ]
 
 

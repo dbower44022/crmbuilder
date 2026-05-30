@@ -152,13 +152,13 @@ def test_master_pane_columns_and_order(qtbot, entity_client):
         "Identifier",
         "Name",
         "Status",
-        "Updated",
+        "Created",
     ]
     assert [c.field for c in columns] == [
         "entity_identifier",
         "entity_name",
         "entity_status",
-        "entity_updated_at",
+        "created_at_display",
     ]
     # No Domains column in v0.4 (spec 3.6.2, PI-009).
     assert "entity_domains" not in [c.field for c in columns]

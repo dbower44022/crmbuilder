@@ -33,6 +33,10 @@ from crmbuilder_v2.ui.exceptions import (
     StorageClientError,
     StorageConnectionError,
 )
+from crmbuilder_v2.ui.panels._governance_helpers import (
+    created_updated_section,
+    separator,
+)
 from crmbuilder_v2.ui.widgets.form_helpers import primary_button
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 from crmbuilder_v2.ui.workers import run_in_thread
@@ -101,6 +105,10 @@ class StatusPanel(VersionedPanel):
 
         payload_widget = self._build_payload_form(record.get("payload") or {})
         outer.addWidget(payload_widget)
+
+        # PI-108: created audit timestamp (immutable version, no Last Updated).
+        outer.addWidget(separator())
+        outer.addWidget(created_updated_section(record, "created_at", None))
 
         references_section = ReferencesSection(
             _REFERENCES_ENTITY_TYPE,

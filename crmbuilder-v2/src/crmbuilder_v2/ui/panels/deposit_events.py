@@ -27,10 +27,12 @@ from PySide6.QtWidgets import (
 
 from crmbuilder_v2.ui.base.list_detail_panel import ColumnSpec, ListDetailPanel
 from crmbuilder_v2.ui.panels._governance_helpers import (
+    created_updated_section,
     heading_label,
     read_only_line,
     separator,
 )
+from crmbuilder_v2.ui.widgets.datetime_format import format_timestamp
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.deposit_events")
@@ -46,14 +48,20 @@ class DepositEventsPanel(ListDetailPanel):
 
     def fetch_records(self) -> list[dict[str, Any]]:
         # The API already sorts by identifier descending (audit-log shape).
-        return self._client.list_deposit_events()
+        records = self._client.list_deposit_events()
+        # PI-108: formatted Created synthetic column (immutable, created-only).
+        for r in records:
+            r["created_at_display"] = format_timestamp(
+                r.get("deposit_event_created_at")
+            )
+        return records
 
     def list_columns(self) -> list[ColumnSpec]:
         return [
             ColumnSpec(field="deposit_event_identifier", title="Identifier", width=110),
             ColumnSpec(field="deposit_event_title", title="Title"),
             ColumnSpec(field="deposit_event_outcome", title="Outcome", width=90),
-            ColumnSpec(field="deposit_event_created_at", title="Created", width=180),
+            ColumnSpec(field="created_at_display", title="Created", width=140),
         ]
 
     def fetch_detail_extras(self, record: dict[str, Any]) -> dict[str, Any]:
@@ -119,6 +127,12 @@ class DepositEventsPanel(ListDetailPanel):
             err_view.setReadOnly(True)
             err_view.setMinimumHeight(80)
             outer.addWidget(err_view)
+
+        # PI-108: created audit timestamp (immutable, no Last Updated).
+        outer.addWidget(separator())
+        outer.addWidget(
+            created_updated_section(record, "deposit_event_created_at", None)
+        )
 
         outer.addWidget(separator())
         refs = ReferencesSection(

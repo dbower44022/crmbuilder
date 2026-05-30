@@ -52,6 +52,7 @@ from crmbuilder_v2.ui.exceptions import (
     StorageClientError,
     StorageConnectionError,
 )
+from crmbuilder_v2.ui.panels._governance_helpers import created_updated_section
 from crmbuilder_v2.ui.widgets.form_helpers import (
     destructive_button,
     primary_button,
@@ -219,6 +220,11 @@ class TopicsPanel(ListDetailPanel):
         outer.addWidget(_separator())
         outer.addWidget(_label("Description", bold=True))
         outer.addWidget(_long_text(record.get("description") or ""))
+
+        # PI-108: created audit timestamp (immutable, no Last Updated).
+        # Tree master pane has no list-column flow, so detail-only.
+        outer.addWidget(_separator())
+        outer.addWidget(created_updated_section(record, "created_at", None))
 
         outer.addWidget(_separator())
         identifier = record.get("identifier") or ""

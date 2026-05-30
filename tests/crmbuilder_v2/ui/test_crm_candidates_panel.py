@@ -156,13 +156,13 @@ def test_master_pane_columns_and_order(qtbot, candidate_client):
         "Identifier",
         "Name",
         "Status",
-        "Updated",
+        "Created",
     ]
     assert [c.field for c in columns] == [
         "crm_candidate_identifier",
         "crm_candidate_name",
         "crm_candidate_status",
-        "crm_candidate_updated_at",
+        "created_at_display",
     ]
 
 

@@ -130,13 +130,13 @@ def test_master_pane_columns_and_order(qtbot, persona_client):
         "Identifier",
         "Name",
         "Status",
-        "Updated",
+        "Created",
     ]
     assert [c.field for c in columns] == [
         "persona_identifier",
         "persona_name",
         "persona_status",
-        "persona_updated_at",
+        "created_at_display",
     ]
     # No Domains or Realized-as column in v0.5+ (spec §3.6.2).
     assert "persona_domains" not in [c.field for c in columns]

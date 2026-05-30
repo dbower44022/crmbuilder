@@ -56,20 +56,20 @@ def test_test_specs_json_refresh_mapping_present():
 
 
 def test_panel_lists_five_columns(qtbot, test_spec_client):
-    """AC-12: master pane shows Identifier / Name / Status / Last Run / Updated."""
+    """AC-12: master pane shows Identifier / Name / Status / Last Run / Created."""
     panel = TestSpecsPanel(test_spec_client)
     qtbot.addWidget(panel)
     cols = panel.list_columns()
     assert len(cols) == 5
     titles = [c.title for c in cols]
-    assert titles == ["Identifier", "Name", "Status", "Last Run", "Updated"]
+    assert titles == ["Identifier", "Name", "Status", "Last Run", "Created"]
     fields = [c.field for c in cols]
     assert fields == [
         "test_spec_identifier",
         "test_spec_name",
         "test_spec_status",
         "test_spec_last_run_outcome",
-        "test_spec_updated_at",
+        "created_at_display",
     ]
 
 
