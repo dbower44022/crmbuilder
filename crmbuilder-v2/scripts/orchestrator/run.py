@@ -1034,6 +1034,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="where dry-run writes rendered child kickoffs",
     )
     p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="explicitly request the safe dry-run (this is the default)",
+    )
+    p.add_argument(
         "--execute",
         action="store_true",
         help="actually dispatch (default is a safe dry-run)",
