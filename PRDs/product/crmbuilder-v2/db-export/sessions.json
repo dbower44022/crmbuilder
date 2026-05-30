@@ -2556,5 +2556,34 @@
     "session_superseded_at": null,
     "session_title": "Implement PI-111 — /health heartbeat for proactive API-death detection",
     "session_updated_at": "2026-05-30T15:31:03.113325"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-30T19:42:55.222869",
+    "session_created_at": "2026-05-30T19:42:55.222505",
+    "session_deleted_at": null,
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-033. Parent workstream WS-012 (parallel agent orchestrator). Medium: chat (claude_code runner).\n\nSeed: \"Implement the parallel-agent orchestrator execute path (PI-081) and run the WS-012 acceptance test.\"\n\nReplaced the deliberate NotImplementedError stub in crmbuilder-v2/scripts/orchestrator/run.py::_execute with the full I/O glue (commit 800e329; CLI --dry-run flag in 3ba1875):\n1. Per run: preflight; create the orchestrator's own supervising session+conversation in_flight (DEC-248) — session joined to WS-012 via session_belongs_to_workstream, conversation via conversation_belongs_to_session (+ conversation_belongs_to_workstream); fetch ready-batches; plan waves.\n2. Per cluster, concurrently: reserve the child's SES/CNV (PI-078), claim its planning items for the child conversation (PI-077), cut a per-child git worktree off origin/main (DEC-336), render the child kickoff into the worktree, spawn one `claude -p ... --dangerously-skip-permissions` subagent (DEC-337).\n3. Static-wave scheduling (§2.4): dispatch the whole wave via non-blocking Popen, join all children, verify each applied its close-out (exit 0 AND reserved session resolves to a real record), then record the conversation_orchestrates_conversation edge to each child.\n4. Halt-on-failure (DEC-338, design §4): any child failure halts the wave, surfaces the failure + per-child log path, leaves claimed_by in place for forensics, cancels the orchestrator records, exits non-zero. No retry, no requeue.\n5. After all waves succeed: complete + apply the orchestrator's own supervising close-out (deposit_event + close_out_payload bookkeeping).\n\nPure helpers (child_branch_name, child_succeeded) and the I/O seams (_api, _create_worktree, _spawn_child, _run_apply) are factored so the glue unit-tests with no real API, repo, or agents. The test file replaces the NotImplementedError guard with execute-glue coverage: reserve->claim->spawn ordering, one worktree+spawn+edge per cluster, the whole wave dispatched before any join, halt-on-failure leaves claims and dispatches no further waves, and the real _spawn_child passes --dangerously-skip-permissions with the worktree as cwd. 24 orchestrator unit tests green; the orchestration access/api suites stay green (138 passed); ruff clean.\n\nAcceptance run DEFERRED (Doug's decision — stop & defer). The Step-4 dry-run checkpoint against the live backlog revealed that 0 of 54 open planning items carry an `area`, so partition_wave drops every depth-0 item into `unclustered` and produces 0 clusters — the depth-0 wave can dispatch 0 concurrent children, and the §7.2 acceptance condition (>=2 area-disjoint concurrent children) cannot be met. Root cause: PI-062 (Backfill `area` on currently-open planning items) was never executed; it is itself Open and area-less. Per the kickoff's own Step-4.3 guard, no workaround was improvised — no fake area tags, no degenerate single-child run, no autonomous agents spawned. PI-081 is therefore ADDRESSED (the code is implemented, tested, and committed) but NOT resolved (its success criterion is the acceptance run), and is recorded blocked_by PI-062. The real watched acceptance run and PI-081's resolution come in a follow-on session once areas are backfilled.",
+    "session_ended_at": null,
+    "session_executive_summary": "Implemented PI-081, the orchestrator live-dispatch path (_execute) in scripts/orchestrator/run.py, replacing the NotImplementedError stub with the full I/O glue: orchestrator session+conversation creation, per-cluster reserve/claim/worktree/render/spawn, static-wave join, child verification, halt-on-failure, conversation_orchestrates_conversation edge recording, and the supervising close-out. 24 orchestrator unit tests green, lint clean (commits 800e329, 3ba1875). The WS-012 §7.2 acceptance run is DEFERRED: 0 of 54 open PIs carry an area, so the depth-0 wave partitions into 0 clusters and cannot dispatch the required >=2 concurrent children. PI-081 is ADDRESSED not resolved, and recorded blocked_by PI-062 (area backfill). Records four wiring decisions DEC-336..DEC-339.",
+    "session_identifier": "SES-131",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "model": "claude-opus-4-8",
+      "runner": "claude_code",
+      "surface": "claude_code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.8, Claude Code)"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "Implement PI-081 — orchestrator _execute() live-dispatch glue",
+    "session_updated_at": "2026-05-30T19:42:55.223227"
   }
 ]

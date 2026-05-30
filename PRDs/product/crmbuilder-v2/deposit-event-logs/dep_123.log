@@ -1,0 +1,35 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_131.json
+Label:  SES-131 / CNV-033 close-out — implement PI-081 orchestrator _execute() live-dispatch glue (commits 800e329, 3ba1875), 24 unit tests green. ADDRESSES (not resolves) PI-081: the WS-012 §7.2 acceptance run is deferred because 0 of 54 open PIs carry an area, so the depth-0 wave partitions into 0 clusters (<2 concurrent children). PI-081 blocked_by PI-062 (area backfill). Records four wiring decisions DEC-336..DEC-339. Attaches to WS-012. Identifiers re-verify at apply time.
+Deposit event: DEP-123
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-033 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== commits (2 records) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (4 records) ===
+  ✓ POST decisions  DEC-336 (HTTP 201)
+  ✓ POST decisions  DEC-337 (HTTP 201)
+  ✓ POST decisions  DEC-338 (HTTP 201)
+  ✓ POST decisions  DEC-339 (HTTP 201)
+
+=== references (6 records) ===
+  ✓ POST references  CNV-033 conversation_belongs_to_workstream WS-012 (HTTP 201)
+  ✓ POST references  DEC-336 decided_in CNV-033 (HTTP 201)
+  ✓ POST references  DEC-337 decided_in CNV-033 (HTTP 201)
+  ✓ POST references  DEC-338 decided_in CNV-033 (HTTP 201)
+  ✓ POST references  DEC-339 decided_in CNV-033 (HTTP 201)
+  ✓ POST references  PI-081 blocked_by PI-062 (HTTP 201)
+
+=== addresses_planning_items (1 record) ===
+  ✓ POST addresses_planning_items  → PI-081 (HTTP 201)
+
+✓ All 15 operations complete.
+
+✓ Recorded apply as deposit_event DEP-123 (HTTP 201).

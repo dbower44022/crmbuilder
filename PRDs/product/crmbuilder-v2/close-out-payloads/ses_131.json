@@ -1,0 +1,180 @@
+{
+  "label": "SES-131 / CNV-033 close-out — implement PI-081 orchestrator _execute() live-dispatch glue (commits 800e329, 3ba1875), 24 unit tests green. ADDRESSES (not resolves) PI-081: the WS-012 §7.2 acceptance run is deferred because 0 of 54 open PIs carry an area, so the depth-0 wave partitions into 0 clusters (<2 concurrent children). PI-081 blocked_by PI-062 (area backfill). Records four wiring decisions DEC-336..DEC-339. Attaches to WS-012. Identifiers re-verify at apply time.",
+  "session": {
+    "session_identifier": "SES-131",
+    "session_title": "Implement PI-081 — orchestrator _execute() live-dispatch glue",
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-033. Parent workstream WS-012 (parallel agent orchestrator). Medium: chat (claude_code runner).\n\nSeed: \"Implement the parallel-agent orchestrator execute path (PI-081) and run the WS-012 acceptance test.\"\n\nReplaced the deliberate NotImplementedError stub in crmbuilder-v2/scripts/orchestrator/run.py::_execute with the full I/O glue (commit 800e329; CLI --dry-run flag in 3ba1875):\n1. Per run: preflight; create the orchestrator's own supervising session+conversation in_flight (DEC-248) — session joined to WS-012 via session_belongs_to_workstream, conversation via conversation_belongs_to_session (+ conversation_belongs_to_workstream); fetch ready-batches; plan waves.\n2. Per cluster, concurrently: reserve the child's SES/CNV (PI-078), claim its planning items for the child conversation (PI-077), cut a per-child git worktree off origin/main (DEC-336), render the child kickoff into the worktree, spawn one `claude -p ... --dangerously-skip-permissions` subagent (DEC-337).\n3. Static-wave scheduling (§2.4): dispatch the whole wave via non-blocking Popen, join all children, verify each applied its close-out (exit 0 AND reserved session resolves to a real record), then record the conversation_orchestrates_conversation edge to each child.\n4. Halt-on-failure (DEC-338, design §4): any child failure halts the wave, surfaces the failure + per-child log path, leaves claimed_by in place for forensics, cancels the orchestrator records, exits non-zero. No retry, no requeue.\n5. After all waves succeed: complete + apply the orchestrator's own supervising close-out (deposit_event + close_out_payload bookkeeping).\n\nPure helpers (child_branch_name, child_succeeded) and the I/O seams (_api, _create_worktree, _spawn_child, _run_apply) are factored so the glue unit-tests with no real API, repo, or agents. The test file replaces the NotImplementedError guard with execute-glue coverage: reserve->claim->spawn ordering, one worktree+spawn+edge per cluster, the whole wave dispatched before any join, halt-on-failure leaves claims and dispatches no further waves, and the real _spawn_child passes --dangerously-skip-permissions with the worktree as cwd. 24 orchestrator unit tests green; the orchestration access/api suites stay green (138 passed); ruff clean.\n\nAcceptance run DEFERRED (Doug's decision — stop & defer). The Step-4 dry-run checkpoint against the live backlog revealed that 0 of 54 open planning items carry an `area`, so partition_wave drops every depth-0 item into `unclustered` and produces 0 clusters — the depth-0 wave can dispatch 0 concurrent children, and the §7.2 acceptance condition (>=2 area-disjoint concurrent children) cannot be met. Root cause: PI-062 (Backfill `area` on currently-open planning items) was never executed; it is itself Open and area-less. Per the kickoff's own Step-4.3 guard, no workaround was improvised — no fake area tags, no degenerate single-child run, no autonomous agents spawned. PI-081 is therefore ADDRESSED (the code is implemented, tested, and committed) but NOT resolved (its success criterion is the acceptance run), and is recorded blocked_by PI-062. The real watched acceptance run and PI-081's resolution come in a follow-on session once areas are backfilled.",
+    "session_medium": "chat",
+    "session_status": "complete",
+    "session_executive_summary": "Implemented PI-081, the orchestrator live-dispatch path (_execute) in scripts/orchestrator/run.py, replacing the NotImplementedError stub with the full I/O glue: orchestrator session+conversation creation, per-cluster reserve/claim/worktree/render/spawn, static-wave join, child verification, halt-on-failure, conversation_orchestrates_conversation edge recording, and the supervising close-out. 24 orchestrator unit tests green, lint clean (commits 800e329, 3ba1875). The WS-012 §7.2 acceptance run is DEFERRED: 0 of 54 open PIs carry an area, so the depth-0 wave partitions into 0 clusters and cannot dispatch the required >=2 concurrent children. PI-081 is ADDRESSED not resolved, and recorded blocked_by PI-062 (area backfill). Records four wiring decisions DEC-336..DEC-339.",
+    "session_medium_metadata": {
+      "surface": "claude_code",
+      "runner": "claude_code",
+      "model": "claude-opus-4-8"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.8, Claude Code)"
+    ],
+    "references": [
+      {
+        "source_type": "session",
+        "source_id": "SES-131",
+        "target_type": "workstream",
+        "target_id": "WS-012",
+        "relationship": "session_belongs_to_workstream"
+      }
+    ]
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-033",
+    "conversation_title": "Implementing the orchestrator _execute() dispatch path (PI-081)",
+    "conversation_purpose": "Build and unit-test the orchestrator live-dispatch glue, then attempt the WS-012 acceptance run.",
+    "conversation_description": "Replaced the NotImplementedError stub in run.py::_execute with the full dispatch glue (orchestrator session+conversation, per-cluster reserve/claim/worktree/render/spawn, static-wave join, child verification, halt-on-failure, orchestrates-edge recording, supervising close-out). 24 unit tests green; ruff clean; commits 800e329 and 3ba1875. The dry-run checkpoint found 0 of 54 open PIs carry an area, so the depth-0 wave yields 0 clusters and cannot satisfy the >=2 concurrent-children acceptance condition; per the Step-4.3 guard no workaround was improvised and (Doug's call) the acceptance run is deferred. Four wiring decisions DEC-336..DEC-339. Addresses PI-081; PI-081 blocked_by PI-062.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-033",
+        "target_type": "session",
+        "target_id": "SES-131",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [],
+  "commits": [
+    {
+      "commit_sha": "800e329c5ad97e39162f7e4e53d44dd67a5e8f3d",
+      "commit_message_first_line": "v2: PI-081 implement orchestrator _execute() live-dispatch glue",
+      "commit_message_full": "v2: PI-081 implement orchestrator _execute() live-dispatch glue\n\nReplace the NotImplementedError stub in scripts/orchestrator/run.py with\nthe real I/O glue that drives a parallel-agent orchestrator run:\n\n- Create the orchestrator's own supervising session + conversation\n  in_flight (DEC-248), session joined to WS-012 via\n  session_belongs_to_workstream, conversation via\n  conversation_belongs_to_session (+ conversation_belongs_to_workstream).\n- Per area-disjoint cluster, concurrently: reserve the child's SES/CNV\n  (PI-078), claim its planning items (PI-077), cut a per-child git\n  worktree off origin/main, render its kickoff into the worktree, and\n  spawn one `claude -p ... --dangerously-skip-permissions` subagent.\n- Static-wave scheduling: dispatch the whole wave (non-blocking Popen),\n  join all children, verify each applied its close-out, then record the\n  conversation_orchestrates_conversation edge to each child.\n- Halt-on-failure: any non-zero child exit (or un-applied close-out)\n  halts the wave, surfaces the failure + log path, leaves claims in\n  place for forensics, cancels the orchestrator records, exits non-zero.\n- After all waves succeed, complete + apply the orchestrator's own\n  supervising close-out (deposit_event + close_out_payload bookkeeping).\n\nPure helpers (child_branch_name, child_succeeded) and the I/O seams\n(_api, _create_worktree, _spawn_child, _run_apply) are factored so the\nglue unit-tests with no real API, repo, or agents. Tests replace the\nNotImplementedError guard with execute-glue coverage.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-30T15:25:05-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "42e4ac8667b36ea65d78d98657d465e43cf343a4"
+      ],
+      "commit_files_changed_count": 2
+    },
+    {
+      "commit_sha": "3ba187568adfb6cec822ae5e81c96ddd8e864982",
+      "commit_message_first_line": "v2: PI-081 accept explicit --dry-run flag on the orchestrator CLI",
+      "commit_message_full": "v2: PI-081 accept explicit --dry-run flag on the orchestrator CLI\n\nThe module docstring documents --dry-run as the default-safe mode but the\nparser only accepted --execute, so the documented `--dry-run` invocation\nerrored. Add an explicit (no-op default) --dry-run flag so the documented\ncheckpoint command works.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-30T15:40:29-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "800e329c5ad97e39162f7e4e53d44dd67a5e8f3d"
+      ],
+      "commit_files_changed_count": 1
+    }
+  ],
+  "decisions": [
+    {
+      "identifier": "DEC-336",
+      "title": "Per-child git worktree isolation for concurrent orchestrator agents",
+      "decision_date": "2026-05-30",
+      "status": "Active",
+      "executive_summary": "Each orchestrator child agent runs in its own git worktree on a fresh branch cut from origin/main, under ~/.crmbuilder-v2/worktrees/<run-id>/<branch>. Area-disjoint scope guarantees logical non-overlap; the worktree guarantees physical non-overlap on disk, so concurrent children never share a working tree. A single shared tree with serialized commits was rejected because it defeats the parallelism the orchestrator exists to provide; per-child full clones were rejected as heavier than worktrees with no benefit. Consequence: child commits land on their own branches (not main) and merging is a separate step.",
+      "context": "Concurrent child agents in an orchestrator wave each make real file edits. The area-disjoint partitioning (DEC-246/247) guarantees they touch logically different files, but if they shared one working tree they would still collide on the index, HEAD, and untracked state. The dispatch path needed a physical-isolation mechanism.",
+      "decision": "Each cluster's child runs in its own `git worktree` on a new branch (orch-wave{depth}-child{n}) cut from origin/main, created under ~/.crmbuilder-v2/worktrees/<run-id>/<branch>. The rendered child kickoff is written into that worktree and the child subprocess runs with cwd set to it. Children never share a working tree.",
+      "alternatives_considered": "Single shared working tree with serialized child commits — rejected: serializing commits across children defeats the throughput model that motivates the orchestrator. Per-child full `git clone` — rejected: heavier (full object copy, separate fetch) than a worktree, which shares the object store, for no isolation benefit over a worktree.",
+      "consequences": "Child commits land on their per-child branches, not on main; merging those branches back is a separate manual or future-PI step (out of scope for the orchestrator itself). Worktrees accumulate under ~/.crmbuilder-v2/worktrees and need cleanup. The model makes the area-disjoint conflict guarantee safe on disk, not just in principle."
+    },
+    {
+      "identifier": "DEC-337",
+      "title": "Child autonomy via `claude -p --dangerously-skip-permissions`",
+      "decision_date": "2026-05-30",
+      "status": "Active",
+      "executive_summary": "Orchestrator children spawn non-interactively via `claude -p \"<read+execute kickoff>\" --dangerously-skip-permissions` with a --max-turns cap and cwd set to the child's worktree, so they run fully unattended. The accepted risk (this is the real repo, not a sandbox) is contained by four layers: per-child worktree isolation, area-disjoint scope, a clean-git pre-flight, and halt-on-failure — plus a human-watched first run. A permission-gated or interactive spawn was rejected because it cannot run unattended; relying on a sandbox was rejected because the orchestrator targets the live repo and containment is the worktree+scope discipline.",
+      "context": "The orchestrator must spawn child Claude Code agents that run to completion with no human at the keyboard, each executing its rendered kickoff and applying its own close-out. Interactive permission prompts would stall an unattended run.",
+      "decision": "Spawn each child with `claude -p \"<prompt to read and execute the kickoff, then stop>\" --dangerously-skip-permissions --max-turns 300`, cwd set to the child's worktree, stdout+stderr teed to a per-child log under crmbuilder-v2/data/logs/orchestrator/<run-id>/.",
+      "alternatives_considered": "Interactive / permission-gated spawn — rejected: cannot run unattended; every tool call would block on a prompt. Running children in a throwaway sandbox/container — rejected: the orchestrator's purpose is to do real work on the live repo, and containment is provided by worktree isolation + area-disjoint scope rather than by sandboxing.",
+      "consequences": "Children have broad autonomy inside their worktrees; the accepted risk is mitigated by worktree isolation (DEC-336), area-disjoint scope, a clean-git pre-flight, halt-on-failure (DEC-338), and a bounded human-watched first run (DEC-339). The --max-turns cap bounds runaway loops."
+    },
+    {
+      "identifier": "DEC-338",
+      "title": "Completion detection and halt-on-failure (no retry, no requeue)",
+      "decision_date": "2026-05-30",
+      "status": "Active",
+      "executive_summary": "A child succeeded iff its subprocess exited 0 AND its reserved session now resolves to a real record (proving its close-out applied). Planning-item statuses are logged but not part of the predicate, because a child may legitimately address rather than resolve an item (leaving it Open). Any child failure halts the wave: the orchestrator surfaces the failing child, its log path, and unresolved items, leaves its claimed_by in place for forensic review, dispatches no further waves, cancels its own records, and exits non-zero. No automated retry or requeue, per design §4 — crashed claims are cleaned up manually or by a future PI.",
+      "context": "After joining a wave the orchestrator must decide whether each child succeeded and what to do on failure. The design (§4) explicitly excludes automated failure recovery.",
+      "decision": "Success predicate: child_succeeded = (exit_code == 0) AND (the child's reserved session identifier resolves to a real record via GET /sessions/{id} — i.e. its close-out was applied). On any failure the orchestrator halts the current wave, prints the failing child + log path + unresolved planning items, leaves the child's claimed_by in place, dispatches no further waves, transitions its own session/conversation to cancelled, and exits non-zero.",
+      "alternatives_considered": "Automated retry / requeue of a failed child — rejected: explicitly out of scope per design §4; blind retry risks compounding a bad state. Releasing the failed child's claim on failure — rejected: the claim is the forensic anchor a human needs to investigate, so it is deliberately left set. Treating a child as successful on exit-0 alone — rejected: a child can exit 0 without applying its close-out, so the session-exists check is required.",
+      "consequences": "A failed run leaves stuck claims that need manual unclaim (or a future cleanup PI). The halt is deterministic and forensic-friendly: the partial state is preserved, not rolled back, and the log path is surfaced."
+    },
+    {
+      "identifier": "DEC-339",
+      "title": "Bounded, human-watched first orchestrator run (--max-depth 0)",
+      "decision_date": "2026-05-30",
+      "status": "Active",
+      "executive_summary": "The first live --execute run is bounded to a single depth-0 wave (--max-depth 0) and gated behind an explicit human go after a dry-run plan review; wider multi-wave runs come in later sessions. The intent is to minimize blast radius for the first unattended-agent dispatch on the real repo. A full-backlog first run was rejected as too risky. Applying this gate is what surfaced the PI-062 area-backfill gap: the depth-0 dry-run showed 0 of 54 open PIs carry an area, so the wave partitions into 0 clusters and cannot meet the >=2-concurrent-children acceptance bar — deferring the acceptance run rather than improvising a workaround.",
+      "context": "The first live orchestrator dispatch is also the WS-012 §7.2 acceptance test and spawns unattended agents with broad autonomy on the live repo. The kickoff requires this first run to be bounded and human-watched.",
+      "decision": "The first --execute run uses --max-depth 0 (depth-0 wave only), is preceded by a --dry-run plan + rendered-kickoff review, and proceeds only on an explicit human go. Multi-wave (wider --max-depth) runs are deferred to later sessions once the bounded run is proven.",
+      "alternatives_considered": "Unbounded first run across the whole ready backlog — rejected: maximal blast radius for an unproven unattended-dispatch path. No bound at all, relying only on halt-on-failure — rejected: halt-on-failure limits damage after a failure but does not bound how much is dispatched before one.",
+      "consequences": "Acceptance requires the depth-0 wave to yield >=2 area-disjoint clusters. The bounded dry-run surfaced that the current backlog cannot (0 PIs carry an area), so the acceptance run is deferred and PI-081 is recorded blocked_by PI-062 (area backfill) rather than resolved."
+    }
+  ],
+  "references": [
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-033",
+      "target_type": "session",
+      "target_id": "SES-131",
+      "relationship": "conversation_belongs_to_session"
+    },
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-033",
+      "target_type": "workstream",
+      "target_id": "WS-012",
+      "relationship": "conversation_belongs_to_workstream"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-336",
+      "target_type": "conversation",
+      "target_id": "CNV-033",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-337",
+      "target_type": "conversation",
+      "target_id": "CNV-033",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-338",
+      "target_type": "conversation",
+      "target_id": "CNV-033",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-339",
+      "target_type": "conversation",
+      "target_id": "CNV-033",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-081",
+      "target_type": "planning_item",
+      "target_id": "PI-062",
+      "relationship": "blocked_by"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": [
+    {
+      "planning_item_identifier": "PI-081"
+    }
+  ]
+}

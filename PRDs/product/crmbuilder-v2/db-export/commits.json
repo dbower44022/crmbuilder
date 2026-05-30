@@ -1233,5 +1233,43 @@
     "commit_session_id": "SES-130",
     "commit_sha": "9fd649c933f2b33ab94c291bad5e435ad62110f5",
     "commit_updated_at": "2026-05-30T15:31:04.057132"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-30T15:25:05-04:00",
+    "commit_created_at": "2026-05-30T19:42:55.544097",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 2,
+    "commit_identifier": "CM-0066",
+    "commit_message_first_line": "v2: PI-081 implement orchestrator _execute() live-dispatch glue",
+    "commit_message_full": "v2: PI-081 implement orchestrator _execute() live-dispatch glue\n\nReplace the NotImplementedError stub in scripts/orchestrator/run.py with\nthe real I/O glue that drives a parallel-agent orchestrator run:\n\n- Create the orchestrator's own supervising session + conversation\n  in_flight (DEC-248), session joined to WS-012 via\n  session_belongs_to_workstream, conversation via\n  conversation_belongs_to_session (+ conversation_belongs_to_workstream).\n- Per area-disjoint cluster, concurrently: reserve the child's SES/CNV\n  (PI-078), claim its planning items (PI-077), cut a per-child git\n  worktree off origin/main, render its kickoff into the worktree, and\n  spawn one `claude -p ... --dangerously-skip-permissions` subagent.\n- Static-wave scheduling: dispatch the whole wave (non-blocking Popen),\n  join all children, verify each applied its close-out, then record the\n  conversation_orchestrates_conversation edge to each child.\n- Halt-on-failure: any non-zero child exit (or un-applied close-out)\n  halts the wave, surfaces the failure + log path, leaves claims in\n  place for forensics, cancels the orchestrator records, exits non-zero.\n- After all waves succeed, complete + apply the orchestrator's own\n  supervising close-out (deposit_event + close_out_payload bookkeeping).\n\nPure helpers (child_branch_name, child_succeeded) and the I/O seams\n(_api, _create_worktree, _spawn_child, _run_apply) are factored so the\nglue unit-tests with no real API, repo, or agents. Tests replace the\nNotImplementedError guard with execute-glue coverage.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "42e4ac8667b36ea65d78d98657d465e43cf343a4"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-131",
+    "commit_sha": "800e329c5ad97e39162f7e4e53d44dd67a5e8f3d",
+    "commit_updated_at": "2026-05-30T19:42:55.544100"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-30T15:40:29-04:00",
+    "commit_created_at": "2026-05-30T19:42:55.862002",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0067",
+    "commit_message_first_line": "v2: PI-081 accept explicit --dry-run flag on the orchestrator CLI",
+    "commit_message_full": "v2: PI-081 accept explicit --dry-run flag on the orchestrator CLI\n\nThe module docstring documents --dry-run as the default-safe mode but the\nparser only accepted --execute, so the documented `--dry-run` invocation\nerrored. Add an explicit (no-op default) --dry-run flag so the documented\ncheckpoint command works.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "800e329c5ad97e39162f7e4e53d44dd67a5e8f3d"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-131",
+    "commit_sha": "3ba187568adfb6cec822ae5e81c96ddd8e864982",
+    "commit_updated_at": "2026-05-30T19:42:55.862004"
   }
 ]
