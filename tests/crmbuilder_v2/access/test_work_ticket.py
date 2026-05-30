@@ -65,6 +65,14 @@ def _consume_edge(conv_id, wt_id):
     }
 
 
+def _session_consume_edge(ses_id, wt_id):
+    return {
+        "source_type": "session", "source_id": ses_id,
+        "target_type": "work_ticket", "target_id": wt_id,
+        "relationship": "session_opens_against_work_ticket",
+    }
+
+
 def test_kind_enum_and_file_path(v2_env):
     with session_scope() as s, pytest.raises(UnprocessableError):
         _make(s, kind="bad_kind")
@@ -88,6 +96,35 @@ def test_consumed_requires_edge(v2_env):
         )
         assert wt.get_work_ticket(s, "WT-001")["work_ticket_status"] == "consumed"
         assert wt.get_work_ticket(s, "WT-001")["work_ticket_consumed_at"]
+
+
+def test_consumed_accepts_session_opens_edge(v2_env):
+    with session_scope() as s:
+        _make(s)
+        wt.patch_work_ticket(s, "WT-001", status="ready")
+        # Build the session chain (workstream → session) without a conversation;
+        # the PI-073 successor edge originates from the session itself.
+        wid = ws.create_workstream(
+            s, name="WS sess-consume", purpose="p", description="d"
+        )["workstream_identifier"]
+        sid = "SES-900"
+        sr.create_session(
+            s, title="S sess-consume", description="d", medium="chat",
+            executive_summary=_EXEC_SUMMARY, identifier=sid,
+            references=[{
+                "source_type": "session", "source_id": sid,
+                "target_type": "workstream", "target_id": wid,
+                "relationship": "session_belongs_to_workstream",
+            }],
+        )
+        wt.patch_work_ticket(
+            s, "WT-001",
+            status="consumed",
+            references=[_session_consume_edge(sid, "WT-001")],
+        )
+        row = wt.get_work_ticket(s, "WT-001")
+        assert row["work_ticket_status"] == "consumed"
+        assert row["work_ticket_consumed_at"]
 
 
 def test_single_use_violation(v2_env):

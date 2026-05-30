@@ -4,11 +4,12 @@ Per ``governance-schema-specs/work_ticket.md``. Five-status workflow
 lifecycle (drafted → ready → consumed plus two terminals). Access-layer
 edge rules:
 
-* **Single-use** — a work_ticket may carry at most one inbound
-  ``conversation_opens_against_work_ticket`` edge at any status (DEC-117
-  family-2 definition); a second returns ``work_ticket_single_use_violation``.
-* **Consumed-requires-edge** — ``consumed`` requires that inbound edge to be
-  present (DEC-143, the inverse of supersession-requires-edge).
+* **Single-use** — a work_ticket may carry at most one inbound consumption
+  edge of either kind (``conversation_opens_against_work_ticket`` legacy or
+  ``session_opens_against_work_ticket`` post-PI-073) at any status; a second
+  returns ``work_ticket_single_use_violation``.
+* **Consumed-requires-edge** — ``consumed`` requires one of those inbound
+  edges to be present (DEC-143, the inverse of supersession-requires-edge).
 * **Supersession-requires-edge** — ``superseded`` requires an outbound
   ``supersedes`` edge.
 
@@ -44,7 +45,12 @@ _ENTITY_TYPE = "work_ticket"
 _IDENTIFIER_PREFIX = "WT"
 _IDENTIFIER_RE = re.compile(r"^WT-\d{3}$")
 _MAX_AUTOASSIGN_ATTEMPTS = 50
-_CONSUMPTION_KIND = "conversation_opens_against_work_ticket"
+_CONSUMPTION_KINDS = frozenset(
+    {
+        "conversation_opens_against_work_ticket",
+        "session_opens_against_work_ticket",
+    }
+)
 _PATCHABLE_FIELDS = frozenset(
     {"title", "description", "notes", "kind", "status", "file_path"}
 )
@@ -99,12 +105,16 @@ def _increment_identifier(identifier: str) -> str:
 
 
 def _validate_edges(session: Session, identifier: str, status: str) -> None:
-    consumption = gov.inbound_edges(
-        session,
-        target_type=_ENTITY_TYPE,
-        target_id=identifier,
-        relationship=_CONSUMPTION_KIND,
-    )
+    consumption: list = []
+    for kind in _CONSUMPTION_KINDS:
+        consumption.extend(
+            gov.inbound_edges(
+                session,
+                target_type=_ENTITY_TYPE,
+                target_id=identifier,
+                relationship=kind,
+            )
+        )
     if len(consumption) > 1:
         raise UnprocessableError(
             [
@@ -121,7 +131,8 @@ def _validate_edges(session: Session, identifier: str, status: str) -> None:
                 FieldError(
                     "status",
                     "consumed_work_ticket_requires_consumption_edge",
-                    "an inbound 'conversation_opens_against_work_ticket' edge is required",
+                    "an inbound 'conversation_opens_against_work_ticket' or "
+                    "'session_opens_against_work_ticket' edge is required",
                 )
             ]
         )
