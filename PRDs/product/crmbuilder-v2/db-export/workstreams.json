@@ -178,5 +178,20 @@
     "workstream_status": "in_flight",
     "workstream_superseded_at": null,
     "workstream_updated_at": "2026-05-27T01:29:46.865472"
+  },
+  {
+    "workstream_cancelled_at": null,
+    "workstream_completed_at": null,
+    "workstream_created_at": "2026-05-30T03:41:56.450520",
+    "workstream_deleted_at": null,
+    "workstream_description": "Established at SES-120. The V2 schema already carries created_at/updated_at on all 24 first-class governance + methodology entities (23 have updated_at; the immutable/append-only types deposit_event, reference, topic, charter, status, and reference_book_version are created-only by design and surface a created timestamp with an em-dash last-edited per the SES-120 scoping decision). The remaining gap is UI surfacing: only PlanningItemsPanel (PI-107, commit f690bde) currently displays formatted Created / Last Updated. This workstream replicates that reusable datetime_format helper + list-column + detail-row pattern across all remaining entity panels and closes the few schema gaps where a first-class browsable type lacks a column. Scope per SES-120: first-class UI entities only; subsidiary catalog/edge tables are out of scope. Anchored by REQ-002 and PI-108.",
+    "workstream_identifier": "WS-013",
+    "workstream_name": "Universal created/last-edited timestamp visibility",
+    "workstream_notes": null,
+    "workstream_purpose": "Ensure every first-class object type in the V2 system stores a created datetime and a last-edited datetime and surfaces both in the desktop UI, extending the PI-107 pattern (commit f690bde) from the Planning Items panel to every entity panel.",
+    "workstream_started_at": "2026-05-30T03:41:56.450884",
+    "workstream_status": "in_flight",
+    "workstream_superseded_at": null,
+    "workstream_updated_at": "2026-05-30T03:41:56.451146"
   }
 ]

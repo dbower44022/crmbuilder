@@ -986,5 +986,43 @@
     "commit_session_id": "SES-118",
     "commit_sha": "f690bde4f48cf9073279751daa3080b315be3b1b",
     "commit_updated_at": "2026-05-30T03:05:45.747375"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-106-followups",
+    "commit_committed_at": "2026-05-29T01:44:39-04:00",
+    "commit_created_at": "2026-05-30T03:27:48.418262",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 10,
+    "commit_identifier": "CM-0053",
+    "commit_message_first_line": "v2: PI-106 — chat Slice-D follow-ups: staleness indicator + context-window Trim",
+    "commit_message_full": "v2: PI-106 — chat Slice-D follow-ups: staleness indicator + context-window Trim\n\nBuilds the two affordances deferred from PI-052 Slice D.\n\nStaleness indicator (design §10): thread the existing RefreshService from\nMainWindow into ChatPanel; the controller records which entity types the\nactive session read (via tool_completed -> entity_type_for_tool) and the\npanel shows an informational header badge when a read entity changes\nelsewhere and no turn is in flight. Never re-calls a tool; clears on\nsend / new chat / switch.\n\nInteractive Trim (design §12): context-window 400s now route to a\ndedicated context_overflow signal (worker -> controller -> panel) instead\nof a dead-end notice. The panel offers a Trim-and-retry affordance;\ntrim_oldest_turns drops the oldest ~third of turns while preserving\nMessages-API validity (always starts on a fresh user turn, never orphans\na tool_result) and re-dispatches the failed turn.\n\nTests: pure-logic coverage for trim validity + tool->entity\ndisambiguation; Qt-level wiring tests for the badge and Trim affordance;\nupdated the worker overflow test for the new signal path.\n\nCo-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "b13707c6e882d16b4a24bfb4f755b651ff8fe8a0"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-119",
+    "commit_sha": "9a98167f3e53b88337ce006e3cb0793b1b04aa65",
+    "commit_updated_at": "2026-05-30T03:27:48.418264"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-29T23:41:47-04:00",
+    "commit_created_at": "2026-05-30T03:45:28.105274",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 10,
+    "commit_identifier": "CM-0054",
+    "commit_message_first_line": "v2: PI-031 — Commits panel + planning_item resolution chain in V2 UI",
+    "commit_message_full": "v2: PI-031 — Commits panel + planning_item resolution chain in V2 UI\n\nImplements the code-change-lifecycle UI surfaces, adapting PI-031's\npre-PI-073 spec to the current session-grain schema (see accompanying\nDEC): commits attribute to sessions via commit_session_id, and\nresolution is a `resolves` edge (conversation -> PI), not the\ncommit_resolves_planning_item / close_out_payload edges the original\nspec assumed.\n\nCommits panel (new, Governance group after Deposit Events):\n- Read-only master/detail; no write affordance (ingested via close-out,\n  DEC-185). Columns Identifier/Repository/Author/Committed/Message,\n  newest-first (DEC-214). Committed formatted via format_timestamp.\n- Repository + Session client-side filters (the server-supported axes;\n  the PI's conversation/planning-item filters don't map to the current\n  schema and are omitted). by-SHA lookup with the four DEC-213 cases\n  (full hit / unambiguous prefix / 409 ambiguous w/ candidates / 404).\n- Detail renders all commit fields per DEC-186 with the producing\n  session as a prominent clickable link outside ReferencesSection\n  (DEC-273 parallel). ReferencesSection add affordance suppressed.\n\nplanning_items resolution chain:\n- Resolved items gain a \"Resolution chain\" section tracing\n  PI <-resolves<- conversation -> (deposit_event) -> session -> commits,\n  each node clickable. Legacy resolved-without-edge items render the\n  documented \"Resolved without a governance trace (see PI-033)\" state.\n\nSupporting:\n- client: list_commits / get_commit / list_commits_for_session /\n  find_commit_by_sha (raw-client by-sha to preserve the 409 candidates).\n- ReferencesSection.set_add_enabled() actually hides the button now\n  (was a hasattr no-op; also fixes the latent gap on Deposit Events).\n- main_window/sidebar register the Commits entry + \"commit\" nav type.\n\nTests: commits panel (columns, filters, all by-SHA cases, detail link,\nadd-affordance hidden) + resolution chain (full trace, open-item skip,\ndegraded no-trace). Full 801-test UI suite green; ruff clean. Verified\nlive against the API: 53 commits, by-SHA cases, PI-107 chain traces\nCNV-020 -> DEP-110 -> SES-118 -> CM-0052.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "afcfb390838600da4166b95617f71fdd554fffef"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-120",
+    "commit_sha": "f5381966c202f6182c5f2f478bdfb726e9d4d0ea",
+    "commit_updated_at": "2026-05-30T03:45:28.105276"
   }
 ]

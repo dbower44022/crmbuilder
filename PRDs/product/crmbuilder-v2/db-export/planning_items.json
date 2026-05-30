@@ -367,9 +367,9 @@
     "identifier": "PI-031",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Implement commits panel and planning_item resolution display in V2 desktop UI",
-    "updated_at": "2026-05-29T01:43:39.081027"
+    "updated_at": "2026-05-30T03:45:29.322717"
   },
   {
     "created_at": "2026-05-23T05:32:48.588725",
@@ -1267,9 +1267,9 @@
     "identifier": "PI-106",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Resolved",
     "title": "Chat UI (PI-052) Slice-D follow-ups: sidebar staleness-indicator integration and interactive context-window Trim",
-    "updated_at": "2026-05-29T02:06:56.912650"
+    "updated_at": "2026-05-30T03:27:49.029132"
   },
   {
     "created_at": "2026-05-29T23:35:53.169304",

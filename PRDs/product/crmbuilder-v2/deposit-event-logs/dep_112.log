@@ -1,0 +1,27 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_120.json
+Label:  SES-120 / CNV-022 close-out — implements and resolves PI-031 (Commits panel + planning_item resolution chain in V2 desktop UI). One commit f5381966. Authors DEC-332 (reconciles PI-031's pre-PI-073 spec to the current session-grain schema). Attaches to WS-011. Resolves PI-031. Identifiers re-verify at apply time.
+Deposit event: DEP-112
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-022 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-332 (HTTP 201)
+
+=== references (2 records) ===
+  ✓ POST references  DEC-332 decided_in CNV-022 (HTTP 201)
+  ✓ POST references  DEC-332 is_about PI-031 (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-031 (HTTP 201)
+
+✓ All 7 operations complete.
+
+✓ Recorded apply as deposit_event DEP-112 (HTTP 201).

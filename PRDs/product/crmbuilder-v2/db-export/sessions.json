@@ -2208,5 +2208,63 @@
     "session_superseded_at": null,
     "session_title": "Implement PI-107 — surface planning_item created/updated timestamps in the Planning Items UI panel",
     "session_updated_at": "2026-05-30T03:05:45.444803"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-30T03:27:48.152237",
+    "session_created_at": "2026-05-30T03:27:48.151808",
+    "session_deleted_at": null,
+    "session_description": "Single Claude Code execution at Doug's terminal (CNV-021). Parent workstream WS-010 (v2 AI Surface Integration). Medium: chat via Claude Code. Seed prompt: \"please review pi-106, and define a plan to execute it.\"\n\nPI-106 (filed by SES-113 alongside the PI-052 close-out) tracked the two polish items that were scoped to Slice D of the chat UI but deferred: (1) the sidebar staleness-indicator integration described in design §10 — the chat tab subscribing to the existing RefreshService for cross-tab 'entity changed' hints, informational only, never re-calling a tool — and (2) the interactive context-window Trim affordance from design §12, since the existing overflow path only surfaced a dead-end notice and required a '+ New chat' to recover.\n\nWork, in order:\n\n1. Reviewed the PI-052 design end-to-end (§10 Slice D bullet, §12 error-recovery matrix) and the current implementation: ui/refresh.py (the existing QFileSystemWatcher-backed RefreshService emitting per-entity-type data_changed signals); ui/main_window.py (the single RefreshService owner, with its existing routing to ListDetailPanels for silent-refresh-or-stale-dot behavior); ui/panels/chat.py (ChatPanel, deliberately excluded from the ListDetailPanel refresh wiring because chat must not auto-recall); ui/chat/controller.py and ui/chat/worker.py (the streaming loop, with context-overflow currently routed to the generic turn_failed path via _classify_bad_request).\n\n2. Resolved two scope forks before building: (a) work in the main clone on a branch off main rather than a per-PI worktree, and (b) place the staleness indicator as an in-chat header badge rather than a transcript notice or per-conversation marker, since the design says 'flag a session' and chat must not recall.\n\n3. Implemented Item 1 (staleness indicator). Threaded the existing RefreshService into ChatPanel via the constructor (creating it once before the panel loop in MainWindow and passing it in). The controller now records which entity_types the active session reads via a tool call, mapping tool names to RefreshService entity_types (entity_type_for_tool in ui/chat/tools.py, ordered so list_decisions_for_session resolves to decision rather than session). The panel connects to data_changed and, when the changed entity_type is in the read-set and no turn is in flight, shows a warning-toned header label that clears on send / new chat / switch.\n\n4. Implemented Item 2 (interactive Trim). The worker now emits a dedicated context_overflow signal carrying the pre-turn snapshot when a BadRequestError is identified as context overflow, instead of overloading turn_failed. The controller exposes a context_overflow signal to the panel and a trim_and_retry() method. trim_oldest_turns (session.py) is a pure helper that drops the oldest ~third of turns while preserving Messages-API validity: the trimmed list always begins on a fresh user turn and never orphans a tool_result block from its tool_use parent. The panel adds a new ActionNoticeItem widget (centered label + button) wired so the overflow surfaces 'Trim oldest messages & retry'; on click, controller.trim_and_retry() trims, persists, and re-dispatches the failed turn. If only one turn remains, the panel advises starting a new chat.\n\n5. Tests. Added test_trim_and_staleness.py (pure-logic: trim preserves the first-fresh-user-turn invariant; never orphans tool_result; entity_type_for_tool disambiguates list_decisions_for_session as decision). Added test_panel_pi106.py (Qt-level wiring using the explicit isHidden() flag since the panel is never shown: badge appears only for read entities and only while no turn is in flight; clears on send; overflow surfaces ActionNoticeItem; Trim with no worker degrades gracefully without raising). Renamed test_context_window_message to test_context_window_routes_to_overflow_signal asserting the new signal path; added test_other_bad_request_still_fails covering the non-overflow 400. Total: 66 chat + refresh + main_window startup tests green; ruff clean on changed files. The 14 pre-existing UI suite failures (sessions/conversations refactor in flight elsewhere) were verified to reproduce on a clean checkout with PI-106 stashed, confirming they are unrelated.\n\n6. Branch hygiene complication. The first commit attempt landed locally on a branch named pi-106-chat-slice-d-followups created off the local main, which carried an 'abandoned commit' (30d8088) — PI-076 db-export, design-tokens, and migration 0024 junk — ahead of origin/main. A concurrent session in the same Dropbox-synced clone then reset that branch and pushed PI-076/PI-105 commits to it on the remote, orphaning the PI-106 commit (a7fa813). The first 'git push' reported 'Everything up-to-date' because the local ref had already been moved before the push ran. Recovery: pinned a7fa813 to a new local branch pi-106-followups; rebased it with 'git rebase --onto origin/main 30d8088 pi-106-followups' inside an isolated worktree (crmbuilder-pi106, matching the per-PI worktree pattern) so the main clone's working tree and the concurrent session were never disturbed; verified the rebased branch contains exactly the 10 chat files with no migration / db-export / design-token junk; pushed pi-106-followups to origin as a new remote branch (9a98167). Doug subsequently merged it to main as 09ce4af. The mislabeled remote branch pi-106-chat-slice-d-followups was left untouched per Doug's direction.\n\nNot done (deliberately): no interactive GUI smoke test from this headless session — the desktop app requires a display, the storage server, and a real Anthropic API key; the wiring is covered by Qt-level tests and the MainWindow startup test, and the interactive verification is left for Doug. No new DEC: the design (PI-052 §10 and §12) already settled the approach; PI-106 is polish on an existing surface, not a new architectural commitment.\n\nResolves PI-106.",
+    "session_ended_at": null,
+    "session_executive_summary": "Built two polish items scoped to PI-052 Slice D but deferred. (1) Threaded the existing RefreshService into ChatPanel; the controller tracks read entity types and the panel shows a header informational badge when one changes elsewhere — never re-calling. (2) Routed context-window 400s to a dedicated context_overflow signal so the panel surfaces an interactive 'Trim oldest messages & retry'; the trim helper drops the oldest ~third of turns while preserving Messages-API validity (begins on a fresh user turn, never orphans a tool_result). Pure-logic and Qt-level wiring tests added; chat + refresh + main-window startup suites green; ruff clean. Delivered in commit 9a98167, merged as 09ce4af. Resolves PI-106. No DEC — design (PI-052 §10/§12) had already settled the approach.",
+    "session_identifier": "SES-119",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "model": "claude-opus-4-7",
+      "runner": "claude_code",
+      "surface": "claude_code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.7, Claude Code)"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "PI-106 — chat UI Slice-D follow-ups: sidebar staleness indicator and interactive context-window Trim",
+    "session_updated_at": "2026-05-30T03:27:48.152370"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-30T03:45:27.850992",
+    "session_created_at": "2026-05-30T03:45:27.850727",
+    "session_deleted_at": null,
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-022. Parent workstream WS-011 (V2 storage API refinements). Medium: chat (claude_code runner).\n\nSeed: \"Now implement PI-031\" (selected as the next item after PI-107).\n\nPre-build investigation surfaced that PI-031's description, authored pre-PI-073, assumes a conversation-grain commit model with commit_resolves_planning_item / conversation_produced_commit edges and a conversation -> close_out_payload -> deposit_event -> commits resolution chain. The implemented schema moved to session grain (commits carry commit_session_id and attach via /sessions/{id}/commits; resolution is a `resolves` edge from a conversation to the planning_item). Doug chose (AskUserQuestion) to build the Commits panel now and adapt the resolution chain to the current schema, recording the reconciliation as DEC-332.\n\nDelivered in one commit (f5381966):\n- Commits panel (new, Governance sidebar group after Deposit Events): read-only master/detail, no write affordance (commits ingested via close-out, DEC-185). Columns Identifier/Repository/Author/Committed/Message, newest-first (DEC-214), Committed via the PI-107 format_timestamp helper. Repository + Session client-side filters (the server-supported axes; the PI's conversation/planning-item filters do not map to the current schema and are intentionally omitted). by-SHA lookup implementing the four DEC-213 cases (full hit / unambiguous prefix / 409 ambiguous with candidate list / 404 miss). Detail renders all commit fields per DEC-186 with the producing session as a prominent clickable link outside ReferencesSection (DEC-273 parallel).\n- planning_items resolution chain: resolved items gain a Resolution chain section tracing PI <-resolves<- conversation -> (deposit_event) -> session -> commits, each node clickable; legacy resolved-without-edge items render the documented 'Resolved without a governance trace (see PI-033)' degraded state.\n- Supporting: client commit accessors (list_commits / get_commit / list_commits_for_session / find_commit_by_sha, the last against the raw client to preserve the 409 candidate list that the FastAPI {detail} shape would otherwise discard); ReferencesSection.set_add_enabled() now actually hides the Add button (previously a hasattr no-op, so this also closes the latent gap on the Deposit Events panel); main_window/sidebar register the Commits entry and the 'commit' navigation type.\n\nValidation: full 801-test UI suite green (added commits-panel and resolution-chain tests plus smoke/governance fixture updates for the new sidebar entry); ruff clean on touched files (two pre-existing references_section.py lint items left untouched). Verified live against the running API: 53 commits, all four by-SHA cases, and PI-107's chain tracing CNV-020 -> DEP-110 -> SES-118 -> CM-0052.\n\nResolves PI-031. Authored DEC-332. The implementation commit sits on main awaiting Doug's push (Claude Code push convention). Out of scope (unchanged from PI-031): commit write affordances, cross-repo navigation, diff/DAG rendering.",
+    "session_ended_at": null,
+    "session_executive_summary": "Implemented PI-031 in one commit (f5381966): a read-only Commits panel in the Governance sidebar group and a resolution-chain section on resolved planning items. Pre-build investigation found PI-031's spec predates PI-073 and assumes conversation-grain commit edges that no longer exist; Doug chose to build the panel and adapt the chain to the session-grain schema, recorded as DEC-332. The Commits panel offers Repository/Session filters and a four-case by-SHA lookup; the resolution chain traces PI <-resolves<- conversation -> deposit_event -> session -> commits with a degraded state for legacy untraced resolutions. Full 801-test UI suite green, ruff clean, verified live against the API. Resolves PI-031.",
+    "session_identifier": "SES-120",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "model": "claude-opus-4-8",
+      "runner": "claude_code",
+      "surface": "claude_code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.8, Claude Code)"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "Implement PI-031 — Commits panel and planning_item resolution chain in the V2 desktop UI",
+    "session_updated_at": "2026-05-30T03:45:27.851081"
   }
 ]

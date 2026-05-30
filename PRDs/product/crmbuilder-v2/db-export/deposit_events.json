@@ -2474,5 +2474,51 @@
       "work_tickets": 0
     },
     "deposit_event_title": "Apply of COP-118, 2026-05-30T03:05:46+00:00"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "0.7.0",
+      "invocation": "/home/doug/Dropbox/Projects/crmbuilder/crmbuilder-v2/scripts/apply_close_out.py PRDs/product/crmbuilder-v2/close-out-payloads/ses_119.json",
+      "runner": "claude_code"
+    },
+    "deposit_event_created_at": "2026-05-30T03:27:49.335001",
+    "deposit_event_description": "Applied COP-119. Outcome: success. 1 commits, 1 conversations, 1 sessions.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-111",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_111.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "commits": 1,
+      "conversations": 1,
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1,
+      "work_tickets": 0
+    },
+    "deposit_event_title": "Apply of COP-119, 2026-05-30T03:27:49+00:00"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "0.7.0",
+      "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_120.json",
+      "runner": "claude_code"
+    },
+    "deposit_event_created_at": "2026-05-30T03:45:29.619033",
+    "deposit_event_description": "Applied COP-120. Outcome: success. 1 commits, 1 conversations, 1 decisions, 1 sessions.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-112",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_112.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "commits": 1,
+      "conversations": 1,
+      "decisions": 1,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1,
+      "work_tickets": 0
+    },
+    "deposit_event_title": "Apply of COP-120, 2026-05-30T03:45:29+00:00"
   }
 ]

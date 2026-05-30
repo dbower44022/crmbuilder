@@ -1,0 +1,106 @@
+{
+  "label": "SES-120 / CNV-022 close-out — implements and resolves PI-031 (Commits panel + planning_item resolution chain in V2 desktop UI). One commit f5381966. Authors DEC-332 (reconciles PI-031's pre-PI-073 spec to the current session-grain schema). Attaches to WS-011. Resolves PI-031. Identifiers re-verify at apply time.",
+  "session": {
+    "session_identifier": "SES-120",
+    "session_title": "Implement PI-031 — Commits panel and planning_item resolution chain in the V2 desktop UI",
+    "session_description": "Single Claude Code execution at Doug's terminal. CNV-022. Parent workstream WS-011 (V2 storage API refinements). Medium: chat (claude_code runner).\n\nSeed: \"Now implement PI-031\" (selected as the next item after PI-107).\n\nPre-build investigation surfaced that PI-031's description, authored pre-PI-073, assumes a conversation-grain commit model with commit_resolves_planning_item / conversation_produced_commit edges and a conversation -> close_out_payload -> deposit_event -> commits resolution chain. The implemented schema moved to session grain (commits carry commit_session_id and attach via /sessions/{id}/commits; resolution is a `resolves` edge from a conversation to the planning_item). Doug chose (AskUserQuestion) to build the Commits panel now and adapt the resolution chain to the current schema, recording the reconciliation as DEC-332.\n\nDelivered in one commit (f5381966):\n- Commits panel (new, Governance sidebar group after Deposit Events): read-only master/detail, no write affordance (commits ingested via close-out, DEC-185). Columns Identifier/Repository/Author/Committed/Message, newest-first (DEC-214), Committed via the PI-107 format_timestamp helper. Repository + Session client-side filters (the server-supported axes; the PI's conversation/planning-item filters do not map to the current schema and are intentionally omitted). by-SHA lookup implementing the four DEC-213 cases (full hit / unambiguous prefix / 409 ambiguous with candidate list / 404 miss). Detail renders all commit fields per DEC-186 with the producing session as a prominent clickable link outside ReferencesSection (DEC-273 parallel).\n- planning_items resolution chain: resolved items gain a Resolution chain section tracing PI <-resolves<- conversation -> (deposit_event) -> session -> commits, each node clickable; legacy resolved-without-edge items render the documented 'Resolved without a governance trace (see PI-033)' degraded state.\n- Supporting: client commit accessors (list_commits / get_commit / list_commits_for_session / find_commit_by_sha, the last against the raw client to preserve the 409 candidate list that the FastAPI {detail} shape would otherwise discard); ReferencesSection.set_add_enabled() now actually hides the Add button (previously a hasattr no-op, so this also closes the latent gap on the Deposit Events panel); main_window/sidebar register the Commits entry and the 'commit' navigation type.\n\nValidation: full 801-test UI suite green (added commits-panel and resolution-chain tests plus smoke/governance fixture updates for the new sidebar entry); ruff clean on touched files (two pre-existing references_section.py lint items left untouched). Verified live against the running API: 53 commits, all four by-SHA cases, and PI-107's chain tracing CNV-020 -> DEP-110 -> SES-118 -> CM-0052.\n\nResolves PI-031. Authored DEC-332. The implementation commit sits on main awaiting Doug's push (Claude Code push convention). Out of scope (unchanged from PI-031): commit write affordances, cross-repo navigation, diff/DAG rendering.",
+    "session_medium": "chat",
+    "session_status": "complete",
+    "session_executive_summary": "Implemented PI-031 in one commit (f5381966): a read-only Commits panel in the Governance sidebar group and a resolution-chain section on resolved planning items. Pre-build investigation found PI-031's spec predates PI-073 and assumes conversation-grain commit edges that no longer exist; Doug chose to build the panel and adapt the chain to the session-grain schema, recorded as DEC-332. The Commits panel offers Repository/Session filters and a four-case by-SHA lookup; the resolution chain traces PI <-resolves<- conversation -> deposit_event -> session -> commits with a degraded state for legacy untraced resolutions. Full 801-test UI suite green, ruff clean, verified live against the API. Resolves PI-031.",
+    "session_medium_metadata": {
+      "surface": "claude_code",
+      "runner": "claude_code",
+      "model": "claude-opus-4-8"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude (Opus 4.8, Claude Code)"
+    ],
+    "references": [
+      {
+        "source_type": "session",
+        "source_id": "SES-120",
+        "target_type": "workstream",
+        "target_id": "WS-011",
+        "relationship": "session_belongs_to_workstream"
+      }
+    ]
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-022",
+    "conversation_title": "Building the PI-031 commits/resolution-chain UI on the post-PI-073 schema",
+    "conversation_purpose": "Implement the code-change-lifecycle desktop surfaces (Commits panel + planning_item resolution chain), reconciling PI-031's pre-PI-073 spec to the current session-grain schema.",
+    "conversation_description": "Investigated the PI-031 spec-vs-schema drift, chose the adapt-and-DEC path with Doug, and implemented the Commits panel (filters + by-SHA) and the planning_items resolution chain (conversation -> deposit_event -> session -> commits) in one commit f5381966. Authored DEC-332. Full UI suite green; verified live. Resolves PI-031.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-022",
+        "target_type": "session",
+        "target_id": "SES-120",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [],
+  "commits": [
+    {
+      "commit_sha": "f5381966c202f6182c5f2f478bdfb726e9d4d0ea",
+      "commit_message_first_line": "v2: PI-031 — Commits panel + planning_item resolution chain in V2 UI",
+      "commit_message_full": "v2: PI-031 — Commits panel + planning_item resolution chain in V2 UI\n\nImplements the code-change-lifecycle UI surfaces, adapting PI-031's\npre-PI-073 spec to the current session-grain schema (see accompanying\nDEC): commits attribute to sessions via commit_session_id, and\nresolution is a `resolves` edge (conversation -> PI), not the\ncommit_resolves_planning_item / close_out_payload edges the original\nspec assumed.\n\nCommits panel (new, Governance group after Deposit Events):\n- Read-only master/detail; no write affordance (ingested via close-out,\n  DEC-185). Columns Identifier/Repository/Author/Committed/Message,\n  newest-first (DEC-214). Committed formatted via format_timestamp.\n- Repository + Session client-side filters (the server-supported axes;\n  the PI's conversation/planning-item filters don't map to the current\n  schema and are omitted). by-SHA lookup with the four DEC-213 cases\n  (full hit / unambiguous prefix / 409 ambiguous w/ candidates / 404).\n- Detail renders all commit fields per DEC-186 with the producing\n  session as a prominent clickable link outside ReferencesSection\n  (DEC-273 parallel). ReferencesSection add affordance suppressed.\n\nplanning_items resolution chain:\n- Resolved items gain a \"Resolution chain\" section tracing\n  PI <-resolves<- conversation -> (deposit_event) -> session -> commits,\n  each node clickable. Legacy resolved-without-edge items render the\n  documented \"Resolved without a governance trace (see PI-033)\" state.\n\nSupporting:\n- client: list_commits / get_commit / list_commits_for_session /\n  find_commit_by_sha (raw-client by-sha to preserve the 409 candidates).\n- ReferencesSection.set_add_enabled() actually hides the button now\n  (was a hasattr no-op; also fixes the latent gap on Deposit Events).\n- main_window/sidebar register the Commits entry + \"commit\" nav type.\n\nTests: commits panel (columns, filters, all by-SHA cases, detail link,\nadd-affordance hidden) + resolution chain (full trace, open-item skip,\ndegraded no-trace). Full 801-test UI suite green; ruff clean. Verified\nlive against the API: 53 commits, by-SHA cases, PI-107 chain traces\nCNV-020 -> DEP-110 -> SES-118 -> CM-0052.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-29T23:41:47-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "afcfb390838600da4166b95617f71fdd554fffef"
+      ],
+      "commit_files_changed_count": 10
+    }
+  ],
+  "decisions": [
+    {
+      "identifier": "DEC-332",
+      "title": "Adapt PI-031 code-change-lifecycle UI to the post-PI-073 session-grain schema",
+      "decision_date": "2026-05-29",
+      "status": "Active",
+      "context": "PI-031's description was authored before the PI-073 redesign and specifies UI against a conversation-grain commit model: commit_resolves_planning_item and conversation_produced_commit reference edges, filters by Repository/Conversation/Planning-item, and a resolution chain of conversation -> close_out_payload -> deposit_event -> commits. The implemented schema is session-grain: commits carry a commit_session_id FK (browsed via /sessions/{id}/commits, default sort commit_committed_at desc per DEC-214), the named commit_* relationship kinds are not in vocab, and resolution is recorded as a `resolves` edge from a conversation to the planning_item. Building PI-031 verbatim is impossible because the edges it traverses do not exist.",
+      "decision": "Build the Commits panel and the planning_items resolution chain against the current schema rather than re-introducing the pre-PI-073 edges. Concretely: (1) the Commits panel filters by Repository and Session (the two server-supported axes) and omits the Conversation and Planning-item filters, which the /commits API does not support; (2) the producing SESSION (commit_session_id), not a conversation, is the identity-level link rendered prominently outside ReferencesSection; (3) the resolution chain traces PI <-resolves<- conversation -> (deposit_event that wrote the conversation record) -> session -> the session's commits, replacing the close_out_payload/commit_resolves_planning_item nodes PI-031 assumed; (4) resolved items lacking a `resolves` edge render the 'Resolved without a governance trace (see PI-033)' degraded state. The by-SHA lookup, read-only posture (DEC-185), and DEC-186 field set are implemented as originally specified.",
+      "rationale": "The post-PI-073 session-grain model is the current source of truth; adding back conversation-grain commit edges purely to satisfy a stale UI spec would create schema debt and contradict DEC-211/DEC-214. The chosen chain (conversation -> deposit_event -> session -> commits) is fully reconstructable from edges that already exist (`resolves`, conversation_belongs_to_session, deposit_event_wrote_record, commit_session_id), so it delivers the PI's intent — a clickable trace from a resolved item back to its delivering commits — without new schema. Dropping the unsupported filters is honest about the API surface rather than faking client-only joins across a relationship the data model no longer expresses.",
+      "alternatives_considered": "(a) Re-spec PI-031 fully on paper before building — rejected as slower with no rework saved, since the adapted chain is well-determined by existing edges. (b) Add server-side Conversation/Planning-item commit filters and the commit_resolves_planning_item edge to match the old spec — rejected as schema debt reintroducing the conversation-grain model PI-073 deliberately retired. (c) Build only the Commits panel and defer the chain to a new PI — viable but leaves PI-031 unresolved for a part that is straightforwardly buildable today.",
+      "consequences": "PI-031 is resolved by this adapted implementation. The Commits panel exposes Repository/Session filters only; a future PI may add richer commit<->planning-item navigation if the schema grows it. The resolution chain depends on the `resolves`, conversation_belongs_to_session, deposit_event_wrote_record, and commit_session_id edges remaining the resolution-recording convention; a future change to how resolution is recorded would require updating _build_resolution_chain. ReferencesSection.set_add_enabled is now functional, so any caller relying on the prior no-op behavior would now actually hide the button (only Deposit Events and Commits call it; both intend the hide).",
+      "executive_summary": "Reconciles PI-031's pre-PI-073 UI spec with the current session-grain commit schema. PI-031 assumed conversation-grain commit edges and a conversation -> close_out_payload -> deposit_event -> commits chain the schema does not provide. The decision: build against the real schema. The Commits panel filters by Repository and Session (the API-supported axes) and renders the producing SESSION as the identity link; the resolution chain traces PI <-resolves<- conversation -> deposit_event -> session -> commits using existing edges, with a 'Resolved without a governance trace (see PI-033)' degraded state. The by-SHA lookup, read-only posture, and DEC-186 field set are unchanged. This avoids reintroducing the conversation-grain model PI-073 retired while delivering PI-031's intent."
+    }
+  ],
+  "references": [
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-022",
+      "target_type": "session",
+      "target_id": "SES-120",
+      "relationship": "conversation_belongs_to_session"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-332",
+      "target_type": "conversation",
+      "target_id": "CNV-022",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-332",
+      "target_type": "planning_item",
+      "target_id": "PI-031",
+      "relationship": "is_about"
+    }
+  ],
+  "resolves_planning_items": [
+    {
+      "planning_item_identifier": "PI-031"
+    }
+  ],
+  "addresses_planning_items": []
+}
