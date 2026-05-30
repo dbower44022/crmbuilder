@@ -17,6 +17,8 @@ The orchestrator reads the open Planning Item backlog, partitions each dependenc
 - `_execute()` implemented in `crmbuilder-v2/scripts/orchestrator/run.py`; `main()` already routes `--execute` into it under the singleton orchestrator lock.
 - `tests/crmbuilder_v2/scripts/test_orchestrator_run.py` updated: the `test_execute_is_guarded` NotImplementedError test is replaced with real coverage of the execute glue (mocked subprocess/API/git). Pure-core tests stay green.
 - One **bounded, watched acceptance run** dispatched: a single wave (`--max-depth 0`) with **at least two concurrent child agents**, each producing its own close-out payload, and the orchestrator producing its own supervising close-out that references each child via the `conversation_orchestrates_conversation` reference edge.
+- One **operator guide** authored at `PRDs/product/crmbuilder-v2/orchestrator/operator-guide.md`, written against the working driver (real commands, flag values, log paths, and the halt-recovery/unclaim/worktree-cleanup steps).
+- Two `reference_book` governance records created — one for `orchestrator/overview.md`, one for `orchestrator/operator-guide.md` — so both docs are queryable as first-class artifacts (consistent with the single-source-of-truth principle; methodology guides and schema specs are already tracked this way).
 - One **builder-session close-out** authored and applied that **resolves PI-081** and records the wiring decisions below.
 
 ### Wiring decisions already made (do not re-litigate; implement as stated)
@@ -36,7 +38,7 @@ Every step verifies its outcome before the next begins. If a verification fails,
 
 1. `CLAUDE.md` (repo root) — the operative engagement context and Working conventions. Note the **push convention**: in Claude Code you commit; **Doug pushes**. Do not push.
 2. `specifications/governance-recording-rules.md` — authoritative governance recording rules. **Read before authoring any governance record.** Record creation goes through the API or `apply_close_out.py`, never the desktop UI. Pay attention to §3 Session Authoring, §4 Conversation Authoring, §7 Reference Authoring, §9 Close-Out Payload Authoring.
-3. `PRDs/product/crmbuilder-v2/orchestrator-planning.md` — the WS-012 design doc. §2.3 (per-agent conversation+session plus an orchestrator conversation+session), §2.4 (static-wave scheduling), §4 (out of scope — failure handling), §7 (success criteria). The contract below derives from these; if anything below conflicts with the design doc, stop and flag it.
+3. `PRDs/product/crmbuilder-v2/orchestrator/overview.md` — the living technical reference for the orchestrator (how it works: two layers, area-disjoint conflict model, static waves, governance grain, the dispatch lifecycle). Its §6 lifecycle is the same contract restated below; if anything conflicts, stop and flag it. The original planning doc `PRDs/product/crmbuilder-v2/orchestrator-planning.md` is retained as design history (architectural decisions and success criteria §7).
 4. The existing orchestrator code, in full, before editing:
    - `crmbuilder-v2/scripts/orchestrator/run.py` (your edit target — `_execute` is the stub; `preflight`, `orchestrator_lock`, `fetch_ready_batches`, `plan_waves`, `render_child_kickoff`, `_load_template` already exist and are reused as-is)
    - `crmbuilder-v2/scripts/orchestrator/planning.py` and `kickoff.py` (pure cores — read, do not modify unless a test proves a defect)
@@ -131,20 +133,28 @@ If any child halts the run, follow Step 2.7 — surface the failure; do not retr
 
 ---
 
-## Step 6 — Builder-session close-out (resolve PI-081)
+## Step 6 — Operator guide (now that the driver works)
 
-This builder session (the one implementing `_execute`) gets its own close-out, separate from the governance the orchestrator run produced:
-1. Verify the next session identifier head (`GET /sessions`, unwrap `.data`; re-key if claimed in parallel per the SES-077 precedent). Author `PRDs/product/crmbuilder-v2/close-out-payloads/ses_NNN.json` — nine sections — listing **PI-081 under `resolves_planning_items`**, recording your implementation commits in `commits`, and capturing decisions for: per-child worktree isolation, `--dangerously-skip-permissions` child autonomy, completion-detection + halt-on-failure, and the bounded-first-run (`--max-depth 0`) policy. Reference the orchestrator run's supervising conversation as the acceptance evidence.
-2. Author the apply prompt `PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-apply-close-out-ses-NNN.md`.
-3. Apply: `cd crmbuilder-v2 && uv run python scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_NNN.json`.
-4. Do not duplicate or re-apply the orchestrator's auto-produced governance (its supervising close-out and the children's close-outs were already applied during the run).
+Author `PRDs/product/crmbuilder-v2/orchestrator/operator-guide.md` — the "how to run it" reference, written against the *working* driver so its commands match real behavior. Cover: the dry-run → read-plan → give-go → live-run loop; what "≥2 area-disjoint clusters at depth 0" means and when the backlog can't satisfy it; `--max-depth` / `--area` to bound a run; where per-child logs land and how to read them; and the halt-recovery path (claims left set on failure, releasing them via `POST /planning-items/{id}/release`, and cleaning up child worktrees with `git worktree remove`). Standard doc header: revision control + change log, `Last Updated` in `MM-DD-YY HH:MM`. Cross-link it from `orchestrator/overview.md` §9 (the pointer is already there).
 
 ---
 
-## Step 7 — Commit (Doug pushes)
+## Step 7 — Builder-session close-out (resolve PI-081)
+
+This builder session (the one implementing `_execute`) gets its own close-out, separate from the governance the orchestrator run produced:
+1. Verify the next session identifier head (`GET /sessions`, unwrap `.data`; re-key if claimed in parallel per the SES-077 precedent). Author `PRDs/product/crmbuilder-v2/close-out-payloads/ses_NNN.json` — nine sections — listing **PI-081 under `resolves_planning_items`**, recording your implementation commits in `commits`, and capturing decisions for: per-child worktree isolation, `--dangerously-skip-permissions` child autonomy, completion-detection + halt-on-failure, and the bounded-first-run (`--max-depth 0`) policy. Reference the orchestrator run's supervising conversation as the acceptance evidence.
+2. In the same close-out, create two `reference_book` records (per `governance-recording-rules.md`) pointing at `PRDs/product/crmbuilder-v2/orchestrator/overview.md` and `PRDs/product/crmbuilder-v2/orchestrator/operator-guide.md`, so both are first-class queryable artifacts.
+3. Author the apply prompt `PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-apply-close-out-ses-NNN.md`.
+4. Apply: `cd crmbuilder-v2 && uv run python scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_NNN.json`.
+5. Do not duplicate or re-apply the orchestrator's auto-produced governance (its supervising close-out and the children's close-outs were already applied during the run).
+
+---
+
+## Step 8 — Commit (Doug pushes)
 
 Commit in logical units, all subjects prefixed `v2:` (this is v2 work):
 - the `_execute` implementation + tests;
+- the operator guide;
 - the regenerated `db-export/*.json` snapshots + new `deposit-event-logs/dep_NNN.log` + builder close-out payload + apply prompt, in one commit per the close-out convention.
 
 Per the Working conventions, **commit only — Doug pushes.** Do not push.

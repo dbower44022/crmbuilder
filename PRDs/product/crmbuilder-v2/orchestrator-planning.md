@@ -4,8 +4,10 @@
 **Repository:** `crmbuilder`
 **Path:** `PRDs/product/crmbuilder-v2/orchestrator-planning.md`
 **Workstream:** WS-012 (Parallel agent orchestrator and executive summary)
-**Last Updated:** 05-25-26 22:00
-**Version:** 1.0 (initial draft)
+**Last Updated:** 05-30-26 15:45
+**Version:** 1.1
+
+> **Transitional status:** The living technical reference for the orchestrator is now `PRDs/product/crmbuilder-v2/orchestrator/overview.md`. This document is retained as the historical planning artifact — the architectural decisions and roadmap captured here remain accurate as design history, but for *how the system works today*, see the overview.
 
 ---
 
@@ -24,10 +26,13 @@ The work is anticipated to span ten planning items (PI-053 through PI-062), divi
 | Version | Date | Author | Summary |
 |---------|------|--------|---------|
 | 1.0 | 05-25-26 22:00 | Doug Bower / Claude | Initial planning document. Captures six architectural decisions from SES-079 (area-level parallelism, multi-valued area, per-agent conversation+session pairs, static-wave scheduling, executive-summary as structured field, exec-summary bundled into orchestrator workstream). Lays out the ten-PI roadmap with dependencies. |
+| 1.1 | 05-30-26 15:45 | Doug Bower / Claude | Marked transitional. The living technical reference moved to `orchestrator/overview.md`; this doc is retained as historical design record. No design content changed. |
 
 ---
 
 ## Change Log
+
+**Version 1.1 (05-30-26 15:45):** Marked transitional. The living technical reference is now `orchestrator/overview.md`; this planning artifact is retained as the historical design record (decisions and roadmap unchanged).
 
 **Version 1.0 (05-25-26 22:00):** Initial creation. Architects a parallel agent orchestrator using area-level work partitioning, multi-valued area sets for cross-cutting items, static-wave scheduling via the existing `blocked_by` reference kind, and per-agent conversation+session pairs supervised by an orchestrator conversation+session pair. Adds executive-summary structured field across PI/DEC/SES as the bootstrap that makes orchestrator-dispatched work legible to non-technical reviewers. Documents the ten planning items in dependency order. Notes that the v0.7 governance entity model (workstream, conversation, work_ticket, close_out_payload, deposit_event) and the v0.8 code-change-lifecycle methodology (`blocked_by`, `resolves`, `addresses`, commit ingestion) provide most of the substrate; this workstream adds the orchestration layer on top.
 
