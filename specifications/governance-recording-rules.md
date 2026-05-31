@@ -104,6 +104,25 @@ followed by a structured summary of what the session actually covered, in order.
 
 ---
 
+**Session scheduling & handoff (PI-073 + ADO).** Sessions are *schedulable*:
+a session may be created in **`planned`** status (six-status lifecycle
+`planned → in_flight → complete | cancelled | not_started | superseded`),
+optionally with `session_scheduled_for`, **before** it runs. This is the
+governed way to **hand work to a next session**: rather than a loose prompt
+file, create the next session as a `planned` record whose `session_description`
+carries the execution kickoff, wired to the work it will do —
+`session_belongs_to_project` to its Project, and (for executing a Work Task)
+**`session_works_work_task`** to the `WTK-NNN`. The receiving session **opens by
+transitioning the record `planned → in_flight`**, runs, and finalizes at
+`complete` in its close-out. A `planned` (not-yet-run) session still requires
+`session_executive_summary` (NOT NULL) — supply a forward-looking summary and
+update it to actuals at close. A markdown kickoff may serve as the *body* the
+description points to, but the `planned` session is the handoff *mechanism*. (The
+pulled-vs-scheduled execution paths are detailed in
+`PRDs/product/crmbuilder-v2/agent-delivery-organization-design.md` §3.5.)
+
+---
+
 ## 4. Conversation Record Authoring
 
 **What a conversation is (per DEC-299).** A focused topical discussion that takes place *within* a session. One session contains one or more conversations. Conversations are session-scoped — they do not span sessions. Cross-session topical continuity is expressed via the `conversation_follows_from` and `conversation_relates_to` reference edges, not by reusing conversation identifiers.
