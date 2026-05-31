@@ -20878,5 +20878,655 @@
     "source_type": "deposit_event",
     "target_id": "CM-0080",
     "target_type": "commit"
+  },
+  {
+    "created_at": "2026-05-31T05:00:02.276615",
+    "id": 2097,
+    "reference_identifier": "REF-2093",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-112",
+    "source_type": "planning_item",
+    "target_id": "PRJ-014",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:11.415627",
+    "id": 2098,
+    "reference_identifier": "REF-2094",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-001",
+    "source_type": "planning_item",
+    "target_id": "PRJ-005",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:11.718280",
+    "id": 2099,
+    "reference_identifier": "REF-2095",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-002",
+    "source_type": "planning_item",
+    "target_id": "PRJ-011",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:12.036446",
+    "id": 2100,
+    "reference_identifier": "REF-2096",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-003",
+    "source_type": "planning_item",
+    "target_id": "PRJ-003",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:12.385109",
+    "id": 2101,
+    "reference_identifier": "REF-2097",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-004",
+    "source_type": "planning_item",
+    "target_id": "PRJ-003",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:12.705243",
+    "id": 2102,
+    "reference_identifier": "REF-2098",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-005",
+    "source_type": "planning_item",
+    "target_id": "PRJ-003",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:13.006156",
+    "id": 2103,
+    "reference_identifier": "REF-2099",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-010",
+    "source_type": "planning_item",
+    "target_id": "PRJ-003",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:13.316762",
+    "id": 2104,
+    "reference_identifier": "REF-2100",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-013",
+    "source_type": "planning_item",
+    "target_id": "PRJ-003",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:13.624106",
+    "id": 2105,
+    "reference_identifier": "REF-2101",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-014",
+    "source_type": "planning_item",
+    "target_id": "PRJ-003",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:13.950339",
+    "id": 2106,
+    "reference_identifier": "REF-2102",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-015",
+    "source_type": "planning_item",
+    "target_id": "PRJ-003",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:14.254392",
+    "id": 2107,
+    "reference_identifier": "REF-2103",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-016",
+    "source_type": "planning_item",
+    "target_id": "PRJ-003",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:14.600525",
+    "id": 2108,
+    "reference_identifier": "REF-2104",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-017",
+    "source_type": "planning_item",
+    "target_id": "PRJ-004",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:14.896973",
+    "id": 2109,
+    "reference_identifier": "REF-2105",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-018",
+    "source_type": "planning_item",
+    "target_id": "PRJ-012",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:15.208865",
+    "id": 2110,
+    "reference_identifier": "REF-2106",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-019",
+    "source_type": "planning_item",
+    "target_id": "PRJ-012",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:15.523181",
+    "id": 2111,
+    "reference_identifier": "REF-2107",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-021",
+    "source_type": "planning_item",
+    "target_id": "PRJ-007",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:15.835563",
+    "id": 2112,
+    "reference_identifier": "REF-2108",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-022",
+    "source_type": "planning_item",
+    "target_id": "PRJ-001",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:16.143070",
+    "id": 2113,
+    "reference_identifier": "REF-2109",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-030",
+    "source_type": "planning_item",
+    "target_id": "PRJ-009",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:16.445720",
+    "id": 2114,
+    "reference_identifier": "REF-2110",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-031",
+    "source_type": "planning_item",
+    "target_id": "PRJ-011",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:16.739459",
+    "id": 2115,
+    "reference_identifier": "REF-2111",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-032",
+    "source_type": "planning_item",
+    "target_id": "PRJ-009",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:17.042543",
+    "id": 2116,
+    "reference_identifier": "REF-2112",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-034",
+    "source_type": "planning_item",
+    "target_id": "PRJ-008",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:17.345305",
+    "id": 2117,
+    "reference_identifier": "REF-2113",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-035",
+    "source_type": "planning_item",
+    "target_id": "PRJ-008",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:17.663421",
+    "id": 2118,
+    "reference_identifier": "REF-2114",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-036",
+    "source_type": "planning_item",
+    "target_id": "PRJ-008",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:17.972618",
+    "id": 2119,
+    "reference_identifier": "REF-2115",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-037",
+    "source_type": "planning_item",
+    "target_id": "PRJ-008",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:18.271730",
+    "id": 2120,
+    "reference_identifier": "REF-2116",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-038",
+    "source_type": "planning_item",
+    "target_id": "PRJ-008",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:18.582013",
+    "id": 2121,
+    "reference_identifier": "REF-2117",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-039",
+    "source_type": "planning_item",
+    "target_id": "PRJ-008",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:18.876953",
+    "id": 2122,
+    "reference_identifier": "REF-2118",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-040",
+    "source_type": "planning_item",
+    "target_id": "PRJ-008",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:19.177073",
+    "id": 2123,
+    "reference_identifier": "REF-2119",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-041",
+    "source_type": "planning_item",
+    "target_id": "PRJ-008",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:19.476418",
+    "id": 2124,
+    "reference_identifier": "REF-2120",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-042",
+    "source_type": "planning_item",
+    "target_id": "PRJ-008",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:19.773955",
+    "id": 2125,
+    "reference_identifier": "REF-2121",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-043",
+    "source_type": "planning_item",
+    "target_id": "PRJ-008",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:20.115710",
+    "id": 2126,
+    "reference_identifier": "REF-2122",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-044",
+    "source_type": "planning_item",
+    "target_id": "PRJ-008",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:20.420581",
+    "id": 2127,
+    "reference_identifier": "REF-2123",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-045",
+    "source_type": "planning_item",
+    "target_id": "PRJ-010",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:20.718494",
+    "id": 2128,
+    "reference_identifier": "REF-2124",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-049",
+    "source_type": "planning_item",
+    "target_id": "PRJ-010",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:21.025787",
+    "id": 2129,
+    "reference_identifier": "REF-2125",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-052",
+    "source_type": "planning_item",
+    "target_id": "PRJ-010",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:21.324971",
+    "id": 2130,
+    "reference_identifier": "REF-2126",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-053",
+    "source_type": "planning_item",
+    "target_id": "PRJ-012",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:21.650011",
+    "id": 2131,
+    "reference_identifier": "REF-2127",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-068",
+    "source_type": "planning_item",
+    "target_id": "PRJ-012",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:21.955359",
+    "id": 2132,
+    "reference_identifier": "REF-2128",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-073",
+    "source_type": "planning_item",
+    "target_id": "PRJ-011",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:22.248439",
+    "id": 2133,
+    "reference_identifier": "REF-2129",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-074",
+    "source_type": "planning_item",
+    "target_id": "PRJ-012",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:22.556763",
+    "id": 2134,
+    "reference_identifier": "REF-2130",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-075",
+    "source_type": "planning_item",
+    "target_id": "PRJ-011",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:22.848455",
+    "id": 2135,
+    "reference_identifier": "REF-2131",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-076",
+    "source_type": "planning_item",
+    "target_id": "PRJ-012",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:23.149985",
+    "id": 2136,
+    "reference_identifier": "REF-2132",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-077",
+    "source_type": "planning_item",
+    "target_id": "PRJ-012",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:23.448292",
+    "id": 2137,
+    "reference_identifier": "REF-2133",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-078",
+    "source_type": "planning_item",
+    "target_id": "PRJ-012",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:23.772678",
+    "id": 2138,
+    "reference_identifier": "REF-2134",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-079",
+    "source_type": "planning_item",
+    "target_id": "PRJ-012",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:24.109825",
+    "id": 2139,
+    "reference_identifier": "REF-2135",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-080",
+    "source_type": "planning_item",
+    "target_id": "PRJ-012",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:24.416202",
+    "id": 2140,
+    "reference_identifier": "REF-2136",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-081",
+    "source_type": "planning_item",
+    "target_id": "PRJ-012",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:24.725522",
+    "id": 2141,
+    "reference_identifier": "REF-2137",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-082",
+    "source_type": "planning_item",
+    "target_id": "PRJ-012",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:25.030581",
+    "id": 2142,
+    "reference_identifier": "REF-2138",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-083",
+    "source_type": "planning_item",
+    "target_id": "PRJ-012",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:25.338855",
+    "id": 2143,
+    "reference_identifier": "REF-2139",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-090",
+    "source_type": "planning_item",
+    "target_id": "PRJ-012",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:25.653606",
+    "id": 2144,
+    "reference_identifier": "REF-2140",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-091",
+    "source_type": "planning_item",
+    "target_id": "PRJ-012",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:25.970548",
+    "id": 2145,
+    "reference_identifier": "REF-2141",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-092",
+    "source_type": "planning_item",
+    "target_id": "PRJ-012",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:26.282755",
+    "id": 2146,
+    "reference_identifier": "REF-2142",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-093",
+    "source_type": "planning_item",
+    "target_id": "PRJ-012",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:26.592490",
+    "id": 2147,
+    "reference_identifier": "REF-2143",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-096",
+    "source_type": "planning_item",
+    "target_id": "PRJ-011",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:26.888807",
+    "id": 2148,
+    "reference_identifier": "REF-2144",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-097",
+    "source_type": "planning_item",
+    "target_id": "PRJ-011",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:27.177927",
+    "id": 2149,
+    "reference_identifier": "REF-2145",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-098",
+    "source_type": "planning_item",
+    "target_id": "PRJ-011",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:27.486747",
+    "id": 2150,
+    "reference_identifier": "REF-2146",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-099",
+    "source_type": "planning_item",
+    "target_id": "PRJ-012",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:27.790611",
+    "id": 2151,
+    "reference_identifier": "REF-2147",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-101",
+    "source_type": "planning_item",
+    "target_id": "PRJ-011",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:28.095115",
+    "id": 2152,
+    "reference_identifier": "REF-2148",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-102",
+    "source_type": "planning_item",
+    "target_id": "PRJ-012",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:28.408511",
+    "id": 2153,
+    "reference_identifier": "REF-2149",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-104",
+    "source_type": "planning_item",
+    "target_id": "PRJ-010",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:28.710426",
+    "id": 2154,
+    "reference_identifier": "REF-2150",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-105",
+    "source_type": "planning_item",
+    "target_id": "PRJ-011",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:29.018493",
+    "id": 2155,
+    "reference_identifier": "REF-2151",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-106",
+    "source_type": "planning_item",
+    "target_id": "PRJ-010",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:29.320522",
+    "id": 2156,
+    "reference_identifier": "REF-2152",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-107",
+    "source_type": "planning_item",
+    "target_id": "PRJ-011",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:29.638791",
+    "id": 2157,
+    "reference_identifier": "REF-2153",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-108",
+    "source_type": "planning_item",
+    "target_id": "PRJ-013",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:29.940614",
+    "id": 2158,
+    "reference_identifier": "REF-2154",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-109",
+    "source_type": "planning_item",
+    "target_id": "PRJ-011",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:30.250066",
+    "id": 2159,
+    "reference_identifier": "REF-2155",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-110",
+    "source_type": "planning_item",
+    "target_id": "PRJ-011",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:30.557245",
+    "id": 2160,
+    "reference_identifier": "REF-2156",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-111",
+    "source_type": "planning_item",
+    "target_id": "PRJ-011",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T05:00:30.864191",
+    "id": 2161,
+    "reference_identifier": "REF-2157",
+    "relationship_kind": "planning_item_belongs_to_project",
+    "source_id": "PI-113",
+    "source_type": "planning_item",
+    "target_id": "PRJ-015",
+    "target_type": "project"
   }
 ]

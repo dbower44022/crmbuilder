@@ -113,3 +113,10 @@ def test_target_types_for_unknown_kind_is_empty():
 def test_source_types_with_relationships_is_all_entity_types():
     """Every entity type currently has at least the generic kinds."""
     assert source_types_with_relationships() == ENTITY_TYPES
+
+
+def test_planning_item_belongs_to_project_completes_chain():
+    """PI-112 follow-on: the top of the containment chain (target-model §7)."""
+    assert "planning_item_belongs_to_project" in RELATIONSHIP_RULES[
+        ("planning_item", "project")
+    ]

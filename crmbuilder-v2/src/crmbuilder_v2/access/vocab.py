@@ -541,6 +541,7 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         "conversation_belongs_to_project",
         "workstream_belongs_to_planning_item",  # PI-112 Phase 4
         "work_task_belongs_to_workstream",  # PI-112 Phase 4b
+        "planning_item_belongs_to_project",  # PI-112 follow-on (target-model §7)
         "project_planned_in_reference_book",
         "conversation_records_session",
         "conversation_opens_against_work_ticket",
@@ -839,6 +840,10 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         kinds.add("work_task_belongs_to_workstream")
     if source_type == "work_task" and target_type == "work_task":
         kinds.add("blocked_by")
+    # PI-112 follow-on: the top of the containment chain (target-model §7) —
+    # Project -> Planning Item -> Workstream -> Work Task.
+    if source_type == "planning_item" and target_type == "project":
+        kinds.add("planning_item_belongs_to_project")
     if source_type == "close_out_payload" and target_type == "conversation":
         kinds.add("close_out_payload_produced_by_conversation")
     if source_type == "deposit_event" and target_type == "close_out_payload":
