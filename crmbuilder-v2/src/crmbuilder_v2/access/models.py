@@ -1167,8 +1167,13 @@ class Workstream(Base):
     old thematic container was renamed Project). Belongs to exactly one
     Planning Item via a ``workstream_belongs_to_planning_item`` edge in
     ``refs`` (not an FK). ``WSK-NNN`` identifier. Phase type is a controlled
-    vocabulary; lifecycle is Planned → In Progress → Complete with a Blocked
-    side-state.
+    vocabulary; lifecycle is the ADO gate model
+    Planned → Scoping → Ready → In Progress → Complete | Not Applicable |
+    Blocked (WTK-001, design §5). ``needs_attention`` is an orthogonal
+    human-escape flag (DEC-359) overlaying the status: it can be raised at any
+    lifecycle point without erasing the underlying progress state, is set by
+    the Lead/PM, and is cleared by a human after resolving so the lifecycle
+    resumes from where it was.
     """
 
     __tablename__ = "workstreams"
@@ -1181,6 +1186,12 @@ class Workstream(Base):
         String(16), nullable=False, default="Planned"
     )
     workstream_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    workstream_needs_attention: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    workstream_needs_attention_reason: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
     workstream_created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )

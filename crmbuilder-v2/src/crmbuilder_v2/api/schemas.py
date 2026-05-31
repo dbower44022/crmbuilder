@@ -1050,6 +1050,8 @@ class WorkstreamCreateIn(_Base):
     workstream_description: str | None = None
     workstream_notes: str | None = None
     workstream_status: str | None = None
+    workstream_needs_attention: bool | None = None
+    workstream_needs_attention_reason: str | None = None
     workstream_identifier: str | None = None
     references: list[GovernanceEdgeIn] | None = None
     timestamps: dict[str, Any] | None = None
@@ -1062,6 +1064,8 @@ class WorkstreamReplaceIn(_Base):
     workstream_description: str | None = None
     workstream_notes: str | None = None
     workstream_status: str
+    workstream_needs_attention: bool | None = None
+    workstream_needs_attention_reason: str | None = None
     references: list[GovernanceEdgeIn] | None = None
 
 
@@ -1071,6 +1075,8 @@ class WorkstreamPatchIn(_Base):
     workstream_description: str | None = None
     workstream_notes: str | None = None
     workstream_status: str | None = None
+    workstream_needs_attention: bool | None = None
+    workstream_needs_attention_reason: str | None = None
     references: list[GovernanceEdgeIn] | None = None
 
 

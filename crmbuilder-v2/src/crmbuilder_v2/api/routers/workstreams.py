@@ -67,6 +67,8 @@ def create(body: WorkstreamCreateIn):
                 description=body.workstream_description,
                 notes=body.workstream_notes,
                 status=body.workstream_status or "Planned",
+                needs_attention=bool(body.workstream_needs_attention),
+                needs_attention_reason=body.workstream_needs_attention_reason,
                 identifier=body.workstream_identifier,
                 references=_edges(body),
                 timestamps=body.timestamps,
@@ -87,6 +89,8 @@ def replace(identifier: str, body: WorkstreamReplaceIn):
                 description=body.workstream_description,
                 notes=body.workstream_notes,
                 status=body.workstream_status,
+                needs_attention=body.workstream_needs_attention,
+                needs_attention_reason=body.workstream_needs_attention_reason,
                 references=_edges(body),
             )
         )

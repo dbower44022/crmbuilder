@@ -3,9 +3,14 @@
 The NEW "Workstream": a single delivery phase of one Planning Item (the old
 thematic container was renamed Project). Eight functions back the
 ``/workstreams`` REST endpoints, plus the ``WSK-NNN`` allocator. Lifecycle is
-Planned → In Progress → Complete with a Blocked side-state; the two active
-timestamps are server-set on transition. Membership in a Planning Item is a
-``workstream_belongs_to_planning_item`` edge supplied inline via ``references``.
+the ADO gate model Planned → Scoping → Ready → In Progress →
+Complete | Not Applicable | Blocked (WTK-001, design §5); ``started_at`` /
+``completed_at`` are server-set on the In Progress / Complete transitions (the
+intermediate Scoping/Ready and terminal Not Applicable carry no dedicated
+timestamp column). ``needs_attention`` + ``needs_attention_reason`` are an
+orthogonal human-escape flag (DEC-359) settable on create/update/patch.
+Membership in a Planning Item is a ``workstream_belongs_to_planning_item`` edge
+supplied inline via ``references``.
 """
 
 from __future__ import annotations
@@ -38,7 +43,15 @@ _IDENTIFIER_PREFIX = "WSK"
 _IDENTIFIER_RE = re.compile(r"^WSK-\d{3}$")
 _MAX_AUTOASSIGN_ATTEMPTS = 50
 _PATCHABLE_FIELDS = frozenset(
-    {"phase_type", "title", "description", "notes", "status"}
+    {
+        "phase_type",
+        "title",
+        "description",
+        "notes",
+        "status",
+        "needs_attention",
+        "needs_attention_reason",
+    }
 )
 _STATUS_TIMESTAMP = {
     "In Progress": "workstream_started_at",
@@ -101,7 +114,16 @@ def next_workstream_identifier(session: Session) -> str:
 # --- writes -----------------------------------------------------------------
 
 
-def _new_row(identifier, phase_type, title, description, notes, status) -> Workstream:
+def _new_row(
+    identifier,
+    phase_type,
+    title,
+    description,
+    notes,
+    status,
+    needs_attention,
+    needs_attention_reason,
+) -> Workstream:
     return Workstream(
         workstream_identifier=identifier,
         workstream_phase_type=phase_type,
@@ -109,15 +131,35 @@ def _new_row(identifier, phase_type, title, description, notes, status) -> Works
         workstream_description=description,
         workstream_notes=notes,
         workstream_status=status,
+        workstream_needs_attention=needs_attention,
+        workstream_needs_attention_reason=needs_attention_reason,
     )
 
 
-def _insert_with_autoassign(session, phase_type, title, description, notes, status):
+def _insert_with_autoassign(
+    session,
+    phase_type,
+    title,
+    description,
+    notes,
+    status,
+    needs_attention,
+    needs_attention_reason,
+):
     candidate = next_workstream_identifier(session)
     last_error: IntegrityError | None = None
     for _ in range(_MAX_AUTOASSIGN_ATTEMPTS):
         savepoint = session.begin_nested()
-        row = _new_row(candidate, phase_type, title, description, notes, status)
+        row = _new_row(
+            candidate,
+            phase_type,
+            title,
+            description,
+            notes,
+            status,
+            needs_attention,
+            needs_attention_reason,
+        )
         session.add(row)
         try:
             session.flush()
@@ -142,6 +184,8 @@ def create_workstream(
     description: str | None = None,
     notes: str | None = None,
     status: str = "Planned",
+    needs_attention: bool = False,
+    needs_attention_reason: str | None = None,
     identifier: str | None = None,
     references: list[dict] | None = None,
     timestamps: dict | None = None,
@@ -158,10 +202,18 @@ def create_workstream(
     if status is None:
         status = "Planned"
     _require_status(status)
+    needs_attention = bool(needs_attention)
 
     if identifier is None:
         row = _insert_with_autoassign(
-            session, phase_type, title, description, notes, status
+            session,
+            phase_type,
+            title,
+            description,
+            notes,
+            status,
+            needs_attention,
+            needs_attention_reason,
         )
     else:
         gov.require_identifier_format(
@@ -170,7 +222,16 @@ def create_workstream(
         )
         if session.get(Workstream, identifier) is not None:
             raise ConflictError(f"workstream {identifier!r} already exists")
-        row = _new_row(identifier, phase_type, title, description, notes, status)
+        row = _new_row(
+            identifier,
+            phase_type,
+            title,
+            description,
+            notes,
+            status,
+            needs_attention,
+            needs_attention_reason,
+        )
         session.add(row)
         session.flush()
 
@@ -203,6 +264,8 @@ def update_workstream(
     description: str | None = None,
     notes: str | None = None,
     status: str | None = None,
+    needs_attention: bool | None = None,
+    needs_attention_reason: str | None = None,
     references: list[dict] | None = None,
 ) -> dict:
     row = _get_row(session, identifier)
@@ -235,6 +298,8 @@ def update_workstream(
     row.workstream_title = title
     row.workstream_description = description
     row.workstream_notes = notes
+    row.workstream_needs_attention = bool(needs_attention)
+    row.workstream_needs_attention_reason = needs_attention_reason
     session.flush()
 
     after = to_dict(row)
@@ -278,6 +343,10 @@ def patch_workstream(
         row.workstream_description = fields["description"]
     if "notes" in fields:
         row.workstream_notes = fields["notes"]
+    if "needs_attention" in fields:
+        row.workstream_needs_attention = bool(fields["needs_attention"])
+    if "needs_attention_reason" in fields:
+        row.workstream_needs_attention_reason = fields["needs_attention_reason"]
     if "status" in fields:
         status = _require_status(fields["status"])
         if status != row.workstream_status:

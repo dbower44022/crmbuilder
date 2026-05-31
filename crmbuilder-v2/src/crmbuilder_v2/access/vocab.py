@@ -378,11 +378,15 @@ PROJECT_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
 # `workstream` (delivery phase) — PI-112 Phase 4, DEC-343/DEC-349. The NEW
 # meaning of "Workstream": a single delivery phase of one Planning Item (the
 # old thematic container was renamed Project). The phase type is a controlled
-# vocabulary (DEC-349 adds `Design` to the front). Lifecycle is a simple
-# Planned → In Progress → Complete with a Blocked side-state.
+# vocabulary; DEC-349's original `Design` value was renamed `Architecture` by
+# the ADO state-model substrate (WTK-001, design §5). The lifecycle was
+# expanded from the original Planned → In Progress → Complete (+Blocked) to the
+# ADO gate model: Planned → Scoping → Ready → In Progress →
+# Complete | Not Applicable | Blocked, mirroring the Work Task's own
+# Ready/Claimed/In Progress so the Lead gets unambiguous gate signals.
 WORKSTREAM_PHASE_TYPES: frozenset[str] = frozenset(
     {
-        "Design",
+        "Architecture",
         "Development",
         "Testing",
         "Documentation",
@@ -391,13 +395,24 @@ WORKSTREAM_PHASE_TYPES: frozenset[str] = frozenset(
     }
 )
 WORKSTREAM_STATUSES: frozenset[str] = frozenset(
-    {"Planned", "In Progress", "Complete", "Blocked"}
+    {
+        "Planned",
+        "Scoping",
+        "Ready",
+        "In Progress",
+        "Complete",
+        "Not Applicable",
+        "Blocked",
+    }
 )
 WORKSTREAM_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
-    "Planned": frozenset({"In Progress", "Blocked"}),
+    "Planned": frozenset({"Scoping", "Blocked"}),
+    "Scoping": frozenset({"Ready", "Not Applicable", "Blocked"}),
+    "Ready": frozenset({"In Progress", "Blocked"}),
     "In Progress": frozenset({"Complete", "Blocked"}),
     "Complete": frozenset(),
-    "Blocked": frozenset({"Planned", "In Progress"}),
+    "Not Applicable": frozenset(),
+    "Blocked": frozenset({"Planned", "Scoping", "Ready", "In Progress"}),
 }
 
 # `work_task` — PI-112 Phase 4b, DEC-342. The single-area unit of execution

@@ -216,6 +216,21 @@ organization is built):
 - **Architecture phase.** Rename the Workstream phase-type vocab value `Design`
   (DEC-349) to **`Architecture`**.
 
+> **Implemented (WTK-001, migration `0036`, 05-31-26).** All three additions
+> landed as vocab + model + Alembic migration + tests: `WORKSTREAM_PHASE_TYPES`
+> renamed `Design → Architecture`; `WORKSTREAM_STATUSES` /
+> `WORKSTREAM_STATUS_TRANSITIONS` expanded to the gate model above
+> (`Planned → {Scoping, Blocked}`, `Scoping → {Ready, Not Applicable, Blocked}`,
+> `Ready → {In Progress, Blocked}`, `In Progress → {Complete, Blocked}`,
+> `Blocked → {Planned, Scoping, Ready, In Progress}`, `Complete`/`Not Applicable`
+> terminal); and `workstream_needs_attention` (bool) +
+> `workstream_needs_attention_reason` (text) added to the model with
+> create/update/patch support. Only `In Progress`/`Complete` carry dedicated
+> lifecycle timestamps; the intermediate `Scoping`/`Ready` and terminal
+> `Not Applicable` do not. The **Needs Attention → Planning Item rollup is
+> derived** (a query over `needs_attention` Workstreams), not a stored PI column
+> (DEC-361) — lighter and avoids denormalization, per the §5 recommendation.
+
 ---
 
 ## 6. Replanning rules
