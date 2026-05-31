@@ -82,6 +82,11 @@ SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             # PI-031: code change lifecycle browse surface, appended after
             # Deposit Events per the DEC-163 governance-group convention.
             "Commits",
+            # WTK-004: ADO delivery-model monitoring panels (PI-114 Dev
+            # phase). Workstream (delivery phase) + Work Task (unit of
+            # execution), appended after Commits in the Governance group.
+            "Workstreams",
+            "Work Tasks",
         ),
     ),
     (

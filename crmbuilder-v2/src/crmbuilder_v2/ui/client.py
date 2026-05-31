@@ -2624,3 +2624,41 @@ class StorageClient:
             record = body.get("data") if isinstance(body, dict) else None
             return ("found", record)
         raise from_response(resp)
+
+    # ----- workstreams (delivery phase; read-only in the UI) ----------------
+    # WTK-004: the ADO delivery-model entities (PI-112 Phase 4, DEC-343). A
+    # ``workstream`` here is a single delivery phase of one Planning Item
+    # (WSK- identifier) — distinct from the long-running container that was
+    # renamed Project. The monitoring panels browse these; creation and the
+    # lifecycle transitions go through the API/agents, so the UI exposes only
+    # these read accessors.
+
+    def list_workstreams(
+        self, *, include_deleted: bool = False
+    ) -> list[dict[str, Any]]:
+        path = "/workstreams" + ("?include_deleted=true" if include_deleted else "")
+        return self._expect_list(self._request("GET", path))
+
+    def get_workstream(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("GET", f"/workstreams/{identifier}"),
+            op="get_workstream",
+        )
+
+    # ----- work_tasks (single-area unit of execution; read-only in the UI) ---
+    # WTK-004: a ``work_task`` is the single-area, agent-claimable unit of
+    # execution within a Workstream (WTK- identifier, DEC-342). The panel
+    # surfaces its area + claim state; claim/release and status transitions
+    # happen agent-side, so the UI exposes only these read accessors.
+
+    def list_work_tasks(
+        self, *, include_deleted: bool = False
+    ) -> list[dict[str, Any]]:
+        path = "/work-tasks" + ("?include_deleted=true" if include_deleted else "")
+        return self._expect_list(self._request("GET", path))
+
+    def get_work_task(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("GET", f"/work-tasks/{identifier}"),
+            op="get_work_task",
+        )

@@ -51,6 +51,7 @@ from crmbuilder_v2.ui.panels.manual_config import ManualConfigPanel
 from crmbuilder_v2.ui.panels.persona import PersonasPanel
 from crmbuilder_v2.ui.panels.planning_items import PlanningItemsPanel
 from crmbuilder_v2.ui.panels.processes import ProcessesPanel
+from crmbuilder_v2.ui.panels.projects import ProjectsPanel
 from crmbuilder_v2.ui.panels.reference_books import ReferenceBooksPanel
 from crmbuilder_v2.ui.panels.references import ReferencesPanel
 from crmbuilder_v2.ui.panels.requirements import RequirementsPanel
@@ -59,8 +60,9 @@ from crmbuilder_v2.ui.panels.sessions import SessionsPanel
 from crmbuilder_v2.ui.panels.status import StatusPanel
 from crmbuilder_v2.ui.panels.test_spec import TestSpecsPanel
 from crmbuilder_v2.ui.panels.topics import TopicsPanel
+from crmbuilder_v2.ui.panels.work_tasks import WorkTasksPanel
 from crmbuilder_v2.ui.panels.work_tickets import WorkTicketsPanel
-from crmbuilder_v2.ui.panels.projects import ProjectsPanel
+from crmbuilder_v2.ui.panels.workstreams import WorkstreamsPanel
 from crmbuilder_v2.ui.refresh import RefreshService
 from crmbuilder_v2.ui.server_lifecycle import ServerLifecycle
 from crmbuilder_v2.ui.sidebar import SIDEBAR_ENTRIES, Sidebar
@@ -125,6 +127,9 @@ ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
     "deposit_event": "Deposit Events",
     # PI-031: code change lifecycle.
     "commit": "Commits",
+    # WTK-004: ADO delivery-model entities.
+    "workstream": "Workstreams",
+    "work_task": "Work Tasks",
 }
 
 
@@ -256,6 +261,11 @@ class MainWindow(QMainWindow):
                 page = DepositEventsPanel(self._client)
             elif entry == "Commits":
                 page = CommitsPanel(self._client)
+            # WTK-004: ADO delivery-model monitoring panels.
+            elif entry == "Workstreams":
+                page = WorkstreamsPanel(self._client)
+            elif entry == "Work Tasks":
+                page = WorkTasksPanel(self._client)
             else:
                 placeholder = QLabel(
                     f"Panel for {entry} — not yet implemented."

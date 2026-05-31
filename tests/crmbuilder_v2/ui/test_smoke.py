@@ -46,6 +46,10 @@ EXPECTED_ENTRIES = (
     # Commits — PI-031 code change lifecycle browse surface, appended
     # to the Governance group after Deposit Events.
     "Commits",
+    # WTK-004: ADO delivery-model monitoring panels, appended to the
+    # Governance group after Commits.
+    "Workstreams",
+    "Work Tasks",
     # Methodology group — Domains landed in UI v0.4 slice B,
     # Entities in slice C, Processes in slice D, CRM Candidates in slice E,
     # Personas in v0.5+ (PI-003), Fields in v0.5+ (PI-004 first slice),
