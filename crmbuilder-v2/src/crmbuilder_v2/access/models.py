@@ -371,6 +371,29 @@ class PlanningItem(Base):
     )
 
 
+class EngagementArea(Base):
+    """Per-engagement, user-defined work area (PI-112; DEC-342, DEC-348).
+
+    The Engagement tier of the two-tier area model. Each engagement
+    database holds its own set of area names, defined by the user at
+    engagement initialization. Deliberately standalone — no foreign key
+    or reference to ``domain`` records (DEC-348); an Engagement area is a
+    work-routing label, not a methodology discovery artifact. The System
+    tier lives in ``vocab.SYSTEM_AREA_RANKS``; a value is valid iff it is
+    a System area or one of these. Engagement areas are unranked (DEC-347).
+    """
+
+    __tablename__ = "engagement_areas"
+
+    engagement_area_name: Mapped[str] = mapped_column(String(64), primary_key=True)
+    engagement_area_description: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    engagement_area_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+
 class Topic(Base):
     __tablename__ = "topics"
 

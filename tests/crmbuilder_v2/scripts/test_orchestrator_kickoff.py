@@ -49,7 +49,7 @@ def test_planning_items_block_inlines_details():
             {
                 "identifier": "PI-077",
                 "title": "Claim fields",
-                "area": ["v2-storage", "v2-api"],
+                "area": ["storage", "api"],
                 "executive_summary": "exec",
                 "description": "full description here",
             }
@@ -57,7 +57,7 @@ def test_planning_items_block_inlines_details():
     )
     assert "PI-077" in block
     assert "Claim fields" in block
-    assert "v2-storage, v2-api" in block
+    assert "storage, api" in block
     assert "full description here" in block
 
 

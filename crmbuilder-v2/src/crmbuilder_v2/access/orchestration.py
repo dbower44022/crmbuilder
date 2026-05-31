@@ -22,8 +22,11 @@ from collections import defaultdict
 from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access._helpers import validate_optional_value_list
-from crmbuilder_v2.access.repositories import planning_items, references
-from crmbuilder_v2.access.vocab import AREAS
+from crmbuilder_v2.access.repositories import (
+    engagement_areas,
+    planning_items,
+    references,
+)
 
 # Per-item projection returned in each batch.
 _ITEM_FIELDS = ("identifier", "title", "executive_summary", "area", "claimed_by")
@@ -88,10 +91,13 @@ def compute_ready_batches(
     ``areas`` (optional) keeps only items whose area set intersects the
     requested areas; an item with no ``area`` is excluded under an area
     filter. ``max_depth`` (optional) drops batches deeper than the cutoff.
-    Each requested area must be a registered :data:`vocab.AREAS` value.
+    Each requested area must be a valid area (System ∪ this engagement's
+    Engagement areas; see ``engagement_areas.valid_area_names``).
     """
     if areas is not None:
-        validate_optional_value_list(areas, field="area", allowed=AREAS)
+        validate_optional_value_list(
+            areas, field="area", allowed=engagement_areas.valid_area_names(session)
+        )
 
     items = {
         pi["identifier"]: pi

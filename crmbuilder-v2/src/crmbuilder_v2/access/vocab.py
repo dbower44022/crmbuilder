@@ -50,40 +50,49 @@ PLANNING_ITEM_TYPES: frozenset[str] = frozenset(
 )
 PLANNING_ITEM_STATUSES: frozenset[str] = frozenset({"Open", "Resolved", "Deferred"})
 
-# `area` vocabulary (PI-076, DEC-246/DEC-247). The set of work areas a
-# planning_item may declare so the parallel-agent orchestrator (WS-012)
-# can partition the open backlog into file-disjoint clusters. An item's
-# ``area`` field is a *set* (JSON array) — a cross-cutting item declares
-# every area it touches, and two items conflict iff their area sets
-# intersect (DEC-247). Each label maps to a region of filesystem
-# topology. New areas are added by editing this frozenset — the
-# deliberate gate per DEC-006, mirroring every other vocabulary here.
+# `area` vocabulary — two tiers (PI-112; DEC-340, DEC-342, DEC-347, DEC-348).
 #
-# Source of truth: orchestrator-planning.md §2.1. (That section and the
-# PI-076 prose both say "seventeen" but enumerate eighteen names; the
-# enumerated names are authoritative — all eighteen are registered.)
-AREAS: frozenset[str] = frozenset(
-    {
-        "v2-storage",
-        "v2-access",
-        "v2-api",
-        "v2-mcp",
-        "v2-ui",
-        "cbm-mn",
-        "cbm-mr",
-        "cbm-cr",
-        "cbm-fu",
-        "cbm-services",
-        "methodology-interviews",
-        "methodology-process",
-        "methodology-templates",
-        "methodology-product",
-        "infrastructure",
-        "v1-automation",
-        "v1-espo",
-        "v1-programs",
-    }
-)
+# An ``area`` labels a work region for collision-avoidance / task scoping.
+# The vocabulary is split into two tiers:
+#
+#   * System areas (this module) — global, shared by every engagement,
+#     covering CRMBuilder's own product and method. Immutable except by
+#     deliberate developer change (the DEC-006 gate = editing this dict).
+#     The version prefix was dropped (DEC-340): ``v2-storage`` -> ``storage``,
+#     ``v1-espo`` -> ``espo``, etc. — area names describe subsystems, which
+#     are version-independent.
+#   * Engagement areas — per-engagement, user-defined at engagement
+#     initialization, stored in the ``engagement_areas`` table of each
+#     engagement database. NOT tied to methodology ``domain`` records
+#     (DEC-348). Defined in ``models.EngagementArea`` and validated via
+#     ``repositories.engagement_areas.valid_area_names``.
+#
+# A value is valid iff it is a System area OR an Engagement area of the
+# current engagement (System ∪ Engagement). Validation is session-aware
+# (it must read the engagement_areas table), so the access layer calls
+# ``valid_area_names(session)`` rather than checking a static frozenset.
+#
+# ``SYSTEM_AREA_RANKS`` carries the optional **layer rank** (DEC-347): an
+# ordinal encoding the platform dependency spine (storage -> access -> api
+# -> mcp/ui) so a Work Task's default intra-Workstream ordering falls out
+# of its area (Phase 4). Non-stack System areas and all Engagement areas
+# are unranked (``None`` = parallel).
+SYSTEM_AREA_RANKS: dict[str, int | None] = {
+    "storage": 1,
+    "access": 2,
+    "api": 3,
+    "mcp": 4,
+    "ui": 4,
+    "methodology-interviews": None,
+    "methodology-process": None,
+    "methodology-templates": None,
+    "methodology-product": None,
+    "infrastructure": None,
+    "automation": None,
+    "espo": None,
+    "programs": None,
+}
+SYSTEM_AREAS: frozenset[str] = frozenset(SYSTEM_AREA_RANKS)
 
 # Methodology entity `domain` lifecycle (UI v0.4 slice B, DEC-047).
 # Three-status propose-verify lifecycle per ``domain.md`` section 3.4.

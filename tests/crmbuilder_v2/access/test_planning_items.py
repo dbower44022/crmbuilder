@@ -165,12 +165,12 @@ def test_create_with_valid_area(v2_env):
             s, identifier="PI-010", title="Cross-cutting",
             item_type="pending_work", status="Open",
             executive_summary=_VALID_EXEC_SUMMARY,
-            area=["v2-access", "v2-api"],
+            area=["access", "api"],
         )
-    assert row["area"] == ["v2-access", "v2-api"]
+    assert row["area"] == ["access", "api"]
     with session_scope() as s:
         fetched = planning_items.get(s, "PI-010")
-    assert fetched["area"] == ["v2-access", "v2-api"]
+    assert fetched["area"] == ["access", "api"]
 
 
 def test_create_without_area_defaults_to_none(v2_env):
@@ -189,7 +189,7 @@ def test_create_with_unknown_area_value_rejected(v2_env):
             s, identifier="PI-012", title="Bad area",
             item_type="pending_work", status="Open",
             executive_summary=_VALID_EXEC_SUMMARY,
-            area=["v2-access", "not-an-area"],
+            area=["access", "not-an-area"],
         )
 
 
@@ -209,7 +209,7 @@ def test_create_with_duplicate_area_values_rejected(v2_env):
             s, identifier="PI-014", title="Dup area",
             item_type="pending_work", status="Open",
             executive_summary=_VALID_EXEC_SUMMARY,
-            area=["v2-api", "v2-api"],
+            area=["api", "api"],
         )
 
 
@@ -219,7 +219,7 @@ def test_create_with_non_string_area_element_rejected(v2_env):
             s, identifier="PI-015", title="Non-string area",
             item_type="pending_work", status="Open",
             executive_summary=_VALID_EXEC_SUMMARY,
-            area=["v2-api", 7],
+            area=["api", 7],
         )
 
 
@@ -229,11 +229,11 @@ def test_update_area(v2_env):
             s, identifier="PI-016", title="Updatable",
             item_type="pending_work", status="Open",
             executive_summary=_VALID_EXEC_SUMMARY,
-            area=["v2-ui"],
+            area=["ui"],
         )
     with session_scope() as s:
-        row = planning_items.update(s, "PI-016", area=["v2-ui", "v2-mcp"])
-    assert row["area"] == ["v2-ui", "v2-mcp"]
+        row = planning_items.update(s, "PI-016", area=["ui", "mcp"])
+    assert row["area"] == ["ui", "mcp"]
 
 
 def test_update_with_unknown_area_value_rejected(v2_env):

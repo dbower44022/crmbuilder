@@ -48,8 +48,8 @@ def _item(ident, area, **extra):
 
 _READY = {
     "batches": [
-        {"depth": 0, "items": [_item("PI-001", ["v2-api"]), _item("PI-002", ["v2-ui"])]},
-        {"depth": 1, "items": [_item("PI-003", ["v2-storage"])]},
+        {"depth": 0, "items": [_item("PI-001", ["api"]), _item("PI-002", ["ui"])]},
+        {"depth": 1, "items": [_item("PI-003", ["storage"])]},
     ],
     "cyclic": [],
     "warnings": [],
@@ -226,7 +226,7 @@ def test_execute_dispatches_one_child_per_cluster():
     """Two area-disjoint clusters in the depth-0 wave -> two children."""
     ready = {
         "batches": [
-            {"depth": 0, "items": [_item("PI-001", ["v2-api"]), _item("PI-002", ["v2-ui"])]}
+            {"depth": 0, "items": [_item("PI-001", ["api"]), _item("PI-002", ["ui"])]}
         ],
         "cyclic": [],
         "warnings": [],
@@ -253,7 +253,7 @@ def test_execute_dispatches_one_child_per_cluster():
 
 def test_execute_reserve_before_claim_before_spawn(tmp_path, monkeypatch):
     ready = {
-        "batches": [{"depth": 0, "items": [_item("PI-001", ["v2-api"])]}],
+        "batches": [{"depth": 0, "items": [_item("PI-001", ["api"])]}],
         "cyclic": [],
         "warnings": [],
     }
@@ -286,7 +286,7 @@ def test_execute_spawns_whole_wave_before_joining(tmp_path, monkeypatch):
     two spawns are adjacent, with no apply/edge interleaved between them."""
     ready = {
         "batches": [
-            {"depth": 0, "items": [_item("PI-001", ["v2-api"]), _item("PI-002", ["v2-ui"])]}
+            {"depth": 0, "items": [_item("PI-001", ["api"]), _item("PI-002", ["ui"])]}
         ],
         "cyclic": [],
         "warnings": [],
@@ -308,7 +308,7 @@ def test_execute_spawns_whole_wave_before_joining(tmp_path, monkeypatch):
 def test_execute_records_one_orchestrates_edge_per_child(tmp_path, monkeypatch):
     ready = {
         "batches": [
-            {"depth": 0, "items": [_item("PI-001", ["v2-api"]), _item("PI-002", ["v2-ui"])]}
+            {"depth": 0, "items": [_item("PI-001", ["api"]), _item("PI-002", ["ui"])]}
         ],
         "cyclic": [],
         "warnings": [],
@@ -336,8 +336,8 @@ def test_execute_halts_on_child_failure(tmp_path, monkeypatch):
     edges, claims left in place (no release), non-zero return."""
     ready = {
         "batches": [
-            {"depth": 0, "items": [_item("PI-001", ["v2-api"]), _item("PI-002", ["v2-ui"])]},
-            {"depth": 1, "items": [_item("PI-003", ["v2-storage"])]},
+            {"depth": 0, "items": [_item("PI-001", ["api"]), _item("PI-002", ["ui"])]},
+            {"depth": 1, "items": [_item("PI-003", ["storage"])]},
         ],
         "cyclic": [],
         "warnings": [],
@@ -384,8 +384,8 @@ def test_execute_second_wave_after_first_completes(tmp_path, monkeypatch):
     """Wave 1 is only dispatched after wave 0's edges are recorded."""
     ready = {
         "batches": [
-            {"depth": 0, "items": [_item("PI-001", ["v2-api"]), _item("PI-002", ["v2-ui"])]},
-            {"depth": 1, "items": [_item("PI-003", ["v2-storage"])]},
+            {"depth": 0, "items": [_item("PI-001", ["api"]), _item("PI-002", ["ui"])]},
+            {"depth": 1, "items": [_item("PI-003", ["storage"])]},
         ],
         "cyclic": [],
         "warnings": [],

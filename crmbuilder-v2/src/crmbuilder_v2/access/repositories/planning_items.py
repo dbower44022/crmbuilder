@@ -26,8 +26,8 @@ from crmbuilder_v2.access.exceptions import (
     ValidationError,
 )
 from crmbuilder_v2.access.models import PlanningItem
+from crmbuilder_v2.access.repositories.engagement_areas import valid_area_names
 from crmbuilder_v2.access.vocab import (
-    AREAS,
     PLANNING_ITEM_STATUSES,
     PLANNING_ITEM_TYPES,
 )
@@ -179,7 +179,8 @@ def create(
 
     ``area`` (PI-076) is optional until PI-083 backfills open items and
     tightens the column to NOT NULL; when supplied it must be a non-empty
-    list of distinct values drawn from :data:`vocab.AREAS`.
+    list of distinct values, each a valid area (System ∪ this engagement's
+    Engagement areas; see ``engagement_areas.valid_area_names``).
     """
     require_string(title, field="title")
     require_in(item_type, PLANNING_ITEM_TYPES, field="item_type")
@@ -190,7 +191,7 @@ def create(
         min_len=_EXECUTIVE_SUMMARY_MIN,
         max_len=_EXECUTIVE_SUMMARY_MAX,
     )
-    area = validate_optional_value_list(area, field="area", allowed=AREAS)
+    area = validate_optional_value_list(area, field="area", allowed=valid_area_names(session))
 
     if identifier is None:
         row = _insert_with_autoassign(
@@ -269,7 +270,7 @@ def update(session: Session, identifier: str, **fields) -> dict:
         )
     if "area" in fields:
         fields["area"] = validate_optional_value_list(
-            fields["area"], field="area", allowed=AREAS
+            fields["area"], field="area", allowed=valid_area_names(session)
         )
     before = to_dict(row)
     for k, v in fields.items():

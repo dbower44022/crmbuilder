@@ -137,19 +137,19 @@ def test_planning_item_area_roundtrip(client):
             "title": "Area-bearing",
             "item_type": "pending_work",
             "status": "Open",
-            "area": ["v2-access", "v2-api"],
+            "area": ["access", "api"],
             "executive_summary": _VALID_EXEC_SUMMARY,
         },
     )
     assert r.status_code == 201, r.json()
-    assert r.json()["data"]["area"] == ["v2-access", "v2-api"]
+    assert r.json()["data"]["area"] == ["access", "api"]
 
     r = client.get("/planning-items/PI-020")
-    assert r.json()["data"]["area"] == ["v2-access", "v2-api"]
+    assert r.json()["data"]["area"] == ["access", "api"]
 
-    r = client.patch("/planning-items/PI-020", json={"area": ["v2-ui"]})
+    r = client.patch("/planning-items/PI-020", json={"area": ["ui"]})
     assert r.status_code == 200, r.json()
-    assert r.json()["data"]["area"] == ["v2-ui"]
+    assert r.json()["data"]["area"] == ["ui"]
 
 
 def test_post_planning_item_with_unknown_area_returns_400(client):

@@ -12,7 +12,7 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
-from crmbuilder_v2.access.vocab import AREAS
+from crmbuilder_v2.access.vocab import SYSTEM_AREAS as AREAS
 
 _SCRIPT = (
     Path(__file__).resolve().parents[3]
@@ -27,14 +27,14 @@ infer_areas = _mod.infer_areas
 
 
 def test_ui_signal():
-    assert "v2-ui" in infer_areas(
+    assert "ui" in infer_areas(
         "Surface executive_summary in the planning_items desktop UI",
         "Edit the create dialog and master panel widget.",
     )
 
 
 def test_api_signal():
-    assert "v2-api" in infer_areas(
+    assert "api" in infer_areas(
         "Implement orchestration ready-batches API endpoint",
         "Add a FastAPI router returning batches.",
     )
@@ -45,11 +45,11 @@ def test_storage_signal():
         "Add area column to planning_items",
         "Alembic migration adds a JSON column with a CHECK constraint.",
     )
-    assert "v2-storage" in areas
+    assert "storage" in areas
 
 
 def test_mcp_signal():
-    assert "v2-mcp" in infer_areas(
+    assert "mcp" in infer_areas(
         "Expose executive_summary on MCP create/update tools",
         "Update the stdio MCP server tool definitions.",
     )
@@ -60,8 +60,8 @@ def test_multi_area():
         "Wire the access-layer validator and the REST API endpoint",
         "Repository validator plus a new router and Pydantic model.",
     )
-    assert "v2-access" in areas
-    assert "v2-api" in areas
+    assert "access" in areas
+    assert "api" in areas
 
 
 def test_no_signal_returns_empty():

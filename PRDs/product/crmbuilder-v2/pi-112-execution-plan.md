@@ -120,6 +120,19 @@ Sub-steps (commit as one phase when green):
 **Risk:** WS-014 is the live parent of SES-132/SES-133/CNV-034/CNV-035 — its rename must
 cascade to those membership edges. Covered by sub-step 7's `refs` rewrite.
 
+> **Phase 2 ✅ done** (commit pending) — `AREAS` (18 prefixed) replaced by
+> `SYSTEM_AREA_RANKS`/`SYSTEM_AREAS` (13, prefix dropped, layer ranks per
+> DEC-347). New `engagement_areas` table + `EngagementArea` model + repository
+> with the session-aware `valid_area_names(session)` = System ∪ Engagement;
+> `planning_items`/`orchestration` validate through it. Exporter + new
+> `test_engagement_areas.py`. Migration `0028` (prefix-drop existing area data +
+> seed engagement areas from `cbm-*`) validated upgrade/downgrade on a live-DB
+> copy incl. the synthetic `cbm-*` seeding path; schema parity with `create_all`
+> confirmed; applied to the live DB (`v2-access`→`access`); snapshots regen'd.
+> REST API + UI for engagement-area management deferred to engagement-init work
+> (nothing surfaces areas in UI today). Shelved `backfill_pi_083_area.py`
+> updated to System labels. Full suite green (2211).
+
 ### Phase 2 — Restructure the area vocabulary (System / Engagement)
 - Drop version prefix: `v2-storage`→`storage`, `v1-espo`→`espo`, etc. (13 System areas).
 - Split: immutable **System** areas (frozenset, DEC-006 gate) + per-engagement **Engagement**

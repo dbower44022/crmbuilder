@@ -39,27 +39,26 @@ from pathlib import Path
 _SRC = Path(__file__).resolve().parents[1] / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
-from crmbuilder_v2.access.vocab import AREAS  # noqa: E402
+from crmbuilder_v2.access.vocab import SYSTEM_AREAS as AREAS  # noqa: E402
 
 # Ordered (compiled-pattern, area) rules. A planning item is matched
 # against the union of its title + description; every area whose pattern
 # fires is added (multi-valued per DEC-247). Order only affects the
 # output order of the proposed list, not membership.
 _RULES: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"\bmcp\b|claude\.ai|stdio|streamable", re.I), "v2-mcp"),
-    (re.compile(r"\bui\b|panel|dialog|desktop|pyside|qt\b|qwidget|sidebar|widget", re.I), "v2-ui"),
-    (re.compile(r"\bapi\b|endpoint|router|fastapi|pydantic|\brest\b|envelope", re.I), "v2-api"),
-    (re.compile(r"access[- ]layer|repositor|validator|\bvocab\b|relationship_kind", re.I), "v2-access"),
-    (re.compile(r"migration|alembic|schema|\bcolumn\b|\btable\b|sqlite|\bdatabase\b|check constraint", re.I), "v2-storage"),
+    (re.compile(r"\bmcp\b|claude\.ai|stdio|streamable", re.I), "mcp"),
+    (re.compile(r"\bui\b|panel|dialog|desktop|pyside|qt\b|qwidget|sidebar|widget", re.I), "ui"),
+    (re.compile(r"\bapi\b|endpoint|router|fastapi|pydantic|\brest\b|envelope", re.I), "api"),
+    (re.compile(r"access[- ]layer|repositor|validator|\bvocab\b|relationship_kind", re.I), "access"),
+    (re.compile(r"migration|alembic|schema|\bcolumn\b|\btable\b|sqlite|\bdatabase\b|check constraint", re.I), "storage"),
     (re.compile(r"methodology.*interview|interview.*guide|conduct|question[- ]library|kickoff", re.I), "methodology-interviews"),
     (re.compile(r"\bphase\b|process[- ]definition|13-phase|5-phase|domain discovery|reconciliation", re.I), "methodology-process"),
     (re.compile(r"\btemplate\b|verification spec", re.I), "methodology-templates"),
     (re.compile(r"master prd|product requirements|domain prd|entity prd", re.I), "methodology-product"),
     (re.compile(r"cloudflare|oauth|tunnel|systemd|digitalocean|droplet|deploy(?!ment engine)|\bdns\b|nginx|certbot", re.I), "infrastructure"),
-    (re.compile(r"espocrm|espo_impl|c-prefix", re.I), "v1-espo"),
-    (re.compile(r"automation/|setup wizard|upgrade|recovery|ssh", re.I), "v1-automation"),
-    (re.compile(r"programs/|yaml program|\bFU-|\bMR-|\bCR-|\bMN-", re.I), "v1-programs"),
-    (re.compile(r"\bcbm\b|cleveland", re.I), "cbm-services"),
+    (re.compile(r"espocrm|espo_impl|c-prefix", re.I), "espo"),
+    (re.compile(r"automation/|setup wizard|upgrade|recovery|ssh", re.I), "automation"),
+    (re.compile(r"programs/|yaml program|\bFU-|\bMR-|\bCR-|\bMN-", re.I), "programs"),
 ]
 
 
@@ -83,11 +82,10 @@ def infer_areas(title: str, description: str) -> list[str]:
 def _area_order() -> list[str]:
     # AREAS is a frozenset; pin a deterministic order for output.
     return [
-        "v2-storage", "v2-access", "v2-api", "v2-mcp", "v2-ui",
-        "cbm-mn", "cbm-mr", "cbm-cr", "cbm-fu", "cbm-services",
+        "storage", "access", "api", "mcp", "ui",
         "methodology-interviews", "methodology-process",
         "methodology-templates", "methodology-product",
-        "infrastructure", "v1-automation", "v1-espo", "v1-programs",
+        "infrastructure", "automation", "espo", "programs",
     ]
 
 

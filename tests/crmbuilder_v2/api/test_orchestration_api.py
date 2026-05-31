@@ -25,8 +25,8 @@ def _mk(client, ident, **extra):
 
 
 def test_ready_batches_envelope_and_shape(client):
-    _mk(client, "PI-001", area=["v2-api"])
-    _mk(client, "PI-002", area=["v2-ui"])
+    _mk(client, "PI-001", area=["api"])
+    _mk(client, "PI-002", area=["ui"])
     client.post("/planning-items/PI-002/claim", json={"claimant": "CONV-5"})
 
     r = client.get("/orchestration/ready-batches")
@@ -34,14 +34,14 @@ def test_ready_batches_envelope_and_shape(client):
     data = r.json()["data"]
     assert set(data) == {"batches", "cyclic", "warnings"}
     items = {i["identifier"]: i for b in data["batches"] for i in b["items"]}
-    assert items["PI-001"]["area"] == ["v2-api"]
+    assert items["PI-001"]["area"] == ["api"]
     assert items["PI-002"]["claimed_by"] == "CONV-5"
 
 
 def test_ready_batches_area_filter(client):
-    _mk(client, "PI-001", area=["v2-api"])
-    _mk(client, "PI-002", area=["v2-ui"])
-    r = client.get("/orchestration/ready-batches", params={"area": ["v2-api"]})
+    _mk(client, "PI-001", area=["api"])
+    _mk(client, "PI-002", area=["ui"])
+    r = client.get("/orchestration/ready-batches", params={"area": ["api"]})
     assert r.status_code == 200, r.json()
     ids = [i["identifier"] for b in r.json()["data"]["batches"] for i in b["items"]]
     assert ids == ["PI-001"]

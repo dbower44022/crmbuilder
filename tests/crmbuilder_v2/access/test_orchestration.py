@@ -112,10 +112,10 @@ def test_dependent_on_cycle_is_tainted(v2_env):
 
 def test_area_filter(v2_env):
     with session_scope() as s:
-        _pi(s, "PI-001", area=["v2-api"])
-        _pi(s, "PI-002", area=["v2-ui"])
+        _pi(s, "PI-001", area=["api"])
+        _pi(s, "PI-002", area=["ui"])
         _pi(s, "PI-003")  # no area -> excluded under area filter
-        result = orchestration.compute_ready_batches(s, areas=["v2-api"])
+        result = orchestration.compute_ready_batches(s, areas=["api"])
     assert _flat_ids(result) == ["PI-001"]
 
 
