@@ -1,0 +1,92 @@
+{
+  "label": "SES-143 / CNV-045 close-out — WTK-004 Workstream + Work Task UI monitoring panels. Read-only desktop panels (ui/panels/workstreams.py + work_tasks.py) under the Governance sidebar group, mirroring existing entity panels; surfaces phase_type/status/needs_attention (Workstream) and area/status/claimed_by (Work Task). Built by a parallel Claude Code session in an isolated worktree (no decision — straightforward mirror of existing panels). WTK-004 (under WSK-001) driven to Complete; ADDRESSES (not resolves) PI-114 under PRJ-018. Code on main as commit 6014e33. (Built in parallel with WTK-005 PI Lead / SES-142.)",
+  "session": {
+    "session_identifier": "SES-143",
+    "session_title": "Build the Workstream + Work Task UI monitoring panels (WTK-004)",
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "runner": "claude-code",
+      "kind": "execution-parallel-worktree"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_status": "complete",
+    "session_executive_summary": "Parallel Claude Code execution session (a second session in an isolated git worktree) building WTK-004, the Workstream + Work Task UI monitoring panels — the fourth Work Task of PI-114's Development phase (WSK-001), concurrent with the WTK-005 PI Lead substrate (SES-142). Adds read-only desktop panels ui/panels/workstreams.py and ui/panels/work_tasks.py under the Governance sidebar group, mirroring existing entity panels: the Workstream panel surfaces phase_type, status, and needs_attention; the Work Task panel surfaces area, status, and claimed_by. Sidebar + client wiring; UI tests. Built in an isolated worktree, cherry-picked onto main. Full v2 suite green. WTK-004 Complete; addresses (not resolves) PI-114. Closes the WSK-/WTK- UI-visibility gap.",
+    "session_description": "Parallel execution session, launched as a second Claude Code session in an isolated git worktree so it could run concurrently with the primary session (WTK-005 PI Lead) without git conflicts — the dogfood of parallel sessions Doug asked for. It owned only ui/; the primary owned access/api/. WTK-004 was created via direct POST /work-tasks under WSK-001 and driven Planned -> Ready -> Claimed -> In Progress -> Complete. The build closed the visibility gap surfaced earlier this engagement: the new PI-112 Workstream (WSK-) and Work Task (WTK-) entities had no desktop monitoring panel, so the ADO hierarchy (PRJ-018 -> PI-114 -> WSK-001 -> WTK-001..005) was invisible in the app despite being correctly wired in the DB. Added ui/panels/workstreams.py (WorkstreamsPanel, a ListDetailPanel) and ui/panels/work_tasks.py (WorkTasksPanel), both read-only (the v2 desktop UI is monitoring-only; creation goes through the API), registered under the Governance sidebar group via sidebar.py, with the API client (ui/client.py) and main_window.py wiring. The Workstream panel surfaces phase_type, status, and the trust-critical needs_attention flag; the Work Task panel surfaces area, status, and claimed_by. Added UI tests (test_workstreams_panel.py, test_work_tasks_panel.py) mirroring the existing panel-test pattern, plus a smoke-test update. Full v2 suite green. The work was committed on the worktree branch and cherry-picked onto main (commit 6014e33); no file overlap with the primary session's access/api changes. Governance for this Work Task is authored here by the orchestrating session on main (the worktree did no governance, avoiding identifier collisions). Addresses PI-114 without resolving it.",
+    "references": []
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-045",
+    "conversation_title": "Build the Workstream + Work Task UI monitoring panels (WTK-004)",
+    "conversation_purpose": "Close the UI-visibility gap for the PI-112 Workstream and Work Task entities by adding read-only desktop monitoring panels under the Governance sidebar group, as a parallel session, then drive WTK-004 to Complete and address PI-114.",
+    "conversation_description": "Built read-only ui/panels/workstreams.py and ui/panels/work_tasks.py under the Governance sidebar group, mirroring the existing entity panels; surfaced phase_type/status/needs_attention (Workstream) and area/status/claimed_by (Work Task); wired the sidebar, API client, and main_window. Added UI tests. Ran as a second session in an isolated worktree (disjoint from the PI Lead session's access/api work) and cherry-picked onto main. Full v2 suite green. Drove WTK-004 (under WSK-001) to Complete. Addresses (not resolves) PI-114.",
+    "conversation_summary": "Workstream + Work Task UI monitoring panels delivered under the Governance sidebar (read-only, mirroring existing panels), closing the WSK-/WTK- visibility gap. Built by a parallel worktree session, cherry-picked onto main. WTK-004 Complete; PI-114 addressed.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-045",
+        "target_type": "session",
+        "target_id": "SES-143",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [],
+  "commits": [
+    {
+      "commit_sha": "6014e338bc6802f9170c5cde9021772495d2bffe",
+      "commit_message_first_line": "v2: WTK-004 — Workstream + Work Task UI monitoring panels",
+      "commit_message_full": "v2: WTK-004 — Workstream + Work Task UI monitoring panels\n\nRead-only desktop monitoring panels for the Workstream (WSK-) and Work\nTask (WTK-) entities under the Governance sidebar group, mirroring the\nexisting entity panels. Surfaces phase_type/status/needs_attention for\nWorkstreams and area/status/claimed_by for Work Tasks, plus related-edge\ncontext. Sidebar + client wiring; UI tests.\n\nBuilt by a parallel Claude Code session in an isolated worktree.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_files_changed_count": 8,
+      "commit_committed_at": "2026-05-31T16:32:43-04:00",
+      "commit_parent_shas": [
+        "0b1a386bd2ee84ada1b51e864b81523803f383fa"
+      ]
+    }
+  ],
+  "decisions": [],
+  "references": [
+    {
+      "source_type": "session",
+      "source_id": "SES-143",
+      "target_type": "project",
+      "target_id": "PRJ-018",
+      "relationship": "session_belongs_to_project"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-143",
+      "target_type": "work_task",
+      "target_id": "WTK-004",
+      "relationship": "session_works_work_task"
+    },
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-045",
+      "target_type": "project",
+      "target_id": "PRJ-018",
+      "relationship": "conversation_belongs_to_project"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-143",
+      "target_type": "session",
+      "target_id": "SES-142",
+      "relationship": "session_follows_from"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": [
+    {
+      "planning_item_identifier": "PI-114"
+    }
+  ]
+}

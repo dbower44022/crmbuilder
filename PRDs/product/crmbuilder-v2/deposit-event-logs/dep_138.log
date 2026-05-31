@@ -1,0 +1,25 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_143.json
+Label:  SES-143 / CNV-045 close-out — WTK-004 Workstream + Work Task UI monitoring panels. Read-only desktop panels (ui/panels/workstreams.py + work_tasks.py) under the Governance sidebar group, mirroring existing entity panels; surfaces phase_type/status/needs_attention (Workstream) and area/status/claimed_by (Work Task). Built by a parallel Claude Code session in an isolated worktree (no decision — straightforward mirror of existing panels). WTK-004 (under WSK-001) driven to Complete; ADDRESSES (not resolves) PI-114 under PRJ-018. Code on main as commit 6014e33. (Built in parallel with WTK-005 PI Lead / SES-142.)
+Deposit event: DEP-138
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-045 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== references (3 records) ===
+  ✓ POST references  SES-143 session_works_work_task WTK-004 (HTTP 201)
+  ✓ POST references  CNV-045 conversation_belongs_to_project PRJ-018 (HTTP 201)
+  ✓ POST references  SES-143 session_follows_from SES-142 (HTTP 201)
+
+=== addresses_planning_items (1 record) ===
+  ✓ POST addresses_planning_items  → PI-114 (HTTP 201)
+
+✓ All 7 operations complete.
+
+✓ Recorded apply as deposit_event DEP-138 (HTTP 201).

@@ -1,0 +1,29 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_142.json
+Label:  SES-142 / CNV-044 close-out — WTK-005 ADO PI Lead substrate. access/repositories/lead.py: phase_overview (gate state) + start_phase (Ready->In Progress + ready Work Tasks) + complete_phase (verify all tasks Complete -> phase Complete). Endpoints GET /planning-items/{id}/phase-overview, POST /workstreams/{id}/start-execution, POST /workstreams/{id}/complete-phase. DEC-364 records the interface. WTK-005 (under WSK-001) driven to Complete; ADDRESSES (not resolves) PI-114 under PRJ-018. Code on main as commit 0b1a386. (Built in parallel with WTK-004 UI panels / SES-143.)
+Deposit event: DEP-137
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-044 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-364 (HTTP 201)
+
+=== references (4 records) ===
+  ✓ POST references  SES-142 session_works_work_task WTK-005 (HTTP 201)
+  ✓ POST references  CNV-044 conversation_belongs_to_project PRJ-018 (HTTP 201)
+  ✓ POST references  DEC-364 decided_in CNV-044 (HTTP 201)
+  ✓ POST references  SES-142 session_follows_from SES-141 (HTTP 201)
+
+=== addresses_planning_items (1 record) ===
+  ✓ POST addresses_planning_items  → PI-114 (HTTP 201)
+
+✓ All 9 operations complete.
+
+✓ Recorded apply as deposit_event DEP-137 (HTTP 201).

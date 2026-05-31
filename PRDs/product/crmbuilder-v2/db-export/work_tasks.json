@@ -43,5 +43,35 @@
     "work_task_status": "Complete",
     "work_task_title": "ADO phase-specialist substrate — scope_workstream + prior_phase_outputs",
     "work_task_updated_at": "2026-05-31T19:34:37.342064"
+  },
+  {
+    "work_task_area": "ui",
+    "work_task_claimed_at": "2026-05-31T20:19:49.718813",
+    "work_task_claimed_by": "CNV-044-ui-session",
+    "work_task_completed_at": "2026-05-31T20:33:45.283033",
+    "work_task_created_at": "2026-05-31T20:19:19.899566",
+    "work_task_deleted_at": null,
+    "work_task_description": "Read-only desktop monitoring panels for the new Workstream (WSK-) and Work Task (WTK-) entities under the Governance sidebar group, mirroring existing panels (projects.py, planning_items.py). Show identifier, phase_type/area, status, needs_attention (Workstream), claimed_by (Work Task), and related-edge context. Wire into the sidebar; add UI tests. Code only — no governance records, no db-export, no apply_close_out.",
+    "work_task_identifier": "WTK-004",
+    "work_task_notes": null,
+    "work_task_started_at": "2026-05-31T20:19:50.352631",
+    "work_task_status": "Complete",
+    "work_task_title": "Workstream + Work Task UI monitoring panels (Governance sidebar)",
+    "work_task_updated_at": "2026-05-31T20:33:45.283355"
+  },
+  {
+    "work_task_area": "access",
+    "work_task_claimed_at": "2026-05-31T20:19:50.996766",
+    "work_task_claimed_by": "CNV-045-this-session",
+    "work_task_completed_at": "2026-05-31T20:33:45.636100",
+    "work_task_created_at": "2026-05-31T20:19:20.292393",
+    "work_task_deleted_at": null,
+    "work_task_description": "The tier-2 PI Lead substrate (design §3.2-3.4): the deterministic gate + execution-loop primitives over the decomposed/scoped phases. Which phase scopes next; the §3.3 gate (all phases scoped Ready/Not Applicable); which Workstreams are executable now (Ready + all blocked_by predecessors terminal); start a phase (Ready->In Progress, ready its Work Tasks); verify+advance a phase (all Work Tasks Complete -> Workstream Complete); and the PI-resolution check (all phases terminal). Access + API + tests.",
+    "work_task_identifier": "WTK-005",
+    "work_task_notes": null,
+    "work_task_started_at": "2026-05-31T20:19:51.643138",
+    "work_task_status": "Complete",
+    "work_task_title": "ADO PI Lead substrate — execution gate + phase advance",
+    "work_task_updated_at": "2026-05-31T20:33:45.636212"
   }
 ]

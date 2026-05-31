@@ -1,0 +1,111 @@
+{
+  "label": "SES-142 / CNV-044 close-out — WTK-005 ADO PI Lead substrate. access/repositories/lead.py: phase_overview (gate state) + start_phase (Ready->In Progress + ready Work Tasks) + complete_phase (verify all tasks Complete -> phase Complete). Endpoints GET /planning-items/{id}/phase-overview, POST /workstreams/{id}/start-execution, POST /workstreams/{id}/complete-phase. DEC-364 records the interface. WTK-005 (under WSK-001) driven to Complete; ADDRESSES (not resolves) PI-114 under PRJ-018. Code on main as commit 0b1a386. (Built in parallel with WTK-004 UI panels / SES-143.)",
+  "session": {
+    "session_identifier": "SES-142",
+    "session_title": "Build the ADO PI Lead substrate (WTK-005)",
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "runner": "claude-code",
+      "kind": "execution"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_status": "complete",
+    "session_executive_summary": "Claude Code execution session building WTK-005, the ADO PI Lead substrate — the fifth Work Task of PI-114's Development phase (WSK-001), built in parallel with the WTK-004 UI panels (a second session in an isolated worktree). Implements design §3.2-3.4: access/repositories/lead.py with phase_overview (the PI's execution state from the records: per-phase status, Work Task progress, serial readiness, and gate flags all_scoped/all_terminal/needs_attention/next_executable), start_phase (Ready->In Progress + ready Work Tasks, gated on predecessors terminal) and complete_phase (verify every Work Task Complete, then In Progress->Complete). Three endpoints + a Lead-driven end-to-end. Full v2 suite green. DEC-364 records the interface. WTK-005 Complete; addresses PI-114.",
+    "session_description": "Execution session continuing the PI-114 build, running in parallel with a second Claude Code session (the WTK-004 UI panels, SES-143) per Doug's request to dogfood parallel sessions. This session owned access/api; the other owned ui/ in an isolated git worktree, so there was no file overlap. WTK-005 was created via direct POST /work-tasks under WSK-001 and driven Planned -> Ready -> Claimed -> In Progress -> Complete. The build added access/repositories/lead.py — the tier-2 PI Lead state machine, reconstructed entirely from the records (DB-backed statelessness, §4.4): phase_overview(pi) returns every phase Workstream in canonical order with its status, Work Task counts (total/complete), serial blocked_by readiness (predecessors_terminal + executable_now), and the top-level gate flags all_scoped (the §3.3 planning gate), all_terminal (PI resolvable), needs_attention (rolled up from the Workstreams), and next_executable (the one phase the gate currently exposes). start_phase(ws) opens a scoped phase: Ready->In Progress and each Planned Work Task Planned->Ready (pullable), gated on all blocked_by predecessors being terminal (Complete/Not Applicable) — so nothing is pullable before its serial gate opens (§5). complete_phase(ws) is the verify-and-advance: it requires every Work Task Complete (the substrate's half of the §3.4 verification gate, which the raw status PATCH does not enforce), then drives In Progress->Complete, opening the next gate. Exposed as GET /planning-items/{id}/phase-overview, POST /workstreams/{id}/start-execution, POST /workstreams/{id}/complete-phase. Tests: test_lead.py (overview on fresh decomposition; gate opens after scoping; start_phase readies tasks; blocked-by-predecessor 409; requires-Ready 409; complete-requires-all-tasks 409; a full serial execution to all_terminal; unknown-PI 404) and test_lead_route.py (the three endpoints + a Lead-driven end-to-end walking all six phases honoring the gate). Full v2 suite green (2272). DEC-364 records the interface. The Lead AGENT prompt and the tier-1 Project Manager are the remaining ADO tiers; PI resolution (all_terminal -> Resolved via the resolves edge) stays governance and is surfaced by phase_overview. Addresses PI-114 without resolving it.",
+    "references": []
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-044",
+    "conversation_title": "Build the ADO PI Lead substrate — execution gate + phase advance (WTK-005)",
+    "conversation_purpose": "Implement the tier-2 PI Lead substrate (design §3.2-3.4): the deterministic gate + execution-loop state machine over the decomposed/scoped phases, as access + API code with tests, then drive WTK-005 to Complete and address PI-114.",
+    "conversation_description": "Built access/repositories/lead.py (phase_overview + start_phase + complete_phase) and the GET /planning-items/{id}/phase-overview, POST /workstreams/{id}/start-execution, POST /workstreams/{id}/complete-phase endpoints. phase_overview reconstructs the PI's execution state and exposes the next executable phase; start_phase opens a scoped phase and readies its Work Tasks; complete_phase verifies all tasks Complete before advancing. Added access + API tests incl. a Lead-driven end-to-end. Full v2 suite green. Decided DEC-364 on the interface. Drove WTK-005 (under WSK-001) to Complete. Built in parallel with WTK-004. Addresses (not resolves) PI-114.",
+    "conversation_summary": "ADO PI Lead substrate delivered: phase_overview (gate state), start_phase (open + ready tasks), complete_phase (verify + advance), over serial blocked_by gates. Three endpoints + a Lead-driven end-to-end. WTK-005 Complete; PI-114 addressed. DEC-364 records the interface.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-044",
+        "target_type": "session",
+        "target_id": "SES-142",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [],
+  "commits": [
+    {
+      "commit_sha": "0b1a386bd2ee84ada1b51e864b81523803f383fa",
+      "commit_message_first_line": "v2: WTK-005 — ADO PI Lead substrate (execution gate + phase advance)",
+      "commit_message_full": "v2: WTK-005 — ADO PI Lead substrate (execution gate + phase advance)\n\nImplements the tier-2 PI Lead state machine (design §3.2-3.4). The\nverification judgment is the Lead agent's; this is the deterministic gate\nit drives, reconstructed from the records (DB-backed statelessness §4.4):\n\n- access/repositories/lead.py:\n  - phase_overview(pi): every phase Workstream in canonical order with\n    status, Work Task progress, serial blocked_by readiness, and the gate\n    flags (all_scoped, all_terminal, needs_attention, next_executable).\n  - start_phase(ws): Ready -> In Progress + ready its Work Tasks\n    (Planned -> Ready, pullable), gated on all blocked_by predecessors\n    being terminal (serial phases, §5).\n  - complete_phase(ws): verify every Work Task Complete, then\n    In Progress -> Complete, opening the next serial gate.\n- GET /planning-items/{id}/phase-overview,\n  POST /workstreams/{id}/start-execution,\n  POST /workstreams/{id}/complete-phase.\n- Tests: test_lead.py + test_lead_route.py, including a Lead-driven\n  end-to-end walking all six phases honoring the gate.\n\nFull v2 suite green (2272 passed). DEC-364 records the interface.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_files_changed_count": 5,
+      "commit_committed_at": "2026-05-31T16:31:22-04:00",
+      "commit_parent_shas": [
+        "41a9aa4773679365c979eb30d2d801d1e92d9293"
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "identifier": "DEC-364",
+      "title": "ADO PI Lead substrate: phase_overview (gate state) + start_phase / complete_phase (open + verify-advance) over serial blocked_by gates",
+      "context": "Design §3.2-3.4 define the PI Lead (tier 2): run one PI's lifecycle — planning loop, the §3.3 gate, and an execution loop with verification gates between serial phases. The verification judgment is the Lead AGENT's and its prompt is §10 out-of-scope, but the deterministic gate state-machine it drives needed a concrete interface, reconstructed from the records so any Lead instance can resume from the DB (statelessness, §4.4).",
+      "decision": "access/repositories/lead.py with three operations. phase_overview(pi) reconstructs the PI's execution state: every phase Workstream in canonical order with status, Work Task counts (total/complete), serial blocked_by readiness (predecessors_terminal + executable_now), and the gate flags all_scoped (planning gate), all_terminal (PI resolvable), needs_attention, and next_executable (the single phase the gate currently exposes). start_phase(ws) opens a scoped phase: Ready->In Progress and each Planned Work Task Planned->Ready (pullable), gated on all blocked_by predecessors being terminal (Complete/Not Applicable). complete_phase(ws) is verify-and-advance: require every Work Task Complete, then In Progress->Complete, opening the next gate. Endpoints GET /planning-items/{id}/phase-overview, POST /workstreams/{id}/start-execution, POST /workstreams/{id}/complete-phase. PI resolution stays governance (the resolves edge), surfaced by all_terminal.",
+      "alternatives_considered": "Ready all Work Tasks at scope time rather than at start_phase — rejected: a Work Task must not be pullable before its phase's serial gate opens, else an area specialist could pull work from a still-gated downstream phase; readiness is the Lead's signal that the gate is open. Let complete_phase advance without checking Work Task completion (rely on the raw status PATCH) — rejected: the unguarded PATCH is exactly what the verification gate must prevent; complete_phase adds the all-tasks-Complete precondition that §3.4 requires. Compute a full executability DAG by area/layer — rejected: phases are serial within a PI (decision 5), so a linear predecessor-terminal check is sufficient and simpler; intra-phase parallelism is already expressed by the phase's parallel Work Tasks.",
+      "consequences": "New module access/repositories/lead.py + three endpoints; tests in test_lead.py + test_lead_route.py incl. a Lead-driven end-to-end walking all six phases honoring the gate. The remaining ADO tiers are the Lead AGENT prompt and the tier-1 Project Manager (sequences PIs, dispatches Leads). The decomposer (WTK-002) and phase-specialist substrate (WTK-003) feed this; together WTK-001..005 make a PI structurally decomposable, scopable, and executable through verified serial gates entirely over the REST API.",
+      "executive_summary": "While building the ADO PI Lead substrate (WTK-005), this decision settles its interface: phase_overview reconstructs the PI's execution state and exposes the single next-executable phase; start_phase opens a scoped phase (Ready->In Progress) and readies its Work Tasks only when all blocked_by predecessors are terminal, so nothing is pullable before its serial gate opens; complete_phase enforces the §3.4 verification gate (every Work Task Complete) before advancing In Progress->Complete. The gate is reconstructed from the records (statelessness §4.4), PI resolution stays governance (the resolves edge, surfaced by all_terminal). Delivered with access + API tests and a Lead-driven end-to-end.",
+      "decision_date": "2026-05-31",
+      "status": "Active"
+    }
+  ],
+  "references": [
+    {
+      "source_type": "session",
+      "source_id": "SES-142",
+      "target_type": "project",
+      "target_id": "PRJ-018",
+      "relationship": "session_belongs_to_project"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-142",
+      "target_type": "work_task",
+      "target_id": "WTK-005",
+      "relationship": "session_works_work_task"
+    },
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-044",
+      "target_type": "project",
+      "target_id": "PRJ-018",
+      "relationship": "conversation_belongs_to_project"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-364",
+      "target_type": "conversation",
+      "target_id": "CNV-044",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-142",
+      "target_type": "session",
+      "target_id": "SES-141",
+      "relationship": "session_follows_from"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": [
+    {
+      "planning_item_identifier": "PI-114"
+    }
+  ]
+}

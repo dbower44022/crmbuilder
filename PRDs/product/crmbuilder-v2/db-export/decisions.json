@@ -5931,5 +5931,22 @@
     "supersedes_id": null,
     "title": "ADO phase-specialist substrate: scope_workstream records scope atomically (Work Tasks or Not Applicable); prior_phase_outputs feeds it forward",
     "updated_at": "2026-05-31T19:40:29.556911"
+  },
+  {
+    "alternatives_considered": "Ready all Work Tasks at scope time rather than at start_phase — rejected: a Work Task must not be pullable before its phase's serial gate opens, else an area specialist could pull work from a still-gated downstream phase; readiness is the Lead's signal that the gate is open. Let complete_phase advance without checking Work Task completion (rely on the raw status PATCH) — rejected: the unguarded PATCH is exactly what the verification gate must prevent; complete_phase adds the all-tasks-Complete precondition that §3.4 requires. Compute a full executability DAG by area/layer — rejected: phases are serial within a PI (decision 5), so a linear predecessor-terminal check is sufficient and simpler; intra-phase parallelism is already expressed by the phase's parallel Work Tasks.",
+    "consequences": "New module access/repositories/lead.py + three endpoints; tests in test_lead.py + test_lead_route.py incl. a Lead-driven end-to-end walking all six phases honoring the gate. The remaining ADO tiers are the Lead AGENT prompt and the tier-1 Project Manager (sequences PIs, dispatches Leads). The decomposer (WTK-002) and phase-specialist substrate (WTK-003) feed this; together WTK-001..005 make a PI structurally decomposable, scopable, and executable through verified serial gates entirely over the REST API.",
+    "context": "Design §3.2-3.4 define the PI Lead (tier 2): run one PI's lifecycle — planning loop, the §3.3 gate, and an execution loop with verification gates between serial phases. The verification judgment is the Lead AGENT's and its prompt is §10 out-of-scope, but the deterministic gate state-machine it drives needed a concrete interface, reconstructed from the records so any Lead instance can resume from the DB (statelessness, §4.4).",
+    "created_at": "2026-05-31T20:40:03.184664",
+    "decision": "access/repositories/lead.py with three operations. phase_overview(pi) reconstructs the PI's execution state: every phase Workstream in canonical order with status, Work Task counts (total/complete), serial blocked_by readiness (predecessors_terminal + executable_now), and the gate flags all_scoped (planning gate), all_terminal (PI resolvable), needs_attention, and next_executable (the single phase the gate currently exposes). start_phase(ws) opens a scoped phase: Ready->In Progress and each Planned Work Task Planned->Ready (pullable), gated on all blocked_by predecessors being terminal (Complete/Not Applicable). complete_phase(ws) is verify-and-advance: require every Work Task Complete, then In Progress->Complete, opening the next gate. Endpoints GET /planning-items/{id}/phase-overview, POST /workstreams/{id}/start-execution, POST /workstreams/{id}/complete-phase. PI resolution stays governance (the resolves edge), surfaced by all_terminal.",
+    "decision_date": "2026-05-31",
+    "executive_summary": "While building the ADO PI Lead substrate (WTK-005), this decision settles its interface: phase_overview reconstructs the PI's execution state and exposes the single next-executable phase; start_phase opens a scoped phase (Ready->In Progress) and readies its Work Tasks only when all blocked_by predecessors are terminal, so nothing is pullable before its serial gate opens; complete_phase enforces the §3.4 verification gate (every Work Task Complete) before advancing In Progress->Complete. The gate is reconstructed from the records (statelessness §4.4), PI resolution stays governance (the resolves edge, surfaced by all_terminal). Delivered with access + API tests and a Lead-driven end-to-end.",
+    "id": 351,
+    "identifier": "DEC-364",
+    "rationale": "",
+    "status": "Active",
+    "superseded_by_id": null,
+    "supersedes_id": null,
+    "title": "ADO PI Lead substrate: phase_overview (gate state) + start_phase / complete_phase (open + verify-advance) over serial blocked_by gates",
+    "updated_at": "2026-05-31T20:40:03.184668"
   }
 ]
