@@ -1271,5 +1271,233 @@
     "commit_session_id": "SES-131",
     "commit_sha": "3ba187568adfb6cec822ae5e81c96ddd8e864982",
     "commit_updated_at": "2026-05-30T19:42:55.862004"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-112-migration",
+    "commit_committed_at": "2026-05-30T21:00:01-04:00",
+    "commit_created_at": "2026-05-31T03:34:13.786509",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0068",
+    "commit_message_first_line": "v2: PI-112 Phase 0 — execution plan for the governance & delivery migration",
+    "commit_message_full": "v2: PI-112 Phase 0 — execution plan for the governance & delivery migration\n\nOpens the pi-112-migration branch with a phased, resumable execution plan\nderived from governance-redesign-target-model.md v0.4 and decisions\nDEC-340..349. Sequences §9 into four test-green phases (Project rename,\narea restructure, PI lifecycle, Workstream+Work Task entities) plus\nclose-out, modeled on the PI-073 branch/phase-commit pattern.\n\nRecords verified ground truth (alembic head 0026, 168 v2 tests, green\nbaseline) and the Phase 1 blast-radius map.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "e4c78f50d8929535ff8f348997ecebfcaf706e74"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-134",
+    "commit_sha": "76fe4c603b5c68b13c67519eb3050370e4368213",
+    "commit_updated_at": "2026-05-31T03:34:13.786511"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-112-migration",
+    "commit_committed_at": "2026-05-30T21:26:04-04:00",
+    "commit_created_at": "2026-05-31T03:34:14.089201",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 48,
+    "commit_identifier": "CM-0069",
+    "commit_message_first_line": "v2: PI-112 Phase 1a — rename workstream → Project, WS- → PRJ- (code + tests)",
+    "commit_message_full": "v2: PI-112 Phase 1a — rename workstream → Project, WS- → PRJ- (code + tests)\n\nDEC-341/DEC-345. Renames the long-running container entity `workstream` to\n`Project` across the access/api/exporter/ui layers and updates the identifier\nprefix WS- → PRJ-. The new \"Workstream-as-phase\" entity does not exist yet\n(Phase 4), so the rename is unambiguous.\n\nSurgical, not blanket: only entity-bearing token forms were changed (quoted\ntype strings, workstream_* columns, the three *_belongs_to_workstream /\nworkstream_planned_in_reference_book reference kinds, CamelCase Workstream*\nschema classes, constraint/index names, route /workstreams → /projects).\nBare-word \"workstream\" prose in comments is intentionally preserved.\n\n- model: class Project, table `projects`, PRJ-[0-9]{3} CHECK, project_* cols\n- repo: workstreams.py → projects.py; _IDENTIFIER_PREFIX=PRJ, regex ^PRJ-\\d{3}$\n- api: routers/workstreams.py → projects.py, prefix /projects; ProjectCreateIn/\n  ReplaceIn/PatchIn; _FIELD_PREFIX project_; main.py router wiring\n- exporter: snapshot key workstreams → projects (file becomes projects.json)\n- vocab: PROJECT_STATUSES/_TRANSITIONS; *_belongs_to_project kinds; \"project\"\n  in ENTITY_TYPES and _kinds_for_pair clauses\n- ui: panel/dialog/schema files renamed; session_create + client updated\n- orchestrator (shelved, DEC-344): run.py + child kickoff template renamed\n  consistently (project_identifier/project_title, *_belongs_to_project edges)\n- sessions.py error code missing_project_membership_edge\n\nLive-data migration of WS-001..014 rows + ref edges is Phase 1b (Alembic 0027).\nTests build via create_all, so this is verifiable independently: full v2 suite\n2206 passed, 3 skipped, 6 xfailed (was 2193 + 13 fail; the 13 were stale WS-/\nworkstreams.json test literals, now PRJ-/projects.json). No new ruff findings.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "76fe4c603b5c68b13c67519eb3050370e4368213"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-134",
+    "commit_sha": "a0977a97208b413b5a817e58093e7c89dcb3db4d",
+    "commit_updated_at": "2026-05-31T03:34:14.089203"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-112-migration",
+    "commit_committed_at": "2026-05-30T21:26:44-04:00",
+    "commit_created_at": "2026-05-31T03:34:14.434282",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0070",
+    "commit_message_first_line": "v2: PI-112 plan v0.2 — record Phase 1a complete (green), scope Phase 1b live migration",
+    "commit_message_full": "v2: PI-112 plan v0.2 — record Phase 1a complete (green), scope Phase 1b live migration\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "a0977a97208b413b5a817e58093e7c89dcb3db4d"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-134",
+    "commit_sha": "c8816ac352dee3eb70094e4b5ed2a31be3d656e0",
+    "commit_updated_at": "2026-05-31T03:34:14.434284"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-112-migration",
+    "commit_committed_at": "2026-05-30T21:54:58-04:00",
+    "commit_created_at": "2026-05-31T03:34:14.740323",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 7,
+    "commit_identifier": "CM-0071",
+    "commit_message_first_line": "v2: PI-112 Phase 1b — Alembic 0027 live migration workstream→Project, WS-→PRJ-",
+    "commit_message_full": "v2: PI-112 Phase 1b — Alembic 0027 live migration workstream→Project, WS-→PRJ-\n\nDEC-341/DEC-345 live-data half. Migrates engagement DBs to the Phase 1a code:\nrecreates workstreams→projects (PRJ- identifier CHECK) copying rows with the\nWS-NNN→PRJ-NNN rewrite; re-types and re-keys the 120 workstream-typed refs\nedges and renames the three relationship kinds; rewrites the 4\nworkstream_master_plan reference-book-kind → project_master_plan; defensive\nidentifier_reservations rewrite. Fully reversible downgrade.\n\nValidated on a copy of the live CRMBUILDER.db: upgrade → downgrade → re-upgrade\nclean, schema parity with create_all confirmed, new-code list_projects reads it.\nApplied to the live engagement DB (backed up first); db-export snapshots\nregenerated (workstreams.json → projects.json; references/reference_books\nupdated). Historical WS- prose in session/decision/change_log text fields left\nas-is.\n\nAlso fixes a Phase 1a bug: two model index names were half-renamed\n(ix_workstreams_project_*) because the column-token replacement mangled the\nindex-name token before its own rule ran — now ix_projects_project_*. No test\nasserts index names; create_all now matches the migration.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "c8816ac352dee3eb70094e4b5ed2a31be3d656e0"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-134",
+    "commit_sha": "53e290dbaad5d383c6240ec2831fca0125c553b0",
+    "commit_updated_at": "2026-05-31T03:34:14.740325"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-112-migration",
+    "commit_committed_at": "2026-05-30T22:21:35-04:00",
+    "commit_created_at": "2026-05-31T03:34:15.002670",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 21,
+    "commit_identifier": "CM-0072",
+    "commit_message_first_line": "v2: PI-112 Phase 2 — two-tier area model (System / Engagement), drop prefix",
+    "commit_message_full": "v2: PI-112 Phase 2 — two-tier area model (System / Engagement), drop prefix\n\nDEC-340 (drop version prefix), DEC-342 (System/Engagement tiers), DEC-347\n(layer rank), DEC-348 (engagement areas user-defined, no Domain link).\n\n- vocab: AREAS (18 prefixed) → SYSTEM_AREA_RANKS (13, prefix dropped) with\n  layer ranks (storage 1 → access 2 → api 3 → mcp/ui 4; rest None) + derived\n  SYSTEM_AREAS frozenset.\n- new EngagementArea model + engagement_areas table (per-engagement,\n  user-defined, standalone — no FK/reference to domains per DEC-348).\n- new engagement_areas repository with valid_area_names(session) = System ∪\n  this engagement's Engagement areas, the single source consulted wherever an\n  area is validated. planning_items + orchestration validate through it\n  (session-aware, since the Engagement tier lives in the DB).\n- exporter exports engagement_areas; new test_engagement_areas.py.\n- migration 0028: create engagement_areas; prefix-drop existing\n  planning_items.area; seed engagement areas from any cbm-* present. Validated\n  upgrade/downgrade on a live-DB copy incl. the synthetic cbm-* seeding path;\n  schema parity with create_all; applied to the live DB (v2-access→access);\n  db-export snapshots regenerated.\n- area column stays on planning_items this phase (relocation to Work Task is\n  Phase 4). REST API + UI for engagement-area management deferred to\n  engagement-init work. Shelved backfill_pi_083_area.py updated to System\n  labels + tests across the suite updated off legacy area labels.\n\nFull v2 suite green.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "53e290dbaad5d383c6240ec2831fca0125c553b0"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-134",
+    "commit_sha": "57e1480dded872d267dbb2d8eb71cc27622069d1",
+    "commit_updated_at": "2026-05-31T03:34:15.002673"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-112-migration",
+    "commit_committed_at": "2026-05-30T22:49:17-04:00",
+    "commit_created_at": "2026-05-31T03:34:15.305441",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 27,
+    "commit_identifier": "CM-0073",
+    "commit_message_first_line": "v2: PI-112 Phase 3 — Planning Item six-state lifecycle (DEC-346)",
+    "commit_message_full": "v2: PI-112 Phase 3 — Planning Item six-state lifecycle (DEC-346)\n\nReplaces Open/Resolved/Deferred with the phase-agnostic lifecycle:\nDraft → Decomposed → Ready → In Progress → In Review → Resolved, plus the\nDeferred and Cancelled terminals. Names are discipline-neutral — the phase\nof work lives on the Workstream (Phase 4), not the PI status.\n\n- vocab: PLANNING_ITEM_STATUSES (8 states) + PLANNING_ITEM_STATUS_TRANSITIONS.\n  Forward progression with the three exit states (Resolved/Deferred/Cancelled)\n  reachable from every active state, so a delivering close-out's `resolves`\n  edge still flips a PI from any non-terminal; In Review→In Progress rework\n  bounce; Deferred resume; Resolved/Cancelled terminal.\n- planning_items.update enforces transitions via check_transition; create\n  defaults to Draft; planning-item dialog schema default Draft.\n- orchestration: ready-trigger Open → Ready (DEC-346 — the state a standing\n  agent watches for).\n- migration 0029: drop ck_planning_status → rewrite Open→Draft → recreate the\n  8-value CHECK. Validated upgrade/downgrade on a live-DB copy; schema parity\n  with create_all; applied to the live DB (55 Open → Draft); snapshots regen'd.\n- test ripple: planning-item \"Open\" → \"Draft\" (orchestrator candidates →\n  \"Ready\"), risk \"Open\" preserved, via context classification.\n\nFull v2 suite green (2211 passed).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "57e1480dded872d267dbb2d8eb71cc27622069d1"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-134",
+    "commit_sha": "aee14a2c90a9ec483a417575bd5ac2f3b1301c50",
+    "commit_updated_at": "2026-05-31T03:34:15.305444"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-112-migration",
+    "commit_committed_at": "2026-05-30T23:02:04-04:00",
+    "commit_created_at": "2026-05-31T03:34:15.641775",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 9,
+    "commit_identifier": "CM-0074",
+    "commit_message_first_line": "v2: PI-112 Phase 4a — Workstream (delivery-phase) entity (WSK-)",
+    "commit_message_full": "v2: PI-112 Phase 4a — Workstream (delivery-phase) entity (WSK-)\n\nDEC-343/DEC-349. Adds the NEW Workstream governance entity: a single delivery\nphase of one Planning Item (the old container was renamed Project in Phase 1,\nfreeing the `workstream`/Workstream naming for this). Identifier WSK-.\n\n- vocab: WORKSTREAM_PHASE_TYPES {Design, Development, Testing, Documentation,\n  Data Migration, Deployment} (Design added per DEC-349), WORKSTREAM_STATUSES\n  {Planned, In Progress, Complete, Blocked} + transitions (Complete terminal,\n  Blocked side-state). \"workstream\" re-added to ENTITY_TYPES; new kind\n  workstream_belongs_to_planning_item + (workstream,workstream) blocked_by.\n- model Workstream (table `workstreams`, WSK- + phase_type + status CHECKs).\n- repositories/workstreams.py: lean 8-function CRUD with status transitions,\n  phase-type validation, belongs_to-PI edge via inline references.\n- api: routers/workstreams.py at /workstreams; Workstream{Create,Replace,Patch}In\n  schemas; registered in main.py. exporter exports workstreams.\n- migration 0031: create workstreams table + extend refs CHECKs (admit the\n  workstream entity type + the new kind; superset, no upgrade data rewrite).\n  Chained after 0030_changelog (a concurrent Phase-1 follow-on).\n- tests/test_workstream_phase.py (8 cases): autoassign, phase/status validation,\n  Design phase, transitions+timestamps, Blocked resume, belongs_to edge,\n  collision, soft-delete/restore.\n\nNote: chained as 0031 because a concurrent session added 0030_changelog\n(change_log workstream→project, a Phase-1 gap). UI monitoring panel deferred.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "aee14a2c90a9ec483a417575bd5ac2f3b1301c50"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-134",
+    "commit_sha": "45d1654f861c48478212b2f2bb74ce5d17e12a30",
+    "commit_updated_at": "2026-05-31T03:34:15.641777"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-112-migration",
+    "commit_committed_at": "2026-05-30T23:02:50-04:00",
+    "commit_created_at": "2026-05-31T03:34:15.917964",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 4,
+    "commit_identifier": "CM-0075",
+    "commit_message_first_line": "v2: PI-112 — fix 0030 change_log migration statement ordering; create PRJ-015",
+    "commit_message_full": "v2: PI-112 — fix 0030 change_log migration statement ordering; create PRJ-015\n\nMigration 0030 ran the workstream→project change_log UPDATEs while the old\nCHECK was still active (and recreated constraints before reversing data on\ndowngrade), so `alembic upgrade head` failed and any new Project create 500'd.\nReorder to drop CHECK → mutate data → recreate CHECK in both directions.\nApplied to the CRMBUILDER engagement DB; regenerated db-export snapshots\n(incl. PRJ-015 \"UI usability improvements\").\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "45d1654f861c48478212b2f2bb74ce5d17e12a30"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-134",
+    "commit_sha": "8421345df644fcee8a8f0a2910b9bd1af3fc13d4",
+    "commit_updated_at": "2026-05-31T03:34:15.917967"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-112-migration",
+    "commit_committed_at": "2026-05-30T23:15:15-04:00",
+    "commit_created_at": "2026-05-31T03:34:16.228562",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0076",
+    "commit_message_first_line": "v2: PI-112 Phase 4a — extend blocked_by vocab test to same-type siblings (workstream)",
+    "commit_message_full": "v2: PI-112 Phase 4a — extend blocked_by vocab test to same-type siblings (workstream)\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "8421345df644fcee8a8f0a2910b9bd1af3fc13d4"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-134",
+    "commit_sha": "7bd0f74b0e6c35548c2914329eb33743e7782c4f",
+    "commit_updated_at": "2026-05-31T03:34:16.228564"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-112-migration",
+    "commit_committed_at": "2026-05-30T23:15:31-04:00",
+    "commit_created_at": "2026-05-31T03:34:16.570581",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0077",
+    "commit_message_first_line": "v2: PI-112 Phase 4a — apply 0031 to live DB, add workstreams.json snapshot",
+    "commit_message_full": "v2: PI-112 Phase 4a — apply 0031 to live DB, add workstreams.json snapshot\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "7bd0f74b0e6c35548c2914329eb33743e7782c4f"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-134",
+    "commit_sha": "628360a1b8798bdcd13fe62264d2a4b9ef4ec746",
+    "commit_updated_at": "2026-05-31T03:34:16.570583"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-112-migration",
+    "commit_committed_at": "2026-05-30T23:25:46-04:00",
+    "commit_created_at": "2026-05-31T03:34:16.887727",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 12,
+    "commit_identifier": "CM-0078",
+    "commit_message_first_line": "v2: PI-112 Phase 4b — Work Task (single-area) entity (WTK-)",
+    "commit_message_full": "v2: PI-112 Phase 4b — Work Task (single-area) entity (WTK-)\n\nDEC-342. Adds the Work Task governance entity: the single-area unit of\nexecution within a Workstream (WTK- identifier), carrying the `area` field\n(relocated off the Planning Item in Phase 4c) and an agent claim.\n\n- vocab: WORK_TASK_STATUSES {Planned, Ready, Claimed, In Progress, Complete,\n  Blocked, Failed} + transitions (Complete terminal; Blocked/Failed recover).\n  \"work_task\" added to ENTITY_TYPES; new kind work_task_belongs_to_workstream\n  + (work_task,work_task) blocked_by.\n- model WorkTask (table `work_tasks`): WTK- + status + claim-pairing CHECKs;\n  single work_task_area (validated at access layer vs System ∪ Engagement);\n  claimed_by/claimed_at; status + area + deleted_at indexes.\n- repositories/work_tasks.py: CRUD + area validation + status transitions +\n  atomic claim/release + belongs_to-workstream edge.\n- api: routers/work_tasks.py at /work-tasks (incl. claim/release);\n  WorkTask{Create,Replace,Patch,Claim}In schemas; registered. exporter exports\n  work_tasks.\n- migration 0032: create work_tasks + extend refs CHECKs (admit work_task type\n  + the new kind; superset). Validated upgrade/downgrade + schema parity on a\n  live-DB copy; applied to the live DB; snapshots regenerated.\n- tests/test_work_task.py (7 cases); blocked_by vocab test extended to\n  work_task; exporter expected-set updated.\n\nFull v2 suite green (2226 passed). UI monitoring panel deferred.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "628360a1b8798bdcd13fe62264d2a4b9ef4ec746"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-134",
+    "commit_sha": "a8199d2643bd91bbdae45dd08dc2de1154a1fe7c",
+    "commit_updated_at": "2026-05-31T03:34:16.887729"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "pi-112-migration",
+    "commit_committed_at": "2026-05-30T23:27:51-04:00",
+    "commit_created_at": "2026-05-31T03:34:17.160671",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0079",
+    "commit_message_first_line": "v2: PI-112 plan — Phase 4a/4b done (area relocated to Work Task); 4c column-drop deferred to orchestrator retirement",
+    "commit_message_full": "v2: PI-112 plan — Phase 4a/4b done (area relocated to Work Task); 4c column-drop deferred to orchestrator retirement\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "a8199d2643bd91bbdae45dd08dc2de1154a1fe7c"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-134",
+    "commit_sha": "4b14a1c5ddd9e21249061b8ea700acd0d021c2aa",
+    "commit_updated_at": "2026-05-31T03:34:17.160673"
   }
 ]

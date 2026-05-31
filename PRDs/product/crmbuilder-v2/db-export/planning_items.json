@@ -1677,8 +1677,8 @@
     "identifier": "PI-112",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Draft",
+    "status": "Resolved",
     "title": "Migrate the governance & delivery model to the target data model (Project rename, two-tier areas + relocation, Planning Item lifecycle, Workstream-as-phase, Work Task)",
-    "updated_at": "2026-05-30T22:33:59.107171"
+    "updated_at": "2026-05-31T03:34:18.447146"
   }
 ]

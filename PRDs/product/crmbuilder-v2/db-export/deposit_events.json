@@ -2852,5 +2852,28 @@
       "work_tickets": 0
     },
     "deposit_event_title": "Apply of COP-133, 2026-05-31T00:17:27+00:00"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "0.7.0",
+      "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_134.json",
+      "runner": "claude_code"
+    },
+    "deposit_event_created_at": "2026-05-31T03:34:18.760926",
+    "deposit_event_description": "Applied COP-134. Outcome: success. 12 commits, 1 conversations, 1 sessions.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-127",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_127.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "commits": 12,
+      "conversations": 1,
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 1,
+      "work_tickets": 0
+    },
+    "deposit_event_title": "Apply of COP-134, 2026-05-31T03:34:18+00:00"
   }
 ]

@@ -1,0 +1,36 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_134.json
+Label:  SES-134 / CNV-036 close-out — PI-112 build closure (governance & delivery model migration). Ingests the 12 phase commits (Project rename WS->PRJ, two-tier areas, Planning Item lifecycle, Workstream+Work Task entities), resolves PI-112, consumes WT-063. No new decisions (DEC-340..349 recorded earlier). Belongs to Project PRJ-014. Identifiers re-verify at apply; re-key on collision.
+Deposit event: DEP-127
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-036 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== commits (12 records) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== references (3 records) ===
+  ✓ POST references  CNV-036 conversation_belongs_to_project PRJ-014 (HTTP 201)
+  ✓ POST references  SES-134 session_follows_from SES-133 (HTTP 201)
+  ✓ POST references  SES-134 session_opens_against_work_ticket WT-063 (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-112 (HTTP 201)
+
+✓ All 18 operations complete.
+
+✓ Recorded apply as deposit_event DEP-127 (HTTP 201).

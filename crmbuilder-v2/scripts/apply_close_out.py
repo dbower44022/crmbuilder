@@ -679,14 +679,14 @@ def main() -> int:
         # so the access layer sees the mandatory edge at create-validation
         # time. (Apply-script edge-ordering bug surfaced at SES-099 apply:
         # session POST runs before the top-level references[] section, so
-        # a session_belongs_to_workstream edge in references[] arrives
+        # a session_belongs_to_project edge in references[] arrives
         # AFTER the session validate_edges check fires. Same for
         # conversation_belongs_to_session edges with conversations.)
         # Hoist any matching top-level reference into the source-entity's
         # inline references array, then strip from top-level so the
         # references section doesn't re-POST.
         _inline_membership_edges(payload, "session",
-                                 "session_belongs_to_workstream")
+                                 "session_belongs_to_project")
         _inline_membership_edges(payload, "conversation",
                                  "conversation_belongs_to_session")
 
