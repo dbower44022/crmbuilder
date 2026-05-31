@@ -73,5 +73,20 @@
     "work_task_status": "Complete",
     "work_task_title": "ADO PI Lead substrate — execution gate + phase advance",
     "work_task_updated_at": "2026-05-31T20:33:45.636212"
+  },
+  {
+    "work_task_area": "access",
+    "work_task_claimed_at": "2026-05-31T20:48:21.250564",
+    "work_task_claimed_by": "CNV-046",
+    "work_task_completed_at": "2026-05-31T20:55:03.116371",
+    "work_task_created_at": "2026-05-31T20:48:20.600771",
+    "work_task_deleted_at": null,
+    "work_task_description": "The tier-1 Project Manager substrate (design §2/§3.1): project_backlog (every PI in the Project with status, blocked_by deps + unresolved blockers, eligible flag, and the eligible/in_flight/blocked/resolved partitions + all_resolved), eligible_planning_items, and dispatch_planning_item (eligible PI -> In Progress). Endpoints GET /projects/{id}/backlog, GET /projects/{id}/eligible-planning-items, POST /planning-items/{id}/dispatch. Access + API tests incl. a full-org capstone (PM dispatch -> Lead -> execute -> resolve -> next PI unlocks).",
+    "work_task_identifier": "WTK-006",
+    "work_task_notes": null,
+    "work_task_started_at": "2026-05-31T20:48:21.900360",
+    "work_task_status": "Complete",
+    "work_task_title": "ADO Project Manager substrate — dependency-aware PI backlog + dispatch",
+    "work_task_updated_at": "2026-05-31T20:55:03.116509"
   }
 ]

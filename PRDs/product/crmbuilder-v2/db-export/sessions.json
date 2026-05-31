@@ -2921,5 +2921,33 @@
     "session_superseded_at": null,
     "session_title": "Build the Workstream + Work Task UI monitoring panels (WTK-004)",
     "session_updated_at": "2026-05-31T20:40:10.616545"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-31T20:54:41.986518",
+    "session_created_at": "2026-05-31T20:54:41.986275",
+    "session_deleted_at": null,
+    "session_description": "Execution session building the final ADO agent-tier substrate, the tier-1 Project Manager (the previous five Work Tasks built the state-model, decomposer, phase-specialist, PI Lead substrates, and the UI panels). WTK-006 was created via direct POST /work-tasks under WSK-001 and driven Planned -> Ready -> Claimed -> In Progress -> Complete. The build added access/repositories/pm.py — the PM's dependency-aware scheduling over a Project's PI backlog (design §3.1), reconstructed from the records (statelessness, §4.4). project_backlog(project) returns every PI belonging to the Project (via planning_item_belongs_to_project), each with its status, its blocked_by predecessors and which of them are unresolved (not Resolved), and an eligible flag, plus the rolled-up partitions eligible / in_flight (In Progress or In Review) / blocked (has unresolved blockers, not terminal/in-flight) / resolved, and all_resolved (every PI terminal -> the Project is done). A PI is eligible when its status is startable (Draft/Decomposed/Ready) and every PI it is blocked_by is Resolved — so independent PIs (no blocked_by between them) are all eligible at once and run concurrently under separate Leads, while a chain runs in order. eligible_planning_items(project) is the eligible subset the PM agent prioritizes and dispatches. dispatch_planning_item(pi) hands an eligible PI to a Lead by transitioning it to In Progress, raising 409 if the PI is already started/terminal or still blocked by an unresolved predecessor, and 404 if absent. Exposed as GET /projects/{id}/backlog, GET /projects/{id}/eligible-planning-items, POST /planning-items/{id}/dispatch. Tests: test_pm.py (eligibility + blocking, resolving-a-blocker-unlocks-dependents, independent-PIs-parallel, dispatch-starts/blocked/already-started, all_resolved, unknown-project/PI) and test_pm_route.py (the endpoints plus a full-org capstone: the PM dispatches an eligible PI, the Lead decomposes it and the phase specialists scope it and the phases execute through the serial gate to all_terminal, the PI is resolved, and the PM then sees the downstream PI become eligible and dispatches it). Full v2 suite green. DEC-365 records the interface. With WTK-006 all four ADO tier substrates exist (PM, Lead, phase specialist, area specialist); a Project's PIs are now dependency-scheduled, decomposed, scoped, and executed through verified serial gates entirely over the REST API. The remaining ADO work is the agent prompts/skills that wrap each substrate (§10) and the runtime that runs them. Addresses PI-114 without resolving it.",
+    "session_ended_at": null,
+    "session_executive_summary": "Claude Code execution session building WTK-006, the ADO Project Manager substrate — the sixth Work Task of PI-114's Development phase (WSK-001). Implements design §2 tier 1 / §3.1: access/repositories/pm.py with project_backlog (the Project's PIs with status, blocked_by deps, eligibility, and the eligible/in_flight/blocked/resolved partitions), eligible_planning_items, and dispatch_planning_item (eligible PI -> In Progress, gated on all blocked_by Resolved). Endpoints GET /projects/{id}/backlog + /eligible-planning-items, POST /planning-items/{id}/dispatch. Tests incl. a full-org capstone walking every tier. Full v2 suite green. DEC-365 records the interface. WTK-006 Complete (the last of the four ADO agent-tier substrates); addresses PI-114.",
+    "session_identifier": "SES-144",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "kind": "execution",
+      "runner": "claude-code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "Build the ADO Project Manager substrate (WTK-006)",
+    "session_updated_at": "2026-05-31T20:54:41.986595"
   }
 ]

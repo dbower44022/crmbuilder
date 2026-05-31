@@ -1,0 +1,111 @@
+{
+  "label": "SES-144 / CNV-046 close-out — WTK-006 ADO Project Manager substrate. access/repositories/pm.py: project_backlog (every PI in the Project with status, blocked_by deps + unresolved blockers, eligible flag + partitions), eligible_planning_items, dispatch_planning_item (eligible PI -> In Progress). Endpoints GET /projects/{id}/backlog, GET /projects/{id}/eligible-planning-items, POST /planning-items/{id}/dispatch. Includes a full-org capstone test (PM dispatch -> Lead -> execute -> resolve -> next PI unlocks). DEC-365 records the interface. WTK-006 (under WSK-001) driven to Complete; ADDRESSES (not resolves) PI-114 under PRJ-018. Code on main as commit 6e0683e.",
+  "session": {
+    "session_identifier": "SES-144",
+    "session_title": "Build the ADO Project Manager substrate (WTK-006)",
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "runner": "claude-code",
+      "kind": "execution"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_status": "complete",
+    "session_executive_summary": "Claude Code execution session building WTK-006, the ADO Project Manager substrate — the sixth Work Task of PI-114's Development phase (WSK-001). Implements design §2 tier 1 / §3.1: access/repositories/pm.py with project_backlog (the Project's PIs with status, blocked_by deps, eligibility, and the eligible/in_flight/blocked/resolved partitions), eligible_planning_items, and dispatch_planning_item (eligible PI -> In Progress, gated on all blocked_by Resolved). Endpoints GET /projects/{id}/backlog + /eligible-planning-items, POST /planning-items/{id}/dispatch. Tests incl. a full-org capstone walking every tier. Full v2 suite green. DEC-365 records the interface. WTK-006 Complete (the last of the four ADO agent-tier substrates); addresses PI-114.",
+    "session_description": "Execution session building the final ADO agent-tier substrate, the tier-1 Project Manager (the previous five Work Tasks built the state-model, decomposer, phase-specialist, PI Lead substrates, and the UI panels). WTK-006 was created via direct POST /work-tasks under WSK-001 and driven Planned -> Ready -> Claimed -> In Progress -> Complete. The build added access/repositories/pm.py — the PM's dependency-aware scheduling over a Project's PI backlog (design §3.1), reconstructed from the records (statelessness, §4.4). project_backlog(project) returns every PI belonging to the Project (via planning_item_belongs_to_project), each with its status, its blocked_by predecessors and which of them are unresolved (not Resolved), and an eligible flag, plus the rolled-up partitions eligible / in_flight (In Progress or In Review) / blocked (has unresolved blockers, not terminal/in-flight) / resolved, and all_resolved (every PI terminal -> the Project is done). A PI is eligible when its status is startable (Draft/Decomposed/Ready) and every PI it is blocked_by is Resolved — so independent PIs (no blocked_by between them) are all eligible at once and run concurrently under separate Leads, while a chain runs in order. eligible_planning_items(project) is the eligible subset the PM agent prioritizes and dispatches. dispatch_planning_item(pi) hands an eligible PI to a Lead by transitioning it to In Progress, raising 409 if the PI is already started/terminal or still blocked by an unresolved predecessor, and 404 if absent. Exposed as GET /projects/{id}/backlog, GET /projects/{id}/eligible-planning-items, POST /planning-items/{id}/dispatch. Tests: test_pm.py (eligibility + blocking, resolving-a-blocker-unlocks-dependents, independent-PIs-parallel, dispatch-starts/blocked/already-started, all_resolved, unknown-project/PI) and test_pm_route.py (the endpoints plus a full-org capstone: the PM dispatches an eligible PI, the Lead decomposes it and the phase specialists scope it and the phases execute through the serial gate to all_terminal, the PI is resolved, and the PM then sees the downstream PI become eligible and dispatches it). Full v2 suite green. DEC-365 records the interface. With WTK-006 all four ADO tier substrates exist (PM, Lead, phase specialist, area specialist); a Project's PIs are now dependency-scheduled, decomposed, scoped, and executed through verified serial gates entirely over the REST API. The remaining ADO work is the agent prompts/skills that wrap each substrate (§10) and the runtime that runs them. Addresses PI-114 without resolving it.",
+    "references": []
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-046",
+    "conversation_title": "Build the ADO Project Manager substrate — PI backlog + dispatch (WTK-006)",
+    "conversation_purpose": "Implement the tier-1 Project Manager substrate (design §2/§3.1): the deterministic dependency-aware PI-backlog scheduling a PM relies on to find eligible PIs and dispatch Leads, as access + API code with tests incl. a full-org capstone, then drive WTK-006 to Complete and address PI-114.",
+    "conversation_description": "Built access/repositories/pm.py (project_backlog + eligible_planning_items + dispatch_planning_item) and the GET /projects/{id}/backlog, GET /projects/{id}/eligible-planning-items, POST /planning-items/{id}/dispatch endpoints. project_backlog computes per-PI eligibility from blocked_by edges (eligible = startable + all blockers Resolved) and the eligible/in_flight/blocked/resolved partitions; dispatch transitions an eligible PI to In Progress. Added access + API tests incl. a full-org capstone (PM dispatch -> Lead -> execute -> resolve -> next PI unlocks). Full v2 suite green. Decided DEC-365 on the interface. Drove WTK-006 (under WSK-001) to Complete. Addresses (not resolves) PI-114.",
+    "conversation_summary": "ADO Project Manager substrate delivered: project_backlog (dependency eligibility), eligible_planning_items, dispatch_planning_item, over PI blocked_by edges. Three endpoints + a full-org capstone test. WTK-006 Complete; PI-114 addressed. DEC-365 records the interface. All four ADO tier substrates now exist.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-046",
+        "target_type": "session",
+        "target_id": "SES-144",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [],
+  "commits": [
+    {
+      "commit_sha": "6e0683ef8105e26c0acf1edebb209f33ed3afd08",
+      "commit_message_first_line": "v2: WTK-006 — ADO Project Manager substrate (PI backlog + dispatch)",
+      "commit_message_full": "v2: WTK-006 — ADO Project Manager substrate (PI backlog + dispatch)\n\nImplements the tier-1 Project Manager (design §2/§3.1) — the last of the\nfour ADO agent-tier substrates. The prioritization + Lead-spawning are the\nPM agent's; this is the deterministic dependency math, from the records:\n\n- access/repositories/pm.py:\n  - project_backlog(project): every PI in the Project with status,\n    blocked_by deps + unresolved blockers, an eligible flag, and the\n    eligible/in_flight/blocked/resolved partitions + all_resolved.\n  - eligible_planning_items(project): the eligible subset.\n  - dispatch_planning_item(pi): eligible PI -> In Progress, gated on all\n    blocked_by predecessors Resolved.\n- GET /projects/{id}/backlog, GET /projects/{id}/eligible-planning-items,\n  POST /planning-items/{id}/dispatch.\n- Tests: test_pm.py + test_pm_route.py, including a full-org capstone that\n  walks every tier over the API (PM dispatch -> Lead decompose -> scope ->\n  execute through the gate -> PI resolved -> downstream PI unlocks).\n\nWith WTK-006 all four ADO tier substrates exist. Full v2 suite green\n(2295 passed). DEC-365 records the interface.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_files_changed_count": 5,
+      "commit_committed_at": "2026-05-31T16:54:30-04:00",
+      "commit_parent_shas": [
+        "110987bdc8a1979abeee65c2c2f2d76016bad5ca"
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "identifier": "DEC-365",
+      "title": "ADO Project Manager substrate: project_backlog (dependency eligibility) + dispatch_planning_item over PI blocked_by edges",
+      "context": "Design §2 tier 1 / §3.1 define the Project Manager: own a Project's Planning Item backlog, sequence the PIs by their blocked_by edges, prioritize, and spawn a PI Lead per eligible PI (independent PIs run concurrently under separate Leads). The prioritization and the act of spawning a Lead are the PM AGENT's and its prompt is §10 out-of-scope, but the deterministic dependency/eligibility computation it relies on needed a concrete interface, reconstructed from the records so any PM instance resumes from the DB (statelessness, §4.4).",
+      "decision": "access/repositories/pm.py with three operations. project_backlog(project) returns every PI in the Project (via planning_item_belongs_to_project) with its status, its blocked_by predecessors and which are unresolved, an eligible flag, and the rolled-up partitions eligible/in_flight/blocked/resolved plus all_resolved. A PI is eligible iff its status is startable (Draft/Decomposed/Ready) and every PI it is blocked_by is Resolved, so independent PIs are all eligible at once (parallel Leads) while a chain serializes. eligible_planning_items(project) is the eligible subset (the PM agent prioritizes it). dispatch_planning_item(pi) hands an eligible PI to a Lead by transitioning it to In Progress, gated on eligibility (409 if started/terminal or still blocked). Endpoints GET /projects/{id}/backlog, GET /projects/{id}/eligible-planning-items, POST /planning-items/{id}/dispatch.",
+      "alternatives_considered": "Have the PM also do per-PI planning rather than only dispatch — rejected: the design deliberately splits project-level orchestration (which PI next) from per-PI orchestration (the Lead), which bounds each agent's context and is what lets independent PIs run in parallel. Order the eligible set by a stored priority field — deferred: the Planning Item has no priority column; the PM agent prioritizes the eligible set, and the substrate returns it identifier-stable. Dispatch by transitioning to Ready rather than In Progress — rejected: In Progress means a Lead now owns the PI (its first act is decompose); Ready is the not-yet-dispatched eligible state, so dispatch is the In Progress start signal.",
+      "consequences": "New module access/repositories/pm.py + three endpoints; tests in test_pm.py + test_pm_route.py including a full-org capstone that walks every tier over the REST API (PM dispatch -> Lead decompose -> specialists scope -> phases execute through the gate -> PI resolved -> downstream PI unlocks -> PM dispatches it). With WTK-006 all four ADO agent-tier substrates exist (Project Manager, PI Lead, Phase Specialist, Area Specialist); a Project's PIs are now dependency-scheduled, decomposed, scoped, and executed through verified serial gates entirely over the API. The remaining ADO work is the agent prompts/skills that wrap each substrate (§10) and the runtime that runs them; PI resolution stays governance (the resolves edge), which in turn unblocks the next backlog batch the PM dispatches.",
+      "executive_summary": "While building the ADO Project Manager substrate (WTK-006, the last of the four agent-tier substrates), this decision settles its interface: project_backlog computes, from the PIs' blocked_by edges, which are eligible to start (startable status + all blockers Resolved) and partitions the backlog into eligible/in_flight/blocked/resolved; dispatch_planning_item hands an eligible PI to a Lead by moving it to In Progress. Independent PIs are eligible together (parallel Leads); a chain serializes; resolving one PI unblocks its dependents — the next batch the PM dispatches. Prioritization and Lead-spawning stay the agent's; the substrate is the dependency math, reconstructed from the records. Delivered with access + API tests and a full-org capstone walking every tier.",
+      "decision_date": "2026-05-31",
+      "status": "Active"
+    }
+  ],
+  "references": [
+    {
+      "source_type": "session",
+      "source_id": "SES-144",
+      "target_type": "project",
+      "target_id": "PRJ-018",
+      "relationship": "session_belongs_to_project"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-144",
+      "target_type": "work_task",
+      "target_id": "WTK-006",
+      "relationship": "session_works_work_task"
+    },
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-046",
+      "target_type": "project",
+      "target_id": "PRJ-018",
+      "relationship": "conversation_belongs_to_project"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-365",
+      "target_type": "conversation",
+      "target_id": "CNV-046",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-144",
+      "target_type": "session",
+      "target_id": "SES-143",
+      "relationship": "session_follows_from"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": [
+    {
+      "planning_item_identifier": "PI-114"
+    }
+  ]
+}

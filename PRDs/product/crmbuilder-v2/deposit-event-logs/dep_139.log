@@ -1,0 +1,29 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_144.json
+Label:  SES-144 / CNV-046 close-out — WTK-006 ADO Project Manager substrate. access/repositories/pm.py: project_backlog (every PI in the Project with status, blocked_by deps + unresolved blockers, eligible flag + partitions), eligible_planning_items, dispatch_planning_item (eligible PI -> In Progress). Endpoints GET /projects/{id}/backlog, GET /projects/{id}/eligible-planning-items, POST /planning-items/{id}/dispatch. Includes a full-org capstone test (PM dispatch -> Lead -> execute -> resolve -> next PI unlocks). DEC-365 records the interface. WTK-006 (under WSK-001) driven to Complete; ADDRESSES (not resolves) PI-114 under PRJ-018. Code on main as commit 6e0683e.
+Deposit event: DEP-139
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-046 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-365 (HTTP 201)
+
+=== references (4 records) ===
+  ✓ POST references  SES-144 session_works_work_task WTK-006 (HTTP 201)
+  ✓ POST references  CNV-046 conversation_belongs_to_project PRJ-018 (HTTP 201)
+  ✓ POST references  DEC-365 decided_in CNV-046 (HTTP 201)
+  ✓ POST references  SES-144 session_follows_from SES-143 (HTTP 201)
+
+=== addresses_planning_items (1 record) ===
+  ✓ POST addresses_planning_items  → PI-114 (HTTP 201)
+
+✓ All 9 operations complete.
+
+✓ Recorded apply as deposit_event DEP-139 (HTTP 201).
