@@ -142,6 +142,21 @@ cascade to those membership edges. Covered by sub-step 7's `refs` rewrite.
 - Validation: a value must be in (System ∪ that engagement's Engagement areas).
 - Area stays on `planning_item` at this stage (relocation is Phase 4). Migrate existing tags.
 
+> **Phase 3 ✅ done** (commit pending) — `PLANNING_ITEM_STATUSES` →
+> {Draft, Decomposed, Ready, In Progress, In Review, Resolved, Deferred,
+> Cancelled} with `PLANNING_ITEM_STATUS_TRANSITIONS` (forward progression;
+> Resolved/Deferred/Cancelled reachable from every active state so the
+> close-out `resolves` edge still flips from any non-terminal; In Review→In
+> Progress rework bounce; Deferred resume; Resolved/Cancelled terminal).
+> `planning_items.update` now enforces transitions via `check_transition`;
+> `create` defaults to Draft; the dialog schema default is Draft. The
+> orchestrator's ready-trigger changed `Open`→`Ready` (DEC-346). Migration
+> `0029` (drop CHECK → `Open`→`Draft` data rewrite → recreate 8-value CHECK)
+> validated upgrade/downgrade on a live-DB copy, schema parity confirmed,
+> applied to the live DB (55 Open → Draft), snapshots regenerated. Test ripple
+> resolved by context-classifying planning `Open`→`Draft` (orchestrator
+> candidates →`Ready`) while preserving risk `Open`. Full suite green.
+
 ### Phase 3 — Planning Item six-state lifecycle (DEC-346)
 - `PLANNING_ITEM_STATUSES` → Draft, Decomposed, Ready, In Progress, In Review, Resolved,
   Deferred, Cancelled (phase-agnostic). Add `PLANNING_ITEM_STATUS_TRANSITIONS`.

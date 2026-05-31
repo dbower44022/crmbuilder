@@ -23,7 +23,7 @@ def test_reservation_accounts_for_existing_rows(v2_env):
     with session_scope() as s:
         planning_items.create(
             s, identifier="PI-005", title="x",
-            item_type="open_question", status="Open",
+            item_type="open_question", status="Draft",
             executive_summary=(
                 "This planning item reconciles stale test fixtures with the "
                 "current governance schema so the suite validates real "

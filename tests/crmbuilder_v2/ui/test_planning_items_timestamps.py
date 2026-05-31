@@ -21,7 +21,7 @@ def _record(identifier: str = "PI-107") -> dict[str, Any]:
         "title": "Surface timestamps",
         "description": "desc",
         "item_type": "pending_work",
-        "status": "Open",
+        "status": "Draft",
         "resolution_reference": None,
         "executive_summary": "summary",
         "created_at": _CREATED,

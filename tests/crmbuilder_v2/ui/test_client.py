@@ -954,7 +954,7 @@ def test_create_planning_item_returns_created_dict():
         "title": "Pacing dimension",
         "item_type": "planning_dimension",
         "description": "",
-        "status": "Open",
+        "status": "Draft",
         "resolution_reference": None,
     }
 
@@ -971,7 +971,7 @@ def test_create_planning_item_returns_created_dict():
             "identifier": "PI-001",
             "title": "Pacing dimension",
             "item_type": "planning_dimension",
-            "status": "Open",
+            "status": "Draft",
         }
     )
     assert result == record
@@ -996,7 +996,7 @@ def test_create_planning_item_duplicate_raises_conflict():
                 "identifier": "PI-001",
                 "title": "dup",
                 "item_type": "planning_dimension",
-                "status": "Open",
+                "status": "Draft",
             }
         )
 
@@ -1024,7 +1024,7 @@ def test_create_planning_item_invalid_type_raises_validation():
                 "identifier": "PI-001",
                 "title": "x",
                 "item_type": "Bogus",
-                "status": "Open",
+                "status": "Draft",
             }
         )
     assert excinfo.value.field_errors() == {
@@ -1037,7 +1037,7 @@ def test_update_planning_item_returns_updated_dict():
         "identifier": "PI-001",
         "title": "new title",
         "item_type": "planning_dimension",
-        "status": "Open",
+        "status": "Draft",
     }
 
     captured: dict = {}

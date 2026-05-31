@@ -28,7 +28,7 @@ def test_planning_items_crud(client):
         "identifier": "PI-006",
         "title": "Division of labor",
         "item_type": "planning_dimension",
-        "status": "Open",
+        "status": "Draft",
         "executive_summary": _VALID_EXEC_SUMMARY,
     }
     r = client.post("/planning-items", json=body)
@@ -92,7 +92,7 @@ def test_post_risk_with_invalid_format_returns_422(client):
 def test_post_planning_item_without_identifier_assigns_one(client):
     r = client.post(
         "/planning-items",
-        json={"title": "Auto", "item_type": "open_question", "status": "Open",
+        json={"title": "Auto", "item_type": "open_question", "status": "Draft",
               "executive_summary": _VALID_EXEC_SUMMARY},
     )
     assert r.status_code == 201, r.json()
@@ -106,7 +106,7 @@ def test_post_planning_item_with_invalid_format_returns_422(client):
             "identifier": "PI-1",
             "title": "Bad",
             "item_type": "open_question",
-            "status": "Open",
+            "status": "Draft",
             "executive_summary": _VALID_EXEC_SUMMARY,
         },
     )
@@ -136,7 +136,7 @@ def test_planning_item_area_roundtrip(client):
             "identifier": "PI-020",
             "title": "Area-bearing",
             "item_type": "pending_work",
-            "status": "Open",
+            "status": "Draft",
             "area": ["access", "api"],
             "executive_summary": _VALID_EXEC_SUMMARY,
         },
@@ -158,7 +158,7 @@ def test_post_planning_item_with_unknown_area_returns_400(client):
         json={
             "title": "Bad area",
             "item_type": "pending_work",
-            "status": "Open",
+            "status": "Draft",
             "area": ["not-a-real-area"],
             "executive_summary": _VALID_EXEC_SUMMARY,
         },
@@ -172,7 +172,7 @@ def test_post_planning_item_without_area_is_null(client):
         json={
             "title": "No area",
             "item_type": "pending_work",
-            "status": "Open",
+            "status": "Draft",
             "executive_summary": _VALID_EXEC_SUMMARY,
         },
     )
@@ -192,7 +192,7 @@ def test_planning_item_claim_release_roundtrip(client):
             "identifier": "PI-040",
             "title": "Claimable",
             "item_type": "pending_work",
-            "status": "Open",
+            "status": "Draft",
             "executive_summary": _VALID_EXEC_SUMMARY,
         },
     )
@@ -213,7 +213,7 @@ def test_claim_conflict_returns_409(client):
             "identifier": "PI-041",
             "title": "Contended",
             "item_type": "pending_work",
-            "status": "Open",
+            "status": "Draft",
             "executive_summary": _VALID_EXEC_SUMMARY,
         },
     )

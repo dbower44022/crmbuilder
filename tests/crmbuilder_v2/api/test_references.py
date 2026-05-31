@@ -141,7 +141,7 @@ def test_post_references_resolves_flips_status(client):
         "identifier": "PI-995",
         "title": "Test PI for resolves",
         "item_type": "pending_work",
-        "status": "Open",
+        "status": "Draft",
         "executive_summary": _VALID_EXEC_SUMMARY,
     })
 

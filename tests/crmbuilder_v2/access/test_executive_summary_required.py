@@ -102,7 +102,7 @@ def test_planning_item_create_rejects_missing_summary(v2_env):
                 s,
                 title="t",
                 item_type="pending_work",
-                status="Open",
+                status="Draft",
                 executive_summary=None,
             )
 
@@ -121,7 +121,7 @@ def test_valid_summary_accepted(v2_env):
             s,
             title="t",
             item_type="pending_work",
-            status="Open",
+            status="Draft",
             executive_summary=_VALID,
         )
     assert dec["executive_summary"] == _VALID

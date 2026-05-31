@@ -21,7 +21,7 @@ def test_create_and_resolve(v2_env):
             identifier="PI-005",
             title="Pacing dimension",
             item_type="planning_dimension",
-            status="Open",
+            status="Draft",
             executive_summary=_VALID_EXEC_SUMMARY,
         )
     with session_scope() as s:
@@ -44,7 +44,7 @@ def test_invalid_type(v2_env):
             identifier="PI-001",
             title="Bad",
             item_type="not_a_type",
-            status="Open",
+            status="Draft",
             executive_summary=_VALID_EXEC_SUMMARY,
         )
 
@@ -56,7 +56,7 @@ def test_upsert(v2_env):
             identifier="PI-007",
             title="t1",
             item_type="open_question",
-            status="Open",
+            status="Draft",
             executive_summary=_VALID_EXEC_SUMMARY,
         )
         planning_items.upsert(
@@ -64,7 +64,7 @@ def test_upsert(v2_env):
             identifier="PI-007",
             title="t2",
             item_type="open_question",
-            status="Open",
+            status="Draft",
             executive_summary=_VALID_EXEC_SUMMARY,
         )
     with session_scope() as s:
@@ -81,13 +81,13 @@ def test_upsert(v2_env):
 def test_create_with_omitted_identifier_assigns_next(v2_env):
     with session_scope() as s:
         row = planning_items.create(
-            s, title="Auto", item_type="open_question", status="Open",
+            s, title="Auto", item_type="open_question", status="Draft",
             executive_summary=_VALID_EXEC_SUMMARY,
         )
     assert row["identifier"] == "PI-001"
     with session_scope() as s:
         row2 = planning_items.create(
-            s, title="Auto2", item_type="open_question", status="Open",
+            s, title="Auto2", item_type="open_question", status="Draft",
             executive_summary=_VALID_EXEC_SUMMARY,
         )
     assert row2["identifier"] == "PI-002"
@@ -97,7 +97,7 @@ def test_create_with_supplied_identifier_uses_it(v2_env):
     with session_scope() as s:
         row = planning_items.create(
             s, identifier="PI-042", title="Explicit",
-            item_type="open_question", status="Open",
+            item_type="open_question", status="Draft",
             executive_summary=_VALID_EXEC_SUMMARY,
         )
     assert row["identifier"] == "PI-042"
@@ -107,7 +107,7 @@ def test_create_with_invalid_identifier_format_rejected(v2_env):
     with session_scope() as s, pytest.raises(UnprocessableError):
         planning_items.create(
             s, identifier="PI-1", title="Bad",
-            item_type="open_question", status="Open",
+            item_type="open_question", status="Draft",
             executive_summary=_VALID_EXEC_SUMMARY,
         )
 
@@ -116,7 +116,7 @@ def test_create_with_empty_string_identifier_rejected(v2_env):
     with session_scope() as s, pytest.raises(UnprocessableError):
         planning_items.create(
             s, identifier="", title="Bad",
-            item_type="open_question", status="Open",
+            item_type="open_question", status="Draft",
             executive_summary=_VALID_EXEC_SUMMARY,
         )
 
@@ -125,13 +125,13 @@ def test_create_explicit_duplicate_identifier_raises_conflict(v2_env):
     with session_scope() as s:
         planning_items.create(
             s, identifier="PI-001", title="First",
-            item_type="open_question", status="Open",
+            item_type="open_question", status="Draft",
             executive_summary=_VALID_EXEC_SUMMARY,
         )
     with session_scope() as s, pytest.raises(ConflictError):
         planning_items.create(
             s, identifier="PI-001", title="Second",
-            item_type="open_question", status="Open",
+            item_type="open_question", status="Draft",
             executive_summary=_VALID_EXEC_SUMMARY,
         )
 
@@ -140,7 +140,7 @@ def test_autoassign_retries_on_identifier_collision(v2_env, monkeypatch):
     with session_scope() as s:
         planning_items.create(
             s, identifier="PI-001", title="First",
-            item_type="open_question", status="Open",
+            item_type="open_question", status="Draft",
             executive_summary=_VALID_EXEC_SUMMARY,
         )
     monkeypatch.setattr(
@@ -148,7 +148,7 @@ def test_autoassign_retries_on_identifier_collision(v2_env, monkeypatch):
     )
     with session_scope() as s:
         row = planning_items.create(
-            s, title="Second", item_type="open_question", status="Open",
+            s, title="Second", item_type="open_question", status="Draft",
             executive_summary=_VALID_EXEC_SUMMARY,
         )
     assert row["identifier"] == "PI-002"
@@ -163,7 +163,7 @@ def test_create_with_valid_area(v2_env):
     with session_scope() as s:
         row = planning_items.create(
             s, identifier="PI-010", title="Cross-cutting",
-            item_type="pending_work", status="Open",
+            item_type="pending_work", status="Draft",
             executive_summary=_VALID_EXEC_SUMMARY,
             area=["access", "api"],
         )
@@ -177,7 +177,7 @@ def test_create_without_area_defaults_to_none(v2_env):
     with session_scope() as s:
         row = planning_items.create(
             s, identifier="PI-011", title="No area",
-            item_type="pending_work", status="Open",
+            item_type="pending_work", status="Draft",
             executive_summary=_VALID_EXEC_SUMMARY,
         )
     assert row["area"] is None
@@ -187,7 +187,7 @@ def test_create_with_unknown_area_value_rejected(v2_env):
     with session_scope() as s, pytest.raises(ValidationError):
         planning_items.create(
             s, identifier="PI-012", title="Bad area",
-            item_type="pending_work", status="Open",
+            item_type="pending_work", status="Draft",
             executive_summary=_VALID_EXEC_SUMMARY,
             area=["access", "not-an-area"],
         )
@@ -197,7 +197,7 @@ def test_create_with_empty_area_list_rejected(v2_env):
     with session_scope() as s, pytest.raises(ValidationError):
         planning_items.create(
             s, identifier="PI-013", title="Empty area",
-            item_type="pending_work", status="Open",
+            item_type="pending_work", status="Draft",
             executive_summary=_VALID_EXEC_SUMMARY,
             area=[],
         )
@@ -207,7 +207,7 @@ def test_create_with_duplicate_area_values_rejected(v2_env):
     with session_scope() as s, pytest.raises(ValidationError):
         planning_items.create(
             s, identifier="PI-014", title="Dup area",
-            item_type="pending_work", status="Open",
+            item_type="pending_work", status="Draft",
             executive_summary=_VALID_EXEC_SUMMARY,
             area=["api", "api"],
         )
@@ -217,7 +217,7 @@ def test_create_with_non_string_area_element_rejected(v2_env):
     with session_scope() as s, pytest.raises(ValidationError):
         planning_items.create(
             s, identifier="PI-015", title="Non-string area",
-            item_type="pending_work", status="Open",
+            item_type="pending_work", status="Draft",
             executive_summary=_VALID_EXEC_SUMMARY,
             area=["api", 7],
         )
@@ -227,7 +227,7 @@ def test_update_area(v2_env):
     with session_scope() as s:
         planning_items.create(
             s, identifier="PI-016", title="Updatable",
-            item_type="pending_work", status="Open",
+            item_type="pending_work", status="Draft",
             executive_summary=_VALID_EXEC_SUMMARY,
             area=["ui"],
         )
@@ -240,7 +240,7 @@ def test_update_with_unknown_area_value_rejected(v2_env):
     with session_scope() as s:
         planning_items.create(
             s, identifier="PI-017", title="Updatable",
-            item_type="pending_work", status="Open",
+            item_type="pending_work", status="Draft",
             executive_summary=_VALID_EXEC_SUMMARY,
         )
     with session_scope() as s, pytest.raises(ValidationError):
@@ -262,7 +262,7 @@ def test_db_check_rejects_empty_array_directly(v2_env):
                     title="Direct bad",
                     item_type="open_question",
                     description="",
-                    status="Open",
+                    status="Draft",
                     area=[],
                 )
             )
@@ -278,7 +278,7 @@ def _seed(identifier: str = "PI-030") -> None:
     with session_scope() as s:
         planning_items.create(
             s, identifier=identifier, title="Claimable",
-            item_type="pending_work", status="Open",
+            item_type="pending_work", status="Draft",
             executive_summary=_VALID_EXEC_SUMMARY,
         )
 
@@ -352,7 +352,7 @@ def test_db_check_rejects_half_claim(v2_env):
                     title="Half claim",
                     item_type="open_question",
                     description="",
-                    status="Open",
+                    status="Draft",
                     claimed_by="CONV-1",
                     claimed_at=None,
                 )
@@ -368,7 +368,7 @@ def test_db_check_rejects_half_claim(v2_env):
                     title="Half claim 2",
                     item_type="open_question",
                     description="",
-                    status="Open",
+                    status="Draft",
                     claimed_by=None,
                     claimed_at=datetime.now(UTC),
                 )

@@ -394,7 +394,7 @@ class TestPI030NewSections:
                 "identifier": "PI-204",
                 "title": "Test PI",
                 "item_type": "pending_work",
-                "status": "Open",
+                "status": "Draft",
                 "executive_summary": _EXEC_SUMMARY,
             }],
             "work_tickets": [{
@@ -434,7 +434,7 @@ class TestPI030NewSections:
                 "identifier": "PI-205",
                 "title": "Test PI",
                 "item_type": "pending_work",
-                "status": "Open",
+                "status": "Draft",
                 "executive_summary": _EXEC_SUMMARY,
             }],
             "resolves_planning_items": [{"planning_item_identifier": "PI-205"}],
@@ -466,7 +466,7 @@ class TestPI030NewSections:
                 "identifier": "PI-206",
                 "title": "Test PI",
                 "item_type": "pending_work",
-                "status": "Open",
+                "status": "Draft",
                 "executive_summary": _EXEC_SUMMARY,
             }],
             "addresses_planning_items": [{"planning_item_identifier": "PI-206"}],
@@ -483,7 +483,7 @@ class TestPI030NewSections:
         assert "addresses" in kinds
         # No status flip on addresses
         pi = routed.get("/planning-items/PI-206").json()["data"]
-        assert pi["status"] == "Open"
+        assert pi["status"] == "Draft"
 
     def test_apply_ordering_section_headers_in_methodology_order(
         self, routed, tmp_path, monkeypatch, capsys
@@ -507,7 +507,7 @@ class TestPI030NewSections:
                 "identifier": "PI-207",
                 "title": "Test PI 207",
                 "item_type": "pending_work",
-                "status": "Open",
+                "status": "Draft",
                 "executive_summary": _EXEC_SUMMARY,
             }],
             "decisions": [{
@@ -547,7 +547,7 @@ class TestPI030NewSections:
                 "identifier": "PI-208",
                 "title": "Test PI 208",
                 "item_type": "pending_work",
-                "status": "Open",
+                "status": "Draft",
                 "executive_summary": _EXEC_SUMMARY,
             }],
             "resolves_planning_items": [{"planning_item_identifier": "PI-208"}],
@@ -580,7 +580,7 @@ class TestPI030NewSections:
                 "identifier": "PI-209",
                 "title": "Test PI",
                 "item_type": "pending_work",
-                "status": "Open",
+                "status": "Draft",
                 "executive_summary": _EXEC_SUMMARY,
             }],
             "references": [{
@@ -690,7 +690,7 @@ class TestPI030NewSections:
                 "identifier": "PI-212",
                 "title": "Test PI",
                 "item_type": "pending_work",
-                "status": "Open",
+                "status": "Draft",
                 "executive_summary": _EXEC_SUMMARY,
             }],
             "resolves_planning_items": [{"planning_item_identifier": "PI-212"}],

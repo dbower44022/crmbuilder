@@ -85,7 +85,7 @@
     "identifier": "PI-006",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Retrofit governance entities to parent-prefix field-naming convention",
     "updated_at": "2026-05-27T18:20:29.543772"
   },
@@ -100,7 +100,7 @@
     "identifier": "PI-007",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "domain.short_code field for mnemonic references and downstream identifier prefixes",
     "updated_at": "2026-05-27T18:20:29.769350"
   },
@@ -115,7 +115,7 @@
     "identifier": "PI-008",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Inbox folder watcher in v0.3 desktop app for close-out JSON payloads",
     "updated_at": "2026-05-27T18:20:29.965522"
   },
@@ -130,7 +130,7 @@
     "identifier": "PI-009",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Master-pane Domains column on the Entities panel (paired with PI-007 short codes)",
     "updated_at": "2026-05-27T18:20:30.195703"
   },
@@ -160,7 +160,7 @@
     "identifier": "PI-011",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Future scalar implementation-priority field on process for ranking within classification buckets",
     "updated_at": "2026-05-27T18:20:30.671859"
   },
@@ -175,7 +175,7 @@
     "identifier": "PI-012",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "crm_candidate structured-metadata enums (vendor_url, hosting_type, license_type, price_tier) for v0.5+",
     "updated_at": "2026-05-27T18:20:30.871994"
   },
@@ -190,7 +190,7 @@
     "identifier": "PI-013",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Cross-Domain Service representation",
     "updated_at": "2026-05-27T18:20:31.108455"
   },
@@ -205,7 +205,7 @@
     "identifier": "PI-014",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Catalog FK integration for methodology entities",
     "updated_at": "2026-05-27T18:20:31.339615"
   },
@@ -220,7 +220,7 @@
     "identifier": "PI-015",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Methodology entity renderers",
     "updated_at": "2026-05-27T18:20:31.574974"
   },
@@ -235,7 +235,7 @@
     "identifier": "PI-016",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Router-level per-pair vocabulary enforcement on `/references`",
     "updated_at": "2026-05-27T18:20:31.767909"
   },
@@ -250,7 +250,7 @@
     "identifier": "PI-017",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Migrate API and MCP servers to multi-tenant model",
     "updated_at": "2026-05-27T18:20:32.000134"
   },
@@ -295,7 +295,7 @@
     "identifier": "PI-020",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Cross-file layout aggregation in deploy engine",
     "updated_at": "2026-05-27T18:20:32.716527"
   },
@@ -340,7 +340,7 @@
     "identifier": "PI-023",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Workstream-state reconciliation utility at kickoff pre-flight to prevent git-vs-database state drift",
     "updated_at": "2026-05-27T18:20:33.461930"
   },
@@ -400,7 +400,7 @@
     "identifier": "PI-027",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Draft Code Change Lifecycle methodology document and settle deferred design decisions",
     "updated_at": "2026-05-27T18:20:34.370609"
   },
@@ -415,7 +415,7 @@
     "identifier": "PI-028",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Author commit entity schema spec in the governance schema spec format",
     "updated_at": "2026-05-27T18:20:34.607351"
   },
@@ -430,7 +430,7 @@
     "identifier": "PI-029",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Implement commit entity schema vocab access layer and REST API",
     "updated_at": "2026-05-27T18:20:34.830278"
   },
@@ -475,7 +475,7 @@
     "identifier": "PI-032",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Methodology rollout — close-out template and work_ticket authoring rule documented",
     "updated_at": "2026-05-27T18:20:35.503806"
   },
@@ -490,7 +490,7 @@
     "identifier": "PI-033",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Back-fill historical planning_item resolutions work_tickets and commits",
     "updated_at": "2026-05-27T18:20:35.737606"
   },
@@ -670,7 +670,7 @@
     "identifier": "PI-045",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "V2 remote-access deployment: expose MCP server publicly so claude.ai can read and write the v2 governance database",
     "updated_at": "2026-05-27T18:20:38.455035"
   },
@@ -685,7 +685,7 @@
     "identifier": "PI-046",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Resolve vocab.py schema-vs-spec contradiction for reference targets in deposit_event_wrote_record edges",
     "updated_at": "2026-05-27T18:20:38.698422"
   },
@@ -700,7 +700,7 @@
     "identifier": "PI-047",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Resolve ses_030 / ses_036 duplicate-session artifact and the 4 unresolvable references ses_030's payload claims",
     "updated_at": "2026-05-27T18:20:38.900167"
   },
@@ -715,7 +715,7 @@
     "identifier": "PI-048",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Migrate stale 'blocks' relationship references in ses_056.json (and any other historical close-out payloads with the same pattern) to the v0.8-renamed 'blocked_by' relationship kind — or formally accept stale-vocab in historical payloads as an immutable archival convention",
     "updated_at": "2026-05-27T18:20:39.142217"
   },
@@ -760,7 +760,7 @@
     "identifier": "PI-051",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "audit-v1.4 — Section 12.5 role-aware visibility deploy implementation alongside Section 12.7 field-level permissions",
     "updated_at": "2026-05-27T18:20:39.808753"
   },
@@ -805,7 +805,7 @@
     "identifier": "PI-054",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Re-parenting UX flow for `field`",
     "updated_at": "2026-05-27T18:20:40.536595"
   },
@@ -820,7 +820,7 @@
     "identifier": "PI-055",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Richer `field_type` vocabulary for v0.6+",
     "updated_at": "2026-05-27T18:20:40.724421"
   },
@@ -835,7 +835,7 @@
     "identifier": "PI-056",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "`field_default_value` and additional list filters",
     "updated_at": "2026-05-27T18:20:40.968481"
   },
@@ -850,7 +850,7 @@
     "identifier": "PI-057",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Richer required-ness rules for `field`",
     "updated_at": "2026-05-27T18:20:41.203761"
   },
@@ -865,7 +865,7 @@
     "identifier": "PI-058",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Field-to-field dependencies (`field_depends_on_field`)",
     "updated_at": "2026-05-27T18:20:41.447094"
   },
@@ -880,7 +880,7 @@
     "identifier": "PI-059",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Derived-field lineage tracing per DEC-038",
     "updated_at": "2026-05-27T18:20:41.665628"
   },
@@ -895,7 +895,7 @@
     "identifier": "PI-060",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Entity-soft-delete cascade posture for inbound `field` rows",
     "updated_at": "2026-05-27T18:20:41.890413"
   },
@@ -910,7 +910,7 @@
     "identifier": "PI-061",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Add Glossary data structure and UI to V2 (migrate from specifications/glossary.md)",
     "updated_at": "2026-05-27T18:20:42.127678"
   },
@@ -925,7 +925,7 @@
     "identifier": "PI-062",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Resolve V2 cross-engagement reference store architecture",
     "updated_at": "2026-05-27T18:20:42.368209"
   },
@@ -940,7 +940,7 @@
     "identifier": "PI-063",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Build out Skills library",
     "updated_at": "2026-05-27T18:20:42.577831"
   },
@@ -955,7 +955,7 @@
     "identifier": "PI-064",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Build out Pattern library",
     "updated_at": "2026-05-27T18:20:42.804219"
   },
@@ -970,7 +970,7 @@
     "identifier": "PI-065",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Build out Inventory library",
     "updated_at": "2026-05-27T18:20:43.051713"
   },
@@ -985,7 +985,7 @@
     "identifier": "PI-066",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Define Skill trigger/loading mechanism",
     "updated_at": "2026-05-27T18:20:43.291014"
   },
@@ -1000,7 +1000,7 @@
     "identifier": "PI-067",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Tooling for cross-engagement reference content",
     "updated_at": "2026-05-27T18:20:43.493240"
   },
@@ -1030,7 +1030,7 @@
     "identifier": "PI-069",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Iterative drafting of Master CRMBuilder PRD remaining phases",
     "updated_at": "2026-05-27T18:20:43.974244"
   },
@@ -1045,7 +1045,7 @@
     "identifier": "PI-070",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Retire transitional headers when content is consolidated",
     "updated_at": "2026-05-27T18:20:44.212897"
   },
@@ -1060,7 +1060,7 @@
     "identifier": "PI-071",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Architecture for storing client-provided information (engagement-scoped inputs)",
     "updated_at": "2026-05-27T18:20:44.411221"
   },
@@ -1075,7 +1075,7 @@
     "identifier": "PI-072",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Define Engagement Level Setup process and V2 records",
     "updated_at": "2026-05-27T18:20:44.667246"
   },
@@ -1210,7 +1210,7 @@
     "identifier": "PI-081",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Build orchestrator driver script",
     "updated_at": "2026-05-27T18:20:46.728901"
   },
@@ -1240,7 +1240,7 @@
     "identifier": "PI-083",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Backfill area field on currently-open planning items",
     "updated_at": "2026-05-27T18:20:47.188838"
   },
@@ -1255,7 +1255,7 @@
     "identifier": "PI-084",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Create the canonical governance-recording rules document at specifications/governance-recording-rules.md",
     "updated_at": "2026-05-27T18:20:47.423630"
   },
@@ -1270,7 +1270,7 @@
     "identifier": "PI-085",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Define the CRMBuilder Domain that owns governance recording — Domain Overview document",
     "updated_at": "2026-05-27T18:20:47.655098"
   },
@@ -1285,7 +1285,7 @@
     "identifier": "PI-086",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Define the Personas referenced by the CRMBuilder governance-recording Domain — separate Persona entities",
     "updated_at": "2026-05-27T18:20:47.895296"
   },
@@ -1300,7 +1300,7 @@
     "identifier": "PI-087",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Define the Session/Conversation governance Process — first concrete Process PRD in the CRMBuilder governance-recording Domain",
     "updated_at": "2026-05-27T18:20:48.100981"
   },
@@ -1315,7 +1315,7 @@
     "identifier": "PI-088",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Define the standard Process PRD Definition Process — meta Process PRD authored from observed practice",
     "updated_at": "2026-05-27T18:20:48.334046"
   },
@@ -1330,7 +1330,7 @@
     "identifier": "PI-089",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Add a Cross Domain Service entity to the V2 application",
     "updated_at": "2026-05-27T18:20:48.586163"
   },
@@ -1405,7 +1405,7 @@
     "identifier": "PI-094",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Design and implement a user/role entity model in V2 for tracking per-engagement participants",
     "updated_at": "2026-05-27T18:20:49.075566"
   },
@@ -1420,7 +1420,7 @@
     "identifier": "PI-095",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Promote Phase 2 candidate methodology records (14 Domains, 9 Personas, ~40 Entities) from CRMBuilder-Phase-2-Candidate-Inventory.md into V2 records once the close-out pipeline supports methodology ingestion",
     "updated_at": "2026-05-27T18:20:49.276758"
   },
@@ -1495,7 +1495,7 @@
     "identifier": "PI-100",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Validate the storage substrate at target concurrent-writer scale",
     "updated_at": "2026-05-28T04:55:24.937606"
   },
@@ -1540,7 +1540,7 @@
     "identifier": "PI-103",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Edit-locking for already-promoted records: choose the modify-modify protection (optimistic version-check vs advisory lease)",
     "updated_at": "2026-05-28T04:55:03.512956"
   },
@@ -1555,7 +1555,7 @@
     "identifier": "PI-104",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Re-test and enable the claude.ai-web custom connector once Anthropic ships the post-OAuth bearer-attachment fix",
     "updated_at": "2026-05-28T05:07:32.911504"
   },
@@ -1677,7 +1677,7 @@
     "identifier": "PI-112",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Open",
+    "status": "Draft",
     "title": "Migrate the governance & delivery model to the target data model (Project rename, two-tier areas + relocation, Planning Item lifecycle, Workstream-as-phase, Work Task)",
     "updated_at": "2026-05-30T22:33:59.107171"
   }

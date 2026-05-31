@@ -17,7 +17,7 @@ _EXEC_SUMMARY = (
 )
 
 
-def _pi(s, ident, *, status="Open", area=None):
+def _pi(s, ident, *, status="Ready", area=None):
     planning_items.create(
         s, identifier=ident, title=ident, item_type="pending_work",
         status=status, executive_summary=_EXEC_SUMMARY, area=area,

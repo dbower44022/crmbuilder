@@ -60,7 +60,7 @@ _PLANNING_ITEM_FIELDS_TEMPLATE: list[FieldSchema] = [
         widget="combo",
         required=True,
         vocab=PLANNING_ITEM_STATUSES,
-        default="Open",
+        default="Draft",
     ),
     FieldSchema(
         key="resolution_reference",

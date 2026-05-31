@@ -19,7 +19,7 @@ def _stub_record(identifier: str = "PI-001") -> dict[str, Any]:
         "title": "Pacing dimension",
         "description": "desc",
         "item_type": "planning_dimension",
-        "status": "Open",
+        "status": "Draft",
         "resolution_reference": None,
     }
 

@@ -201,7 +201,7 @@ def test_planning_items_context_menu_row(qtbot, client_stub):
         "identifier": "PI-001",
         "title": "Styling pass",
         "item_type": "pending_work",
-        "status": "Open",
+        "status": "Draft",
     }
     index = _seed_table_records(panel, [record])
     menu = panel._build_context_menu(index)

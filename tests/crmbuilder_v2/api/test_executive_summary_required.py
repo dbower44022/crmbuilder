@@ -61,7 +61,7 @@ def test_post_planning_item_missing_summary_returns_422(client):
             "identifier": "PI-001",
             "title": "t",
             "item_type": "pending_work",
-            "status": "Open",
+            "status": "Draft",
         },
     )
     assert r.status_code == 422

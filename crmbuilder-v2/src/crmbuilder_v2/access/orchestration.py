@@ -31,7 +31,7 @@ from crmbuilder_v2.access.repositories import (
 # Per-item projection returned in each batch.
 _ITEM_FIELDS = ("identifier", "title", "executive_summary", "area", "claimed_by")
 
-_OPEN = "Open"
+_READY = "Ready"  # PI-112/DEC-346: standing-agent dispatch trigger
 _BLOCKED_BY = "blocked_by"
 
 
@@ -102,7 +102,7 @@ def compute_ready_batches(
     items = {
         pi["identifier"]: pi
         for pi in planning_items.list_all(session)
-        if pi.get("status") == _OPEN
+        if pi.get("status") == _READY
     }
     nodes = set(items)
 

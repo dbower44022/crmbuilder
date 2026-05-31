@@ -67,7 +67,7 @@ async def test_update_planning_item_refreshes_executive_summary(mcp_server):
             "identifier": "PI-001",
             "title": "Smoke PI",
             "item_type": "pending_work",
-            "status": "Open",
+            "status": "Draft",
             "description": "d",
             "executive_summary": _EXEC,
         },

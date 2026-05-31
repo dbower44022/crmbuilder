@@ -48,7 +48,44 @@ RISK_STATUSES: frozenset[str] = frozenset({"Open", "Mitigated", "Accepted", "Clo
 PLANNING_ITEM_TYPES: frozenset[str] = frozenset(
     {"planning_dimension", "open_question", "pending_work"}
 )
-PLANNING_ITEM_STATUSES: frozenset[str] = frozenset({"Open", "Resolved", "Deferred"})
+# Planning Item lifecycle (PI-112, DEC-346). Phase-agnostic six-state set
+# (plus two non-default terminals) replacing the old Open/Resolved/Deferred.
+# Names are deliberately discipline-neutral — the *phase* of work lives on the
+# Workstream (Phase 4), not in the PI status — so a documentation or design PI
+# uses the same lifecycle as a development one. "Ready" is the trigger state a
+# standing agent watches for. Legacy "Open" maps to "Draft" at migration 0029.
+PLANNING_ITEM_STATUSES: frozenset[str] = frozenset(
+    {
+        "Draft",
+        "Decomposed",
+        "Ready",
+        "In Progress",
+        "In Review",
+        "Resolved",
+        "Deferred",
+        "Cancelled",
+    }
+)
+# Transition rules. Forward progression through the active states, with the
+# three "exit" states (Resolved, Deferred, Cancelled) reachable from every
+# active state — a PI can be resolved at any point (e.g. by a delivering
+# close-out's ``resolves`` edge, which the access layer applies as a status
+# move), deferred, or cancelled. "In Review" may bounce back to "In Progress"
+# for rework; "Deferred" may resume to any active state. Resolved and
+# Cancelled are terminal.
+_PI_EXITS = frozenset({"Resolved", "Deferred", "Cancelled"})
+PLANNING_ITEM_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "Draft": frozenset({"Decomposed", "Ready", "In Progress", "In Review"}) | _PI_EXITS,
+    "Decomposed": frozenset({"Ready", "In Progress", "In Review"}) | _PI_EXITS,
+    "Ready": frozenset({"In Progress", "In Review"}) | _PI_EXITS,
+    "In Progress": frozenset({"In Review"}) | _PI_EXITS,
+    "In Review": frozenset({"In Progress"}) | _PI_EXITS,
+    "Resolved": frozenset(),
+    "Deferred": frozenset(
+        {"Draft", "Decomposed", "Ready", "In Progress", "In Review", "Cancelled"}
+    ),
+    "Cancelled": frozenset(),
+}
 
 # `area` vocabulary — two tiers (PI-112; DEC-340, DEC-342, DEC-347, DEC-348).
 #

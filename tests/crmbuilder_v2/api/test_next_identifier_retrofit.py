@@ -128,7 +128,7 @@ def test_planning_items_next_increments_after_create(client):
         "identifier": "PI-001",
         "title": "first item",
         "item_type": "planning_dimension",
-        "status": "Open",
+        "status": "Draft",
         "executive_summary": _VALID_EXEC_SUMMARY,
     }
     assert client.post("/planning-items", json=body).status_code == 201

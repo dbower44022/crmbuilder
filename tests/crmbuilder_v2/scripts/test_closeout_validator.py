@@ -117,7 +117,7 @@ def _valid_payload() -> dict:
                 "title": "Test PI",
                 "description": "d",
                 "item_type": "pending_work",
-                "status": "Open",
+                "status": "Draft",
                 "executive_summary": _EXEC,
             }
         ],

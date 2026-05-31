@@ -33,7 +33,7 @@ def _record() -> dict[str, Any]:
         "title": "Pacing dimension",
         "description": "desc",
         "item_type": "planning_dimension",
-        "status": "Open",
+        "status": "Draft",
         "executive_summary": _VALID_EXEC_SUMMARY,
         "resolution_reference": "DEC-027",
     }
@@ -45,7 +45,7 @@ def _fill_required(dialog: PlanningItemCreateDialog) -> None:
     # item_type has no default; pick the first item.
     dialog._widgets.item_type.setCurrentIndex(0)
     dialog._widgets.executive_summary.setPlainText(_VALID_EXEC_SUMMARY)
-    # status defaults to Open via the schema.
+    # status defaults to Draft via the schema.
 
 
 # ---------------------------------------------------------------------------
@@ -81,7 +81,7 @@ def test_combo_widgets_bound_to_correct_vocab(qtbot):
     ]
     assert type_items == sorted(PLANNING_ITEM_TYPES)
     assert status_items == sorted(PLANNING_ITEM_STATUSES)
-    assert dialog._widgets.status.currentText() == "Open"
+    assert dialog._widgets.status.currentText() == "Draft"
 
 
 def test_required_fields_block_submission(qtbot):
@@ -132,7 +132,7 @@ def test_successful_create_accepts_with_identifier(qtbot):
     body = args[0]
     assert body["identifier"] == "PI-001"
     assert body["title"] == "Pacing dimension"
-    assert body["status"] == "Open"
+    assert body["status"] == "Draft"
     assert "item_type" in body
     # Empty resolution_reference is omitted on create.
     assert "resolution_reference" not in body
@@ -197,7 +197,7 @@ def test_edit_construct_pre_populates_from_record(qtbot):
     assert dialog._widgets.title.text() == "Pacing dimension"
     assert dialog._widgets.description.toPlainText() == "desc"
     assert dialog._widgets.item_type.currentText() == "planning_dimension"
-    assert dialog._widgets.status.currentText() == "Open"
+    assert dialog._widgets.status.currentText() == "Draft"
     assert dialog._widgets.resolution_reference.text() == "DEC-027"
 
 

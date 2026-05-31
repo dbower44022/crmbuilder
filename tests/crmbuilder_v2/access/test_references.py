@@ -210,7 +210,7 @@ class TestResolvesStatusFlip:
         )["conversation_identifier"]
 
     @staticmethod
-    def _pi(s, identifier="PI-991", status="Open"):
+    def _pi(s, identifier="PI-991", status="Draft"):
         return pi.create(
             s,
             identifier=identifier,
@@ -222,10 +222,10 @@ class TestResolvesStatusFlip:
         )["identifier"]
 
     def test_resolves_flips_open_to_resolved(self, v2_env):
-        """Happy path: Open planning_item -> Resolved on resolves edge."""
+        """Happy path: Draft planning_item -> Resolved on resolves edge."""
         with session_scope() as s:
             conv_id = self._conv(s, "CNV-991")
-            pi_id = self._pi(s, "PI-991", status="Open")
+            pi_id = self._pi(s, "PI-991", status="Draft")
         with session_scope() as s:
             references.create(
                 s,
@@ -263,7 +263,7 @@ class TestResolvesStatusFlip:
         ConflictError; planning_item status remains Resolved."""
         with session_scope() as s:
             conv_id = self._conv(s, "CNV-993")
-            pi_id = self._pi(s, "PI-993", status="Open")
+            pi_id = self._pi(s, "PI-993", status="Draft")
         with session_scope() as s:
             references.create(
                 s,
@@ -292,7 +292,7 @@ class TestResolvesStatusFlip:
         relationship kind, not on the target type."""
         with session_scope() as s:
             conv_id = self._conv(s, "CNV-994")
-            pi_id = self._pi(s, "PI-994", status="Open")
+            pi_id = self._pi(s, "PI-994", status="Draft")
         with session_scope() as s:
             references.create(
                 s,
@@ -304,7 +304,7 @@ class TestResolvesStatusFlip:
             )
         with session_scope() as s:
             row = pi.get(s, pi_id)
-        assert row["status"] == "Open"
+        assert row["status"] == "Draft"
 
 
 class TestOpensAgainstStatusFlip:

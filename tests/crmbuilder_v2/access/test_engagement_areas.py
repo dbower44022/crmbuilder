@@ -19,7 +19,7 @@ _EXEC = "PI-112 engagement-area test executive summary. " * 6
 def _pi(s, ident, area):
     planning_items.create(
         s, identifier=ident, title="t", item_type="pending_work",
-        status="Open", executive_summary=_EXEC, area=area,
+        status="Draft", executive_summary=_EXEC, area=area,
     )
 
 

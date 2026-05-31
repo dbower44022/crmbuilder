@@ -16,7 +16,7 @@ def _mk(client, ident, **extra):
         "identifier": ident,
         "title": ident,
         "item_type": "pending_work",
-        "status": "Open",
+        "status": "Ready",
         "executive_summary": _EXEC_SUMMARY,
     }
     body.update(extra)

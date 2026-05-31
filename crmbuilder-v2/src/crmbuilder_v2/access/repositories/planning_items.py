@@ -27,7 +27,9 @@ from crmbuilder_v2.access.exceptions import (
 )
 from crmbuilder_v2.access.models import PlanningItem
 from crmbuilder_v2.access.repositories.engagement_areas import valid_area_names
+from crmbuilder_v2.access.repositories._governance import check_transition
 from crmbuilder_v2.access.vocab import (
+    PLANNING_ITEM_STATUS_TRANSITIONS,
     PLANNING_ITEM_STATUSES,
     PLANNING_ITEM_TYPES,
 )
@@ -162,7 +164,7 @@ def create(
     title: str,
     item_type: str,
     description: str = "",
-    status: str,
+    status: str = "Draft",
     resolution_reference: str | None = None,
     executive_summary: str,
     area: list[str] | None = None,
@@ -259,6 +261,9 @@ def update(session: Session, identifier: str, **fields) -> dict:
         require_in(fields["item_type"], PLANNING_ITEM_TYPES, field="item_type")
     if "status" in fields:
         require_in(fields["status"], PLANNING_ITEM_STATUSES, field="status")
+        check_transition(
+            row.status, fields["status"], PLANNING_ITEM_STATUS_TRANSITIONS
+        )
     if "executive_summary" in fields:
         # NOT NULL since PI-075 — a present value must be a valid
         # 200-800 char string; the column cannot be cleared via update.
