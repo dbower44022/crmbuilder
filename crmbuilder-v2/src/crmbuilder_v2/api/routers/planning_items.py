@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from crmbuilder_v2.access.repositories import decomposition, lead, planning_items
+from crmbuilder_v2.access.repositories import (
+    decomposition,
+    lead,
+    planning_items,
+    pm,
+)
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
@@ -63,6 +68,16 @@ def release(identifier: str, body: PlanningItemReleaseIn):
         return ok(
             planning_items.release_planning_item(s, identifier, body.claimant)
         )
+
+
+@router.post("/{identifier}/dispatch", status_code=201)
+def dispatch(identifier: str):
+    """Project Manager: hand an eligible Planning Item to a Lead (ADO §3.1).
+    Transitions the PI to In Progress, gated on eligibility (all blocked_by
+    predecessors Resolved). 409 if already started/terminal or still blocked;
+    404 if absent."""
+    with writable_session() as s:
+        return ok(pm.dispatch_planning_item(s, identifier))
 
 
 @router.get("/{identifier}/phase-overview")

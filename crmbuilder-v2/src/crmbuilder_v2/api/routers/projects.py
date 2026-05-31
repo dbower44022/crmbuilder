@@ -12,7 +12,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from crmbuilder_v2.access.exceptions import NotFoundError
-from crmbuilder_v2.access.repositories import projects
+from crmbuilder_v2.access.repositories import pm, projects
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
@@ -54,6 +54,24 @@ def get(identifier: str, include_deleted: bool = False):
         if record is None:
             raise NotFoundError("project", identifier)
         return ok(record)
+
+
+@router.get("/{identifier}/backlog")
+def backlog(identifier: str):
+    """The Project Manager's PI backlog (ADO §3.1): every Planning Item in the
+    Project with status, blocked_by dependencies + unresolved blockers, and an
+    eligible flag, plus the eligible / in_flight / blocked / resolved partitions
+    and all_resolved. 404 if the Project does not exist."""
+    with readonly_session() as s:
+        return ok(pm.project_backlog(s, identifier))
+
+
+@router.get("/{identifier}/eligible-planning-items")
+def eligible_planning_items(identifier: str):
+    """The Planning Items eligible to start now (dependencies satisfied,
+    not yet started) — the PM prioritizes these and dispatches a Lead each."""
+    with readonly_session() as s:
+        return ok(pm.eligible_planning_items(s, identifier))
 
 
 @router.post("", status_code=201)
