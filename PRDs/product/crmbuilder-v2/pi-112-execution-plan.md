@@ -13,7 +13,24 @@
   (`"workstream_"`→`"project_"`), the `import workstreams` forms, ~54 `WS-NNN`
   test literals, the exporter test's `workstreams.json`→`projects.json`, and
   URL-query `source_type=workstream` literals.
-- **Phase 1b (live-data migration)** ⏳ NEXT — mutates the live gitignored
+- **Phase 1b (live-data migration)** ✅ — Alembic `0027` written and applied.
+  Validated on a copy of the live engagement DB (`CRMBUILDER.db`): upgrade →
+  downgrade → re-upgrade all clean, schema parity with `create_all` confirmed,
+  new-code `list_projects` reads it. Surfaced + fixed a Phase 1a bug: two model
+  index names were half-renamed (`ix_workstreams_project_*`) because the column
+  replacement corrupted the index-name token before its own rule ran — now
+  `ix_projects_project_*`. Applied to the live DB (UI/API stopped first; DB
+  backed up to `data/engagements/CRMBUILDER.db.pre-pi112-*.bak`): 14 rows
+  `WS-001..014`→`PRJ-001..014`, 120 refs re-typed, 4 `workstream_master_plan`
+  reference-books → `project_master_plan`. Snapshots regenerated
+  (`workstreams.json` deleted, `projects.json` added, `references.json` /
+  `reference_books.json` updated). `WS-` mentions remaining in
+  `sessions.json`/`decisions.json`/`change_log.json` are historical *prose* in
+  text/audit fields, intentionally not rewritten. **The desktop app must now be
+  relaunched from the `pi-112-migration` branch** — `main`'s code expects the
+  old `workstreams` table and is incompatible with the migrated DB until merge.
+
+  ~~⏳ NEXT — mutates the live gitignored~~
   `v2.db`. Write Alembic `0027`: `op.rename_table workstreams→projects`; batch-
   rename `workstream_*`→`project_*` columns; rebuild CHECKs (`PRJ-` GLOB, status,
   names); **data rewrite** `WS-NNN`→`PRJ-NNN` on the projects PK, on

@@ -1129,8 +1129,8 @@ class Project(Base):
             _check_in("project_status", PROJECT_STATUSES),
             name="ck_project_status",
         ),
-        Index("ix_workstreams_project_status", "project_status"),
-        Index("ix_workstreams_project_deleted_at", "project_deleted_at"),
+        Index("ix_projects_project_status", "project_status"),
+        Index("ix_projects_project_deleted_at", "project_deleted_at"),
     )
 
 

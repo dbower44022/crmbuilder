@@ -2543,21 +2543,21 @@
     "created_at": "2026-05-22T23:56:19.388503",
     "id": 259,
     "reference_identifier": "REF-0255",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-001",
     "source_type": "session",
-    "target_id": "WS-001",
-    "target_type": "workstream"
+    "target_id": "PRJ-001",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-22T23:56:19.457022",
     "id": 260,
     "reference_identifier": "REF-0256",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-002",
     "source_type": "session",
-    "target_id": "WS-001",
-    "target_type": "workstream"
+    "target_id": "PRJ-001",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-22T23:56:19.458330",
@@ -2573,11 +2573,11 @@
     "created_at": "2026-05-22T23:56:19.522552",
     "id": 262,
     "reference_identifier": "REF-0258",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-003",
     "source_type": "session",
-    "target_id": "WS-001",
-    "target_type": "workstream"
+    "target_id": "PRJ-001",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-22T23:56:19.524033",
@@ -2593,11 +2593,11 @@
     "created_at": "2026-05-22T23:56:19.584279",
     "id": 264,
     "reference_identifier": "REF-0260",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-004",
     "source_type": "session",
-    "target_id": "WS-001",
-    "target_type": "workstream"
+    "target_id": "PRJ-001",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-22T23:56:19.585658",
@@ -2613,11 +2613,11 @@
     "created_at": "2026-05-22T23:56:19.650254",
     "id": 266,
     "reference_identifier": "REF-0262",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-005",
     "source_type": "session",
-    "target_id": "WS-001",
-    "target_type": "workstream"
+    "target_id": "PRJ-001",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-22T23:56:19.651588",
@@ -2633,11 +2633,11 @@
     "created_at": "2026-05-22T23:56:19.713985",
     "id": 268,
     "reference_identifier": "REF-0264",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-006",
     "source_type": "session",
-    "target_id": "WS-001",
-    "target_type": "workstream"
+    "target_id": "PRJ-001",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-22T23:56:19.715426",
@@ -2653,11 +2653,11 @@
     "created_at": "2026-05-22T23:56:19.778169",
     "id": 270,
     "reference_identifier": "REF-0266",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-007",
     "source_type": "session",
-    "target_id": "WS-001",
-    "target_type": "workstream"
+    "target_id": "PRJ-001",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-22T23:56:19.779511",
@@ -2673,11 +2673,11 @@
     "created_at": "2026-05-22T23:56:19.870540",
     "id": 272,
     "reference_identifier": "REF-0268",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-008",
     "source_type": "session",
-    "target_id": "WS-001",
-    "target_type": "workstream"
+    "target_id": "PRJ-001",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-22T23:56:19.872015",
@@ -3513,9 +3513,9 @@
     "created_at": "2026-05-22T23:56:23.873427",
     "id": 356,
     "reference_identifier": "REF-0352",
-    "relationship_kind": "workstream_planned_in_reference_book",
-    "source_id": "WS-001",
-    "source_type": "workstream",
+    "relationship_kind": "project_planned_in_reference_book",
+    "source_id": "PRJ-001",
+    "source_type": "project",
     "target_id": "RB-001",
     "target_type": "reference_book"
   },
@@ -4213,9 +4213,9 @@
     "created_at": "2026-05-23T16:06:18.003412",
     "id": 426,
     "reference_identifier": "REF-0422",
-    "relationship_kind": "workstream_planned_in_reference_book",
-    "source_id": "WS-003",
-    "source_type": "workstream",
+    "relationship_kind": "project_planned_in_reference_book",
+    "source_id": "PRJ-003",
+    "source_type": "project",
     "target_id": "RB-011",
     "target_type": "reference_book"
   },
@@ -4223,9 +4223,9 @@
     "created_at": "2026-05-23T16:06:18.080595",
     "id": 427,
     "reference_identifier": "REF-0423",
-    "relationship_kind": "workstream_planned_in_reference_book",
-    "source_id": "WS-004",
-    "source_type": "workstream",
+    "relationship_kind": "project_planned_in_reference_book",
+    "source_id": "PRJ-004",
+    "source_type": "project",
     "target_id": "RB-012",
     "target_type": "reference_book"
   },
@@ -4233,9 +4233,9 @@
     "created_at": "2026-05-23T16:06:18.162206",
     "id": 428,
     "reference_identifier": "REF-0424",
-    "relationship_kind": "workstream_planned_in_reference_book",
-    "source_id": "WS-005",
-    "source_type": "workstream",
+    "relationship_kind": "project_planned_in_reference_book",
+    "source_id": "PRJ-005",
+    "source_type": "project",
     "target_id": "RB-013",
     "target_type": "reference_book"
   },
@@ -4733,11 +4733,11 @@
     "created_at": "2026-05-23T21:12:05.635716",
     "id": 478,
     "reference_identifier": "REF-0474",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-044",
     "source_type": "session",
-    "target_id": "WS-008",
-    "target_type": "workstream"
+    "target_id": "PRJ-008",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:12:05.637302",
@@ -4763,11 +4763,11 @@
     "created_at": "2026-05-23T21:12:05.764523",
     "id": 481,
     "reference_identifier": "REF-0477",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-045",
     "source_type": "session",
-    "target_id": "WS-008",
-    "target_type": "workstream"
+    "target_id": "PRJ-008",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:12:05.766143",
@@ -5083,11 +5083,11 @@
     "created_at": "2026-05-23T21:16:19.640400",
     "id": 513,
     "reference_identifier": "REF-0509",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-014",
     "source_type": "session",
-    "target_id": "WS-002",
-    "target_type": "workstream"
+    "target_id": "PRJ-002",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:19.642042",
@@ -5113,11 +5113,11 @@
     "created_at": "2026-05-23T21:16:19.729818",
     "id": 516,
     "reference_identifier": "REF-0512",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-009",
     "source_type": "session",
-    "target_id": "WS-003",
-    "target_type": "workstream"
+    "target_id": "PRJ-003",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:19.731437",
@@ -5143,11 +5143,11 @@
     "created_at": "2026-05-23T21:16:19.826514",
     "id": 519,
     "reference_identifier": "REF-0515",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-010",
     "source_type": "session",
-    "target_id": "WS-003",
-    "target_type": "workstream"
+    "target_id": "PRJ-003",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:19.828336",
@@ -5173,11 +5173,11 @@
     "created_at": "2026-05-23T21:16:19.953942",
     "id": 522,
     "reference_identifier": "REF-0518",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-011",
     "source_type": "session",
-    "target_id": "WS-003",
-    "target_type": "workstream"
+    "target_id": "PRJ-003",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:19.955770",
@@ -5203,11 +5203,11 @@
     "created_at": "2026-05-23T21:16:20.046774",
     "id": 525,
     "reference_identifier": "REF-0521",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-012",
     "source_type": "session",
-    "target_id": "WS-003",
-    "target_type": "workstream"
+    "target_id": "PRJ-003",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:20.048424",
@@ -5233,11 +5233,11 @@
     "created_at": "2026-05-23T21:16:20.138875",
     "id": 528,
     "reference_identifier": "REF-0524",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-013",
     "source_type": "session",
-    "target_id": "WS-003",
-    "target_type": "workstream"
+    "target_id": "PRJ-003",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:20.140608",
@@ -5263,11 +5263,11 @@
     "created_at": "2026-05-23T21:16:20.237832",
     "id": 531,
     "reference_identifier": "REF-0527",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-015",
     "source_type": "session",
-    "target_id": "WS-003",
-    "target_type": "workstream"
+    "target_id": "PRJ-003",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:20.239536",
@@ -5293,11 +5293,11 @@
     "created_at": "2026-05-23T21:16:20.332035",
     "id": 534,
     "reference_identifier": "REF-0530",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-016",
     "source_type": "session",
-    "target_id": "WS-003",
-    "target_type": "workstream"
+    "target_id": "PRJ-003",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:20.334046",
@@ -5323,11 +5323,11 @@
     "created_at": "2026-05-23T21:16:20.472799",
     "id": 537,
     "reference_identifier": "REF-0533",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-017",
     "source_type": "session",
-    "target_id": "WS-003",
-    "target_type": "workstream"
+    "target_id": "PRJ-003",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:20.474995",
@@ -5353,11 +5353,11 @@
     "created_at": "2026-05-23T21:16:20.579605",
     "id": 540,
     "reference_identifier": "REF-0536",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-018",
     "source_type": "session",
-    "target_id": "WS-003",
-    "target_type": "workstream"
+    "target_id": "PRJ-003",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:20.581519",
@@ -5383,11 +5383,11 @@
     "created_at": "2026-05-23T21:16:20.678965",
     "id": 543,
     "reference_identifier": "REF-0539",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-019",
     "source_type": "session",
-    "target_id": "WS-003",
-    "target_type": "workstream"
+    "target_id": "PRJ-003",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:20.680585",
@@ -5413,11 +5413,11 @@
     "created_at": "2026-05-23T21:16:20.777206",
     "id": 546,
     "reference_identifier": "REF-0542",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-020",
     "source_type": "session",
-    "target_id": "WS-003",
-    "target_type": "workstream"
+    "target_id": "PRJ-003",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:20.778863",
@@ -5443,11 +5443,11 @@
     "created_at": "2026-05-23T21:16:20.871455",
     "id": 549,
     "reference_identifier": "REF-0545",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-021",
     "source_type": "session",
-    "target_id": "WS-003",
-    "target_type": "workstream"
+    "target_id": "PRJ-003",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:20.873522",
@@ -5473,11 +5473,11 @@
     "created_at": "2026-05-23T21:16:21.006546",
     "id": 552,
     "reference_identifier": "REF-0548",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-022",
     "source_type": "session",
-    "target_id": "WS-003",
-    "target_type": "workstream"
+    "target_id": "PRJ-003",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:21.008265",
@@ -5503,11 +5503,11 @@
     "created_at": "2026-05-23T21:16:21.107948",
     "id": 555,
     "reference_identifier": "REF-0551",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-023",
     "source_type": "session",
-    "target_id": "WS-004",
-    "target_type": "workstream"
+    "target_id": "PRJ-004",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:21.109668",
@@ -5533,11 +5533,11 @@
     "created_at": "2026-05-23T21:16:21.215497",
     "id": 558,
     "reference_identifier": "REF-0554",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-024",
     "source_type": "session",
-    "target_id": "WS-004",
-    "target_type": "workstream"
+    "target_id": "PRJ-004",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:21.217776",
@@ -5563,11 +5563,11 @@
     "created_at": "2026-05-23T21:16:21.312082",
     "id": 561,
     "reference_identifier": "REF-0557",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-026",
     "source_type": "session",
-    "target_id": "WS-004",
-    "target_type": "workstream"
+    "target_id": "PRJ-004",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:21.313777",
@@ -5593,11 +5593,11 @@
     "created_at": "2026-05-23T21:16:21.450510",
     "id": 564,
     "reference_identifier": "REF-0560",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-027",
     "source_type": "session",
-    "target_id": "WS-004",
-    "target_type": "workstream"
+    "target_id": "PRJ-004",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:21.452525",
@@ -5623,11 +5623,11 @@
     "created_at": "2026-05-23T21:16:21.544581",
     "id": 567,
     "reference_identifier": "REF-0563",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-028",
     "source_type": "session",
-    "target_id": "WS-004",
-    "target_type": "workstream"
+    "target_id": "PRJ-004",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:21.546344",
@@ -5653,11 +5653,11 @@
     "created_at": "2026-05-23T21:16:21.642092",
     "id": 570,
     "reference_identifier": "REF-0566",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-029",
     "source_type": "session",
-    "target_id": "WS-004",
-    "target_type": "workstream"
+    "target_id": "PRJ-004",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:21.643876",
@@ -5683,11 +5683,11 @@
     "created_at": "2026-05-23T21:16:21.735770",
     "id": 573,
     "reference_identifier": "REF-0569",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-030",
     "source_type": "session",
-    "target_id": "WS-004",
-    "target_type": "workstream"
+    "target_id": "PRJ-004",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:21.737572",
@@ -5713,11 +5713,11 @@
     "created_at": "2026-05-23T21:16:21.831750",
     "id": 576,
     "reference_identifier": "REF-0572",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-031",
     "source_type": "session",
-    "target_id": "WS-004",
-    "target_type": "workstream"
+    "target_id": "PRJ-004",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:21.834037",
@@ -5743,11 +5743,11 @@
     "created_at": "2026-05-23T21:16:21.970222",
     "id": 579,
     "reference_identifier": "REF-0575",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-032",
     "source_type": "session",
-    "target_id": "WS-004",
-    "target_type": "workstream"
+    "target_id": "PRJ-004",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:21.972151",
@@ -5773,11 +5773,11 @@
     "created_at": "2026-05-23T21:16:22.066204",
     "id": 582,
     "reference_identifier": "REF-0578",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-025",
     "source_type": "session",
-    "target_id": "WS-005",
-    "target_type": "workstream"
+    "target_id": "PRJ-005",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:22.068030",
@@ -5803,11 +5803,11 @@
     "created_at": "2026-05-23T21:16:22.167885",
     "id": 585,
     "reference_identifier": "REF-0581",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-033",
     "source_type": "session",
-    "target_id": "WS-005",
-    "target_type": "workstream"
+    "target_id": "PRJ-005",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:22.170880",
@@ -5833,11 +5833,11 @@
     "created_at": "2026-05-23T21:16:22.279111",
     "id": 588,
     "reference_identifier": "REF-0584",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-034",
     "source_type": "session",
-    "target_id": "WS-005",
-    "target_type": "workstream"
+    "target_id": "PRJ-005",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:22.281216",
@@ -5863,11 +5863,11 @@
     "created_at": "2026-05-23T21:16:22.378988",
     "id": 591,
     "reference_identifier": "REF-0587",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-035",
     "source_type": "session",
-    "target_id": "WS-005",
-    "target_type": "workstream"
+    "target_id": "PRJ-005",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:22.380728",
@@ -5893,11 +5893,11 @@
     "created_at": "2026-05-23T21:16:22.512036",
     "id": 594,
     "reference_identifier": "REF-0590",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-036",
     "source_type": "session",
-    "target_id": "WS-005",
-    "target_type": "workstream"
+    "target_id": "PRJ-005",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:22.514004",
@@ -5923,11 +5923,11 @@
     "created_at": "2026-05-23T21:16:22.609067",
     "id": 597,
     "reference_identifier": "REF-0593",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-037",
     "source_type": "session",
-    "target_id": "WS-005",
-    "target_type": "workstream"
+    "target_id": "PRJ-005",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:22.610919",
@@ -5953,11 +5953,11 @@
     "created_at": "2026-05-23T21:16:22.712231",
     "id": 600,
     "reference_identifier": "REF-0596",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-038",
     "source_type": "session",
-    "target_id": "WS-005",
-    "target_type": "workstream"
+    "target_id": "PRJ-005",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:22.714150",
@@ -5983,11 +5983,11 @@
     "created_at": "2026-05-23T21:16:22.809636",
     "id": 603,
     "reference_identifier": "REF-0599",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-039",
     "source_type": "session",
-    "target_id": "WS-005",
-    "target_type": "workstream"
+    "target_id": "PRJ-005",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:22.811533",
@@ -6013,11 +6013,11 @@
     "created_at": "2026-05-23T21:16:22.956162",
     "id": 606,
     "reference_identifier": "REF-0602",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-040",
     "source_type": "session",
-    "target_id": "WS-005",
-    "target_type": "workstream"
+    "target_id": "PRJ-005",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:22.958111",
@@ -6043,11 +6043,11 @@
     "created_at": "2026-05-23T21:16:23.061873",
     "id": 609,
     "reference_identifier": "REF-0605",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-041",
     "source_type": "session",
-    "target_id": "WS-007",
-    "target_type": "workstream"
+    "target_id": "PRJ-007",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:23.063677",
@@ -6073,11 +6073,11 @@
     "created_at": "2026-05-23T21:16:23.168270",
     "id": 612,
     "reference_identifier": "REF-0608",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-042",
     "source_type": "session",
-    "target_id": "WS-007",
-    "target_type": "workstream"
+    "target_id": "PRJ-007",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:23.171671",
@@ -6103,11 +6103,11 @@
     "created_at": "2026-05-23T21:16:23.280169",
     "id": 615,
     "reference_identifier": "REF-0611",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-043",
     "source_type": "session",
-    "target_id": "WS-008",
-    "target_type": "workstream"
+    "target_id": "PRJ-008",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-23T21:16:23.282091",
@@ -8673,11 +8673,11 @@
     "created_at": "2026-05-25T15:28:34.815707",
     "id": 872,
     "reference_identifier": "REF-0868",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-046",
     "source_type": "session",
-    "target_id": "WS-009",
-    "target_type": "workstream"
+    "target_id": "PRJ-009",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-25T15:28:34.818274",
@@ -9263,11 +9263,11 @@
     "created_at": "2026-05-25T19:45:34.314230",
     "id": 931,
     "reference_identifier": "REF-0927",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-047",
     "source_type": "session",
-    "target_id": "WS-010",
-    "target_type": "workstream"
+    "target_id": "PRJ-010",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-25T19:45:34.318103",
@@ -9533,11 +9533,11 @@
     "created_at": "2026-05-25T20:26:57.014772",
     "id": 958,
     "reference_identifier": "REF-0954",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-048",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-25T20:26:57.017353",
@@ -9633,11 +9633,11 @@
     "created_at": "2026-05-26T02:32:42.441192",
     "id": 968,
     "reference_identifier": "REF-0964",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-051",
     "source_type": "session",
-    "target_id": "WS-003",
-    "target_type": "workstream"
+    "target_id": "PRJ-003",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-26T02:32:42.444462",
@@ -9756,8 +9756,8 @@
     "relationship_kind": "is_about",
     "source_id": "SES-081",
     "source_type": "conversation",
-    "target_id": "WS-003",
-    "target_type": "workstream"
+    "target_id": "PRJ-003",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-26T02:32:44.107170",
@@ -9883,11 +9883,11 @@
     "created_at": "2026-05-26T02:48:33.573741",
     "id": 993,
     "reference_identifier": "REF-0989",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-050",
     "source_type": "session",
-    "target_id": "WS-010",
-    "target_type": "workstream"
+    "target_id": "PRJ-010",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-26T02:48:33.576342",
@@ -10233,11 +10233,11 @@
     "created_at": "2026-05-26T03:23:25.681188",
     "id": 1030,
     "reference_identifier": "REF-1026",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-052",
     "source_type": "session",
-    "target_id": "WS-003",
-    "target_type": "workstream"
+    "target_id": "PRJ-003",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-26T03:23:25.683898",
@@ -10393,11 +10393,11 @@
     "created_at": "2026-05-26T04:13:30.686395",
     "id": 1046,
     "reference_identifier": "REF-1042",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-053",
     "source_type": "session",
-    "target_id": "WS-003",
-    "target_type": "workstream"
+    "target_id": "PRJ-003",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-26T04:13:30.688959",
@@ -10633,11 +10633,11 @@
     "created_at": "2026-05-26T05:04:53.538696",
     "id": 1070,
     "reference_identifier": "REF-1066",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-054",
     "source_type": "session",
-    "target_id": "WS-003",
-    "target_type": "workstream"
+    "target_id": "PRJ-003",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-26T05:04:53.541285",
@@ -10783,11 +10783,11 @@
     "created_at": "2026-05-26T05:37:48.647563",
     "id": 1085,
     "reference_identifier": "REF-1081",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-055",
     "source_type": "session",
-    "target_id": "WS-003",
-    "target_type": "workstream"
+    "target_id": "PRJ-003",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-26T05:37:48.686880",
@@ -10933,11 +10933,11 @@
     "created_at": "2026-05-26T06:17:44.097109",
     "id": 1100,
     "reference_identifier": "REF-1096",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-056",
     "source_type": "session",
-    "target_id": "WS-003",
-    "target_type": "workstream"
+    "target_id": "PRJ-003",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-26T06:17:44.100961",
@@ -11083,11 +11083,11 @@
     "created_at": "2026-05-26T06:21:41.003493",
     "id": 1115,
     "reference_identifier": "REF-1111",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-057",
     "source_type": "session",
-    "target_id": "WS-010",
-    "target_type": "workstream"
+    "target_id": "PRJ-010",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-26T06:21:41.006216",
@@ -11143,11 +11143,11 @@
     "created_at": "2026-05-26T06:53:28.766918",
     "id": 1121,
     "reference_identifier": "REF-1117",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-058",
     "source_type": "session",
-    "target_id": "WS-003",
-    "target_type": "workstream"
+    "target_id": "PRJ-003",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-26T06:53:28.769685",
@@ -11303,11 +11303,11 @@
     "created_at": "2026-05-26T15:37:13.139710",
     "id": 1137,
     "reference_identifier": "REF-1133",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-060",
     "source_type": "session",
-    "target_id": "WS-003",
-    "target_type": "workstream"
+    "target_id": "PRJ-003",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-26T15:37:13.142504",
@@ -11403,11 +11403,11 @@
     "created_at": "2026-05-26T19:35:52.272910",
     "id": 1147,
     "reference_identifier": "REF-1143",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-059",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-26T19:35:52.276479",
@@ -11853,11 +11853,11 @@
     "created_at": "2026-05-27T01:28:34.199794",
     "id": 1192,
     "reference_identifier": "REF-1188",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-049",
     "source_type": "session",
-    "target_id": "WS-012",
-    "target_type": "workstream"
+    "target_id": "PRJ-012",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-27T01:28:34.245327",
@@ -15703,11 +15703,11 @@
     "created_at": "2026-05-27T02:23:20.285316",
     "id": 1577,
     "reference_identifier": "REF-1573",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-061",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-27T02:23:20.288756",
@@ -15723,11 +15723,11 @@
     "created_at": "2026-05-27T02:42:39.802371",
     "id": 1579,
     "reference_identifier": "REF-1575",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-062",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-27T02:42:39.806108",
@@ -15823,11 +15823,11 @@
     "created_at": "2026-05-27T03:19:58.964409",
     "id": 1589,
     "reference_identifier": "REF-1585",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-063",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-27T03:19:58.967455",
@@ -16043,11 +16043,11 @@
     "created_at": "2026-05-27T03:58:15.617447",
     "id": 1611,
     "reference_identifier": "REF-1607",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-064",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-27T03:58:15.620630",
@@ -16133,11 +16133,11 @@
     "created_at": "2026-05-27T05:22:07.807715",
     "id": 1620,
     "reference_identifier": "REF-1616",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-065",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-27T05:22:07.811093",
@@ -16283,11 +16283,11 @@
     "created_at": "2026-05-27T05:31:18.457220",
     "id": 1635,
     "reference_identifier": "REF-1631",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-066",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-27T05:31:18.461015",
@@ -16493,11 +16493,11 @@
     "created_at": "2026-05-27T16:38:37.492508",
     "id": 1656,
     "reference_identifier": "REF-1652",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-067",
     "source_type": "session",
-    "target_id": "WS-012",
-    "target_type": "workstream"
+    "target_id": "PRJ-012",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-27T16:38:37.496413",
@@ -16563,11 +16563,11 @@
     "created_at": "2026-05-27T16:53:59.361043",
     "id": 1663,
     "reference_identifier": "REF-1659",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "CONV-068",
     "source_type": "session",
-    "target_id": "WS-012",
-    "target_type": "workstream"
+    "target_id": "PRJ-012",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-27T16:53:59.364553",
@@ -16653,11 +16653,11 @@
     "created_at": "2026-05-27T17:38:48.582407",
     "id": 1672,
     "reference_identifier": "REF-1668",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-099",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-27T17:38:48.845131",
@@ -16993,11 +16993,11 @@
     "created_at": "2026-05-27T17:59:59.641638",
     "id": 1706,
     "reference_identifier": "REF-1702",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-100",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-27T18:00:00.125792",
@@ -17083,11 +17083,11 @@
     "created_at": "2026-05-27T18:10:17.199061",
     "id": 1715,
     "reference_identifier": "REF-1711",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-101",
     "source_type": "session",
-    "target_id": "WS-012",
-    "target_type": "workstream"
+    "target_id": "PRJ-012",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-27T18:10:17.639997",
@@ -17163,11 +17163,11 @@
     "created_at": "2026-05-27T18:14:55.741966",
     "id": 1723,
     "reference_identifier": "REF-1719",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-102",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-27T18:30:43.420572",
@@ -17253,11 +17253,11 @@
     "created_at": "2026-05-27T18:31:17.937185",
     "id": 1732,
     "reference_identifier": "REF-1728",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-103",
     "source_type": "session",
-    "target_id": "WS-012",
-    "target_type": "workstream"
+    "target_id": "PRJ-012",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-27T18:31:19.421762",
@@ -17323,11 +17323,11 @@
     "created_at": "2026-05-27T22:24:45.758480",
     "id": 1739,
     "reference_identifier": "REF-1735",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-104",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-27T22:24:46.039167",
@@ -17443,11 +17443,11 @@
     "created_at": "2026-05-27T23:11:54.182622",
     "id": 1751,
     "reference_identifier": "REF-1747",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-105",
     "source_type": "session",
-    "target_id": "WS-012",
-    "target_type": "workstream"
+    "target_id": "PRJ-012",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-27T23:11:54.748028",
@@ -17473,11 +17473,11 @@
     "created_at": "2026-05-28T02:15:54.693117",
     "id": 1754,
     "reference_identifier": "REF-1750",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-106",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-28T02:15:55.050843",
@@ -17553,11 +17553,11 @@
     "created_at": "2026-05-28T02:22:08.906309",
     "id": 1762,
     "reference_identifier": "REF-1758",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-107",
     "source_type": "session",
-    "target_id": "WS-012",
-    "target_type": "workstream"
+    "target_id": "PRJ-012",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-28T02:22:09.504543",
@@ -17673,11 +17673,11 @@
     "created_at": "2026-05-28T02:33:33.552575",
     "id": 1774,
     "reference_identifier": "REF-1770",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-108",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-28T03:02:18.233620",
@@ -17693,11 +17693,11 @@
     "created_at": "2026-05-28T03:02:18.544207",
     "id": 1776,
     "reference_identifier": "REF-1772",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-109",
     "source_type": "session",
-    "target_id": "WS-012",
-    "target_type": "workstream"
+    "target_id": "PRJ-012",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-28T03:02:19.142160",
@@ -17753,11 +17753,11 @@
     "created_at": "2026-05-28T04:05:11.654373",
     "id": 1782,
     "reference_identifier": "REF-1778",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-110",
     "source_type": "session",
-    "target_id": "WS-012",
-    "target_type": "workstream"
+    "target_id": "PRJ-012",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-28T04:05:11.954335",
@@ -17853,11 +17853,11 @@
     "created_at": "2026-05-28T04:55:02.681129",
     "id": 1792,
     "reference_identifier": "REF-1788",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-111",
     "source_type": "session",
-    "target_id": "WS-012",
-    "target_type": "workstream"
+    "target_id": "PRJ-012",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-28T04:55:03.827662",
@@ -17933,11 +17933,11 @@
     "created_at": "2026-05-28T05:07:32.611869",
     "id": 1800,
     "reference_identifier": "REF-1796",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-112",
     "source_type": "session",
-    "target_id": "WS-010",
-    "target_type": "workstream"
+    "target_id": "PRJ-010",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-28T05:07:34.457028",
@@ -18143,11 +18143,11 @@
     "created_at": "2026-05-29T02:06:58.321669",
     "id": 1822,
     "reference_identifier": "REF-1818",
-    "relationship_kind": "conversation_belongs_to_workstream",
+    "relationship_kind": "conversation_belongs_to_project",
     "source_id": "CNV-015",
     "source_type": "conversation",
-    "target_id": "WS-010",
-    "target_type": "workstream"
+    "target_id": "PRJ-010",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-29T02:06:58.604038",
@@ -18213,21 +18213,21 @@
     "created_at": "2026-05-29T02:08:42.393718",
     "id": 1829,
     "reference_identifier": "REF-1825",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-113",
     "source_type": "session",
-    "target_id": "WS-010",
-    "target_type": "workstream"
+    "target_id": "PRJ-010",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-29T02:12:28.977627",
     "id": 1830,
     "reference_identifier": "REF-1826",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-114",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-29T02:13:41.392638",
@@ -18243,11 +18243,11 @@
     "created_at": "2026-05-29T02:14:49.603037",
     "id": 1832,
     "reference_identifier": "REF-1828",
-    "relationship_kind": "conversation_belongs_to_workstream",
+    "relationship_kind": "conversation_belongs_to_project",
     "source_id": "CNV-016",
     "source_type": "conversation",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-29T02:17:18.506457",
@@ -18323,11 +18323,11 @@
     "created_at": "2026-05-29T17:56:48.082384",
     "id": 1840,
     "reference_identifier": "REF-1836",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-115",
     "source_type": "session",
-    "target_id": "WS-012",
-    "target_type": "workstream"
+    "target_id": "PRJ-012",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-29T17:56:48.940600",
@@ -18353,11 +18353,11 @@
     "created_at": "2026-05-29T17:56:49.532714",
     "id": 1843,
     "reference_identifier": "REF-1839",
-    "relationship_kind": "conversation_belongs_to_workstream",
+    "relationship_kind": "conversation_belongs_to_project",
     "source_id": "CNV-017",
     "source_type": "conversation",
-    "target_id": "WS-012",
-    "target_type": "workstream"
+    "target_id": "PRJ-012",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-29T17:56:49.823388",
@@ -18423,11 +18423,11 @@
     "created_at": "2026-05-29T18:28:59.468008",
     "id": 1850,
     "reference_identifier": "REF-1846",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-116",
     "source_type": "session",
-    "target_id": "WS-012",
-    "target_type": "workstream"
+    "target_id": "PRJ-012",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-29T18:29:02.050111",
@@ -18623,11 +18623,11 @@
     "created_at": "2026-05-29T23:35:52.924613",
     "id": 1870,
     "reference_identifier": "REF-1866",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-117",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-29T23:35:53.462247",
@@ -18683,11 +18683,11 @@
     "created_at": "2026-05-30T03:05:45.487514",
     "id": 1876,
     "reference_identifier": "REF-1872",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-118",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-30T03:05:46.049387",
@@ -18753,21 +18753,21 @@
     "created_at": "2026-05-30T03:27:48.155989",
     "id": 1883,
     "reference_identifier": "REF-1879",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-119",
     "source_type": "session",
-    "target_id": "WS-010",
-    "target_type": "workstream"
+    "target_id": "PRJ-010",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-30T03:27:48.717425",
     "id": 1884,
     "reference_identifier": "REF-1880",
-    "relationship_kind": "conversation_belongs_to_workstream",
+    "relationship_kind": "conversation_belongs_to_project",
     "source_id": "CNV-021",
     "source_type": "conversation",
-    "target_id": "WS-010",
-    "target_type": "workstream"
+    "target_id": "PRJ-010",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-30T03:27:49.028339",
@@ -18833,11 +18833,11 @@
     "created_at": "2026-05-30T03:45:27.854292",
     "id": 1891,
     "reference_identifier": "REF-1887",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-120",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-30T03:45:28.710282",
@@ -18933,21 +18933,21 @@
     "created_at": "2026-05-30T03:47:21.556763",
     "id": 1901,
     "reference_identifier": "REF-1897",
-    "relationship_kind": "conversation_belongs_to_workstream",
+    "relationship_kind": "conversation_belongs_to_project",
     "source_id": "CNV-023",
     "source_type": "conversation",
-    "target_id": "WS-013",
-    "target_type": "workstream"
+    "target_id": "PRJ-013",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-30T03:47:21.863377",
     "id": 1902,
     "reference_identifier": "REF-1898",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-121",
     "source_type": "session",
-    "target_id": "WS-013",
-    "target_type": "workstream"
+    "target_id": "PRJ-013",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-30T03:47:22.754254",
@@ -18976,8 +18976,8 @@
     "relationship_kind": "is_about",
     "source_id": "PI-108",
     "source_type": "planning_item",
-    "target_id": "WS-013",
-    "target_type": "workstream"
+    "target_id": "PRJ-013",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-30T03:47:23.662621",
@@ -18986,8 +18986,8 @@
     "relationship_kind": "is_about",
     "source_id": "REQ-002",
     "source_type": "requirement",
-    "target_id": "WS-013",
-    "target_type": "workstream"
+    "target_id": "PRJ-013",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-30T03:47:23.927253",
@@ -19053,11 +19053,11 @@
     "created_at": "2026-05-30T04:00:49.658810",
     "id": 1913,
     "reference_identifier": "REF-1909",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-122",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-30T04:00:50.266062",
@@ -19123,11 +19123,11 @@
     "created_at": "2026-05-30T04:11:57.928876",
     "id": 1920,
     "reference_identifier": "REF-1916",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-123",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-30T04:11:58.509481",
@@ -19193,11 +19193,11 @@
     "created_at": "2026-05-30T04:17:56.290430",
     "id": 1927,
     "reference_identifier": "REF-1923",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-124",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-30T04:17:57.177736",
@@ -19283,21 +19283,21 @@
     "created_at": "2026-05-30T05:12:07.406484",
     "id": 1936,
     "reference_identifier": "REF-1932",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-125",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-30T05:12:09.281412",
     "id": 1937,
     "reference_identifier": "REF-1933",
-    "relationship_kind": "conversation_belongs_to_workstream",
+    "relationship_kind": "conversation_belongs_to_project",
     "source_id": "CNV-027",
     "source_type": "conversation",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-30T05:12:09.615946",
@@ -19433,11 +19433,11 @@
     "created_at": "2026-05-30T05:32:56.216833",
     "id": 1951,
     "reference_identifier": "REF-1947",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-126",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-30T05:32:58.239444",
@@ -19563,11 +19563,11 @@
     "created_at": "2026-05-30T14:30:57.958288",
     "id": 1964,
     "reference_identifier": "REF-1960",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-127",
     "source_type": "session",
-    "target_id": "WS-013",
-    "target_type": "workstream"
+    "target_id": "PRJ-013",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-30T14:30:58.831340",
@@ -19643,11 +19643,11 @@
     "created_at": "2026-05-30T14:53:06.281068",
     "id": 1972,
     "reference_identifier": "REF-1968",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-128",
     "source_type": "session",
-    "target_id": "WS-010",
-    "target_type": "workstream"
+    "target_id": "PRJ-010",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-30T14:53:06.897959",
@@ -19713,11 +19713,11 @@
     "created_at": "2026-05-30T15:04:48.229040",
     "id": 1979,
     "reference_identifier": "REF-1975",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-129",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-30T15:04:48.803831",
@@ -19793,21 +19793,21 @@
     "created_at": "2026-05-30T15:31:03.116587",
     "id": 1987,
     "reference_identifier": "REF-1983",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-130",
     "source_type": "session",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-30T15:31:04.375309",
     "id": 1988,
     "reference_identifier": "REF-1984",
-    "relationship_kind": "conversation_belongs_to_workstream",
+    "relationship_kind": "conversation_belongs_to_project",
     "source_id": "CNV-032",
     "source_type": "conversation",
-    "target_id": "WS-011",
-    "target_type": "workstream"
+    "target_id": "PRJ-011",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-30T15:31:04.686118",
@@ -19903,21 +19903,21 @@
     "created_at": "2026-05-30T19:42:55.264726",
     "id": 1998,
     "reference_identifier": "REF-1994",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-131",
     "source_type": "session",
-    "target_id": "WS-012",
-    "target_type": "workstream"
+    "target_id": "PRJ-012",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-30T19:42:57.461863",
     "id": 1999,
     "reference_identifier": "REF-1995",
-    "relationship_kind": "conversation_belongs_to_workstream",
+    "relationship_kind": "conversation_belongs_to_project",
     "source_id": "CNV-033",
     "source_type": "conversation",
-    "target_id": "WS-012",
-    "target_type": "workstream"
+    "target_id": "PRJ-012",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-30T19:42:57.776271",
@@ -20073,11 +20073,11 @@
     "created_at": "2026-05-30T22:34:01.131955",
     "id": 2016,
     "reference_identifier": "REF-2012",
-    "relationship_kind": "conversation_belongs_to_workstream",
+    "relationship_kind": "conversation_belongs_to_project",
     "source_id": "CNV-034",
     "source_type": "conversation",
-    "target_id": "WS-014",
-    "target_type": "workstream"
+    "target_id": "PRJ-014",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-30T22:34:01.463391",
@@ -20233,11 +20233,11 @@
     "created_at": "2026-05-30T22:34:51.479314",
     "id": 2032,
     "reference_identifier": "REF-2028",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-132",
     "source_type": "session",
-    "target_id": "WS-014",
-    "target_type": "workstream"
+    "target_id": "PRJ-014",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-30T22:34:51.883851",
@@ -20273,21 +20273,21 @@
     "created_at": "2026-05-31T00:16:46.720151",
     "id": 2036,
     "reference_identifier": "REF-2032",
-    "relationship_kind": "session_belongs_to_workstream",
+    "relationship_kind": "session_belongs_to_project",
     "source_id": "SES-133",
     "source_type": "session",
-    "target_id": "WS-014",
-    "target_type": "workstream"
+    "target_id": "PRJ-014",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-31T00:16:48.516954",
     "id": 2037,
     "reference_identifier": "REF-2033",
-    "relationship_kind": "conversation_belongs_to_workstream",
+    "relationship_kind": "conversation_belongs_to_project",
     "source_id": "CNV-035",
     "source_type": "conversation",
-    "target_id": "WS-014",
-    "target_type": "workstream"
+    "target_id": "PRJ-014",
+    "target_type": "project"
   },
   {
     "created_at": "2026-05-31T00:16:48.820207",
