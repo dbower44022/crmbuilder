@@ -12,13 +12,14 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from crmbuilder_v2.access.exceptions import NotFoundError
-from crmbuilder_v2.access.repositories import workstreams
+from crmbuilder_v2.access.repositories import scoping, workstreams
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
     WorkstreamCreateIn,
     WorkstreamPatchIn,
     WorkstreamReplaceIn,
+    WorkstreamScopeIn,
 )
 
 router = APIRouter(prefix="/workstreams", tags=["workstreams"])
@@ -109,6 +110,29 @@ def patch(identifier: str, body: WorkstreamPatchIn):
                 s, identifier, references=references, **fields
             )
         )
+
+
+@router.get("/{identifier}/prior-phase-outputs")
+def prior_phase_outputs(identifier: str):
+    """The Work Tasks of this PI's earlier phases — a phase specialist's
+    feed-forward scoping context (ADO §3.2)."""
+    with readonly_session() as s:
+        return ok(scoping.prior_phase_outputs(s, identifier))
+
+
+@router.post("/{identifier}/scope", status_code=201)
+def scope(identifier: str, body: WorkstreamScopeIn):
+    """Record a phase specialist's scoping decision for this Workstream.
+
+    Creates the supplied Work Tasks (each ``work_task_belongs_to_workstream``
+    this phase) and drives the Workstream ``Planned → Scoping → Ready``; an
+    empty ``work_tasks`` list drives ``Planned → Scoping → Not Applicable``
+    (the evaluated-empty assertion, §4.3). 409 if the Workstream is not
+    ``Planned`` (already scoped); 404 if it does not exist.
+    """
+    specs = [w.model_dump() for w in body.work_tasks] if body.work_tasks else []
+    with writable_session() as s:
+        return ok(scoping.scope_workstream(s, identifier, specs))
 
 
 @router.delete("/{identifier}")

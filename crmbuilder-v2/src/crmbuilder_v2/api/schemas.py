@@ -1080,6 +1080,23 @@ class WorkstreamPatchIn(_Base):
     references: list[GovernanceEdgeIn] | None = None
 
 
+# --- Phase-specialist scoping (ADO §2.1 / §3.2, WTK-003) -------------------
+class WorkTaskSpecIn(_Base):
+    """One Work Task a phase specialist decided to create when scoping."""
+
+    title: str
+    area: str
+    description: str | None = None
+    notes: str | None = None
+
+
+class WorkstreamScopeIn(_Base):
+    """POST /workstreams/{id}/scope body. An empty/omitted ``work_tasks`` list
+    is the ``Not Applicable`` assertion (the phase was evaluated, no work)."""
+
+    work_tasks: list[WorkTaskSpecIn] | None = None
+
+
 # --- Work Task (single-area unit, PI-112 Phase 4b) -------------------------
 class WorkTaskCreateIn(_Base):
     work_task_title: str
