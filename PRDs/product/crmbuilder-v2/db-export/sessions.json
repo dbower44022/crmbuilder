@@ -2613,5 +2613,33 @@
     "session_superseded_at": null,
     "session_title": "Governance & delivery model redesign — target data model and WS-012 disposition",
     "session_updated_at": "2026-05-30T22:34:51.475273"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-31T00:16:46.716833",
+    "session_created_at": "2026-05-31T00:16:46.716480",
+    "session_deleted_at": null,
+    "session_description": "Single Claude Code planning conversation. CNV-035. Parent Project WS-014 (Governance & Delivery Redesign). Medium: chat (claude-code).\n\nContext: a power failure had interrupted the redesign. Recovery confirmed the SES-132 design session had committed and applied cleanly (target-model doc, DEC-340..344, PI-112, WT-063, WS-014); nothing was lost, and the migration PI-112 had not yet started. The remaining work was to settle the seven open decisions in section 11 of the design doc (#1–6 and #8; #7 and #9 were already resolved as DEC-342/DEC-344) before executing the migration.\n\nArc: each fork was worked through individually. The identifier-prefix question (#1–3) was treated as coupled and resolved to a clean single scheme (PRJ-/WSK-/new WTK-) accepting the one-time WS-→PRJ- identifier rewrite. The Engagement-Area-vs-Domain question (#6) was examined against CBM's real data — four domains (MN/MR/CR/FU) but five areas, the extra being the cross-domain `services` region with no domain — and resolved to keep Engagement Areas fully user-defined with no Domain relationship at all. The remaining forks (#4 PI lifecycle names, #5 area priority, #8 phase vocabulary) were settled to phase-agnostic state names, an ordinal layer rank, and the addition of a Design phase. The target-model doc was updated to v0.4 with every entity section locked. The migration itself (PI-112) is the next, separate unit of work.",
+    "session_ended_at": null,
+    "session_executive_summary": "A planning conversation, resumed after a power failure that had stopped the prior redesign work, that closed the seven open decisions left in the governance/delivery target-model document. It settled the identifier-prefix scheme (the renamed container becomes Project with a fresh PRJ- prefix and its existing WS- rows migrated, the new delivery-phase Workstream takes WSK-, and the single-area Work Task is a new entity with WTK-), generalized the Planning Item lifecycle state names off development-specific wording, fixed area priority as an ordinal layer rank on the System areas, established that Engagement Areas are fully user-defined with no tie to methodology Domains, and added a Design phase to the Workstream vocabulary. The data model is now locked as the migration target for PI-112.",
+    "session_identifier": "SES-133",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "kind": "planning",
+      "runner": "claude-code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "Resolve the governance & delivery redesign's remaining open decisions",
+    "session_updated_at": "2026-05-31T00:16:46.717105"
   }
 ]

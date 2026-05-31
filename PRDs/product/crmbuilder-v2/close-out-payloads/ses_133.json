@@ -1,0 +1,95 @@
+{
+  "label": "SES-133 / CNV-035 close-out — resolve the seven remaining §11 open decisions of the governance & delivery redesign (planning, Claude Code). Records five architectural decisions (DEC-345..DEC-349): the identifier-prefix scheme (Project→PRJ- with existing WS- rows migrated, Workstream-phase→WSK-, Work Task→new entity WTK-); the phase-agnostic Planning Item lifecycle; the ordinal area layer-rank; Engagement Areas as fully user-defined with no Domain relationship; and adding Design to the Workstream phase vocabulary. Updates the target-model design doc to v0.4 (all nine §11 forks resolved, entity sections §2–§8 locked). Addresses PI-112 (settles its first work — the design decisions — without executing the migration). No code commits. Identifiers re-verify at apply time; re-key on collision.",
+  "session": {
+    "session_identifier": "SES-133",
+    "session_title": "Resolve the governance & delivery redesign's remaining open decisions",
+    "session_medium": "chat",
+    "session_medium_metadata": {"runner": "claude-code", "kind": "planning"},
+    "session_participants": ["Doug Bower", "Claude"],
+    "session_status": "complete",
+    "session_executive_summary": "A planning conversation, resumed after a power failure that had stopped the prior redesign work, that closed the seven open decisions left in the governance/delivery target-model document. It settled the identifier-prefix scheme (the renamed container becomes Project with a fresh PRJ- prefix and its existing WS- rows migrated, the new delivery-phase Workstream takes WSK-, and the single-area Work Task is a new entity with WTK-), generalized the Planning Item lifecycle state names off development-specific wording, fixed area priority as an ordinal layer rank on the System areas, established that Engagement Areas are fully user-defined with no tie to methodology Domains, and added a Design phase to the Workstream vocabulary. The data model is now locked as the migration target for PI-112.",
+    "session_description": "Single Claude Code planning conversation. CNV-035. Parent Project WS-014 (Governance & Delivery Redesign). Medium: chat (claude-code).\n\nContext: a power failure had interrupted the redesign. Recovery confirmed the SES-132 design session had committed and applied cleanly (target-model doc, DEC-340..344, PI-112, WT-063, WS-014); nothing was lost, and the migration PI-112 had not yet started. The remaining work was to settle the seven open decisions in section 11 of the design doc (#1–6 and #8; #7 and #9 were already resolved as DEC-342/DEC-344) before executing the migration.\n\nArc: each fork was worked through individually. The identifier-prefix question (#1–3) was treated as coupled and resolved to a clean single scheme (PRJ-/WSK-/new WTK-) accepting the one-time WS-→PRJ- identifier rewrite. The Engagement-Area-vs-Domain question (#6) was examined against CBM's real data — four domains (MN/MR/CR/FU) but five areas, the extra being the cross-domain `services` region with no domain — and resolved to keep Engagement Areas fully user-defined with no Domain relationship at all. The remaining forks (#4 PI lifecycle names, #5 area priority, #8 phase vocabulary) were settled to phase-agnostic state names, an ordinal layer rank, and the addition of a Design phase. The target-model doc was updated to v0.4 with every entity section locked. The migration itself (PI-112) is the next, separate unit of work.",
+    "references": []
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-035",
+    "conversation_title": "Closing the redesign's remaining open decisions",
+    "conversation_purpose": "Resolve the seven open schema/naming decisions left in the governance/delivery target-model document so the data model is locked for migration PI-112.",
+    "conversation_status": "complete",
+    "conversation_description": "Resumed redesign planning after a power failure. Confirmed the SES-132 design work had landed cleanly and PI-112 had not started. Worked the seven remaining section-11 forks individually: identifier prefixes (PRJ-/WSK-/new WTK-, migrating existing WS- rows), phase-agnostic Planning Item lifecycle names, ordinal area layer-rank, Engagement Areas as fully user-defined with no Domain relationship (decided against the CBM domains-vs-services backdrop), and a Design phase added to the Workstream vocabulary. Updated the target-model doc to v0.4. Recorded the resolutions as DEC-345..DEC-349 and addressed PI-112 without resolving it; executing the migration is the next session.",
+    "references": []
+  },
+  "work_tickets": [],
+  "planning_items": [],
+  "commits": [],
+  "decisions": [
+    {
+      "identifier": "DEC-345",
+      "title": "Identifier-prefix scheme for the redesigned governance entities (Project PRJ-, Workstream WSK-, new Work Task WTK-)",
+      "context": "The redesign renames the `workstream` container to Project (DEC-341) and introduces two new entities — a per-Planning-Item delivery-phase Workstream and a single-area Work Task. This forces three coupled identifier-prefix questions left open as section-11 items #1–3: whether Project keeps the existing WS- prefix or moves to PRJ-; what prefix the new delivery-phase Workstream takes given WS- is contested; and whether the Work Task refines the existing `work_ticket` entity in place (reusing WT-) or is a new entity. A relevant precedent is the PI-073 session/conversation redesign, which accepted prefix-versus-entity asymmetry (SES- rows are now conversations, CONV- rows are sessions) and found it a lasting source of confusion.",
+      "decision": "Adopt one clean scheme and migrate to it: Project takes a fresh PRJ- prefix with the existing WS-001..WS-014 rows rewritten to PRJ-NNN (not kept); the new delivery-phase Workstream takes WSK-; and the Work Task is a new entity with prefix WTK-, leaving the existing `work_ticket` (WT-) untouched in its kickoff-pointer role. The vacated WS- prefix is not recycled for the new Workstream, to avoid the historical ambiguity the PI-073 precedent demonstrated.",
+      "alternatives_considered": "Keep WS- on existing Project rows for stability and only prefix new entities (rejected; chosen against in favor of a single consistent end-state scheme, accepting a one-time rewrite). Recycle the vacated WS- for the new Workstream (rejected; reusing a prefix whose historical rows mean a different entity repeats the PI-073 confusion). Refine `work_ticket` in place into the Work Task and reuse WT- (rejected; the lifecycles diverge too far — `work_ticket` is single-use ready→consumed, a Work Task is agent-claimable Planned→Ready→Claimed→In Progress→Complete — so overloading one table would be costly and the existing kickoff role would have to be migrated).",
+      "consequences": "A one-time identifier rewrite of WS-001..WS-014 to PRJ-NNN across DB rows, reference edges, close-out payloads, deposit-event logs, and design-doc prose; git history is immutable so historical commit messages are fix-forward only. Two genuinely new entity tables/routes/MCP-tools/panels are created (WSK- Workstream, WTK- Work Task) rather than one being refit. `work_ticket` is preserved as-is; its eventual retirement once the agent organization exists is deferred (target-model §12).",
+      "executive_summary": "Sets the names/IDs for the redesigned pieces: the renamed container becomes 'Project' with a new PRJ- code (and its old WS- records are renumbered to match), the new delivery-phase 'Workstream' gets WSK-, and the new fine-grained 'Work Task' is a brand-new record type (WTK-) rather than a reuse of the existing work-ticket. Cleaner long-term at the cost of a one-time renumbering of the fourteen existing container records.",
+      "decision_date": "2026-05-30",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-346",
+      "title": "Planning Item lifecycle uses phase-agnostic state names",
+      "context": "The redesign gives the Planning Item a real status lifecycle (today it is only Open/Resolved/Deferred) so standing agents can pull work when an item is ready. The design draft named the states Draft → Decomposed → Ready for Development → In Development → In Review → Resolved. But not every Planning Item is a development item — some are documentation, data migration, or design (the SES-132 session that produced this very model was a design effort) — and the delivery phase already lives on the Workstream, so development-specific wording in the Planning Item state names is both inaccurate and redundant. This was section-11 open item #4.",
+      "decision": "Adopt the six-state lifecycle with phase-agnostic names: Draft → Decomposed → Ready → In Progress → In Review → Resolved, with Deferred and Cancelled reachable from most states. 'Ready' (decomposition complete and upstream blocked_by satisfied) is the trigger standing agents watch for; 'In Progress' and 'In Review' cover delivery and verification regardless of discipline.",
+      "alternatives_considered": "Keep the development-flavored names from the draft (rejected; misdescribes non-development items and duplicates the phase that the Workstream already carries). Use a simpler set such as Draft → Ready → In Progress → Resolved (rejected; loses the Decomposed and In Review signals that the pull-dispatch and verification steps rely on).",
+      "consequences": "Extends the Planning Item status vocabulary and transition rules from three states to six-plus-two-terminals. Existing open items migrate into the new lifecycle (their landing state is a migration-step detail). The clean Deferred state this lifecycle provides is what the shelved PI-081 and PI-083 are waiting for (DEC-344).",
+      "executive_summary": "Gives planning items a richer set of statuses (Draft, Decomposed, Ready, In Progress, In Review, Resolved, plus Deferred/Cancelled) so the system can tell when an item is ready to be picked up. The names are kept generic rather than development-specific, because some items are documentation, migration, or design work — and the specific kind of work is already tracked one level down on the Workstream.",
+      "decision_date": "2026-05-30",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-347",
+      "title": "Area priority is an ordinal layer rank on the System areas",
+      "context": "Within a Workstream, work on a lower platform layer must generally precede work that depends on it (storage before access before api before ui), and the redesign wants this default ordering to be automatic rather than hand-specified per task. The design left open (section-11 item #5) how to represent that priority: an ordinal layer rank on each System area, a separate ordering table, or explicit dependency edges only.",
+      "decision": "Encode priority as an ordinal layer rank attached to the System areas: storage (1) → access (2) → api (3) → mcp / ui (4, parallel). The non-stack System areas (methodology, infrastructure, the legacy engine) and all Engagement Areas are unranked (null), i.e. parallel. Explicit task-level blocked_by handles exceptions to the default order.",
+      "alternatives_considered": "A separate ordering/precedence table (rejected; over-built for a small fixed dependency spine). Explicit dependency edges only, with no default rank (rejected; too manual — every Workstream would have to re-declare the storage→access→api→ui order).",
+      "consequences": "Adds a nullable ordinal rank attribute to the System-area definitions; the area-restructuring migration step populates it for the platform stack. Intra-Workstream default sequencing falls out of the rank, with blocked_by reserved for genuine exceptions. Engagement Areas carry no rank and are treated as parallel.",
+      "executive_summary": "Decides how the system knows to do lower-level work (data storage) before higher-level work (the user interface) inside a delivery phase: each core platform area gets a simple number (storage 1, access 2, api 3, ui 4) and the system orders work by it automatically. Client-specific and non-stack areas are left unranked. A lightweight choice over building a separate ordering system.",
+      "decision_date": "2026-05-30",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-348",
+      "title": "Engagement Areas are fully user-defined, with no relationship to methodology Domains",
+      "context": "The two-tier area model (DEC-342) introduced per-engagement Engagement Areas, leaving open (section-11 item #6) how they are stored and whether an Engagement Area is the same thing as a methodology Domain or a distinct concept. CBM is the concrete test: it has four Domains (MN, MR, CR, FU) but five areas — the fifth, `services`, is the cross-domain services layer (Notes, Email, Calendar, Surveys) that deliberately spans all four domains and is therefore not a domain. The two ideas also differ on every axis that matters: a Domain is a client-facing discovery artifact with its own candidate→confirmed→deferred lifecycle, while an Engagement Area is internal work-routing plumbing the client never sees.",
+      "decision": "Engagement Areas are fully user-defined labels declared at engagement initialization, stored in a per-engagement table, with no relationship to Domain records — not seeded from, derived from, or otherwise tied to them. The system treats every engagement-area label as opaque user input. The two vocabularies stay fully decoupled.",
+      "alternatives_considered": "Make Engagement Areas the same as the engagement's Domain set (rejected; leaves the cross-domain `services` area with no home and would force a fake 'Services' domain into the client-facing discovery model). Seed Engagement Areas from confirmed Domains at initialization while keeping them distinct (rejected in favor of fully user-defined; the user prefers no coupling, and even a one-time seed ties area-vocabulary provenance to the methodology lifecycle). Derive areas live from Domain records with no stored table (rejected; structurally cannot produce non-domain areas like `services`).",
+      "consequences": "Requires a per-engagement Engagement-Area table populated entirely from user input at engagement setup. Governance task-scoping stays independent of methodology lifecycle changes — a Domain moving to deferred cannot disturb an engagement's areas. CBM's cbm-* labels migrate in as plain user-defined Engagement Areas (mn, mr, cr, fu, services) during the area-restructuring step.",
+      "executive_summary": "Settles that the work regions a client's engagement is divided into are simply defined by the user at setup, and are kept entirely separate from the 'Domains' produced earlier in the requirements process — even though they often look similar. The deciding example is CBM, whose shared 'services' region spans all its domains and so could never be one. Keeping them separate stops a client's discovery work from accidentally breaking how tasks get routed to agents.",
+      "decision_date": "2026-05-30",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-349",
+      "title": "Add a Design phase to the Workstream phase vocabulary",
+      "context": "The Workstream (the per-Planning-Item delivery phase, DEC-343) carries a controlled phase-type vocabulary. The design draft proposed {Development, Testing, Documentation, Data Migration, Deployment} but left the set open as section-11 item #8. That set has no home for design work, yet design is a real and common phase — the SES-132 session that produced this whole target model was itself a design effort that would have had nowhere to live.",
+      "decision": "Add Design to the front of the phase vocabulary: {Design, Development, Testing, Documentation, Data Migration, Deployment}. The set remains a controlled vocabulary, extensible only by deliberate developer change in the same way as the System areas.",
+      "alternatives_considered": "Keep the drafted five-phase set without Design (rejected; design work has no phase to attach to). Fold design into Documentation or Development (rejected; conflates a distinct activity with a different skill profile, and loses the ability to sequence design before development).",
+      "consequences": "The Workstream phase-type vocabulary gains one member. Not every Planning Item uses every phase; Design is available when an item needs an explicit design step ahead of development. The phase still drives the runtime discipline-manager specialization.",
+      "executive_summary": "Adds 'Design' to the list of delivery phases a planning item can be broken into (alongside Development, Testing, Documentation, Data Migration, Deployment), so up-front design work — like the very session that produced this model — has a place to live.",
+      "decision_date": "2026-05-30",
+      "status": "Active"
+    }
+  ],
+  "references": [
+    {"source_type": "session", "source_id": "SES-133", "target_type": "workstream", "target_id": "WS-014", "relationship": "session_belongs_to_workstream"},
+    {"source_type": "conversation", "source_id": "CNV-035", "target_type": "session", "target_id": "SES-133", "relationship": "conversation_belongs_to_session"},
+    {"source_type": "conversation", "source_id": "CNV-035", "target_type": "workstream", "target_id": "WS-014", "relationship": "conversation_belongs_to_workstream"},
+    {"source_type": "session", "source_id": "SES-133", "target_type": "session", "target_id": "SES-132", "relationship": "session_follows_from"},
+    {"source_type": "decision", "source_id": "DEC-345", "target_type": "conversation", "target_id": "CNV-035", "relationship": "decided_in"},
+    {"source_type": "decision", "source_id": "DEC-346", "target_type": "conversation", "target_id": "CNV-035", "relationship": "decided_in"},
+    {"source_type": "decision", "source_id": "DEC-347", "target_type": "conversation", "target_id": "CNV-035", "relationship": "decided_in"},
+    {"source_type": "decision", "source_id": "DEC-348", "target_type": "conversation", "target_id": "CNV-035", "relationship": "decided_in"},
+    {"source_type": "decision", "source_id": "DEC-349", "target_type": "conversation", "target_id": "CNV-035", "relationship": "decided_in"}
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": [{"planning_item_identifier": "PI-112"}]
+}

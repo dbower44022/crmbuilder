@@ -2829,5 +2829,28 @@
       "work_tickets": 0
     },
     "deposit_event_title": "Apply of COP-132, 2026-05-30T22:34:51+00:00"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "0.7.0",
+      "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_133.json",
+      "runner": "claude_code"
+    },
+    "deposit_event_created_at": "2026-05-31T00:17:27.740519",
+    "deposit_event_description": "Applied COP-133. Outcome: success. no records written.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-126",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_126.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "commits": 0,
+      "conversations": 0,
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 0,
+      "work_tickets": 0
+    },
+    "deposit_event_title": "Apply of COP-133, 2026-05-31T00:17:27+00:00"
   }
 ]

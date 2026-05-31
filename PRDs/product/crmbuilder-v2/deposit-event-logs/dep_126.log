@@ -1,0 +1,42 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_133.json
+Label:  SES-133 / CNV-035 close-out — resolve the seven remaining §11 open decisions of the governance & delivery redesign (planning, Claude Code). Records five architectural decisions (DEC-345..DEC-349): the identifier-prefix scheme (Project→PRJ- with existing WS- rows migrated, Workstream-phase→WSK-, Work Task→new entity WTK-); the phase-agnostic Planning Item lifecycle; the ordinal area layer-rank; Engagement Areas as fully user-defined with no Domain relationship; and adding Design to the Workstream phase vocabulary. Updates the target-model design doc to v0.4 (all nine §11 forks resolved, entity sections §2–§8 locked). Addresses PI-112 (settles its first work — the design decisions — without executing the migration). No code commits. Identifiers re-verify at apply time; re-key on collision.
+Deposit event: DEP-126
+
+Close-out payload validation: 0 error(s), 7 warning(s).
+  [WARN]  identifier_heads: SES-133 is at-or-below the live head (SES head's next free slot is SES-134). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+  [WARN]  identifier_heads: CNV-035 is at-or-below the live head (CNV head's next free slot is CNV-036). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+  [WARN]  identifier_heads: DEC-345 is at-or-below the live head (DEC head's next free slot is DEC-350). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+  [WARN]  identifier_heads: DEC-346 is at-or-below the live head (DEC head's next free slot is DEC-350). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+  [WARN]  identifier_heads: DEC-347 is at-or-below the live head (DEC head's next free slot is DEC-350). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+  [WARN]  identifier_heads: DEC-348 is at-or-below the live head (DEC head's next free slot is DEC-350). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+  [WARN]  identifier_heads: DEC-349 is at-or-below the live head (DEC head's next free slot is DEC-350). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+
+=== conversation (1 record) ===
+  · POST conversation  CNV-035 already present (HTTP 409) — skipping
+
+=== session (1 record) ===
+  · POST session  <unidentified record> already present (HTTP 409) — skipping
+
+=== decisions (5 records) ===
+  · POST decisions  DEC-345 already present (HTTP 409) — skipping
+  · POST decisions  DEC-346 already present (HTTP 409) — skipping
+  · POST decisions  DEC-347 already present (HTTP 409) — skipping
+  · POST decisions  DEC-348 already present (HTTP 409) — skipping
+  · POST decisions  DEC-349 already present (HTTP 409) — skipping
+
+=== references (7 records) ===
+  · POST references  CNV-035 conversation_belongs_to_workstream WS-014 already present (HTTP 409) — skipping
+  · POST references  SES-133 session_follows_from SES-132 already present (HTTP 409) — skipping
+  · POST references  DEC-345 decided_in CNV-035 already present (HTTP 409) — skipping
+  · POST references  DEC-346 decided_in CNV-035 already present (HTTP 409) — skipping
+  · POST references  DEC-347 decided_in CNV-035 already present (HTTP 409) — skipping
+  · POST references  DEC-348 decided_in CNV-035 already present (HTTP 409) — skipping
+  · POST references  DEC-349 decided_in CNV-035 already present (HTTP 409) — skipping
+
+=== addresses_planning_items (1 record) ===
+  ✓ POST addresses_planning_items  → PI-112 (HTTP 201)
+
+✓ All 15 operations complete.
+
+✓ Recorded apply as deposit_event DEP-126 (HTTP 201).
