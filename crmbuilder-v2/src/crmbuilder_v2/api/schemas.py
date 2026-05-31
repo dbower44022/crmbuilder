@@ -1043,6 +1043,37 @@ class ProjectPatchIn(_Base):
     references: list[GovernanceEdgeIn] | None = None
 
 
+# --- Workstream (delivery phase, PI-112 Phase 4) ---------------------------
+class WorkstreamCreateIn(_Base):
+    workstream_phase_type: str
+    workstream_title: str
+    workstream_description: str | None = None
+    workstream_notes: str | None = None
+    workstream_status: str | None = None
+    workstream_identifier: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+    timestamps: dict[str, Any] | None = None
+
+
+class WorkstreamReplaceIn(_Base):
+    workstream_identifier: str | None = None
+    workstream_phase_type: str
+    workstream_title: str
+    workstream_description: str | None = None
+    workstream_notes: str | None = None
+    workstream_status: str
+    references: list[GovernanceEdgeIn] | None = None
+
+
+class WorkstreamPatchIn(_Base):
+    workstream_phase_type: str | None = None
+    workstream_title: str | None = None
+    workstream_description: str | None = None
+    workstream_notes: str | None = None
+    workstream_status: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+
+
 class ConversationCreateIn(_Base):
     """POST /conversations body — PI-073 / DEC-314 redesign.
 

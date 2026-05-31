@@ -58,6 +58,7 @@ from crmbuilder_v2.access.models import (
     Topic,
     WorkTicket,
     Project,
+    Workstream,
 )
 from crmbuilder_v2.access.models import (
     Session as SessionModel,
@@ -93,6 +94,8 @@ _EXPORT_TABLES: list[tuple[str, type]] = [
     ("test_specs", TestSpec),
     # Governance entities (UI v0.7), in workstream order.
     ("projects", Project),
+    # PI-112 Phase 4: the new delivery-phase Workstream entity (WSK-).
+    ("workstreams", Workstream),
     ("conversations", Conversation),
     ("reference_books", ReferenceBook),
     ("reference_book_versions", ReferenceBookVersion),

@@ -375,6 +375,31 @@ PROJECT_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "superseded": frozenset(),
 }
 
+# `workstream` (delivery phase) — PI-112 Phase 4, DEC-343/DEC-349. The NEW
+# meaning of "Workstream": a single delivery phase of one Planning Item (the
+# old thematic container was renamed Project). The phase type is a controlled
+# vocabulary (DEC-349 adds `Design` to the front). Lifecycle is a simple
+# Planned → In Progress → Complete with a Blocked side-state.
+WORKSTREAM_PHASE_TYPES: frozenset[str] = frozenset(
+    {
+        "Design",
+        "Development",
+        "Testing",
+        "Documentation",
+        "Data Migration",
+        "Deployment",
+    }
+)
+WORKSTREAM_STATUSES: frozenset[str] = frozenset(
+    {"Planned", "In Progress", "Complete", "Blocked"}
+)
+WORKSTREAM_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "Planned": frozenset({"In Progress", "Blocked"}),
+    "In Progress": frozenset({"Complete", "Blocked"}),
+    "Complete": frozenset(),
+    "Blocked": frozenset({"Planned", "In Progress"}),
+}
+
 # `conversation` lifecycle (DEC-314, PI-073 redesign — supersedes DEC-131).
 # Six statuses; forward-only (planned → in_flight) with four terminals
 # (complete, cancelled, not_started, superseded). Conversations are now
@@ -488,6 +513,7 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         # reference_book, work_ticket, close_out_payload, deposit_event).
         # See governance-entity-PRD-v0.1.md section 4.3.
         "conversation_belongs_to_project",
+        "workstream_belongs_to_planning_item",  # PI-112 Phase 4
         "project_planned_in_reference_book",
         "conversation_records_session",
         "conversation_opens_against_work_ticket",
@@ -632,6 +658,9 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         # the Governance sidebar group, in workstream order. See
         # governance-entity-PRD-v0.1.md section 4.3.
         "project",
+        # PI-112 Phase 4: the new delivery-phase Workstream (WSK-), distinct
+        # from the renamed Project container above.
+        "workstream",
         "conversation",
         "reference_book",
         "work_ticket",
@@ -772,6 +801,11 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         kinds.add("conversation_succeeds_conversation")
     if source_type == "project" and target_type == "reference_book":
         kinds.add("project_planned_in_reference_book")
+    # PI-112 Phase 4: Workstream (delivery phase) containment + sibling order.
+    if source_type == "workstream" and target_type == "planning_item":
+        kinds.add("workstream_belongs_to_planning_item")
+    if source_type == "workstream" and target_type == "workstream":
+        kinds.add("blocked_by")
     if source_type == "close_out_payload" and target_type == "conversation":
         kinds.add("close_out_payload_produced_by_conversation")
     if source_type == "deposit_event" and target_type == "close_out_payload":

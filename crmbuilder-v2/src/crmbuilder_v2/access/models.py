@@ -72,6 +72,8 @@ from crmbuilder_v2.access.vocab import (
     WORK_TICKET_KINDS,
     WORK_TICKET_STATUSES,
     PROJECT_STATUSES,
+    WORKSTREAM_PHASE_TYPES,
+    WORKSTREAM_STATUSES,
     _check_in,
 )
 
@@ -1154,6 +1156,61 @@ class Project(Base):
         ),
         Index("ix_projects_project_status", "project_status"),
         Index("ix_projects_project_deleted_at", "project_deleted_at"),
+    )
+
+
+class Workstream(Base):
+    """Governance entity — a single delivery phase of one Planning Item.
+
+    PI-112 Phase 4 (DEC-343/DEC-349). The NEW meaning of "Workstream" (the
+    old thematic container was renamed Project). Belongs to exactly one
+    Planning Item via a ``workstream_belongs_to_planning_item`` edge in
+    ``refs`` (not an FK). ``WSK-NNN`` identifier. Phase type is a controlled
+    vocabulary; lifecycle is Planned → In Progress → Complete with a Blocked
+    side-state.
+    """
+
+    __tablename__ = "workstreams"
+
+    workstream_identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    workstream_phase_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    workstream_title: Mapped[str] = mapped_column(String(255), nullable=False)
+    workstream_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    workstream_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="Planned"
+    )
+    workstream_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    workstream_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    workstream_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+    workstream_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    workstream_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    workstream_completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "workstream_identifier GLOB 'WSK-[0-9][0-9][0-9]'",
+            name="ck_workstream_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("workstream_phase_type", WORKSTREAM_PHASE_TYPES),
+            name="ck_workstream_phase_type",
+        ),
+        CheckConstraint(
+            _check_in("workstream_status", WORKSTREAM_STATUSES),
+            name="ck_workstream_status",
+        ),
+        Index("ix_workstreams_workstream_status", "workstream_status"),
+        Index("ix_workstreams_workstream_deleted_at", "workstream_deleted_at"),
     )
 
 
