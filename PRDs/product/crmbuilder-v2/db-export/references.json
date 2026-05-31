@@ -21908,5 +21908,25 @@
     "source_type": "deposit_event",
     "target_id": "DEC-360",
     "target_type": "decision"
+  },
+  {
+    "created_at": "2026-05-31T14:56:11.030303",
+    "id": 2200,
+    "reference_identifier": "REF-2196",
+    "relationship_kind": "workstream_belongs_to_planning_item",
+    "source_id": "WSK-001",
+    "source_type": "workstream",
+    "target_id": "PI-114",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-05-31T14:56:31.729879",
+    "id": 2201,
+    "reference_identifier": "REF-2197",
+    "relationship_kind": "work_task_belongs_to_workstream",
+    "source_id": "WTK-001",
+    "source_type": "work_task",
+    "target_id": "WSK-001",
+    "target_type": "workstream"
   }
 ]
