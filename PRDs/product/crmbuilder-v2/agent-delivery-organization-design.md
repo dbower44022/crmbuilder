@@ -1,15 +1,15 @@
-# Agent-Delivery Runtime — Design
+# Agent Delivery Organization — Design
 
-**Document type:** Application development design (the runtime that consumes the PI-112 data model)
-**Proposed path:** `PRDs/product/crmbuilder-v2/agent-delivery-runtime-design.md`
-**Status:** v0.2 — all §9 forks resolved; model lockable pending review.
+**Document type:** Application development design (the agent organization that delivers Planning Items)
+**Proposed path:** `PRDs/product/crmbuilder-v2/agent-delivery-organization-design.md`
+**Status:** v0.3 — renamed to Agent Delivery Organization; all §9 forks resolved; lockable.
 **Last Updated:** 05-31-26
 
 ---
 
 ## Status
 
-This document specifies the **runtime agent organization** that DEC-343 adopted
+This document specifies the **Agent Delivery Organization** (ADO) that DEC-343 adopted
 as the target and that PI-112 deliberately scoped *out* ("a separate downstream
 build, specified once the data model is locked"). The data model is now locked
 (PI-112, Alembic head `0033`): `Project → Planning Item → Workstream (delivery
@@ -25,6 +25,7 @@ here is built yet.
 | Version | Date | Author | Summary |
 |---------|------|--------|---------|
 | 0.1 | 05-31-26 | Doug Bower / Claude | Initial draft. Three-tier model, always-all-phases, scope-as-Work-Tasks, the Project Manager lifecycle, Needs Attention, DB-backed statelessness. §9 open. |
+| 0.3 | 05-31-26 | Doug Bower / Claude | Renamed *Agent-Delivery Runtime* → **Agent Delivery Organization** (ADO) — "runtime" was jargon; this is an organization of role-specialized agents that delivers Planning Items. No model changes. |
 | 0.2 | 05-31-26 | Doug Bower / Claude | Resolved all eight §9 forks. Renamed the Architecture phase; split orchestration into a **Project Manager** (project) + **PI Lead** (per-PI) — now four tiers; made **Needs Attention** an orthogonal flag rolled up to the PI; added the **Not Applicable** terminal Workstream status for recorded no-work; expanded the Workstream lifecycle to `Planned → Scoping → Ready → In Progress → Complete | Not Applicable | Blocked`; fixed concurrency (serial phases, parallel PIs and parallel Work Tasks); defined replanning (additive-automatic, contradictory-escalates). |
 
 ## Change Log
@@ -178,7 +179,7 @@ escalates to a human rather than overwriting it.
 ## 5. State-model additions
 
 The PI-112 lifecycle vocabulary needs these additions (to be implemented when the
-runtime is built):
+organization is built):
 
 - **Workstream lifecycle (expanded).** From `Planned/In Progress/Complete/Blocked`
   to: **`Planned`** (created, awaiting scoping) → **`Scoping`** (specialist
@@ -234,11 +235,11 @@ significant deviations are gated on human judgment.
 ## 8. The bootstrap problem
 
 This system cannot govern its **own** construction — there is no Project Manager
-yet to decompose "build the agent-delivery runtime." So the runtime is built the
+yet to decompose "build the Agent Delivery Organization." So the organization is built the
 old session-driven way, under a Planning Item with hand-authored Workstreams and
 Work Tasks, and **once it exists it governs every PI after it.** The deferred
 "Workstream/Work Task UI panels" PI is a good candidate for the **first PI the
-finished runtime decomposes** end-to-end.
+finished organization decomposes** end-to-end.
 
 ---
 
@@ -273,5 +274,5 @@ finished runtime decomposes** end-to-end.
 - The concrete agent prompts / skill definitions for each specialist (follow-on,
   once the model is locked).
 - The retirement of the shelved WS-012 orchestrator (target-model §9 step 6) —
-  this runtime supersedes it.
+  this organization supersedes it.
 - An "agent profile" registry (skill definitions per phase/area) — deferred.
