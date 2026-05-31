@@ -1,0 +1,40 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_137.json
+Label:  SES-137 / CNV-039 close-out — Agent Delivery Organization design. Records the design session that produced agent-delivery-organization-design.md (v0.3), opens Project PRJ-018 (Agent Delivery Organization) and the bootstrap PI-114 (Build the Agent Delivery Organization), and records four decisions (DEC-356 adopt the design; DEC-357 four-tier PM/Lead/Phase/Area structure; DEC-358 always-all-phases + specialist scoping + Not Applicable; DEC-359 Needs Attention as a flag). Refines DEC-343. Ingests the 3 design-doc commits. Addresses (does not resolve) PI-114. Identifiers re-verify at apply; re-key on collision.
+Deposit event: DEP-132
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-039 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== planning_items (1 record) ===
+  ✓ POST planning_items  PI-114 (HTTP 201)
+
+=== commits (3 records) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (4 records) ===
+  ✓ POST decisions  DEC-356 (HTTP 201)
+  ✓ POST decisions  DEC-357 (HTTP 201)
+  ✓ POST decisions  DEC-358 (HTTP 201)
+  ✓ POST decisions  DEC-359 (HTTP 201)
+
+=== references (7 records) ===
+  ✓ POST references  CNV-039 conversation_belongs_to_project PRJ-018 (HTTP 201)
+  ✓ POST references  PI-114 planning_item_belongs_to_project PRJ-018 (HTTP 201)
+  ✓ POST references  SES-137 session_follows_from SES-136 (HTTP 201)
+  ✓ POST references  DEC-356 decided_in CNV-039 (HTTP 201)
+  ✓ POST references  DEC-357 decided_in CNV-039 (HTTP 201)
+  ✓ POST references  DEC-358 decided_in CNV-039 (HTTP 201)
+  ✓ POST references  DEC-359 decided_in CNV-039 (HTTP 201)
+
+=== addresses_planning_items (1 record) ===
+  ✓ POST addresses_planning_items  → PI-114 (HTTP 201)
+
+✓ All 18 operations complete.
+
+✓ Recorded apply as deposit_event DEP-132 (HTTP 201).

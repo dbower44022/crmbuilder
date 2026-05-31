@@ -1,0 +1,200 @@
+{
+  "label": "SES-137 / CNV-039 close-out — Agent Delivery Organization design. Records the design session that produced agent-delivery-organization-design.md (v0.3), opens Project PRJ-018 (Agent Delivery Organization) and the bootstrap PI-114 (Build the Agent Delivery Organization), and records four decisions (DEC-356 adopt the design; DEC-357 four-tier PM/Lead/Phase/Area structure; DEC-358 always-all-phases + specialist scoping + Not Applicable; DEC-359 Needs Attention as a flag). Refines DEC-343. Ingests the 3 design-doc commits. Addresses (does not resolve) PI-114. Identifiers re-verify at apply; re-key on collision.",
+  "session": {
+    "session_identifier": "SES-137",
+    "session_title": "Design the Agent Delivery Organization",
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "runner": "claude-code",
+      "kind": "design"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_status": "complete",
+    "session_executive_summary": "A Claude Code design conversation, after the PI-112 close-out, specifying the Agent Delivery Organization (ADO) — the agent team DEC-343 left unspecified — producing agent-delivery-organization-design.md (v0.3). It settled four tiers (Project Manager owning a Project's PI backlog; a PI Lead per Planning Item running its plan->gate->execute lifecycle; a Phase Specialist per phase scoping by creating Work Tasks; an Area Specialist per single-area Work Task); always create all six phases, each specialist scoping its own, an empty phase recorded as Not Applicable; Needs Attention as a human escape flag; serial phases with parallel PIs and tasks; additive/escalating replanning. Prompted by the user catching prior ungoverned work — no work without a Work Task. Built under PI-114.",
+    "session_description": "Single Claude Code design session under the new Project PRJ-018 (Agent Delivery Organization). Began from 'what records does the methodology need' after the PI-112 close-out and a fix adding planning_item_belongs_to_project (completing the Project->PI->Workstream->Work Task chain). The user corrected a governance lapse — work must be defined by a Work Task — which reframed the whole conversation toward specifying the agent organization that does decomposition and delivery. Shaped the model over several iterations: the decomposer became a Project-level Project Manager that sequences PIs and spawns per-PI Leads; phase specialists own scoping (= creating Work Tasks); all phases always created with Not Applicable for no-work; Needs Attention as a flag; the four-tier structure. Resolved eight open forks into design v0.2, then renamed Agent-Delivery Runtime -> Agent Delivery Organization (v0.3). Records the adoption + three structural decisions. Addresses PI-114 (the design phase is done; building remains).",
+    "references": []
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-039",
+    "conversation_title": "Specifying the Agent Delivery Organization",
+    "conversation_purpose": "Specify the organization of agents that decomposes, plans, executes, and verifies Planning Items against the PI-112 data model, and capture it as a locked design + decisions.",
+    "conversation_status": "complete",
+    "conversation_description": "Designed the Agent Delivery Organization: four tiers (Project Manager / PI Lead / Phase Specialist / Area Specialist), always-all-phases with specialist scoping (scope = Work Tasks; empty = Not Applicable), the PM/Lead plan->gate->execute lifecycle, Needs Attention as a flag, serial phases / parallel PIs / parallel tasks, and additive/escalating replanning. Produced agent-delivery-organization-design.md v0.1->v0.3 and four decisions. Opens PRJ-018 and the bootstrap PI-114.",
+    "references": []
+  },
+  "work_tickets": [],
+  "planning_items": [
+    {
+      "identifier": "PI-114",
+      "title": "Build the Agent Delivery Organization",
+      "item_type": "pending_work",
+      "status": "Draft",
+      "description": "Bootstrap-build the Agent Delivery Organization per agent-delivery-organization-design.md (v0.3): the structural decomposer (creates all phase Workstreams for a PI), the phase specialists (Architecture first, then Development/Testing/Documentation/Data Migration/Deployment) that scope by creating Work Tasks, the Project Manager + per-PI Lead orchestration (plan->gate->execute with verification and additive/escalating replanning), the Needs Attention flag + the expanded Workstream lifecycle (Planned->Scoping->Ready->In Progress->Complete|Not Applicable|Blocked) + the Architecture phase rename, and the area-specialist execution wiring. Built session-style (the organization cannot govern its own construction); once it exists it governs every PI after it. First dogfood target: the deferred Workstream/Work Task UI panels PI.",
+      "executive_summary": "Implements the Agent Delivery Organization design — the team of role-specialized agents (a project manager, per-feature leads, phase experts, and task workers) that takes each planning item and carries it from breakdown through build, test, docs, and deploy, checking the work at each step. It is built by hand this once (it can't yet manage its own construction), and from then on it manages the delivery of every future planning item."
+    }
+  ],
+  "commits": [
+    {
+      "commit_sha": "b0b213b889ae5e670ed754f06d9c9e617801144e",
+      "commit_message_first_line": "v2: agent-delivery runtime design doc v0.1 (the DEC-343 runtime that drives PI-112's entities)",
+      "commit_message_full": "v2: agent-delivery runtime design doc v0.1 (the DEC-343 runtime that drives PI-112's entities)\n\nCaptures the design conversation following the PI-112 close-out: the three-tier\nagent model (Project Manager per Project / Phase Specialist per Workstream /\nArea Specialist per Work Task), the always-create-all-phases principle with\nscope judgment delegated to phase specialists (scope-determination = Work Task\ncreation; empty Workstream = recorded no-work), the Project Manager lifecycle\n(PI sequencing → per-PI feed-forward planning loop → gate → execution loop with\nverification/replanning), the Needs Attention human-escalation state, and\nDB-backed statelessness. §9 collects the open decisions. Design only — nothing\nbuilt; the runtime is bootstrapped session-style then self-governs.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-31T01:47:04-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "e992ed543d2f1cdbfbf68fb96453e84c4817aa3d"
+      ],
+      "commit_files_changed_count": 1
+    },
+    {
+      "commit_sha": "520c46089817a0980e29bbf9d4dbd8a9e68d241a",
+      "commit_message_first_line": "v2: agent-delivery runtime design v0.2 — resolve all eight open forks",
+      "commit_message_full": "v2: agent-delivery runtime design v0.2 — resolve all eight open forks\n\nFolds the agreed §9 resolutions into the model: rename the Architecture phase;\nsplit orchestration into a Project Manager (owns a Project's PI backlog +\nsequencing) and a per-PI Lead (runs one PI's plan→gate→execute lifecycle) —\nfour tiers total, enabling parallel PIs; Needs Attention becomes an orthogonal\nflag rolled up to the PI; add the Not Applicable terminal Workstream status for\nrecorded no-work; expand the Workstream lifecycle to Planned→Scoping→Ready→In\nProgress→Complete|Not Applicable|Blocked; serial phases / parallel PIs /\nparallel Work Tasks; additive-automatic, contradictory-escalates replanning.\nModel is lockable pending review.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-31T01:55:37-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "b0b213b889ae5e670ed754f06d9c9e617801144e"
+      ],
+      "commit_files_changed_count": 1
+    },
+    {
+      "commit_sha": "11a18189298d3f8d974c77db057c47b78f79ff73",
+      "commit_message_first_line": "v2: rename design doc to Agent Delivery Organization (was Agent-Delivery Runtime)",
+      "commit_message_full": "v2: rename design doc to Agent Delivery Organization (was Agent-Delivery Runtime)\n\n'Runtime' was jargon. The thing is an organization of role-specialized agents\n(Project Manager / PI Leads / Phase Specialists / Area Specialists) that\ndelivers Planning Items. v0.3 — title/term only, no model changes.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-05-31T02:00:53-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "520c46089817a0980e29bbf9d4dbd8a9e68d241a"
+      ],
+      "commit_files_changed_count": 1
+    }
+  ],
+  "decisions": [
+    {
+      "identifier": "DEC-356",
+      "title": "Adopt the Agent Delivery Organization design (v0.3) as the target agent organization",
+      "context": "DEC-343 adopted a three-tier, pull-based organization of agents as the target for delivering work, but left it unspecified ('a separate downstream build, specified once the data model is locked'). PI-112 locked the data model (Project -> Planning Item -> Workstream -> Work Task). A design conversation then shaped the organization concretely.",
+      "decision": "Adopt agent-delivery-organization-design.md (v0.3) as the target design for the agent organization. The Agent Delivery Organization (ADO) is the behavior layer that decomposes, plans, executes, and verifies Planning Items against the PI-112 data model. The document is the authoritative spec; the structural decisions are recorded separately (DEC-357..359).",
+      "alternatives_considered": "Leave the agent organization unspecified and improvise per build (rejected; the data model exists to be driven by a defined organization, and ad-hoc agents would not produce the auditable, resumable pipeline the redesign is for). Specify it as a runtime rather than an organization (rejected on naming; it is an org of role-specialized agents, not an execution environment).",
+      "consequences": "Establishes a locked design to build against. The build is bootstrapped session-style (the organization cannot govern its own construction) under PI-114, then governs every PI after it. The shelved WS-012 orchestrator is superseded by this organization.",
+      "executive_summary": "Adopts a concrete design for the team of AI agents that will actually carry out planning items end to end - breaking each one into phases, scoping the work, doing it, and checking it - now that the data structures they operate on are finished. It is the 'who does the work' layer on top of the 'filing system' built by PI-112.",
+      "decision_date": "2026-05-31",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-357",
+      "title": "Four-tier agent structure: Project Manager / PI Lead / Phase Specialist / Area Specialist",
+      "context": "DEC-343 framed three tiers (general-purpose -> discipline-manager -> area-specialist). The design conversation found the general-purpose role needs splitting: orchestrating a whole Project's backlog is a different job from driving one Planning Item to done, and conflating them caps throughput at one PI and bloats one agent's context.",
+      "decision": "Use four tiers: a Project Manager owns one Project's PI backlog and sequences/prioritizes its Planning Items (via blocked_by) and spawns a PI Lead per ready PI; the PI Lead runs that one PI's plan->gate->execute lifecycle; a Phase Specialist (one per Workstream/phase) scopes its phase by creating Work Tasks; an Area Specialist executes one single-area Work Task.",
+      "alternatives_considered": "Keep DEC-343's three tiers with one general-purpose agent per PI (rejected; loses the project-level sequencing role and a single agent can't coordinate cross-PI ordering). A single Project Manager doing all per-PI orchestration serially (rejected; caps the project at one in-flight PI and prevents parallel delivery).",
+      "consequences": "Adds a tier (PM -> Lead -> Phase Specialist -> Area Specialist). Bounds each agent's context and enables parallel PIs under separate Leads. The PM/Lead split maps the project-vs-feature distinction of a real delivery team.",
+      "executive_summary": "Splits the 'manager' agent into two: one that runs the whole project (deciding which feature is worked next and in what order) and one per feature that drives that feature from plan to finish. Below them sit phase experts (who figure out the work) and task workers (who do it). The split lets several features progress at once and keeps each agent focused.",
+      "decision_date": "2026-05-31",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-358",
+      "title": "Always create all phases; phase specialists determine scope by creating Work Tasks; empty phase = Not Applicable",
+      "context": "A decomposition agent choosing which phases a PI 'needs' forces a non-expert to make expert calls and risks silently skipping a phase that mattered. Scope judgment requires phase expertise.",
+      "decision": "The structural step creates ALL phase Workstreams for EVERY Planning Item (Architecture, Development, Testing, Documentation, Data Migration, Deployment). Each phase's specialist then evaluates the PI through its phase's lens and determines scope by creating that phase's Work Tasks (scope-determination IS Work Task creation). A phase with no work is the specialist's recorded conclusion: the Workstream reaches a distinct terminal status Not Applicable (vs Complete = work done and verified).",
+      "alternatives_considered": "Let the decomposition agent decide which phases are needed and create only those (rejected; puts scope judgment in a generalist, and a skipped phase is an invisible omission rather than a recorded, expert decision). Represent no-work as Complete-with-a-note (rejected; loses the auditable distinction between 'evaluated, nothing to do' and 'did work').",
+      "consequences": "Every PI uniformly has all six phase Workstreams. Requires expanding the Workstream status set with Not Applicable. Empty phases become positive, queryable assertions. The Architecture phase runs first and its findings (entity/process/requirement changes) feed all downstream specialists.",
+      "executive_summary": "Rather than have one agent guess which stages of work a feature needs, the system always lays out all the standard stages (architecture, build, test, document, migrate, deploy) and asks the expert for each stage to decide what - if anything - that stage requires. A stage with nothing to do is explicitly marked 'not applicable' so the decision is on the record, not a silent gap.",
+      "decision_date": "2026-05-31",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-359",
+      "title": "Needs Attention is an orthogonal flag (on the Workstream, rolled up to the Planning Item), not a status",
+      "context": "The organization needs a human-in-the-loop escape hatch for when planning or execution hits something an agent can't resolve. A problem can arise at any point in a phase's lifecycle (while scoping or while executing), so encoding it as a lifecycle status would erase the underlying progress state.",
+      "decision": "Model Needs Attention as an orthogonal flag (needs_attention boolean + needs_attention_reason text) on the Workstream that hit the snag, rolled up to its Planning Item for 'which PIs need a human?' queries. It overlays - does not replace - the lifecycle status. It is set by the Lead/PM and cleared by a human after resolving, with the lifecycle resuming from where it was.",
+      "alternatives_considered": "Make Needs Attention a Workstream/PI status value (rejected; it is orthogonal to progress - a phase can need attention while scoping or while executing - and a status would overwrite that progress state). Track it only in prose (rejected; not queryable, defeats the point of an auditable pipeline).",
+      "consequences": "Adds a flag + reason field to the Workstream and a roll-up to the Planning Item (to be implemented when the organization is built). Gives the system a queryable, trust-critical 'stuck, needs a human' signal without losing where in the lifecycle the work was.",
+      "executive_summary": "Adds a clear 'needs a human' switch that an agent can flip - on the specific phase that got stuck, and visible at the feature level - whenever it hits a problem it shouldn't resolve on its own. It is kept separate from the normal progress states so flipping it doesn't lose track of how far the work had gotten; a person clears it once they've helped.",
+      "decision_date": "2026-05-31",
+      "status": "Active"
+    }
+  ],
+  "references": [
+    {
+      "source_type": "session",
+      "source_id": "SES-137",
+      "target_type": "project",
+      "target_id": "PRJ-018",
+      "relationship": "session_belongs_to_project"
+    },
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-039",
+      "target_type": "session",
+      "target_id": "SES-137",
+      "relationship": "conversation_belongs_to_session"
+    },
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-039",
+      "target_type": "project",
+      "target_id": "PRJ-018",
+      "relationship": "conversation_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-114",
+      "target_type": "project",
+      "target_id": "PRJ-018",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-137",
+      "target_type": "session",
+      "target_id": "SES-136",
+      "relationship": "session_follows_from"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-356",
+      "target_type": "conversation",
+      "target_id": "CNV-039",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-357",
+      "target_type": "conversation",
+      "target_id": "CNV-039",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-358",
+      "target_type": "conversation",
+      "target_id": "CNV-039",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-359",
+      "target_type": "conversation",
+      "target_id": "CNV-039",
+      "relationship": "decided_in"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": [
+    {
+      "planning_item_identifier": "PI-114"
+    }
+  ]
+}

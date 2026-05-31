@@ -1518,5 +1518,62 @@
     "commit_session_id": "SES-136",
     "commit_sha": "544a40f437d550760998d4e82cb3e64ab60e52e8",
     "commit_updated_at": "2026-05-31T04:24:06.175004"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-31T01:47:04-04:00",
+    "commit_created_at": "2026-05-31T06:04:09.508685",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0081",
+    "commit_message_first_line": "v2: agent-delivery runtime design doc v0.1 (the DEC-343 runtime that drives PI-112's entities)",
+    "commit_message_full": "v2: agent-delivery runtime design doc v0.1 (the DEC-343 runtime that drives PI-112's entities)\n\nCaptures the design conversation following the PI-112 close-out: the three-tier\nagent model (Project Manager per Project / Phase Specialist per Workstream /\nArea Specialist per Work Task), the always-create-all-phases principle with\nscope judgment delegated to phase specialists (scope-determination = Work Task\ncreation; empty Workstream = recorded no-work), the Project Manager lifecycle\n(PI sequencing → per-PI feed-forward planning loop → gate → execution loop with\nverification/replanning), the Needs Attention human-escalation state, and\nDB-backed statelessness. §9 collects the open decisions. Design only — nothing\nbuilt; the runtime is bootstrapped session-style then self-governs.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "e992ed543d2f1cdbfbf68fb96453e84c4817aa3d"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-137",
+    "commit_sha": "b0b213b889ae5e670ed754f06d9c9e617801144e",
+    "commit_updated_at": "2026-05-31T06:04:09.508687"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-31T01:55:37-04:00",
+    "commit_created_at": "2026-05-31T06:04:09.842803",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0082",
+    "commit_message_first_line": "v2: agent-delivery runtime design v0.2 — resolve all eight open forks",
+    "commit_message_full": "v2: agent-delivery runtime design v0.2 — resolve all eight open forks\n\nFolds the agreed §9 resolutions into the model: rename the Architecture phase;\nsplit orchestration into a Project Manager (owns a Project's PI backlog +\nsequencing) and a per-PI Lead (runs one PI's plan→gate→execute lifecycle) —\nfour tiers total, enabling parallel PIs; Needs Attention becomes an orthogonal\nflag rolled up to the PI; add the Not Applicable terminal Workstream status for\nrecorded no-work; expand the Workstream lifecycle to Planned→Scoping→Ready→In\nProgress→Complete|Not Applicable|Blocked; serial phases / parallel PIs /\nparallel Work Tasks; additive-automatic, contradictory-escalates replanning.\nModel is lockable pending review.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "b0b213b889ae5e670ed754f06d9c9e617801144e"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-137",
+    "commit_sha": "520c46089817a0980e29bbf9d4dbd8a9e68d241a",
+    "commit_updated_at": "2026-05-31T06:04:09.842805"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-31T02:00:53-04:00",
+    "commit_created_at": "2026-05-31T06:04:10.154085",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0083",
+    "commit_message_first_line": "v2: rename design doc to Agent Delivery Organization (was Agent-Delivery Runtime)",
+    "commit_message_full": "v2: rename design doc to Agent Delivery Organization (was Agent-Delivery Runtime)\n\n'Runtime' was jargon. The thing is an organization of role-specialized agents\n(Project Manager / PI Leads / Phase Specialists / Area Specialists) that\ndelivers Planning Items. v0.3 — title/term only, no model changes.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "520c46089817a0980e29bbf9d4dbd8a9e68d241a"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-137",
+    "commit_sha": "11a18189298d3f8d974c77db057c47b78f79ff73",
+    "commit_updated_at": "2026-05-31T06:04:10.154087"
   }
 ]

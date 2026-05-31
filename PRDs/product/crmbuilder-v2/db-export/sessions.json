@@ -2725,5 +2725,33 @@
     "session_superseded_at": null,
     "session_title": "PRJ-015 kickoff and first usability improvement — references rendered as an enriched sortable/filterable grid",
     "session_updated_at": "2026-05-31T04:23:26.716936"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-31T06:04:08.843715",
+    "session_created_at": "2026-05-31T06:04:08.843289",
+    "session_deleted_at": null,
+    "session_description": "Single Claude Code design session under the new Project PRJ-018 (Agent Delivery Organization). Began from 'what records does the methodology need' after the PI-112 close-out and a fix adding planning_item_belongs_to_project (completing the Project->PI->Workstream->Work Task chain). The user corrected a governance lapse — work must be defined by a Work Task — which reframed the whole conversation toward specifying the agent organization that does decomposition and delivery. Shaped the model over several iterations: the decomposer became a Project-level Project Manager that sequences PIs and spawns per-PI Leads; phase specialists own scoping (= creating Work Tasks); all phases always created with Not Applicable for no-work; Needs Attention as a flag; the four-tier structure. Resolved eight open forks into design v0.2, then renamed Agent-Delivery Runtime -> Agent Delivery Organization (v0.3). Records the adoption + three structural decisions. Addresses PI-114 (the design phase is done; building remains).",
+    "session_ended_at": null,
+    "session_executive_summary": "A Claude Code design conversation, after the PI-112 close-out, specifying the Agent Delivery Organization (ADO) — the agent team DEC-343 left unspecified — producing agent-delivery-organization-design.md (v0.3). It settled four tiers (Project Manager owning a Project's PI backlog; a PI Lead per Planning Item running its plan->gate->execute lifecycle; a Phase Specialist per phase scoping by creating Work Tasks; an Area Specialist per single-area Work Task); always create all six phases, each specialist scoping its own, an empty phase recorded as Not Applicable; Needs Attention as a human escape flag; serial phases with parallel PIs and tasks; additive/escalating replanning. Prompted by the user catching prior ungoverned work — no work without a Work Task. Built under PI-114.",
+    "session_identifier": "SES-137",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "kind": "design",
+      "runner": "claude-code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "Design the Agent Delivery Organization",
+    "session_updated_at": "2026-05-31T06:04:08.844007"
   }
 ]

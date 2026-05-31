@@ -1695,5 +1695,20 @@
     "status": "Resolved",
     "title": "References rendered as an enriched sortable/filterable grid (first PRJ-015 usability improvement)",
     "updated_at": "2026-05-31T04:23:29.746226"
+  },
+  {
+    "area": null,
+    "claimed_at": null,
+    "claimed_by": null,
+    "created_at": "2026-05-31T06:04:09.178254",
+    "description": "Bootstrap-build the Agent Delivery Organization per agent-delivery-organization-design.md (v0.3): the structural decomposer (creates all phase Workstreams for a PI), the phase specialists (Architecture first, then Development/Testing/Documentation/Data Migration/Deployment) that scope by creating Work Tasks, the Project Manager + per-PI Lead orchestration (plan->gate->execute with verification and additive/escalating replanning), the Needs Attention flag + the expanded Workstream lifecycle (Planned->Scoping->Ready->In Progress->Complete|Not Applicable|Blocked) + the Architecture phase rename, and the area-specialist execution wiring. Built session-style (the organization cannot govern its own construction); once it exists it governs every PI after it. First dogfood target: the deferred Workstream/Work Task UI panels PI.",
+    "executive_summary": "Implements the Agent Delivery Organization design — the team of role-specialized agents (a project manager, per-feature leads, phase experts, and task workers) that takes each planning item and carries it from breakdown through build, test, docs, and deploy, checking the work at each step. It is built by hand this once (it can't yet manage its own construction), and from then on it manages the delivery of every future planning item.",
+    "id": 114,
+    "identifier": "PI-114",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Draft",
+    "title": "Build the Agent Delivery Organization",
+    "updated_at": "2026-05-31T06:04:09.178257"
   }
 ]
