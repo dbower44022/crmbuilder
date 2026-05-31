@@ -56,7 +56,7 @@ from crmbuilder_v2.access.models import (
     TestSpec,
     Topic,
     WorkTicket,
-    Workstream,
+    Project,
 )
 from crmbuilder_v2.access.models import (
     Session as SessionModel,
@@ -90,7 +90,7 @@ _EXPORT_TABLES: list[tuple[str, type]] = [
     # resolves PI-004).
     ("test_specs", TestSpec),
     # Governance entities (UI v0.7), in workstream order.
-    ("workstreams", Workstream),
+    ("projects", Project),
     ("conversations", Conversation),
     ("reference_books", ReferenceBook),
     ("reference_book_versions", ReferenceBookVersion),

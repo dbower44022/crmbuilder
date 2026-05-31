@@ -19,7 +19,7 @@ from crmbuilder_v2.access.repositories import conversations as cr
 from crmbuilder_v2.access.repositories import deposit_events as dep
 from crmbuilder_v2.access.repositories import sessions as se
 from crmbuilder_v2.access.repositories import work_tickets as wt
-from crmbuilder_v2.access.repositories import workstreams as ws
+from crmbuilder_v2.access.repositories import projects as ws
 
 # A valid 200-800 char executive summary reused across the session creates.
 _EXEC_SUMMARY = (
@@ -32,10 +32,10 @@ _EXEC_SUMMARY = (
 
 def test_full_governance_chain(v2_env):
     with session_scope() as s:
-        wid = ws.create_workstream(
+        wid = ws.create_project(
             s, name="Gov", purpose="p", description="d", status="in_flight",
-            timestamps={"workstream_started_at": "2026-05-20T00:00:00"},
-        )["workstream_identifier"]
+            timestamps={"project_started_at": "2026-05-20T00:00:00"},
+        )["project_identifier"]
 
         # Session belonging to the workstream (the communication container).
         sid = se.create_session(
@@ -44,8 +44,8 @@ def test_full_governance_chain(v2_env):
             identifier="SES-901", status="in_flight",
             references=[{
                 "source_type": "session", "source_id": "SES-901",
-                "target_type": "workstream", "target_id": wid,
-                "relationship": "session_belongs_to_workstream",
+                "target_type": "project", "target_id": wid,
+                "relationship": "session_belongs_to_project",
             }],
         )["session_identifier"]
 
@@ -111,24 +111,24 @@ def test_full_governance_chain(v2_env):
             "conversation_status"
         ] == "complete"
 
-        # Workstream completes.
-        ws.patch_workstream(s, wid, status="complete")
-        assert ws.get_workstream(s, wid)["workstream_status"] == "complete"
+        # Project completes.
+        ws.patch_project(s, wid, status="complete")
+        assert ws.get_project(s, wid)["project_status"] == "complete"
 
 
 def test_first_success_transition_then_failure_reconfirm(v2_env):
     """ready->applied fires on first success; later failure does not retract."""
     with session_scope() as s:
-        wid = ws.create_workstream(s, name="W", purpose="p", description="d")[
-            "workstream_identifier"
+        wid = ws.create_project(s, name="W", purpose="p", description="d")[
+            "project_identifier"
         ]
         sid = se.create_session(
             s, title="Apply session", description="d", medium="chat",
             executive_summary=_EXEC_SUMMARY, identifier="SES-901",
             references=[{
                 "source_type": "session", "source_id": "SES-901",
-                "target_type": "workstream", "target_id": wid,
-                "relationship": "session_belongs_to_workstream",
+                "target_type": "project", "target_id": wid,
+                "relationship": "session_belongs_to_project",
             }],
         )["session_identifier"]
         conv = cr.create_conversation(

@@ -318,10 +318,10 @@ PROCESS_CLASSIFICATION_TRANSITIONS: dict[str, frozenset[str]] = {
 # ---------------------------------------------------------------------------
 
 # `workstream` lifecycle (DEC-125). Five statuses; three truly terminal.
-WORKSTREAM_STATUSES: frozenset[str] = frozenset(
+PROJECT_STATUSES: frozenset[str] = frozenset(
     {"planned", "in_flight", "complete", "cancelled", "superseded"}
 )
-WORKSTREAM_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+PROJECT_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "planned": frozenset({"in_flight", "cancelled", "superseded"}),
     "in_flight": frozenset({"complete", "cancelled", "superseded"}),
     "complete": frozenset(),
@@ -371,7 +371,7 @@ REFERENCE_BOOK_KINDS: frozenset[str] = frozenset(
     {
         "product_requirements_document",
         "implementation_plan",
-        "workstream_master_plan",
+        "project_master_plan",
         "methodology_guide",
         "architecture_document",
         "schema_specification",
@@ -441,8 +441,8 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         # across the six governance schema specs (workstream, conversation,
         # reference_book, work_ticket, close_out_payload, deposit_event).
         # See governance-entity-PRD-v0.1.md section 4.3.
-        "conversation_belongs_to_workstream",
-        "workstream_planned_in_reference_book",
+        "conversation_belongs_to_project",
+        "project_planned_in_reference_book",
         "conversation_records_session",
         "conversation_opens_against_work_ticket",
         "conversation_succeeds_conversation",
@@ -527,7 +527,7 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         # the data migration retargets the edges.
         #
         # session outbound:
-        #   - `session_belongs_to_workstream` (session → workstream;
+        #   - `session_belongs_to_project` (session → workstream;
         #     exactly-one membership per session-v2.md §3.3.1).
         #   - `session_opens_against_work_ticket` (session → work_ticket;
         #     successor to `conversation_opens_against_work_ticket`).
@@ -540,7 +540,7 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         #     direct cross-session topical continuity per Q2).
         #   - `conversation_relates_to` (conversation → conversation;
         #     loose cross-session topical relation).
-        "session_belongs_to_workstream",
+        "session_belongs_to_project",
         "session_opens_against_work_ticket",
         "session_follows_from",
         "conversation_belongs_to_session",
@@ -585,7 +585,7 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         # Governance entities (UI v0.7). The six new entity types under
         # the Governance sidebar group, in workstream order. See
         # governance-entity-PRD-v0.1.md section 4.3.
-        "workstream",
+        "project",
         "conversation",
         "reference_book",
         "work_ticket",
@@ -716,16 +716,16 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
     # The same-type `supersedes` clause above already admits supersession
     # for every governance same-type pair (workstream/workstream, etc.);
     # the same-type `conversation_succeeds_conversation` is added alongside.
-    if source_type == "conversation" and target_type == "workstream":
-        kinds.add("conversation_belongs_to_workstream")
+    if source_type == "conversation" and target_type == "project":
+        kinds.add("conversation_belongs_to_project")
     if source_type == "conversation" and target_type == "session":
         kinds.add("conversation_records_session")
     if source_type == "conversation" and target_type == "work_ticket":
         kinds.add("conversation_opens_against_work_ticket")
     if source_type == "conversation" and target_type == "conversation":
         kinds.add("conversation_succeeds_conversation")
-    if source_type == "workstream" and target_type == "reference_book":
-        kinds.add("workstream_planned_in_reference_book")
+    if source_type == "project" and target_type == "reference_book":
+        kinds.add("project_planned_in_reference_book")
     if source_type == "close_out_payload" and target_type == "conversation":
         kinds.add("close_out_payload_produced_by_conversation")
     if source_type == "deposit_event" and target_type == "close_out_payload":
@@ -825,8 +825,8 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
     # `conversation_succeeds_conversation`, `close_out_payload_produced_by_conversation`
     # clauses remain present above during transition; Phase F retires them
     # after the data migration retargets edges to the new kinds.
-    if source_type == "session" and target_type == "workstream":
-        kinds.add("session_belongs_to_workstream")
+    if source_type == "session" and target_type == "project":
+        kinds.add("session_belongs_to_project")
     if source_type == "session" and target_type == "work_ticket":
         kinds.add("session_opens_against_work_ticket")
     if source_type == "session" and target_type == "session":

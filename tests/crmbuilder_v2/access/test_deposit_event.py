@@ -15,7 +15,7 @@ from crmbuilder_v2.access.repositories import conversations as cr
 from crmbuilder_v2.access.repositories import deposit_events as dep
 from crmbuilder_v2.access.repositories import references as refs
 from crmbuilder_v2.access.repositories import sessions as sess
-from crmbuilder_v2.access.repositories import workstreams as ws
+from crmbuilder_v2.access.repositories import projects as ws
 from sqlalchemy import inspect
 
 _EXEC_SUMMARY = (
@@ -27,8 +27,8 @@ _EXEC_SUMMARY = (
 
 
 def _ready_cop(s, identifier="COP-001"):
-    wid = ws.create_workstream(s, name="WS", purpose="p", description="d")[
-        "workstream_identifier"
+    wid = ws.create_project(s, name="WS", purpose="p", description="d")[
+        "project_identifier"
     ]
     # Under PI-073, conversations nest within a session via a mandatory
     # conversation_belongs_to_session edge. Create the containing session
@@ -38,8 +38,8 @@ def _ready_cop(s, identifier="COP-001"):
         executive_summary=_EXEC_SUMMARY, identifier="SES-001",
         references=[{
             "source_type": "session", "source_id": "SES-001",
-            "target_type": "workstream", "target_id": wid,
-            "relationship": "session_belongs_to_workstream",
+            "target_type": "project", "target_id": wid,
+            "relationship": "session_belongs_to_project",
         }],
     )["session_identifier"]
     conv = cr.create_conversation(

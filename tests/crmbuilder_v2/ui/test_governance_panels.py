@@ -28,9 +28,9 @@ from crmbuilder_v2.ui.dialogs.work_ticket_crud import (
     WorkTicketCreateDialog,
     WorkTicketEditDialog,
 )
-from crmbuilder_v2.ui.dialogs.workstream_crud import (
-    WorkstreamCreateDialog,
-    WorkstreamEditDialog,
+from crmbuilder_v2.ui.dialogs.project_crud import (
+    ProjectCreateDialog,
+    ProjectEditDialog,
 )
 from crmbuilder_v2.ui.main_window import ENTITY_TYPE_TO_SIDEBAR_LABEL
 from crmbuilder_v2.ui.panels.close_out_payloads import CloseOutPayloadsPanel
@@ -38,7 +38,7 @@ from crmbuilder_v2.ui.panels.conversations import ConversationsPanel
 from crmbuilder_v2.ui.panels.deposit_events import DepositEventsPanel
 from crmbuilder_v2.ui.panels.reference_books import ReferenceBooksPanel
 from crmbuilder_v2.ui.panels.work_tickets import WorkTicketsPanel
-from crmbuilder_v2.ui.panels.workstreams import WorkstreamsPanel
+from crmbuilder_v2.ui.panels.projects import ProjectsPanel
 from crmbuilder_v2.ui.sidebar import SIDEBAR_GROUPS
 from fastapi.testclient import TestClient
 
@@ -72,12 +72,12 @@ def _make_session(client: StorageClient) -> str:
     Conversations are topical sub-units within a session (PI-073), so the
     governance fixtures that previously hung a conversation off a workstream
     now hang it off a session via ``conversation_belongs_to_session``. A
-    session itself requires exactly one ``session_belongs_to_workstream``
+    session itself requires exactly one ``session_belongs_to_project``
     edge, so this helper provisions the parent workstream first.
     """
-    ws = client.create_workstream(
-        {"workstream_name": "WS", "workstream_purpose": "p", "workstream_description": "d"}
-    )["workstream_identifier"]
+    ws = client.create_project(
+        {"project_name": "WS", "project_purpose": "p", "project_description": "d"}
+    )["project_identifier"]
     result = client.create_session({
         "session_title": "S",
         "session_description": "d",
@@ -86,8 +86,8 @@ def _make_session(client: StorageClient) -> str:
         "session_identifier": "SES-001",
         "references": [{
             "source_type": "session", "source_id": "SES-001",
-            "target_type": "workstream", "target_id": ws,
-            "relationship": "session_belongs_to_workstream",
+            "target_type": "project", "target_id": ws,
+            "relationship": "session_belongs_to_project",
         }],
     })
     return result["session_identifier"]
@@ -95,7 +95,7 @@ def _make_session(client: StorageClient) -> str:
 
 def test_sidebar_governance_group_appends_six_new_entries():
     six = (
-        "Workstreams",
+        "Projects",
         "Conversations",
         "Reference Books",
         "Work Tickets",
@@ -114,7 +114,7 @@ def test_sidebar_governance_group_appends_six_new_entries():
 
 def test_entity_type_to_sidebar_label_covers_governance():
     for entity_type in (
-        "workstream",
+        "project",
         "conversation",
         "reference_book",
         "work_ticket",
@@ -128,25 +128,25 @@ def test_entity_type_to_sidebar_label_covers_governance():
 
 
 def test_workstreams_panel_boots_and_lists(qtbot, gov_client):
-    panel = WorkstreamsPanel(gov_client)
+    panel = ProjectsPanel(gov_client)
     qtbot.addWidget(panel)
-    assert panel.entity_title() == "Workstreams"
+    assert panel.entity_title() == "Projects"
     cols = [c.field for c in panel.list_columns()]
-    assert cols[:2] == ["workstream_identifier", "workstream_name"]
+    assert cols[:2] == ["project_identifier", "project_name"]
     _wait_loaded(qtbot, panel, 0)
-    gov_client.create_workstream(
-        {"workstream_name": "W", "workstream_purpose": "p", "workstream_description": "d"}
+    gov_client.create_project(
+        {"project_name": "W", "project_purpose": "p", "project_description": "d"}
     )
     _wait_loaded(qtbot, panel, 1)
 
 
 def test_workstream_dialogs_construct(qtbot, gov_client):
-    create = WorkstreamCreateDialog(gov_client)
+    create = ProjectCreateDialog(gov_client)
     qtbot.addWidget(create)
-    record = gov_client.create_workstream(
-        {"workstream_name": "X", "workstream_purpose": "p", "workstream_description": "d"}
+    record = gov_client.create_project(
+        {"project_name": "X", "project_purpose": "p", "project_description": "d"}
     )
-    edit = WorkstreamEditDialog(gov_client, record)
+    edit = ProjectEditDialog(gov_client, record)
     qtbot.addWidget(edit)
 
 
@@ -197,7 +197,7 @@ def test_reference_book_dialog_constructs(qtbot, gov_client):
     record = gov_client.create_reference_book({
         "reference_book_title": "Plan",
         "reference_book_description": "d",
-        "reference_book_kind": "workstream_master_plan",
+        "reference_book_kind": "project_master_plan",
         "reference_book_file_path": "PRDs/p.md",
     })
     edit = ReferenceBookEditDialog(gov_client, record)

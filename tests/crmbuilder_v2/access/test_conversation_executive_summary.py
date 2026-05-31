@@ -12,7 +12,7 @@ import pytest
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.exceptions import ValidationError
 from crmbuilder_v2.access.repositories import conversations as cr
-from crmbuilder_v2.access.repositories import workstreams as ws
+from crmbuilder_v2.access.repositories import projects as ws
 
 _EXEC = "x" * 250
 _EXEC2 = "y" * 300
@@ -32,7 +32,7 @@ def _member_edge(conv_id: str) -> dict:
 
 
 def _make_ws(s):
-    ws.create_workstream(s, name="WS", purpose="p", description="d")
+    ws.create_project(s, name="WS", purpose="p", description="d")
 
 
 def _create(s, *, executive_summary=None, identifier="CNV-001"):

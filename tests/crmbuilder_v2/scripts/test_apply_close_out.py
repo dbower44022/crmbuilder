@@ -73,21 +73,21 @@ def _payload_path(tmp_path: Path, name: str, payload: dict) -> Path:
     return path
 
 
-def _create_workstream(client, name="WS for tests"):
+def _create_project(client, name="WS for tests"):
     """Helper: create a workstream and return its identifier."""
-    r = client.post("/workstreams", json={
-        "workstream_name": name,
-        "workstream_purpose": "p",
-        "workstream_description": "d",
+    r = client.post("/projects", json={
+        "project_name": name,
+        "project_purpose": "p",
+        "project_description": "d",
     })
     assert r.status_code == 201, r.text
-    return r.json()["data"]["workstream_identifier"]
+    return r.json()["data"]["project_identifier"]
 
 
-def _session_block(identifier="SES-200", title="Test session", ws_id="WS-001",
+def _session_block(identifier="SES-200", title="Test session", ws_id="PRJ-001",
                    status=None):
     """Build a PI-073-shape session block with its mandatory inline
-    ``session_belongs_to_workstream`` membership edge."""
+    ``session_belongs_to_project`` membership edge."""
     block = {
         "session_identifier": identifier,
         "session_title": title,
@@ -97,8 +97,8 @@ def _session_block(identifier="SES-200", title="Test session", ws_id="WS-001",
         "references": [
             {
                 "source_type": "session", "source_id": identifier,
-                "target_type": "workstream", "target_id": ws_id,
-                "relationship": "session_belongs_to_workstream",
+                "target_type": "project", "target_id": ws_id,
+                "relationship": "session_belongs_to_project",
             },
         ],
     }
@@ -110,7 +110,7 @@ def _session_block(identifier="SES-200", title="Test session", ws_id="WS-001",
 def test_happy_path_lazy_creates_cop_and_records_deposit_event(
     routed, tmp_path, monkeypatch
 ):
-    ws_id = _create_workstream(routed)
+    ws_id = _create_project(routed)
     payload = {
         "label": "Test payload for SES-099",
         "session": _session_block("SES-099", "Test session", ws_id),
@@ -146,7 +146,7 @@ def test_failure_path_records_error_info_and_leaves_cop_ready(
     routed, tmp_path, monkeypatch
 ):
     # First record (session) succeeds; second (a malformed decision) fails 422.
-    ws_id = _create_workstream(routed)
+    ws_id = _create_project(routed)
     payload = {
         "label": "Test failure",
         "session": _session_block("SES-100", "Test session", ws_id),
@@ -184,7 +184,7 @@ def test_references_in_payload_do_not_break_deposit_event_post(
     # target_type against the governance vocab, which does not include
     # 'reference'. If reference rows leak into wrote_records, the
     # deposit_event POST 400s and the apply leaves no audit row.
-    ws_id = _create_workstream(routed)
+    ws_id = _create_project(routed)
     payload = {
         "label": "Test payload with references",
         "session": _session_block("SES-102", "Session with refs", ws_id),
@@ -238,7 +238,7 @@ def test_references_in_payload_do_not_break_deposit_event_post(
 def test_skip_deposit_event_flag_runs_apply_without_log_or_event(
     routed, tmp_path, monkeypatch
 ):
-    ws_id = _create_workstream(routed)
+    ws_id = _create_project(routed)
     payload = {
         "label": "Skip deposit",
         "session": _session_block("SES-101", "x", ws_id),
@@ -262,13 +262,13 @@ def test_skip_deposit_event_flag_runs_apply_without_log_or_event(
 # ---------------------------------------------------------------------------
 
 
-def _conversation_block(identifier="CNV-200", ws_id="WS-001", session_id="SES-200"):
+def _conversation_block(identifier="CNV-200", ws_id="PRJ-001", session_id="SES-200"):
     """Build a PI-073-shape conversation block.
 
     Under DEC-314 the conversation is a topical sub-unit nested within a
     session (1:N), so its mandatory parent edge is the outbound
     ``conversation_belongs_to_session`` edge to the owning session. The
-    legacy ``conversation_belongs_to_workstream`` + ``conversation_records_
+    legacy ``conversation_belongs_to_project`` + ``conversation_records_
     session`` pair is retired; ``ws_id`` is retained as an accepted (unused)
     parameter so existing call sites still work.
     """
@@ -296,7 +296,7 @@ class TestPI030NewSections:
     def test_conversation_block_creates_record_with_belongs_to_session_edge(
         self, routed, tmp_path, monkeypatch
     ):
-        ws_id = _create_workstream(routed)
+        ws_id = _create_project(routed)
         payload = {
             "label": "Conversation test",
             "session": _session_block("SES-201"),
@@ -321,7 +321,7 @@ class TestPI030NewSections:
     def test_commits_section_propagates_session_id(
         self, routed, tmp_path, monkeypatch
     ):
-        ws_id = _create_workstream(routed)
+        ws_id = _create_project(routed)
         payload = {
             "label": "Commits test",
             "session": _session_block("SES-202"),
@@ -425,7 +425,7 @@ class TestPI030NewSections:
     def test_resolves_planning_items_translates_to_references_post(
         self, routed, tmp_path, monkeypatch
     ):
-        ws_id = _create_workstream(routed)
+        ws_id = _create_project(routed)
         payload = {
             "label": "Resolves test",
             "session": _session_block("SES-205"),
@@ -457,7 +457,7 @@ class TestPI030NewSections:
     def test_addresses_planning_items_translates_to_references_post(
         self, routed, tmp_path, monkeypatch
     ):
-        ws_id = _create_workstream(routed)
+        ws_id = _create_project(routed)
         payload = {
             "label": "Addresses test",
             "session": _session_block("SES-206"),
@@ -490,7 +490,7 @@ class TestPI030NewSections:
     ):
         """Full payload with all sections applies in PI-099 apply order:
         conversation → session → work_tickets → planning_items → ... → decisions."""
-        ws_id = _create_workstream(routed)
+        ws_id = _create_project(routed)
         payload = {
             "label": "Ordering test",
             "session": _session_block("SES-207"),
@@ -538,7 +538,7 @@ class TestPI030NewSections:
     def test_409_skip_idempotent_on_re_run_all_sections(
         self, routed, tmp_path, monkeypatch
     ):
-        ws_id = _create_workstream(routed)
+        ws_id = _create_project(routed)
         payload = {
             "label": "Idempotent test",
             "session": _session_block("SES-208"),
@@ -565,7 +565,7 @@ class TestPI030NewSections:
     ):
         """Backward compatibility: v0.7 payload (no conversation, no
         work_tickets/commits/resolves/addresses) applies cleanly."""
-        _create_workstream(routed)
+        _create_project(routed)
         payload = {
             "label": "v0.7 backward compat",
             "session": _session_block("SES-209"),
@@ -604,7 +604,7 @@ class TestPI030NewSections:
     ):
         """The deposit_event at apply close includes wrote_record edges to
         conversation, work_ticket, and commit records (new v0.8 types)."""
-        ws_id = _create_workstream(routed)
+        ws_id = _create_project(routed)
         payload = {
             "label": "Audit chain test",
             "session": _session_block("SES-210"),
@@ -656,7 +656,7 @@ class TestPI030NewSections:
     ):
         """If the conversation POST fails (missing required nonempty field),
         no orphan refs row is left."""
-        ws_id = _create_workstream(routed)
+        ws_id = _create_project(routed)
         bad_conv = _conversation_block("CNV-211", ws_id, "SES-211")
         bad_conv["conversation_purpose"] = ""  # required nonempty → 422
         payload = {
@@ -681,7 +681,7 @@ class TestPI030NewSections:
     ):
         """Re-applying a payload whose resolves edge already exists
         returns 409 SKIP; the PI status remains Resolved."""
-        ws_id = _create_workstream(routed)
+        ws_id = _create_project(routed)
         payload = {
             "label": "Resolves idempotent",
             "session": _session_block("SES-212"),
@@ -748,7 +748,7 @@ class TestPI099SectionOrdering:
         and then the session create finds the edge and validates.
         """
         # Create the workstream the session will belong to.
-        ws_id = _create_workstream(routed)
+        ws_id = _create_project(routed)
 
         payload = {
             "label": "PI-099 single-pass apply test",
@@ -765,9 +765,9 @@ class TestPI099SectionOrdering:
                     {
                         "source_type": "session",
                         "source_id": "SES-300",
-                        "target_type": "workstream",
+                        "target_type": "project",
                         "target_id": ws_id,
-                        "relationship": "session_belongs_to_workstream",
+                        "relationship": "session_belongs_to_project",
                     }
                 ],
             },

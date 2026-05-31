@@ -12,8 +12,8 @@ its sole kickoff.
 Placeholder contract (the driver MUST substitute all of these):
   {{operating_mode}}                 e.g. DETAIL
   {{engagement_code}}                e.g. CRMBUILDER
-  {{workstream_identifier}}          e.g. WS-012
-  {{workstream_title}}               human-readable workstream name
+  {{project_identifier}}          e.g. PRJ-012
+  {{project_title}}               human-readable project name
   {{orchestrator_conversation_identifier}}  the supervising CONV-NNN
   {{session_identifier}}             pre-allocated SES-NNN for this agent
   {{conversation_identifier}}        pre-allocated CONV-NNN for this agent
@@ -35,7 +35,7 @@ Placeholder contract (the driver MUST substitute all of these):
 
 **Operating mode:** {{operating_mode}} (DETAIL is the default for code work — make concrete file-level changes, run tests, commit; do not stay at the architecture level).
 **Engagement:** {{engagement_code}}
-**Workstream:** {{workstream_identifier}} — {{workstream_title}}
+**Project:** {{project_identifier}} — {{project_title}}
 **Dispatched by orchestrator conversation:** {{orchestrator_conversation_identifier}}
 **Your branch:** `{{branch_name}}` (already created off `{{base_branch}}` — work only here; do not switch branches).
 

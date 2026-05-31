@@ -5,7 +5,7 @@ required ``session_executive_summary`` column. ``sessions.create()`` is the
 removed pre-redesign shim; the live entry point is ``create_session()`` with
 the medium-agnostic shape (title, description, medium, executive_summary,
 [status, ...]). Every live session requires exactly one outbound
-``session_belongs_to_workstream`` edge, supplied here via ``references``.
+``session_belongs_to_project`` edge, supplied here via ``references``.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from crmbuilder_v2.access.exceptions import (
     UnprocessableError,
 )
 from crmbuilder_v2.access.repositories import sessions
-from crmbuilder_v2.access.repositories import workstreams as ws
+from crmbuilder_v2.access.repositories import projects as ws
 
 # A valid 200-800 char executive summary reused across fixtures.
 _EXEC_SUMMARY = (
@@ -30,8 +30,8 @@ _EXEC_SUMMARY = (
 
 
 def _ws(s, name="WS"):
-    return ws.create_workstream(s, name=name, purpose="p", description="d")[
-        "workstream_identifier"
+    return ws.create_project(s, name=name, purpose="p", description="d")[
+        "project_identifier"
     ]
 
 
@@ -39,9 +39,9 @@ def _member_edge(session_identifier, ws_id):
     return {
         "source_type": "session",
         "source_id": session_identifier,
-        "target_type": "workstream",
+        "target_type": "project",
         "target_id": ws_id,
-        "relationship": "session_belongs_to_workstream",
+        "relationship": "session_belongs_to_project",
     }
 
 

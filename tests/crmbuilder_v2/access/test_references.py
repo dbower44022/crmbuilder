@@ -16,7 +16,7 @@ from crmbuilder_v2.access.repositories import (
     references,
     sessions as se,
     work_tickets as wt,
-    workstreams as ws,
+    projects as ws,
 )
 
 # A 200-800 character audience-facing executive summary, required on
@@ -176,12 +176,12 @@ class TestResolvesStatusFlip:
 
         A conversation requires exactly one outbound
         ``conversation_belongs_to_session`` edge, and the parent session
-        requires exactly one outbound ``session_belongs_to_workstream``
+        requires exactly one outbound ``session_belongs_to_project``
         edge. Build that chain so the conversation create validates.
         """
-        wid = ws.create_workstream(
+        wid = ws.create_project(
             s, name="WS " + identifier, purpose="p", description="d"
-        )["workstream_identifier"]
+        )["project_identifier"]
         # Derive an explicit session identifier from the conversation's
         # numeric suffix (e.g. CNV-991 -> SES-991) so the membership edge
         # can name its source before the row is persisted.
@@ -195,8 +195,8 @@ class TestResolvesStatusFlip:
             identifier=ses_id,
             references=[{
                 "source_type": "session", "source_id": ses_id,
-                "target_type": "workstream", "target_id": wid,
-                "relationship": "session_belongs_to_workstream",
+                "target_type": "project", "target_id": wid,
+                "relationship": "session_belongs_to_project",
             }],
         )
         return cr.create_conversation(
@@ -321,9 +321,9 @@ class TestOpensAgainstStatusFlip:
     def _ws_ses_conv(s, identifier):
         """Build the PI-073 workstream <- session <- conversation chain
         used by every test in this class."""
-        wid = ws.create_workstream(
+        wid = ws.create_project(
             s, name="WS " + identifier, purpose="p", description="d"
-        )["workstream_identifier"]
+        )["project_identifier"]
         ses_id = "SES-" + identifier.split("-", 1)[1]
         se.create_session(
             s,
@@ -334,8 +334,8 @@ class TestOpensAgainstStatusFlip:
             identifier=ses_id,
             references=[{
                 "source_type": "session", "source_id": ses_id,
-                "target_type": "workstream", "target_id": wid,
-                "relationship": "session_belongs_to_workstream",
+                "target_type": "project", "target_id": wid,
+                "relationship": "session_belongs_to_project",
             }],
         )
         cr.create_conversation(

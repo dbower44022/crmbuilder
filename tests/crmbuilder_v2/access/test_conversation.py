@@ -17,7 +17,7 @@ from crmbuilder_v2.access.exceptions import (
     UnprocessableError,
 )
 from crmbuilder_v2.access.repositories import conversations as cr
-from crmbuilder_v2.access.repositories import workstreams as ws
+from crmbuilder_v2.access.repositories import projects as ws
 from sqlalchemy import inspect
 
 # A session identifier the conversations are nested within. The references
@@ -27,8 +27,8 @@ _SESSION_ID = "CONV-049"
 
 
 def _ws(s):
-    return ws.create_workstream(s, name="WS", purpose="p", description="d")[
-        "workstream_identifier"
+    return ws.create_project(s, name="WS", purpose="p", description="d")[
+        "project_identifier"
     ]
 
 

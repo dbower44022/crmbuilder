@@ -88,18 +88,18 @@ def test_decisions_next_increments_after_create(client):
 
 def test_sessions_next_increments_after_create(client):
     # PI-073: a session is the medium-agnostic communication container and
-    # requires exactly one ``session_belongs_to_workstream`` edge, supplied
+    # requires exactly one ``session_belongs_to_project`` edge, supplied
     # here via ``references`` against a freshly-created workstream.
     ws = client.post(
-        "/workstreams",
+        "/projects",
         json={
-            "workstream_name": "WS for next-identifier test",
-            "workstream_purpose": "host the session under test",
-            "workstream_description": "fixture workstream",
+            "project_name": "WS for next-identifier test",
+            "project_purpose": "host the session under test",
+            "project_description": "fixture workstream",
         },
     )
     assert ws.status_code == 201, ws.json()
-    ws_id = ws.json()["data"]["workstream_identifier"]
+    ws_id = ws.json()["data"]["project_identifier"]
 
     body = {
         "session_identifier": "SES-001",
@@ -112,9 +112,9 @@ def test_sessions_next_increments_after_create(client):
             {
                 "source_type": "session",
                 "source_id": "SES-001",
-                "target_type": "workstream",
+                "target_type": "project",
                 "target_id": ws_id,
-                "relationship": "session_belongs_to_workstream",
+                "relationship": "session_belongs_to_project",
             }
         ],
     }

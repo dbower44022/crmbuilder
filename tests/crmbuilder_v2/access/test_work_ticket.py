@@ -11,7 +11,7 @@ from crmbuilder_v2.access.exceptions import (
 from crmbuilder_v2.access.repositories import conversations as cr
 from crmbuilder_v2.access.repositories import sessions as sr
 from crmbuilder_v2.access.repositories import work_tickets as wt
-from crmbuilder_v2.access.repositories import workstreams as ws
+from crmbuilder_v2.access.repositories import projects as ws
 
 _EXEC_SUMMARY = (
     "This planning item reconciles stale test fixtures with the current "
@@ -22,12 +22,12 @@ _EXEC_SUMMARY = (
 
 
 def _conv(s, identifier="CNV-001"):
-    # Chain: workstream -> session (session_belongs_to_workstream) ->
+    # Chain: workstream -> session (session_belongs_to_project) ->
     # conversation (conversation_belongs_to_session). Both parent edges are
     # mandatory under the PI-073 redesign.
-    wid = ws.create_workstream(
+    wid = ws.create_project(
         s, name="WS " + identifier, purpose="p", description="d"
-    )["workstream_identifier"]
+    )["project_identifier"]
     # Explicit session identifier so the mandatory membership edge can name
     # the source before the row is server-assigned an id.
     sid = "SES-" + identifier.split("-", 1)[1]
@@ -36,8 +36,8 @@ def _conv(s, identifier="CNV-001"):
         executive_summary=_EXEC_SUMMARY, identifier=sid,
         references=[{
             "source_type": "session", "source_id": sid,
-            "target_type": "workstream", "target_id": wid,
-            "relationship": "session_belongs_to_workstream",
+            "target_type": "project", "target_id": wid,
+            "relationship": "session_belongs_to_project",
         }],
     )
     return cr.create_conversation(
@@ -104,17 +104,17 @@ def test_consumed_accepts_session_opens_edge(v2_env):
         wt.patch_work_ticket(s, "WT-001", status="ready")
         # Build the session chain (workstream → session) without a conversation;
         # the PI-073 successor edge originates from the session itself.
-        wid = ws.create_workstream(
+        wid = ws.create_project(
             s, name="WS sess-consume", purpose="p", description="d"
-        )["workstream_identifier"]
+        )["project_identifier"]
         sid = "SES-900"
         sr.create_session(
             s, title="S sess-consume", description="d", medium="chat",
             executive_summary=_EXEC_SUMMARY, identifier=sid,
             references=[{
                 "source_type": "session", "source_id": sid,
-                "target_type": "workstream", "target_id": wid,
-                "relationship": "session_belongs_to_workstream",
+                "target_type": "project", "target_id": wid,
+                "relationship": "session_belongs_to_project",
             }],
         )
         wt.patch_work_ticket(

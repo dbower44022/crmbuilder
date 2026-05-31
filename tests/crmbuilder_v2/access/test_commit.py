@@ -16,7 +16,7 @@ from crmbuilder_v2.access.exceptions import (
 )
 from crmbuilder_v2.access.repositories import commits as cm
 from crmbuilder_v2.access.repositories import sessions as sr
-from crmbuilder_v2.access.repositories import workstreams as ws
+from crmbuilder_v2.access.repositories import projects as ws
 
 
 SHA_A = "a" * 40
@@ -41,19 +41,19 @@ def _session(s, identifier="SES-001"):
 
     Under the PI-073 redesign a commit's FK (``commit_session_id``)
     targets a SESSION, not a conversation. Each session needs exactly one
-    outbound ``session_belongs_to_workstream`` edge to be valid.
+    outbound ``session_belongs_to_project`` edge to be valid.
     """
-    wid = ws.create_workstream(
+    wid = ws.create_project(
         s, name="WS " + identifier, purpose="p", description="d"
-    )["workstream_identifier"]
+    )["project_identifier"]
     return sr.create_session(
         s, title="S " + identifier, description="d",
         medium="chat", executive_summary=_EXEC_SUMMARY,
         identifier=identifier,
         references=[{
             "source_type": "session", "source_id": identifier,
-            "target_type": "workstream", "target_id": wid,
-            "relationship": "session_belongs_to_workstream",
+            "target_type": "project", "target_id": wid,
+            "relationship": "session_belongs_to_project",
         }],
     )["session_identifier"]
 

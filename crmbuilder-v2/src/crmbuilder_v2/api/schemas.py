@@ -1013,33 +1013,33 @@ class GovernanceEdgeIn(_Base):
     relationship: str
 
 
-class WorkstreamCreateIn(_Base):
-    workstream_name: str
-    workstream_purpose: str
-    workstream_description: str
-    workstream_notes: str | None = None
-    workstream_status: str | None = None
-    workstream_identifier: str | None = None
+class ProjectCreateIn(_Base):
+    project_name: str
+    project_purpose: str
+    project_description: str
+    project_notes: str | None = None
+    project_status: str | None = None
+    project_identifier: str | None = None
     references: list[GovernanceEdgeIn] | None = None
     timestamps: dict[str, Any] | None = None
 
 
-class WorkstreamReplaceIn(_Base):
-    workstream_identifier: str | None = None
-    workstream_name: str
-    workstream_purpose: str
-    workstream_description: str
-    workstream_notes: str | None = None
-    workstream_status: str
+class ProjectReplaceIn(_Base):
+    project_identifier: str | None = None
+    project_name: str
+    project_purpose: str
+    project_description: str
+    project_notes: str | None = None
+    project_status: str
     references: list[GovernanceEdgeIn] | None = None
 
 
-class WorkstreamPatchIn(_Base):
-    workstream_name: str | None = None
-    workstream_purpose: str | None = None
-    workstream_description: str | None = None
-    workstream_notes: str | None = None
-    workstream_status: str | None = None
+class ProjectPatchIn(_Base):
+    project_name: str | None = None
+    project_purpose: str | None = None
+    project_description: str | None = None
+    project_notes: str | None = None
+    project_status: str | None = None
     references: list[GovernanceEdgeIn] | None = None
 
 

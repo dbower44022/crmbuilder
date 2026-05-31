@@ -39,7 +39,7 @@ def test_bootstrap_creates_all_export_files(v2_env, export_dir: Path):
         # PI-004 cohort closer — test_specs (resolves PI-004).
         "test_specs.json",
         # Governance entity snapshots (UI v0.7).
-        "workstreams.json",
+        "projects.json",
         "conversations.json",
         "reference_books.json",
         "reference_book_versions.json",

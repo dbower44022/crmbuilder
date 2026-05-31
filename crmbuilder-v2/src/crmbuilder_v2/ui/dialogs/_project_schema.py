@@ -5,53 +5,53 @@ from __future__ import annotations
 from copy import deepcopy
 
 from crmbuilder_v2.access.vocab import (
-    WORKSTREAM_STATUS_TRANSITIONS,
-    WORKSTREAM_STATUSES,
+    PROJECT_STATUS_TRANSITIONS,
+    PROJECT_STATUSES,
 )
 from crmbuilder_v2.ui.base.crud_dialog import FieldSchema
 
 
 def status_choices(current: str | None) -> list[str]:
     current = current or "planned"
-    if current not in WORKSTREAM_STATUSES:
-        return sorted(WORKSTREAM_STATUSES)
+    if current not in PROJECT_STATUSES:
+        return sorted(PROJECT_STATUSES)
     return sorted(
-        {current} | set(WORKSTREAM_STATUS_TRANSITIONS.get(current, frozenset()))
+        {current} | set(PROJECT_STATUS_TRANSITIONS.get(current, frozenset()))
     )
 
 
 _IDENTIFIER_FIELD = FieldSchema(
-    key="workstream_identifier",
+    key="project_identifier",
     label="Identifier",
     widget="line",
     read_only_on_edit=True,
 )
 
 _CONTENT_FIELDS: list[FieldSchema] = [
-    FieldSchema(key="workstream_name", label="Name", widget="line", required=True),
+    FieldSchema(key="project_name", label="Name", widget="line", required=True),
     FieldSchema(
-        key="workstream_purpose",
+        key="project_purpose",
         label="Purpose",
         widget="line",
         required=True,
         placeholder="One sentence",
     ),
     FieldSchema(
-        key="workstream_description",
+        key="project_description",
         label="Description",
         widget="text",
         required=True,
         placeholder="Paragraph describing the workstream",
     ),
-    FieldSchema(key="workstream_notes", label="Internal notes", widget="text"),
+    FieldSchema(key="project_notes", label="Internal notes", widget="text"),
     FieldSchema(
-        key="workstream_status",
+        key="project_status",
         label="Status",
         widget="combo",
         required=True,
-        vocab=WORKSTREAM_STATUSES,
+        vocab=PROJECT_STATUSES,
         default="planned",
-        compute_options=lambda state: status_choices(state.get("workstream_status")),
+        compute_options=lambda state: status_choices(state.get("project_status")),
     ),
 ]
 

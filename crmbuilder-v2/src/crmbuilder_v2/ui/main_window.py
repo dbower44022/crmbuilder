@@ -60,7 +60,7 @@ from crmbuilder_v2.ui.panels.status import StatusPanel
 from crmbuilder_v2.ui.panels.test_spec import TestSpecsPanel
 from crmbuilder_v2.ui.panels.topics import TopicsPanel
 from crmbuilder_v2.ui.panels.work_tickets import WorkTicketsPanel
-from crmbuilder_v2.ui.panels.workstreams import WorkstreamsPanel
+from crmbuilder_v2.ui.panels.projects import ProjectsPanel
 from crmbuilder_v2.ui.refresh import RefreshService
 from crmbuilder_v2.ui.server_lifecycle import ServerLifecycle
 from crmbuilder_v2.ui.sidebar import SIDEBAR_ENTRIES, Sidebar
@@ -117,7 +117,7 @@ ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
     # v0.5 slice C: meta-DB engagement registry.
     "engagement": "Engagements",
     # v0.7 governance entities.
-    "workstream": "Workstreams",
+    "project": "Projects",
     "conversation": "Conversations",
     "reference_book": "Reference Books",
     "work_ticket": "Work Tickets",
@@ -242,8 +242,8 @@ class MainWindow(QMainWindow):
                 )
             # v0.7 governance entities — six new panels appended to the
             # Governance group in workstream order.
-            elif entry == "Workstreams":
-                page = WorkstreamsPanel(self._client)
+            elif entry == "Projects":
+                page = ProjectsPanel(self._client)
             elif entry == "Conversations":
                 page = ConversationsPanel(self._client)
             elif entry == "Reference Books":

@@ -9,8 +9,8 @@ from __future__ import annotations
 from crmbuilder_v2.access import vocab
 
 _NEW_KINDS = {
-    "conversation_belongs_to_workstream",
-    "workstream_planned_in_reference_book",
+    "conversation_belongs_to_project",
+    "project_planned_in_reference_book",
     "conversation_records_session",
     "conversation_opens_against_work_ticket",
     "conversation_succeeds_conversation",
@@ -19,7 +19,7 @@ _NEW_KINDS = {
     "deposit_event_wrote_record",
 }
 _NEW_TYPES = {
-    "workstream",
+    "project",
     "conversation",
     "reference_book",
     "work_ticket",
@@ -38,7 +38,7 @@ def test_new_entity_types_registered():
 
 def test_kinds_for_pair_governance_bindings():
     kfp = vocab._kinds_for_pair
-    assert "conversation_belongs_to_workstream" in kfp("conversation", "workstream")
+    assert "conversation_belongs_to_project" in kfp("conversation", "project")
     assert "conversation_records_session" in kfp("conversation", "session")
     assert "conversation_opens_against_work_ticket" in kfp(
         "conversation", "work_ticket"
@@ -46,8 +46,8 @@ def test_kinds_for_pair_governance_bindings():
     assert "conversation_succeeds_conversation" in kfp(
         "conversation", "conversation"
     )
-    assert "workstream_planned_in_reference_book" in kfp(
-        "workstream", "reference_book"
+    assert "project_planned_in_reference_book" in kfp(
+        "project", "reference_book"
     )
     assert "close_out_payload_produced_by_conversation" in kfp(
         "close_out_payload", "conversation"
@@ -66,8 +66,8 @@ def test_same_type_supersedes_admitted_for_governance_entities():
 
 def test_kinds_for_pair_does_not_leak_bindings():
     # A binding kind must not appear on an unrelated pair.
-    assert "conversation_belongs_to_workstream" not in vocab._kinds_for_pair(
-        "workstream", "conversation"
+    assert "conversation_belongs_to_project" not in vocab._kinds_for_pair(
+        "project", "conversation"
     )
     assert "deposit_event_wrote_record" not in vocab._kinds_for_pair(
         "deposit_event", "close_out_payload"

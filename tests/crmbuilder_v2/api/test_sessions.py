@@ -7,7 +7,7 @@ legacy fixture shape (bare ``title``/``status``/``identifier`` plus
 names, ``session_medium`` must be a valid vocab enum, and
 ``session_executive_summary`` is a required 200-800 character string
 (PI-074/PI-075). Every live session also requires exactly one outbound
-``session_belongs_to_workstream`` edge, supplied here via ``references``.
+``session_belongs_to_project`` edge, supplied here via ``references``.
 Responses key the identifier as ``session_identifier``.
 """
 
@@ -24,24 +24,24 @@ _EXEC_SUMMARY = (
 
 def _make_workstream(client):
     r = client.post(
-        "/workstreams",
+        "/projects",
         json={
-            "workstream_name": "WS for session tests",
-            "workstream_purpose": "host sessions under test",
-            "workstream_description": "fixture workstream",
+            "project_name": "WS for session tests",
+            "project_purpose": "host sessions under test",
+            "project_description": "fixture workstream",
         },
     )
     assert r.status_code == 201, r.json()
-    return r.json()["data"]["workstream_identifier"]
+    return r.json()["data"]["project_identifier"]
 
 
 def _member_edge(session_identifier, ws_id):
     return {
         "source_type": "session",
         "source_id": session_identifier,
-        "target_type": "workstream",
+        "target_type": "project",
         "target_id": ws_id,
-        "relationship": "session_belongs_to_workstream",
+        "relationship": "session_belongs_to_project",
     }
 
 

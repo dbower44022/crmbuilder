@@ -23,7 +23,7 @@ async def mcp_env(v2_env):
 
     The REST client is exposed so setup that the MCP tool surface does not
     cover directly (creating a workstream, or creating a session with its
-    required ``session_belongs_to_workstream`` membership edge in the same
+    required ``session_belongs_to_project`` membership edge in the same
     POST body) can be performed against the same in-process app the tools
     call through.
     """
@@ -121,18 +121,18 @@ async def test_decision_lifecycle(mcp_server):
 async def test_orientation_decisions_for_session(mcp_env):
     server, http = mcp_env
     # Under PI-073 a session requires exactly one inbound-from-itself
-    # `session_belongs_to_workstream` membership edge, supplied in the create
+    # `session_belongs_to_project` membership edge, supplied in the create
     # body. The MCP `create_session` tool surface does not carry references,
     # so set up the workstream + session via the REST app directly (the same
     # in-process app the MCP tools call through), then exercise the
     # orientation tool `list_decisions_for_session` over MCP as before.
     resp = await http.post(
-        "/workstreams",
+        "/projects",
         json={
-            "workstream_identifier": "WS-001",
-            "workstream_name": "Smoke workstream",
-            "workstream_purpose": "Hold the smoke session.",
-            "workstream_description": "Smoke-test workstream.",
+            "project_identifier": "PRJ-001",
+            "project_name": "Smoke workstream",
+            "project_purpose": "Hold the smoke session.",
+            "project_description": "Smoke-test workstream.",
         },
     )
     resp.raise_for_status()
@@ -154,9 +154,9 @@ async def test_orientation_decisions_for_session(mcp_env):
                 {
                     "source_type": "session",
                     "source_id": "SES-001",
-                    "target_type": "workstream",
-                    "target_id": "WS-001",
-                    "relationship": "session_belongs_to_workstream",
+                    "target_type": "project",
+                    "target_id": "PRJ-001",
+                    "relationship": "session_belongs_to_project",
                 }
             ],
         },

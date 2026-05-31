@@ -11,7 +11,7 @@ from crmbuilder_v2.access.exceptions import (
 from crmbuilder_v2.access.repositories import close_out_payloads as cop
 from crmbuilder_v2.access.repositories import conversations as cr
 from crmbuilder_v2.access.repositories import sessions as sr
-from crmbuilder_v2.access.repositories import workstreams as ws
+from crmbuilder_v2.access.repositories import projects as ws
 from sqlalchemy import inspect
 
 # A 200-800 character audience-facing summary required by the PI-073/PI-074
@@ -25,8 +25,8 @@ _EXEC_SUMMARY = (
 
 
 def _conv(s, identifier="CNV-001"):
-    wid = ws.create_workstream(s, name="WS", purpose="p", description="d")[
-        "workstream_identifier"
+    wid = ws.create_project(s, name="WS", purpose="p", description="d")[
+        "project_identifier"
     ]
     # Under PI-073 a conversation is a topical sub-unit that must belong to a
     # session via a mandatory ``conversation_belongs_to_session`` edge; the
@@ -37,8 +37,8 @@ def _conv(s, identifier="CNV-001"):
         executive_summary=_EXEC_SUMMARY, identifier=sid,
         references=[{
             "source_type": "session", "source_id": sid,
-            "target_type": "workstream", "target_id": wid,
-            "relationship": "session_belongs_to_workstream",
+            "target_type": "project", "target_id": wid,
+            "relationship": "session_belongs_to_project",
         }],
     )
     return cr.create_conversation(

@@ -1,7 +1,7 @@
 """PI-108 Slice A: created/last-edited timestamps on the raw-ISO panels.
 
 Covers the shared created_updated_section helper plus the Sessions /
-Workstreams / Conversations / Commits panels (the ones that previously showed
+Projects / Conversations / Commits panels (the ones that previously showed
 a raw, unformatted updated_at or nothing).
 """
 
@@ -13,7 +13,7 @@ import httpx
 from crmbuilder_v2.ui.panels._governance_helpers import created_updated_section
 from crmbuilder_v2.ui.panels.conversations import ConversationsPanel
 from crmbuilder_v2.ui.panels.sessions import SessionsPanel
-from crmbuilder_v2.ui.panels.workstreams import WorkstreamsPanel
+from crmbuilder_v2.ui.panels.projects import ProjectsPanel
 from crmbuilder_v2.ui.widgets.datetime_format import format_timestamp
 from PySide6.QtWidgets import QLabel
 
@@ -87,11 +87,11 @@ def test_sessions_created_column_formatted(qtbot):
 
 def test_workstreams_created_column_formatted(qtbot):
     rec = {
-        "workstream_identifier": "WS-001",
-        "workstream_created_at": _CREATED,
-        "workstream_updated_at": _UPDATED,
+        "project_identifier": "PRJ-001",
+        "project_created_at": _CREATED,
+        "project_updated_at": _UPDATED,
     }
-    panel = WorkstreamsPanel(build_client(_list_handler("/workstreams", [rec])))
+    panel = ProjectsPanel(build_client(_list_handler("/projects", [rec])))
     qtbot.addWidget(panel)
     assert "Created" in [c.title for c in panel.list_columns()]
     out = panel.fetch_records()

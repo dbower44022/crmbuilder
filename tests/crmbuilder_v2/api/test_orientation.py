@@ -13,16 +13,16 @@ _EXEC_SUMMARY = (
 
 
 def _seed(client):
-    # One workstream (sessions require exactly one session_belongs_to_workstream
+    # One workstream (sessions require exactly one session_belongs_to_project
     # edge per PI-073), two sessions, two decisions, refs from SES-001 to both
     # decisions.
     client.post(
-        "/workstreams",
+        "/projects",
         json={
-            "workstream_identifier": "WS-001",
-            "workstream_name": "Orientation fixtures",
-            "workstream_purpose": "House the seeded orientation-test sessions.",
-            "workstream_description": "Test-only workstream for orientation reads.",
+            "project_identifier": "PRJ-001",
+            "project_name": "Orientation fixtures",
+            "project_purpose": "House the seeded orientation-test sessions.",
+            "project_description": "Test-only workstream for orientation reads.",
         },
     )
     for sid in ("SES-001", "SES-002"):
@@ -39,9 +39,9 @@ def _seed(client):
                     {
                         "source_type": "session",
                         "source_id": sid,
-                        "target_type": "workstream",
-                        "target_id": "WS-001",
-                        "relationship": "session_belongs_to_workstream",
+                        "target_type": "project",
+                        "target_id": "PRJ-001",
+                        "relationship": "session_belongs_to_project",
                     }
                 ],
             },

@@ -120,12 +120,12 @@ def test_post_references_conversation_orchestrates_conversation(client):
 def test_post_references_resolves_flips_status(client):
     """PI-030 slice A: POST /references with relationship=resolves
     triggers the atomic status flip on the target planning_item."""
-    ws_resp = client.post("/workstreams", json={
-        "workstream_name": "WS CONV-995",
-        "workstream_purpose": "p",
-        "workstream_description": "d",
+    ws_resp = client.post("/projects", json={
+        "project_name": "WS CONV-995",
+        "project_purpose": "p",
+        "project_description": "d",
     })
-    wid = ws_resp.json()["data"]["workstream_identifier"]
+    wid = ws_resp.json()["data"]["project_identifier"]
     client.post("/conversations", json={
         "conversation_title": "Conv CONV-995",
         "conversation_purpose": "p",
@@ -133,8 +133,8 @@ def test_post_references_resolves_flips_status(client):
         "conversation_identifier": "CONV-995",
         "references": [{
             "source_type": "conversation", "source_id": "CONV-995",
-            "target_type": "workstream", "target_id": wid,
-            "relationship": "conversation_belongs_to_workstream",
+            "target_type": "project", "target_id": wid,
+            "relationship": "conversation_belongs_to_project",
         }],
     })
     client.post("/planning-items", json={

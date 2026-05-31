@@ -16,7 +16,7 @@ import pytest
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.repositories import conversations as cr
 from crmbuilder_v2.access.repositories import sessions as sr
-from crmbuilder_v2.access.repositories import workstreams as wr
+from crmbuilder_v2.access.repositories import projects as wr
 from crmbuilder_v2.api.main import create_app
 from crmbuilder_v2.mcp_server.server import build_server
 
@@ -130,8 +130,8 @@ async def test_update_session_refreshes_executive_summary(mcp_server):
     # Sessions require a workstream-membership edge; seed via access then
     # refresh the session_executive_summary via MCP.
     with session_scope() as s:
-        wid = wr.create_workstream(s, name="WS", purpose="p", description="d")[
-            "workstream_identifier"
+        wid = wr.create_project(s, name="WS", purpose="p", description="d")[
+            "project_identifier"
         ]
         sr.create_session(
             s,
@@ -143,9 +143,9 @@ async def test_update_session_refreshes_executive_summary(mcp_server):
             references=[{
                 "source_type": "session",
                 "source_id": "SES-001",
-                "target_type": "workstream",
+                "target_type": "project",
                 "target_id": wid,
-                "relationship": "session_belongs_to_workstream",
+                "relationship": "session_belongs_to_project",
             }],
             identifier="SES-001",
         )

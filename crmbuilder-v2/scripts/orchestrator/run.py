@@ -218,8 +218,8 @@ def render_child_kickoff(
     orchestrator_conversation: str,
     branch_name: str,
     engagement_code: str,
-    workstream_identifier: str,
-    workstream_title: str,
+    project_identifier: str,
+    project_title: str,
     api_base: str,
 ) -> str:
     """Render one child's kickoff from the template + cluster assignment."""
@@ -227,8 +227,8 @@ def render_child_kickoff(
     subs = {
         "operating_mode": "DETAIL",
         "engagement_code": engagement_code,
-        "workstream_identifier": workstream_identifier,
-        "workstream_title": workstream_title,
+        "project_identifier": project_identifier,
+        "project_title": project_title,
         "orchestrator_conversation_identifier": orchestrator_conversation,
         "session_identifier": session_identifier,
         "conversation_identifier": conversation_identifier,
@@ -415,14 +415,14 @@ def _patch_status(api_base: str, collection: str, identifier: str, status: str) 
 
 
 def _create_orchestrator_pair(
-    api_base: str, *, workstream_identifier: str, run_id: str
+    api_base: str, *, project_identifier: str, run_id: str
 ) -> tuple[str, str, str]:
     """Create the orchestrator's supervising session + conversation in_flight.
 
     Returns ``(session_id, conversation_id, executive_summary)``. The
-    session carries the mandatory ``session_belongs_to_workstream`` edge;
+    session carries the mandatory ``session_belongs_to_project`` edge;
     the conversation carries ``conversation_belongs_to_session`` (mandatory)
-    and ``conversation_belongs_to_workstream`` (per the WS-012 design).
+    and ``conversation_belongs_to_project`` (per the WS-012 design).
     Identifiers are reserved first so they are known for the inline edges.
     """
     ses_id = _reserve_identifier(api_base, "session", "orchestrator")
@@ -430,7 +430,7 @@ def _create_orchestrator_pair(
 
     exec_summary = (
         f"Parallel-agent orchestrator supervising run {run_id} against the "
-        f"open {workstream_identifier} planning-item backlog. This session "
+        f"open {project_identifier} planning-item backlog. This session "
         "dispatches one Claude Code child agent per area-disjoint work "
         "cluster, joins each dependency-depth wave before dispatching the "
         "next, and records the parent-child orchestration edge to every "
@@ -447,7 +447,7 @@ def _create_orchestrator_pair(
             "session_description": (
                 "Supervising session for a parallel-agent orchestrator run "
                 f"({run_id}). Dispatches child agents across the open "
-                f"{workstream_identifier} backlog under static-wave scheduling."
+                f"{project_identifier} backlog under static-wave scheduling."
             ),
             "session_medium": "other",
             "session_status": "in_flight",
@@ -456,9 +456,9 @@ def _create_orchestrator_pair(
                 {
                     "source_type": "session",
                     "source_id": ses_id,
-                    "target_type": "workstream",
-                    "target_id": workstream_identifier,
-                    "relationship": "session_belongs_to_workstream",
+                    "target_type": "project",
+                    "target_id": project_identifier,
+                    "relationship": "session_belongs_to_project",
                 }
             ],
         },
@@ -492,9 +492,9 @@ def _create_orchestrator_pair(
                 {
                     "source_type": "conversation",
                     "source_id": conv_id,
-                    "target_type": "workstream",
-                    "target_id": workstream_identifier,
-                    "relationship": "conversation_belongs_to_workstream",
+                    "target_type": "project",
+                    "target_id": project_identifier,
+                    "relationship": "conversation_belongs_to_project",
                 },
             ],
         },
@@ -572,8 +572,8 @@ def _dispatch_child(
     run_id: str,
     template_body: str,
     engagement_code: str,
-    workstream_identifier: str,
-    workstream_title: str,
+    project_identifier: str,
+    project_title: str,
 ) -> ChildHandle:
     """Reserve → claim → worktree → render → spawn one child (in that order).
 
@@ -607,8 +607,8 @@ def _dispatch_child(
         orchestrator_conversation=orchestrator_conversation,
         branch_name=branch,
         engagement_code=engagement_code,
-        workstream_identifier=workstream_identifier,
-        workstream_title=workstream_title,
+        project_identifier=project_identifier,
+        project_title=project_title,
         api_base=api_base,
     )
     kickoff_path = worktree / "ORCHESTRATOR-CHILD-KICKOFF.md"
@@ -694,7 +694,7 @@ def _build_orchestrator_closeout(
     session_id: str,
     conversation_id: str,
     executive_summary: str,
-    workstream_identifier: str,
+    project_identifier: str,
     run_id: str,
     children: list[ChildHandle],
 ) -> dict:
@@ -766,7 +766,7 @@ def _finalize_orchestrator(
     session_id: str,
     conversation_id: str,
     executive_summary: str,
-    workstream_identifier: str,
+    project_identifier: str,
     run_id: str,
     children: list[ChildHandle],
 ) -> None:
@@ -781,7 +781,7 @@ def _finalize_orchestrator(
         session_id=session_id,
         conversation_id=conversation_id,
         executive_summary=executive_summary,
-        workstream_identifier=workstream_identifier,
+        project_identifier=project_identifier,
         run_id=run_id,
         children=children,
     )
@@ -873,8 +873,8 @@ def _dry_run(args: argparse.Namespace) -> int:
                 orchestrator_conversation="CNV-ORCH",
                 branch_name=f"orch-wave{wave.depth}-child{i}",
                 engagement_code=args.engagement_code,
-                workstream_identifier=args.workstream,
-                workstream_title="Parallel agent orchestrator",
+                project_identifier=args.workstream,
+                project_title="Parallel agent orchestrator",
                 api_base=args.api_base,
             )
             path = out_dir / f"kickoff-wave{wave.depth}-child{i}.md"
@@ -903,7 +903,7 @@ def _execute(args: argparse.Namespace) -> int:
     # (per run, once) the supervising conversation + session, created
     # in_flight. Children reference the conversation id as their dispatcher.
     orch_ses, orch_conv, orch_exec = _create_orchestrator_pair(
-        args.api_base, workstream_identifier=args.workstream, run_id=run_id
+        args.api_base, project_identifier=args.workstream, run_id=run_id
     )
     print(
         f"[execute] orchestrator session={orch_ses} conversation={orch_conv} "
@@ -921,7 +921,7 @@ def _execute(args: argparse.Namespace) -> int:
     _git_fetch()
 
     template_body = _load_template()
-    workstream_title = "Parallel agent orchestrator"
+    project_title = "Parallel agent orchestrator"
     dispatched: list[ChildHandle] = []
 
     for wave in waves:
@@ -946,8 +946,8 @@ def _execute(args: argparse.Namespace) -> int:
                     run_id=run_id,
                     template_body=template_body,
                     engagement_code=args.engagement_code,
-                    workstream_identifier=args.workstream,
-                    workstream_title=workstream_title,
+                    project_identifier=args.workstream,
+                    project_title=project_title,
                 )
                 wave_children.append(handle)
                 dispatched.append(handle)
@@ -1010,7 +1010,7 @@ def _execute(args: argparse.Namespace) -> int:
         session_id=orch_ses,
         conversation_id=orch_conv,
         executive_summary=orch_exec,
-        workstream_identifier=args.workstream,
+        project_identifier=args.workstream,
         run_id=run_id,
         children=dispatched,
     )
@@ -1025,7 +1025,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Parallel-agent orchestrator (PI-081)")
     p.add_argument("--api-base", default="http://127.0.0.1:8765")
     p.add_argument("--engagement-code", default="CRMBUILDER")
-    p.add_argument("--workstream", default="WS-012")
+    p.add_argument("--workstream", default="PRJ-012")
     p.add_argument("--max-depth", type=int, default=None)
     p.add_argument("--area", action="append", default=None, help="filter to area(s)")
     p.add_argument(

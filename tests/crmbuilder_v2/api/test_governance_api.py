@@ -17,12 +17,12 @@ def _envelope(resp):
 
 def _ws(client, name="WS A"):
     r = client.post(
-        "/workstreams",
-        json={"workstream_name": name, "workstream_purpose": "p",
-              "workstream_description": "d"},
+        "/projects",
+        json={"project_name": name, "project_purpose": "p",
+              "project_description": "d"},
     )
     assert r.status_code == 201, r.text
-    return r.json()["data"]["workstream_identifier"]
+    return r.json()["data"]["project_identifier"]
 
 
 # A reusable, schema-valid 200-800 char executive summary (PI-074/PI-075).
@@ -37,7 +37,7 @@ _EXEC_SUMMARY = (
 def _session(client, ws_id, identifier="SES-100", title="Sess A"):
     """Create a session (PI-073: medium-agnostic communication container).
 
-    Requires exactly one ``session_belongs_to_workstream`` edge.
+    Requires exactly one ``session_belongs_to_project`` edge.
     """
     r = client.post(
         "/sessions",
@@ -49,8 +49,8 @@ def _session(client, ws_id, identifier="SES-100", title="Sess A"):
             "session_executive_summary": _EXEC_SUMMARY,
             "references": [{
                 "source_type": "session", "source_id": identifier,
-                "target_type": "workstream", "target_id": ws_id,
-                "relationship": "session_belongs_to_workstream",
+                "target_type": "project", "target_id": ws_id,
+                "relationship": "session_belongs_to_project",
             }],
         },
     )
@@ -93,29 +93,29 @@ def _conv(client, ws_id, identifier="CNV-001", title="Conv A", session_id=None):
 
 def test_workstream_crud_and_envelope(client):
     r = client.post(
-        "/workstreams",
-        json={"workstream_name": "Gov", "workstream_purpose": "p",
-              "workstream_description": "d"},
+        "/projects",
+        json={"project_name": "Gov", "project_purpose": "p",
+              "project_description": "d"},
     )
     assert r.status_code == 201
     body = _envelope(r)
-    assert body["data"]["workstream_identifier"] == "WS-001"
-    assert client.get("/workstreams/next-identifier").json()["data"]["next"] == "WS-002"
-    assert client.get("/workstreams/WS-404").status_code == 404
+    assert body["data"]["project_identifier"] == "PRJ-001"
+    assert client.get("/projects/next-identifier").json()["data"]["next"] == "PRJ-002"
+    assert client.get("/projects/PRJ-404").status_code == 404
     # patch transition
-    r = client.patch("/workstreams/WS-001", json={"workstream_status": "in_flight"})
-    assert r.json()["data"]["workstream_started_at"]
+    r = client.patch("/projects/PRJ-001", json={"project_status": "in_flight"})
+    assert r.json()["data"]["project_started_at"]
     # delete + restore
-    assert client.delete("/workstreams/WS-001").status_code == 200
-    assert client.get("/workstreams").json()["data"] == []
-    assert client.post("/workstreams/WS-001/restore").status_code == 200
+    assert client.delete("/projects/PRJ-001").status_code == 200
+    assert client.get("/projects").json()["data"] == []
+    assert client.post("/projects/PRJ-001/restore").status_code == 200
 
 
 def test_workstream_validation_failure_envelope(client):
     r = client.post(
-        "/workstreams",
-        json={"workstream_name": "X", "workstream_purpose": "p",
-              "workstream_description": "d", "workstream_identifier": "WS-1"},
+        "/projects",
+        json={"project_name": "X", "project_purpose": "p",
+              "project_description": "d", "project_identifier": "WS-1"},
     )
     assert r.status_code == 422
     body = _envelope(r)
@@ -135,7 +135,7 @@ def test_conversation_membership_and_filters(client):
     )
     assert r.status_code == 422
     # Two conversations under one shared session; the session_identifier
-    # filter replaces the removed workstream_identifier filter (PI-073:
+    # filter replaces the removed project_identifier filter (PI-073:
     # conversations belong to sessions, not workstreams).
     ses = _session(client, ws)
     _conv(client, ws, "CNV-001", "A", session_id=ses)
@@ -153,7 +153,7 @@ def test_reference_book_versions_endpoints(client):
         "/reference-books",
         json={
             "reference_book_title": "Plan", "reference_book_description": "d",
-            "reference_book_kind": "workstream_master_plan",
+            "reference_book_kind": "project_master_plan",
             "reference_book_file_path": "PRDs/p.md",
             "versions": [{"version_label": "1.0", "version_date": "2026-05-11T00:00:00"}],
         },
@@ -172,7 +172,7 @@ def test_reference_book_versions_endpoints(client):
     assert at.json()["data"]["reference_book_version_label"] == "1.0"
     assert client.get(f"/reference-books/{rid}/version-at?as_of=2026-05-01").json()["data"] is None
     # kind filter
-    assert len(client.get("/reference-books?kind=workstream_master_plan").json()["data"]) == 1
+    assert len(client.get("/reference-books?kind=project_master_plan").json()["data"]) == 1
 
 
 # --- work_tickets -----------------------------------------------------------
@@ -279,14 +279,14 @@ def test_deposit_event_outcome_filter(client):
 
 
 def test_references_filter_honored_server_side(client):
-    _ws(client, "A")  # WS-001
-    _ws(client, "B")  # WS-002
-    # supersede WS-001 -> creates a supersedes edge WS-001 -> WS-002.
+    _ws(client, "A")  # PRJ-001
+    _ws(client, "B")  # PRJ-002
+    # supersede PRJ-001 -> creates a supersedes edge PRJ-001 -> PRJ-002.
     client.patch(
-        "/workstreams/WS-001",
-        json={"workstream_status": "superseded",
-              "references": [{"source_type": "workstream", "source_id": "WS-001",
-                              "target_type": "workstream", "target_id": "WS-002",
+        "/projects/PRJ-001",
+        json={"project_status": "superseded",
+              "references": [{"source_type": "project", "source_id": "PRJ-001",
+                              "target_type": "project", "target_id": "PRJ-002",
                               "relationship": "supersedes"}]},
     )
     everything = client.get("/references").json()["data"]
@@ -294,10 +294,10 @@ def test_references_filter_honored_server_side(client):
     by_kind = client.get("/references?relationship_kind=supersedes").json()["data"]
     assert len(by_kind) == 1 and by_kind[0]["relationship"] == "supersedes"
     by_source = client.get(
-        "/references?source_type=workstream&source_id=WS-001"
+        "/references?source_type=project&source_id=PRJ-001"
     ).json()["data"]
     assert len(by_source) == 1
     # composed filter that matches nothing
     assert client.get(
-        "/references?relationship_kind=supersedes&target_id=WS-999"
+        "/references?relationship_kind=supersedes&target_id=PRJ-999"
     ).json()["data"] == []

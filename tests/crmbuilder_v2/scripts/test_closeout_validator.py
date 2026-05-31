@@ -81,9 +81,9 @@ def _valid_payload() -> dict:
                 {
                     "source_type": "session",
                     "source_id": "SES-500",
-                    "target_type": "workstream",
-                    "target_id": "WS-012",
-                    "relationship": "session_belongs_to_workstream",
+                    "target_type": "project",
+                    "target_id": "PRJ-012",
+                    "relationship": "session_belongs_to_project",
                 }
             ],
         },

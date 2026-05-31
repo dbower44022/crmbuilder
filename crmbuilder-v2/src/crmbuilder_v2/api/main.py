@@ -58,7 +58,7 @@ from crmbuilder_v2.api.routers import (
     test_specs,
     topics,
     work_tickets,
-    workstreams,
+    projects,
 )
 from crmbuilder_v2.migration.meta_alembic import run_meta_migrations
 from crmbuilder_v2.runtime.exceptions import EngagementExportDirError
@@ -165,8 +165,8 @@ def create_app() -> FastAPI:
     app.include_router(references.router)
     app.include_router(orientation.router)
     app.include_router(catalog.router)
-    # Governance entities (UI v0.7), in workstream order.
-    app.include_router(workstreams.router)
+    # Governance entities (UI v0.7), in project order.
+    app.include_router(projects.router)
     app.include_router(conversations.router)
     app.include_router(reference_books.router)
     app.include_router(work_tickets.router)

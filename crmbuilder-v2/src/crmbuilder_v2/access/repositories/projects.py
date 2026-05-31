@@ -1,8 +1,8 @@
-"""Workstream repository — the first governance entity type (UI v0.7).
+"""Project repository — the first governance entity type (UI v0.7).
 
 Per ``governance-schema-specs/workstream.md``. Eight module-level functions
-back the ``/workstreams`` REST endpoints and the desktop panel, plus the
-``WS-NNN`` allocator helper. Five-status workflow lifecycle with truly
+back the ``/projects`` REST endpoints and the desktop panel, plus the
+``PRJ-NNN`` allocator helper. Five-status workflow lifecycle with truly
 -terminal terminals; the ``superseded`` terminal requires an outbound
 ``supersedes`` edge (DEC-125). Per-status lifecycle timestamps are server
 -set on transition; client-supplied values are ignored except on a
@@ -27,16 +27,16 @@ from crmbuilder_v2.access.exceptions import (
     NotFoundError,
     UnprocessableError,
 )
-from crmbuilder_v2.access.models import Workstream
+from crmbuilder_v2.access.models import Project
 from crmbuilder_v2.access.repositories import _governance as gov
 from crmbuilder_v2.access.vocab import (
-    WORKSTREAM_STATUS_TRANSITIONS,
-    WORKSTREAM_STATUSES,
+    PROJECT_STATUS_TRANSITIONS,
+    PROJECT_STATUSES,
 )
 
-_ENTITY_TYPE = "workstream"
-_IDENTIFIER_PREFIX = "WS"
-_IDENTIFIER_RE = re.compile(r"^WS-\d{3}$")
+_ENTITY_TYPE = "project"
+_IDENTIFIER_PREFIX = "PRJ"
+_IDENTIFIER_RE = re.compile(r"^PRJ-\d{3}$")
 _MAX_AUTOASSIGN_ATTEMPTS = 50
 _PATCHABLE_FIELDS = frozenset(
     {"name", "purpose", "description", "notes", "status"}
@@ -44,31 +44,31 @@ _PATCHABLE_FIELDS = frozenset(
 
 # status value -> per-status lifecycle timestamp column.
 _STATUS_TIMESTAMP = {
-    "in_flight": "workstream_started_at",
-    "complete": "workstream_completed_at",
-    "cancelled": "workstream_cancelled_at",
-    "superseded": "workstream_superseded_at",
+    "in_flight": "project_started_at",
+    "complete": "project_completed_at",
+    "cancelled": "project_cancelled_at",
+    "superseded": "project_superseded_at",
 }
 
 
 def _require_status(status: object) -> str:
-    return gov.require_in(status, WORKSTREAM_STATUSES, field="workstream_status")
+    return gov.require_in(status, PROJECT_STATUSES, field="project_status")
 
 
 def _reject_duplicate_name(
     session: Session, name: str, *, exclude_identifier: str | None = None
 ) -> None:
-    stmt = select(Workstream).where(
-        func.lower(Workstream.workstream_name) == name.lower(),
-        Workstream.workstream_deleted_at.is_(None),
+    stmt = select(Project).where(
+        func.lower(Project.project_name) == name.lower(),
+        Project.project_deleted_at.is_(None),
     )
     if exclude_identifier is not None:
-        stmt = stmt.where(Workstream.workstream_identifier != exclude_identifier)
+        stmt = stmt.where(Project.project_identifier != exclude_identifier)
     if session.scalar(stmt) is not None:
         raise UnprocessableError(
             [
                 FieldError(
-                    "workstream_name",
+                    "project_name",
                     "duplicate",
                     f"a workstream named {name!r} already exists",
                 )
@@ -76,8 +76,8 @@ def _reject_duplicate_name(
         )
 
 
-def _get_row(session: Session, identifier: str) -> Workstream:
-    row = session.get(Workstream, identifier)
+def _get_row(session: Session, identifier: str) -> Project:
+    row = session.get(Project, identifier)
     if row is None:
         raise NotFoundError(_ENTITY_TYPE, identifier)
     return row
@@ -101,30 +101,30 @@ def _validate_terminal_edges(session: Session, identifier: str, status: str) -> 
 # ---------------------------------------------------------------------------
 
 
-def list_workstreams(
+def list_projects(
     session: Session, *, include_deleted: bool = False, status: str | None = None
 ) -> list[dict]:
-    stmt = select(Workstream).order_by(Workstream.workstream_identifier)
+    stmt = select(Project).order_by(Project.project_identifier)
     if not include_deleted:
-        stmt = stmt.where(Workstream.workstream_deleted_at.is_(None))
+        stmt = stmt.where(Project.project_deleted_at.is_(None))
     if status is not None:
-        stmt = stmt.where(Workstream.workstream_status == status)
+        stmt = stmt.where(Project.project_status == status)
     return [to_dict(r) for r in session.scalars(stmt).all()]
 
 
-def get_workstream(
+def get_project(
     session: Session, identifier: str, *, include_deleted: bool = False
 ) -> dict | None:
-    row = session.get(Workstream, identifier)
+    row = session.get(Project, identifier)
     if row is None:
         return None
-    if row.workstream_deleted_at is not None and not include_deleted:
+    if row.project_deleted_at is not None and not include_deleted:
         return None
     return to_dict(row)
 
 
-def next_workstream_identifier(session: Session) -> str:
-    identifiers = session.scalars(select(Workstream.workstream_identifier)).all()
+def next_project_identifier(session: Session) -> str:
+    identifiers = session.scalars(select(Project.project_identifier)).all()
     return next_prefixed_identifier(identifiers, _IDENTIFIER_PREFIX)
 
 
@@ -133,19 +133,19 @@ def next_workstream_identifier(session: Session) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _new_row(identifier, name, purpose, description, notes, status) -> Workstream:
-    return Workstream(
-        workstream_identifier=identifier,
-        workstream_name=name,
-        workstream_purpose=purpose,
-        workstream_description=description,
-        workstream_notes=notes,
-        workstream_status=status,
+def _new_row(identifier, name, purpose, description, notes, status) -> Project:
+    return Project(
+        project_identifier=identifier,
+        project_name=name,
+        project_purpose=purpose,
+        project_description=description,
+        project_notes=notes,
+        project_status=status,
     )
 
 
 def _insert_with_autoassign(session, name, purpose, description, notes, status):
-    candidate = next_workstream_identifier(session)
+    candidate = next_project_identifier(session)
     last_error: IntegrityError | None = None
     for _ in range(_MAX_AUTOASSIGN_ATTEMPTS):
         savepoint = session.begin_nested()
@@ -166,7 +166,7 @@ def _insert_with_autoassign(session, name, purpose, description, notes, status):
     ) from last_error
 
 
-def create_workstream(
+def create_project(
     session: Session,
     *,
     name: str,
@@ -188,9 +188,9 @@ def create_workstream(
     transaction (used to supply the ``supersedes`` edge for a ``superseded``
     create).
     """
-    name = gov.require_nonempty(name, field="workstream_name")
-    purpose = gov.require_nonempty(purpose, field="workstream_purpose")
-    description = gov.require_nonempty(description, field="workstream_description")
+    name = gov.require_nonempty(name, field="project_name")
+    purpose = gov.require_nonempty(purpose, field="project_purpose")
+    description = gov.require_nonempty(description, field="project_description")
     if status is None:
         status = "planned"
     _require_status(status)
@@ -202,10 +202,10 @@ def create_workstream(
         )
     else:
         gov.require_identifier_format(
-            identifier, regex=_IDENTIFIER_RE, field="workstream_identifier",
-            example="WS-001",
+            identifier, regex=_IDENTIFIER_RE, field="project_identifier",
+            example="PRJ-001",
         )
-        if session.get(Workstream, identifier) is not None:
+        if session.get(Project, identifier) is not None:
             raise ConflictError(f"workstream {identifier!r} already exists")
         row = _new_row(identifier, name, purpose, description, notes, status)
         session.add(row)
@@ -218,13 +218,13 @@ def create_workstream(
     session.flush()
 
     gov.apply_reference_list(session, references)
-    _validate_terminal_edges(session, row.workstream_identifier, status)
+    _validate_terminal_edges(session, row.project_identifier, status)
 
     after = to_dict(row)
     emit(
         session,
         entity_type=_ENTITY_TYPE,
-        entity_identifier=row.workstream_identifier,
+        entity_identifier=row.project_identifier,
         operation="insert",
         before=None,
         after=after,
@@ -232,11 +232,11 @@ def create_workstream(
     return after
 
 
-def update_workstream(
+def update_project(
     session: Session,
     identifier: str,
     *,
-    workstream_identifier: str | None = None,
+    project_identifier: str | None = None,
     name: str | None = None,
     purpose: str | None = None,
     description: str | None = None,
@@ -245,11 +245,11 @@ def update_workstream(
     references: list[dict] | None = None,
 ) -> dict:
     row = _get_row(session, identifier)
-    if workstream_identifier is not None and workstream_identifier != identifier:
+    if project_identifier is not None and project_identifier != identifier:
         raise UnprocessableError(
             [
                 FieldError(
-                    "workstream_identifier",
+                    "project_identifier",
                     "path_mismatch",
                     "identifier in body must match the path",
                 )
@@ -257,28 +257,28 @@ def update_workstream(
         )
     before = to_dict(row)
 
-    name = gov.require_nonempty(name, field="workstream_name")
-    purpose = gov.require_nonempty(purpose, field="workstream_purpose")
-    description = gov.require_nonempty(description, field="workstream_description")
-    if name.lower() != row.workstream_name.lower():
+    name = gov.require_nonempty(name, field="project_name")
+    purpose = gov.require_nonempty(purpose, field="project_purpose")
+    description = gov.require_nonempty(description, field="project_description")
+    if name.lower() != row.project_name.lower():
         _reject_duplicate_name(session, name, exclude_identifier=identifier)
 
     gov.apply_reference_list(session, references)
 
-    if status is not None and status != row.workstream_status:
+    if status is not None and status != row.project_status:
         _require_status(status)
         gov.check_transition(
-            row.workstream_status, status, WORKSTREAM_STATUS_TRANSITIONS
+            row.project_status, status, PROJECT_STATUS_TRANSITIONS
         )
-        row.workstream_status = status
+        row.project_status = status
         gov.set_status_timestamp(row, status, _STATUS_TIMESTAMP)
 
-    row.workstream_name = name
-    row.workstream_purpose = purpose
-    row.workstream_description = description
-    row.workstream_notes = notes
+    row.project_name = name
+    row.project_purpose = purpose
+    row.project_description = description
+    row.project_notes = notes
     session.flush()
-    _validate_terminal_edges(session, identifier, row.workstream_status)
+    _validate_terminal_edges(session, identifier, row.project_status)
 
     after = to_dict(row)
     emit(
@@ -292,7 +292,7 @@ def update_workstream(
     return after
 
 
-def patch_workstream(
+def patch_project(
     session: Session, identifier: str, *, references: list[dict] | None = None, **fields
 ) -> dict:
     unknown = set(fields) - _PATCHABLE_FIELDS
@@ -312,31 +312,31 @@ def patch_workstream(
     gov.apply_reference_list(session, references)
 
     if "name" in fields:
-        name = gov.require_nonempty(fields["name"], field="workstream_name")
-        if name.lower() != row.workstream_name.lower():
+        name = gov.require_nonempty(fields["name"], field="project_name")
+        if name.lower() != row.project_name.lower():
             _reject_duplicate_name(session, name, exclude_identifier=identifier)
-        row.workstream_name = name
+        row.project_name = name
     if "purpose" in fields:
-        row.workstream_purpose = gov.require_nonempty(
-            fields["purpose"], field="workstream_purpose"
+        row.project_purpose = gov.require_nonempty(
+            fields["purpose"], field="project_purpose"
         )
     if "description" in fields:
-        row.workstream_description = gov.require_nonempty(
-            fields["description"], field="workstream_description"
+        row.project_description = gov.require_nonempty(
+            fields["description"], field="project_description"
         )
     if "notes" in fields:
-        row.workstream_notes = fields["notes"]
+        row.project_notes = fields["notes"]
     if "status" in fields:
         status = _require_status(fields["status"])
-        if status != row.workstream_status:
+        if status != row.project_status:
             gov.check_transition(
-                row.workstream_status, status, WORKSTREAM_STATUS_TRANSITIONS
+                row.project_status, status, PROJECT_STATUS_TRANSITIONS
             )
-            row.workstream_status = status
+            row.project_status = status
             gov.set_status_timestamp(row, status, _STATUS_TIMESTAMP)
 
     session.flush()
-    _validate_terminal_edges(session, identifier, row.workstream_status)
+    _validate_terminal_edges(session, identifier, row.project_status)
 
     after = to_dict(row)
     emit(
@@ -350,12 +350,12 @@ def patch_workstream(
     return after
 
 
-def delete_workstream(session: Session, identifier: str) -> dict:
+def delete_project(session: Session, identifier: str) -> dict:
     row = _get_row(session, identifier)
-    if row.workstream_deleted_at is not None:
+    if row.project_deleted_at is not None:
         return to_dict(row)
     before = to_dict(row)
-    row.workstream_deleted_at = datetime.now(UTC)
+    row.project_deleted_at = datetime.now(UTC)
     session.flush()
     after = to_dict(row)
     emit(
@@ -369,20 +369,20 @@ def delete_workstream(session: Session, identifier: str) -> dict:
     return after
 
 
-def restore_workstream(session: Session, identifier: str) -> dict:
+def restore_project(session: Session, identifier: str) -> dict:
     row = _get_row(session, identifier)
-    if row.workstream_deleted_at is None:
+    if row.project_deleted_at is None:
         raise UnprocessableError(
             [
                 FieldError(
-                    "workstream_deleted_at",
+                    "project_deleted_at",
                     "not_deleted",
                     "workstream is not soft-deleted",
                 )
             ]
         )
     before = to_dict(row)
-    row.workstream_deleted_at = None
+    row.project_deleted_at = None
     session.flush()
     after = to_dict(row)
     emit(

@@ -37,7 +37,7 @@ EXPECTED_ENTRIES = (
     "References",
     # v0.7 governance entity release (DEC-163): six new entries appended
     # to the Governance group in workstream order, no sub-grouping.
-    "Workstreams",
+    "Projects",
     "Conversations",
     "Reference Books",
     "Work Tickets",

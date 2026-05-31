@@ -11,8 +11,8 @@ schedulable and stateful through a six-status lifecycle (forward-only
 
 Access-layer edge rules:
 
-* **Workstream membership** — exactly one outbound
-  ``session_belongs_to_workstream`` edge is required on every live record
+* **Project membership** — exactly one outbound
+  ``session_belongs_to_project`` edge is required on every live record
   per session-v2.md §3.3.1.
 * **Complete-requires-conversation** — ``complete`` requires at least one
   inbound ``conversation_belongs_to_session`` edge per session-v2.md
@@ -134,15 +134,15 @@ def _validate_edges(session: DbSession, identifier: str, status: str) -> None:
         session,
         source_type=_ENTITY_TYPE,
         source_id=identifier,
-        relationship="session_belongs_to_workstream",
+        relationship="session_belongs_to_project",
     )
     if len(membership) != 1:
         raise UnprocessableError(
             [
                 FieldError(
                     "references",
-                    "missing_workstream_membership_edge",
-                    "exactly one session_belongs_to_workstream edge is required",
+                    "missing_project_membership_edge",
+                    "exactly one session_belongs_to_project edge is required",
                 )
             ]
         )
@@ -182,7 +182,7 @@ def list_sessions(
     include_deleted: bool = False,
     status: str | None = None,
     medium: str | None = None,
-    workstream_identifier: str | None = None,
+    project_identifier: str | None = None,
 ) -> list[dict]:
     stmt = select(SessionModel).order_by(SessionModel.session_identifier)
     if not include_deleted:
@@ -192,14 +192,14 @@ def list_sessions(
     if medium is not None:
         stmt = stmt.where(SessionModel.session_medium == medium)
     rows = [to_dict(r) for r in session.scalars(stmt).all()]
-    if workstream_identifier is not None:
+    if project_identifier is not None:
         members = {
             e.source_id
             for e in gov.inbound_edges(
                 session,
-                target_type="workstream",
-                target_id=workstream_identifier,
-                relationship="session_belongs_to_workstream",
+                target_type="project",
+                target_id=project_identifier,
+                relationship="session_belongs_to_project",
             )
         }
         rows = [r for r in rows if r["session_identifier"] in members]

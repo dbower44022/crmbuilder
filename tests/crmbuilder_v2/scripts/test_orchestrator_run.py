@@ -90,8 +90,8 @@ def test_render_child_kickoff_matches_template_contract():
         orchestrator_conversation="CNV-199",
         branch_name="orch-wave0-child1",
         engagement_code="CRMBUILDER",
-        workstream_identifier="WS-012",
-        workstream_title="Parallel agent orchestrator",
+        project_identifier="PRJ-012",
+        project_title="Parallel agent orchestrator",
         api_base="http://127.0.0.1:8765",
     )
     # The driver's substitution set must satisfy every template placeholder.
@@ -167,7 +167,7 @@ def _args(**over):
     ns = types.SimpleNamespace(
         api_base="http://127.0.0.1:8765",
         engagement_code="CRMBUILDER",
-        workstream="WS-012",
+        workstream="PRJ-012",
         max_depth=0,
         area=None,
     )

@@ -71,7 +71,7 @@ from crmbuilder_v2.access.vocab import (
     TEST_SPEC_STATUSES,
     WORK_TICKET_KINDS,
     WORK_TICKET_STATUSES,
-    WORKSTREAM_STATUSES,
+    PROJECT_STATUSES,
     _check_in,
 )
 
@@ -1079,7 +1079,7 @@ class CrmCandidate(Base):
 # ---------------------------------------------------------------------------
 
 
-class Workstream(Base):
+class Project(Base):
     """Governance entity — one coherent line of related conversations.
 
     First of six governance entity types (UI v0.7). Five-status workflow
@@ -1088,49 +1088,49 @@ class Workstream(Base):
     master-plan reference book live in ``refs``, not as FK columns.
     """
 
-    __tablename__ = "workstreams"
+    __tablename__ = "projects"
 
-    workstream_identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
-    workstream_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    workstream_status: Mapped[str] = mapped_column(
+    project_identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    project_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    project_status: Mapped[str] = mapped_column(
         String(16), nullable=False, default="planned"
     )
-    workstream_purpose: Mapped[str] = mapped_column(Text, nullable=False)
-    workstream_description: Mapped[str] = mapped_column(Text, nullable=False)
-    workstream_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    workstream_created_at: Mapped[datetime] = mapped_column(
+    project_purpose: Mapped[str] = mapped_column(Text, nullable=False)
+    project_description: Mapped[str] = mapped_column(Text, nullable=False)
+    project_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    project_created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
-    workstream_updated_at: Mapped[datetime] = mapped_column(
+    project_updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
     )
-    workstream_deleted_at: Mapped[datetime | None] = mapped_column(
+    project_deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    workstream_started_at: Mapped[datetime | None] = mapped_column(
+    project_started_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    workstream_completed_at: Mapped[datetime | None] = mapped_column(
+    project_completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    workstream_cancelled_at: Mapped[datetime | None] = mapped_column(
+    project_cancelled_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    workstream_superseded_at: Mapped[datetime | None] = mapped_column(
+    project_superseded_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
 
     __table_args__ = (
         CheckConstraint(
-            "workstream_identifier GLOB 'WS-[0-9][0-9][0-9]'",
-            name="ck_workstream_identifier_format",
+            "project_identifier GLOB 'PRJ-[0-9][0-9][0-9]'",
+            name="ck_project_identifier_format",
         ),
         CheckConstraint(
-            _check_in("workstream_status", WORKSTREAM_STATUSES),
-            name="ck_workstream_status",
+            _check_in("project_status", PROJECT_STATUSES),
+            name="ck_project_status",
         ),
-        Index("ix_workstreams_workstream_status", "workstream_status"),
-        Index("ix_workstreams_workstream_deleted_at", "workstream_deleted_at"),
+        Index("ix_workstreams_project_status", "project_status"),
+        Index("ix_workstreams_project_deleted_at", "project_deleted_at"),
     )
 
 

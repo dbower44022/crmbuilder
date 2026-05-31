@@ -27,15 +27,15 @@ def _session(client, identifier="SES-001"):
     Commits attribute at session grain under PI-073; ``commit_session_id``
     must point at an existing session row. We supply an explicit
     ``SES-NNN`` identifier so the commit-body builder can reference it. A
-    session requires exactly one ``session_belongs_to_workstream`` edge,
+    session requires exactly one ``session_belongs_to_project`` edge,
     so we create a workstream first and attach the membership edge.
     """
-    ws_resp = client.post("/workstreams", json={
-        "workstream_name": "WS " + identifier,
-        "workstream_purpose": "p",
-        "workstream_description": "d",
+    ws_resp = client.post("/projects", json={
+        "project_name": "WS " + identifier,
+        "project_purpose": "p",
+        "project_description": "d",
     })
-    wid = ws_resp.json()["data"]["workstream_identifier"]
+    wid = ws_resp.json()["data"]["project_identifier"]
     resp = client.post("/sessions", json={
         "session_identifier": identifier,
         "session_title": "Session " + identifier,
@@ -44,8 +44,8 @@ def _session(client, identifier="SES-001"):
         "session_executive_summary": _EXEC_SUMMARY,
         "references": [{
             "source_type": "session", "source_id": identifier,
-            "target_type": "workstream", "target_id": wid,
-            "relationship": "session_belongs_to_workstream",
+            "target_type": "project", "target_id": wid,
+            "relationship": "session_belongs_to_project",
         }],
     })
     assert resp.status_code == 201, resp.text

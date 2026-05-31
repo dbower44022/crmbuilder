@@ -7,7 +7,7 @@ and stateful through six statuses. The legacy append-only constraint
 This module provides ``SessionCreateDialog``, ``SessionEditDialog``, and
 ``SessionDeleteDialog``. The create dialog includes an inline workstream-
 membership selector (sessions require exactly one outbound
-``session_belongs_to_workstream`` edge at every live status).
+``session_belongs_to_project`` edge at every live status).
 
 Filename retained as ``session_create.py`` for branch git-history
 continuity; the file now exports edit/delete dialogs alongside create.
@@ -50,18 +50,18 @@ class SessionCreateDialog(EntityCrudDialog):
         )
         self._workstream_combo = QComboBox()
         try:
-            workstreams = client.list_workstreams()
+            workstreams = client.list_projects()
         except StorageClientError as exc:
             _log.warning("Could not list workstreams: %s", exc)
             workstreams = []
         self._workstream_combo.addItem("(select a workstream)", None)
         for ws in workstreams:
-            ident = ws.get("workstream_identifier")
-            name = ws.get("workstream_name") or ""
+            ident = ws.get("project_identifier")
+            name = ws.get("project_name") or ""
             if ident:
                 self._workstream_combo.addItem(f"{ident} — {name}", ident)
         # Insert the picker as the first row of the form.
-        self._form.insertRow(0, required_label("Workstream"), self._workstream_combo)
+        self._form.insertRow(0, required_label("Project"), self._workstream_combo)
 
     def _build_create_body(self) -> dict[str, Any]:
         body = super()._build_create_body()
@@ -81,9 +81,9 @@ class SessionCreateDialog(EntityCrudDialog):
             {
                 "source_type": "session",
                 "source_id": new_id,
-                "target_type": "workstream",
+                "target_type": "project",
                 "target_id": ws_id,
-                "relationship": "session_belongs_to_workstream",
+                "relationship": "session_belongs_to_project",
             }
         ]
         return body

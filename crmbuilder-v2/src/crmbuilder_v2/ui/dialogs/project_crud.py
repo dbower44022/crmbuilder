@@ -1,4 +1,4 @@
-"""Workstream create / edit / delete dialogs (UI v0.7)."""
+"""Project create / edit / delete dialogs (UI v0.7)."""
 
 from __future__ import annotations
 
@@ -11,25 +11,25 @@ from crmbuilder_v2.ui.base.crud_dialog import (
     EntityCrudDialog,
 )
 from crmbuilder_v2.ui.client import StorageClient
-from crmbuilder_v2.ui.dialogs._workstream_schema import workstream_fields
+from crmbuilder_v2.ui.dialogs._project_schema import workstream_fields
 
-_IDENTIFIER_FIELD = "workstream_identifier"
+_IDENTIFIER_FIELD = "project_identifier"
 
 
-class WorkstreamCreateDialog(EntityCrudDialog):
+class ProjectCreateDialog(EntityCrudDialog):
     def __init__(self, client: StorageClient, parent: QWidget | None = None) -> None:
         super().__init__(
             client,
             workstream_fields(include_identifier=False),
             mode="create",
             title="New workstream",
-            create_method=client.create_workstream,
+            create_method=client.create_project,
             identifier_field=_IDENTIFIER_FIELD,
             parent=parent,
         )
 
 
-class WorkstreamEditDialog(EntityCrudDialog):
+class ProjectEditDialog(EntityCrudDialog):
     def __init__(
         self, client: StorageClient, record: dict[str, Any], parent: QWidget | None = None
     ) -> None:
@@ -40,14 +40,14 @@ class WorkstreamEditDialog(EntityCrudDialog):
             workstream_fields(include_identifier=True),
             mode="edit",
             title=title,
-            update_method=client.patch_workstream,
+            update_method=client.patch_project,
             record=record,
             identifier_field=_IDENTIFIER_FIELD,
             parent=parent,
         )
 
 
-class WorkstreamDeleteDialog(EntityCrudDeleteDialog):
+class ProjectDeleteDialog(EntityCrudDeleteDialog):
     def __init__(
         self,
         client: StorageClient,
@@ -59,8 +59,8 @@ class WorkstreamDeleteDialog(EntityCrudDeleteDialog):
             client,
             identifier,
             title,
-            client.delete_workstream,
-            entity_label="workstream",
+            client.delete_project,
+            entity_label="project",
             parent=parent,
         )
         self._body_label.setText(

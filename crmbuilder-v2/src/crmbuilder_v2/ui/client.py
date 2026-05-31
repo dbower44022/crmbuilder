@@ -189,15 +189,15 @@ class StorageClient:
         include_deleted: bool = False,
         status: str | None = None,
         medium: str | None = None,
-        workstream_identifier: str | None = None,
+        project_identifier: str | None = None,
     ) -> list[dict[str, Any]]:
         """Return sessions as a list of dicts.
 
         Redesigned in PI-073 / DEC-314 — sessions are the medium-agnostic
         communication container. Filters: ``status`` (planned, in_flight,
         complete, cancelled, not_started, superseded), ``medium`` (chat,
-        email, phone, zoom, in_person, slack, other), ``workstream_identifier``
-        (filters via the session_belongs_to_workstream edge).
+        email, phone, zoom, in_person, slack, other), ``project_identifier``
+        (filters via the session_belongs_to_project edge).
         """
         query: list[str] = []
         if include_deleted:
@@ -206,8 +206,8 @@ class StorageClient:
             query.append(f"status={status}")
         if medium is not None:
             query.append(f"medium={medium}")
-        if workstream_identifier is not None:
-            query.append(f"workstream_identifier={workstream_identifier}")
+        if project_identifier is not None:
+            query.append(f"project_identifier={project_identifier}")
         path = "/sessions" + ("?" + "&".join(query) if query else "")
         result = self._request("GET", path)
         if not isinstance(result, list):
@@ -2225,43 +2225,43 @@ class StorageClient:
 
     # ----- workstreams ------------------------------------------------------
 
-    def list_workstreams(self, *, include_deleted: bool = False) -> list[dict[str, Any]]:
-        path = "/workstreams" + ("?include_deleted=true" if include_deleted else "")
+    def list_projects(self, *, include_deleted: bool = False) -> list[dict[str, Any]]:
+        path = "/projects" + ("?include_deleted=true" if include_deleted else "")
         return self._expect_list(self._request("GET", path))
 
-    def get_workstream(self, identifier: str) -> dict[str, Any]:
+    def get_project(self, identifier: str) -> dict[str, Any]:
         return self._expect_dict(
-            self._request("GET", f"/workstreams/{identifier}"), op="get_workstream"
+            self._request("GET", f"/projects/{identifier}"), op="get_project"
         )
 
-    def create_workstream(self, body: dict[str, Any]) -> dict[str, Any]:
+    def create_project(self, body: dict[str, Any]) -> dict[str, Any]:
         return self._expect_dict(
-            self._request("POST", "/workstreams", json_body=body), op="create_workstream"
+            self._request("POST", "/projects", json_body=body), op="create_project"
         )
 
-    def update_workstream(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+    def update_project(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
         return self._expect_dict(
-            self._request("PUT", f"/workstreams/{identifier}", json_body=body),
-            op="update_workstream",
+            self._request("PUT", f"/projects/{identifier}", json_body=body),
+            op="update_project",
         )
 
-    def patch_workstream(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+    def patch_project(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
         return self._expect_dict(
-            self._request("PATCH", f"/workstreams/{identifier}", json_body=body),
-            op="patch_workstream",
+            self._request("PATCH", f"/projects/{identifier}", json_body=body),
+            op="patch_project",
         )
 
-    def delete_workstream(self, identifier: str) -> Any:
-        return self._request("DELETE", f"/workstreams/{identifier}")
+    def delete_project(self, identifier: str) -> Any:
+        return self._request("DELETE", f"/projects/{identifier}")
 
-    def restore_workstream(self, identifier: str) -> dict[str, Any]:
+    def restore_project(self, identifier: str) -> dict[str, Any]:
         return self._expect_dict(
-            self._request("POST", f"/workstreams/{identifier}/restore"),
-            op="restore_workstream",
+            self._request("POST", f"/projects/{identifier}/restore"),
+            op="restore_project",
         )
 
-    def next_workstream_identifier(self) -> str:
-        return self._next_identifier_for("workstreams", "next_workstream_identifier")
+    def next_project_identifier(self) -> str:
+        return self._next_identifier_for("projects", "next_project_identifier")
 
     # ----- conversations ----------------------------------------------------
 
@@ -2275,7 +2275,7 @@ class StorageClient:
         """List conversations.
 
         PI-073 / DEC-314 — conversations belong to sessions (not directly
-        to workstreams). The ``workstream_identifier`` filter is removed;
+        to workstreams). The ``project_identifier`` filter is removed;
         use ``session_identifier`` instead, or traverse via sessions to
         get all conversations under a workstream.
         """

@@ -37,7 +37,7 @@ def test_new_kind_does_not_leak_to_unrelated_pairs():
     # The kind is conversation→conversation only; other (conversation, X)
     # and (X, conversation) pairs must not pick it up.
     assert _NEW_KIND not in vocab._kinds_for_pair("conversation", "session")
-    assert _NEW_KIND not in vocab._kinds_for_pair("conversation", "workstream")
+    assert _NEW_KIND not in vocab._kinds_for_pair("conversation", "project")
     assert _NEW_KIND not in vocab._kinds_for_pair("session", "conversation")
     assert _NEW_KIND not in vocab._kinds_for_pair("session", "session")
 

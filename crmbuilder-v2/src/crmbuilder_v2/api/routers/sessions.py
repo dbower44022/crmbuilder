@@ -2,7 +2,7 @@
 
 Standard nine-endpoint set for the medium-agnostic communication container
 per ``session-v2.md`` §3.6. Lifecycle CRUD with the list endpoint's
-``?status=``, ``?medium=``, and ``?workstream_identifier=`` filters, plus
+``?status=``, ``?medium=``, and ``?project_identifier=`` filters, plus
 the derived endpoints ``/sessions/{id}/conversations`` and
 ``/sessions/{id}/commits``.
 
@@ -39,7 +39,7 @@ def list_all(
     include_deleted: bool = False,
     status: str | None = None,
     medium: str | None = None,
-    workstream_identifier: str | None = None,
+    project_identifier: str | None = None,
 ):
     with readonly_session() as s:
         return ok(
@@ -48,7 +48,7 @@ def list_all(
                 include_deleted=include_deleted,
                 status=status,
                 medium=medium,
-                workstream_identifier=workstream_identifier,
+                project_identifier=project_identifier,
             )
         )
 

@@ -1,7 +1,7 @@
-"""Workstreams endpoints — the first governance entity type (UI v0.7).
+"""Projects endpoints — the first governance entity type (UI v0.7).
 
 Standard eight-endpoint set per ``workstream.md`` §3.5, delegating to the
-:mod:`crmbuilder_v2.access.repositories.workstreams` repository. Request
+:mod:`crmbuilder_v2.access.repositories.projects` repository. Request
 bodies may carry an inline ``references`` array (edges created in the same
 transaction) and, on a backfill create, a ``timestamps`` dict. All responses
 use the ``{data, meta, errors}`` envelope.
@@ -12,17 +12,17 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from crmbuilder_v2.access.exceptions import NotFoundError
-from crmbuilder_v2.access.repositories import workstreams
+from crmbuilder_v2.access.repositories import projects
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
-    WorkstreamCreateIn,
-    WorkstreamPatchIn,
-    WorkstreamReplaceIn,
+    ProjectCreateIn,
+    ProjectPatchIn,
+    ProjectReplaceIn,
 )
 
-router = APIRouter(prefix="/workstreams", tags=["workstreams"])
-_FIELD_PREFIX = "workstream_"
+router = APIRouter(prefix="/projects", tags=["projects"])
+_FIELD_PREFIX = "project_"
 
 
 def _edges(body) -> list[dict] | None:
@@ -33,7 +33,7 @@ def _edges(body) -> list[dict] | None:
 def list_all(include_deleted: bool = False, status: str | None = None):
     with readonly_session() as s:
         return ok(
-            workstreams.list_workstreams(
+            projects.list_projects(
                 s, include_deleted=include_deleted, status=status
             )
         )
@@ -42,32 +42,32 @@ def list_all(include_deleted: bool = False, status: str | None = None):
 @router.get("/next-identifier")
 def next_identifier():
     with readonly_session() as s:
-        return ok({"next": workstreams.next_workstream_identifier(s)})
+        return ok({"next": projects.next_project_identifier(s)})
 
 
 @router.get("/{identifier}")
 def get(identifier: str, include_deleted: bool = False):
     with readonly_session() as s:
-        record = workstreams.get_workstream(
+        record = projects.get_project(
             s, identifier, include_deleted=include_deleted
         )
         if record is None:
-            raise NotFoundError("workstream", identifier)
+            raise NotFoundError("project", identifier)
         return ok(record)
 
 
 @router.post("", status_code=201)
-def create(body: WorkstreamCreateIn):
+def create(body: ProjectCreateIn):
     with writable_session() as s:
         return ok(
-            workstreams.create_workstream(
+            projects.create_project(
                 s,
-                name=body.workstream_name,
-                purpose=body.workstream_purpose,
-                description=body.workstream_description,
-                notes=body.workstream_notes,
-                status=body.workstream_status or "planned",
-                identifier=body.workstream_identifier,
+                name=body.project_name,
+                purpose=body.project_purpose,
+                description=body.project_description,
+                notes=body.project_notes,
+                status=body.project_status or "planned",
+                identifier=body.project_identifier,
                 references=_edges(body),
                 timestamps=body.timestamps,
             )
@@ -75,25 +75,25 @@ def create(body: WorkstreamCreateIn):
 
 
 @router.put("/{identifier}")
-def replace(identifier: str, body: WorkstreamReplaceIn):
+def replace(identifier: str, body: ProjectReplaceIn):
     with writable_session() as s:
         return ok(
-            workstreams.update_workstream(
+            projects.update_project(
                 s,
                 identifier,
-                workstream_identifier=body.workstream_identifier,
-                name=body.workstream_name,
-                purpose=body.workstream_purpose,
-                description=body.workstream_description,
-                notes=body.workstream_notes,
-                status=body.workstream_status,
+                project_identifier=body.project_identifier,
+                name=body.project_name,
+                purpose=body.project_purpose,
+                description=body.project_description,
+                notes=body.project_notes,
+                status=body.project_status,
                 references=_edges(body),
             )
         )
 
 
 @router.patch("/{identifier}")
-def patch(identifier: str, body: WorkstreamPatchIn):
+def patch(identifier: str, body: ProjectPatchIn):
     provided = body.model_dump(exclude_unset=True)
     references = provided.pop("references", None)
     fields = {
@@ -101,17 +101,17 @@ def patch(identifier: str, body: WorkstreamPatchIn):
     }
     with writable_session() as s:
         return ok(
-            workstreams.patch_workstream(s, identifier, references=references, **fields)
+            projects.patch_project(s, identifier, references=references, **fields)
         )
 
 
 @router.delete("/{identifier}")
 def delete(identifier: str):
     with writable_session() as s:
-        return ok(workstreams.delete_workstream(s, identifier))
+        return ok(projects.delete_project(s, identifier))
 
 
 @router.post("/{identifier}/restore")
 def restore(identifier: str):
     with writable_session() as s:
-        return ok(workstreams.restore_workstream(s, identifier))
+        return ok(projects.restore_project(s, identifier))

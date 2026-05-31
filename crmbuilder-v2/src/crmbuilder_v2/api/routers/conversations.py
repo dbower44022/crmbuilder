@@ -4,10 +4,10 @@ Standard nine-endpoint set for the topical sub-unit per
 ``conversation-v2.md`` §3.6. Lifecycle CRUD with the list endpoint's
 ``?status=`` and ``?session_identifier=`` filters.
 
-The old workstream_identifier filter is removed — conversations no
+The old project_identifier filter is removed — conversations no
 longer belong to workstreams directly under the redesign; they belong to
 sessions, which in turn belong to workstreams. To get a workstream's
-conversations, traverse via sessions: GET /sessions?workstream_identifier=X,
+conversations, traverse via sessions: GET /sessions?project_identifier=X,
 then GET /sessions/{ses_id}/conversations for each.
 
 The legacy ``/conversations/{id}/commits`` derived endpoint moved to

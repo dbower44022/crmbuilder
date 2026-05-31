@@ -8,7 +8,7 @@ bespoke v0.3 slice D implementation. Required fields per ``session-v2.md``
 ``session_status`` (vocab). The create dialog prepends a required
 workstream-membership selector; the identifier is server-assigned via
 ``client.next_session_identifier()`` and attached to the create body
-alongside the ``session_belongs_to_workstream`` reference edge.
+alongside the ``session_belongs_to_project`` reference edge.
 """
 
 from __future__ import annotations
@@ -53,15 +53,15 @@ def _stub_client(
 ) -> MagicMock:
     client = MagicMock()
     client.next_session_identifier.return_value = next_identifier
-    client.list_workstreams.return_value = list(
+    client.list_projects.return_value = list(
         workstreams
         if workstreams is not None
-        else [{"workstream_identifier": "WS-001", "workstream_name": "Schema"}]
+        else [{"project_identifier": "PRJ-001", "project_name": "Schema"}]
     )
     return client
 
 
-def _select_workstream(dialog: SessionCreateDialog, identifier: str = "WS-001") -> None:
+def _select_workstream(dialog: SessionCreateDialog, identifier: str = "PRJ-001") -> None:
     combo = dialog._workstream_combo
     for index in range(combo.count()):
         if combo.itemData(index) == identifier:
@@ -119,8 +119,8 @@ def test_create_mode_has_no_identifier_field(qtbot):
 def test_workstream_selector_present_with_options(qtbot):
     client = _stub_client(
         workstreams=[
-            {"workstream_identifier": "WS-001", "workstream_name": "Schema"},
-            {"workstream_identifier": "WS-002", "workstream_name": "Other"},
+            {"project_identifier": "PRJ-001", "project_name": "Schema"},
+            {"project_identifier": "PRJ-002", "project_name": "Other"},
         ]
     )
     dialog = SessionCreateDialog(client)
@@ -130,7 +130,7 @@ def test_workstream_selector_present_with_options(qtbot):
         for i in range(dialog._workstream_combo.count())
     ]
     # The placeholder (None) plus the two workstreams.
-    assert values == [None, "WS-001", "WS-002"]
+    assert values == [None, "PRJ-001", "PRJ-002"]
 
 
 def test_medium_combo_bound_to_session_mediums_vocab(qtbot):
@@ -268,9 +268,9 @@ def test_save_calls_client_with_all_field_values(qtbot):
         {
             "source_type": "session",
             "source_id": "SES-009",
-            "target_type": "workstream",
-            "target_id": "WS-001",
-            "relationship": "session_belongs_to_workstream",
+            "target_type": "project",
+            "target_id": "PRJ-001",
+            "relationship": "session_belongs_to_project",
         }
     ]
 

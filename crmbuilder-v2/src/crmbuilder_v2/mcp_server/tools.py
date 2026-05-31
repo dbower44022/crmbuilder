@@ -199,19 +199,19 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
     async def list_sessions(
         status: str | None = None,
         medium: str | None = None,
-        workstream_identifier: str | None = None,
+        project_identifier: str | None = None,
     ) -> Any:
         """List sessions. Filters: ``status`` (planned, in_flight, complete,
         cancelled, not_started, superseded), ``medium`` (chat, email, phone,
-        zoom, in_person, slack, other), ``workstream_identifier``
-        (resolves the session_belongs_to_workstream edge).
+        zoom, in_person, slack, other), ``project_identifier``
+        (resolves the session_belongs_to_project edge).
         """
         params = {
             k: v
             for k, v in dict(
                 status=status,
                 medium=medium,
-                workstream_identifier=workstream_identifier,
+                project_identifier=project_identifier,
             ).items()
             if v is not None
         }
