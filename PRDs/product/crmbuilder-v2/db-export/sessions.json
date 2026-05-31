@@ -2781,5 +2781,33 @@
     "session_superseded_at": null,
     "session_title": "Branch strategy review, PI-112 governance-fork diagnosis, and the Model A branch-governance guard",
     "session_updated_at": "2026-05-31T14:43:20.674618"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": null,
+    "session_created_at": "2026-05-31T15:12:57.786714",
+    "session_deleted_at": null,
+    "session_description": "PLANNED execution session for Work Task WTK-001 (ADO state-model substrate). Resume kickoff: PRDs/product/crmbuilder-v2/prompts/HANDOFF-WTK-001-ado-state-model-substrate.md and agent-delivery-organization-design.md §5. On start: capture identifier heads (collision protocol), re-claim WTK-001 (currently In Progress, claimed by CNV-039), implement the substrate, apply migration 0036 to the live DB (head 0035), keep the v2 suite green, drive WTK-001->Complete, and author a close-out addressing PI-114 (not resolving) under PRJ-018. This session belongs to PRJ-018 and works WTK-001.",
+    "session_ended_at": null,
+    "session_executive_summary": "A scheduled (planned) Claude Code execution session to implement WTK-001, the Agent Delivery Organization state-model substrate (design §5): rename the Workstream phase Design->Architecture; expand WORKSTREAM_STATUSES to Planned->Scoping->Ready->In Progress->Complete|Not Applicable|Blocked; and add the needs_attention flag — as vocab + model + Alembic migration + tests, applied to the live DB. It is the first scheduled session and the first session_works_work_task edge, bootstrapping the ADO's scheduled-execution path. Closes by driving WTK-001 to Complete and addressing PI-114. (Forward-looking summary; updated to actuals at close.)",
+    "session_identifier": "SES-139",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "kind": "execution",
+      "runner": "claude-code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "planned",
+    "session_superseded_at": null,
+    "session_title": "Implement WTK-001 — ADO state-model substrate",
+    "session_updated_at": "2026-05-31T15:12:57.786717"
   }
 ]

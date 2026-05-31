@@ -120,3 +120,8 @@ def test_planning_item_belongs_to_project_completes_chain():
     assert "planning_item_belongs_to_project" in RELATIONSHIP_RULES[
         ("planning_item", "project")
     ]
+
+
+def test_session_works_work_task_kind():
+    """ADO: a session executes a Work Task (area-specialist role)."""
+    assert 'session_works_work_task' in RELATIONSHIP_RULES[('session', 'work_task')]

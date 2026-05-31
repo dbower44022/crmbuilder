@@ -641,6 +641,7 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         #   - `conversation_relates_to` (conversation → conversation;
         #     loose cross-session topical relation).
         "session_belongs_to_project",
+        "session_works_work_task",  # ADO: a session (area specialist) executes a Work Task
         "session_opens_against_work_ticket",
         "session_follows_from",
         "conversation_belongs_to_session",
@@ -945,6 +946,9 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
     # after the data migration retargets edges to the new kinds.
     if source_type == "session" and target_type == "project":
         kinds.add("session_belongs_to_project")
+    # ADO (PI-114): a session executes a Work Task (area-specialist role).
+    if source_type == "session" and target_type == "work_task":
+        kinds.add("session_works_work_task")
     if source_type == "session" and target_type == "work_ticket":
         kinds.add("session_opens_against_work_ticket")
     if source_type == "session" and target_type == "session":

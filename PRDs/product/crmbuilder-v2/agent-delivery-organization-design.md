@@ -136,6 +136,25 @@ For each phase in order (skipping `Not Applicable` phases):
 When the last phase verifies, the Lead drives the PI to `Resolved` via the normal
 close-out / `resolves` edge, and reports completion to the PM.
 
+### 3.5 Two ways a Work Task gets executed — pulled vs scheduled
+A Work Task is run by a **session** (the area-specialist sitting), linked to it by
+a **`session_works_work_task`** edge. Two paths to that session:
+
+- **Pulled (autonomous end-state):** a standing area-specialist agent watches for a
+  `Ready` Work Task and pulls it — claims it, opens its session, executes. No one
+  pre-creates the session; dispatch is emergent (§4.5).
+- **Scheduled (human-initiated / bootstrap):** a session is **pre-created in
+  `planned` status** (sessions are schedulable per PI-073/DEC-314, optionally with
+  `session_scheduled_for`) and wired to the Work Task via `session_works_work_task`,
+  carrying the execution kickoff in its description. This is the governed handoff
+  for human-driven work and for bootstrapping the ADO itself; the V2 desktop UI's
+  scheduling surface is for exactly this.
+
+Both produce the same shape. Note: a *scheduled* (not-yet-run) session still
+requires a `session_executive_summary` (NOT NULL) — supply a forward-looking
+summary, updated to actuals at close (a relaxation for `planned` sessions is a
+possible follow-on).
+
 ---
 
 ## 4. Principles

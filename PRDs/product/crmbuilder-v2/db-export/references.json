@@ -21928,5 +21928,25 @@
     "source_type": "work_task",
     "target_id": "WSK-001",
     "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-05-31T15:12:57.792458",
+    "id": 2202,
+    "reference_identifier": "REF-2198",
+    "relationship_kind": "session_belongs_to_project",
+    "source_id": "SES-139",
+    "source_type": "session",
+    "target_id": "PRJ-018",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-05-31T15:12:57.796828",
+    "id": 2203,
+    "reference_identifier": "REF-2199",
+    "relationship_kind": "session_works_work_task",
+    "source_id": "SES-139",
+    "source_type": "session",
+    "target_id": "WTK-001",
+    "target_type": "work_task"
   }
 ]
