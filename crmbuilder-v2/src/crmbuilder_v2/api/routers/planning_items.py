@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from crmbuilder_v2.access.repositories import planning_items
+from crmbuilder_v2.access.repositories import decomposition, planning_items
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
@@ -63,6 +63,21 @@ def release(identifier: str, body: PlanningItemReleaseIn):
         return ok(
             planning_items.release_planning_item(s, identifier, body.claimant)
         )
+
+
+@router.post("/{identifier}/decompose", status_code=201)
+def decompose(identifier: str):
+    """Structurally decompose a Planning Item into its six phase Workstreams.
+
+    The ADO structural step (design §3.2.1 / §4.1): creates every phase
+    Workstream in ``Planned`` status, wires each one's
+    ``workstream_belongs_to_planning_item`` edge to this PI, and chains
+    consecutive phases with serial ``blocked_by`` gates. Returns the created
+    Workstreams in canonical phase order. 409 if the PI is already decomposed;
+    404 if it does not exist.
+    """
+    with writable_session() as s:
+        return ok(decomposition.decompose_planning_item(s, identifier))
 
 
 @router.delete("/{identifier}")
