@@ -1,6 +1,32 @@
 # PI-112 — Governance & Delivery Model Migration — Execution Plan
 
-**Status:** v0.1 — execution. Branch: `pi-112-migration`.
+**Status:** v0.2 — execution in progress. Branch: `pi-112-migration`.
+
+## Progress log
+
+- **Phase 0** ✅ committed `76fe4c6` — this plan.
+- **Phase 1a (code rename)** ✅ committed `a0977a9` — `workstream`→`Project`,
+  `WS-`→`PRJ-` across access/api/exporter/ui + the shelved orchestrator + tests.
+  Surgical (entity tokens only; prose preserved). Full v2 suite **2206 passed,
+  0 failed**. Tests build via `create_all`, so this is green without the live
+  migration. Notable fixes beyond the mechanical rename: router `_FIELD_PREFIX`
+  (`"workstream_"`→`"project_"`), the `import workstreams` forms, ~54 `WS-NNN`
+  test literals, the exporter test's `workstreams.json`→`projects.json`, and
+  URL-query `source_type=workstream` literals.
+- **Phase 1b (live-data migration)** ⏳ NEXT — mutates the live gitignored
+  `v2.db`. Write Alembic `0027`: `op.rename_table workstreams→projects`; batch-
+  rename `workstream_*`→`project_*` columns; rebuild CHECKs (`PRJ-` GLOB, status,
+  names); **data rewrite** `WS-NNN`→`PRJ-NNN` on the projects PK, on
+  `refs.source_id`/`target_id` referencing a project (incl. live WS-001..014 and
+  the SES-132/133 membership edges to WS-014), on `identifier_reservations`
+  rows with `entity_type='workstream'`, and rename the three relationship kinds
+  + `workstream_master_plan` reference-book-kind on live rows. Reversible
+  downgrade. Validate against a **copy** of the live DB (catalog gitignored, can't
+  rebuild the chain from scratch). Then regenerate db-export snapshots
+  (`workstreams.json`→`projects.json`; `WS-`→`PRJ-` inside sessions/conversations/
+  references snapshots) and commit. **Touches Doug's real governance DB —
+  confirm before running.**
+
 **Kickoff artifact:** `governance-redesign-target-model.md` v0.4 (the locked target model).
 **Decisions baked in:** DEC-340..344 (target model) + DEC-345..349 (the §11 resolutions).
 **Opened against:** WT-063 (kickoff_prompt, was `ready`).
