@@ -5897,5 +5897,22 @@
     "supersedes_id": null,
     "title": "Workstream Needs Attention rolls up to the Planning Item as a derived query, not a stored PI column",
     "updated_at": "2026-05-31T15:51:48.037364"
+  },
+  {
+    "alternatives_considered": "Idempotent upsert (return the existing Workstreams on re-call) — rejected: it silently masks a double-plan bug, whereas the once-only 409 surfaces it. Placing the endpoint on the workstreams router (e.g. POST /workstreams/decompose?pi=NNN) — rejected: the Planning Item is the subject of decomposition, so POST /planning-items/{id}/decompose is the correct resource. Wiring blocked_by as a richer DAG by area/layer rank at this step — rejected: phases are serial within a PI (decision 5), so a linear chain is exactly right; intra-phase parallelism is a Work-Task-level concern the phase specialists express, not the structural step.",
+    "consequences": "New module repositories/decomposition.py and a new endpoint; tests in test_decomposition.py + test_decompose_route.py. The decomposer does no scope judgment — every phase is born Planned and empty; the phase specialists (the next Work Tasks under WSK-001) consume them, scoping each into Work Tasks or asserting Not Applicable (§4.3). The serial blocked_by chain gives the PI Lead unambiguous gate signals (§3.3/§5). The endpoint is reachable only after the running API restarts onto the new code.",
+    "context": "Design §3.2.1 / §4.1 specify the ADO structural step — create every phase Workstream for a Planning Item, with scope judgment deferred to the phase specialists — but left the implementation shape open: where the function lives, the endpoint, idempotency, and how the phase gates are wired. WTK-002 had to settle these while building it.",
+    "created_at": "2026-05-31T19:23:01.472543",
+    "decision": "A dedicated access module repositories/decomposition.py (decompose_planning_item, existing_phase_workstreams, PHASE_SEQUENCE) exposed as POST /planning-items/{id}/decompose (the PI is the subject, so it reads naturally on the planning_items router). It always creates all six phase Workstreams in the canonical Architecture->Development->Testing->Documentation->Data Migration->Deployment order (decision 8), each in Planned status with a workstream_belongs_to_planning_item edge, and chains consecutive phases with a single serial blocked_by edge (phase N blocked_by phase N-1) per decision 5 (serial phases within a PI). Workstreams are created via the concurrency-safe autoassign path and the edges wired afterward (not explicit-id inline). It is **once-only, not idempotent**: if the PI already has any phase Workstream it raises 409, because re-decomposition would double-plan — re-scoping adds Work Tasks within the existing phases (§4.6), it does not recreate phases.",
+    "decision_date": "2026-05-31",
+    "executive_summary": "While building the ADO structural decomposer (WTK-002), this decision settles its interface: a once-only POST /planning-items/{id}/decompose that always creates all six phase Workstreams (Planned, canonical order) chained by serial blocked_by gates, with each phase's belongs_to_planning_item edge wired. It is deliberately not idempotent — a re-decompose 409s, surfacing a double-plan bug rather than masking it, since re-scoping adds Work Tasks within phases and never recreates them. The decomposer makes no scope judgment; the phase specialists do that next, marking empty phases Not Applicable. Lives in repositories/decomposition.py with access + API tests.",
+    "id": 349,
+    "identifier": "DEC-362",
+    "rationale": "",
+    "status": "Active",
+    "superseded_by_id": null,
+    "supersedes_id": null,
+    "title": "ADO structural decomposer is a once-only, all-phases, serial-blocked_by step at POST /planning-items/{id}/decompose",
+    "updated_at": "2026-05-31T19:23:01.472545"
   }
 ]

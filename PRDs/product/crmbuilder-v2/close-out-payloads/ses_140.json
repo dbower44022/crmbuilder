@@ -1,0 +1,111 @@
+{
+  "label": "SES-140 / CNV-042 close-out — WTK-002 ADO structural decomposer. Builds the decomposer (design §3.2.1/§4.1): POST /planning-items/{id}/decompose creates all six phase Workstreams (Planned) chained by serial blocked_by gates. DEC-362 records the once-only, all-phases, serial-chain interface. WTK-002 (under WSK-001) driven to Complete; ADDRESSES (not resolves) PI-114 under PRJ-018. Code on main as commit 8f70e3e.",
+  "session": {
+    "session_identifier": "SES-140",
+    "session_title": "Build the ADO structural decomposer (WTK-002)",
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "runner": "claude-code",
+      "kind": "execution"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_status": "complete",
+    "session_executive_summary": "Claude Code execution session building WTK-002, the ADO structural decomposer — the second Work Task of PI-114's Development phase (WSK-001). Implements design §3.2.1/§4.1: a new access module repositories/decomposition.py (decompose_planning_item, existing_phase_workstreams, PHASE_SEQUENCE) and a POST /planning-items/{id}/decompose endpoint that, given a Planning Item, creates all six phase Workstreams (Architecture..Deployment) in Planned status, wires each one's workstream_belongs_to_planning_item edge, and chains consecutive phases with serial blocked_by gates. Once-only (409 on re-decompose), 404 for an unknown PI. Added access + API tests; full v2 suite green. DEC-362 records the interface. WTK-002 driven to Complete; addresses (not resolves) PI-114.",
+    "session_description": "Execution session in the same Claude Code thread that closed SES-139, picking up the next PI-114 increment chosen by Doug: the structural decomposer. WTK-002 was created via direct POST /work-tasks (Workstreams/Work Tasks are operational entities written directly, never bundled into close-out payloads), set under WSK-001 (the PI-114 Development phase) via work_task_belongs_to_workstream, and driven through its full lifecycle Planned -> Ready -> Claimed(CNV-042) -> In Progress -> Complete. The build added repositories/decomposition.py with PHASE_SEQUENCE (the canonical Architecture..Deployment order, design §4.1/decision 8), decompose_planning_item (creates all six Workstreams via the concurrency-safe autoassign path, then wires the belongs_to_planning_item and serial blocked_by edges after — each phase blocked_by the immediately prior one, §5 decision 5), and existing_phase_workstreams (the once-only guard's query). Exposed as POST /planning-items/{id}/decompose on the planning_items router (201 with the created Workstreams; 409 if already decomposed; 404 for unknown PI). Tests: test_decomposition.py (6 phases in order, belongs + blocked_by chain, once-only guard, unknown-PI NotFound) and test_decompose_route.py (the endpoint, the chain via /references, once-only 409, unknown 404). Full v2 suite green. DEC-362 records the interface decision. The new endpoint goes live on the next API restart; this close-out does not require invoking it. The decomposer does no scope judgment — the phase specialists (next Work Tasks) consume these Planned Workstreams, scoping each into Work Tasks or asserting Not Applicable. Addresses PI-114 without resolving it.",
+    "references": []
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-042",
+    "conversation_title": "Build the ADO structural decomposer — PI -> six phase Workstreams (WTK-002)",
+    "conversation_purpose": "Implement the ADO structural step (design §3.2.1/§4.1): a decomposer that turns a Planning Item into its six phase Workstreams chained by serial blocked_by gates, as access + API code with tests, then drive WTK-002 to Complete and address PI-114.",
+    "conversation_description": "Built repositories/decomposition.py (PHASE_SEQUENCE, decompose_planning_item, existing_phase_workstreams) and the POST /planning-items/{id}/decompose endpoint: always create all six phase Workstreams (Planned), wire each one's workstream_belongs_to_planning_item edge, and chain consecutive phases with serial blocked_by gates. Once-only (409 on re-decompose); 404 for unknown PI. Added access + API tests; full v2 suite green. Decided DEC-362 on the interface. Drove WTK-002 (under WSK-001) to Complete. Addresses (not resolves) PI-114.",
+    "conversation_summary": "ADO structural decomposer delivered: POST /planning-items/{id}/decompose creates all six phase Workstreams (Planned) with serial blocked_by gates, once-only. WTK-002 Complete; PI-114 addressed. DEC-362 records the interface. Endpoint goes live on the next API restart.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-042",
+        "target_type": "session",
+        "target_id": "SES-140",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [],
+  "commits": [
+    {
+      "commit_sha": "8f70e3e2a4e58a5a044c0943aeee73351ad73b76",
+      "commit_message_first_line": "v2: WTK-002 — ADO structural decomposer (PI -> six phase Workstreams)",
+      "commit_message_full": "v2: WTK-002 — ADO structural decomposer (PI -> six phase Workstreams)\n\nImplements the ADO structural step (design §3.2.1 / §4.1): given a\nPlanning Item, create every phase Workstream (Architecture, Development,\nTesting, Documentation, Data Migration, Deployment) in Planned status,\nwire each one's workstream_belongs_to_planning_item edge, and chain\nconsecutive phases with serial blocked_by gates (decision 5).\n\n- access/repositories/decomposition.py: PHASE_SEQUENCE,\n  decompose_planning_item (concurrency-safe autoassign then edge-wire),\n  existing_phase_workstreams (the once-only guard's query).\n- POST /planning-items/{id}/decompose: 201 with the created Workstreams;\n  409 if already decomposed (not idempotent — a re-decompose is a\n  double-plan bug, surfaced not masked); 404 for an unknown PI.\n- Tests: test_decomposition.py + test_decompose_route.py.\n\nThe decomposer makes no scope judgment — phases are born Planned/empty;\nthe phase specialists scope them next (Work Tasks, or Not Applicable).\nFull v2 suite green (2249 passed). DEC-362 records the interface.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_files_changed_count": 4,
+      "commit_committed_at": "2026-05-31T15:22:08-04:00",
+      "commit_parent_shas": [
+        "0191e0cc55f7eb75ea7a7601bdd76b7b80bf3992"
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "identifier": "DEC-362",
+      "title": "ADO structural decomposer is a once-only, all-phases, serial-blocked_by step at POST /planning-items/{id}/decompose",
+      "context": "Design §3.2.1 / §4.1 specify the ADO structural step — create every phase Workstream for a Planning Item, with scope judgment deferred to the phase specialists — but left the implementation shape open: where the function lives, the endpoint, idempotency, and how the phase gates are wired. WTK-002 had to settle these while building it.",
+      "decision": "A dedicated access module repositories/decomposition.py (decompose_planning_item, existing_phase_workstreams, PHASE_SEQUENCE) exposed as POST /planning-items/{id}/decompose (the PI is the subject, so it reads naturally on the planning_items router). It always creates all six phase Workstreams in the canonical Architecture->Development->Testing->Documentation->Data Migration->Deployment order (decision 8), each in Planned status with a workstream_belongs_to_planning_item edge, and chains consecutive phases with a single serial blocked_by edge (phase N blocked_by phase N-1) per decision 5 (serial phases within a PI). Workstreams are created via the concurrency-safe autoassign path and the edges wired afterward (not explicit-id inline). It is **once-only, not idempotent**: if the PI already has any phase Workstream it raises 409, because re-decomposition would double-plan — re-scoping adds Work Tasks within the existing phases (§4.6), it does not recreate phases.",
+      "alternatives_considered": "Idempotent upsert (return the existing Workstreams on re-call) — rejected: it silently masks a double-plan bug, whereas the once-only 409 surfaces it. Placing the endpoint on the workstreams router (e.g. POST /workstreams/decompose?pi=NNN) — rejected: the Planning Item is the subject of decomposition, so POST /planning-items/{id}/decompose is the correct resource. Wiring blocked_by as a richer DAG by area/layer rank at this step — rejected: phases are serial within a PI (decision 5), so a linear chain is exactly right; intra-phase parallelism is a Work-Task-level concern the phase specialists express, not the structural step.",
+      "consequences": "New module repositories/decomposition.py and a new endpoint; tests in test_decomposition.py + test_decompose_route.py. The decomposer does no scope judgment — every phase is born Planned and empty; the phase specialists (the next Work Tasks under WSK-001) consume them, scoping each into Work Tasks or asserting Not Applicable (§4.3). The serial blocked_by chain gives the PI Lead unambiguous gate signals (§3.3/§5). The endpoint is reachable only after the running API restarts onto the new code.",
+      "executive_summary": "While building the ADO structural decomposer (WTK-002), this decision settles its interface: a once-only POST /planning-items/{id}/decompose that always creates all six phase Workstreams (Planned, canonical order) chained by serial blocked_by gates, with each phase's belongs_to_planning_item edge wired. It is deliberately not idempotent — a re-decompose 409s, surfacing a double-plan bug rather than masking it, since re-scoping adds Work Tasks within phases and never recreates them. The decomposer makes no scope judgment; the phase specialists do that next, marking empty phases Not Applicable. Lives in repositories/decomposition.py with access + API tests.",
+      "decision_date": "2026-05-31",
+      "status": "Active"
+    }
+  ],
+  "references": [
+    {
+      "source_type": "session",
+      "source_id": "SES-140",
+      "target_type": "project",
+      "target_id": "PRJ-018",
+      "relationship": "session_belongs_to_project"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-140",
+      "target_type": "work_task",
+      "target_id": "WTK-002",
+      "relationship": "session_works_work_task"
+    },
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-042",
+      "target_type": "project",
+      "target_id": "PRJ-018",
+      "relationship": "conversation_belongs_to_project"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-362",
+      "target_type": "conversation",
+      "target_id": "CNV-042",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-140",
+      "target_type": "session",
+      "target_id": "SES-139",
+      "relationship": "session_follows_from"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": [
+    {
+      "planning_item_identifier": "PI-114"
+    }
+  ]
+}

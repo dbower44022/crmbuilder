@@ -1,0 +1,29 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_140.json
+Label:  SES-140 / CNV-042 close-out — WTK-002 ADO structural decomposer. Builds the decomposer (design §3.2.1/§4.1): POST /planning-items/{id}/decompose creates all six phase Workstreams (Planned) chained by serial blocked_by gates. DEC-362 records the once-only, all-phases, serial-chain interface. WTK-002 (under WSK-001) driven to Complete; ADDRESSES (not resolves) PI-114 under PRJ-018. Code on main as commit 8f70e3e.
+Deposit event: DEP-135
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-042 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-362 (HTTP 201)
+
+=== references (4 records) ===
+  ✓ POST references  SES-140 session_works_work_task WTK-002 (HTTP 201)
+  ✓ POST references  CNV-042 conversation_belongs_to_project PRJ-018 (HTTP 201)
+  ✓ POST references  DEC-362 decided_in CNV-042 (HTTP 201)
+  ✓ POST references  SES-140 session_follows_from SES-139 (HTTP 201)
+
+=== addresses_planning_items (1 record) ===
+  ✓ POST addresses_planning_items  → PI-114 (HTTP 201)
+
+✓ All 9 operations complete.
+
+✓ Recorded apply as deposit_event DEP-135 (HTTP 201).

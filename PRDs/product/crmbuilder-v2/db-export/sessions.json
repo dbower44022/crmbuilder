@@ -2809,5 +2809,33 @@
     "session_superseded_at": null,
     "session_title": "Implement WTK-001 — ADO state-model substrate",
     "session_updated_at": "2026-05-31T15:52:01.346043"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-31T19:23:00.844249",
+    "session_created_at": "2026-05-31T19:23:00.843862",
+    "session_deleted_at": null,
+    "session_description": "Execution session in the same Claude Code thread that closed SES-139, picking up the next PI-114 increment chosen by Doug: the structural decomposer. WTK-002 was created via direct POST /work-tasks (Workstreams/Work Tasks are operational entities written directly, never bundled into close-out payloads), set under WSK-001 (the PI-114 Development phase) via work_task_belongs_to_workstream, and driven through its full lifecycle Planned -> Ready -> Claimed(CNV-042) -> In Progress -> Complete. The build added repositories/decomposition.py with PHASE_SEQUENCE (the canonical Architecture..Deployment order, design §4.1/decision 8), decompose_planning_item (creates all six Workstreams via the concurrency-safe autoassign path, then wires the belongs_to_planning_item and serial blocked_by edges after — each phase blocked_by the immediately prior one, §5 decision 5), and existing_phase_workstreams (the once-only guard's query). Exposed as POST /planning-items/{id}/decompose on the planning_items router (201 with the created Workstreams; 409 if already decomposed; 404 for unknown PI). Tests: test_decomposition.py (6 phases in order, belongs + blocked_by chain, once-only guard, unknown-PI NotFound) and test_decompose_route.py (the endpoint, the chain via /references, once-only 409, unknown 404). Full v2 suite green. DEC-362 records the interface decision. The new endpoint goes live on the next API restart; this close-out does not require invoking it. The decomposer does no scope judgment — the phase specialists (next Work Tasks) consume these Planned Workstreams, scoping each into Work Tasks or asserting Not Applicable. Addresses PI-114 without resolving it.",
+    "session_ended_at": null,
+    "session_executive_summary": "Claude Code execution session building WTK-002, the ADO structural decomposer — the second Work Task of PI-114's Development phase (WSK-001). Implements design §3.2.1/§4.1: a new access module repositories/decomposition.py (decompose_planning_item, existing_phase_workstreams, PHASE_SEQUENCE) and a POST /planning-items/{id}/decompose endpoint that, given a Planning Item, creates all six phase Workstreams (Architecture..Deployment) in Planned status, wires each one's workstream_belongs_to_planning_item edge, and chains consecutive phases with serial blocked_by gates. Once-only (409 on re-decompose), 404 for an unknown PI. Added access + API tests; full v2 suite green. DEC-362 records the interface. WTK-002 driven to Complete; addresses (not resolves) PI-114.",
+    "session_identifier": "SES-140",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "kind": "execution",
+      "runner": "claude-code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "Build the ADO structural decomposer (WTK-002)",
+    "session_updated_at": "2026-05-31T19:23:00.844511"
   }
 ]
