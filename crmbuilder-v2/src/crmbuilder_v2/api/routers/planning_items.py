@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from crmbuilder_v2.access.repositories import decomposition, planning_items
+from crmbuilder_v2.access.repositories import decomposition, lead, planning_items
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
@@ -63,6 +63,15 @@ def release(identifier: str, body: PlanningItemReleaseIn):
         return ok(
             planning_items.release_planning_item(s, identifier, body.claimant)
         )
+
+
+@router.get("/{identifier}/phase-overview")
+def phase_overview(identifier: str):
+    """The PI Lead's execution-state view (ADO §3.2-3.4): every phase
+    Workstream with status, Work Task progress, serial-gate readiness, and the
+    gate flags (all_scoped, all_terminal, needs_attention, next_executable)."""
+    with readonly_session() as s:
+        return ok(lead.phase_overview(s, identifier))
 
 
 @router.post("/{identifier}/decompose", status_code=201)

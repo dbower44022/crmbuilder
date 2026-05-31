@@ -12,7 +12,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from crmbuilder_v2.access.exceptions import NotFoundError
-from crmbuilder_v2.access.repositories import scoping, workstreams
+from crmbuilder_v2.access.repositories import lead, scoping, workstreams
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
@@ -133,6 +133,26 @@ def scope(identifier: str, body: WorkstreamScopeIn):
     specs = [w.model_dump() for w in body.work_tasks] if body.work_tasks else []
     with writable_session() as s:
         return ok(scoping.scope_workstream(s, identifier, specs))
+
+
+@router.post("/{identifier}/start-execution", status_code=201)
+def start_execution(identifier: str):
+    """PI Lead: open a scoped phase for execution (ADO §3.4). Drives the
+    Workstream Ready -> In Progress and readies its Work Tasks
+    (Planned -> Ready) so area specialists can pull them. 409 if the Workstream
+    is not Ready or a blocked_by predecessor is not terminal; 404 if absent."""
+    with writable_session() as s:
+        return ok(lead.start_phase(s, identifier))
+
+
+@router.post("/{identifier}/complete-phase", status_code=201)
+def complete_phase(identifier: str):
+    """PI Lead: verify-and-advance (ADO §3.4). Requires every Work Task
+    Complete, then drives the Workstream In Progress -> Complete, opening the
+    next serial gate. 409 if not In Progress or any Work Task is incomplete;
+    404 if absent."""
+    with writable_session() as s:
+        return ok(lead.complete_phase(s, identifier))
 
 
 @router.delete("/{identifier}")
