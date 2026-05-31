@@ -60,6 +60,7 @@ from crmbuilder_v2.api.routers import (
     work_tickets,
     projects,
     workstreams,
+    work_tasks,
 )
 from crmbuilder_v2.migration.meta_alembic import run_meta_migrations
 from crmbuilder_v2.runtime.exceptions import EngagementExportDirError
@@ -169,6 +170,7 @@ def create_app() -> FastAPI:
     # Governance entities (UI v0.7), in project order.
     app.include_router(projects.router)
     app.include_router(workstreams.router)
+    app.include_router(work_tasks.router)
     app.include_router(conversations.router)
     app.include_router(reference_books.router)
     app.include_router(work_tickets.router)

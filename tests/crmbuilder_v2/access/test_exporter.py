@@ -42,6 +42,7 @@ def test_bootstrap_creates_all_export_files(v2_env, export_dir: Path):
         # Governance entity snapshots (UI v0.7).
         "projects.json",
         "workstreams.json",
+        "work_tasks.json",
         "conversations.json",
         "reference_books.json",
         "reference_book_versions.json",

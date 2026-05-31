@@ -72,6 +72,7 @@ from crmbuilder_v2.access.vocab import (
     WORK_TICKET_KINDS,
     WORK_TICKET_STATUSES,
     PROJECT_STATUSES,
+    WORK_TASK_STATUSES,
     WORKSTREAM_PHASE_TYPES,
     WORKSTREAM_STATUSES,
     _check_in,
@@ -1211,6 +1212,69 @@ class Workstream(Base):
         ),
         Index("ix_workstreams_workstream_status", "workstream_status"),
         Index("ix_workstreams_workstream_deleted_at", "workstream_deleted_at"),
+    )
+
+
+class WorkTask(Base):
+    """Governance entity — a single-area unit of execution within a Workstream.
+
+    PI-112 Phase 4b (DEC-342). Carries exactly one ``area`` (the field
+    relocated off the Planning Item, validated at the access layer against
+    System ∪ Engagement areas) and is agent-claimable via ``claimed_by`` /
+    ``claimed_at``. Belongs to exactly one Workstream via a
+    ``work_task_belongs_to_workstream`` edge in ``refs``. ``WTK-NNN`` identifier.
+    """
+
+    __tablename__ = "work_tasks"
+
+    work_task_identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    work_task_title: Mapped[str] = mapped_column(String(255), nullable=False)
+    work_task_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    work_task_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="Planned"
+    )
+    # Single area (hard constraint, DEC-342). Membership in System ∪ Engagement
+    # areas is enforced at the access layer (a CHECK cannot consult the
+    # per-engagement engagement_areas table).
+    work_task_area: Mapped[str] = mapped_column(String(64), nullable=False)
+    work_task_claimed_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    work_task_claimed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    work_task_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    work_task_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    work_task_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+    work_task_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    work_task_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    work_task_completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "work_task_identifier GLOB 'WTK-[0-9][0-9][0-9]'",
+            name="ck_work_task_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("work_task_status", WORK_TASK_STATUSES),
+            name="ck_work_task_status",
+        ),
+        CheckConstraint(
+            "(work_task_claimed_by IS NULL AND work_task_claimed_at IS NULL) OR "
+            "(work_task_claimed_by IS NOT NULL AND work_task_claimed_at IS NOT NULL)",
+            name="ck_work_task_claim_pairing",
+        ),
+        Index("ix_work_tasks_work_task_status", "work_task_status"),
+        Index("ix_work_tasks_work_task_area", "work_task_area"),
+        Index("ix_work_tasks_work_task_deleted_at", "work_task_deleted_at"),
     )
 
 

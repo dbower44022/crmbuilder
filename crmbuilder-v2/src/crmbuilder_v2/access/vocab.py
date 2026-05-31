@@ -400,6 +400,32 @@ WORKSTREAM_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "Blocked": frozenset({"Planned", "In Progress"}),
 }
 
+# `work_task` — PI-112 Phase 4b, DEC-342. The single-area unit of execution
+# within a Workstream (WTK- identifier). Carries exactly one ``area`` (the
+# relocated field, validated against System ∪ Engagement areas) and is
+# agent-claimable. Lifecycle: Planned → Ready → Claimed → In Progress →
+# Complete, with Blocked and Failed side/terminal states.
+WORK_TASK_STATUSES: frozenset[str] = frozenset(
+    {
+        "Planned",
+        "Ready",
+        "Claimed",
+        "In Progress",
+        "Complete",
+        "Blocked",
+        "Failed",
+    }
+)
+WORK_TASK_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "Planned": frozenset({"Ready", "Blocked", "Failed"}),
+    "Ready": frozenset({"Claimed", "Blocked", "Failed"}),
+    "Claimed": frozenset({"In Progress", "Ready", "Blocked", "Failed"}),
+    "In Progress": frozenset({"Complete", "Blocked", "Failed"}),
+    "Complete": frozenset(),
+    "Blocked": frozenset({"Ready", "Claimed", "In Progress"}),
+    "Failed": frozenset({"Ready"}),
+}
+
 # `conversation` lifecycle (DEC-314, PI-073 redesign — supersedes DEC-131).
 # Six statuses; forward-only (planned → in_flight) with four terminals
 # (complete, cancelled, not_started, superseded). Conversations are now
@@ -514,6 +540,7 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         # See governance-entity-PRD-v0.1.md section 4.3.
         "conversation_belongs_to_project",
         "workstream_belongs_to_planning_item",  # PI-112 Phase 4
+        "work_task_belongs_to_workstream",  # PI-112 Phase 4b
         "project_planned_in_reference_book",
         "conversation_records_session",
         "conversation_opens_against_work_ticket",
@@ -661,6 +688,8 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         # PI-112 Phase 4: the new delivery-phase Workstream (WSK-), distinct
         # from the renamed Project container above.
         "workstream",
+        # PI-112 Phase 4b: the single-area Work Task (WTK-).
+        "work_task",
         "conversation",
         "reference_book",
         "work_ticket",
@@ -805,6 +834,10 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
     if source_type == "workstream" and target_type == "planning_item":
         kinds.add("workstream_belongs_to_planning_item")
     if source_type == "workstream" and target_type == "workstream":
+        kinds.add("blocked_by")
+    if source_type == "work_task" and target_type == "workstream":
+        kinds.add("work_task_belongs_to_workstream")
+    if source_type == "work_task" and target_type == "work_task":
         kinds.add("blocked_by")
     if source_type == "close_out_payload" and target_type == "conversation":
         kinds.add("close_out_payload_produced_by_conversation")

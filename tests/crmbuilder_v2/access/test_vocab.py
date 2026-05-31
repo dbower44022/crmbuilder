@@ -75,7 +75,7 @@ def test_blocked_by_is_between_same_type_siblings():
     """``blocked_by`` is a same-type sibling edge. Originally planning_item →
     planning_item; PI-112 Phase 4 extends it to sibling Workstreams (and, in
     4b, sibling Work Tasks) per the target-model §7."""
-    allowed = {"planning_item", "workstream"}
+    allowed = {"planning_item", "workstream", "work_task"}
     for (source, target), kinds in RELATIONSHIP_RULES.items():
         if "blocked_by" in kinds:
             assert source == target

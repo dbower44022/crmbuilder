@@ -1074,6 +1074,41 @@ class WorkstreamPatchIn(_Base):
     references: list[GovernanceEdgeIn] | None = None
 
 
+# --- Work Task (single-area unit, PI-112 Phase 4b) -------------------------
+class WorkTaskCreateIn(_Base):
+    work_task_title: str
+    work_task_area: str
+    work_task_description: str | None = None
+    work_task_notes: str | None = None
+    work_task_status: str | None = None
+    work_task_identifier: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+    timestamps: dict[str, Any] | None = None
+
+
+class WorkTaskReplaceIn(_Base):
+    work_task_identifier: str | None = None
+    work_task_title: str
+    work_task_area: str
+    work_task_description: str | None = None
+    work_task_notes: str | None = None
+    work_task_status: str
+    references: list[GovernanceEdgeIn] | None = None
+
+
+class WorkTaskPatchIn(_Base):
+    work_task_title: str | None = None
+    work_task_area: str | None = None
+    work_task_description: str | None = None
+    work_task_notes: str | None = None
+    work_task_status: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+
+
+class WorkTaskClaimIn(_Base):
+    claimed_by: str
+
+
 class ConversationCreateIn(_Base):
     """POST /conversations body — PI-073 / DEC-314 redesign.
 
