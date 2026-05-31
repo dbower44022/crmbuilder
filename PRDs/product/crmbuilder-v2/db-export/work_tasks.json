@@ -8,10 +8,10 @@
     "work_task_deleted_at": null,
     "work_task_description": "Design §5 substrate: rename Workstream phase Design->Architecture; expand WORKSTREAM_STATUSES to Planned->Scoping->Ready->In Progress->Complete|Not Applicable|Blocked with transitions; add needs_attention + needs_attention_reason to the Workstream model. Vocab + model + Alembic migration + tests; apply to live DB.",
     "work_task_identifier": "WTK-001",
-    "work_task_notes": null,
+    "work_task_notes": "Resume handoff: PRDs/product/crmbuilder-v2/prompts/HANDOFF-WTK-001-ado-state-model-substrate.md (orientation + design §5 spec + migration specifics + close-out flow).",
     "work_task_started_at": "2026-05-31T14:57:17.643048",
     "work_task_status": "In Progress",
     "work_task_title": "ADO state-model substrate: expand Workstream lifecycle + needs_attention flag + Architecture rename",
-    "work_task_updated_at": "2026-05-31T14:57:17.643328"
+    "work_task_updated_at": "2026-05-31T15:05:14.477637"
   }
 ]
