@@ -1,0 +1,127 @@
+{
+  "label": "SES-145 / CNV-047 close-out — capture four link-UI enhancement Planning Items under PRJ-016 (Improved link UI). Governance-only session (no code, no decisions). PI-116 in-panel search/filter, PI-117 sortable/groupable columns with multi-column sort, PI-118 inline preview of a linked record, PI-119 resizable columns. All Draft, item_type pending_work, each attached to PRJ-016 via planning_item_belongs_to_project; decomposition into Workstreams/Work Tasks deferred until scoped.",
+  "session": {
+    "session_identifier": "SES-145",
+    "session_title": "Capture link-UI enhancement Planning Items under PRJ-016",
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "runner": "claude-code",
+      "kind": "governance"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_status": "complete",
+    "session_executive_summary": "Claude Code governance session capturing four UI-enhancement Planning Items under PRJ-016 (Improved link UI), per the user's request and the PI-112 ADO governance model. No code was written and no decisions were made — the product is governance records. The four Draft PIs: in-panel search/filter (PI-116), sortable/groupable columns with explicit multi-column sort (PI-117), inline preview of a linked record (PI-118), and resizable columns (PI-119). Each attaches to PRJ-016 via planning_item_belongs_to_project; decomposition into Workstreams/Work Tasks is deferred until each is scoped. The set was chosen from a candidate list — Doug kept A/C/G, added column resize, and required the sort to be multi-column capable.",
+    "session_description": "Governance-recording session. Doug asked to add UI enhancements to PRJ-016 (the 'Improved link UI' Project, purpose: improve link usability especially when an object carries large numbers of links) using the new governance procedures. PRJ-016 was an empty container (no PIs/Workstreams/Work Tasks). Claude offered a seven-item candidate enhancement list derived from the Project's stated purpose; Doug selected candidates A (in-panel search/filter), C (sort & group links), and G (inline preview of a linked record), added a new enhancement (column resize), and required that the column sorting be multi-column capable. Doug chose 'Planning Items only' granularity — one PI per enhancement at Draft status, decomposition into Workstreams/Work Tasks deferred until each is scoped. Claude authored four Planning Items (PI-116..PI-119), each item_type pending_work, status Draft, with an executive_summary, and attached each to PRJ-016 via a planning_item_belongs_to_project reference. The session itself belongs to PRJ-016 (session_belongs_to_project) and follows from SES-144. No decisions were made (the choice of what to record is the user's, not a consequential design decision) and no code was changed; the deliverable is the four backlog items now visible under PRJ-016.",
+    "references": []
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-047",
+    "conversation_title": "Add link-UI enhancement Planning Items to PRJ-016",
+    "conversation_purpose": "Capture, as Draft Planning Items under PRJ-016 (Improved link UI), the link-panel UI enhancements Doug wants — recorded via the new ADO governance procedures, decomposition deferred.",
+    "conversation_description": "Oriented against the governance recording rules and PI-112 ADO model, captured identifier heads, and confirmed PRJ-016 was an empty container. Offered a candidate enhancement list from PRJ-016's purpose; Doug selected in-panel search/filter, sort & group, and inline preview, added column resize, and required multi-column sort. Authored four Draft Planning Items (PI-116 search/filter, PI-117 sortable/groupable columns with multi-column sort, PI-118 inline linked-record preview, PI-119 resizable columns), each item_type pending_work and each linked to PRJ-016 via planning_item_belongs_to_project. No code, no decisions.",
+    "conversation_summary": "Four link-UI enhancement Planning Items captured as Draft under PRJ-016: PI-116 in-panel search/filter, PI-117 sortable/groupable columns with multi-column sort, PI-118 inline preview of a linked record, PI-119 resizable columns. Each attached via planning_item_belongs_to_project; decomposition deferred. Governance-only — no code, no decisions.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-047",
+        "target_type": "session",
+        "target_id": "SES-145",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [
+    {
+      "identifier": "PI-116",
+      "title": "Link panel in-panel search/filter for finding a specific linked record",
+      "item_type": "pending_work",
+      "status": "Draft",
+      "description": "Add a search/filter input to relationship (link) panels so a user can type to narrow a long list of linked records down to the matches without scrolling. Directly targets PRJ-016's core problem: objects that carry large numbers of links. At minimum a debounced filter over the loaded link rows; server-side query filtering of the relationship is a possible extension to settle at decomposition. Candidate A from the PRJ-016 enhancement set.",
+      "executive_summary": "Adds an in-panel search/filter box to relationship link panels so a user can type to narrow a long list of linked records to the matches instead of scrolling. Directly serves PRJ-016's goal of keeping link panels usable when an object carries large numbers of links. The filter surface (client-side over loaded rows vs. server-side relationship query) is left to decomposition. Recorded as a Draft Planning Item under PRJ-016 (enhancement candidate A)."
+    },
+    {
+      "identifier": "PI-117",
+      "title": "Link panel sortable/groupable columns with multi-column sort",
+      "item_type": "pending_work",
+      "status": "Draft",
+      "description": "Let users sort and group the rows of a relationship (link) panel by column — by field value, link type, or date — to impose order on a large link set. The sort must be multi-column capable: a user can establish a primary sort plus one or more secondary sorts (e.g. type then date) with a stable order and a clear per-column sort indicator. Grouping collapses rows under a shared key. Candidate C from the PRJ-016 enhancement set, extended with the explicit multi-column-sort requirement Doug called out.",
+      "executive_summary": "Lets users sort and group the rows of a relationship link panel by column (field value, link type, date) to bring order to a large link set. The sort is explicitly multi-column capable — a primary plus one or more secondary sort keys with clear per-column indicators — not just single-column. Grouping collapses rows under a shared key. Recorded as a Draft Planning Item under PRJ-016 (candidate C, extended with the multi-column-sort requirement Doug called out)."
+    },
+    {
+      "identifier": "PI-118",
+      "title": "Inline preview of a linked record from the link panel",
+      "item_type": "pending_work",
+      "status": "Draft",
+      "description": "Provide a quick inline preview of a linked record from within the relationship panel — e.g. a hover card or an expandable inline row showing the linked record's key fields — so a user can inspect a link's details without navigating away to the linked record and losing their place on the parent. Candidate G from the PRJ-016 enhancement set. The exact preview surface (hover card vs. expand-in-place vs. side peek) is to be settled at decomposition.",
+      "executive_summary": "Provides a quick inline preview of a linked record from within the relationship panel — a hover card or expandable inline row exposing key fields — so a user can inspect a link without navigating away from the parent object and losing context. Serves PRJ-016's usability goal for link-heavy objects. The exact preview surface is left to decomposition. Recorded as a Draft Planning Item under PRJ-016 (candidate G)."
+    },
+    {
+      "identifier": "PI-119",
+      "title": "Resizable columns in link panels",
+      "item_type": "pending_work",
+      "status": "Draft",
+      "description": "Let users resize the columns of a relationship (link) panel by dragging column borders, so wide values are readable and the panel adapts to the content a given object carries. Persisting per-user / per-panel column widths is a possible extension to settle at decomposition. A new enhancement Doug requested alongside the PRJ-016 candidate set; it complements the sortable/groupable-column work in PI-117.",
+      "executive_summary": "Lets users resize relationship link-panel columns by dragging column borders so wide values stay readable and the panel adapts to each object's link content. Optional persistence of per-user/per-panel widths is left to decomposition. A new enhancement Doug requested alongside the PRJ-016 candidate set; it complements the sortable/groupable column work in PI-117. Recorded as a Draft Planning Item under PRJ-016."
+    }
+  ],
+  "commits": [],
+  "decisions": [],
+  "references": [
+    {
+      "source_type": "session",
+      "source_id": "SES-145",
+      "target_type": "project",
+      "target_id": "PRJ-016",
+      "relationship": "session_belongs_to_project"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-145",
+      "target_type": "session",
+      "target_id": "SES-144",
+      "relationship": "session_follows_from"
+    },
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-047",
+      "target_type": "project",
+      "target_id": "PRJ-016",
+      "relationship": "conversation_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-116",
+      "target_type": "project",
+      "target_id": "PRJ-016",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-117",
+      "target_type": "project",
+      "target_id": "PRJ-016",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-118",
+      "target_type": "project",
+      "target_id": "PRJ-016",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-119",
+      "target_type": "project",
+      "target_id": "PRJ-016",
+      "relationship": "planning_item_belongs_to_project"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": []
+}

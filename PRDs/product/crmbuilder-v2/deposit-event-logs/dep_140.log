@@ -1,0 +1,28 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_145.json
+Label:  SES-145 / CNV-047 close-out — capture four link-UI enhancement Planning Items under PRJ-016 (Improved link UI). Governance-only session (no code, no decisions). PI-116 in-panel search/filter, PI-117 sortable/groupable columns with multi-column sort, PI-118 inline preview of a linked record, PI-119 resizable columns. All Draft, item_type pending_work, each attached to PRJ-016 via planning_item_belongs_to_project; decomposition into Workstreams/Work Tasks deferred until scoped.
+Deposit event: DEP-140
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-047 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== planning_items (4 records) ===
+  ✓ POST planning_items  PI-116 (HTTP 201)
+  ✓ POST planning_items  PI-117 (HTTP 201)
+  ✓ POST planning_items  PI-118 (HTTP 201)
+  ✓ POST planning_items  PI-119 (HTTP 201)
+
+=== references (6 records) ===
+  ✓ POST references  SES-145 session_follows_from SES-144 (HTTP 201)
+  ✓ POST references  CNV-047 conversation_belongs_to_project PRJ-016 (HTTP 201)
+  ✓ POST references  PI-116 planning_item_belongs_to_project PRJ-016 (HTTP 201)
+  ✓ POST references  PI-117 planning_item_belongs_to_project PRJ-016 (HTTP 201)
+  ✓ POST references  PI-118 planning_item_belongs_to_project PRJ-016 (HTTP 201)
+  ✓ POST references  PI-119 planning_item_belongs_to_project PRJ-016 (HTTP 201)
+
+✓ All 12 operations complete.
+
+✓ Recorded apply as deposit_event DEP-140 (HTTP 201).
