@@ -1,0 +1,257 @@
+# =====================================================================
+# CRM Builder V2 — Agent Registry — Initial Seed
+# Spec: V2 Agent Registry Schema Specification r0.2
+# Engine-neutral; loaded by the application into SQLite (current) or
+# PostgreSQL (planned). Survives the engine switch unchanged.
+# Last Updated: 05-31-26 16:45
+# ---------------------------------------------------------------------
+# Propagation policy (r0.3): float pure guidance, pin execution/constraint
+#   - instruction skills + advisory rules .... pinned_revision: null (float)
+#   - tool skills (code-backed or not) ....... pinned_revision: "1.0.0" (pin)
+#   - enforced / enforced_with_override rules. pinned_revision: "1.0.0" (pin)
+# Taxonomy (r0.3): two skill kinds — instruction, tool. A tool is code-backed
+#   when it carries a code_asset_ref; otherwise the harness handles it.
+# NOTE: This roster is a DRAFT starting point — refine agent names, skills,
+#       and rule bodies to match the actual CRM Builder agent design.
+# =====================================================================
+
+meta:
+  seed_revision: "1.0.1"
+  generated: "2026-05-31T17:30:00Z"
+  author: "D. Bower / Claude"
+
+# ---------------------------------------------------------------------
+# SKILL CATALOG (shared, independently versioned)
+# ---------------------------------------------------------------------
+skills:
+  - skill_id: validate-deployment-yaml
+    name: "Validate Deployment YAML"
+    description: "Validate a deployment YAML file for structural and semantic correctness against the target schema."
+    kind: tool
+    category: validation
+    revision: "1.0.0"
+    io_contract:
+      input:
+        type: object
+        properties:
+          yaml_path: { type: string }
+        required: [yaml_path]
+      output:
+        type: object
+        properties:
+          valid: { type: boolean }
+          errors: { type: array, items: { type: string } }
+
+  - skill_id: diff-config
+    name: "Diff Configuration"
+    description: "Compute the difference between the current target-instance state and a desired YAML configuration."
+    kind: tool
+    category: planning
+    revision: "1.0.0"
+    io_contract:
+      input:
+        type: object
+        properties:
+          target: { type: string }
+          yaml_path: { type: string }
+        required: [target, yaml_path]
+      output:
+        type: object
+        properties:
+          additions: { type: array }
+          modifications: { type: array }
+          deletions: { type: array }
+          destructive: { type: boolean }
+
+  - skill_id: apply-yaml-config
+    name: "Apply YAML Configuration"
+    description: "Apply a validated YAML configuration to a target instance."
+    kind: tool
+    code_asset_ref: "crmbuilder.deploy.apply_config:apply"   # code-backed tool
+    category: deployment
+    revision: "1.0.0"
+    io_contract:
+      input:
+        type: object
+        properties:
+          target: { type: string }
+          yaml_path: { type: string }
+          approval_flag: { type: boolean }
+        required: [target, yaml_path]
+      output:
+        type: object
+        properties:
+          applied: { type: boolean }
+          summary: { type: string }
+
+  - skill_id: verify-backup
+    name: "Verify Backup"
+    description: "Verify that a recent, valid backup of the target instance exists before any mutating operation."
+    kind: tool
+    code_asset_ref: "crmbuilder.backup.verify:verify"   # code-backed tool
+    category: safety
+    revision: "1.0.0"
+    io_contract:
+      input:
+        type: object
+        properties:
+          target: { type: string }
+        required: [target]
+      output:
+        type: object
+        properties:
+          backup_verified: { type: boolean }
+          backup_timestamp: { type: string }
+
+  - skill_id: summarize-deployment-plan
+    name: "Summarize Deployment Plan"
+    description: "Guidance for presenting a deployment or migration plan to the operator in clear, reviewable terms before any action."
+    kind: instruction
+    category: communication
+    revision: "1.0.0"
+    # instruction skills carry no io_contract; body lives in description usage
+
+# ---------------------------------------------------------------------
+# GOVERNANCE RULE CATALOG (shared, independently versioned)
+# ---------------------------------------------------------------------
+governance_rules:
+  - rule_id: no-destructive-migration-without-approval
+    name: "No Destructive Migration Without Approval"
+    rule_type: prohibition
+    enforcement: enforced
+    severity: critical
+    body: "Destructive schema migrations require an explicit approval flag and a verified backup before execution."
+    revision: "1.0.0"
+    predicate:
+      subject: schema_migration
+      operation: destructive
+      condition: "approval_flag != true OR backup_verified != true"
+      effect: deny
+
+  - rule_id: require-validation-before-apply
+    name: "Require Validation Before Apply"
+    rule_type: constraint
+    enforcement: enforced
+    severity: critical
+    body: "A configuration may not be applied unless it has passed validation in this session."
+    revision: "1.0.0"
+    predicate:
+      subject: deployment
+      operation: apply
+      condition: "validated != true"
+      effect: deny
+
+  - rule_id: escalate-on-prod-target
+    name: "Escalate On Production Target"
+    rule_type: escalation
+    enforcement: enforced_with_override
+    severity: critical
+    body: "Any mutating operation against a production target must be escalated for human override before proceeding."
+    revision: "1.0.0"
+    predicate:
+      subject: target
+      operation: mutate
+      condition: "environment == 'production'"
+      effect: override
+
+  - rule_id: prefer-idempotent-operations
+    name: "Prefer Idempotent Operations"
+    rule_type: constraint
+    enforcement: advisory
+    severity: warning
+    body: "Prefer idempotent operations; design changes so re-running a deployment produces no unintended side effects."
+    revision: "1.0.0"
+
+  - rule_id: redact-secrets-in-output
+    name: "Redact Secrets In Output"
+    rule_type: prohibition
+    enforcement: advisory
+    severity: warning
+    body: "Never echo credentials, tokens, connection strings, or other secrets in agent output or logs; redact them."
+    revision: "1.0.0"
+
+# ---------------------------------------------------------------------
+# AGENT ROSTER (each with one initial version + bindings)
+# ---------------------------------------------------------------------
+agents:
+  - agent_id: deployment-agent
+    display_name: "Deployment Agent"
+    description: "Applies validated YAML configuration to a target CRM instance, guarded by approval, backup, and validation rules."
+    status: active
+    version:
+      revision: "1.0.0"
+      effective_date: "2026-05-31T16:45:00Z"
+      author: "D. Bower"
+      changelog: "Initial release."
+      model_hint: null
+    skills:
+      - { skill_id: validate-deployment-yaml,  pinned_revision: "1.0.0" }   # tool -> pin
+      - { skill_id: diff-config,                pinned_revision: "1.0.0" }   # tool -> pin
+      - { skill_id: apply-yaml-config,          pinned_revision: "1.0.0" }   # tool (code-backed) -> pin
+      - { skill_id: verify-backup,              pinned_revision: "1.0.0" }   # tool (code-backed) -> pin
+      - { skill_id: summarize-deployment-plan,  pinned_revision: null }      # instruction -> float
+    governance:
+      - { rule_id: no-destructive-migration-without-approval, pinned_revision: "1.0.0" }  # enforced -> pin
+      - { rule_id: require-validation-before-apply,           pinned_revision: "1.0.0" }  # enforced -> pin
+      - { rule_id: escalate-on-prod-target,                   pinned_revision: "1.0.0" }  # override -> pin
+      - { rule_id: prefer-idempotent-operations,              pinned_revision: null }     # advisory -> float
+      - { rule_id: redact-secrets-in-output,                  pinned_revision: null }     # advisory -> float
+
+  - agent_id: validation-agent
+    display_name: "Validation Agent"
+    description: "Validates deployment YAML against schema and governance constraints; reports issues without mutating any instance."
+    status: active
+    version:
+      revision: "1.0.0"
+      effective_date: "2026-05-31T16:45:00Z"
+      author: "D. Bower"
+      changelog: "Initial release."
+      model_hint: null
+    skills:
+      - { skill_id: validate-deployment-yaml,  pinned_revision: "1.0.0" }
+      - { skill_id: summarize-deployment-plan,  pinned_revision: null }
+    governance:
+      - { rule_id: redact-secrets-in-output,    pinned_revision: null }
+
+  - agent_id: migration-planning-agent
+    display_name: "Migration Planning Agent"
+    description: "Computes configuration diffs, flags destructive changes, and produces a reviewable migration plan; does not apply changes."
+    status: active
+    version:
+      revision: "1.0.0"
+      effective_date: "2026-05-31T16:45:00Z"
+      author: "D. Bower"
+      changelog: "Initial release."
+      model_hint: null
+    skills:
+      - { skill_id: diff-config,                pinned_revision: "1.0.0" }
+      - { skill_id: summarize-deployment-plan,  pinned_revision: null }
+    governance:
+      - { rule_id: escalate-on-prod-target,     pinned_revision: "1.0.0" }
+      - { rule_id: prefer-idempotent-operations, pinned_revision: null }
+      - { rule_id: redact-secrets-in-output,    pinned_revision: null }
+
+  - agent_id: backup-agent
+    display_name: "Backup Agent"
+    description: "Verifies and reports on backup state for a target instance, supporting the approval/backup gate used by other agents."
+    status: active
+    version:
+      revision: "1.0.0"
+      effective_date: "2026-05-31T16:45:00Z"
+      author: "D. Bower"
+      changelog: "Initial release."
+      model_hint: null
+    skills:
+      - { skill_id: verify-backup,              pinned_revision: "1.0.0" }
+    governance:
+      - { rule_id: redact-secrets-in-output,    pinned_revision: null }
+
+# ---------------------------------------------------------------------
+# CHANGE LOG
+# ---------------------------------------------------------------------
+# | Rev   | Date (MM-DD-YY HH:MM) | Author            | Summary
+# | 1.0.0 | 05-31-26 16:45        | D. Bower / Claude | Initial seed: 5 skills,
+# |       |                       |                   | 5 rules, 4 agents w/ bindings.
+# | 1.0.1 | 05-31-26 17:30        | D. Bower / Claude | Regenerated for two-kind
+# |       |                       |                   | taxonomy: apply-yaml-config and
+# |       |                       |                   | verify-backup are code-backed tools.
