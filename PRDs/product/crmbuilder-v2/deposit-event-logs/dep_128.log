@@ -1,0 +1,26 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_135.json
+Label:  SES-135 / CNV-037 close-out — YAML schema v1.3 Section 12 (RBAC) drafting. RE-KEYED from a parallel SES-133/CNV-035 on origin/main that collided with the PI-112 redesign's identifiers: SES-133->SES-135, CNV-035->CNV-037, DEC-345..347->DEC-350..352, WS-015->PRJ-017 (Project), and references reshaped to the post-rename model (conversation_belongs_to_project, session_belongs_to_project). Records 3 decisions (Section 12 placement, no file-type discriminator, content-based deploy ordering). Belongs to Project PRJ-017. The schema content (06c3605) is already an ancestor on main.
+Deposit event: DEP-128
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-037 (HTTP 201)
+
+=== session (1 record) ===
+
+=== commits (1 record) ===
+
+=== decisions (3 records) ===
+  ✓ POST decisions  DEC-350 (HTTP 201)
+  ✓ POST decisions  DEC-351 (HTTP 201)
+  ✓ POST decisions  DEC-352 (HTTP 201)
+
+=== references (5 records) ===
+  ✓ POST references  CNV-037 conversation_belongs_to_project PRJ-017 (HTTP 201)
+  ✓ POST references  DEC-350 decided_in CNV-037 (HTTP 201)
+  ✓ POST references  DEC-351 decided_in CNV-037 (HTTP 201)
+  ✓ POST references  DEC-352 decided_in CNV-037 (HTTP 201)
+  ✓ POST references  SES-135 session_follows_from SES-134 (HTTP 201)
+
+
+✓ Recorded apply as deposit_event DEP-128 (HTTP 201).

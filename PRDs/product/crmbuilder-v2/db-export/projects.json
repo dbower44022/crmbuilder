@@ -238,5 +238,20 @@
     "project_status": "planned",
     "project_superseded_at": null,
     "project_updated_at": "2026-05-31T02:56:54.043991"
+  },
+  {
+    "project_cancelled_at": null,
+    "project_completed_at": null,
+    "project_created_at": "2026-05-31T03:47:02.262770",
+    "project_deleted_at": null,
+    "project_description": "Container for the YAML schema v1.3 RBAC work drafted in the re-keyed SES-135 session. Created as the apply pre-step for the SES-135 close-out (re-keyed from a parallel SES-133 that collided with the PI-112 redesign identifiers).",
+    "project_identifier": "PRJ-017",
+    "project_name": "YAML Schema v1.3 — Role-Based Access Control",
+    "project_notes": null,
+    "project_purpose": "Design and deliver the RBAC (roles, teams, scope-level entity access, system permissions, role-aware visibility) extension to the YAML program-file schema (app-yaml-schema.md Section 12).",
+    "project_started_at": "2026-05-31T03:47:02.263177",
+    "project_status": "in_flight",
+    "project_superseded_at": null,
+    "project_updated_at": "2026-05-31T03:47:02.263689"
   }
 ]
