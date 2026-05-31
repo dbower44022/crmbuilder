@@ -2,8 +2,8 @@
 
 **Document type:** Application development design (the centralized registry of skill and governance-rule definitions that the Agent Delivery Organization's agents draw from)
 **Proposed path:** `PRDs/product/crmbuilder-v2/agent-profile-registry/agent-profile-registry-PRD-v0.1.md`
-**Status:** v0.1 — DRAFT proposal. Nothing built. For reconciliation against the locked ADO design and the PI-112 governance model before any implementation.
-**Last Updated:** 05-31-26 18:15
+**Status:** v0.2 — DRAFT proposal. Nothing built. Reconciled against the locked ADO design, the completed ADO substrate (PI-114 / WTK-001…006), and the PI-112 governance model. (Filename retains `-v0.1` as the stable path; the version inside this header is authoritative.)
+**Last Updated:** 05-31-26 20:10
 
 ---
 
@@ -11,7 +11,7 @@
 
 This PRD specifies an **Agent Profile Registry**: the centrally-managed store of *what each agent knows and is allowed to do* — its skills and its governance rules — so that capabilities can be managed in one place even when agents run dispersed.
 
-It is **the explicitly-deferred follow-on to the Agent Delivery Organization (ADO) design.** ADO v0.3 §10 lists as out of scope: "the concrete agent prompts / skill definitions for each specialist (follow-on, once the model is locked)" and "an 'agent profile' registry (skill definitions per phase/area) — deferred." The data model is locked (PI-112, Alembic head `0033`+); this document proposes the behavior-supporting registry those follow-ons call for.
+It is **the explicitly-deferred follow-on to the Agent Delivery Organization (ADO) design.** ADO v0.3 §10 lists as out of scope: "the concrete agent prompts / skill definitions for each specialist (follow-on, once the model is locked)" and "an 'agent profile' registry (skill definitions per phase/area) — deferred." The data model is locked (PI-112) and, as of v0.2, the **ADO substrate is built**: PI-114 / WTK-001…006 delivered the four agent-tier substrates (Project Manager, PI Lead, Phase Specialist, Area Specialist) as deterministic REST endpoints, on Alembic head **`0036`**. This document proposes the behavior-supporting registry those follow-ons call for — the layer that *holds* the agent prompts/skills/rules that drive that now-existing substrate.
 
 This PRD is the product of a Claude.ai design conversation that ran **before** the ADO and governance model were in view. The registry *pattern* it proposes is sound and carried over; the original agent roster from that conversation (generic EspoCRM-deployment agents) was aimed at the wrong layer and has been re-pointed at the ADO tiers here. See §3 for the reconciliation and §7 for the decision history, preserved intact.
 
@@ -22,10 +22,13 @@ This PRD is the product of a Claude.ai design conversation that ran **before** t
 | Version | Date (MM-DD-YY HH:MM) | Author | Summary |
 |---------|------------------------|--------|---------|
 | 0.1 | 05-31-26 18:15 | Doug Bower / Claude | Initial proposal. Registry pattern (versioned skill + governance-rule catalog, float/pin propagation, hybrid advisory/enforced governance, resolver→contract) re-pointed from the original generic-agent framing onto the ADO tiers/phases/areas and reconciled with the PI-112 governance model. Illustrative artifacts attached under `illustrative/`. |
+| 0.2 | 05-31-26 20:10 | Doug Bower / Claude | Reconciliation pass after the ADO substrate landed (PI-114 / WTK-001…006). Refreshed the Alembic head (`0033` → `0036`). Closed two open questions: skills/rules are full governance entities (§10.1), and the `AGP`/`SKL`/`GVR` prefixes are verified collision-free (§10.2). Added §12, the registry↔runtime seam (the registry *holds and resolves*; the runtime *injects and runs* — a distinct §10 deferral), and noted the WTK-002…006 substrate endpoints as the concrete tool-skills profiles bind. No change to the model or the four decisions. |
 
 ## Change Log
 
 **Version 0.1 (05-31-26 18:15):** First draft. Reframes a prior design conversation's agent-registry work as the ADO §10 agent-profile registry. Records the four design decisions made in that conversation (hybrid governance, two-kind skill taxonomy, storage path, drift-assertion pinning) with rationale and alternatives, and maps them onto V2 conventions. Implementation approach (governance entity + Alembic + access layer + REST envelope + MCP + recording rules) specified at proposal level only.
+
+**Version 0.2 (05-31-26 20:10):** Reconciliation pass once the ADO substrate was complete (PI-114 / WTK-001…006 on Alembic head `0036`). Mechanical refreshes (head reference) and two now-answerable open questions resolved — full governance entities for `skill`/`governance_rule` (§10.1), and the proposed identifier prefixes confirmed free against the live prefix registry (§10.2). Added §12 making the registry↔runtime boundary explicit so the registry is not mistaken for the whole §10 job, and tied the abstract "tool-skill" to the concrete substrate endpoints now shipped. The model (§4), the hybrid-governance split (§5), the versioning policy (§6), and the four preserved decisions (§7) are unchanged.
 
 ---
 
@@ -127,7 +130,7 @@ These four decisions were taken in the originating design conversation. They are
 **Decided:** two kinds; a tool is "code-backed" when it carries a pointer to a callable, advisory otherwise. **Why:** the original three-kind split (instruction / tool / code_asset) created an ambiguous line — deterministic operations like "validate" or "diff" are code yet were typed as plain tools. Collapsing to "is there a backing callable?" removes the ambiguity with no loss of meaning.
 
 ### 7.3 Storage path (conversation: SQLite-now / Postgres-later — superseded here)
-**Decided in conversation:** maintain portable SQLite + Postgres migrations. **Superseded by V2 reality:** V2 already runs SQLite under Alembic (head `0033`+) behind the access layer; there is no separate Postgres target to plan for at this layer. The illustrative dual-engine DDL is therefore reference-only; real implementation is a single Alembic migration consistent with the current head.
+**Decided in conversation:** maintain portable SQLite + Postgres migrations. **Superseded by V2 reality:** V2 already runs SQLite under Alembic (head `0036` as of v0.2) behind the access layer; there is no separate Postgres target to plan for at this layer. The illustrative dual-engine DDL is therefore reference-only; real implementation is a single Alembic migration consistent with the current head.
 
 ### 7.4 Drift-assertion pinning (vs full point-in-time versioning)
 **Decided:** with one catalog row per item, pinning is a *drift assertion* — a floating binding adopts the current row; a pinned binding is flagged stale if the catalog has moved past its pinned revision, prompting human review. **Why:** true point-in-time retrieval of a superseded revision needs versioned catalog tables; that is a larger enhancement to adopt only if controlled rollback to prior revisions becomes a requirement. The drift assertion captures the *intent* of pinning (controlled adoption) at low cost and maps onto existing version/supersession patterns.
@@ -160,13 +163,18 @@ This work itself should be governed: a Planning Item, decomposed by the ADO once
 
 ---
 
-## 10. Open questions for the next session / Claude Code
+## 10. Open questions
 
-1. **Entity vs vocab for skills/rules.** Are `skill` and `governance_rule` full governance entities (proposed here) or lighter vocab/config? The entity route is more queryable and auditable; vocab is lighter.
-2. **Identifier prefixes.** `AGP` / `SKL` / `GVR` are proposals — confirm against the existing prefix registry to avoid collisions.
-3. **Broker scope.** How much enforcement does the access layer already cover, and what genuinely needs a separate evaluation step? Likely small.
+### Resolved in v0.2
+
+1. **Entity vs vocab for skills/rules — RESOLVED: full governance entities.** `skill` and `governance_rule` are full governance entities (not vocab/config). Rationale: the ADO values queryability and auditability ("what is this agent allowed to do, at what version?"), bindings are reference edges (which vocab cannot carry), and the entities want monitoring panels alongside the Workstream/Work Task panels just shipped — all of which the entity route gives and vocab does not. The added weight is one more entity set behind the same access-layer/Alembic/REST/MCP machinery already used for six v0.7 entities.
+2. **Identifier prefixes — RESOLVED: `AGP` / `SKL` / `GVR` are free.** Verified against the live prefix registry (the 22 in-use prefixes: CM, CNV, CONV, COP, CRM, DEP, DOM, ENG, ENT, FLD, MCF, PER, PRJ, PROC, RB, REF, REQ, SES, TST, WSK, WT, WTK). No collision; the proposals stand, to be finalized through the schema-spec process.
+
+### Still open
+
+3. **Broker scope.** How much enforcement does the access layer already cover, and what genuinely needs a separate evaluation step? Likely small (§3.5) — most enforced rules are edge rules, CHECK constraints, lifecycle-transition validation, and the gate logic already shipped in WTK-001…006. The build should *bind* those, not re-implement them; a standalone broker is warranted only for rules the access layer cannot express.
 4. **Profile ↔ ADO role coupling.** Is a profile pinned 1:1 to an ADO role/specialization, or can a role compose multiple profiles?
-5. **Relationship to WS-012 orchestrator retirement** (ADO §10) and the shelved `planning_item.area` column — any interaction?
+5. **Relationship to WS-012 orchestrator retirement** (ADO §10) and the shelved `planning_item.area` column — any interaction? (The PM substrate that shipped, `pm.py`, reads dependencies from `blocked_by` edges, not the `planning_item.area` column, so the registry has no new dependency on it.)
 
 ---
 
@@ -179,3 +187,16 @@ The `illustrative/` folder holds the originating conversation's artifacts. They 
 - `seed_v2_0_agent_registry.yaml` — illustrative seed with the (wrong-layer) generic roster, kept as a pattern example.
 - `agent_runtime.py` — illustrative resolver + broker; standalone, not access-layer-integrated.
 - `smoke_test.py` — exercises the reference logic against the illustrative SQLite schema; passes.
+
+---
+
+## 12. The registry↔runtime seam (added v0.2)
+
+ADO §10 defers **two** distinct things, and this PRD covers only the first. Keeping the boundary explicit prevents the registry from being mistaken for the whole job.
+
+- **The registry (this PRD) *holds and resolves*.** It is a data store + a read path: profiles, shared skill/rule catalogs, bindings, and a resolver that composes a profile identifier into a *contract* (system prompt + tool set + enforced ruleset + version stamp). Building it makes capability **queryable, versioned, and centrally editable**. It does not, by itself, make any agent run.
+- **The runtime (a separate §10 follow-on) *injects and runs*.** It is the executor: take a contract, **spin up an actual agent session** (a Claude Code instance, a Claude.ai conversation, or an API-driven Anthropic-SDK loop) with that system prompt and those tools bound, point it at a claimed Work Task or a dispatched Planning Item, and let it drive the substrate endpoints (`decompose`, `scope`, `start-execution`, `complete-phase`, `dispatch`, `phase-overview`, `backlog`). The runtime is where the `session_works_work_task` edge, the claim/release lifecycle, and the pull-based dispatch (ADO §4.5) actually fire.
+
+**Why this matters for sequencing.** A registry with no runtime is an inert catalog nothing reads; a runtime with no registry can run off hardcoded prompts (less clean, but functional). The cheapest way to de-risk the whole layer is therefore **not** to build the registry first, but to prove **one** agent end-to-end: hand-write one role's system prompt (e.g. the Development Phase Specialist or a storage Area Specialist), bind it to the substrate tools it needs, wire the contract by hand (no registry), and run it for real against a throwaway Planning Item. Once an agent prompt is shown to correctly drive the substrate, the registry has a *proven* artifact to catalog and version — and several open questions (§10.3–10.4) answer themselves from real use. Recommended order: **prove one agent (runtime slice) → then build this registry to hold the proven prompts.**
+
+**The tool-skills are concrete now.** When v0.1 was written the substrate did not yet exist, so "tool skill (a capability with an I/O contract and a backing callable)" was abstract. As of v0.2 the backing callables are the shipped endpoints/MCP tools from WTK-002…006. A worked binding: the **Development Phase Specialist** profile's tool-skills are `GET /workstreams/{id}/prior-phase-outputs` (read its feed-forward context) and `POST /workstreams/{id}/scope` (record its Work Tasks); the **PI Lead** profile's are `phase-overview` + `start-execution` + `complete-phase`; the **Project Manager** profile's are `backlog` + `dispatch`. The registry binds these per profile; the runtime makes them callable inside a live agent.
