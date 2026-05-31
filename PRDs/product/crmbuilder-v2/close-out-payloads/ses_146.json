@@ -1,0 +1,97 @@
+{
+  "label": "SES-146 / CNV-048 close-out — additional link/related-record UI enhancement Planning Items under PRJ-016 (Improved link UI). Governance-only session (no code, no decisions). PI-120 render Workstream-panel child Work Tasks as a grid like References; PI-121 per-row 'Open <item type>' action opening a related record's full view in a separate non-modal window. All Draft, item_type pending_work, each attached to PRJ-016 via planning_item_belongs_to_project; decomposition into Workstreams/Work Tasks deferred until scoped.",
+  "session": {
+    "session_identifier": "SES-146",
+    "session_title": "Capture further link/related-record UI enhancement Planning Items under PRJ-016",
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "runner": "claude-code",
+      "kind": "governance"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_status": "complete",
+    "session_executive_summary": "Claude Code governance session capturing further related-record UI enhancements under PRJ-016 (Improved link UI), continuing SES-145. No code and no decisions — the product is governance records. PI-120 renders the v2 desktop Workstream panel's child Work Tasks as a grid (as References already render) instead of a bare count. PI-121 adds a per-row 'Open <item type>' action across the related-record grids that opens an item's full view in a separate non-modal window, with no limit on concurrent windows. Both PIs are Draft, item_type pending_work, attached to PRJ-016 via planning_item_belongs_to_project; decomposition deferred until scoped.",
+    "session_description": "Continuation of the PRJ-016 backlog-capture begun in SES-145. Doug continued adding link/related-record UI enhancements to PRJ-016 (the 'Improved link UI' Project). This round targets the v2 desktop governance UI: (PI-120) on the Workstream view panel the child Work Tasks are shown only as a count, whereas References render as a reviewable grid, so render the Work Tasks as a grid using the same pattern as the References grid; and (PI-121) add a per-row 'Open <item type>' action across the related-record grids (links/references, Work Tasks, Planning Items, etc.) that opens that item's full view page in a separate, non-modal window, so the user can inspect a related record's full detail without leaving the originating item view and can open as many such windows as their system supports. Doug's chosen granularity remains 'Planning Items only' — one PI per enhancement at Draft status, decomposition into Workstreams/Work Tasks deferred until scoped. Claude authored the Planning Item(s) below, each item_type pending_work, status Draft, with an executive_summary, and attached each to PRJ-016 via a planning_item_belongs_to_project reference. The session belongs to PRJ-016 (session_belongs_to_project) and follows from SES-145. No decisions were made and no code was changed; the deliverable is the additional backlog item(s) under PRJ-016.",
+    "references": []
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-048",
+    "conversation_title": "Add further related-record UI enhancement Planning Items to PRJ-016",
+    "conversation_purpose": "Capture, as Draft Planning Items under PRJ-016 (Improved link UI), additional related-record display enhancements Doug wants in the v2 desktop UI — recorded via the new ADO governance procedures, decomposition deferred.",
+    "conversation_description": "Continuing from SES-145/CNV-047. Doug requested (PI-120) that the Workstream view panel render its child Work Tasks as a reviewable grid (matching the References grid) instead of a bare count, and (PI-121) a per-row 'Open <item type>' action across the related-record grids that opens a related record's full view in a separate non-modal window (unlimited concurrent windows). Authored PI-120 and PI-121 (Draft, item_type pending_work) and linked each to PRJ-016 via planning_item_belongs_to_project. No code, no decisions.",
+    "conversation_summary": "Further link/related-record UI enhancement Planning Items captured as Draft under PRJ-016: PI-120 render Workstream-panel child Work Tasks as a grid like References; PI-121 per-row 'Open <item type>' action opening a related record's full view in a separate non-modal window. Attached via planning_item_belongs_to_project; decomposition deferred. Governance-only — no code, no decisions.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-048",
+        "target_type": "session",
+        "target_id": "SES-146",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [
+    {
+      "identifier": "PI-120",
+      "title": "Workstream panel: render child Work Tasks as a grid (like References), not just a count",
+      "item_type": "pending_work",
+      "status": "Draft",
+      "description": "On the Workstream view panel in the v2 desktop UI, the child Work Tasks are currently surfaced only as a count/number — the way References were before they became a grid. Render the Work Tasks as a grid using the same pattern as the existing References grid, so a user can quickly review each Work Task (identifier, title, work_task_area, status, claim state) inline without leaving the panel. Reuse the References grid component/pattern rather than building a new one. A related-record-display enhancement under PRJ-016; complements the link-panel grid enhancements PI-116..PI-119.",
+      "executive_summary": "On the Workstream view panel in the v2 desktop UI, child Work Tasks are shown only as a number, the way References were before they became a grid. This enhancement renders the Work Tasks as a grid using the same pattern as the References grid, so a user can quickly review each Work Task — identifier, title, area, status, claim state — at a glance without leaving the panel. Recorded as a Draft Planning Item under PRJ-016; decomposition into Workstreams/Work Tasks deferred until scoped."
+    },
+    {
+      "identifier": "PI-121",
+      "title": "Per-row 'Open <item type>' action: open a related record's full view in a separate non-modal window",
+      "item_type": "pending_work",
+      "status": "Draft",
+      "description": "On the related-record grids in the v2 desktop UI — links/references, child Work Tasks, Planning Items, and other relations — add a per-row 'Open <item type>' action that opens that item's full view (detail) page in a separate, independent window. The window is non-modal and persistent so the user keeps the originating item's view open and can inspect the related record's complete details without navigating away. The user may open as many such windows concurrently as their system supports — independently positioned, no artificial limit. The action label reflects the row's item type (e.g. 'Open Work Task', 'Open Planning Item'). A related-record-display enhancement under PRJ-016; pairs with the related-record grids in PI-116..PI-120.",
+      "executive_summary": "Adds a per-row 'Open <item type>' action to the related-record grids in the v2 desktop UI (links/references, child Work Tasks, Planning Items, and other relations) that opens that item's full view page in a separate, non-modal window. The user keeps the originating item open and reviews the related record's complete details without navigating away, and can open as many windows concurrently as their system supports. The action label reflects the row's item type. Recorded as a Draft Planning Item under PRJ-016; decomposition deferred until scoped."
+    }
+  ],
+  "commits": [],
+  "decisions": [],
+  "references": [
+    {
+      "source_type": "session",
+      "source_id": "SES-146",
+      "target_type": "project",
+      "target_id": "PRJ-016",
+      "relationship": "session_belongs_to_project"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-146",
+      "target_type": "session",
+      "target_id": "SES-145",
+      "relationship": "session_follows_from"
+    },
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-048",
+      "target_type": "project",
+      "target_id": "PRJ-016",
+      "relationship": "conversation_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-120",
+      "target_type": "project",
+      "target_id": "PRJ-016",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-121",
+      "target_type": "project",
+      "target_id": "PRJ-016",
+      "relationship": "planning_item_belongs_to_project"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": []
+}

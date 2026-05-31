@@ -1,0 +1,24 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_146.json
+Label:  SES-146 / CNV-048 close-out — additional link/related-record UI enhancement Planning Items under PRJ-016 (Improved link UI). Governance-only session (no code, no decisions). PI-120 render Workstream-panel child Work Tasks as a grid like References; PI-121 per-row 'Open <item type>' action opening a related record's full view in a separate non-modal window. All Draft, item_type pending_work, each attached to PRJ-016 via planning_item_belongs_to_project; decomposition into Workstreams/Work Tasks deferred until scoped. [STAGING — not yet applied; more PIs may be appended this round.]
+Deposit event: DEP-141
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-048 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== planning_items (2 records) ===
+  ✓ POST planning_items  PI-120 (HTTP 201)
+  ✓ POST planning_items  PI-121 (HTTP 201)
+
+=== references (4 records) ===
+  ✓ POST references  SES-146 session_follows_from SES-145 (HTTP 201)
+  ✓ POST references  CNV-048 conversation_belongs_to_project PRJ-016 (HTTP 201)
+  ✓ POST references  PI-120 planning_item_belongs_to_project PRJ-016 (HTTP 201)
+  ✓ POST references  PI-121 planning_item_belongs_to_project PRJ-016 (HTTP 201)
+
+✓ All 8 operations complete.
+
+✓ Recorded apply as deposit_event DEP-141 (HTTP 201).
