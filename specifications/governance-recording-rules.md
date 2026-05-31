@@ -6,6 +6,23 @@
 **Scope:** All sessions and conversations operating against any V2-tracked engagement, present and future (CRMBUILDER dogfood, Cleveland Business Mentors, anything to come). Authoritative for record-authoring discipline; non-authoritative for stakeholder-facing interview conduct (see `PRDs/process/conduct/charter.md`).
 **See also:** `PRDs/process/conduct/charter.md` (interview conduct — orthogonal scope), `PRDs/process/conduct/kickoff.md` (interview pre-session priming), `PRDs/process/conduct/question-library.md` (interview worked examples).
 
+> **⚠️ PI-112 model change (05-31-26) — read before authoring.** The governance
+> & delivery model was migrated (decisions DEC-340..349; see
+> `PRDs/product/crmbuilder-v2/governance-redesign-target-model.md` v0.4 and the
+> PI-112 note in `CLAUDE.md`). **Where this document says "workstream" as the
+> long-running container, it now means `Project`** — identifier prefix `WS-` →
+> **`PRJ-`**, route `/projects`, field prefix `project_*`. The membership
+> reference kinds were renamed: a session's mandatory edge is now
+> **`session_belongs_to_project`** and a conversation's is
+> **`conversation_belongs_to_project`** (and `project_planned_in_reference_book`).
+> Separately, the word **"Workstream" now also names a NEW entity** — a
+> delivery *phase* of one Planning Item (`WSK-`) — with single-area **Work Task**
+> children (`WTK-`); these are distinct from the renamed Project container. Also:
+> Planning Item statuses are now the six-state lifecycle (`Draft` … `Resolved`),
+> not `Open`. The operational kind/route/identifier names below have been updated
+> to the new model; the surrounding hierarchy prose still reads against the old
+> container framing and is corrected by this banner + the target-model doc.
+
 ---
 
 ## 0. Purpose, Scope, and Applicability
@@ -39,7 +56,7 @@
 1. Read the engagement's `CLAUDE.md` (repo-level — `crmbuilder/CLAUDE.md` for dogfood, the client repo's `CLAUDE.md` for client work).
 2. Read **this document** (`specifications/governance-recording-rules.md`) before authoring any governance record.
 3. Capture identifier heads via the canonical curl block against `http://127.0.0.1:8765` — Sessions, Conversations, Decisions, Planning Items, Work Tickets, Workstreams.
-4. Identify the parent workstream (WS-NNN) the conversation belongs to.
+4. Identify the parent workstream (PRJ-NNN) the conversation belongs to.
 5. Run an API health check (any 200 OK against the engagement's API).
 6. `git pull --ff-only origin main` (or rebase if a divergent local branch exists).
 
@@ -51,15 +68,15 @@ A canonical kickoff prompt template that bakes these in by default is a follow-o
 
 **When created.** A workstream is created at the moment a coherent multi-session body of work is recognized — orchestrator development, audit feature v1.2, catalog ingestion. One workstream may span weeks and many sessions. Workstreams sit above sessions and conversations in the V2 hierarchy.
 
-**Mechanism.** Direct API POST or MCP call. Workstreams are not bundled into close-out payloads under current convention (zero of 68 payloads in the snapshot mention workstreams). They are written directly via `POST /workstreams`. The desktop V2 UI is monitoring-only for workstreams as for everything else.
+**Mechanism.** Direct API POST or MCP call. Workstreams are not bundled into close-out payloads under current convention (zero of 68 payloads in the snapshot mention workstreams). They are written directly via `POST /projects`. The desktop V2 UI is monitoring-only for workstreams as for everything else.
 
-**Required fields.** `workstream_identifier` (WS-NNN, next available head), `workstream_name`, `workstream_purpose`, `workstream_description`, `workstream_status` (initial: `in_flight`), `workstream_started_at`.
+**Required fields.** `project_identifier` (PRJ-NNN, next available head), `project_name`, `project_purpose`, `project_description`, `project_status` (initial: `in_flight`), `project_started_at`.
 
 **Lifecycle.** `in_flight` → `complete`. Terminal states also include `cancelled` and `superseded`, each with a corresponding timestamp field.
 
-**Conversation parentage.** Every conversation record carries a `conversation_belongs_to_workstream` reference to its parent workstream. The parent workstream identifier is captured at session-opening handshake alongside identifier heads.
+**Conversation parentage.** Every conversation record carries a `conversation_belongs_to_project` reference to its parent workstream. The parent workstream identifier is captured at session-opening handshake alongside identifier heads.
 
-**Scope-change decisions.** When a session decides to widen, narrow, or merge workstream scope (precedent: DEC-309 bundled executive-summary work into WS-012 rather than creating a separate workstream), the change is authored as a Decision in the normal moment-of-decision flow. The workstream record's `workstream_purpose` or `workstream_description` is updated in the same session via direct API PATCH.
+**Scope-change decisions.** When a session decides to widen, narrow, or merge workstream scope (precedent: DEC-309 bundled executive-summary work into PRJ-012 rather than creating a separate workstream), the change is authored as a Decision in the normal moment-of-decision flow. The workstream record's `project_purpose` or `project_description` is updated in the same session via direct API PATCH.
 
 ---
 
@@ -115,7 +132,7 @@ Unclear cases get clarified, not assumed. The cost of asking is one turn; the co
 
 **Required references at authoring time.**
 - `conversation_belongs_to_session` → parent SES-NNN (captured at session open).
-- `conversation_belongs_to_workstream` → parent workstream WS-NNN (inherited from the session's workstream by default; override only when a conversation legitimately addresses different workstream).
+- `conversation_belongs_to_project` → parent workstream PRJ-NNN (inherited from the session's workstream by default; override only when a conversation legitimately addresses different workstream).
 - For continuation conversations: `conversation_follows_from` → the prior CONV-NNN in the prior session whose topic this conversation continues.
 
 **Transcript capture infeasibility (DEC-025).** Per-conversation transcript export from Claude.ai is not currently available. Conversation content is captured by structured prose in the conversation's `conversation_description` and in the parent session's `topics_covered`, not by transcript ingestion.
@@ -156,9 +173,9 @@ Unclear cases get clarified, not assumed. The cost of asking is one turn; the co
 
 **Required four-tuple plus relationship.** `source_type`, `source_id`, `target_type`, `target_id`, `relationship`. Field-key gotcha: the **API payload uses `relationship`**; the **DB column is `relationship_kind`**. Apply scripts that filter or read references match on `relationship`; raw DB queries match on `relationship_kind` (SES-051 / SES-052 precedent — SES-052's first apply 422'd on this exact mismatch).
 
-**Minimum references per session.** Every Decision authored in the session emits a `decided_in` reference back to the session's SES. Every Conversation record emits `conversation_belongs_to_workstream` to its parent workstream. Every supersession or withdrawal Decision emits a `supersedes` or `withdraws` reference to the affected record. Beyond these minima, add `is_about` and other governance references as the conversation surfaces them.
+**Minimum references per session.** Every Decision authored in the session emits a `decided_in` reference back to the session's SES. Every Conversation record emits `conversation_belongs_to_project` to its parent workstream. Every supersession or withdrawal Decision emits a `supersedes` or `withdraws` reference to the affected record. Beyond these minima, add `is_about` and other governance references as the conversation surfaces them.
 
-**Common relationship vocabulary.** `decided_in`, `is_about`, `supersedes`, `withdraws`, `resolved_by`, `conversation_belongs_to_workstream`, `workstream_planned_in_reference_book`. The full vocabulary is registered in the V2 access layer's `vocab.py`; new relationship kinds require a vocab-registration step.
+**Common relationship vocabulary.** `decided_in`, `is_about`, `supersedes`, `withdraws`, `resolved_by`, `conversation_belongs_to_project`, `project_planned_in_reference_book`. The full vocabulary is registered in the V2 access layer's `vocab.py`; new relationship kinds require a vocab-registration step.
 
 ---
 
@@ -221,7 +238,7 @@ A short catalog of patterns that produce broken governance records and how to av
 
 **PI filed against the wrong category.** What should have been authored as a Decision (a choice between alternatives with a rationale) gets filed as a PI (a pending work item). Mitigation: ask "is there a choice being made here, or is there only work to be scheduled?" Choice → DEC. Work-to-schedule → PI.
 
-**Conversation authored without parent workstream reference.** A CONV record exists in V2 but `conversation_belongs_to_workstream` is missing; orphan conversation. Mitigation: capture the parent workstream identifier at session-opening handshake, alongside identifier heads.
+**Conversation authored without parent workstream reference.** A CONV record exists in V2 but `conversation_belongs_to_project` is missing; orphan conversation. Mitigation: capture the parent workstream identifier at session-opening handshake, alongside identifier heads.
 
 **Topic shift without stop-and-log.** A session begins on topic A, drifts into topic B without authoring the topic-A conversation record, and emits a single CONV at close-out that conflates both topics. The governance record loses the boundary; later readers cannot tell where A ended and B began, and decisions made in B are attributed to A's conversation. Mitigation: recognize the boundary heuristics in §4 and stop. Author the current CONV as `concluded` before continuing, or suggest a new session.
 
