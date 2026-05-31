@@ -1,0 +1,32 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_135.json
+Label:  SES-135 / CNV-037 close-out — YAML schema v1.3 Section 12 (RBAC) drafting. RE-KEYED from a parallel SES-133/CNV-035 on origin/main that collided with the PI-112 redesign's identifiers: SES-133->SES-135, CNV-035->CNV-037, DEC-345..347->DEC-350..352, WS-015->PRJ-017 (Project), and references reshaped to the post-rename model (conversation_belongs_to_project, session_belongs_to_project). Records 3 decisions (Section 12 placement, no file-type discriminator, content-based deploy ordering). Belongs to Project PRJ-017. The schema content (06c3605) is already an ancestor on main.
+Deposit event: DEP-129
+
+Close-out payload validation: 0 error(s), 4 warning(s).
+  [WARN]  identifier_heads: CNV-037 is at-or-below the live head (CNV head's next free slot is CNV-038). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+  [WARN]  identifier_heads: DEC-350 is at-or-below the live head (DEC head's next free slot is DEC-353). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+  [WARN]  identifier_heads: DEC-351 is at-or-below the live head (DEC head's next free slot is DEC-353). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+  [WARN]  identifier_heads: DEC-352 is at-or-below the live head (DEC head's next free slot is DEC-353). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+
+=== conversation (1 record) ===
+  · POST conversation  CNV-037 already present (HTTP 409) — skipping
+
+=== session (1 record) ===
+
+=== commits (1 record) ===
+
+=== decisions (3 records) ===
+  · POST decisions  DEC-350 already present (HTTP 409) — skipping
+  · POST decisions  DEC-351 already present (HTTP 409) — skipping
+  · POST decisions  DEC-352 already present (HTTP 409) — skipping
+
+=== references (5 records) ===
+  · POST references  CNV-037 conversation_belongs_to_project PRJ-017 already present (HTTP 409) — skipping
+  · POST references  DEC-350 decided_in CNV-037 already present (HTTP 409) — skipping
+  · POST references  DEC-351 decided_in CNV-037 already present (HTTP 409) — skipping
+  · POST references  DEC-352 decided_in CNV-037 already present (HTTP 409) — skipping
+  · POST references  SES-135 session_follows_from SES-134 already present (HTTP 409) — skipping
+
+
+✓ Recorded apply as deposit_event DEP-129 (HTTP 201).
