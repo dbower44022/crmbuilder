@@ -1,0 +1,29 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_141.json
+Label:  SES-141 / CNV-043 close-out — WTK-003 ADO phase-specialist substrate. repositories/scoping.py: scope_workstream (create the phase's Work Tasks + drive Planned->Scoping->Ready, or ->Not Applicable when empty) + prior_phase_outputs (feed-forward read). Endpoints POST /workstreams/{id}/scope and GET /workstreams/{id}/prior-phase-outputs. Plus an end-to-end integration test (decompose->scope->execute). DEC-363 records the interface. WTK-003 (under WSK-001) driven to Complete; ADDRESSES (not resolves) PI-114 under PRJ-018. Code on main as commit c1881fe.
+Deposit event: DEP-136
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-043 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-363 (HTTP 201)
+
+=== references (4 records) ===
+  ✓ POST references  SES-141 session_works_work_task WTK-003 (HTTP 201)
+  ✓ POST references  CNV-043 conversation_belongs_to_project PRJ-018 (HTTP 201)
+  ✓ POST references  DEC-363 decided_in CNV-043 (HTTP 201)
+  ✓ POST references  SES-141 session_follows_from SES-140 (HTTP 201)
+
+=== addresses_planning_items (1 record) ===
+  ✓ POST addresses_planning_items  → PI-114 (HTTP 201)
+
+✓ All 9 operations complete.
+
+✓ Recorded apply as deposit_event DEP-136 (HTTP 201).

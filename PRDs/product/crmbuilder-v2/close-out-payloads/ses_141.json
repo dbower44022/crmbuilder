@@ -1,0 +1,111 @@
+{
+  "label": "SES-141 / CNV-043 close-out — WTK-003 ADO phase-specialist substrate. repositories/scoping.py: scope_workstream (create the phase's Work Tasks + drive Planned->Scoping->Ready, or ->Not Applicable when empty) + prior_phase_outputs (feed-forward read). Endpoints POST /workstreams/{id}/scope and GET /workstreams/{id}/prior-phase-outputs. Plus an end-to-end integration test (decompose->scope->execute). DEC-363 records the interface. WTK-003 (under WSK-001) driven to Complete; ADDRESSES (not resolves) PI-114 under PRJ-018. Code on main as commit c1881fe.",
+  "session": {
+    "session_identifier": "SES-141",
+    "session_title": "Build the ADO phase-specialist substrate + end-to-end test (WTK-003)",
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "runner": "claude-code",
+      "kind": "execution"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_status": "complete",
+    "session_executive_summary": "Claude Code execution session building WTK-003, the ADO phase-specialist substrate — the third Work Task of PI-114's Development phase (WSK-001). New access module repositories/scoping.py: scope_workstream (atomically create the phase's Work Tasks, each work_task_belongs_to_workstream, and drive the Workstream Planned->Scoping->Ready, or ->Not Applicable when the phase is evaluated empty) and prior_phase_outputs (the feed-forward read of earlier phases' Work Tasks). Endpoints POST /workstreams/{id}/scope and GET /workstreams/{id}/prior-phase-outputs. Added access + API tests and an end-to-end integration test (decompose->scope->execute). Full v2 suite green. DEC-363 records the interface. WTK-003 driven to Complete; addresses (not resolves) PI-114.",
+    "session_description": "Execution session continuing the PI-114 build in the same Claude Code thread, picking up the next increment Doug chose: the phase specialists (tier 3). The phase specialist is an LLM-judgment agent (its prompt/skill is §10 out-of-scope); this Work Task builds the deterministic SUBSTRATE it relies on. WTK-003 was created via direct POST /work-tasks under WSK-001 (work_task_belongs_to_workstream) and driven Planned -> Ready -> Claimed(CNV-043) -> In Progress -> Complete. The build added repositories/scoping.py: scope_workstream(workstream_id, work_tasks) records a scoping decision atomically — transition Planned->Scoping, create each Work Task spec (title + area, validated against System ∪ Engagement areas) with a work_task_belongs_to_workstream edge via the concurrency-safe autoassign-then-edge pattern, then Scoping->Ready when work was scoped or Scoping->Not Applicable when the list is empty (the §4.3 evaluated-empty assertion); requires the Workstream be Planned (409 otherwise — re-scoping is the Lead's additive replanning per §6, not a re-run). prior_phase_outputs(workstream_id) returns the Work Tasks of the PI's earlier phases (resolved via the workstream_belongs_to_planning_item edges + PHASE_SEQUENCE order) as the feed-forward context a specialist scopes against; empty for Architecture (first phase). Exposed as POST /workstreams/{id}/scope and GET /workstreams/{id}/prior-phase-outputs on the workstreams router. Tests: test_scoping.py (scope->Ready with edges, empty->Not Applicable, re-scope 409, unknown 404, feed-forward), test_scope_route.py (the two endpoints), and test_ado_end_to_end.py — a full integration walk of a PI: decompose into six phases, scope Architecture/Development/Testing/Deployment with Work Tasks (Development scoping against Architecture's feed-forward output) and Documentation/Data Migration as Not Applicable, then execute every Work Task (claim -> Complete) and drive every phase Workstream to Complete/Not Applicable. Full v2 suite green. DEC-363 records the interface. Work-Task readying and the Workstream Ready->In Progress->Complete gating are Lead-tier (the next Work Task), driven manually in the e2e test for now. The new endpoints go live on the next API restart. Addresses PI-114 without resolving it.",
+    "references": []
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-043",
+    "conversation_title": "Build the ADO phase-specialist substrate — scope + feed-forward (WTK-003)",
+    "conversation_purpose": "Implement the tier-3 phase-specialist substrate (design §2.1/§3.2/§4.3): the deterministic operations a phase specialist relies on to record its scope (create Work Tasks or assert Not Applicable) and to read prior phases' output, as access + API code with tests and an end-to-end walk, then drive WTK-003 to Complete and address PI-114.",
+    "conversation_description": "Built repositories/scoping.py (scope_workstream + prior_phase_outputs) and the POST /workstreams/{id}/scope and GET /workstreams/{id}/prior-phase-outputs endpoints. scope_workstream atomically creates a phase's Work Tasks and drives the Workstream Planned->Scoping->Ready (or ->Not Applicable when empty); prior_phase_outputs returns earlier phases' Work Tasks as feed-forward context. Added access + API tests and an end-to-end integration test (decompose->scope->execute). Full v2 suite green. Decided DEC-363 on the interface. Drove WTK-003 (under WSK-001) to Complete. Addresses (not resolves) PI-114.",
+    "conversation_summary": "ADO phase-specialist substrate delivered: scope_workstream records scope (Work Tasks or Not Applicable) atomically, prior_phase_outputs feeds it forward; two endpoints + an end-to-end integration test. WTK-003 Complete; PI-114 addressed. DEC-363 records the interface. Endpoints go live on the next API restart.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-043",
+        "target_type": "session",
+        "target_id": "SES-141",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [],
+  "commits": [
+    {
+      "commit_sha": "c1881fe9db85f7c2483ce6bc3f5ad5d38407852f",
+      "commit_message_first_line": "v2: WTK-003 — ADO phase-specialist substrate (scope + feed-forward)",
+      "commit_message_full": "v2: WTK-003 — ADO phase-specialist substrate (scope + feed-forward)\n\nImplements the tier-3 phase-specialist substrate (design §2.1/§3.2/§4.3).\nThe scope judgment is the LLM agent's (prompt §10 out-of-scope); this is\nthe deterministic substrate it relies on:\n\n- access/repositories/scoping.py:\n  - scope_workstream(ws, work_tasks): atomically create the phase's Work\n    Tasks (each work_task_belongs_to_workstream) and drive the Workstream\n    Planned->Scoping->Ready, or ->Not Applicable when the list is empty\n    (the §4.3 evaluated-empty assertion). Once-per-phase: 409 if the\n    Workstream is not Planned (re-scoping is the Lead's additive\n    replanning, §6). Work Tasks are born Planned (the Lead readies them\n    at execution, so nothing is pullable before its phase's gate opens).\n  - prior_phase_outputs(ws): the feed-forward read — earlier phases'\n    Work Tasks in canonical PHASE_SEQUENCE order.\n- POST /workstreams/{id}/scope, GET /workstreams/{id}/prior-phase-outputs\n  + WorkstreamScopeIn / WorkTaskSpecIn schemas.\n- Tests: test_scoping.py, test_scope_route.py, and test_ado_end_to_end.py\n  — a full integration walk (decompose -> scope every phase with\n  feed-forward + Not Applicable -> execute every Work Task -> terminal).\n\nFull v2 suite green (2260 passed). DEC-363 records the interface.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_files_changed_count": 6,
+      "commit_committed_at": "2026-05-31T15:40:18-04:00",
+      "commit_parent_shas": [
+        "954813585dfec42165e34bf6d558c69df9343302"
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "identifier": "DEC-363",
+      "title": "ADO phase-specialist substrate: scope_workstream records scope atomically (Work Tasks or Not Applicable); prior_phase_outputs feeds it forward",
+      "context": "Design §2.1/§3.2 define the phase specialist (tier 3): it evaluates a PI through one phase's lens and documents its scope by creating that phase's Work Tasks — possibly zero, the §4.3 Not Applicable assertion. The scope judgment is the LLM agent's and the agent prompt/skill is §10 out-of-scope, but the deterministic operations the specialist relies on needed a concrete interface, and the feed-forward input of §3.2 (each phase scopes against the accumulated prior phases) needed a read primitive.",
+      "decision": "Two operations in repositories/scoping.py. scope_workstream(workstream_id, work_tasks) records a scoping decision in one transaction: transition the Workstream Planned->Scoping, create each Work Task spec (title + area) with a work_task_belongs_to_workstream edge (concurrency-safe autoassign then edge-wire), then Scoping->Ready when any Work Task was created or Scoping->Not Applicable when the list is empty. It requires the Workstream be Planned and raises 409 otherwise — scoping is a once-per-phase action; re-scoping is the Lead's additive replanning (§6), not a re-run. prior_phase_outputs(workstream_id) returns the Work Tasks of the PI's earlier phases (resolved via workstream_belongs_to_planning_item + PHASE_SEQUENCE order), empty for the first phase. Exposed as POST /workstreams/{id}/scope and GET /workstreams/{id}/prior-phase-outputs. Work Tasks are created in Planned status; the Lead readies them when the phase actually executes.",
+      "alternatives_considered": "Create the Work Tasks already Ready (immediately pullable) — rejected: a Work Task must not be pullable before its phase executes, since the blocked_by gate sits on the Workstream; readying at scope time would let area specialists pull work out of a still-gated downstream phase. Treat re-scope as an idempotent merge — rejected: re-scoping is replanning, which §6 makes additive, reasoned, and Lead-driven, distinct from the specialist's one-shot scope; the 409 keeps the two paths separate. Place scope on the work-tasks router — rejected: the Workstream (the phase) is the subject of a scoping decision, so it belongs on the workstreams resource.",
+      "consequences": "New module repositories/scoping.py + two endpoints + WorkstreamScopeIn/WorkTaskSpecIn schemas; tests in test_scoping.py + test_scope_route.py, plus test_ado_end_to_end.py — a full integration walk (decompose -> scope every phase with feed-forward and Not Applicable -> execute every Work Task -> terminal) that pre-validates the substrate end to end. The Work-Task readying and the Workstream Ready->In Progress->Complete gating remain Lead-tier (the next Work Task under WSK-001), driven manually in the e2e test for now. The decomposer (WTK-002/DEC-362) feeds this; the PI Lead and Project Manager consume it next. Endpoints reachable after the running API restarts onto the new code.",
+      "executive_summary": "While building the ADO phase-specialist substrate (WTK-003), this decision settles its interface: scope_workstream records a specialist's scope in one transaction — create the phase's Work Tasks (each belonging to the Workstream) and drive Planned->Scoping->Ready, or ->Not Applicable for an evaluated-empty phase (§4.3) — and is once-per-phase (409 on re-scope, since re-scoping is the Lead's additive replanning). prior_phase_outputs gives the specialist its feed-forward context: the Work Tasks of the PI's earlier phases in canonical order. Work Tasks are born Planned (the Lead readies them at execution, so nothing is pullable before its phase's gate opens). Delivered with access + API tests and an end-to-end integration test.",
+      "decision_date": "2026-05-31",
+      "status": "Active"
+    }
+  ],
+  "references": [
+    {
+      "source_type": "session",
+      "source_id": "SES-141",
+      "target_type": "project",
+      "target_id": "PRJ-018",
+      "relationship": "session_belongs_to_project"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-141",
+      "target_type": "work_task",
+      "target_id": "WTK-003",
+      "relationship": "session_works_work_task"
+    },
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-043",
+      "target_type": "project",
+      "target_id": "PRJ-018",
+      "relationship": "conversation_belongs_to_project"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-363",
+      "target_type": "conversation",
+      "target_id": "CNV-043",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-141",
+      "target_type": "session",
+      "target_id": "SES-140",
+      "relationship": "session_follows_from"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": [
+    {
+      "planning_item_identifier": "PI-114"
+    }
+  ]
+}

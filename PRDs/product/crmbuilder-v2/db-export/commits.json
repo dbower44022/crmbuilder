@@ -1651,5 +1651,24 @@
     "commit_session_id": "SES-140",
     "commit_sha": "8f70e3e2a4e58a5a044c0943aeee73351ad73b76",
     "commit_updated_at": "2026-05-31T19:23:01.160616"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-05-31T15:40:18-04:00",
+    "commit_created_at": "2026-05-31T19:40:29.231776",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 6,
+    "commit_identifier": "CM-0088",
+    "commit_message_first_line": "v2: WTK-003 — ADO phase-specialist substrate (scope + feed-forward)",
+    "commit_message_full": "v2: WTK-003 — ADO phase-specialist substrate (scope + feed-forward)\n\nImplements the tier-3 phase-specialist substrate (design §2.1/§3.2/§4.3).\nThe scope judgment is the LLM agent's (prompt §10 out-of-scope); this is\nthe deterministic substrate it relies on:\n\n- access/repositories/scoping.py:\n  - scope_workstream(ws, work_tasks): atomically create the phase's Work\n    Tasks (each work_task_belongs_to_workstream) and drive the Workstream\n    Planned->Scoping->Ready, or ->Not Applicable when the list is empty\n    (the §4.3 evaluated-empty assertion). Once-per-phase: 409 if the\n    Workstream is not Planned (re-scoping is the Lead's additive\n    replanning, §6). Work Tasks are born Planned (the Lead readies them\n    at execution, so nothing is pullable before its phase's gate opens).\n  - prior_phase_outputs(ws): the feed-forward read — earlier phases'\n    Work Tasks in canonical PHASE_SEQUENCE order.\n- POST /workstreams/{id}/scope, GET /workstreams/{id}/prior-phase-outputs\n  + WorkstreamScopeIn / WorkTaskSpecIn schemas.\n- Tests: test_scoping.py, test_scope_route.py, and test_ado_end_to_end.py\n  — a full integration walk (decompose -> scope every phase with\n  feed-forward + Not Applicable -> execute every Work Task -> terminal).\n\nFull v2 suite green (2260 passed). DEC-363 records the interface.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "954813585dfec42165e34bf6d558c69df9343302"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-141",
+    "commit_sha": "c1881fe9db85f7c2483ce6bc3f5ad5d38407852f",
+    "commit_updated_at": "2026-05-31T19:40:29.231778"
   }
 ]

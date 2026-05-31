@@ -28,5 +28,20 @@
     "work_task_status": "Complete",
     "work_task_title": "ADO structural decomposer — decompose a PI into its six phase Workstreams",
     "work_task_updated_at": "2026-05-31T19:17:34.027828"
+  },
+  {
+    "work_task_area": "access",
+    "work_task_claimed_at": "2026-05-31T19:34:36.377958",
+    "work_task_claimed_by": "CNV-043",
+    "work_task_completed_at": "2026-05-31T19:34:37.341958",
+    "work_task_created_at": "2026-05-31T19:34:35.707290",
+    "work_task_deleted_at": null,
+    "work_task_description": "Implement the tier-3 phase-specialist substrate (design §2.1/§3.2/§4.3): repositories/scoping.py with scope_workstream (atomically create the phase's Work Tasks with work_task_belongs_to_workstream edges and drive the Workstream Planned->Scoping->Ready, or Planned->Scoping->Not Applicable for an evaluated-empty phase) and prior_phase_outputs (the feed-forward read of earlier phases' Work Tasks). Endpoints POST /workstreams/{id}/scope and GET /workstreams/{id}/prior-phase-outputs. Access + API tests + an end-to-end integration test walking a PI decompose->scope->execute. The agent prompts themselves are §10 out-of-scope.",
+    "work_task_identifier": "WTK-003",
+    "work_task_notes": null,
+    "work_task_started_at": "2026-05-31T19:34:37.019312",
+    "work_task_status": "Complete",
+    "work_task_title": "ADO phase-specialist substrate — scope_workstream + prior_phase_outputs",
+    "work_task_updated_at": "2026-05-31T19:34:37.342064"
   }
 ]

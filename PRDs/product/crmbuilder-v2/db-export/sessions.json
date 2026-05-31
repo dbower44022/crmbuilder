@@ -2837,5 +2837,33 @@
     "session_superseded_at": null,
     "session_title": "Build the ADO structural decomposer (WTK-002)",
     "session_updated_at": "2026-05-31T19:23:00.844511"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-31T19:40:28.888716",
+    "session_created_at": "2026-05-31T19:40:28.888454",
+    "session_deleted_at": null,
+    "session_description": "Execution session continuing the PI-114 build in the same Claude Code thread, picking up the next increment Doug chose: the phase specialists (tier 3). The phase specialist is an LLM-judgment agent (its prompt/skill is §10 out-of-scope); this Work Task builds the deterministic SUBSTRATE it relies on. WTK-003 was created via direct POST /work-tasks under WSK-001 (work_task_belongs_to_workstream) and driven Planned -> Ready -> Claimed(CNV-043) -> In Progress -> Complete. The build added repositories/scoping.py: scope_workstream(workstream_id, work_tasks) records a scoping decision atomically — transition Planned->Scoping, create each Work Task spec (title + area, validated against System ∪ Engagement areas) with a work_task_belongs_to_workstream edge via the concurrency-safe autoassign-then-edge pattern, then Scoping->Ready when work was scoped or Scoping->Not Applicable when the list is empty (the §4.3 evaluated-empty assertion); requires the Workstream be Planned (409 otherwise — re-scoping is the Lead's additive replanning per §6, not a re-run). prior_phase_outputs(workstream_id) returns the Work Tasks of the PI's earlier phases (resolved via the workstream_belongs_to_planning_item edges + PHASE_SEQUENCE order) as the feed-forward context a specialist scopes against; empty for Architecture (first phase). Exposed as POST /workstreams/{id}/scope and GET /workstreams/{id}/prior-phase-outputs on the workstreams router. Tests: test_scoping.py (scope->Ready with edges, empty->Not Applicable, re-scope 409, unknown 404, feed-forward), test_scope_route.py (the two endpoints), and test_ado_end_to_end.py — a full integration walk of a PI: decompose into six phases, scope Architecture/Development/Testing/Deployment with Work Tasks (Development scoping against Architecture's feed-forward output) and Documentation/Data Migration as Not Applicable, then execute every Work Task (claim -> Complete) and drive every phase Workstream to Complete/Not Applicable. Full v2 suite green. DEC-363 records the interface. Work-Task readying and the Workstream Ready->In Progress->Complete gating are Lead-tier (the next Work Task), driven manually in the e2e test for now. The new endpoints go live on the next API restart. Addresses PI-114 without resolving it.",
+    "session_ended_at": null,
+    "session_executive_summary": "Claude Code execution session building WTK-003, the ADO phase-specialist substrate — the third Work Task of PI-114's Development phase (WSK-001). New access module repositories/scoping.py: scope_workstream (atomically create the phase's Work Tasks, each work_task_belongs_to_workstream, and drive the Workstream Planned->Scoping->Ready, or ->Not Applicable when the phase is evaluated empty) and prior_phase_outputs (the feed-forward read of earlier phases' Work Tasks). Endpoints POST /workstreams/{id}/scope and GET /workstreams/{id}/prior-phase-outputs. Added access + API tests and an end-to-end integration test (decompose->scope->execute). Full v2 suite green. DEC-363 records the interface. WTK-003 driven to Complete; addresses (not resolves) PI-114.",
+    "session_identifier": "SES-141",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "kind": "execution",
+      "runner": "claude-code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "Build the ADO phase-specialist substrate + end-to-end test (WTK-003)",
+    "session_updated_at": "2026-05-31T19:40:28.888802"
   }
 ]

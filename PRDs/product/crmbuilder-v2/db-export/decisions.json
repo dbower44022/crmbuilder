@@ -5914,5 +5914,22 @@
     "supersedes_id": null,
     "title": "ADO structural decomposer is a once-only, all-phases, serial-blocked_by step at POST /planning-items/{id}/decompose",
     "updated_at": "2026-05-31T19:23:01.472545"
+  },
+  {
+    "alternatives_considered": "Create the Work Tasks already Ready (immediately pullable) — rejected: a Work Task must not be pullable before its phase executes, since the blocked_by gate sits on the Workstream; readying at scope time would let area specialists pull work out of a still-gated downstream phase. Treat re-scope as an idempotent merge — rejected: re-scoping is replanning, which §6 makes additive, reasoned, and Lead-driven, distinct from the specialist's one-shot scope; the 409 keeps the two paths separate. Place scope on the work-tasks router — rejected: the Workstream (the phase) is the subject of a scoping decision, so it belongs on the workstreams resource.",
+    "consequences": "New module repositories/scoping.py + two endpoints + WorkstreamScopeIn/WorkTaskSpecIn schemas; tests in test_scoping.py + test_scope_route.py, plus test_ado_end_to_end.py — a full integration walk (decompose -> scope every phase with feed-forward and Not Applicable -> execute every Work Task -> terminal) that pre-validates the substrate end to end. The Work-Task readying and the Workstream Ready->In Progress->Complete gating remain Lead-tier (the next Work Task under WSK-001), driven manually in the e2e test for now. The decomposer (WTK-002/DEC-362) feeds this; the PI Lead and Project Manager consume it next. Endpoints reachable after the running API restarts onto the new code.",
+    "context": "Design §2.1/§3.2 define the phase specialist (tier 3): it evaluates a PI through one phase's lens and documents its scope by creating that phase's Work Tasks — possibly zero, the §4.3 Not Applicable assertion. The scope judgment is the LLM agent's and the agent prompt/skill is §10 out-of-scope, but the deterministic operations the specialist relies on needed a concrete interface, and the feed-forward input of §3.2 (each phase scopes against the accumulated prior phases) needed a read primitive.",
+    "created_at": "2026-05-31T19:40:29.556909",
+    "decision": "Two operations in repositories/scoping.py. scope_workstream(workstream_id, work_tasks) records a scoping decision in one transaction: transition the Workstream Planned->Scoping, create each Work Task spec (title + area) with a work_task_belongs_to_workstream edge (concurrency-safe autoassign then edge-wire), then Scoping->Ready when any Work Task was created or Scoping->Not Applicable when the list is empty. It requires the Workstream be Planned and raises 409 otherwise — scoping is a once-per-phase action; re-scoping is the Lead's additive replanning (§6), not a re-run. prior_phase_outputs(workstream_id) returns the Work Tasks of the PI's earlier phases (resolved via workstream_belongs_to_planning_item + PHASE_SEQUENCE order), empty for the first phase. Exposed as POST /workstreams/{id}/scope and GET /workstreams/{id}/prior-phase-outputs. Work Tasks are created in Planned status; the Lead readies them when the phase actually executes.",
+    "decision_date": "2026-05-31",
+    "executive_summary": "While building the ADO phase-specialist substrate (WTK-003), this decision settles its interface: scope_workstream records a specialist's scope in one transaction — create the phase's Work Tasks (each belonging to the Workstream) and drive Planned->Scoping->Ready, or ->Not Applicable for an evaluated-empty phase (§4.3) — and is once-per-phase (409 on re-scope, since re-scoping is the Lead's additive replanning). prior_phase_outputs gives the specialist its feed-forward context: the Work Tasks of the PI's earlier phases in canonical order. Work Tasks are born Planned (the Lead readies them at execution, so nothing is pullable before its phase's gate opens). Delivered with access + API tests and an end-to-end integration test.",
+    "id": 350,
+    "identifier": "DEC-363",
+    "rationale": "",
+    "status": "Active",
+    "superseded_by_id": null,
+    "supersedes_id": null,
+    "title": "ADO phase-specialist substrate: scope_workstream records scope atomically (Work Tasks or Not Applicable); prior_phase_outputs feeds it forward",
+    "updated_at": "2026-05-31T19:40:29.556911"
   }
 ]
