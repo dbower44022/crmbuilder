@@ -2931,5 +2931,56 @@
       "work_tickets": 0
     },
     "deposit_event_title": "Apply of COP-135, 2026-05-31T03:47:53+00:00"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "0.7.0",
+      "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_136.json",
+      "runner": "claude_code"
+    },
+    "deposit_event_created_at": "2026-05-31T04:23:30.044340",
+    "deposit_event_description": "Applied COP-136. Outcome: failure at step commits. Records written before failure: 1 conversations, 3 decisions, 1 planning_items, 1 sessions.",
+    "deposit_event_error_info": {
+      "http_status": 422,
+      "kind": "http_error",
+      "message": "[{\"code\": \"request_validation_error\", \"field\": \"body.commit_committed_at\", \"message\": \"Field required\"}, {\"code\": \"request_validation_error\", \"field\": \"body.commit_parent_shas\", \"message\": \"Field required\"}]",
+      "step": "commits"
+    },
+    "deposit_event_identifier": "DEP-130",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_130.log",
+    "deposit_event_outcome": "failure",
+    "deposit_event_records_summary": {
+      "commits": 0,
+      "conversations": 1,
+      "decisions": 3,
+      "planning_items": 1,
+      "references": 0,
+      "sessions": 1,
+      "work_tickets": 0
+    },
+    "deposit_event_title": "Apply of COP-136, 2026-05-31T04:23:30+00:00"
+  },
+  {
+    "deposit_event_apply_context": {
+      "apply_script_version": "0.7.0",
+      "invocation": "scripts/apply_close_out.py ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_136.json",
+      "runner": "claude_code"
+    },
+    "deposit_event_created_at": "2026-05-31T04:24:06.496844",
+    "deposit_event_description": "Applied COP-136. Outcome: success. 1 commits.",
+    "deposit_event_error_info": null,
+    "deposit_event_identifier": "DEP-131",
+    "deposit_event_log_file_path": "PRDs/product/crmbuilder-v2/deposit-event-logs/dep_131.log",
+    "deposit_event_outcome": "success",
+    "deposit_event_records_summary": {
+      "commits": 1,
+      "conversations": 0,
+      "decisions": 0,
+      "planning_items": 0,
+      "references": 0,
+      "sessions": 0,
+      "work_tickets": 0
+    },
+    "deposit_event_title": "Apply of COP-136, 2026-05-31T04:24:06+00:00"
   }
 ]

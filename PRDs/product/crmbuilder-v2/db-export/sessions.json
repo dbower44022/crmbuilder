@@ -2697,5 +2697,33 @@
     "session_superseded_at": null,
     "session_title": "YAML schema v1.3 Section 12 drafted — Role-Based Access Control Parts A–E added to app-yaml-schema.md",
     "session_updated_at": "2026-05-31T03:48:19.627829"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-31T04:23:26.716670",
+    "session_created_at": "2026-05-31T04:23:26.716307",
+    "session_deleted_at": null,
+    "session_description": "Seed prompt: \"I would like to define a new project for CRMBuilder V2.\" The session opened by orienting on the V2 governance state and the post-PI-112 Project model, then created Project PRJ-015 \"UI usability improvements\" via POST /projects per governance-recording-rules §2 (Projects are authored directly, not via close-out). The first POST 500'd: migration 0030 (committed in the PI-112 Phase-3 line, never successfully applied, so the engagement DB was stuck at 0029) ran its workstream→project change_log UPDATEs while the old ck_changelog_entity_type CHECK still forbade 'project', and on downgrade recreated constraints before reversing data. Fixed by reordering both directions to drop CHECK → mutate unconstrained data → recreate CHECK; applied to the CRMBUILDER engagement DB (now at head 0030), reversibility proven on a throwaway copy, and PRJ-015 then created cleanly. The session also documented that the live API reads a per-engagement DB at crmbuilder-v2/data/engagements/CRMBUILDER.db via CRMBUILDER_V2_DB_PATH (not the stale data/v2.db default). The improvement was scoped with Doug across three design choices (enrichment approach, layout, columns) and built in two slices: (1) access/entity_summary.py — a per-entity-type registry mapping all 27 ENTITY_TYPES members to title/status/created/updated columns, with an import-time coverage assert plus an introspection test, consumed by references.list_touching to attach an other_summary block to every edge; (2) a rewrite of the shared ReferencesSection widget from a QLabel link list to a QTableView over a QSortFilterProxyModel — sortable headers, an all-column filter box, sized-to-content for the detail pane's scroll area, with navigation moved to row double-click and the right-click menu, Add-reference button, exclude_relationships filter, read-only mode, and constructor signature all preserved. Affected widget/navigation/panel tests were updated to drive the grid; the full affected surface is 876 passing tests. Two commits landed on main: 8421345d (0030 fix + PRJ-015 creation) and 544a40f (references grid). The API + UI were restarted so the enriched payload is served live and verified. PI-113 captures the references-grid improvement and is resolved by this session.",
+    "session_ended_at": null,
+    "session_executive_summary": "A Claude Code session that established Project PRJ-015 (an umbrella for incremental V2 desktop-UI usability work) and delivered its first improvement. Creating PRJ-015 surfaced a latent bug in the committed-but-never-applied migration 0030 (it mutated change_log workstream→project rows while the stale CHECK was still active), which was fixed in place and applied, unblocking governance creates. The improvement itself replaces the references widget's identifier+type text links — which made records like PI-048 unrecognizable — with a single sortable/filterable grid carrying Direction, Relationship, Identifier, Type, Title, Status, Created, and Updated, fed by a new server-side per-edge other_summary enrichment. 876 tests pass; both commits are on main.",
+    "session_identifier": "SES-136",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "kind": "ui-feature-build",
+      "runner": "claude_code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "PRJ-015 kickoff and first usability improvement — references rendered as an enriched sortable/filterable grid",
+    "session_updated_at": "2026-05-31T04:23:26.716936"
   }
 ]

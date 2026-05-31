@@ -1680,5 +1680,20 @@
     "status": "Resolved",
     "title": "Migrate the governance & delivery model to the target data model (Project rename, two-tier areas + relocation, Planning Item lifecycle, Workstream-as-phase, Work Task)",
     "updated_at": "2026-05-31T03:34:18.447146"
+  },
+  {
+    "area": null,
+    "claimed_at": null,
+    "claimed_by": null,
+    "created_at": "2026-05-31T04:23:27.018298",
+    "description": "The shared ReferencesSection widget rendered each relation as an identifier+type text link, so a reader could not tell what a referenced record (e.g. PI-048) actually was, nor see its status or dates, without navigating away. Replace that rendering, across all ~20 panels that embed the widget, with a single sortable/filterable grid showing Direction, Relationship, Identifier, Type, Title, Status, Created, and Updated. Requires server-side enrichment: references.list_touching attaches an other_summary block (the far side's title/status/created/updated) resolved by a per-entity-type registry. The widget becomes a QTableView over a QSortFilterProxyModel (sortable headers + all-column filter box), preserving double-click navigation, the right-click Delete/Go-to menu, the Add-reference button, the exclude_relationships filter, and read-only mode.",
+    "executive_summary": "First usability improvement under PRJ-015. Reference relations were unrecognizable identifier+type links; this turns them into a sortable, filterable grid that surfaces each related record's title, status, and create/update dates inline. Delivered as a server-side enrichment of the references-touching payload plus a rewrite of the shared references widget to a table, so the change lands uniformly across every entity panel that shows references.",
+    "id": 113,
+    "identifier": "PI-113",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Resolved",
+    "title": "References rendered as an enriched sortable/filterable grid (first PRJ-015 usability improvement)",
+    "updated_at": "2026-05-31T04:23:29.746226"
   }
 ]
