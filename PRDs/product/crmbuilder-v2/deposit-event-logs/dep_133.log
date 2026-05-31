@@ -1,0 +1,37 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_138.json
+Label:  SES-138 / CNV-040 close-out — Model A branch-governance guard (DEC-360). RE-KEYED from a parallel SES-137/CNV-039/DEC-356/PI-114 (origin/main) that collided with the Agent Delivery Organization design records already applied under those identifiers. Re-key: SES-137->SES-138, CNV-039->CNV-040, DEC-356->DEC-360, PI-114->PI-115 (WT-064 free, unchanged). Records the Model A decision (governance + snapshot commits only on main), resolves PI-115, belongs to PRJ-014. Guard code (b7e4a17d, 3a2f4324) already on main.
+Deposit event: DEP-133
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-040 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== work_tickets (1 record) ===
+  ✓ POST work_tickets  WT-064 (HTTP 201)
+
+=== planning_items (1 record) ===
+  ✓ POST planning_items  PI-115 (HTTP 201)
+
+=== commits (2 records) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-360 (HTTP 201)
+
+=== references (5 records) ===
+  ✓ POST references  CNV-040 conversation_belongs_to_project PRJ-014 (HTTP 201)
+  ✓ POST references  DEC-360 decided_in CNV-040 (HTTP 201)
+  ✓ POST references  SES-138 session_follows_from SES-137 (HTTP 201)
+  ✓ POST references  WT-064 addresses PI-115 (HTTP 201)
+  ✓ POST references  PI-115 planning_item_belongs_to_project PRJ-014 (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-115 (HTTP 201)
+
+✓ All 13 operations complete.
+
+✓ Recorded apply as deposit_event DEP-133 (HTTP 201).

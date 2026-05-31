@@ -1006,5 +1006,21 @@
     "work_ticket_superseded_at": null,
     "work_ticket_title": "Kickoff — PI-112: governance & delivery model migration",
     "work_ticket_updated_at": "2026-05-31T03:34:18.133087"
+  },
+  {
+    "work_ticket_cancelled_at": null,
+    "work_ticket_consumed_at": null,
+    "work_ticket_created_at": "2026-05-31T14:43:20.992966",
+    "work_ticket_deleted_at": null,
+    "work_ticket_description": "CLAUDE-CODE-PROMPT-branch-governance-guard.md: a DETAIL-mode Claude Code prompt that implements Model A's mechanical enforcement. Adds a branch guard to crmbuilder-v2/scripts/apply_close_out.py (refuses to run off main; --allow-branch-local override requiring a gitignored branch-local CRMBUILDER_V2_DB_PATH), creates a tracked crmbuilder-v2/githooks/pre-commit hook that rejects staged db-export/ or deposit-event-logs/ commits off main (override CRMBUILDER_ALLOW_BRANCH_SNAPSHOT=1), wires core.hooksPath, and adds the Branch-work protocol paragraph to CLAUDE.md. Authored in this session and committed b7e4a17d; subsequently run by Doug via Claude Code, landing the implementation as commit 3a2f4324. Recorded as 'ready' because the consuming Claude Code run was not separately governance-recorded.",
+    "work_ticket_file_path": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-branch-governance-guard.md",
+    "work_ticket_identifier": "WT-064",
+    "work_ticket_kind": "claude_code_prompt",
+    "work_ticket_notes": null,
+    "work_ticket_ready_at": "2026-05-31T14:43:20.993280",
+    "work_ticket_status": "ready",
+    "work_ticket_superseded_at": null,
+    "work_ticket_title": "Claude Code prompt — implement the Model A branch-governance guard",
+    "work_ticket_updated_at": "2026-05-31T14:43:20.993524"
   }
 ]

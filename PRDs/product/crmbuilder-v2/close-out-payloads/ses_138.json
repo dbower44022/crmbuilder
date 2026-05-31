@@ -1,0 +1,164 @@
+{
+  "label": "SES-138 / CNV-040 close-out — Model A branch-governance guard (DEC-360). RE-KEYED from a parallel SES-137/CNV-039/DEC-356/PI-114 (origin/main) that collided with the Agent Delivery Organization design records already applied under those identifiers. Re-key: SES-137->SES-138, CNV-039->CNV-040, DEC-356->DEC-360, PI-114->PI-115 (WT-064 free, unchanged). Records the Model A decision (governance + snapshot commits only on main), resolves PI-115, belongs to PRJ-014. Guard code (b7e4a17d, 3a2f4324) already on main.",
+  "session": {
+    "session_identifier": "SES-138",
+    "session_title": "Branch strategy review, PI-112 governance-fork diagnosis, and the Model A branch-governance guard",
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "runner": "claude_ai",
+      "kind": "advisory-and-decision"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_status": "complete",
+    "session_executive_summary": "A Claude.ai advisory-and-decision session on git branch strategy for the crmbuilder repo. It explained how the db-export snapshots couple to the close-out/apply pipeline, then diagnosed against the live repo why branches had begun appearing: the PI-112 migration branch ran apply_close_out.py and committed db-export snapshots on the branch, forking the governance identifier sequence (main at SES-131/DEC-339/PI-111, branch at SES-133/DEC-349/PI-112). Root cause: PI-073's branch quarantine paired a pi-NNN branch with gitignored branch-local DBs, but only the branch half propagated into reuse. The session decided Model A (governance applies and snapshot commits occur only on main) and authored a Claude Code prompt that implemented a mechanical guard, since landed on main.",
+    "session_description": "RE-KEYED close-out, originally authored in Claude.ai as SES-137/CNV-039/DEC-356/PI-114, which collided with the Agent Delivery Organization design records applied to the live DB under those identifiers. Re-keyed to next-free and reconciled into main. Seed prompt: \"I would like to discuss if using branches is appropriate in github for crmbuilder.\" The session ran as one continuous thread on branch strategy and its interaction with the V2 governance pipeline. (1) Advisory: assessed whether branches suit a single-developer-plus-agents workflow; concluded trunk-based should be the default for governance-bearing work, with a narrow carve-out for short-lived branches carrying only risky application/schema code, because the close-out machinery (identifier-head allocation + auto-regenerated committed snapshots) assumes a single linear main. (2) Explained the snapshot mechanism end to end: the binary engagement DB is the source of truth, db-export/ JSON is the diffable committed mirror regenerated automatically by the _refresh_snapshot hook on every API write, and a close-out flows payload (authored, committed) -> apply on main (writes hit the API, hook regenerates snapshots, change_log.json gets audit rows) -> snapshot commit. (3) Diagnosis against the live repo: of three branches (main, pi-106-close-out [merged, clean], pi-112-migration [unmerged]), pi-112-migration was running governance applies and committing db-export snapshots on the branch (change_log.json +1288 lines, references.json +1000, sessions/decisions/planning_items all advanced), forking the identifier sequence. Traced the origin to the PI-073 execution plan (v0.3, 05-27-26), which deliberately quarantined PI-073 on a pi-073-redesign branch WITH gitignored branch-local engagement DBs so applies never ran on the branch and snapshots were never committed there; CLAUDE.md enshrined the branch half of that pattern as the worked example but not the DB-isolation safeguard, so PI-112 reused the branch shape without the safeguard. (4) Decision: adopted Model A (DEC-356) and, on Doug's go, authored CLAUDE-CODE-PROMPT-branch-governance-guard.md (committed b7e4a17d, pushed from the sandbox). Doug ran it via Claude Code; the guard implementation landed on main as commit 3a2f4324 (apply_close_out.py refuses to run off main; tracked githooks/pre-commit blocks snapshot commits off main; CLAUDE.md Branch-work protocol paragraph). The PI-112 fork itself was unwound by a separate remediation line (RBAC re-key merges) before this close-out; heads were re-verified stable (SES-136/DEC-355/PI-113/CNV-038/WT-063) before authoring these records. PI-114 captures the guard work and is resolved by this session.",
+    "references": [
+      {
+        "source_type": "session",
+        "source_id": "SES-137",
+        "target_type": "project",
+        "target_id": "PRJ-014",
+        "relationship": "session_belongs_to_project"
+      }
+    ]
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-040",
+    "conversation_title": "Are branches appropriate for crmbuilder? — fork diagnosis and the Model A governance guard",
+    "conversation_purpose": "Decide whether and how git branches should be used in the crmbuilder repo given the V2 governance pipeline, diagnose why branches had begun appearing, and put a durable fix in place so a branch can never again fork the governance identifier sequence or the committed snapshots.",
+    "conversation_description": "Assessed branch strategy against the close-out/apply machinery and recommended trunk-based for governance-bearing work with a narrow code-only branch carve-out. Explained the db-export snapshot mechanism and its coupling to identifier-head allocation. Diagnosed the live pi-112-migration branch as running applies and committing snapshots on the branch, forking the identifier sequence, and traced the origin to the PI-073 branch quarantine whose DB-isolation safeguard had not propagated into the reusable pattern. Decided Model A (DEC-356): governance applies and db-export commits occur only on main, branches ship code only, enforced mechanically. Authored the guard Claude Code prompt (WT-064); it was run via Claude Code and landed as commit 3a2f4324. PI-114 created and resolved.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-039",
+        "target_type": "session",
+        "target_id": "SES-137",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [
+    {
+      "work_ticket_identifier": "WT-064",
+      "work_ticket_title": "Claude Code prompt — implement the Model A branch-governance guard",
+      "work_ticket_description": "CLAUDE-CODE-PROMPT-branch-governance-guard.md: a DETAIL-mode Claude Code prompt that implements Model A's mechanical enforcement. Adds a branch guard to crmbuilder-v2/scripts/apply_close_out.py (refuses to run off main; --allow-branch-local override requiring a gitignored branch-local CRMBUILDER_V2_DB_PATH), creates a tracked crmbuilder-v2/githooks/pre-commit hook that rejects staged db-export/ or deposit-event-logs/ commits off main (override CRMBUILDER_ALLOW_BRANCH_SNAPSHOT=1), wires core.hooksPath, and adds the Branch-work protocol paragraph to CLAUDE.md. Authored in this session and committed b7e4a17d; subsequently run by Doug via Claude Code, landing the implementation as commit 3a2f4324. Recorded as 'ready' because the consuming Claude Code run was not separately governance-recorded.",
+      "work_ticket_kind": "claude_code_prompt",
+      "work_ticket_file_path": "PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-branch-governance-guard.md",
+      "work_ticket_status": "ready"
+    }
+  ],
+  "planning_items": [
+    {
+      "identifier": "PI-115",
+      "title": "Enforce single-line governance — prevent branch forks of the identifier sequence and snapshots (Model A guard)",
+      "item_type": "pending_work",
+      "status": "Draft",
+      "description": "The PI-112 migration branch forked the governance identifier sequence by running apply_close_out.py and committing db-export snapshots on the branch while main treated those identifiers as free, producing duplicate-identifier and machine-generated-JSON merge hazards. Make it mechanically impossible: governance applies and db-export/ + deposit-event-logs/ commits occur only on main (Model A). Deliver a branch guard in apply_close_out.py (exit non-zero off main; --allow-branch-local override that also requires a gitignored branch-local CRMBUILDER_V2_DB_PATH for Model B isolated-DB work), a tracked githooks/pre-commit hook that rejects staged snapshot/deposit-log commits off main (override CRMBUILDER_ALLOW_BRANCH_SNAPSHOT=1) with core.hooksPath wired, and a CLAUDE.md Branch-work protocol paragraph stating the rule.",
+      "executive_summary": "Close the hole behind the PI-112 governance fork. Branches must carry only code/schema/migration commits; governance applies and committed snapshots advance only on main, with branch governance records applied on main after merge and re-keyed to main's heads. Enforced mechanically — a branch guard in the apply script plus a pre-commit hook that blocks snapshot commits off main — because documentation was the safeguard that failed. Delivered via WT-064 and landed in commit 3a2f4324."
+    }
+  ],
+  "commits": [
+    {
+      "commit_sha": "b7e4a17d7ab3e87bdc6bc1cab0832f4e14d66d6b",
+      "commit_message_first_line": "v2: add Model A branch-governance-guard Claude Code prompt",
+      "commit_message_full": "v2: add Model A branch-governance-guard Claude Code prompt\n\nPrevention fix for the PI-112 governance fork. Authored in Claude.ai;\nto be run via Claude Code on main. Adds apply_close_out.py branch guard,\na tracked pre-commit hook, and the CLAUDE.md Branch-work protocol.",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_files_changed_count": 1,
+      "commit_committed_at": "2026-05-31T03:53:50+00:00",
+      "commit_parent_shas": [
+        "36992b52f100ca1b3092405299c3fd8f0f6b4ef7"
+      ]
+    },
+    {
+      "commit_sha": "3a2f43246c266e70d365323f76ca14833f8034c1",
+      "commit_message_first_line": "v2: enforce Model A branch-governance guard",
+      "commit_message_full": "v2: enforce Model A branch-governance guard\n\n- apply_close_out.py refuses to run off main (--allow-branch-local escape hatch)\n- githooks/pre-commit blocks db-export/ + deposit-event-logs/ commits off main\n- core.hooksPath wired to crmbuilder-v2/githooks\n- CLAUDE.md: Branch-work protocol (Model A) documented\n\nStructural fix for the PI-112 governance fork: identifier sequence and\nsnapshots now advance only on main, enforced mechanically.",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_files_changed_count": 3,
+      "commit_committed_at": "2026-05-31T00:35:08-04:00",
+      "commit_parent_shas": [
+        "95373d38fe4792f475bc7b74ec390d86e234296c"
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "identifier": "DEC-360",
+      "title": "Model A — governance applies and db-export snapshot commits occur only on main; enforced mechanically (branch-fork prevention)",
+      "context": "The PI-112 governance & delivery migration ran on a pi-112-migration branch and executed apply_close_out.py there, advancing sessions, decisions, and committing the db-export/ snapshots on the branch while main still treated those identifiers as free. This forked the governance identifier sequence (main at SES-131/DEC-339/PI-111, branch at SES-133/DEC-349/PI-112) and set up duplicate-identifier collisions and hand-merges of machine-generated snapshot JSON at merge time. Root cause: the PI-073 branch quarantine paired a pi-NNN branch with gitignored branch-local engagement DBs precisely so applies never ran on the branch and snapshots were never committed there, but only the branch half of that pattern propagated into reuse — CLAUDE.md's exemplar documented the branch, not the DB-isolation safeguard, so PI-112 branched and applied. Question: how to guarantee the governance identifier sequence and the committed snapshots only ever advance on a single line.",
+      "decision": "Adopt Model A. Governance applies and db-export/ snapshot commits occur only on main. A pi-NNN branch carries only code, schema, and migration commits; it never runs apply_close_out.py and never commits under db-export/ or deposit-event-logs/. The work's sessions, decisions, and planning items are authored as a close-out payload and applied on main after merge, re-keyed to main's current heads (the DEC-232 / SES-074 build-closure pattern). Enforced mechanically rather than by documentation alone: apply_close_out.py refuses to run off main (override --allow-branch-local, which also requires CRMBUILDER_V2_DB_PATH pointed at a gitignored branch-local engagement DB), and a tracked crmbuilder-v2/githooks/pre-commit hook rejects staged db-export/ or deposit-event-logs/ commits off main (merge-time override CRMBUILDER_ALLOW_BRANCH_SNAPSHOT=1), wired via core.hooksPath.",
+      "alternatives_considered": "Model B — keep PI-073's isolated-DB branch but make it mandatory: the branch points the API and apply script at gitignored branch-local engagement DBs, may record governance there during the build, never commits db-export/, and re-applies (re-keyed) against the live main DBs at merge. Rejected as the default because it reintroduces the re-key-at-merge reconciliation that PI-112 got wrong and requires managing a second set of databases; preserved behind the --allow-branch-local / CRMBUILDER_ALLOW_BRANCH_SNAPSHOT overrides for the rare case that genuinely needs governance exercised on a branch. Also considered and rejected: trunk-only with no branches at all (loses the validation hatch for breaking schema/code work, a legitimate use of a short-lived code-only branch); and documentation-only enforcement (documentation was the exact safeguard that failed here, so the guard must be mechanical).",
+      "consequences": "apply_close_out.py gains a _current_git_branch() helper, a branch guard returning exit 2 off main, and a --allow-branch-local flag; crmbuilder-v2/githooks/pre-commit (tracked) blocks db-export/ and deposit-event-logs/ commits off main with the CRMBUILDER_ALLOW_BRANCH_SNAPSHOT=1 override; core.hooksPath is set to crmbuilder-v2/githooks (local config, so every clone runs the one-time git config command); CLAUDE.md gains a Branch-work protocol (Model A) paragraph after the Push convention. Implemented in commit 3a2f4324 (CLAUDE.md + githooks/pre-commit + apply_close_out.py, 62 insertions); the authoring prompt is commit b7e4a17d / WT-064. The PI-112 fork itself was unwound by a separate remediation line (RBAC re-key merges) before this guard landed. The PI-073 isolated-DB note remains the worked example of the capability; this paragraph is the rule. Note: this very close-out apply must run on main, which the new guard now enforces.",
+      "executive_summary": "After the PI-112 migration branch forked the governance identifier sequence by running close-out applies and committing snapshots on the branch, this decision fixes the workflow so governance applies and db-export snapshot commits happen only on main. Branches ship code/schema/migrations only; their governance records are applied on main after merge, re-keyed to main's heads. Enforced mechanically by a branch guard in apply_close_out.py and a pre-commit hook that blocks snapshot commits off main, because documentation alone was the safeguard that failed. Model B (isolated-DB branch) is preserved behind explicit overrides.",
+      "decision_date": "2026-05-31",
+      "status": "Active"
+    }
+  ],
+  "references": [
+    {
+      "source_type": "session",
+      "source_id": "SES-138",
+      "target_type": "project",
+      "target_id": "PRJ-014",
+      "relationship": "session_belongs_to_project"
+    },
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-040",
+      "target_type": "session",
+      "target_id": "SES-138",
+      "relationship": "conversation_belongs_to_session"
+    },
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-040",
+      "target_type": "project",
+      "target_id": "PRJ-014",
+      "relationship": "conversation_belongs_to_project"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-360",
+      "target_type": "conversation",
+      "target_id": "CNV-040",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-138",
+      "target_type": "session",
+      "target_id": "SES-137",
+      "relationship": "session_follows_from"
+    },
+    {
+      "source_type": "work_ticket",
+      "source_id": "WT-064",
+      "target_type": "planning_item",
+      "target_id": "PI-115",
+      "relationship": "addresses"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-115",
+      "target_type": "project",
+      "target_id": "PRJ-014",
+      "relationship": "planning_item_belongs_to_project"
+    }
+  ],
+  "resolves_planning_items": [
+    {
+      "planning_item_identifier": "PI-115"
+    }
+  ],
+  "addresses_planning_items": []
+}

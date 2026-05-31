@@ -2753,5 +2753,33 @@
     "session_superseded_at": null,
     "session_title": "Design the Agent Delivery Organization",
     "session_updated_at": "2026-05-31T06:04:08.844007"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-05-31T14:43:20.674534",
+    "session_created_at": "2026-05-31T14:43:20.674260",
+    "session_deleted_at": null,
+    "session_description": "RE-KEYED close-out, originally authored in Claude.ai as SES-137/CNV-039/DEC-356/PI-114, which collided with the Agent Delivery Organization design records applied to the live DB under those identifiers. Re-keyed to next-free and reconciled into main. Seed prompt: \"I would like to discuss if using branches is appropriate in github for crmbuilder.\" The session ran as one continuous thread on branch strategy and its interaction with the V2 governance pipeline. (1) Advisory: assessed whether branches suit a single-developer-plus-agents workflow; concluded trunk-based should be the default for governance-bearing work, with a narrow carve-out for short-lived branches carrying only risky application/schema code, because the close-out machinery (identifier-head allocation + auto-regenerated committed snapshots) assumes a single linear main. (2) Explained the snapshot mechanism end to end: the binary engagement DB is the source of truth, db-export/ JSON is the diffable committed mirror regenerated automatically by the _refresh_snapshot hook on every API write, and a close-out flows payload (authored, committed) -> apply on main (writes hit the API, hook regenerates snapshots, change_log.json gets audit rows) -> snapshot commit. (3) Diagnosis against the live repo: of three branches (main, pi-106-close-out [merged, clean], pi-112-migration [unmerged]), pi-112-migration was running governance applies and committing db-export snapshots on the branch (change_log.json +1288 lines, references.json +1000, sessions/decisions/planning_items all advanced), forking the identifier sequence. Traced the origin to the PI-073 execution plan (v0.3, 05-27-26), which deliberately quarantined PI-073 on a pi-073-redesign branch WITH gitignored branch-local engagement DBs so applies never ran on the branch and snapshots were never committed there; CLAUDE.md enshrined the branch half of that pattern as the worked example but not the DB-isolation safeguard, so PI-112 reused the branch shape without the safeguard. (4) Decision: adopted Model A (DEC-356) and, on Doug's go, authored CLAUDE-CODE-PROMPT-branch-governance-guard.md (committed b7e4a17d, pushed from the sandbox). Doug ran it via Claude Code; the guard implementation landed on main as commit 3a2f4324 (apply_close_out.py refuses to run off main; tracked githooks/pre-commit blocks snapshot commits off main; CLAUDE.md Branch-work protocol paragraph). The PI-112 fork itself was unwound by a separate remediation line (RBAC re-key merges) before this close-out; heads were re-verified stable (SES-136/DEC-355/PI-113/CNV-038/WT-063) before authoring these records. PI-114 captures the guard work and is resolved by this session.",
+    "session_ended_at": null,
+    "session_executive_summary": "A Claude.ai advisory-and-decision session on git branch strategy for the crmbuilder repo. It explained how the db-export snapshots couple to the close-out/apply pipeline, then diagnosed against the live repo why branches had begun appearing: the PI-112 migration branch ran apply_close_out.py and committed db-export snapshots on the branch, forking the governance identifier sequence (main at SES-131/DEC-339/PI-111, branch at SES-133/DEC-349/PI-112). Root cause: PI-073's branch quarantine paired a pi-NNN branch with gitignored branch-local DBs, but only the branch half propagated into reuse. The session decided Model A (governance applies and snapshot commits occur only on main) and authored a Claude Code prompt that implemented a mechanical guard, since landed on main.",
+    "session_identifier": "SES-138",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "kind": "advisory-and-decision",
+      "runner": "claude_ai"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "Branch strategy review, PI-112 governance-fork diagnosis, and the Model A branch-governance guard",
+    "session_updated_at": "2026-05-31T14:43:20.674618"
   }
 ]

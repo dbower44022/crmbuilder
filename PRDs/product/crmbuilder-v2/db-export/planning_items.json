@@ -1710,5 +1710,20 @@
     "status": "Draft",
     "title": "Build the Agent Delivery Organization",
     "updated_at": "2026-05-31T06:04:09.178257"
+  },
+  {
+    "area": null,
+    "claimed_at": null,
+    "claimed_by": null,
+    "created_at": "2026-05-31T14:43:21.302096",
+    "description": "The PI-112 migration branch forked the governance identifier sequence by running apply_close_out.py and committing db-export snapshots on the branch while main treated those identifiers as free, producing duplicate-identifier and machine-generated-JSON merge hazards. Make it mechanically impossible: governance applies and db-export/ + deposit-event-logs/ commits occur only on main (Model A). Deliver a branch guard in apply_close_out.py (exit non-zero off main; --allow-branch-local override that also requires a gitignored branch-local CRMBUILDER_V2_DB_PATH for Model B isolated-DB work), a tracked githooks/pre-commit hook that rejects staged snapshot/deposit-log commits off main (override CRMBUILDER_ALLOW_BRANCH_SNAPSHOT=1) with core.hooksPath wired, and a CLAUDE.md Branch-work protocol paragraph stating the rule.",
+    "executive_summary": "Close the hole behind the PI-112 governance fork. Branches must carry only code/schema/migration commits; governance applies and committed snapshots advance only on main, with branch governance records applied on main after merge and re-keyed to main's heads. Enforced mechanically — a branch guard in the apply script plus a pre-commit hook that blocks snapshot commits off main — because documentation was the safeguard that failed. Delivered via WT-064 and landed in commit 3a2f4324.",
+    "id": 115,
+    "identifier": "PI-115",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Resolved",
+    "title": "Enforce single-line governance — prevent branch forks of the identifier sequence and snapshots (Model A guard)",
+    "updated_at": "2026-05-31T14:43:24.181922"
   }
 ]
