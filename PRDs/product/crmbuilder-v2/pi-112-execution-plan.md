@@ -165,6 +165,28 @@ cascade to those membership edges. Covered by sub-step 7's `refs` rewrite.
   likely migrate `Open`→`Draft`, `Resolved`→`Resolved`, `Deferred`→`Deferred`.
 - Gives PI-081/PI-083 a clean `Deferred` (per DEC-344).
 
+> **Phase 4a ✅** (commit `45d1654` + fixes) — new **Workstream** delivery-phase
+> entity (`WSK-`): vocab (phase types incl. Design, statuses, transitions),
+> model, repo, `/workstreams` API, exporter, `workstream_belongs_to_planning_item`
+> + `(workstream,workstream) blocked_by` kinds, migration `0031`, 8 tests. Applied
+> to live DB. (A concurrent session added `0030_changelog` mid-phase — a Phase-1
+> follow-on migrating `change_log` `workstream`→`project`; mine chained as `0031`.)
+>
+> **Phase 4b ✅** (commit `a8199d2`) — new **Work Task** entity (`WTK-`): single
+> `area` field (validated System ∪ Engagement), claim, statuses+transitions,
+> model, repo (+ claim/release), `/work-tasks` API, exporter,
+> `work_task_belongs_to_workstream` + `(work_task,work_task) blocked_by`,
+> migration `0032`, 7 tests. Applied to live DB. **Area now lives on the
+> single-area Work Task — the relocation's goal (DEC-342) is achieved.**
+>
+> **Phase 4c — dropping the now-redundant `planning_item.area` column: DEFERRED.**
+> Area's authoritative home is the Work Task (4b). The only remaining live reader
+> of `planning_item.area` is the **shelved** WS-012 orchestrator (DEC-344), whose
+> partitioning *is* area-clustering — dropping the column would gut it and its
+> large test suite. That cleanup belongs to the orchestrator's formal retirement
+> (target-model §9 **step 6**), not here. The column remains as a superseded
+> vestige until then.
+
 ### Phase 4 — Workstream (`WSK-`) + Work Task (`WTK-`) entities; relocate area
 - New **Workstream** entity (delivery phase): belongs_to one Planning Item; phase-type vocab
   {Design, Development, Testing, Documentation, Data Migration, Deployment} (DEC-349);
