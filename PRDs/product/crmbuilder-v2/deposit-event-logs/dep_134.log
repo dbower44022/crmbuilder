@@ -1,0 +1,31 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_139.json
+Label:  SES-139 / CNV-041 close-out — WTK-001 ADO state-model substrate (migration 0036). First SCHEDULED (planned) execution session and first session_works_work_task edge. Implements design §5: Workstream phase Design->Architecture, lifecycle expanded to the gate model Planned->Scoping->Ready->In Progress->Complete|Not Applicable|Blocked, and the needs_attention flag (DEC-349/DEC-359). DEC-361 records the derived (not stored) PI rollup. WTK-001 driven to Complete; ADDRESSES (not resolves) PI-114 under PRJ-018. NOTE on apply: SES-139 already exists (pre-created planned, transitioned to in_flight at session start) so its session block 409s on apply by design — the session is driven planned->in_flight->complete by direct PATCH, not by this payload. Code already on main as commit 4915f5f.
+Deposit event: DEP-134
+
+Close-out payload validation: 0 error(s), 1 warning(s).
+  [WARN]  identifier_heads: SES-139 is at-or-below the live head (SES head's next free slot is SES-140). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-041 (HTTP 201)
+
+=== session (1 record) ===
+  · POST session  <unidentified record> already present (HTTP 409) — skipping
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-361 (HTTP 201)
+
+=== references (3 records) ===
+  ✓ POST references  CNV-041 conversation_belongs_to_project PRJ-018 (HTTP 201)
+  ✓ POST references  DEC-361 decided_in CNV-041 (HTTP 201)
+  ✓ POST references  SES-139 session_follows_from SES-137 (HTTP 201)
+
+=== addresses_planning_items (1 record) ===
+  ✓ POST addresses_planning_items  → PI-114 (HTTP 201)
+
+✓ All 8 operations complete.
+
+✓ Recorded apply as deposit_event DEP-134 (HTTP 201).

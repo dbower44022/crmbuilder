@@ -5880,5 +5880,22 @@
     "supersedes_id": null,
     "title": "Model A — governance applies and db-export snapshot commits occur only on main; enforced mechanically (branch-fork prevention)",
     "updated_at": "2026-05-31T14:43:22.277398"
+  },
+  {
+    "alternatives_considered": "A stored needs_attention (+reason) column on planning_item, written whenever any child Workstream raises or clears the flag — rejected as denormalization that must be kept in sync on every flag change and can drift; the derived query is lighter and always consistent, and the per-Workstream flag already carries the which-phase detail a stored PI bool would lose. Also considered: adding workstream_scoping_at / workstream_ready_at / workstream_not_applicable_at timestamp columns — deferred as currently unused; In Progress/Complete timestamps suffice for the Lead's gate signals.",
+    "consequences": "Migration 0036 adds only the two Workstream columns (no planning_item schema change). needs_attention is exposed on the Workstream via API create/update/patch and the access-layer repository. The PI-level needs-attention read-model/endpoint is a future, un-built follow-on over Workstream.needs_attention — out of scope for this substrate. If a stored PI flag is ever wanted for performance, it can be added later as a cache without changing the source of truth (the Workstream flag).",
+    "context": "Design §5 / DEC-359 introduced needs_attention as an orthogonal human-escape flag on the Workstream and stated it 'rolls up to the Planning Item' so a human can ask 'which PIs need attention?'. The spec left open HOW the rollup is realized: a stored needs_attention column denormalized onto the planning_item, or a derived query over the Workstreams. WTK-001 had to settle this while adding the substrate columns, and the handoff recommended the derived route.",
+    "created_at": "2026-05-31T15:51:48.037362",
+    "decision": "Realize the rollup as a DERIVED query. The needs_attention (bool) + needs_attention_reason (text) flag lives solely on the Workstream — so it also identifies WHICH delivery phase is stuck — and the PI-level 'which PIs need a human?' view is answered by querying Workstreams with needs_attention=true and grouping by their parent Planning Item (the workstream_belongs_to_planning_item edge). No needs_attention column is added to planning_item. Relatedly, only the In Progress and Complete statuses carry dedicated lifecycle timestamp columns on the Workstream; the new intermediate Scoping/Ready and the terminal Not Applicable do not get timestamp columns in this substrate.",
+    "decision_date": "2026-05-31",
+    "executive_summary": "While adding the DEC-359 needs_attention flag to the Workstream, WTK-001 settled the open question of how it 'rolls up to the Planning Item': as a derived query over Workstreams with needs_attention=true grouped by their parent PI, not as a stored, denormalized column on planning_item. The flag stays solely on the Workstream so it also pinpoints the stuck phase; the PI-level view is computed, keeping a single source of truth and avoiding sync drift. Migration 0036 therefore adds only the two Workstream columns and no planning_item schema change; the PI needs-attention read-model is a future follow-on.",
+    "id": 348,
+    "identifier": "DEC-361",
+    "rationale": "",
+    "status": "Active",
+    "superseded_by_id": null,
+    "supersedes_id": null,
+    "title": "Workstream Needs Attention rolls up to the Planning Item as a derived query, not a stored PI column",
+    "updated_at": "2026-05-31T15:51:48.037364"
   }
 ]

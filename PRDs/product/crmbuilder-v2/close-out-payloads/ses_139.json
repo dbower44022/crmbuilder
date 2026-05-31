@@ -1,0 +1,97 @@
+{
+  "label": "SES-139 / CNV-041 close-out — WTK-001 ADO state-model substrate (migration 0036). First SCHEDULED (planned) execution session and first session_works_work_task edge. Implements design §5: Workstream phase Design->Architecture, lifecycle expanded to the gate model Planned->Scoping->Ready->In Progress->Complete|Not Applicable|Blocked, and the needs_attention flag (DEC-349/DEC-359). DEC-361 records the derived (not stored) PI rollup. WTK-001 driven to Complete; ADDRESSES (not resolves) PI-114 under PRJ-018. NOTE on apply: SES-139 already exists (pre-created planned, transitioned to in_flight at session start) so its session block 409s on apply by design — the session is driven planned->in_flight->complete by direct PATCH, not by this payload. Code already on main as commit 4915f5f.",
+  "session": {
+    "session_identifier": "SES-139",
+    "session_title": "Implement WTK-001 — ADO state-model substrate",
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "runner": "claude-code",
+      "kind": "execution"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_status": "complete",
+    "session_executive_summary": "Claude Code execution session implementing WTK-001, the first delivery Work Task of PI-114. Landed the ADO state-model substrate (design §5): renamed the Workstream phase Design->Architecture, expanded WORKSTREAM_STATUSES to the gate model Planned->Scoping->Ready->In Progress->Complete|Not Applicable|Blocked, and added the orthogonal needs_attention flag (+reason) on the Workstream model with create/update/patch support. Delivered as vocab + model + Alembic migration 0036 + tests; validated up/down on a live-DB copy and for create_all parity, then applied to the live engagement DB (0035->0036). Full v2 suite green. Drove WTK-001 to Complete and addressed (not resolved) PI-114. First scheduled-session execution path and first session_works_work_task edge.",
+    "session_description": "SCHEDULED execution session. SES-139 was pre-created in `planned` status by the prior ADO design session (wired via session_belongs_to_project -> PRJ-018 and session_works_work_task -> WTK-001); this session transitioned it planned -> in_flight at start and planned -> in_flight -> complete by direct PATCH (its session block in this payload 409s by design). Work: resumed WTK-001 (In Progress, claimed by CNV-039) per HANDOFF-WTK-001-ado-state-model-substrate.md and implemented design §5 — (1) renamed WORKSTREAM_PHASE_TYPES value Design -> Architecture and rebuilt ck_workstream_phase_type; (2) expanded WORKSTREAM_STATUSES from {Planned, In Progress, Complete, Blocked} to {Planned, Scoping, Ready, In Progress, Complete, Not Applicable, Blocked} and rewrote WORKSTREAM_STATUS_TRANSITIONS as the gate model; (3) added workstream_needs_attention (bool) + workstream_needs_attention_reason (text) to the Workstream model with create/update/patch + API schema/router wiring. Migration 0036 rebuilds both CHECK constraints and adds the two columns; validated up/down on a copy of the live DB and for create_all parity, then applied to the live engagement DB (head 0035 -> 0036). Added tests in test_workstream_phase.py for the new statuses, the full gate path, the planned-cannot-skip guard, Not Applicable terminal, Architecture phase (Design now rejected), and needs_attention on create/patch; full v2 suite stayed green. Decided DEC-361 (needs_attention -> PI rollup is a derived query, not a stored PI column). Code landed on main as commit 4915f5f. WTK-001 driven to Complete; WSK-001 left In Progress (Development phase ongoing). This close-out addresses PI-114 without resolving it — the decomposer, phase specialists, and PM/Lead orchestration remain ahead.",
+    "references": []
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-041",
+    "conversation_title": "Execute WTK-001 — ADO Workstream state-model substrate (migration 0036)",
+    "conversation_purpose": "Implement the design §5 state-model substrate the Agent Delivery Organization needs — the Workstream Architecture-phase rename, the expanded gate lifecycle, and the needs_attention escape flag — as vocab + model + migration + tests applied to the live DB, then drive WTK-001 to Complete and address PI-114.",
+    "conversation_description": "Resumed WTK-001 (the first delivery Work Task of PI-114) from its handoff and implemented design §5. Renamed the Workstream phase Design -> Architecture; expanded WORKSTREAM_STATUSES and transitions to the gate model Planned -> Scoping -> Ready -> In Progress -> Complete | Not Applicable | Blocked; added workstream_needs_attention (+reason) to the model with create/update/patch + API support. Authored Alembic migration 0036 (rebuilds ck_workstream_phase_type + ck_workstream_status, adds the two columns), validated it up/down on a copy of the live DB and for create_all parity, and applied it to the live engagement DB. Added/updated tests; full v2 suite green. Decided DEC-361 on the derived PI rollup. Drove WTK-001 to Complete. Addresses (not resolves) PI-114.",
+    "conversation_summary": "ADO state-model substrate delivered and applied to the live DB via migration 0036: Architecture-phase rename, expanded gate lifecycle, and the needs_attention flag. WTK-001 Complete; PI-114 addressed. DEC-361 records the derived (not stored) PI rollup. First scheduled-session execution path.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-041",
+        "target_type": "session",
+        "target_id": "SES-139",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [],
+  "commits": [
+    {
+      "commit_sha": "4915f5fe34690087a4f4d8986abd104b77e3b0b6",
+      "commit_message_first_line": "v2: WTK-001 — ADO Workstream state-model substrate (migration 0036)",
+      "commit_message_full": "v2: WTK-001 — ADO Workstream state-model substrate (migration 0036)\n\nImplements design §5 (DEC-349 rename + DEC-359 flag) for the Agent Delivery Organization: rename Workstream phase Design->Architecture; expand WORKSTREAM_STATUSES/transitions to the gate model Planned->Scoping->Ready->In Progress->Complete|Not Applicable|Blocked; add workstream_needs_attention (bool) + workstream_needs_attention_reason (text) with create/update/patch + API support; PI rollup derived not stored (DEC-361). Migration 0036 rebuilds both CHECKs and adds the two columns, validated up/down on a live-DB copy and for create_all parity, then applied to the live engagement DB (0035->0036). Tests added; full v2 suite green (2241 passed).",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_files_changed_count": 9,
+      "commit_committed_at": "2026-05-31T11:49:02-04:00",
+      "commit_parent_shas": [
+        "650f00b4798837c12e48e95d4ad21b232214ab84"
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "identifier": "DEC-361",
+      "title": "Workstream Needs Attention rolls up to the Planning Item as a derived query, not a stored PI column",
+      "context": "Design §5 / DEC-359 introduced needs_attention as an orthogonal human-escape flag on the Workstream and stated it 'rolls up to the Planning Item' so a human can ask 'which PIs need attention?'. The spec left open HOW the rollup is realized: a stored needs_attention column denormalized onto the planning_item, or a derived query over the Workstreams. WTK-001 had to settle this while adding the substrate columns, and the handoff recommended the derived route.",
+      "decision": "Realize the rollup as a DERIVED query. The needs_attention (bool) + needs_attention_reason (text) flag lives solely on the Workstream — so it also identifies WHICH delivery phase is stuck — and the PI-level 'which PIs need a human?' view is answered by querying Workstreams with needs_attention=true and grouping by their parent Planning Item (the workstream_belongs_to_planning_item edge). No needs_attention column is added to planning_item. Relatedly, only the In Progress and Complete statuses carry dedicated lifecycle timestamp columns on the Workstream; the new intermediate Scoping/Ready and the terminal Not Applicable do not get timestamp columns in this substrate.",
+      "alternatives_considered": "A stored needs_attention (+reason) column on planning_item, written whenever any child Workstream raises or clears the flag — rejected as denormalization that must be kept in sync on every flag change and can drift; the derived query is lighter and always consistent, and the per-Workstream flag already carries the which-phase detail a stored PI bool would lose. Also considered: adding workstream_scoping_at / workstream_ready_at / workstream_not_applicable_at timestamp columns — deferred as currently unused; In Progress/Complete timestamps suffice for the Lead's gate signals.",
+      "consequences": "Migration 0036 adds only the two Workstream columns (no planning_item schema change). needs_attention is exposed on the Workstream via API create/update/patch and the access-layer repository. The PI-level needs-attention read-model/endpoint is a future, un-built follow-on over Workstream.needs_attention — out of scope for this substrate. If a stored PI flag is ever wanted for performance, it can be added later as a cache without changing the source of truth (the Workstream flag).",
+      "executive_summary": "While adding the DEC-359 needs_attention flag to the Workstream, WTK-001 settled the open question of how it 'rolls up to the Planning Item': as a derived query over Workstreams with needs_attention=true grouped by their parent PI, not as a stored, denormalized column on planning_item. The flag stays solely on the Workstream so it also pinpoints the stuck phase; the PI-level view is computed, keeping a single source of truth and avoiding sync drift. Migration 0036 therefore adds only the two Workstream columns and no planning_item schema change; the PI needs-attention read-model is a future follow-on.",
+      "decision_date": "2026-05-31",
+      "status": "Active"
+    }
+  ],
+  "references": [
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-041",
+      "target_type": "project",
+      "target_id": "PRJ-018",
+      "relationship": "conversation_belongs_to_project"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-361",
+      "target_type": "conversation",
+      "target_id": "CNV-041",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-139",
+      "target_type": "session",
+      "target_id": "SES-137",
+      "relationship": "session_follows_from"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": [
+    {
+      "planning_item_identifier": "PI-114"
+    }
+  ]
+}

@@ -5,6 +5,8 @@
     "workstream_deleted_at": null,
     "workstream_description": "The Development phase of PI-114: implement the ADO state-model substrate, then the structural decomposer, phase specialists, and Project Manager / PI Lead orchestration per the design v0.3.",
     "workstream_identifier": "WSK-001",
+    "workstream_needs_attention": false,
+    "workstream_needs_attention_reason": null,
     "workstream_notes": null,
     "workstream_phase_type": "Development",
     "workstream_started_at": "2026-05-31T14:56:11.023959",
