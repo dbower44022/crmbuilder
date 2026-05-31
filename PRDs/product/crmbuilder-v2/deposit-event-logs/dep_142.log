@@ -1,0 +1,29 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_147.json
+Label:  SES-147 / CNV-049 close-out — scope the Agent Profile Registry build as a governed Planning Item (PI-122) under PRJ-018. Reviews the agent-profile-registry-design branch, reconciles the PRD to v0.2, proves two ADO agents end-to-end (Development Phase Specialist + Area Specialist), and scopes the registry build as PI-122. DEC-366 records the scoping. Addresses (not resolves) PI-114. **APPLY GATE: identifiers (SES-147/CNV-049/DEC-366/PI-122) are next-free as of authoring while a parallel session is active on the live DB — RE-VERIFY heads and re-key on any collision at apply time, and apply only after the parallel session's SES-146 close-out is committed so this apply's db-export snapshot does not bundle their uncommitted work.**
+Deposit event: DEP-142
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-049 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== planning_items (1 record) ===
+  ✓ POST planning_items  PI-122 (HTTP 201)
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-366 (HTTP 201)
+
+=== references (4 records) ===
+  ✓ POST references  CNV-049 conversation_belongs_to_project PRJ-018 (HTTP 201)
+  ✓ POST references  DEC-366 decided_in CNV-049 (HTTP 201)
+  ✓ POST references  SES-147 session_follows_from SES-144 (HTTP 201)
+  ✓ POST references  PI-122 planning_item_belongs_to_project PRJ-018 (HTTP 201)
+
+=== addresses_planning_items (1 record) ===
+  ✓ POST addresses_planning_items  → PI-114 (HTTP 201)
+
+✓ All 9 operations complete.
+
+✓ Recorded apply as deposit_event DEP-142 (HTTP 201).

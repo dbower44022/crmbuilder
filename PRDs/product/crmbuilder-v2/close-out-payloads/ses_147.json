@@ -1,0 +1,105 @@
+{
+  "label": "SES-147 / CNV-049 close-out — scope the Agent Profile Registry build as a governed Planning Item (PI-122) under PRJ-018. Reviews the agent-profile-registry-design branch, reconciles the PRD to v0.2, proves two ADO agents end-to-end (Development Phase Specialist + Area Specialist), and scopes the registry build as PI-122. DEC-366 records the scoping. Addresses (not resolves) PI-114. **APPLY GATE: identifiers (SES-147/CNV-049/DEC-366/PI-122) are next-free as of authoring while a parallel session is active on the live DB — RE-VERIFY heads and re-key on any collision at apply time, and apply only after the parallel session's SES-146 close-out is committed so this apply's db-export snapshot does not bundle their uncommitted work.**",
+  "session": {
+    "session_identifier": "SES-147",
+    "session_title": "Review the agent-profile-registry branch, reconcile to v0.2, prove two agents, scope the registry as PI-122",
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "runner": "claude-code",
+      "kind": "advisory-and-scoping"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_status": "complete",
+    "session_executive_summary": "Claude Code session that reviewed the agent-profile-registry-design branch (the ADO §10 agent-profile-registry PRD, design-only), merged it, and reconciled the PRD to v0.2 (refreshed the Alembic head to 0036, closed the entity-vs-vocab and prefix-collision open questions, added the registry↔runtime seam). It then de-risked the §10 agent layer by proving two ADO agents end-to-end against the shipped substrate: a Development Phase Specialist (scope judgment, recorded via /scope) and an Area Specialist (did real access-layer implementation work in a worktree, ruff + pytest green), capturing both as registry-ready profile prompts. Finally it scoped the registry build as a governed Planning Item, PI-122 under PRJ-018, recorded in DEC-366. Addresses PI-114 (not resolved).",
+    "session_description": "Continuation of the PI-114 ADO line, after the four agent-tier substrates shipped (WTK-001..006). Three pieces of work: (1) Reviewed the parallel-authored agent-profile-registry-design branch — a design-only PRD for the ADO §10 agent-profile registry (the central store of agent skills + governance rules) plus illustrative reference artifacts — assessed it as sound and the correct next layer, and merged it. (2) Reconciled the PRD to v0.2: refreshed the stale Alembic head (0033 -> 0036), closed two open questions (skills/rules are full governance entities; the AGP/SKL/GVR prefixes verified collision-free against the 22 live prefixes), and added §12 making the registry↔runtime boundary explicit (the registry HOLDS and RESOLVES contracts; a separate runtime INJECTS and RUNS them) with the recommended sequencing baked in. (3) Proved two ADO agents end-to-end with real LLM agents driving the shipped substrate, fully isolated (worktrees + an isolated copy-DB API, zero live-DB/db-export impact): a Development Phase Specialist correctly scoped a Workstream (read prior-phase-outputs feed-forward, made a storage->access->api->ui->espo area judgment, omitted mcp/automation with reasoning, recorded via POST /scope -> Ready; independently verified) and an Area Specialist did real access-layer implementation (a work_tasks_for_workstream function + GET /workstreams/{id}/work-tasks endpoint + 4 tests, ruff clean, pytest green; independently re-verified, then discarded as proof-only). Both proven prompts are captured under agent-profile-registry/profiles/. The Area Specialist proof surfaced a runtime requirement now recorded in the profile: spawn each agent's worktree from current main HEAD (this run's worktree branched from a stale base and duplicated an existing helper). With the agent pattern de-risked across the two most distinct tiers (decide-what vs do-it), this session scopes the registry build itself as a governed Planning Item — PI-122 'Build the Agent Profile Registry' under PRJ-018 — whose description carries the full build scope (3 governance entities, single migration on head 0036, access/REST/MCP/UI, the resolver, hybrid governance that binds onto the existing access-layer enforcement rather than rebuilding it, seeded with the two proven prompts). PI-122 is the natural first real PI for the completed ADO substrate to decompose. DEC-366 records the scoping. This session addresses PI-114 (advancing the ADO via the agent proofs + the registry scoping) without resolving it.",
+    "references": []
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-049",
+    "conversation_title": "Review + reconcile the agent-profile-registry PRD, prove two agents, scope the registry as PI-122",
+    "conversation_purpose": "Review the agent-profile-registry design, reconcile it to current reality, prove the ADO agent pattern works end-to-end before investing in the registry, and scope the registry build as a governed Planning Item.",
+    "conversation_description": "Reviewed and merged the agent-profile-registry-design branch; reconciled the PRD to v0.2 (head 0036, closed two open questions, added the registry↔runtime seam §12). Proved two ADO agents end-to-end against the shipped substrate — a Development Phase Specialist (scope judgment) and an Area Specialist (real implementation) — fully isolated, captured as profile prompts. Scoped the registry build as PI-122 under PRJ-018, recorded in DEC-366. Addresses (not resolves) PI-114.",
+    "conversation_summary": "Registry design reviewed, merged, reconciled to v0.2; two ADO agents proven end-to-end (Phase Specialist scope judgment + Area Specialist implementation) and captured as profile prompts; the registry build scoped as PI-122 under PRJ-018 (DEC-366). PI-114 addressed.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-049",
+        "target_type": "session",
+        "target_id": "SES-147",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [
+    {
+      "identifier": "PI-122",
+      "title": "Build the Agent Profile Registry",
+      "item_type": "pending_work",
+      "status": "Draft",
+      "description": "Build the Agent Profile Registry — the ADO §10 follow-on that holds and versions the agent prompts, skills, and governance rules the four ADO tiers draw from (design: PRDs/product/crmbuilder-v2/agent-profile-registry/, PRD v0.2). Scope: (1) three new governance entities — agent_profile (AGP-), skill (SKL-), governance_rule (GVR-) — authored via governance-entity-schema-spec-guide.md, schema specs under governance-schema-specs/, server-assigned identifiers per PI-002; (2) a single Alembic migration onto head 0036 adding the tables + two reference-edge kinds (agent_profile_has_skill, agent_profile_governed_by_rule) to REFERENCE_RELATIONSHIPS, _kinds_for_pair, and the refs relationship_kind CHECK; (3) access layer with the resolver that composes a profile identifier into a contract (system prompt + tool set + enforced ruleset + version stamp); (4) REST endpoints under the {data,meta,errors} envelope + MCP tools; record creation via API/MCP per governance-recording-rules.md; (5) UI monitoring panels under the Governance sidebar; (6) seed with the two proven profile prompts (Development Phase Specialist, Area Specialist) and bind their tool-skills to the shipped WTK-002..006 substrate endpoints; (7) hybrid governance — advisory rules compose into prompts (float), enforced rules BIND onto the existing access-layer enforcement rather than rebuilding it (a standalone broker only where the access layer cannot express a rule), enforced_with_override routes to the Workstream needs_attention flag. Resolve the three still-open questions (broker scope, profile↔role 1:1 coupling, WS-012 interaction). OUT OF SCOPE (a separate §10 follow-on): the runtime that injects a contract and spawns an agent session — but the registry must be runtime-ready, and the runtime must spawn each agent's worktree from current main HEAD (a requirement the Area Specialist proof surfaced). Builds on the completed ADO substrate (PI-114 / WTK-001..006); the agent pattern is already proven end-to-end for the Phase Specialist and Area Specialist tiers. Natural first real PI for the ADO substrate to decompose end-to-end.",
+      "executive_summary": "Build the central, versioned store of agent skills + governance rules the four ADO tiers draw from (PRD v0.2): three governance entities (agent_profile/skill/governance_rule, prefixes AGP/SKL/GVR) bound by reference edges, one Alembic migration on head 0036, an access-layer resolver that composes a profile into a contract (prompt + tools + enforced ruleset + version), REST + MCP + UI, seeded with the two proven profile prompts. Hybrid governance binds onto the existing access-layer enforcement rather than rebuilding it; enforced_with_override routes to needs_attention. The agent-running runtime is a separate follow-on. Builds on the completed ADO substrate; the agent pattern is already proven for two tiers."
+    }
+  ],
+  "commits": [],
+  "decisions": [
+    {
+      "identifier": "DEC-366",
+      "title": "Scope the Agent Profile Registry build as PI-122 — full governance entities, single migration on head 0036, registry-holds-vs-runtime-runs",
+      "context": "The ADO substrate is complete (PI-114 / WTK-001..006) and the agent pattern has been proven end-to-end for two structurally distinct tiers (a Development Phase Specialist making a scope judgment, an Area Specialist doing real implementation). The agent-profile-registry PRD (reconciled to v0.2) specifies the ADO §10 follow-on that holds and versions the agent prompts/skills/rules. The build needs a governed Planning Item so it can be tracked and, ideally, decomposed by the now-existing ADO.",
+      "decision": "Create PI-122 'Build the Agent Profile Registry' under PRJ-018 (Draft), carrying the full build scope in its description: three new governance entities (agent_profile AGP-, skill SKL-, governance_rule GVR-) authored through the schema-spec guide; one Alembic migration onto head 0036 adding the tables + two reference-edge kinds (agent_profile_has_skill, agent_profile_governed_by_rule) + the refs CHECK; an access-layer resolver (profile -> contract); REST + MCP + UI; seeded with the two proven profile prompts and their tool-skills bound to the shipped substrate endpoints; hybrid governance that BINDS onto existing access-layer enforcement rather than rebuilding it (enforced_with_override -> needs_attention). The agent-running runtime is explicitly a separate §10 follow-on, out of PI-122's scope, but the registry must be runtime-ready (the runtime spawns agent worktrees from current main HEAD).",
+      "alternatives_considered": "Model skills/rules as lighter vocab/config instead of full governance entities — rejected (v0.2 §10.1): the ADO values queryability/auditability, bindings are reference edges (which vocab cannot carry), and the entities want monitoring panels. Build the runtime first, or build the registry before proving any agent — rejected: a registry with no proven prompt to hold is premature, so two agents were proved first (this session), and the registry now has real seed content. Fold the registry into PI-114 rather than a new PI — rejected: PI-114 is the ADO substrate; the registry is a distinct, decomposable follow-on that the completed ADO can itself plan, so it earns its own PI. Add a blocked_by edge to PI-114 — rejected: the substrate the registry depends on already exists, so the dependency is satisfied; the lineage is recorded in the description, not as a blocking gate.",
+      "consequences": "PI-122 created under PRJ-018 in Draft, ready to be decomposed by the ADO (its first real end-to-end PI) or via hand-authored Workstreams/Work Tasks in the interim (ADO §8 bootstrap). Three open questions remain tracked in PRD §10 (broker scope, profile↔role coupling, WS-012 interaction) for the build to settle. The two proven profile prompts (agent-profile-registry/profiles/) are the registry's first seed content. This session addresses PI-114 without resolving it.",
+      "executive_summary": "Scopes the Agent Profile Registry build as PI-122 under PRJ-018 (Draft): three governance entities (AGP/SKL/GVR) bound by reference edges, one Alembic migration on head 0036, an access-layer resolver composing a profile into a contract, REST + MCP + UI, seeded with the two proven profile prompts. Skills/rules are full governance entities (not vocab); hybrid governance binds onto the existing access-layer enforcement rather than rebuilding it; the agent-running runtime is a separate follow-on the registry must be ready for. Chosen after proving the agent pattern end-to-end for two tiers, so the registry has real seed content. Natural first PI for the completed ADO to decompose.",
+      "decision_date": "2026-05-31",
+      "status": "Active"
+    }
+  ],
+  "references": [
+    {
+      "source_type": "session",
+      "source_id": "SES-147",
+      "target_type": "project",
+      "target_id": "PRJ-018",
+      "relationship": "session_belongs_to_project"
+    },
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-049",
+      "target_type": "project",
+      "target_id": "PRJ-018",
+      "relationship": "conversation_belongs_to_project"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-366",
+      "target_type": "conversation",
+      "target_id": "CNV-049",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-147",
+      "target_type": "session",
+      "target_id": "SES-144",
+      "relationship": "session_follows_from"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-122",
+      "target_type": "project",
+      "target_id": "PRJ-018",
+      "relationship": "planning_item_belongs_to_project"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": [
+    {
+      "planning_item_identifier": "PI-114"
+    }
+  ]
+}

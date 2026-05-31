@@ -5965,5 +5965,22 @@
     "supersedes_id": null,
     "title": "ADO Project Manager substrate: project_backlog (dependency eligibility) + dispatch_planning_item over PI blocked_by edges",
     "updated_at": "2026-05-31T20:54:42.613619"
+  },
+  {
+    "alternatives_considered": "Model skills/rules as lighter vocab/config instead of full governance entities — rejected (v0.2 §10.1): the ADO values queryability/auditability, bindings are reference edges (which vocab cannot carry), and the entities want monitoring panels. Build the runtime first, or build the registry before proving any agent — rejected: a registry with no proven prompt to hold is premature, so two agents were proved first (this session), and the registry now has real seed content. Fold the registry into PI-114 rather than a new PI — rejected: PI-114 is the ADO substrate; the registry is a distinct, decomposable follow-on that the completed ADO can itself plan, so it earns its own PI. Add a blocked_by edge to PI-114 — rejected: the substrate the registry depends on already exists, so the dependency is satisfied; the lineage is recorded in the description, not as a blocking gate.",
+    "consequences": "PI-122 created under PRJ-018 in Draft, ready to be decomposed by the ADO (its first real end-to-end PI) or via hand-authored Workstreams/Work Tasks in the interim (ADO §8 bootstrap). Three open questions remain tracked in PRD §10 (broker scope, profile↔role coupling, WS-012 interaction) for the build to settle. The two proven profile prompts (agent-profile-registry/profiles/) are the registry's first seed content. This session addresses PI-114 without resolving it.",
+    "context": "The ADO substrate is complete (PI-114 / WTK-001..006) and the agent pattern has been proven end-to-end for two structurally distinct tiers (a Development Phase Specialist making a scope judgment, an Area Specialist doing real implementation). The agent-profile-registry PRD (reconciled to v0.2) specifies the ADO §10 follow-on that holds and versions the agent prompts/skills/rules. The build needs a governed Planning Item so it can be tracked and, ideally, decomposed by the now-existing ADO.",
+    "created_at": "2026-05-31T23:01:59.451211",
+    "decision": "Create PI-122 'Build the Agent Profile Registry' under PRJ-018 (Draft), carrying the full build scope in its description: three new governance entities (agent_profile AGP-, skill SKL-, governance_rule GVR-) authored through the schema-spec guide; one Alembic migration onto head 0036 adding the tables + two reference-edge kinds (agent_profile_has_skill, agent_profile_governed_by_rule) + the refs CHECK; an access-layer resolver (profile -> contract); REST + MCP + UI; seeded with the two proven profile prompts and their tool-skills bound to the shipped substrate endpoints; hybrid governance that BINDS onto existing access-layer enforcement rather than rebuilding it (enforced_with_override -> needs_attention). The agent-running runtime is explicitly a separate §10 follow-on, out of PI-122's scope, but the registry must be runtime-ready (the runtime spawns agent worktrees from current main HEAD).",
+    "decision_date": "2026-05-31",
+    "executive_summary": "Scopes the Agent Profile Registry build as PI-122 under PRJ-018 (Draft): three governance entities (AGP/SKL/GVR) bound by reference edges, one Alembic migration on head 0036, an access-layer resolver composing a profile into a contract, REST + MCP + UI, seeded with the two proven profile prompts. Skills/rules are full governance entities (not vocab); hybrid governance binds onto the existing access-layer enforcement rather than rebuilding it; the agent-running runtime is a separate follow-on the registry must be ready for. Chosen after proving the agent pattern end-to-end for two tiers, so the registry has real seed content. Natural first PI for the completed ADO to decompose.",
+    "id": 353,
+    "identifier": "DEC-366",
+    "rationale": "",
+    "status": "Active",
+    "superseded_by_id": null,
+    "supersedes_id": null,
+    "title": "Scope the Agent Profile Registry build as PI-122 — full governance entities, single migration on head 0036, registry-holds-vs-runtime-runs",
+    "updated_at": "2026-05-31T23:01:59.451214"
   }
 ]
