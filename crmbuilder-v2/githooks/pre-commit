@@ -1,0 +1,20 @@
+#!/bin/sh
+# Model A guard: governance snapshots advance only on main.
+# Blocks staged db-export/ and deposit-event-logs/ changes on any non-main
+# branch. Merge-time override: CRMBUILDER_ALLOW_BRANCH_SNAPSHOT=1
+branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
+if [ "$branch" = "main" ] || [ "${CRMBUILDER_ALLOW_BRANCH_SNAPSHOT:-}" = "1" ]; then
+    exit 0
+fi
+blocked="$(git diff --cached --name-only \
+    -- 'PRDs/product/crmbuilder-v2/db-export/' \
+       'PRDs/product/crmbuilder-v2/deposit-event-logs/')"
+if [ -n "$blocked" ]; then
+    echo "✗ pre-commit: governance snapshots may not be committed on branch '$branch'." >&2
+    echo "  Model A: db-export/ and deposit-event-logs/ advance only on main." >&2
+    echo "  Staged offending files:" >&2
+    echo "$blocked" | sed 's/^/    /' >&2
+    echo "  Merge of a branch-local apply? Set CRMBUILDER_ALLOW_BRANCH_SNAPSHOT=1." >&2
+    exit 1
+fi
+exit 0

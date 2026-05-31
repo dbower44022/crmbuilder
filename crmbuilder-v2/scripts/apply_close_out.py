@@ -57,6 +57,7 @@ import argparse
 import importlib.util
 import io
 import json
+import subprocess
 import sys
 import urllib.error
 import urllib.request
@@ -513,6 +514,20 @@ def _post_deposit_event(
         )
 
 
+def _current_git_branch() -> str | None:
+    """Return the current git branch name, or None if it can't be determined."""
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return out.stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+
 def main() -> int:
     global BASE
 
@@ -546,7 +561,32 @@ def main() -> int:
             "payload-shape violations before any record is POSTed."
         ),
     )
+    parser.add_argument(
+        "--allow-branch-local",
+        action="store_true",
+        help=(
+            "Permit applying on a non-main branch (Model B isolated-DB work "
+            "only). Requires CRMBUILDER_V2_DB_PATH to point at a gitignored "
+            "branch-local engagement DB. Default refuses any apply off main."
+        ),
+    )
     args = parser.parse_args()
+
+    branch = _current_git_branch()
+    if branch is not None and branch != "main" and not args.allow_branch_local:
+        print(
+            f"✗ Refusing to apply a close-out on branch '{branch}'.",
+            file=sys.stderr,
+        )
+        print(
+            "  Governance applies must run on 'main' so the identifier "
+            "sequence and\n  db-export snapshots advance on a single line "
+            "(Model A). If this is\n  isolated-DB branch work, re-run with "
+            "--allow-branch-local AND ensure\n  CRMBUILDER_V2_DB_PATH points "
+            "at a gitignored branch-local engagement DB.",
+            file=sys.stderr,
+        )
+        return 2
 
     BASE = args.base
 
