@@ -1,0 +1,119 @@
+# PI-112 — Governance & Delivery Model Migration — Execution Plan
+
+**Status:** v0.1 — execution. Branch: `pi-112-migration`.
+**Kickoff artifact:** `governance-redesign-target-model.md` v0.4 (the locked target model).
+**Decisions baked in:** DEC-340..344 (target model) + DEC-345..349 (the §11 resolutions).
+**Opened against:** WT-063 (kickoff_prompt, was `ready`).
+
+This plan sequences §9 of the target-model doc into committed, test-green phases,
+modeled on the PI-073 redesign (phase commits on a branch, close-out at the end).
+Each phase leaves the database and test suite internally consistent. It is written
+to be **resumable** — a power failure mid-phase can pick up from the last green commit.
+
+## Ground truth (verified at plan time)
+
+- **Alembic head:** `0026_pi_078_identifier_reservations`. Next migration: `0027`.
+- **DB build in tests:** `tests/crmbuilder_v2/conftest.py` (+ api/ + ui/ conftests). 168 v2 test files.
+  Baseline green before any change (133 workstream/area/planning tests pass).
+- **Catalog data gitignored** — the full alembic chain can't run from scratch; migrations
+  validate via `create_all`/conftest and a copy of the live engagement DB (see project memory).
+- **MCP surface does NOT expose workstream tools** — `mcp_server/tools.py` omits governance
+  entities; UI + REST are the consumers. (Less blast radius than feared.)
+- **Live data to migrate:** 14 Project rows `WS-001..WS-014`; reference edges with
+  `source_id`/`target_id` in `WS-*`; the kinds `conversation_belongs_to_workstream`,
+  `session_belongs_to_workstream`, `workstream_planned_in_reference_book`.
+
+## Blast-radius map (Phase 1 targets — exact locations)
+
+| Layer | File | What |
+|---|---|---|
+| Model | `access/models.py:1082-1134` | class `Workstream`, table `workstreams`, cols `workstream_*`, CHECK `WS-[0-9]{3}`, status CHECK, 2 indexes |
+| Vocab statuses | `access/vocab.py:321-330` | `WORKSTREAM_STATUSES`, `WORKSTREAM_STATUS_TRANSITIONS` |
+| Vocab kinds | `access/vocab.py:444,445,543` | `conversation_belongs_to_workstream`, `workstream_planned_in_reference_book`, `session_belongs_to_workstream` |
+| Vocab pair rules | `access/vocab.py:_kinds_for_pair` (~719,727,828) | clauses keyed on `"workstream"` source/target; also `ENTITY_TYPES` membership |
+| Repo | `access/repositories/workstreams.py` | `_ENTITY_TYPE`, `_IDENTIFIER_PREFIX="WS"`, `_IDENTIFIER_RE`, `_STATUS_TIMESTAMP`, all fns |
+| Gov helpers | `access/repositories/_governance.py` | generic; referenced not entity-named |
+| API router | `api/routers/workstreams.py:24` | prefix `/workstreams`, 8 endpoints |
+| API schemas | `api/schemas.py:1016-1043` | `WorkstreamCreateIn/ReplaceIn/PatchIn` |
+| Exporter | `access/exporter.py:93` | `("workstreams", Workstream)` → snapshot filename `workstreams.json` |
+| UI | `ui/panels/workstreams.py`, `ui/dialogs/workstream_crud.py`, `ui/dialogs/_workstream_schema.py`, `ui/sidebar.py`, `ui/main_window.py`, `ui/styling.py`, `ui/client.py` | panel, CRUD dialog, form schema, sidebar entry, client methods, labels |
+| Cross-refs | `api/routers/sessions.py`, `api/routers/conversations.py`, `access/repositories/sessions.py`, `_governance.py`, `catalog/write.py` | membership-edge enforcement referencing `workstream` |
+| db-export | `PRDs/product/crmbuilder-v2/db-export/workstreams.json` | committed snapshot → renamed to `projects.json` |
+| Tests | `tests/crmbuilder_v2/**` | rename refs; the data-migration test |
+
+## Phasing
+
+### Phase 1 — Rename `workstream` → `Project`, `WS-` → `PRJ-`
+Pure rename of the existing container; the new "Workstream-as-phase" entity does NOT exist
+yet, so a blanket `workstream→project` / `Workstream→Project` rename is unambiguous here.
+
+Sub-steps (commit as one phase when green):
+1. **Vocab** — rename `WORKSTREAM_*` → `PROJECT_*`; rename the three `*_workstream*` kinds to
+   `*_project*` (`conversation_belongs_to_project`, `project_planned_in_reference_book`,
+   `session_belongs_to_project`); swap `"workstream"` → `"project"` in `ENTITY_TYPES` and every
+   `_kinds_for_pair` clause. **Keep the old kind strings admitted-but-retired** in
+   `REFERENCE_RELATIONSHIPS` (mirroring the PI-073 legacy-kind handling) so historical edges
+   validate until the data migration renames them.
+2. **Model** — class `Project`, table `projects`, cols `project_*`, CHECK `PRJ-[0-9]{3}`,
+   constraint/index names `*_project_*`.
+3. **Repo** — `workstreams.py` → `projects.py`; `_ENTITY_TYPE="project"`, `_IDENTIFIER_PREFIX="PRJ"`,
+   `_IDENTIFIER_RE=^PRJ-\d{3}$`, `_STATUS_TIMESTAMP` keys → `project_*`.
+4. **API** — `routers/workstreams.py` → `routers/projects.py`, prefix `/projects`, tag `projects`;
+   schemas → `ProjectCreateIn/ReplaceIn/PatchIn`; register in `api/main.py`.
+   **Decision: keep a `/workstreams` alias?** No — clean rename (DEC-345 spirit). Update all callers.
+5. **Exporter** — `("projects", Project)`; snapshot becomes `projects.json`.
+6. **UI** — rename the 7 UI files/labels; sidebar entry "Workstreams" → "Projects".
+7. **Migration 0027** — `op.rename_table("workstreams","projects")`; batch-rename columns
+   (SQLite batch mode); rebuild CHECKs with new names + `PRJ-` GLOB; **data migration**:
+   `WS-NNN` → `PRJ-NNN` on the projects PK, on `refs.source_id`/`target_id` where they reference
+   a project, on `identifier_reservations` (0026) if present, and rename the three relationship
+   kinds on live `refs` rows. Downgrade reverses.
+8. **db-export** — regenerate; `git mv workstreams.json projects.json` effectively (the export
+   writes `projects.json`; delete the stale `workstreams.json`). Rewrite `WS-`→`PRJ-` inside
+   sessions/conversations/references snapshots (the export handles this once DB is migrated).
+9. **Tests** — rename test refs; add a migration test asserting `WS-014` → `PRJ-014` and an edge
+   rewrite. Run full `tests/crmbuilder_v2` green.
+
+**Risk:** WS-014 is the live parent of SES-132/SES-133/CNV-034/CNV-035 — its rename must
+cascade to those membership edges. Covered by sub-step 7's `refs` rewrite.
+
+### Phase 2 — Restructure the area vocabulary (System / Engagement)
+- Drop version prefix: `v2-storage`→`storage`, `v1-espo`→`espo`, etc. (13 System areas).
+- Split: immutable **System** areas (frozenset, DEC-006 gate) + per-engagement **Engagement**
+  areas in a new per-engagement table, **fully user-defined, no Domain link** (DEC-348).
+- Migrate `cbm-*` → CBM engagement's Engagement areas (`mn/mr/cr/fu/services`).
+- Add **layer rank** ordinal to System areas (storage 1 → access 2 → api 3 → mcp/ui 4; rest null) (DEC-347).
+- Validation: a value must be in (System ∪ that engagement's Engagement areas).
+- Area stays on `planning_item` at this stage (relocation is Phase 4). Migrate existing tags.
+
+### Phase 3 — Planning Item six-state lifecycle (DEC-346)
+- `PLANNING_ITEM_STATUSES` → Draft, Decomposed, Ready, In Progress, In Review, Resolved,
+  Deferred, Cancelled (phase-agnostic). Add `PLANNING_ITEM_STATUS_TRANSITIONS`.
+- CHECK rebuild; repo/router transition enforcement (currently unrestricted — add `check_transition`).
+- **Back-compat:** map existing `Open`→`Draft`? or keep `Open` as an alias? Decide at phase start;
+  likely migrate `Open`→`Draft`, `Resolved`→`Resolved`, `Deferred`→`Deferred`.
+- Gives PI-081/PI-083 a clean `Deferred` (per DEC-344).
+
+### Phase 4 — Workstream (`WSK-`) + Work Task (`WTK-`) entities; relocate area
+- New **Workstream** entity (delivery phase): belongs_to one Planning Item; phase-type vocab
+  {Design, Development, Testing, Documentation, Data Migration, Deployment} (DEC-349);
+  lifecycle Planned→In Progress→Complete(+Blocked); identifier `WSK-`.
+- New **Work Task** entity: belongs_to one Workstream; single `area`; `claimed_by`/`claimed_at`;
+  lifecycle Planned→Ready→Claimed→In Progress→Complete(+Blocked/Failed); identifier `WTK-`.
+- **Relocate `area`** from `planning_item` onto Work Task (single-valued). Drop the
+  planning_item.area column + its CHECK; orchestrator (`orchestration.py`) updated to read
+  task areas. New reference kinds: `workstream_belongs_to_planning_item`,
+  `work_task_belongs_to_workstream`, `work_task_has_area` (+ blocked_by variants).
+- Out of scope (per design §5/§12): the runtime agent organization; WS-012 retirement (DEC-344).
+
+### Close-out
+Author `close-out-payloads/ses_NNN.json` + apply prompt; ingest the phase commits via `commits`;
+`resolves_planning_items: [PI-112]`; consume WT-063 (`session_opens_against_work_ticket`);
+regenerate snapshots; merge `pi-112-migration` → main.
+
+## Open verification items (resolve as encountered)
+- [ ] `identifier_reservations` (0026) schema — does it store `WS-` values needing rewrite?
+- [ ] Any consumer reads the literal `workstreams.json` snapshot filename (apply scripts,
+      file-fallback orientation, docs)? Grep before deleting it.
+- [ ] `catalog/write.py` workstream reference — confirm it's a seed/bootstrap, adjust.
+- [ ] Phase 3 `Open`→`Draft` data-migration call: confirm desired mapping with Doug.
