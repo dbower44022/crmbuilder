@@ -52,6 +52,18 @@ from PySide6.QtWidgets import (
 from sqlalchemy.exc import IntegrityError
 
 
+def _refs_grid_texts(detail) -> list[str]:
+    """All display-cell strings from a detail pane's ReferencesSection grid."""
+    section = detail.findChild(ReferencesSection)
+    assert section is not None, "expected a ReferencesSection in the detail pane"
+    model = section._proxy
+    return [
+        str(model.data(model.index(r, c)) or "")
+        for r in range(model.rowCount())
+        for c in range(model.columnCount())
+    ]
+
+
 @pytest.fixture
 def process_client(v2_env) -> StorageClient:
     """A StorageClient over a real TestClient bound to the per-test DB."""
@@ -566,24 +578,20 @@ def test_handoff_round_trips_directionally(qtbot, process_client):
     producer_detail = panel.render_detail(
         producer, panel.fetch_detail_extras(producer)
     )
-    producer_labels = [
-        lbl.text() for lbl in producer_detail.findChildren(QLabel)
-    ]
-    # v0.6 slice C: ReferencesSection drops the "(N)" count suffix on
-    # the per-kind sub-section header per design pass §2.4.
-    assert any("Hands off to" in t for t in producer_labels)
-    assert any("PROC-002" in t for t in producer_labels)
+    # PRJ-015: ReferencesSection now renders a grid; the relationship
+    # ("Hands off to") and the far-side identifier are cells, not labels.
+    producer_cells = _refs_grid_texts(producer_detail)
+    assert any("Hands off to" in c for c in producer_cells)
+    assert any("PROC-002" in c for c in producer_cells)
 
     # Consumer detail pane: the handoff renders under "Receives from".
     consumer = process_client.get_process("PROC-002")
     consumer_detail = panel.render_detail(
         consumer, panel.fetch_detail_extras(consumer)
     )
-    consumer_labels = [
-        lbl.text() for lbl in consumer_detail.findChildren(QLabel)
-    ]
-    assert any("Receives from" in t for t in consumer_labels)
-    assert any("PROC-001" in t for t in consumer_labels)
+    consumer_cells = _refs_grid_texts(consumer_detail)
+    assert any("Receives from" in c for c in consumer_cells)
+    assert any("PROC-001" in c for c in consumer_cells)
 
     # Soft-deleting the producer leaves the handoff in place.
     process_client.delete_process("PROC-001")

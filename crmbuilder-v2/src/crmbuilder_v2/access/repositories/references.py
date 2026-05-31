@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access._helpers import require_in, require_string, to_dict
 from crmbuilder_v2.access.change_log import emit
+from crmbuilder_v2.access.entity_summary import summarize
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
     FieldError,
@@ -215,9 +216,15 @@ def list_touching(session: Session, *, entity_type: str, entity_id: str) -> dict
     for r in rows:
         d = _row_dict(r)
         if r.source_type == entity_type and r.source_id == entity_id:
-            sources.append(d)
+            # Enrich with the *other* (target) record's key fields so the
+            # UI grid can show title/status/dates without a second fetch.
+            sd = dict(d)
+            sd["other_summary"] = summarize(session, r.target_type, r.target_id)
+            sources.append(sd)
         if r.target_type == entity_type and r.target_id == entity_id:
-            targets.append(d)
+            td = dict(d)
+            td["other_summary"] = summarize(session, r.source_type, r.source_id)
+            targets.append(td)
     return {
         "as_source": sources,
         "as_target": targets,

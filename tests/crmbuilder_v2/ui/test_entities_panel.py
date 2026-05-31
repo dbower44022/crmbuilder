@@ -508,10 +508,21 @@ def test_reference_round_trip_visible_from_both_sides(qtbot, entity_client):
     record = entity_client.get_entity("ENT-001")
     extras = panel.fetch_detail_extras(record)
     detail = panel.render_detail(record, extras)
-    link_texts = [
-        lbl.text() for lbl in detail.findChildren(QLabel) if "DOM-001" in lbl.text()
+    # PRJ-015: references render in a grid; the far-side identifier is a
+    # cell value rather than a QLabel link.
+    from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
+
+    section = detail.findChild(ReferencesSection)
+    assert section is not None
+    proxy = section._proxy
+    cells = [
+        str(proxy.data(proxy.index(r, c)) or "")
+        for r in range(proxy.rowCount())
+        for c in range(proxy.columnCount())
     ]
-    assert link_texts, "domain affiliation should render in ReferencesSection"
+    assert any("DOM-001" in c for c in cells), (
+        "domain affiliation should render in references grid"
+    )
 
     # Soft-deleting the entity leaves the reference in place.
     entity_client.delete_entity("ENT-001")

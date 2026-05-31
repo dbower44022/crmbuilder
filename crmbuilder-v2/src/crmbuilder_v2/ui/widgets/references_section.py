@@ -1,49 +1,57 @@
-"""ReferencesSection — uniform inbound/outbound references rendering.
+"""ReferencesSection — references rendered as a sortable/filterable grid.
 
-Pure rendering widget; takes a pre-fetched references payload (the
-shape returned by ``StorageClient.list_references_touching``) and lays
-out grouped sections. Click any reference link, the widget emits
-``navigate_requested(entity_type, identifier)``.
+History: through v0.6 this widget rendered each reference as a rich-text
+``<a href>`` QLabel showing only *identifier + entity type*, grouped into
+kind-labeled sub-sections. You could not tell *what* ``PI-048`` was, nor see
+its status or dates, without navigating away (PRJ-015 usability item).
 
-Why pre-fetched data instead of widget-side fetching: v0.1's panel
-architecture already fetches references in ``fetch_detail_extras`` on a
-worker thread; threading that result through ``render_detail`` keeps
-the existing master/detail data flow intact and avoids a second async
-fetch per detail-pane render.
+This rewrite (PRJ-015) replaces the label list with a single
+``QTableView`` over all of a record's references, with columns:
+Direction, Relationship, Identifier, Type, Title, Status, Created, Updated.
+The table is sortable (click a header) and filterable (the filter box
+matches across every column). Title/Status/Created/Updated come from the
+``other_summary`` block the access layer now attaches to each edge
+(``references.list_touching``); edges whose far side has no summary
+(version-keyed singletons, catalog rows) show identifier + type only.
 
-Constructor parameter ``exclude_relationships`` filters out specific
-relationship types from the rendered output. The DecisionsPanel passes
-``{"supersedes"}`` to suppress the outbound supersedes reference, which
-is already shown as a top-level Supersedes/Superseded By field on the
-detail pane.
+Behavior preserved from the prior widget:
+- ``navigate_requested(entity_type, identifier)`` — emitted on double-click
+  (or the row right-click "Go to" action).
+- ``references_changed()`` — emitted after a successful add/delete.
+- ``Add reference`` button (only when a ``client`` was supplied) and
+  ``set_add_enabled`` to hide it for read-only/audit panels.
+- Per-row right-click menu (Delete reference + Go to).
+- ``exclude_relationships`` filtering.
+- Constructor signature, including the vestigial ``inbound_label`` /
+  ``outbound_label`` args kept for back-compat with the v0.4 ``processes``
+  panel.
 
-v0.6 slice C rewrite (DEC-107). The previous two-level (direction →
-relationship type) grouping is replaced with per-(direction, type)
-kind-labeled sub-sections per the design pass §2.4. ``_KIND_LABELS``
-maps ``(direction, relationship)`` tuples to title-case headers like
-"Decided in", "Supersedes", "Superseded by", "Hands off to". Unmapped
-kinds fall through to a humanized fallback derived from the
-relationship token.
-
-Constructor parameters ``inbound_label`` and ``outbound_label`` are
-**vestigial** in the new model — the direction sub-headings they
-previously customized are gone — but the args remain on the
-constructor for back-compat so existing panels (notably ``processes``)
-import without change. Added in v2-ui-v0.2-A per DEC-031. v0.3 slice C
-added the ``Add reference`` button + per-row right-click menu.
+The widget is a pure renderer over a pre-fetched payload (the shape from
+``StorageClient.list_references_touching``); fetching still happens on the
+panel's ``fetch_detail_extras`` worker thread.
 """
 
 from __future__ import annotations
 
-from collections import OrderedDict
 from typing import Any
 
-from PySide6.QtCore import QPoint, Qt, Signal
+from PySide6.QtCore import (
+    QAbstractTableModel,
+    QModelIndex,
+    QPoint,
+    QSortFilterProxyModel,
+    Qt,
+    Signal,
+)
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QDialog,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
+    QLineEdit,
     QMenu,
+    QTableView,
     QVBoxLayout,
     QWidget,
 )
@@ -52,47 +60,51 @@ from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.styling import t
 from crmbuilder_v2.ui.widgets.form_helpers import text_link_button
 
-
-# (direction, relationship) → human-readable sub-section header.
-# Direction is "inbound" (the record is the target) or "outbound" (the
-# record is the source). Unmapped kinds fall through to
-# :func:`_default_kind_label` so future vocab additions still render.
+# (direction, relationship) → human-readable label. Direction is "inbound"
+# (the record is the target) or "outbound" (the record is the source).
+# Unmapped kinds fall through to :func:`_default_kind_label`.
 _KIND_LABELS: dict[tuple[str, str], str] = {
-    # Generic kinds — directional human labels per design pass §2.4.
     ("outbound", "is_about"): "Is about",
     ("inbound", "is_about"): "Cited by",
     ("outbound", "references"): "References",
     ("inbound", "references"): "Referenced by",
-    # Decisions — the most-used set.
     ("inbound", "decided_in"): "Decided in",
     ("outbound", "decided_in"): "Decides",
     ("outbound", "supersedes"): "Supersedes",
     ("inbound", "supersedes"): "Superseded by",
-    # Risks / planning_items.
     ("outbound", "affects"): "Affects",
     ("inbound", "affects"): "Affected by",
-    # v0.8: legacy ``blocks`` kind retired; replaced by directed
-    # ``blocked_by`` (planning_item → planning_item) per methodology §3.4.
     ("outbound", "blocked_by"): "Blocked by",
     ("inbound", "blocked_by"): "Blocks",
-    # Charter / status coverage.
     ("outbound", "covers"): "Covers",
     ("inbound", "covers"): "Covered by",
-    # Methodology entities (v0.4).
     ("outbound", "entity_scopes_to_domain"): "Scopes to",
     ("inbound", "entity_scopes_to_domain"): "Scoped by",
     ("outbound", "process_hands_off_to_process"): "Hands off to",
     ("inbound", "process_hands_off_to_process"): "Receives from",
-    # v0.8 Code Change Lifecycle additions (methodology §3.2–§3.3).
     ("outbound", "resolves"): "Resolves",
     ("inbound", "resolves"): "Resolved by",
     ("outbound", "addresses"): "Addresses",
     ("inbound", "addresses"): "Addressed by",
 }
 
+# Display columns, in order. Each tuple is (header, row-dict key).
+_COLUMNS: list[tuple[str, str]] = [
+    ("Direction", "direction_label"),
+    ("Relationship", "kind_label"),
+    ("Identifier", "identifier"),
+    ("Type", "type_label"),
+    ("Title", "title"),
+    ("Status", "status"),
+    ("Created", "created"),
+    ("Updated", "updated"),
+]
+
+_DASH = "—"
+_ROW_HEIGHT = 26
+
 
 def _default_kind_label(direction: str, relationship: str) -> str:
-    """Fallback label for an unmapped (direction, relationship) pair."""
     pretty = relationship.replace("_", " ")
     if direction == "outbound":
         return pretty[:1].upper() + pretty[1:]
@@ -103,27 +115,82 @@ def _pretty_entity_type(entity_type: str) -> str:
     return entity_type.replace("_", " ").title()
 
 
-class ReferencesSection(QWidget):
-    """Renders inbound and outbound references for an entity record.
+def _fmt_dt(value: Any) -> str:
+    """Render an ISO timestamp as ``YYYY-MM-DD HH:MM`` for display.
 
-    The widget is a pure renderer: it takes a pre-fetched payload and
-    lays out the section. Reference fetching itself happens on the
-    panel level via ``fetch_detail_extras`` (consistent with v0.1's
-    threading pattern).
+    The access layer serializes timestamps to ISO strings via the API
+    envelope; we keep the date + minute and drop seconds/offset. Non-ISO or
+    empty values pass through as a dash.
+    """
+    if not value:
+        return _DASH
+    text = str(value)
+    # ISO: "2026-05-30T22:51:41.677924+00:00" → "2026-05-30 22:51".
+    date_part, _, time_part = text.partition("T")
+    if not time_part:
+        return date_part or _DASH
+    return f"{date_part} {time_part[:5]}"
 
-    v0.6 slice C: the rendering switches to a flat sequence of
-    kind-labeled sub-sections (one per (direction, relationship)
-    bucket). The two top-level direction sections are removed; the
-    ``inbound_label`` / ``outbound_label`` constructor args are kept
-    but ignored at render time — they remain to preserve the v0.4
-    constructor signature for the processes panel.
+
+class _RefsModel(QAbstractTableModel):
+    """Table model over flattened reference rows.
+
+    Each row dict carries the display fields plus the bookkeeping needed
+    for navigation and deletion (``other_type``, ``other_id``, ``ref`` — the
+    raw edge). ``DisplayRole`` returns formatted strings; ``UserRole``
+    returns sort keys (raw ISO strings sort chronologically; text sorts
+    case-insensitively).
     """
 
+    def __init__(self, rows: list[dict[str, Any]]) -> None:
+        super().__init__()
+        self._rows = rows
+
+    def rowCount(self, _parent: QModelIndex | None = None) -> int:  # noqa: N802
+        return len(self._rows)
+
+    def columnCount(self, _parent: QModelIndex | None = None) -> int:  # noqa: N802
+        return len(_COLUMNS)
+
+    def row_dict(self, source_row: int) -> dict[str, Any]:
+        return self._rows[source_row]
+
+    def headerData(  # noqa: N802
+        self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole
+    ):
+        if (
+            orientation == Qt.Orientation.Horizontal
+            and role == Qt.ItemDataRole.DisplayRole
+            and 0 <= section < len(_COLUMNS)
+        ):
+            return _COLUMNS[section][0]
+        return None
+
+    def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole):
+        if not index.isValid():
+            return None
+        row = self._rows[index.row()]
+        key = _COLUMNS[index.column()][1]
+        value = row.get(key)
+        if role == Qt.ItemDataRole.DisplayRole:
+            if key in ("created", "updated"):
+                return _fmt_dt(value)
+            return value if value not in (None, "") else _DASH
+        if role == Qt.ItemDataRole.UserRole:
+            # Sort key: ISO strings already sort chronologically; text
+            # lowercased for case-insensitive ordering; missing sorts last.
+            if value in (None, ""):
+                return "￿"
+            if key in ("created", "updated"):
+                return str(value)
+            return str(value).lower()
+        return None
+
+
+class ReferencesSection(QWidget):
+    """Renders a record's inbound and outbound references as a grid."""
+
     navigate_requested = Signal(str, str)
-    # Emitted after a successful add or delete inside the section so
-    # the host panel can ``refresh()`` the master view (which re-runs
-    # ``fetch_detail_extras`` and re-renders this section). v0.3
-    # slice C — DEC-033.
     references_changed = Signal()
 
     def __init__(
@@ -134,8 +201,8 @@ class ReferencesSection(QWidget):
         *,
         exclude_relationships: set[str] | None = None,
         client: StorageClient | None = None,
-        inbound_label: str = "Inbound",  # noqa: ARG002 — vestigial; kept for back-compat
-        outbound_label: str = "Outbound",  # noqa: ARG002 — vestigial; kept for back-compat
+        inbound_label: str = "Inbound",  # noqa: ARG002 — vestigial; back-compat
+        outbound_label: str = "Outbound",  # noqa: ARG002 — vestigial; back-compat
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -143,90 +210,134 @@ class ReferencesSection(QWidget):
         self._identifier = identifier
         self._exclude = set(exclude_relationships or set())
         self._client = client
-        # ``inbound_label`` / ``outbound_label`` are accepted to preserve
-        # the v0.4 constructor signature but are not consumed by the
-        # v0.6 sub-sectioned renderer. The two former direction headers
-        # they customized no longer exist.
+        self._add_button = None
+        self._table = None
         self._build(references_payload or {})
 
     # ------------------------------------------------------------------
-    # Internal
+    # Build
     # ------------------------------------------------------------------
+
+    def _flatten(self, payload: dict[str, Any]) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for direction, bucket_key, other_type_key, other_id_key in (
+            ("inbound", "as_target", "source_type", "source_id"),
+            ("outbound", "as_source", "target_type", "target_id"),
+        ):
+            for ref in payload.get(bucket_key) or []:
+                rel = ref.get("relationship") or "?"
+                if rel in self._exclude:
+                    continue
+                other_type = ref.get(other_type_key) or ""
+                other_id = ref.get(other_id_key) or ""
+                summary = ref.get("other_summary") or {}
+                rows.append(
+                    {
+                        "direction": direction,
+                        "direction_label": "In" if direction == "inbound" else "Out",
+                        "kind_label": _KIND_LABELS.get(
+                            (direction, rel), _default_kind_label(direction, rel)
+                        ),
+                        "identifier": other_id,
+                        "type_label": _pretty_entity_type(other_type),
+                        "title": summary.get("title"),
+                        "status": summary.get("status"),
+                        "created": summary.get("created_at"),
+                        "updated": summary.get("updated_at"),
+                        # bookkeeping
+                        "other_type": other_type,
+                        "other_id": other_id,
+                        "ref": ref,
+                    }
+                )
+        return rows
 
     def _build(self, payload: dict[str, Any]) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(int(t("space.2").rstrip("px")))
-
         layout.addWidget(self._heading("References"))
 
-        # Flatten (direction, relationship, ref) tuples, honoring the
-        # exclude filter and dropping unknown directions defensively.
-        flat: list[tuple[str, str, dict[str, Any]]] = []
-        for ref in payload.get("as_target") or []:
-            rel = ref.get("relationship") or "?"
-            if rel in self._exclude:
-                continue
-            flat.append(("inbound", rel, ref))
-        for ref in payload.get("as_source") or []:
-            rel = ref.get("relationship") or "?"
-            if rel in self._exclude:
-                continue
-            flat.append(("outbound", rel, ref))
-
-        if not flat:
+        rows = self._flatten(payload)
+        if not rows:
             layout.addWidget(self._dim_label("(none)"))
             self._add_button_row(layout)
             return
 
-        # Bucket by (direction, relationship); insertion order drives
-        # display order so inbound buckets render before outbound ones
-        # for a given relationship token, matching the v0.5 visual flow.
-        buckets: "OrderedDict[tuple[str, str], list[dict[str, Any]]]" = (
-            OrderedDict()
-        )
-        for direction, rel, ref in flat:
-            key = (direction, rel)
-            buckets.setdefault(key, []).append(ref)
+        # Filter box.
+        self._filter = QLineEdit()
+        self._filter.setObjectName("references_section_filter")
+        self._filter.setPlaceholderText("Filter references…")
+        self._filter.setClearButtonEnabled(True)
+        layout.addWidget(self._filter)
 
-        section_gap = int(t("space.4").rstrip("px"))
-        for index, ((direction, rel), rows) in enumerate(buckets.items()):
-            if index > 0:
-                layout.addSpacing(section_gap)
-            header_text = _KIND_LABELS.get(
-                (direction, rel), _default_kind_label(direction, rel)
-            )
-            layout.addWidget(self._kind_header(header_text))
-            for ref in rows:
-                if direction == "inbound":
-                    other_type = ref.get("source_type") or ""
-                    other_id = ref.get("source_id") or ""
-                else:
-                    other_type = ref.get("target_type") or ""
-                    other_id = ref.get("target_id") or ""
-                layout.addWidget(
-                    self._entry_row(other_type, other_id, ref)
-                )
+        # Model + proxy (sort + filter across all columns).
+        self._model = _RefsModel(rows)
+        self._proxy = QSortFilterProxyModel(self)
+        self._proxy.setSourceModel(self._model)
+        self._proxy.setFilterKeyColumn(-1)  # match against every column
+        self._proxy.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self._proxy.setSortRole(Qt.ItemDataRole.UserRole)
+        self._filter.textChanged.connect(self._on_filter_changed)
+
+        # Table view.
+        self._table = QTableView(self)
+        self._table.setModel(self._proxy)
+        self._table.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        self._table.setSelectionMode(
+            QAbstractItemView.SelectionMode.SingleSelection
+        )
+        self._table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self._table.setAlternatingRowColors(True)
+        self._table.setSortingEnabled(True)
+        self._table.sortByColumn(0, Qt.SortOrder.AscendingOrder)
+        self._table.verticalHeader().setVisible(False)
+        self._table.verticalHeader().setDefaultSectionSize(_ROW_HEIGHT)
+        self._table.setWordWrap(False)
+        header = self._table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        # Title column takes the slack so long titles are readable.
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        self._table.doubleClicked.connect(self._on_double_clicked)
+        self._table.setContextMenuPolicy(
+            Qt.ContextMenuPolicy.CustomContextMenu
+        )
+        self._table.customContextMenuRequested.connect(self._on_context_menu)
+        layout.addWidget(self._table)
+        self._fit_height()
 
         self._add_button_row(layout)
 
-    def _add_button_row(self, layout: QVBoxLayout) -> None:
-        """Append the ``Add reference`` button row at the section bottom.
+    # ------------------------------------------------------------------
+    # Height: size the table to its (filtered) content so the detail
+    # pane's outer scroll area handles overflow (no nested scrollbar).
+    # ------------------------------------------------------------------
 
-        Only rendered when a ``StorageClient`` was supplied to the
-        constructor (otherwise the section is read-only, preserving
-        v0.2 callers that pre-date the v0.3 write surface).
-        """
+    def _fit_height(self) -> None:
+        if self._table is None:
+            return
+        visible = self._proxy.rowCount()
+        header_h = self._table.horizontalHeader().height()
+        frame = 2 * self._table.frameWidth()
+        self._table.setFixedHeight(header_h + _ROW_HEIGHT * max(visible, 1) + frame + 2)
+
+    def _on_filter_changed(self, text: str) -> None:
+        self._proxy.setFilterFixedString(text)
+        self._fit_height()
+
+    # ------------------------------------------------------------------
+    # Add-reference button row
+    # ------------------------------------------------------------------
+
+    def _add_button_row(self, layout: QVBoxLayout) -> None:
         if self._client is None:
             return
         layout.addSpacing(int(t("space.3").rstrip("px")))
         button_row = QHBoxLayout()
         button_row.setContentsMargins(0, 0, 0, 0)
         button_row.setSpacing(int(t("space.2").rstrip("px")))
-        # v0.6 slice D: Text/Link category per design pass §2.5. The
-        # slice-C inline ``setStyleSheet`` block is gone — all chrome
-        # is now in ``build_app_stylesheet`` keyed off
-        # ``buttonCategory="text"``.
         self._add_button = text_link_button("Add reference", icon_name="plus")
         self._add_button.setObjectName("references_section_add_button")
         self._add_button.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -236,139 +347,49 @@ class ReferencesSection(QWidget):
         layout.addLayout(button_row)
 
     def set_add_enabled(self, enabled: bool) -> None:
-        """Show or hide the Add-reference affordance.
+        if self._add_button is not None:
+            self._add_button.setVisible(enabled)
 
-        Read-only sections (audit-log panels like Deposit Events and the
-        PI-031 Commits panel, where records are ingested via close-out
-        rather than authored in the UI) call ``set_add_enabled(False)``
-        after construction to suppress the button. No-op when the section
-        was built without a client (the button was never rendered).
-        """
-        button = getattr(self, "_add_button", None)
-        if button is not None:
-            button.setVisible(enabled)
+    # ------------------------------------------------------------------
+    # Row resolution / interaction
+    # ------------------------------------------------------------------
 
-    def _heading(self, text: str) -> QLabel:
-        label = QLabel(text)
-        label.setObjectName("references_section_heading")
-        label.setStyleSheet(
-            f"font-size: {t('font.size.body_large')};"
-            f" font-weight: {t('font.weight.semibold')};"
-            f" color: {t('color.neutral.800')};"
-        )
-        return label
+    def _row_at(self, proxy_index: QModelIndex) -> dict[str, Any] | None:
+        if not proxy_index.isValid():
+            return None
+        source_index = self._proxy.mapToSource(proxy_index)
+        return self._model.row_dict(source_index.row())
 
-    def _kind_header(self, text: str) -> QLabel:
-        """Sub-section header for one (direction, relationship) bucket.
+    def _on_double_clicked(self, proxy_index: QModelIndex) -> None:
+        row = self._row_at(proxy_index)
+        if row and row["other_type"] and row["other_id"]:
+            self.navigate_requested.emit(row["other_type"], row["other_id"])
 
-        Tagged with ``role="references-kind-header"`` so the global QSS
-        rule in :func:`build_app_stylesheet` styles it without
-        per-widget setStyleSheet calls.
-        """
-        label = QLabel(text)
-        label.setProperty("role", "references-kind-header")
-        # Set inline styling too — Qt's QSS property-selector lookup
-        # can lag in some build environments, and the inline values
-        # below match the QSS rule character-for-character so there's
-        # no visual difference if both apply.
-        label.setStyleSheet(
-            f"font-size: {t('font.size.small')};"
-            f" font-weight: {t('font.weight.semibold')};"
-            f" color: {t('color.neutral.700')};"
-        )
-        return label
-
-    def _entry_row(
-        self, entity_type: str, identifier: str, ref: dict[str, Any]
-    ) -> QLabel:
-        """Render one reference entry — identifier (mono) + entity type.
-
-        Design pass §2.4: identifier rendered in mono font at
-        ``font.size.small`` ``color.neutral.700``, then ``space.3`` of
-        horizontal gap, then the pretty type label in ``font.size.body``
-        ``color.neutral.800``. Both pieces sit inside the same rich-text
-        QLabel so the entire row carries a single ``<a href>`` for
-        click-to-navigate.
-
-        Hover tint is delivered via inline QSS — Qt has no
-        ``:hover`` rule that applies inside a single label, so the
-        whole label background lifts to ``color.neutral.50`` on hover.
-        """
-        href = f"{entity_type}:{identifier}"
-        pretty_type = _pretty_entity_type(entity_type)
-        # Outer link spans the whole row; inner spans set the per-piece
-        # font. Identifier first (mono), then a gap, then the pretty
-        # type label.
-        html = (
-            f'<a href="{href}" style="text-decoration: none;">'
-            f'<span style="font-family: {t("font.family.mono")};'
-            f' font-size: {t("font.size.small")};'
-            f' color: {t("color.neutral.700")};">{identifier}</span>'
-            f'&nbsp;&nbsp;'
-            f'<span style="font-size: {t("font.size.body")};'
-            f' color: {t("color.neutral.800")};">{pretty_type}</span>'
-            f'</a>'
-        )
-        label = QLabel(html)
-        label.setProperty("role", "references-entry")
-        label.setTextFormat(Qt.TextFormat.RichText)
-        label.setTextInteractionFlags(
-            Qt.TextInteractionFlag.TextBrowserInteraction
-        )
-        label.setOpenExternalLinks(False)
-        # Hover tint on the row background; inline styling so it
-        # doesn't fight QSS specificity.
-        label.setStyleSheet(
-            f"QLabel {{ padding: {t('space.1')} {t('space.2')}; }}"
-            f" QLabel:hover {{ background: {t('color.neutral.50')}; }}"
-        )
-        label.linkActivated.connect(self._on_link_activated)
-        # v0.3 slice C — right-click each rendered row for delete + go-to.
-        # Only wire the menu when a client is available (i.e. write
-        # surfaces are reachable). Without a client, rows stay read-only
-        # and respond only to left-click navigation.
+    def _on_context_menu(self, position: QPoint) -> None:
+        proxy_index = self._table.indexAt(position)
+        row = self._row_at(proxy_index)
+        if row is None:
+            return
+        menu = QMenu(self._table)
         if self._client is not None:
-            label.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-            label.customContextMenuRequested.connect(
-                lambda position, lbl=label, r=ref, et=entity_type, ident=identifier:
-                self._on_row_context_menu(lbl, position, r, et, ident)
+            delete_action = menu.addAction("Delete reference")
+            delete_action.triggered.connect(
+                lambda _checked=False, r=row["ref"]: self._on_delete_clicked(r)
             )
-        return label
-
-    # ------------------------------------------------------------------
-    # Per-row right-click menu (v0.3 slice C — DEC-033)
-    # ------------------------------------------------------------------
-
-    def _on_row_context_menu(
-        self,
-        row_widget: QLabel,
-        position: QPoint,
-        reference: dict[str, Any],
-        other_side_type: str,
-        other_side_id: str,
-    ) -> None:
-        menu = QMenu(row_widget)
-        delete_action = menu.addAction("Delete reference")
-        delete_action.triggered.connect(
-            lambda _checked=False, r=reference: self._on_delete_clicked(r)
-        )
-        go_label = f"Go to {other_side_id}"
-        go_action = menu.addAction(go_label)
+        go_action = menu.addAction(f"Go to {row['other_id']}")
         go_action.triggered.connect(
-            lambda _checked=False, et=other_side_type, ident=other_side_id:
+            lambda _checked=False, et=row["other_type"], ident=row["other_id"]:
             self.navigate_requested.emit(et, ident)
         )
-        menu.exec(row_widget.mapToGlobal(position))
+        menu.exec(self._table.viewport().mapToGlobal(position))
 
     # ------------------------------------------------------------------
-    # Add / Delete click handlers
+    # Add / Delete handlers
     # ------------------------------------------------------------------
 
     def _on_add_clicked(self) -> None:
         if self._client is None:
             return
-        # Local import keeps the module-level import graph free of a
-        # widgets ↔ dialogs cycle.
         from crmbuilder_v2.ui.dialogs.reference_create import (
             ReferenceCreateDialog,
         )
@@ -401,15 +422,21 @@ class ReferencesSection(QWidget):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.references_changed.emit()
 
+    # ------------------------------------------------------------------
+    # Small label helpers
+    # ------------------------------------------------------------------
+
+    def _heading(self, text: str) -> QLabel:
+        label = QLabel(text)
+        label.setObjectName("references_section_heading")
+        label.setStyleSheet(
+            f"font-size: {t('font.size.body_large')};"
+            f" font-weight: {t('font.weight.semibold')};"
+            f" color: {t('color.neutral.800')};"
+        )
+        return label
+
     def _dim_label(self, text: str) -> QLabel:
         label = QLabel(text)
         label.setStyleSheet(f"color: {t('color.neutral.500')};")
         return label
-
-    def _on_link_activated(self, href: str) -> None:
-        if ":" not in href:
-            return
-        entity_type, _, identifier = href.partition(":")
-        if not entity_type or not identifier:
-            return
-        self.navigate_requested.emit(entity_type, identifier)

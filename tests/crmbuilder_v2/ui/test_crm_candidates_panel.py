@@ -383,13 +383,20 @@ def test_inbound_reference_renders_on_crm_candidate_detail_pane(
     record = candidate_client.get_crm_candidate("CRM-001")
     extras = panel.fetch_detail_extras(record)
     detail = panel.render_detail(record, extras)
-    link_texts = [
-        lbl.text()
-        for lbl in detail.findChildren(QLabel)
-        if "DEC-001" in lbl.text()
+    # PRJ-015: inbound references render in a grid; the far-side identifier
+    # is a cell value rather than a QLabel link.
+    from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
+
+    section = detail.findChild(ReferencesSection)
+    assert section is not None
+    proxy = section._proxy
+    cells = [
+        str(proxy.data(proxy.index(r, c)) or "")
+        for r in range(proxy.rowCount())
+        for c in range(proxy.columnCount())
     ]
-    assert link_texts, (
-        "decision citation should render in inbound ReferencesSection"
+    assert any("DEC-001" in c for c in cells), (
+        "decision citation should render in inbound references grid"
     )
 
 

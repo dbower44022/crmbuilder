@@ -12,9 +12,27 @@ import pytest
 from crmbuilder_v2.ui.main_window import MainWindow
 from crmbuilder_v2.ui.panels.decisions import DecisionsPanel
 from crmbuilder_v2.ui.panels.sessions import SessionsPanel
-from PySide6.QtWidgets import QLabel
 
 from .conftest import build_client
+
+
+def _navigate_via_refs_grid(detail_widget, target_id: str) -> None:
+    """Double-click the references-grid row whose Identifier == target_id.
+
+    PRJ-015: ReferencesSection renders a grid; navigation is via row
+    double-click (wired to ``navigate_requested``) rather than a QLabel
+    link. The Identifier column is index 2.
+    """
+    from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
+
+    section = detail_widget.findChild(ReferencesSection)
+    assert section is not None, "expected a ReferencesSection in the detail pane"
+    proxy = section._proxy
+    for row in range(proxy.rowCount()):
+        if proxy.data(proxy.index(row, 2)) == target_id:
+            section._table.doubleClicked.emit(proxy.index(row, 0))
+            return
+    raise AssertionError(f"no references-grid row for {target_id}")
 
 
 def _make_handler():
@@ -200,18 +218,9 @@ def test_decision_to_session_link_navigates(qapp, qtbot, navigation_window):
     # rather than by free-text co-occurrence with the relationship name
     # (which is rendered in a separate group-header label).
     detail_widget = decisions_panel._detail_stack.currentWidget()
-    link_label = None
-    for label in detail_widget.findChildren(QLabel):
-        text = label.text() or ""
-        if 'href="session:SES-004"' in text:
-            link_label = label
-            break
-    assert link_label is not None, "expected a session link to SES-004"
-
-    # Simulate the click via the linkActivated signal (offscreen Qt
-    # platform doesn't render or hit-test, so we drive the signal
-    # directly).
-    link_label.linkActivated.emit("session:SES-004")
+    # Drive navigation by double-clicking the SES-004 row in the grid
+    # (offscreen Qt doesn't hit-test, so we emit the view signal directly).
+    _navigate_via_refs_grid(detail_widget, "SES-004")
 
     qtbot.waitUntil(
         lambda: navigation_window._sidebar.currentItem()
@@ -301,15 +310,7 @@ def test_session_to_decision_link_navigates_when_decisions_visited_first(
 
     # Locate the decided_in DEC-018 link in the rendered detail.
     detail_widget = sessions_panel._detail_stack.currentWidget()
-    link_label = None
-    for label in detail_widget.findChildren(QLabel):
-        text = label.text() or ""
-        if 'href="decision:DEC-018"' in text:
-            link_label = label
-            break
-    assert link_label is not None, "expected a decision link to DEC-018"
-
-    link_label.linkActivated.emit("decision:DEC-018")
+    _navigate_via_refs_grid(detail_widget, "DEC-018")
 
     qtbot.waitUntil(
         lambda: navigation_window._sidebar.currentItem()
