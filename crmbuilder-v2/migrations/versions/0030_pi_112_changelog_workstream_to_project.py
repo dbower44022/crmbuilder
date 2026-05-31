@@ -57,7 +57,11 @@ _OLD_ENTITY_TYPE = (
 
 
 def upgrade() -> None:
-    # 1. Rewrite historical workstream-typed change_log rows to project.
+    # 1. Drop the stale CHECK so the rename UPDATEs are unconstrained
+    #    (neither literal admits both 'workstream' and 'project' at once).
+    with op.batch_alter_table("change_log", schema=None) as batch_op:
+        batch_op.drop_constraint("ck_changelog_entity_type", type_="check")
+    # 2. Rewrite historical workstream-typed change_log rows to project.
     op.execute(
         "UPDATE change_log SET entity_identifier = 'PRJ-' || substr(entity_identifier, 4) "
         "WHERE entity_type='workstream' AND entity_identifier GLOB 'WS-[0-9][0-9][0-9]'"
@@ -65,16 +69,14 @@ def upgrade() -> None:
     op.execute(
         "UPDATE change_log SET entity_type='project' WHERE entity_type='workstream'"
     )
-    # 2. Rebuild the entity_type CHECK to the model-matching set.
+    # 3. Recreate the CHECK with the model-matching set (data now conforms).
     with op.batch_alter_table("change_log", schema=None) as batch_op:
-        batch_op.drop_constraint("ck_changelog_entity_type", type_="check")
         batch_op.create_check_constraint("ck_changelog_entity_type", _NEW_ENTITY_TYPE)
 
 
 def downgrade() -> None:
     with op.batch_alter_table("change_log", schema=None) as batch_op:
         batch_op.drop_constraint("ck_changelog_entity_type", type_="check")
-        batch_op.create_check_constraint("ck_changelog_entity_type", _OLD_ENTITY_TYPE)
     op.execute(
         "UPDATE change_log SET entity_identifier = 'WS-' || substr(entity_identifier, 5) "
         "WHERE entity_type='project' AND entity_identifier GLOB 'PRJ-[0-9][0-9][0-9]'"
@@ -82,3 +84,5 @@ def downgrade() -> None:
     op.execute(
         "UPDATE change_log SET entity_type='workstream' WHERE entity_type='project'"
     )
+    with op.batch_alter_table("change_log", schema=None) as batch_op:
+        batch_op.create_check_constraint("ck_changelog_entity_type", _OLD_ENTITY_TYPE)
