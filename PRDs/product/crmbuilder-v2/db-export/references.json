@@ -23048,5 +23048,375 @@
     "source_type": "deposit_event",
     "target_id": "DEC-366",
     "target_type": "decision"
+  },
+  {
+    "created_at": "2026-06-01T00:05:24.108014",
+    "id": 2314,
+    "reference_identifier": "REF-2310",
+    "relationship_kind": "workstream_belongs_to_planning_item",
+    "source_id": "WSK-002",
+    "source_type": "workstream",
+    "target_id": "PI-122",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-06-01T00:05:24.112616",
+    "id": 2315,
+    "reference_identifier": "REF-2311",
+    "relationship_kind": "workstream_belongs_to_planning_item",
+    "source_id": "WSK-003",
+    "source_type": "workstream",
+    "target_id": "PI-122",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-06-01T00:05:24.116181",
+    "id": 2316,
+    "reference_identifier": "REF-2312",
+    "relationship_kind": "blocked_by",
+    "source_id": "WSK-003",
+    "source_type": "workstream",
+    "target_id": "WSK-002",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-01T00:05:24.120613",
+    "id": 2317,
+    "reference_identifier": "REF-2313",
+    "relationship_kind": "workstream_belongs_to_planning_item",
+    "source_id": "WSK-004",
+    "source_type": "workstream",
+    "target_id": "PI-122",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-06-01T00:05:24.124252",
+    "id": 2318,
+    "reference_identifier": "REF-2314",
+    "relationship_kind": "blocked_by",
+    "source_id": "WSK-004",
+    "source_type": "workstream",
+    "target_id": "WSK-003",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-01T00:05:24.129252",
+    "id": 2319,
+    "reference_identifier": "REF-2315",
+    "relationship_kind": "workstream_belongs_to_planning_item",
+    "source_id": "WSK-005",
+    "source_type": "workstream",
+    "target_id": "PI-122",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-06-01T00:05:24.132555",
+    "id": 2320,
+    "reference_identifier": "REF-2316",
+    "relationship_kind": "blocked_by",
+    "source_id": "WSK-005",
+    "source_type": "workstream",
+    "target_id": "WSK-004",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-01T00:05:24.136424",
+    "id": 2321,
+    "reference_identifier": "REF-2317",
+    "relationship_kind": "workstream_belongs_to_planning_item",
+    "source_id": "WSK-006",
+    "source_type": "workstream",
+    "target_id": "PI-122",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-06-01T00:05:24.139555",
+    "id": 2322,
+    "reference_identifier": "REF-2318",
+    "relationship_kind": "blocked_by",
+    "source_id": "WSK-006",
+    "source_type": "workstream",
+    "target_id": "WSK-005",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-01T00:05:24.143671",
+    "id": 2323,
+    "reference_identifier": "REF-2319",
+    "relationship_kind": "workstream_belongs_to_planning_item",
+    "source_id": "WSK-007",
+    "source_type": "workstream",
+    "target_id": "PI-122",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-06-01T00:05:24.146937",
+    "id": 2324,
+    "reference_identifier": "REF-2320",
+    "relationship_kind": "blocked_by",
+    "source_id": "WSK-007",
+    "source_type": "workstream",
+    "target_id": "WSK-006",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-01T00:07:06.692154",
+    "id": 2325,
+    "reference_identifier": "REF-2321",
+    "relationship_kind": "work_task_belongs_to_workstream",
+    "source_id": "WTK-007",
+    "source_type": "work_task",
+    "target_id": "WSK-002",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-01T00:07:06.696657",
+    "id": 2326,
+    "reference_identifier": "REF-2322",
+    "relationship_kind": "work_task_belongs_to_workstream",
+    "source_id": "WTK-008",
+    "source_type": "work_task",
+    "target_id": "WSK-002",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-01T00:07:06.701075",
+    "id": 2327,
+    "reference_identifier": "REF-2323",
+    "relationship_kind": "work_task_belongs_to_workstream",
+    "source_id": "WTK-009",
+    "source_type": "work_task",
+    "target_id": "WSK-002",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-01T00:07:06.705138",
+    "id": 2328,
+    "reference_identifier": "REF-2324",
+    "relationship_kind": "work_task_belongs_to_workstream",
+    "source_id": "WTK-010",
+    "source_type": "work_task",
+    "target_id": "WSK-002",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-01T00:07:06.709802",
+    "id": 2329,
+    "reference_identifier": "REF-2325",
+    "relationship_kind": "work_task_belongs_to_workstream",
+    "source_id": "WTK-011",
+    "source_type": "work_task",
+    "target_id": "WSK-002",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-01T00:08:28.609328",
+    "id": 2330,
+    "reference_identifier": "REF-2326",
+    "relationship_kind": "work_task_belongs_to_workstream",
+    "source_id": "WTK-012",
+    "source_type": "work_task",
+    "target_id": "WSK-003",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-01T00:08:28.613906",
+    "id": 2331,
+    "reference_identifier": "REF-2327",
+    "relationship_kind": "work_task_belongs_to_workstream",
+    "source_id": "WTK-013",
+    "source_type": "work_task",
+    "target_id": "WSK-003",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-01T00:08:28.618386",
+    "id": 2332,
+    "reference_identifier": "REF-2328",
+    "relationship_kind": "work_task_belongs_to_workstream",
+    "source_id": "WTK-014",
+    "source_type": "work_task",
+    "target_id": "WSK-003",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-01T00:08:28.622784",
+    "id": 2333,
+    "reference_identifier": "REF-2329",
+    "relationship_kind": "work_task_belongs_to_workstream",
+    "source_id": "WTK-015",
+    "source_type": "work_task",
+    "target_id": "WSK-003",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-01T00:08:28.627058",
+    "id": 2334,
+    "reference_identifier": "REF-2330",
+    "relationship_kind": "work_task_belongs_to_workstream",
+    "source_id": "WTK-016",
+    "source_type": "work_task",
+    "target_id": "WSK-003",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-01T00:09:45.786564",
+    "id": 2335,
+    "reference_identifier": "REF-2331",
+    "relationship_kind": "work_task_belongs_to_workstream",
+    "source_id": "WTK-017",
+    "source_type": "work_task",
+    "target_id": "WSK-004",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-01T00:09:45.791168",
+    "id": 2336,
+    "reference_identifier": "REF-2332",
+    "relationship_kind": "work_task_belongs_to_workstream",
+    "source_id": "WTK-018",
+    "source_type": "work_task",
+    "target_id": "WSK-004",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-01T00:09:45.795624",
+    "id": 2337,
+    "reference_identifier": "REF-2333",
+    "relationship_kind": "work_task_belongs_to_workstream",
+    "source_id": "WTK-019",
+    "source_type": "work_task",
+    "target_id": "WSK-004",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-01T00:09:45.800094",
+    "id": 2338,
+    "reference_identifier": "REF-2334",
+    "relationship_kind": "work_task_belongs_to_workstream",
+    "source_id": "WTK-020",
+    "source_type": "work_task",
+    "target_id": "WSK-004",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-01T00:11:04.105240",
+    "id": 2339,
+    "reference_identifier": "REF-2335",
+    "relationship_kind": "work_task_belongs_to_workstream",
+    "source_id": "WTK-021",
+    "source_type": "work_task",
+    "target_id": "WSK-005",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-01T00:11:04.110280",
+    "id": 2340,
+    "reference_identifier": "REF-2336",
+    "relationship_kind": "work_task_belongs_to_workstream",
+    "source_id": "WTK-022",
+    "source_type": "work_task",
+    "target_id": "WSK-005",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-01T00:11:04.115228",
+    "id": 2341,
+    "reference_identifier": "REF-2337",
+    "relationship_kind": "work_task_belongs_to_workstream",
+    "source_id": "WTK-023",
+    "source_type": "work_task",
+    "target_id": "WSK-005",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-01T00:11:04.119732",
+    "id": 2342,
+    "reference_identifier": "REF-2338",
+    "relationship_kind": "work_task_belongs_to_workstream",
+    "source_id": "WTK-024",
+    "source_type": "work_task",
+    "target_id": "WSK-005",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-01T00:15:54.099432",
+    "id": 2343,
+    "reference_identifier": "REF-2339",
+    "relationship_kind": "conversation_belongs_to_session",
+    "source_id": "CNV-050",
+    "source_type": "conversation",
+    "target_id": "SES-148",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-06-01T00:15:54.426673",
+    "id": 2344,
+    "reference_identifier": "REF-2340",
+    "relationship_kind": "session_belongs_to_project",
+    "source_id": "SES-148",
+    "source_type": "session",
+    "target_id": "PRJ-018",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-06-01T00:15:54.743415",
+    "id": 2345,
+    "reference_identifier": "REF-2341",
+    "relationship_kind": "conversation_belongs_to_project",
+    "source_id": "CNV-050",
+    "source_type": "conversation",
+    "target_id": "PRJ-018",
+    "target_type": "project"
+  },
+  {
+    "created_at": "2026-06-01T00:15:55.115569",
+    "id": 2346,
+    "reference_identifier": "REF-2342",
+    "relationship_kind": "session_follows_from",
+    "source_id": "SES-148",
+    "source_type": "session",
+    "target_id": "SES-147",
+    "target_type": "session"
+  },
+  {
+    "created_at": "2026-06-01T00:15:55.452910",
+    "id": 2347,
+    "reference_identifier": "REF-2343",
+    "relationship_kind": "addresses",
+    "source_id": "CNV-050",
+    "source_type": "conversation",
+    "target_id": "PI-122",
+    "target_type": "planning_item"
+  },
+  {
+    "created_at": "2026-06-01T00:15:55.790730",
+    "id": 2348,
+    "reference_identifier": "REF-2344",
+    "relationship_kind": "deposit_event_applies_close_out_payload",
+    "source_id": "DEP-143",
+    "source_type": "deposit_event",
+    "target_id": "COP-148",
+    "target_type": "close_out_payload"
+  },
+  {
+    "created_at": "2026-06-01T00:15:55.794653",
+    "id": 2349,
+    "reference_identifier": "REF-2345",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-143",
+    "source_type": "deposit_event",
+    "target_id": "CNV-050",
+    "target_type": "conversation"
+  },
+  {
+    "created_at": "2026-06-01T00:15:55.798485",
+    "id": 2350,
+    "reference_identifier": "REF-2346",
+    "relationship_kind": "deposit_event_wrote_record",
+    "source_id": "DEP-143",
+    "source_type": "deposit_event",
+    "target_id": "SES-148",
+    "target_type": "session"
   }
 ]

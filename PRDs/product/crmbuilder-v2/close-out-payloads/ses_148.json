@@ -1,0 +1,70 @@
+{
+  "label": "SES-148 / CNV-050 close-out — ADO planning loop for PI-122 (Build the Agent Profile Registry): the first real end-to-end exercise of the completed ADO substrate. PM dispatched PI-122 (Draft->In Progress); the decomposer created six phase Workstreams (WSK-002..007); six real phase-specialist agents scoped them feed-forward into 18 Work Tasks across four active phases (Architecture/Development/Testing/Documentation) with Data Migration + Deployment correctly Not Applicable. all_scoped=true. Addresses (advances) PI-122. The Workstreams/Work Tasks are operational records already in the live DB; this close-out records the planning session and lands the snapshot. APPLY GATE: re-verify heads (SES-148/CNV-050 next-free as of authoring) and apply in a clean window vs the parallel session.",
+  "session": {
+    "session_identifier": "SES-148",
+    "session_title": "ADO planning loop for PI-122 — dispatch, decompose, and scope all six phases with real specialists",
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "runner": "claude-code",
+      "kind": "ado-orchestration"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_status": "complete",
+    "session_executive_summary": "Claude Code session running the ADO planning loop for PI-122 (Build the Agent Profile Registry) — the first real end-to-end exercise of the completed ADO substrate against a real Planning Item, dogfooding the organization to plan its own next layer. The PM dispatched PI-122 (Draft -> In Progress); the decomposer created the six phase Workstreams (WSK-002..007); six real phase-specialist LLM agents then scoped each phase in feed-forward order, producing 18 Work Tasks across four active phases (Architecture 5, Development 5, Testing 4, Documentation 4) and correctly asserting Not Applicable for Data Migration and Deployment. all_scoped is now true; the gate exposes Architecture first. Addresses (advances) PI-122.",
+    "session_description": "First real end-to-end run of the completed ADO substrate (PI-114 / WTK-001..006) against a real Planning Item, using the two proven phase-specialist agent prompts generalized per phase. Flow: (1) the Project Manager substrate dispatched PI-122 via POST /planning-items/PI-122/dispatch (Draft -> In Progress, gated on eligibility); (2) the decomposer created the six canonical phase Workstreams WSK-002..007 (Planned) with the serial blocked_by chain; (3) six real LLM phase-specialist agents each scoped their Workstream in canonical feed-forward order, each reading its prior-phase-outputs and PI-122 before deciding its Work Tasks. Results: Architecture (WSK-002, Ready) -> WTK-007/008/009 (one methodology-product schema spec per entity: agent_profile/AGP, skill/SKL, governance_rule/GVR), WTK-010 (storage: the binding reference-edge + float/pin propagation design), WTK-011 (access: the profile->contract resolver + hybrid-governance binding design); Development (WSK-003, Ready) -> WTK-012 (storage: the single head-0036 Alembic migration for the three tables + two edge kinds), WTK-013 (access: repositories + resolver), WTK-014 (api), WTK-015 (mcp), WTK-016 (ui panels), layer-rank ordered; Testing (WSK-004, Ready) -> WTK-017/018/019/020 (storage/access/api/mcp tests, UI test deliberately omitted to match the codebase's read-only-panel convention); Documentation (WSK-005, Ready) -> WTK-021/022/023/024 (CLAUDE.md release paragraph, mark the PRD built + record resolved open questions, register the two edge kinds in governance-recording-rules, a resolver/seeding how-to); Data Migration (WSK-006) -> Not Applicable (a brand-new entity set has no existing data to backfill; seeding the two proven profiles is record-creation via close-out, not data migration); Deployment (WSK-007) -> Not Applicable (internal v2 feature that ships by landing the migration + code on main, no separate deploy). Net: 18 Work Tasks (WTK-007..024) across four active phases, two phases Not Applicable, all_scoped=true, next_executable=WSK-002. The six Workstreams and 18 Work Tasks are operational records already written to the live DB by the substrate endpoints; this close-out records the orchestrating planning session and lands the db-export snapshot. The agents ran against the live API in a clean window while the parallel PRJ-016 session was quiet. Addresses (advances) PI-122 without resolving it — execution (the Lead's per-phase start/verify/advance gate, the area specialists building each Work Task) remains. This run is the dogfood the ADO §8 bootstrap anticipated: the finished organization decomposing and planning its own first real Planning Item.",
+    "references": []
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-050",
+    "conversation_title": "ADO planning loop for PI-122 — PM dispatch, decompose, six phase specialists scope",
+    "conversation_purpose": "Run the completed ADO substrate end-to-end against PI-122 (Build the Agent Profile Registry) for the first time: dispatch it, decompose it into phases, and have real phase-specialist agents scope every phase into Work Tasks — dogfooding the organization to plan its own next layer.",
+    "conversation_description": "The PM dispatched PI-122 (Draft -> In Progress); the decomposer created the six phase Workstreams (WSK-002..007); six real phase-specialist agents scoped them in feed-forward order into 18 Work Tasks across four active phases (Architecture 5, Development 5, Testing 4, Documentation 4), with Data Migration and Deployment correctly asserted Not Applicable. all_scoped=true; the gate exposes Architecture first. The Workstreams/Work Tasks are operational records in the live DB; this records the orchestrating session. Addresses (advances) PI-122.",
+    "conversation_summary": "First real ADO run: PI-122 dispatched, decomposed into six phases, and scoped by six real phase-specialist agents into 18 Work Tasks (4 active phases; Data Migration + Deployment Not Applicable). all_scoped=true, next_executable=Architecture. The ADO planned its own next layer. PI-122 advanced.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-050",
+        "target_type": "session",
+        "target_id": "SES-148",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [],
+  "commits": [],
+  "decisions": [],
+  "references": [
+    {
+      "source_type": "session",
+      "source_id": "SES-148",
+      "target_type": "project",
+      "target_id": "PRJ-018",
+      "relationship": "session_belongs_to_project"
+    },
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-050",
+      "target_type": "project",
+      "target_id": "PRJ-018",
+      "relationship": "conversation_belongs_to_project"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-148",
+      "target_type": "session",
+      "target_id": "SES-147",
+      "relationship": "session_follows_from"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": [
+    {
+      "planning_item_identifier": "PI-122"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_148.json
+Label:  SES-148 / CNV-050 close-out — ADO planning loop for PI-122 (Build the Agent Profile Registry): the first real end-to-end exercise of the completed ADO substrate. PM dispatched PI-122 (Draft->In Progress); the decomposer created six phase Workstreams (WSK-002..007); six real phase-specialist agents scoped them feed-forward into 18 Work Tasks across four active phases (Architecture/Development/Testing/Documentation) with Data Migration + Deployment correctly Not Applicable. all_scoped=true. Addresses (advances) PI-122. The Workstreams/Work Tasks are operational records already in the live DB; this close-out records the planning session and lands the snapshot. APPLY GATE: re-verify heads (SES-148/CNV-050 next-free as of authoring) and apply in a clean window vs the parallel session.
+Deposit event: DEP-143
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-050 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== references (2 records) ===
+  ✓ POST references  CNV-050 conversation_belongs_to_project PRJ-018 (HTTP 201)
+  ✓ POST references  SES-148 session_follows_from SES-147 (HTTP 201)
+
+=== addresses_planning_items (1 record) ===
+  ✓ POST addresses_planning_items  → PI-122 (HTTP 201)
+
+✓ All 5 operations complete.
+
+✓ Recorded apply as deposit_event DEP-143 (HTTP 201).
