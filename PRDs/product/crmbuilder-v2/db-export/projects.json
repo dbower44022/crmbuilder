@@ -196,7 +196,7 @@
   },
   {
     "project_cancelled_at": null,
-    "project_completed_at": null,
+    "project_completed_at": "2026-06-01T02:31:05.666070",
     "project_created_at": "2026-05-30T22:33:26.346570",
     "project_deleted_at": null,
     "project_description": "Migrate the governance & delivery model to the target data model per PRDs/product/crmbuilder-v2/governance-redesign-target-model.md: Project rename, two-tier System/Engagement areas with area relocated onto a single-area Work Task, Planning Item lifecycle, Workstream-as-delivery-phase, and the three-tier pull-based agent-delivery target. Opened at SES-132; carries migration PI-112.",
@@ -205,9 +205,9 @@
     "project_notes": null,
     "project_purpose": "Carry the governance & delivery model from design to implementation: rename the workstream entity to Project, restructure areas into two tiers (System + per-engagement Engagement) with area relocated onto a single-area Work Task, add the Planning Item lifecycle, introduce Workstreams as delivery phases, and reconcile the shelved WS-012 orchestrator into the three-tier agent-delivery target.",
     "project_started_at": "2026-05-30T22:33:26.346892",
-    "project_status": "in_flight",
+    "project_status": "complete",
     "project_superseded_at": null,
-    "project_updated_at": "2026-05-30T22:33:26.347137"
+    "project_updated_at": "2026-06-01T02:31:05.666458"
   },
   {
     "project_cancelled_at": null,
