@@ -2,7 +2,7 @@
 
 **Document type:** Application development design (the agent organization that delivers Planning Items)
 **Proposed path:** `PRDs/product/crmbuilder-v2/agent-delivery-organization-design.md`
-**Status:** v0.3 — renamed to Agent Delivery Organization; all §9 forks resolved; lockable.
+**Status:** v0.3 (design locked) — **substrate BUILT (PI-114 / WTK-001…006)**; agent layer in progress (two tiers proven, registry scoped as PI-122). See "Implementation status" below.
 **Last Updated:** 05-31-26
 
 ---
@@ -15,8 +15,18 @@ build, specified once the data model is locked"). The data model is now locked
 (PI-112, Alembic head `0033`): `Project → Planning Item → Workstream (delivery
 phase) → Work Task (single-area unit)`, with the six-state Planning Item
 lifecycle and the Workstream/Work Task entities. This is the **behavior layer**
-that *populates and drives* those entities. It is a design document; nothing
-here is built yet.
+that *populates and drives* those entities.
+
+### Implementation status (added 05-31-26)
+
+The design is locked and the **substrate is built** — PI-114 / WTK-001…006, on Alembic head `0036`:
+
+- **State model (WTK-001):** the Architecture-phase rename, the expanded gate lifecycle (§5), and the `needs_attention` flag.
+- **Tier substrates as deterministic REST/access modules:** the structural **decomposer** (`decomposition.py`) and **Phase-Specialist scoping** (`scoping.py`, WTK-002/003); the **PI Lead** gate (`lead.py`, WTK-005); the **Project Manager** backlog/dispatch (`pm.py`, WTK-006). Endpoints: `/planning-items/{id}/decompose|phase-overview|dispatch`, `/workstreams/{id}/scope|prior-phase-outputs|start-execution|complete-phase`, `/projects/{id}/backlog|eligible-planning-items`.
+- **UI:** read-only Workstream + Work Task monitoring panels (WTK-004).
+- **Proven end-to-end:** the full planning loop was exercised against a real PI (PI-122), and two tier *agents* were proven with real LLM agents driving the substrate (a Development Phase Specialist scoping, an Area Specialist implementing) — captured under `agent-profile-registry/profiles/`.
+
+**Remaining (the agent layer, §10 follow-on):** the concrete agent prompts/skills per tier, and the **runtime** that injects a contract and spawns an agent session, are deferred to the **Agent Profile Registry** (`agent-profile-registry/agent-profile-registry-PRD-v0.1.md` v0.2; scoped as **PI-122**, decomposed and ready to build). The substrate makes the organization *operable by hand or by agent over the REST API*; the registry + runtime make it *autonomous*.
 
 ---
 
@@ -26,6 +36,7 @@ here is built yet.
 |---------|------|--------|---------|
 | 0.1 | 05-31-26 | Doug Bower / Claude | Initial draft. Three-tier model, always-all-phases, scope-as-Work-Tasks, the Project Manager lifecycle, Needs Attention, DB-backed statelessness. §9 open. |
 | 0.3 | 05-31-26 | Doug Bower / Claude | Renamed *Agent-Delivery Runtime* → **Agent Delivery Organization** (ADO) — "runtime" was jargon; this is an organization of role-specialized agents that delivers Planning Items. No model changes. |
+| 0.3+ | 05-31-26 | Doug Bower / Claude | **Implementation-status note only** (no design change): the substrate is BUILT (PI-114 / WTK-001…006, head `0036`) — added the §Status "Implementation status" block, the §5 "Implemented" note, and refreshed the §10 registry bullet to point at the registry PRD v0.2 + PI-122. Two tier agents proven; the agent prompts/runtime are deferred to the Agent Profile Registry. |
 | 0.2 | 05-31-26 | Doug Bower / Claude | Resolved all eight §9 forks. Renamed the Architecture phase; split orchestration into a **Project Manager** (project) + **PI Lead** (per-PI) — now four tiers; made **Needs Attention** an orthogonal flag rolled up to the PI; added the **Not Applicable** terminal Workstream status for recorded no-work; expanded the Workstream lifecycle to `Planned → Scoping → Ready → In Progress → Complete | Not Applicable | Blocked`; fixed concurrency (serial phases, parallel PIs and parallel Work Tasks); defined replanning (additive-automatic, contradictory-escalates). |
 
 ## Change Log
@@ -305,8 +316,11 @@ finished organization decomposes** end-to-end.
 
 ## 10. Out of scope (for this document)
 
-- The concrete agent prompts / skill definitions for each specialist (follow-on,
-  once the model is locked).
+- The concrete agent prompts / skill definitions for each specialist, and the
+  runtime that injects a contract and spawns an agent session — the §10
+  follow-on, now specified in the **Agent Profile Registry** PRD
+  (`agent-profile-registry/agent-profile-registry-PRD-v0.1.md`, v0.2) and scoped
+  as **PI-122** (decomposed, ready to build). Two tier prompts are already proven
+  end-to-end and captured under `agent-profile-registry/profiles/`.
 - The retirement of the shelved WS-012 orchestrator (target-model §9 step 6) —
   this organization supersedes it.
-- An "agent profile" registry (skill definitions per phase/area) — deferred.
