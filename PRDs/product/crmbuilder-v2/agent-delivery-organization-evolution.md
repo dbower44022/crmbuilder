@@ -1,7 +1,7 @@
 # Agent Delivery Organization — Evolution: Matrix Org, Expert Agents, and the Learning Registry
 
 **Document type:** Design evolution / direction note (the next iteration of the ADO's *agent layer*).
-**Status:** v0.1 — DRAFT. Captures a design conversation (06-01-26). Nothing here is built. This is the **overview + rationale**; each decision below is to be detailed (and recorded as governance Decisions) in follow-up passes.
+**Status:** v0.2 — **DESIGN COMPLETE (06-01-26)**, nothing built. Captures the full agent-layer evolution; all design decisions (§10 items 1–7) are decided with rationale. What remains is *execution planning*: record the decisions as formal governance DECs, fold the expanded scope into the registry PRD / PI-122, scope the unified-DB-migration PI, and sequence the build (§10).
 **Relationship to other docs:**
 - Baseline: `agent-delivery-organization-design.md` (v0.3) — the locked ADO model, whose **substrate is built** (PI-114 / WTK-001…006). This document **evolves the agent layer that sits on that substrate**; it does **not** change the data-model substrate.
 - Forward: `agent-profile-registry/agent-profile-registry-PRD-v0.1.md` (v0.2, scoped as **PI-122**) — the registry that holds the agent prompts/skills/rules. This conversation **significantly expands what that registry must be** (see §9). It is fortunate PI-122 is not yet built.
@@ -397,18 +397,49 @@ Two consequences:
 
 ---
 
+## 9B. The standing-agent runtime (DECIDED 06-01-26)
+
+**The runtime is the automation of the orchestration loop already demonstrated by hand.** In the 06-01-26 session Claude Code *was* the runtime: it dispatched PI-122 (PM), decomposed it, spawned six phase-specialist sub-agents to scope it, drove the gates (`start-execution`/`complete-phase`), spawned a worktree build agent, and integrated its commit. The runtime makes that loop run itself, **driven by governance-DB state, with the registry supplying contracts** instead of hand-written prompts.
+
+**No agent is a perpetual process (the key simplification, DECISION #1).** Because of DB-backed statelessness (v0.3 §4.4), *every* agent — Architect, Developer, Tester, PM, Lead — is **spawned on demand and ephemeral**: it reads its state/queue/learnings from the DB, does its unit, writes back, exits. So **"standing" is a *contract scope*, not a process lifetime** — the difference between a standing Architect and a per-task Developer is that the Architect's resolved contract grants **portfolio-wide queue access + reconciliation + learning-curation** while the Developer's grants **one Work Task**; both spawn fresh each time. The Architect's standing-ness lives in its persistent identity + queue + accumulated knowledge *in the DB*, not a daemon. This dissolves the "standing vs. per-task spawn" tension and means **no long-running agent processes to manage.**
+
+**Runtime = deterministic scheduler + invoked judgment-agents (DECISION #2).**
+
+```
+SCHEDULER (control loop, driven by governance-DB state)
+  finds ready work → resolves the (area,tier) contract from the registry (system + engagement overlay)
+                   → spawns ONE agent to do it, honoring blocked_by + a concurrency cap
+                   → (file-editing/build agents) in a FRESH worktree from current main HEAD
+  drives the lifecycle: eligible PI → invoke PM; phase ready → invoke Architect;
+                        tasks done → invoke Lead to verify+advance; gate clean → open it
+REGISTRY  resolves the contract (prompt + tools + ruleset + learnings + version)   ← the registry↔runtime §12 seam
+AGENT     a Claude Code session / Anthropic-SDK loop launched with that contract + the substrate tools;
+          does its one unit, writes records/learnings back, exits.
+```
+
+The scheduler is deterministic (find-work, dispatch, honor dependencies, cap concurrency); the *judgment* lives in the agents it invokes. The **registry resolves; the scheduler injects** (the §12 seam). The build-agent **worktree-from-current-main-HEAD** rule (surfaced by the Area Specialist proof) is the scheduler's responsibility.
+
+**Integration of parallel builds (DECISION #3).** Post-design-gate, N build agents run in parallel, each in its own worktree-from-HEAD → N branches the runtime **merges**. Per the thesis these merge *cleanly* because reconciliation already proved the specs don't conflict — and a merge conflict that *does* occur is **a finding reconciliation missed → it becomes a learning** that sharpens the next reconciliation. (This session that integration was done by hand — cherry-picking the worktree agent's commit.)
+
+**Human-in-the-loop at the gated points (DECISION #4) — the autonomy boundary.** The runtime is **not fully autonomous**: it **pauses for a human** exactly where we've gated — promoting to an *enforced* rule (§7.3), a cross-PI *blocking* conflict the PM can't auto-resolve (§4.4 of this doc / §5), a design-contradiction escalation. These are the `needs_attention` stops. Crucially, the **conservative-then-earned** trust governs *how often* it pauses: early it stops a lot; as the experts accumulate a clean track record, it stops less. **The runtime's autonomy grows with the learning loop** — the system earns its own slack, with evidence.
+
+---
+
 ## 10. Open decisions to detail next (each → a future governance Decision)
 
-These were surfaced; detail them before/while building. **Status as of 06-01-26:** items **1, 2, 3, 4, 5, 7** are ✅ DETAILED/DECIDED (see §4, §3.1, §7, §6, §1, §9A). **Only item 6 remains open**, plus the **8 (unified-DB migration PI)** to scope.
+**Status as of 06-01-26: the DESIGN is COMPLETE.** All design decisions (items **1–7**) are ✅ DECIDED — see §4 (reconciliation), §3.1 (taxonomy), §7 (learning), §6 (release), §1 (four passes), §9A (registry scope + unified-DB), §9B (runtime). What remains is **execution planning, not design**:
 
-> **▶ RESUME HERE (next working session):** the last design item — **item 6 (standing-agent runtime)**: how standing experts are hosted/woken (pull-based) vs. per-task spawn; ties to the registry↔runtime seam (registry PRD §12) and the worktree-from-HEAD requirement. After that, only **item 8** is left — scope the **unified multi-engagement-DB migration** as its own PI that PI-122 depends on (§9A) — and the whole evolution is design-complete and ready to be governed + sequenced into PIs.
+> **▶ NEXT (no design left):**
+> - **Govern the decisions** — record items 1–7 as formal DEC governance records (they were captured here as design; they should be deposited as Decisions per the recording rules), and **fold the expanded scope into the registry PRD / PI-122**.
+> - **Item 8 — scope the unified multi-engagement-DB migration as its own PI** that PI-122 depends on (§9A); it belongs to a production-architecture Project, not the ADO Project.
+> - **Sequence the build** — the rough order is: unified-DB migration → registry (PI-122, now scope-aware + learning-capable) → wire the runtime scheduler → then the ADO can run its own subsequent PIs autonomously.
 
 1. **Reconciliation mechanism** — ✅ **DETAILED (06-01-26), see §4.** Settled: Reconcile-as-Work-Task; `finding` entity (`FND-`); detect-vs-resolve with a `complete-phase` blocking-findings precondition; Lead-resolves-vertical / Architect-detects-PM-arbitrates-horizontal; efficiencies flag-and-propose; conservative-then-earned automation; findings feed learning. **One residual dependency:** the *horizontal* Reconcile task's structural home is (release, area) → waits on the **Release entity** (item 4).
 2. **Expert taxonomy** — ✅ **DETAILED & fully settled (06-01-26), see §3.1** (disciplines = the area vocab; profiles per (area × tier); build areas get **Architect/Developer/Tester** [three tiers — decided], design/methodology areas Architect-only; sub-disciplines via Engagement areas; layer-rank refinement for rank-less areas; Tester is a spec-driven test-implementer, three-tier model staffed incrementally).
 3. **Learning store + loop** — ✅ **DETAILED (06-01-26), see §7.** Settled: a distinct `learning` entity (`LRN-`, keyed by area+tier) below the curated skill/rule catalog; **evidence is the promotion currency** (no one-off → rule); capture→accumulate→propose→promote lifecycle (capture at every Work-Task close + from findings/test-failures); a **graded, conservative-then-earned gate** (learnings free; skills/advisory-rules earn self-promotion; **enforced rules always human**); **both tiers learn** (tier-scoped), only architects reconcile; **curation = a per-release "curate" Work Task + triggered re-validation**; the resolver injects active (area,tier) learnings into the expert's contract.
 4. **Release model mechanics** — ✅ **DETAILED (06-01-26), see §6 + the thesis.** DECIDED in full: the **coarse / all-or-nothing design gate** (no build until all reconciliation is complete and clean) and **hard-sync-at-Design / flow-after**; **Release as a new entity (`REL-`) orthogonal to Project** (two memberships; cross-Project batches allowed); the `Open→Design→Develop→Test→Shipped` lifecycle with explicit intake-close + defer-to-next-release; the horizontal-reconcile home via **generalized Workstream parentage (PI *or* Release)**; the PM's release-management layer + release-scoped dispatch.
 5. **Phases-vs-cross-cutting** — ✅ **DECIDED (06-01-26), see §1.** Exactly **four core passes** (Plan/Design/Develop/Test); Plan = area-determination (no Work Tasks of its own); the original Documentation/Data Migration/Deployment **dissolve** — Data Migration = a storage Design-checkpoint + Develop/storage work; Documentation = woven (Design docs + Develop DoD + release-finalization); Deployment = the Release *Shipped* stage + infra/espo/automation build. Forced-consideration via checkpoints. **Substrate consequence:** phase vocab 6 → 3 phase-types + Plan-as-decompose (a migration, part of building the evolution).
-6. **Standing-agent runtime** — how standing experts are hosted/woken (pull-based), distinct from the per-task spawn; ties to the registry↔runtime seam (registry PRD §12) and the worktree-from-HEAD requirement.
+6. **Standing-agent runtime** — ✅ **DECIDED (06-01-26), see §9B.** No perpetual agents — all spawn-on-demand; "standing" = contract scope, not process lifetime. Runtime = deterministic scheduler (find-work → resolve contract → spawn one agent, honor blocked_by + concurrency + worktree-from-HEAD → drive the lifecycle) + invoked judgment-agents; registry resolves, scheduler injects. Parallel build branches merged (clean if reconciled; a conflict → a finding/learning). Human-in-the-loop at the gated points (`needs_attention`), with autonomy that grows as the learning loop earns trust.
 7. **Registry scope (System vs. Engagement) + unified-DB direction** — ✅ **DECIDED (06-01-26), see §9A.** The registry is a system-level service with engagement overlays (add + override/disable); learnings gain a system/engagement scope axis with cross-engagement promotion; the registry is designed **scope-aware** (a `system | engagement` discriminator on every row) so the future unified multi-engagement DB needs no rework.
 8. **Unified multi-engagement-DB migration** — 🔭 **to scope as its own PI.** Replace the per-engagement-DB-files architecture with a single multi-tenant DB (`engagement_id` rows). Production-readiness *and* the practical enabler of cross-engagement learning; **PI-122 (registry) depends on it** (§9A). Belongs to PRJ-014's successor / a production-architecture Project, not the ADO Project.
 
