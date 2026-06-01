@@ -104,6 +104,25 @@ The generalist "Phase Specialist" of v0.3 dissolves into **per-area experts**, s
 
 **DECISION (review-then-dispatch):** the Architect reviews/reconciles the batch and dispatches cleaned-up specs; the Developer executes. Reconciliation knowledge lives only in the design tier. *(Doug, 06-01-26.)*
 
+### 3.1 The discipline taxonomy (DETAILED 06-01-26 — one fork open)
+
+**The disciplines *are* the area vocab — there is no separate taxonomy to invent.** The 13 System areas (`vocab.SYSTEM_AREA_RANKS`) + per-engagement Engagement areas already define the disciplines; the layer ranks already give the within-pass ordering; a Work Task's `area` routes it to exactly one expert. The registry adds only **profiles per (area × tier)**.
+
+**The tier set is area-kind-dependent — the §0 "variable-width tier split" made concrete:**
+
+| Area | Kind | Tiers |
+|---|---|---|
+| `storage`(1), `access`(2), `api`(3), `mcp`(4), `ui`(4), `espo`, `automation`, `infrastructure`, `programs` | **build** | Architect · Developer · Tester |
+| `methodology-product` / `-process` / `-interviews` / `-templates` | **design** | **Architect only** (the design artifact *is* the deliverable — nothing to build or test) |
+
+The tiers **align to the passes** (Design→Architect, Develop→Developer, Test→Tester); the **standing / portfolio-aware / reconciling** property sits **only on Architects** (Developers, Testers are per-task executors).
+
+**Sub-disciplines (Web / Mobile / Desktop UI):** for CRMBuilder, `ui` = the PySide6 desktop surface — one discipline, the flat System area suffices. An engagement with multiple UI surfaces models them as **Engagement areas** (`ui-web`/`ui-mobile`/`ui-desktop`) — no model change. A two-level System sub-area model (for *universal* cross-engagement Web-vs-Mobile knowledge) is the **deferred** upgrade path.
+
+**Refinement to flag:** the layer ranks order the code areas (storage→access→ui) but leave `methodology-*`/`espo`/`infrastructure`/`programs` at `rank=None`; the Design pass wants the **methodology disciplines first** (entity/process design precedes the code design that realizes it) and `espo` **last** (it maps the built model into EspoCRM config) — so the rank vocab likely needs a light extension to place the rank-less areas.
+
+> **OPEN FORK — three tiers vs. two.** Whether build disciplines get **Architect / Developer / Tester** (three, pass-aligned, *independent verification* — the builder doesn't write its own only tests) or **Architect / Developer** (two, the Developer also tests — leaner, ~⅓ fewer profiles). My lean: **three** (independent verification, and the Architect's spec already defines the tests so the Tester has a clean contract). Not yet decided.
+
 ---
 
 ## 4. Reconciliation mechanism (DETAILED — decided 06-01-26)
@@ -321,18 +340,59 @@ PI-122's Architecture-phase specs (the `agent_profile`/`skill`/`governance_rule`
 
 ---
 
+## 9A. Registry scope — System vs. Engagement, and the unified-DB direction (DECIDED 06-01-26)
+
+**The work is per-engagement; the *workforce* is system-level.** The governance entities (Project, PI, Workstream, Work Task, finding) are engagement-specific work and stay per-engagement. But the **agents are not** — a Database Architect's expertise is universal, and defining/managing one *inside every engagement* is wasteful duplication. So:
+
+**DECISION (Doug, 06-01-26): the agent registry is a SYSTEM-level service with engagement overlays** — following the exact precedent that already exists for areas (`SYSTEM_AREA_RANKS` universal-in-code + `engagement_areas` per-engagement):
+
+```
+SYSTEM REGISTRY (shared across all engagements)
+  the universal (area × tier) profiles + their SYSTEM skills / rules / learnings
+ENGAGEMENT OVERLAY (per engagement)
+  + engagement-specific skills / rules / learnings   (additions)
+  + overrides / disables of specific system rules     (changes)        ← overlays do BOTH add and change
+EFFECTIVE CONTRACT (what an agent runs with, in an engagement)
+  = System  ∪  engagement additions  −  engagement-disabled  ⊕  engagement-overrides   (the resolver merges)
+```
+
+A "Database Architect" is defined **once** at the system level; in CRMBuilder it picks up CRMBuilder's overlay on top.
+
+**The multiplier — cross-engagement learning (the real leverage).** A *system* Database Architect accumulates learnings across **every** engagement — a DBA with 50 projects of experience, not one. So the learning loop (§7) gains a **scope axis**: **system learnings** (universal → benefit all engagements) vs. **engagement learnings** (local). And a new promotion path: a learning seen *independently across multiple engagements* is evidence it's universal → **cross-engagement promotion** from engagement-scope to system-scope. This raises the stakes (a wrong *system* rule affects everyone), so promoting to a **system enforced rule** is the **top gate**: human review **plus** cross-engagement evidence. The §7.3 graded gate simply gains this second (scope) dimension.
+
+### The unified multi-engagement DB (forward direction + constraint)
+
+**DECISION direction (Doug, 06-01-26):** the current **per-engagement-DB** architecture (one `…/engagements/X.db` each, routed by a meta layer) is a **dev-stage convenience, not a production architecture** — an Alembic chain per engagement, no cross-engagement queries, multiplied ops/backup, no SaaS scale. A future migration moves to a **single multi-engagement DB with a row-level `engagement_id`** (standard multi-tenant).
+
+**This is the *natural home* for the system/engagement registry — they're the same decision from two directions.** In the per-engagement-DB world the system registry is awkward (a separate physical store) and cross-engagement learning is near-impossible (querying across DB files). In a single DB it collapses to row scope:
+
+```
+system definition         →  registry row, engagement_id = NULL        (applies to all)
+engagement overlay        →  registry row, engagement_id = X           (applies to X)
+effective contract        →  one query:  system rows ∪ engagement-X rows
+cross-engagement learning →  one query:  GROUP BY content across engagement_ids
+```
+
+Two consequences:
+1. **Design the registry scope-aware *now*.** Every registry row (`agent_profile`/`skill`/`governance_rule`/`learning`) carries an explicit **scope discriminator** (`system` | an engagement). Build it scope-aware and the unified-DB migration needs **no registry rework** — it just collapses the stores into one. Build it scope-blind and you rewrite it.
+2. **Sequencing flag (PI-122 dependency).** The registry's biggest payoff — cross-engagement learning — genuinely *needs* the unified DB to be practical. So the **unified-DB migration is a strong prerequisite/enabler for the registry build**, and probably wants to be **its own PI that PI-122 depends on** (rather than building the registry on the impractical foundation and migrating it).
+
+---
+
 ## 10. Open decisions to detail next (each → a future governance Decision)
 
-These were surfaced; detail them before/while building. **Status as of 06-01-26:** items **1 (reconciliation)**, **3 (learning loop)**, and **4 (release model)** are ✅ DETAILED (see §4, §7, §6, the thesis). Items **2, 5, 6** remain open.
+These were surfaced; detail them before/while building. **Status as of 06-01-26:** items **1 (reconciliation)**, **3 (learning loop)**, **4 (release model)** are ✅ DETAILED; **2 (taxonomy)** is ✅ DETAILED except one open fork; **7 (registry scope/system-vs-engagement + unified-DB)** is ✅ DECIDED (§9A). Items **5, 6** remain open, plus the **8 (unified-DB migration PI)** to scope.
 
-> **▶ RESUME HERE (next working session):** detail **item 2 — the expert taxonomy** next (which disciplines are first-class; how UI sub-areas Web/Mobile/Desktop map onto the area vocab; the architect↔developer profile pair per area). **Item 5 (phases-vs-cross-cutting)** is a quick confirm that could go first if you want a warm-up; **item 6 (standing-agent runtime)** is the "how do we actually run this" piece, best last as it ties to the registry↔runtime seam.
+> **▶ RESUME HERE (next working session):** one small fork left in the taxonomy — **three tiers (Architect/Developer/Tester) vs. two (Developer also tests)**, §3.1; settle that, then **item 5 (phases-vs-cross-cutting)** is a quick confirm, **item 6 (standing-agent runtime)** is best last (registry↔runtime seam). Also queued: **item 8 — scope the unified multi-engagement-DB migration as its own PI** that the registry build (PI-122) depends on (§9A).
 
 1. **Reconciliation mechanism** — ✅ **DETAILED (06-01-26), see §4.** Settled: Reconcile-as-Work-Task; `finding` entity (`FND-`); detect-vs-resolve with a `complete-phase` blocking-findings precondition; Lead-resolves-vertical / Architect-detects-PM-arbitrates-horizontal; efficiencies flag-and-propose; conservative-then-earned automation; findings feed learning. **One residual dependency:** the *horizontal* Reconcile task's structural home is (release, area) → waits on the **Release entity** (item 4).
-2. **Expert taxonomy** — which disciplines/areas are first-class; how UI sub-areas (Web / Mobile / Desktop) map onto the area vocab (`SYSTEM_AREA_RANKS` vs. Engagement areas); architect-vs-developer profile pairs per area.
+2. **Expert taxonomy** — ✅ **DETAILED (06-01-26), see §3.1** (disciplines = the area vocab; profiles per (area × tier); build areas get Architect/Developer/Tester, design/methodology areas Architect-only; sub-disciplines via Engagement areas; layer-rank refinement for rank-less areas). **One open fork:** three tiers vs. two (Developer-also-tests) — §3.1.
 3. **Learning store + loop** — ✅ **DETAILED (06-01-26), see §7.** Settled: a distinct `learning` entity (`LRN-`, keyed by area+tier) below the curated skill/rule catalog; **evidence is the promotion currency** (no one-off → rule); capture→accumulate→propose→promote lifecycle (capture at every Work-Task close + from findings/test-failures); a **graded, conservative-then-earned gate** (learnings free; skills/advisory-rules earn self-promotion; **enforced rules always human**); **both tiers learn** (tier-scoped), only architects reconcile; **curation = a per-release "curate" Work Task + triggered re-validation**; the resolver injects active (area,tier) learnings into the expert's contract.
 4. **Release model mechanics** — ✅ **DETAILED (06-01-26), see §6 + the thesis.** DECIDED in full: the **coarse / all-or-nothing design gate** (no build until all reconciliation is complete and clean) and **hard-sync-at-Design / flow-after**; **Release as a new entity (`REL-`) orthogonal to Project** (two memberships; cross-Project batches allowed); the `Open→Design→Develop→Test→Shipped` lifecycle with explicit intake-close + defer-to-next-release; the horizontal-reconcile home via **generalized Workstream parentage (PI *or* Release)**; the PM's release-management layer + release-scoped dispatch.
 5. **Phases-vs-cross-cutting** — confirm the four core passes (Plan/Design/Develop/Test) and where Documentation / Data Migration / Deployment attach.
 6. **Standing-agent runtime** — how standing experts are hosted/woken (pull-based), distinct from the per-task spawn; ties to the registry↔runtime seam (registry PRD §12) and the worktree-from-HEAD requirement.
+7. **Registry scope (System vs. Engagement) + unified-DB direction** — ✅ **DECIDED (06-01-26), see §9A.** The registry is a system-level service with engagement overlays (add + override/disable); learnings gain a system/engagement scope axis with cross-engagement promotion; the registry is designed **scope-aware** (a `system | engagement` discriminator on every row) so the future unified multi-engagement DB needs no rework.
+8. **Unified multi-engagement-DB migration** — 🔭 **to scope as its own PI.** Replace the per-engagement-DB-files architecture with a single multi-tenant DB (`engagement_id` rows). Production-readiness *and* the practical enabler of cross-engagement learning; **PI-122 (registry) depends on it** (§9A). Belongs to PRJ-014's successor / a production-architecture Project, not the ADO Project.
 
 ---
 
