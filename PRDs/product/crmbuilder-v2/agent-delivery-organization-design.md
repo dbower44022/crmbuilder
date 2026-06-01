@@ -28,6 +28,8 @@ The design is locked and the **substrate is built** — PI-114 / WTK-001…006, 
 
 **Remaining (the agent layer, §10 follow-on):** the concrete agent prompts/skills per tier, and the **runtime** that injects a contract and spawns an agent session, are deferred to the **Agent Profile Registry** (`agent-profile-registry/agent-profile-registry-PRD-v0.1.md` v0.2; scoped as **PI-122**, decomposed and ready to build). The substrate makes the organization *operable by hand or by agent over the REST API*; the registry + runtime make it *autonomous*.
 
+> **Agent-layer evolution in progress (06-01-26) — read `agent-delivery-organization-evolution.md`.** A design conversation after the substrate landed is reshaping the agent layer (not the substrate): a **matrix org** (passes × area-disciplines) with **per-area Architect/Developer experts** replacing the generalist Phase Specialist; **phase-major with a reconciliation gate** (decided); **standing, portfolio-aware, *learning* area experts** that accumulate experience into the V2 DB; **cross-PI coordination** (the horizontal axis) with two-axis reconciliation; and a **release-batched** default cadence. This materially expands what the registry (PI-122) must be — a *living institutional-knowledge base*, not a config catalog. The evolution doc carries the full model + rationale + the open decisions to detail next.
+
 ---
 
 ## Revision Control
