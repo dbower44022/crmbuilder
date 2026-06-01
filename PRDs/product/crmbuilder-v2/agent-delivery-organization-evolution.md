@@ -86,18 +86,69 @@ The generalist "Phase Specialist" of v0.3 dissolves into **per-area experts**, s
 
 ---
 
-## 4. Reconciliation lives on **both** axes of the matrix
+## 4. Reconciliation mechanism (DETAILED — decided 06-01-26)
 
-A clean symmetry falls out: the same coherence check runs in two directions.
+A clean symmetry falls out: the same coherence check runs in two directions, both at the **Design→Develop boundary**.
 
 ```
-within a PI, across areas    →  the PI Lead's design-reconciliation gate   (VERTICAL)
-                                 "do this feature's Data/API/UI specs cohere?"
-within an area, across PIs    →  the standing Area Architect's portfolio review (HORIZONTAL)
-                                 "do all pending schema changes across PIs cohere?"
+within a PI, across areas    →  the PI Lead         (VERTICAL)   "do this feature's Data/API/UI specs cohere?"
+within an area, across PIs    →  the standing Architect (HORIZONTAL) "do all the release's schema changes cohere?"
 ```
 
-The vertical reconciliation is §2's gate. The horizontal one is the cross-PI expert (§5). Both are coherence checks on the design, run before any build.
+### 4.1 It is a Work Task (DECISION: A)
+
+Reconciliation is performed as a **dedicated "Reconcile" Work Task that runs *last* in the Design phase**, `blocked_by` all of that phase's area-design Work Tasks. Its **deliverable is the set of findings** it emits. This makes the review a tracked, claimable, auditable unit (not an invisible gate action).
+
+- **Vertical reconcile** = one Reconcile task **per PI**, owned by the **PI Lead**, cross-area (reviews that PI's Data/API/UI specs against each other). Clean home: the PI's Design Workstream.
+- **Horizontal reconcile** = one Reconcile task **per (release, area)**, owned by the standing **Area Architect** (the Database Architect reviews *every* storage spec across the release's PIs). **Structural home depends on the Release entity (still open, §10.4)** — the mechanism is fully specified; only where this task hangs awaits that decision.
+
+### 4.2 The `finding` record (DECISION: Y — a new governance entity)
+
+A finding is a first-class, queryable, auditable governance entity (not an overloaded `needs_attention`), because findings relate *multiple* Work Tasks across PIs, carry their own lifecycle, and are **the learning loop's raw data** (§7).
+
+```
+finding (prefix FND-):
+  type      {conflict | gap | dependency | efficiency}
+  severity  {blocking | advisory}            ← only BLOCKING holds the gate
+  area, description, raised_by, resolution_summary
+  status    {open | resolved | accepted | deferred | escalated}
+edges:
+  finding_relates_to   → Work Task / Workstream / PI / entity   (what it implicates)
+  finding_resolved_by  → Decision                               (how it was settled)
+```
+
+Finding types and default severity: **conflict** (mutually incompatible specs — e.g. two PIs define `Contact.status` with different enums) = *blocking*; **gap** (a spec assumes something nobody provides) = *blocking* if it breaks coherence; **dependency** (A relies on B) = advisory→blocking if unmet; **efficiency/overlap** (both add a column to `Contact`; both want it indexed) = *advisory*.
+
+### 4.3 Detect vs. resolve — and the gate
+
+Completing the Reconcile Work Task means **"review done, findings emitted"** — it does *not* mean the design is clean. Resolution is separate work. The **gate** is the existing `complete-phase` check on the Design Workstream (rolled up to the release), with **one added precondition**:
+
+> Design phase may complete  ⟺  all its Work Tasks are Complete **AND** it has no **open blocking** findings.
+
+So emitting a blocking finding **holds the gate** until that finding is resolved. (`complete-phase` is the only substrate change — a precondition.)
+
+### 4.4 Resolution menu + who owns it
+
+A blocking finding is resolved by one of: **revise** (one spec yields — often an additive design Work Task), **sequence** (`blocked_by` edge; the PM orders), **merge** (combine into one change/shared task), **accept** (advisory only — keep the redundancy knowingly), **defer** (push a PI out of this release), **escalate** (to a human). Each resolution is recorded as a **Decision** linked by `finding_resolved_by`, which flips the finding to `resolved`.
+
+- **Vertical findings** the **PI Lead** can usually resolve itself (add a Work Task to fill a gap, pick the coherent option). If it can't → `needs_attention` on the Workstream (→ rolls up to the PI).
+- **Horizontal findings** the Architect **must not** resolve unilaterally — choosing which PI's approach wins, or making a PI wait, is a **cross-PI priority call the PM owns**. The Architect **detects and proposes**; routes to the **PM** to arbitrate; `needs_attention` at the release level when a human must decide. *The Architect is the expert advisor on the shared resource; the PM is the arbiter of whose timeline bends* — which is what stops a discipline expert from silently hijacking another PI's plan.
+
+### 4.5 Efficiencies — flag-and-propose (DECISION: 3)
+
+When an Architect spots "merge these two migrations," it emits an **advisory** finding and **proposes** to the PM; it does **not** auto-restructure another PI's Work Tasks. (Same caution as conflicts: one expert never silently rewrites another PI's plan.)
+
+### 4.6 Automation boundary — conservative, then earned (DECISION: 4)
+
+Conflict **detection** is agent work (compare the specs). Conflict **resolution** starts **conservative**: any **cross-PI blocking** conflict goes to a **human** (the PM/human). The boundary **loosens as the experts earn trust** — and conveniently, the **learning loop measures exactly that** (a discipline with a long clean track record of correct reconciliations is a candidate for more autonomy).
+
+### 4.7 The loop-closer: findings feed learning
+
+Because findings are first-class records, the standing Architect mines them — *"storage conflicts cluster on `Contact` because it's heavily extended"* becomes a **learning**, proposable as an **advisory rule** (*"before scoping a `Contact` change, check existing extensions"*). Reconciliation is therefore not just a gate; it is a **primary source of the experience the experts accumulate** (§7).
+
+### Substrate impact (small)
+
+One new entity (`finding`, `FND-`), two edge kinds (`finding_relates_to`, `finding_resolved_by`), and one `complete-phase` precondition. Everything else — `needs_attention`, `blocked_by`, `Decision`, the per-area Work-Task queries — is existing machinery.
 
 ---
 
@@ -190,7 +241,7 @@ PI-122's Architecture-phase specs (the `agent_profile`/`skill`/`governance_rule`
 
 These were surfaced but not fully settled; detail them before/while building:
 
-1. **Reconciliation mechanism** — how the Design-pass reconciliation (vertical) and the area portfolio-review (horizontal) are actually performed, recorded, and gated; what a "conflict" record looks like; the PM-escalation shape.
+1. **Reconciliation mechanism** — ✅ **DETAILED (06-01-26), see §4.** Settled: Reconcile-as-Work-Task; `finding` entity (`FND-`); detect-vs-resolve with a `complete-phase` blocking-findings precondition; Lead-resolves-vertical / Architect-detects-PM-arbitrates-horizontal; efficiencies flag-and-propose; conservative-then-earned automation; findings feed learning. **One residual dependency:** the *horizontal* Reconcile task's structural home is (release, area) → waits on the **Release entity** (item 4).
 2. **Expert taxonomy** — which disciplines/areas are first-class; how UI sub-areas (Web / Mobile / Desktop) map onto the area vocab (`SYSTEM_AREA_RANKS` vs. Engagement areas); architect-vs-developer profile pairs per area.
 3. **Learning store + loop** — the experience entity schema; the capture/propose/promote lifecycle; the human-gate boundary (proposed default: human review required to promote to an *enforced* rule); whether developers learn implementation knowledge; **curation cadence** (per-release review vs. continuous).
 4. **Release model mechanics** — how a release batches PIs; how the PM sequences a release; the relationship between a "Release" and the Project/PI entities (is a Release a new entity, or a Project-level grouping?).
