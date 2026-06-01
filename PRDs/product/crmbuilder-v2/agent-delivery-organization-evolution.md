@@ -4,7 +4,7 @@
 **Status:** v0.3 — **DESIGN COMPLETE + GOVERNED & EXECUTION-PLANNED (06-01-26)**, nothing built. Captures the full agent-layer evolution; all design decisions (§10 items 1–7) are decided with rationale and **now governed as DEC-367…373 (SES-149)**. The execution-planning follow-through is **done**: the registry PRD is expanded to v0.3 + PI-122 rescoped; the unified-DB migration is scoped as **PI-123** under a new Production Architecture project **PRJ-019** with **PI-122 `blocked_by` PI-123** (DEC-374 / SES-150); the build sequence is recorded (registry PRD §14). The next move is **building PI-123, then PI-122** (§10).
 **Relationship to other docs:**
 - Baseline: `agent-delivery-organization-design.md` (v0.3) — the locked ADO model, whose **substrate is built** (PI-114 / WTK-001…006). This document **evolves the agent layer that sits on that substrate**; it does **not** change the data-model substrate.
-- Forward: `agent-profile-registry/agent-profile-registry-PRD-v0.1.md` (v0.2, scoped as **PI-122**) — the registry that holds the agent prompts/skills/rules. This conversation **significantly expands what that registry must be** (see §9). It is fortunate PI-122 is not yet built.
+- Forward: `agent-profile-registry/agent-profile-registry-PRD-v0.1.md` (**v0.3**, scoped as **PI-122**, now **`blocked_by` PI-123**) — the registry that holds the agent prompts/skills/rules. This conversation **significantly expanded what that registry must be** (see §9); v0.3 §13/§14 fold that expansion in. PI-122 is not yet built.
 **Last Updated:** 06-01-26
 
 ---

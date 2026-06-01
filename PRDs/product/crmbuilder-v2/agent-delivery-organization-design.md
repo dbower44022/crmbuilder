@@ -2,8 +2,8 @@
 
 **Document type:** Application development design (the agent organization that delivers Planning Items)
 **Proposed path:** `PRDs/product/crmbuilder-v2/agent-delivery-organization-design.md`
-**Status:** v0.3 (design locked) — **substrate BUILT (PI-114 / WTK-001…006)**; agent layer in progress (two tiers proven, registry scoped as PI-122). See "Implementation status" below.
-**Last Updated:** 05-31-26
+**Status:** v0.3 (design locked) — **substrate BUILT (PI-114 / WTK-001…006)**; the **agent layer has since been redesigned and governed** — see `agent-delivery-organization-evolution.md` (v0.3, design-complete, governed as DEC-367…374) and the callout below. The substrate model here is unchanged and current; the *agent-layer* sections (the generalist Phase/Area Specialist tiers, the two-tier scope/do split) are **superseded by the evolution**. Registry scoped as PI-122 (now `blocked_by` PI-123). See "Implementation status" below.
+**Last Updated:** 06-01-26
 
 ---
 
@@ -26,9 +26,9 @@ The design is locked and the **substrate is built** — PI-114 / WTK-001…006, 
 - **UI:** read-only Workstream + Work Task monitoring panels (WTK-004).
 - **Proven end-to-end:** the full planning loop was exercised against a real PI (PI-122), and two tier *agents* were proven with real LLM agents driving the substrate (a Development Phase Specialist scoping, an Area Specialist implementing) — captured under `agent-profile-registry/profiles/`.
 
-**Remaining (the agent layer, §10 follow-on):** the concrete agent prompts/skills per tier, and the **runtime** that injects a contract and spawns an agent session, are deferred to the **Agent Profile Registry** (`agent-profile-registry/agent-profile-registry-PRD-v0.1.md` v0.2; scoped as **PI-122**, decomposed and ready to build). The substrate makes the organization *operable by hand or by agent over the REST API*; the registry + runtime make it *autonomous*.
+**Remaining (the agent layer, §10 follow-on):** the concrete agent prompts/skills per tier, and the **runtime** that injects a contract and spawns an agent session, are the **Agent Profile Registry** (`agent-profile-registry/agent-profile-registry-PRD-v0.1.md` **v0.3**; scoped as **PI-122**, now **`blocked_by` PI-123** — the unified-DB migration). The agent-layer model itself was redesigned and governed (DEC-367…374; see the callout above). The substrate makes the organization *operable by hand or by agent over the REST API*; the registry + runtime make it *autonomous*.
 
-> **Agent-layer evolution in progress (06-01-26) — read `agent-delivery-organization-evolution.md`.** A design conversation after the substrate landed is reshaping the agent layer (not the substrate): a **matrix org** (passes × area-disciplines) with **per-area Architect/Developer experts** replacing the generalist Phase Specialist; **phase-major with a reconciliation gate** (decided); **standing, portfolio-aware, *learning* area experts** that accumulate experience into the V2 DB; **cross-PI coordination** (the horizontal axis) with two-axis reconciliation; and a **release-batched** default cadence. This materially expands what the registry (PI-122) must be — a *living institutional-knowledge base*, not a config catalog. The evolution doc carries the full model + rationale + the open decisions to detail next.
+> **Agent-layer evolution — DESIGN COMPLETE + GOVERNED (06-01-26) — read `agent-delivery-organization-evolution.md` (v0.3).** A design conversation after the substrate landed redesigned the agent layer (**not** the substrate, which stands as specified here). It is now governed as **DEC-367…374** (via SES-149 + SES-150) and execution-planned (its §10 NEXT list is closed). The model: a **matrix org** (four passes Plan/Design/Develop/Test × area-disciplines) with **per-area experts in three tiers — Architect / Developer / Tester** (DEC-368) replacing the generalist Phase/Area Specialist; **phase-major with a reconciliation gate** backed by a new **`finding` (`FND-`)** entity (DEC-367); **standing, portfolio-aware, *learning* area experts** that accumulate experience into the V2 DB via a new **`learning` (`LRN-`)** entity + graded promotion gate (DEC-369); **cross-PI coordination** (the horizontal axis) with two-axis reconciliation; a **release-batched** default cadence + new **`REL-`** entity (DEC-370/371); a **spawn-on-demand runtime** ("standing" = contract scope, not a process — DEC-372). This materially expanded the registry (PI-122) into a *living, system-level learning knowledge base* (Agent Profile Registry **PRD v0.3**, scope-aware per DEC-373), which now **`blocked_by` PI-123** — the unified multi-engagement-DB migration under the new Production Architecture project **PRJ-019** (DEC-374). Build order: **PI-123 → PI-122 → runtime**. Wherever the agent-layer sections below describe the generalist tiers or the two-tier scope/do split, the evolution supersedes them.
 
 ---
 
@@ -321,8 +321,10 @@ finished organization decomposes** end-to-end.
 - The concrete agent prompts / skill definitions for each specialist, and the
   runtime that injects a contract and spawns an agent session — the §10
   follow-on, now specified in the **Agent Profile Registry** PRD
-  (`agent-profile-registry/agent-profile-registry-PRD-v0.1.md`, v0.2) and scoped
-  as **PI-122** (decomposed, ready to build). Two tier prompts are already proven
-  end-to-end and captured under `agent-profile-registry/profiles/`.
+  (`agent-profile-registry/agent-profile-registry-PRD-v0.1.md`, **v0.3**) and
+  scoped as **PI-122** (now **`blocked_by` PI-123**, the unified-DB migration).
+  The agent-layer model was redesigned + governed (DEC-367…374; see the §Status
+  callout). Two tier prompts are already proven end-to-end and captured under
+  `agent-profile-registry/profiles/`.
 - The retirement of the shelved WS-012 orchestrator (target-model §9 step 6) —
   this organization supersedes it.

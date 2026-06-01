@@ -1,5 +1,7 @@
 # Profile — Development Phase Specialist (proven agent prompt)
 
+> **Taxonomy note (06-01-26).** "Development Phase Specialist" is the *old* (v0.3) taxonomy name. Under the governed agent-layer evolution (DEC-368, `agent-delivery-organization-evolution.md` §3.1 / registry PRD v0.3 §13.1) the roster is per-(area × tier); this proven prompt corresponds to the **Development-area Architect tier** (the scope/spec role of the Design pass). Retained as a proof artifact; the registry build (PI-122) re-keys it onto the new axis.
+
 **Status:** Proven end-to-end (05-31-26). This is the hand-written system prompt
 used in the ADO §12 "prove one agent" runtime slice: a real LLM agent given this
 prompt + the substrate tools correctly scoped a live Development Workstream —
