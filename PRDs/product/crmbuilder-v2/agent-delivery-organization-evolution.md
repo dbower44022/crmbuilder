@@ -50,18 +50,30 @@ This **eliminates the "ping-pong" effect by construction** — the failure mode 
 The ADO is reframed as a **matrix**:
 
 - **Vertical axis — areas (disciplines):** Data, API, Web UI, Mobile UI, Desktop UI, … — keyed to the existing `vocab.SYSTEM_AREA_RANKS` plus per-engagement Engagement areas. Each area is a *discipline* with genuinely different expertise (designing a schema ≠ writing optimized SQL; Web ≠ Mobile ≠ Desktop), so each gets its own skills and its own governing rules.
-- **Horizontal axis — passes:** **Plan → Design → Develop → Test** (plus cross-cutting Documentation / Data Migration / Deployment). These map onto the existing canonical "phases" — *phases **are** passes*.
+- **Horizontal axis — passes:** **Plan → Design → Develop → Test** — exactly four (the original six "phases" reduce to these; Documentation / Data Migration / Deployment *dissolve* into discipline concerns + release-level activities, see §1's "core passes"). *Phases **are** passes.*
 
 The unit of work is a **(pass × area) cell**, each performed by a **distinct expert** (e.g. *Data Architect* in the Design pass for the Data area; *Data Developer* in the Develop pass). You instantiate **only the cells a PI/release actually touches** — the matrix is sparse.
 
-### The four core phases (passes)
+### The four core passes (DECIDED 06-01-26)
 
-- **Plan** — read the PI(s) and lay out the work **by area**: determine which disciplines are touched and create the structure. (This is the area-decomposition step, given its own phase rather than smuggled into the Architecture Specialist.)
-- **Design** — the area **Architects** each produce a **precise, testable development spec** for their area (it defines *what to develop* **and** *how it will be tested*).
+There are **exactly four** core passes; the original six "phases" reduce to these plus dissolved concerns (below).
+
+- **Plan** — the **area-determination / decomposition** step: read the PI, decide *which disciplines it touches*, and create the structure the other passes populate. It has **no area Work Tasks of its own** — it produces the others, and moves "which areas?" to one coherent up-front call (instead of each phase specialist deciding its own areas).
+- **Design** — the area **Architects** each produce a **precise, testable development spec** for their area (defines *what to develop* **and** *how it will be tested*). The phase Workstreams with per-area Work Tasks begin here.
 - **Develop** — the area **Developers** execute the reconciled specs into code.
-- **Test** — the test definitions from Design are executed (by Test Developers / per-area testers).
+- **Test** — the area **Testers** implement the Architect's test-spec (§3.1) against the built feature.
 
-Documentation, Data Migration, and Deployment remain as cross-cutting passes layered on, often sparse.
+### Documentation / Data Migration / Deployment are *not* passes — they dissolve (DECIDED 06-01-26)
+
+Each belongs somewhere specific, with a **forced-consideration checkpoint** so nothing is silently dropped (preserving the §4.1 "never silently drop it" benefit):
+
+- **Data Migration → a storage-discipline concern, surfaced as a Design checkpoint.** The storage Architect must explicitly scope a data-migration Work Task **or assert Not Applicable**; the work itself is a **Develop / storage** task. (Usually N/A.)
+- **Documentation → woven, not a pass.** Design docs (schema specs, entity definitions) *are* Design output; feature/code docs are part of **"done"** for each Develop task (a Definition-of-Done rule); **release-level** docs (release notes, how-tos, CLAUDE.md) are a **release-finalization** activity at *Shipped*, produced by a documentation discipline.
+- **Deployment → the Release lifecycle's *Shipped* stage**, plus the deploy *mechanism* (scripts/config) is **Develop / infrastructure·espo·automation** work. (You deploy a *release*, not individual PIs.)
+
+The Design pass requires storage to address data-migration; the Develop DoD requires code docs; the Release *Shipped* gate requires deployment + release docs (or an explicit waiver) — the checkpoints live where the work actually is.
+
+**Substrate consequence:** `WORKSTREAM_PHASE_TYPES` shrinks from the current 6 to **3 phase-Workstream types** (`Design`/`Develop`/`Test` — keeping the current `Architecture`/`Development`/`Testing` names is fine) **+ Plan as the decompose act**, with Documentation/Data Migration/Deployment removed as phases. A phase-vocab migration, part of *building* the evolution (rides along with the other substrate changes it needs).
 
 ---
 
@@ -387,15 +399,15 @@ Two consequences:
 
 ## 10. Open decisions to detail next (each → a future governance Decision)
 
-These were surfaced; detail them before/while building. **Status as of 06-01-26:** items **1, 2, 3, 4, 7** are ✅ DETAILED/DECIDED (see §4, §3.1, §7, §6, §9A). Items **5, 6** remain open, plus the **8 (unified-DB migration PI)** to scope.
+These were surfaced; detail them before/while building. **Status as of 06-01-26:** items **1, 2, 3, 4, 5, 7** are ✅ DETAILED/DECIDED (see §4, §3.1, §7, §6, §1, §9A). **Only item 6 remains open**, plus the **8 (unified-DB migration PI)** to scope.
 
-> **▶ RESUME HERE (next working session):** **item 5 (phases-vs-cross-cutting)** — a quick confirm of the four core passes (Plan/Design/Develop/Test) and where Documentation / Data Migration / Deployment attach. Then **item 6 (standing-agent runtime)** (best last — registry↔runtime seam), and **item 8** — scope the **unified multi-engagement-DB migration** as its own PI that PI-122 depends on (§9A).
+> **▶ RESUME HERE (next working session):** the last design item — **item 6 (standing-agent runtime)**: how standing experts are hosted/woken (pull-based) vs. per-task spawn; ties to the registry↔runtime seam (registry PRD §12) and the worktree-from-HEAD requirement. After that, only **item 8** is left — scope the **unified multi-engagement-DB migration** as its own PI that PI-122 depends on (§9A) — and the whole evolution is design-complete and ready to be governed + sequenced into PIs.
 
 1. **Reconciliation mechanism** — ✅ **DETAILED (06-01-26), see §4.** Settled: Reconcile-as-Work-Task; `finding` entity (`FND-`); detect-vs-resolve with a `complete-phase` blocking-findings precondition; Lead-resolves-vertical / Architect-detects-PM-arbitrates-horizontal; efficiencies flag-and-propose; conservative-then-earned automation; findings feed learning. **One residual dependency:** the *horizontal* Reconcile task's structural home is (release, area) → waits on the **Release entity** (item 4).
 2. **Expert taxonomy** — ✅ **DETAILED & fully settled (06-01-26), see §3.1** (disciplines = the area vocab; profiles per (area × tier); build areas get **Architect/Developer/Tester** [three tiers — decided], design/methodology areas Architect-only; sub-disciplines via Engagement areas; layer-rank refinement for rank-less areas; Tester is a spec-driven test-implementer, three-tier model staffed incrementally).
 3. **Learning store + loop** — ✅ **DETAILED (06-01-26), see §7.** Settled: a distinct `learning` entity (`LRN-`, keyed by area+tier) below the curated skill/rule catalog; **evidence is the promotion currency** (no one-off → rule); capture→accumulate→propose→promote lifecycle (capture at every Work-Task close + from findings/test-failures); a **graded, conservative-then-earned gate** (learnings free; skills/advisory-rules earn self-promotion; **enforced rules always human**); **both tiers learn** (tier-scoped), only architects reconcile; **curation = a per-release "curate" Work Task + triggered re-validation**; the resolver injects active (area,tier) learnings into the expert's contract.
 4. **Release model mechanics** — ✅ **DETAILED (06-01-26), see §6 + the thesis.** DECIDED in full: the **coarse / all-or-nothing design gate** (no build until all reconciliation is complete and clean) and **hard-sync-at-Design / flow-after**; **Release as a new entity (`REL-`) orthogonal to Project** (two memberships; cross-Project batches allowed); the `Open→Design→Develop→Test→Shipped` lifecycle with explicit intake-close + defer-to-next-release; the horizontal-reconcile home via **generalized Workstream parentage (PI *or* Release)**; the PM's release-management layer + release-scoped dispatch.
-5. **Phases-vs-cross-cutting** — confirm the four core passes (Plan/Design/Develop/Test) and where Documentation / Data Migration / Deployment attach.
+5. **Phases-vs-cross-cutting** — ✅ **DECIDED (06-01-26), see §1.** Exactly **four core passes** (Plan/Design/Develop/Test); Plan = area-determination (no Work Tasks of its own); the original Documentation/Data Migration/Deployment **dissolve** — Data Migration = a storage Design-checkpoint + Develop/storage work; Documentation = woven (Design docs + Develop DoD + release-finalization); Deployment = the Release *Shipped* stage + infra/espo/automation build. Forced-consideration via checkpoints. **Substrate consequence:** phase vocab 6 → 3 phase-types + Plan-as-decompose (a migration, part of building the evolution).
 6. **Standing-agent runtime** — how standing experts are hosted/woken (pull-based), distinct from the per-task spawn; ties to the registry↔runtime seam (registry PRD §12) and the worktree-from-HEAD requirement.
 7. **Registry scope (System vs. Engagement) + unified-DB direction** — ✅ **DECIDED (06-01-26), see §9A.** The registry is a system-level service with engagement overlays (add + override/disable); learnings gain a system/engagement scope axis with cross-engagement promotion; the registry is designed **scope-aware** (a `system | engagement` discriminator on every row) so the future unified multi-engagement DB needs no rework.
 8. **Unified multi-engagement-DB migration** — 🔭 **to scope as its own PI.** Replace the per-engagement-DB-files architecture with a single multi-tenant DB (`engagement_id` rows). Production-readiness *and* the practical enabler of cross-engagement learning; **PI-122 (registry) depends on it** (§9A). Belongs to PRJ-014's successor / a production-architecture Project, not the ADO Project.
