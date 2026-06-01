@@ -1,0 +1,197 @@
+{
+  "label": "SES-149 / CNV-051 close-out — record the ADO agent-layer evolution as governance. A design-complete conversation (06-01-26) that evolved the ADO's agent layer; captured in agent-delivery-organization-evolution.md (v0.2). Records the seven design decisions (DEC-367..373) as governance anchors pointing to the doc sections, addresses (advances) PI-114 under PRJ-018. APPLY GATE: re-verify heads (SES-149/CNV-051/DEC-367..373 next-free at authoring) and apply in a clean window vs the parallel session.",
+  "session": {
+    "session_identifier": "SES-149",
+    "session_title": "ADO agent-layer evolution — design-complete (matrix org, learning registry, release model, runtime)",
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "runner": "claude-code",
+      "kind": "advisory-and-design"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_status": "complete",
+    "session_executive_summary": "Claude Code design conversation (06-01-26) that evolved the Agent Delivery Organization's agent layer to design-complete, captured in agent-delivery-organization-evolution.md (v0.2). It reshaped the ADO into a matrix organization (four passes Plan/Design/Develop/Test x area-disciplines) with per-area Architect/Developer/Tester experts; a coherence-first thesis (front-load serial design+reconciliation to unleash parallel conflict-free build); a reconciliation mechanism (finding entity, coarse all-or-nothing design gate); a release model (REL- entity); the registry reframed as a living, system-level learning knowledge base with engagement overlays and cross-engagement learning; and a spawn-on-demand runtime. Records the decisions as DEC-367..373 anchored to the doc; addresses PI-114.",
+    "session_description": "A long design conversation that took the ADO agent layer from the v0.3 substrate (built, PI-114/WTK-001..006) to a design-complete model for the layer above it, all captured with full rationale in agent-delivery-organization-evolution.md (committed across ~10 commits, pushed to main; latest 8c223d8). The thread: (0) the originating seam — the two-tier 'scope vs do' split has variable width by phase (collapsible at Architecture, widest at Development); (1) the matrix org — passes x area-disciplines, the disciplines ARE the area vocab, profiles per (area x tier); (2) phase-major over area-major, with a reconciliation gate; (3) the thesis — front-load coherence (rigid serial design+reconciliation) to unleash massively parallel, conflict-free build, eliminating the ping-pong effect by construction; (4) the detailed reconciliation mechanism (Reconcile-as-Work-Task; FND- finding entity; detect-vs-resolve with a complete-phase blocking-findings precondition; Lead-vertical / Architect-detects-PM-arbitrates-horizontal); (5) the expert taxonomy (build areas get three tiers Architect/Developer/Tester for independent verification, design/methodology areas Architect-only); (6) the learning loop (the registry as living memory; LRN- learning entity; capture->propose->promote with a graded conservative-then-earned gate, enforced rules always human; per-release curation); (7) the release model (REL- entity orthogonal to Project; the coarse all-or-nothing design gate; hard-sync-at-Design / flow-after; generalized Workstream parentage for the horizontal reconcile home); (8) the four core passes, dissolving Documentation/Data Migration/Deployment into discipline concerns + release activities; (9) the system/engagement registry scope + the unified multi-engagement-DB direction (the registry is a system-level service with engagement overlays; cross-engagement learning; the per-engagement-DB model is superseded; design scope-aware now; the unified-DB migration is a PI-122 prerequisite); (10) the standing-agent runtime (no perpetual agents — all spawn-on-demand; 'standing' = contract scope; deterministic scheduler + invoked judgment-agents; human-in-the-loop at the gated points, autonomy grows with the learning loop). All seven design decisions are recorded here as DEC-367..373, each a concise governance anchor pointing to its doc section (the doc carries the full rationale). What remains is execution planning, not design: fold the expanded scope into the registry PRD / PI-122, scope the unified-DB-migration as its own PI, and sequence the build. Addresses (advances) PI-114 without resolving it.",
+    "references": []
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-051",
+    "conversation_title": "ADO agent-layer evolution — the design-complete conversation (matrix org → learning registry → runtime)",
+    "conversation_purpose": "Evolve the ADO's agent layer (not the built substrate) to a design-complete model and capture it with full rationale, then record the resulting decisions as governance.",
+    "conversation_description": "Worked the ADO agent-layer evolution end to end: the matrix org (four passes x area-disciplines), phase-major + the reconciliation gate, the coherence-first thesis, the reconciliation mechanism (finding entity), the three-tier expert taxonomy, the learning loop (the registry as living institutional memory), the release model, the four core passes (dissolving Documentation/Data Migration/Deployment), the system/engagement registry scope + the unified multi-engagement-DB direction, and the spawn-on-demand runtime. Captured in agent-delivery-organization-evolution.md v0.2 (design-complete). Records the seven decisions as DEC-367..373; addresses (advances) PI-114.",
+    "conversation_summary": "Design-complete evolution of the ADO agent layer: matrix org / four passes / (area x tier) three-tier experts / reconciliation gate (finding entity) / release model / the registry as a system-level living learning memory with engagement overlays + cross-engagement learning + the unified-DB direction / spawn-on-demand runtime. Seven decisions recorded (DEC-367..373). PI-114 advanced.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-051",
+        "target_type": "session",
+        "target_id": "SES-149",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [],
+  "commits": [],
+  "decisions": [
+    {
+      "identifier": "DEC-367",
+      "title": "ADO reconciliation mechanism — Reconcile-as-Work-Task + the `finding` entity + the coarse design gate",
+      "context": "The matrix org runs area experts in parallel within the Design pass; their specs must be proven coherent (within a PI across areas, and within an area across the release's PIs) before any build. The ADO needed a concrete reconciliation mechanism, recorded artifacts, and a gate. Phase-major was chosen over area-major so the gate sits at the Design->Develop boundary (full-design coherence before build).",
+      "decision": "Reconciliation is a dedicated 'Reconcile' Work Task that runs last in the Design phase (blocked_by the area-design tasks); its deliverable is a set of findings. A new `finding` governance entity (`FND-`): type {conflict|gap|dependency|efficiency} x severity {blocking|advisory}, lifecycle, + finding_relates_to / finding_resolved_by edges. The Reconcile task DETECTS (emits findings); the gate adds one complete-phase precondition (all Work Tasks Complete AND no open BLOCKING findings). Vertical findings the PI Lead resolves; horizontal findings the Architect detects + proposes and the PM arbitrates cross-PI priority (human via needs_attention). Efficiencies are flag-and-propose (never auto-rewrite another PI). Automation is conservative-then-earned. Findings feed the learning loop.",
+      "alternatives_considered": "Area-major (each area its own design->build->test pipeline) — rejected: it fragments the gate and gives up the one whole-design coherence checkpoint; phase-major already provides within-pass parallelism via layer-ranked Work Tasks. Overloading needs_attention instead of a finding entity — rejected: findings relate multiple Work Tasks across PIs, have their own lifecycle, and are the learning loop's raw data. Auto-merging/auto-resolving cross-PI conflicts — rejected: one expert must not silently rewrite another PI's plan.",
+      "consequences": "New entity `finding` (FND-) + two edge kinds + one complete-phase precondition; everything else (needs_attention, blocked_by, Decision) is existing machinery. The horizontal Reconcile task's (release, area) home depends on the Release entity (DEC-370). Full detail: agent-delivery-organization-evolution.md §4.",
+      "executive_summary": "The ADO's design-coherence gate is implemented as a Reconcile Work Task (last in the Design phase) that emits typed `finding` records (new FND- entity: conflict/gap/dependency/efficiency x blocking/advisory). Detection is separate from resolution: the gate (complete-phase) requires no open BLOCKING findings before any build. Vertical (within-PI, across areas) findings the PI Lead resolves; horizontal (within-area, across the release's PIs) findings the Architect detects and the PM arbitrates, escalating to a human via needs_attention. Efficiencies are flagged not auto-applied; automation is conservative-then-earned; findings feed the learning loop. One entity + two edges + one precondition. Full detail in evolution doc §4.",
+      "decision_date": "2026-06-01",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-368",
+      "title": "ADO expert taxonomy — disciplines = the area vocab; (area x tier) profiles; three tiers for build disciplines",
+      "context": "The matrix org needs a discipline taxonomy and a per-tier agent model. The question was whether to invent a taxonomy, how UI sub-disciplines map, and whether build areas need a separate Tester tier.",
+      "decision": "The disciplines ARE the area vocab (the 13 System areas + per-engagement Engagement areas already define them; layer ranks give within-pass ordering; a Work Task's area routes to one expert). The registry adds only profiles per (area x tier). The tier set is area-kind-dependent: BUILD disciplines (storage/access/api/mcp/ui/espo/automation/infrastructure/programs) get Architect + Developer + Tester (three tiers); DESIGN/methodology disciplines (methodology-product/process/interviews/templates) get Architect-only (the design artifact is the deliverable). The standing/reconciling property sits only on Architects. Sub-disciplines (Web/Mobile/Desktop UI) are modeled as Engagement areas (a two-level System sub-area model is the deferred upgrade).",
+      "alternatives_considered": "Inventing a new discipline taxonomy — rejected: it already exists as the area vocab. Two tiers (Developer also tests) instead of three — rejected: a separate Tester gives independent verification (derives tests from the Architect's test-spec, blind to the Developer's code), has distinct test skills/rules, is pass-aligned, and is low-cost (system-level, shared skills, sparse, incrementally staffed). Profile-finer-than-area — rejected: the area must route to one expert.",
+      "consequences": "The (area x tier) matrix is the system-level profile library; the Tester is a spec-driven test-implementer with the rule 'derive tests from the spec, not the Developer's code'; the three-tier model is staffed incrementally (Architect+Developer first, Tester when rigor warrants). A light layer-rank extension is needed to order the rank-less areas. Full detail: evolution doc §3.1.",
+      "executive_summary": "The ADO discipline taxonomy is not invented — it IS the area vocab (System + Engagement areas); the registry adds profiles per (area x tier). The tier set is area-kind-dependent: build disciplines get Architect/Developer/Tester (three tiers, for independent verification — the Tester derives tests from the Architect's spec, blind to the Developer's code), while design/methodology disciplines get Architect-only (the design artifact is the deliverable, the variable-width tier split made concrete). Standing/reconciling is on Architects only; UI sub-disciplines (Web/Mobile/Desktop) are Engagement areas. The three-tier model is staffed incrementally. Full detail in evolution doc §3.1.",
+      "decision_date": "2026-06-01",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-369",
+      "title": "ADO learning loop — the registry as a living institutional-knowledge base",
+      "context": "Doug's direction: the experts should gain experience over time and write it back to the V2 DB, becoming smarter each Work Task/release. This reframes the registry from a static catalog into a living, curated knowledge base — and is safety-critical (a self-updating agent could entrench mistakes or reward-hack its own rules).",
+      "decision": "A distinct `learning` entity (`LRN-`) is the raw observation layer below the curated skill/rule catalog, keyed by (area, tier), with evidence edges (derived_from / contradicted_by / promoted_to); evidence is the promotion currency (no one-off -> rule). Lifecycle: capture (every Work-Task close + from findings/test-failures) -> accumulate -> propose -> promote, gated by a graded, conservative-then-earned gate (learnings free; skills/advisory-rules earn self-promotion with track record; ENFORCED rules ALWAYS human-reviewed). Both tiers learn (tier-scoped); only Architects reconcile. Curation is mandatory: a per-release 'curate' Work Task + triggered re-validation (contradiction / evidence-source-changed). The resolver injects active (area,tier) learnings into the expert's contract.",
+      "alternatives_considered": "Learnings-as-advisory-rules-from-birth — rejected: loses the can-be-wrong / evidence-accumulation distinction. A new bespoke safety system — rejected: reuse the existing hybrid-governance gate (agent proposes, human gates the high-stakes promotions). No curation — rejected: every learning system rots; without re-validation/retire an expert gets confidently wrong over time.",
+      "consequences": "New entity `learning` (LRN-) + edges; a capture step at Work-Task close; a 'curate' Work Task per (release, area); the promote workflow reuses the skill/rule catalog + float/pin + needs_attention for the human gate. The biggest expansion to PI-122's scope. Full detail: evolution doc §7.",
+      "executive_summary": "The agent registry becomes a living institutional-knowledge base: experts accumulate experience and write it back to the V2 DB, getting smarter each release (a DBA with 50 projects of experience). A new `learning` entity (LRN-) is the raw observation layer below the curated skill/rule catalog, keyed by (area,tier), with evidence as the promotion currency. Lifecycle capture->accumulate->propose->promote, gated by a graded conservative-then-earned gate (learnings free; enforced rules always human-reviewed). Both tiers learn; curation is a per-release Work Task + triggered re-validation. Reuses the hybrid governance for safety. The biggest expansion to PI-122. Full detail in evolution doc §7.",
+      "decision_date": "2026-06-01",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-370",
+      "title": "ADO release model — the `REL-` entity + the coarse all-or-nothing design gate",
+      "context": "Doug chose planned, release-batched delivery (invest in design to ship coherent releases) over continuous small-batch. This needs a batching/gating unit and resolves where the horizontal Reconcile task lives. The thesis: front-load coherence to unleash parallel build.",
+      "decision": "Release is a new entity (`REL-`) orthogonal to Project — a PI carries two memberships (Project = theme, Release = shipping batch); a release can batch PIs across Projects. Lifecycle Open(intake)->Design->Develop->Test->Shipped; the PM closes intake before Design, defers not-ready PIs. The design gate is COARSE / all-or-nothing: no development begins until ALL the release's reconciliation (review and resolution) is complete and clean — both because the cross-PI reconcile can't run until all designs are in (structural) and because resolutions ripple (no stable target otherwise). Hard-sync at the Design gate only; Develop/Test flow under the reconciled plan. Workstream parentage is generalized so a Workstream belongs to a PI or a Release (the horizontal Reconcile task's home). The PM gains a release-management layer; dispatch is release-scoped.",
+      "alternatives_considered": "Continuous/small-batch delivery — viable (methodology is cadence-agnostic) but release-batching is what makes the cross-PI expert valuable and the gate coherent. Strict full-lockstep (the whole release moves through every gate together) — rejected: throttles the batch on the slowest PI; hard-sync only at Design is enough. Fine-grained gate (clean items build while a conflict resolves) — rejected by default: resolutions ripple. Release as a Project / a tag — rejected: conflates theme with cadence / too thin.",
+      "consequences": "New entity `release` (REL-); generalized Workstream parentage; the PM's release layer. The coarse gate is the keystone of the thesis: rigid serial design+reconciliation -> massively parallel, conflict-free build. Full detail: evolution doc §6 + the thesis.",
+      "executive_summary": "Delivery is planned and release-batched. A new Release entity (REL-) is orthogonal to Project (a PI has two memberships — theme and shipping batch; cross-Project batches allowed), with lifecycle Open->Design->Develop->Test->Shipped. The design gate is COARSE / all-or-nothing: no development begins until ALL the release's reconciliation is complete and clean (structural — the cross-PI reconcile needs all designs in; and principled — resolutions ripple). Hard-sync at Design only, flow after. Workstream parentage is generalized (PI or Release) to home the horizontal Reconcile task. This coarse gate is the keystone of the thesis: rigid serial design -> parallel conflict-free build. Full detail in evolution doc §6.",
+      "decision_date": "2026-06-01",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-371",
+      "title": "ADO four core passes — Plan/Design/Develop/Test; dissolve Documentation/Data Migration/Deployment",
+      "context": "The original ADO had six phases (Architecture/Development/Testing/Documentation/Data Migration/Deployment). The matrix model is areas x passes; the question was the canonical pass set and where the three non-core phases attach.",
+      "decision": "Exactly FOUR core passes: Plan -> Design -> Develop -> Test. Plan is the area-determination/decomposition step (it creates the other passes' structure; no area Work Tasks of its own; 'which areas?' decided once up front). Design/Develop/Test are the per-area (Architect/Developer/Tester) matrix passes. Documentation, Data Migration, and Deployment are NOT passes and dissolve: Data Migration = a storage Design-checkpoint (scope a migration task or assert Not Applicable) whose work is a Develop/storage task; Documentation = woven (Design docs are Design output; code docs are Develop Definition-of-Done; release notes/how-tos/CLAUDE.md are release-finalization at Shipped); Deployment = the Release's Shipped stage + the deploy mechanism is Develop infra/espo/automation work. Forced-consideration checkpoints keep each from being silently dropped.",
+      "alternatives_considered": "Keep all six phases (the three usually Not Applicable, zero substrate churn) — rejected as less clean: those three aren't really passes (Deployment is release-level, Data Migration is storage work, Documentation is woven). The forced-consideration benefit is preserved via checkpoints instead.",
+      "consequences": "Substrate consequence: WORKSTREAM_PHASE_TYPES shrinks from 6 to 3 phase-Workstream types (Design/Develop/Test) + Plan-as-decompose, with the three removed — a future phase-vocab migration riding along with the other substrate changes the evolution needs. Full detail: evolution doc §1.",
+      "executive_summary": "The ADO has exactly four core passes — Plan -> Design -> Develop -> Test. Plan is the area-determination/decompose step (no Work Tasks of its own; areas decided once up front); Design/Develop/Test are the per-area Architect/Developer/Tester passes. The original Documentation/Data Migration/Deployment are NOT passes and dissolve: Data Migration = a storage Design-checkpoint + Develop/storage work; Documentation = woven (Design docs + Develop Definition-of-Done + release-finalization); Deployment = the Release Shipped stage + infra/espo build. Forced-consideration checkpoints preserve safety. Substrate consequence: phase vocab 6 -> 3 + Plan (a future migration). Full detail in evolution doc §1.",
+      "decision_date": "2026-06-01",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-372",
+      "title": "ADO standing-agent runtime — spawn-on-demand scheduler + invoked judgment-agents",
+      "context": "The registry holds/resolves contracts; a runtime must inject them and run the agents. The question was how standing experts are hosted vs. per-task agents, and the autonomy boundary. The 06-01 session demonstrated the loop by hand (dispatch -> decompose -> spawn specialists -> drive gates -> integrate).",
+      "decision": "No agent is a perpetual process: because of DB-backed statelessness, EVERY agent (Architect/Developer/Tester/PM/Lead) is spawned on demand and ephemeral — it reads its state/queue/learnings from the DB, does its unit, writes back, exits. 'Standing' is therefore a CONTRACT SCOPE (portfolio queue + reconciliation + learning-curation), not a process lifetime. The runtime is a deterministic SCHEDULER (find ready work -> resolve the (area,tier) contract from the registry -> spawn one agent honoring blocked_by + a concurrency cap + worktree-from-current-main-HEAD -> drive the lifecycle) plus invoked judgment-agents; the registry resolves, the scheduler injects. Parallel build branches are merged (clean if reconciled; a real conflict is a finding reconciliation missed -> a learning). The runtime is NOT fully autonomous: it pauses for a human at the gated points (enforced-rule promotion, cross-PI blocking conflict, design-contradiction) via needs_attention, and its autonomy GROWS as the learning loop earns trust.",
+      "alternatives_considered": "Perpetually-running standing agent processes — rejected: statelessness makes spawn-on-demand clean and cheap (no daemons). Fully autonomous (no human gates) — rejected: the conservative-then-earned boundary is the safety control.",
+      "consequences": "The runtime automates the orchestration loop demonstrated by hand this session; it owns the worktree-from-HEAD rule and the parallel-build integration/merge. Ties to the registry<->runtime seam (registry PRD §12). Full detail: evolution doc §9B.",
+      "executive_summary": "The agent runtime automates the orchestration loop demonstrated by hand this session. The key simplification: no agent is a perpetual process — because of DB-backed statelessness, every agent (Architect/Developer/Tester/PM/Lead) is spawned on demand and ephemeral, so 'standing' is a contract SCOPE (portfolio queue + reconciliation), not a process lifetime. The runtime is a deterministic scheduler (resolve contract from the registry -> spawn one agent honoring blocked_by + concurrency + worktree-from-main-HEAD -> drive the lifecycle) + invoked judgment-agents. Parallel build branches merge (clean if reconciled; a conflict -> a learning). Human-in-the-loop at the gated points; autonomy grows with the learning loop. Full detail in evolution doc §9B.",
+      "decision_date": "2026-06-01",
+      "status": "Active"
+    },
+    {
+      "identifier": "DEC-373",
+      "title": "ADO registry scope — a SYSTEM-level service with engagement overlays; the unified multi-engagement-DB direction",
+      "context": "The governance entities are per-engagement work, but the agents are not — defining/managing a Database Architect inside every engagement is wasteful duplication. And the current per-engagement-DB architecture is impractical for production.",
+      "decision": "The agent registry is a SYSTEM-level service with engagement overlays — following the existing System/Engagement AREA precedent (SYSTEM_AREA_RANKS universal-in-code + engagement_areas per-engagement). The universal (area x tier) profiles + their system skills/rules/learnings are system-level; an engagement ADDS engagement-specific skills/rules/learnings and can OVERRIDE/disable specific system rules; the resolver merges (System union engagement-additions minus disabled, with overrides). Learnings gain a system/engagement SCOPE axis with cross-engagement promotion (a learning seen across multiple engagements promotes to system-scope; a system enforced rule is the top gate — human review + cross-engagement evidence). Forward direction: the per-engagement-DB architecture (dev convenience, not production) is superseded by a single multi-engagement DB (row-level engagement_id), the natural home (system = engagement_id NULL rows; cross-engagement learning = one query). Design the registry SCOPE-AWARE now (a system|engagement discriminator on every row) so the unified-DB migration needs no registry rework.",
+      "alternatives_considered": "Per-engagement registry (each engagement defines its own agents) — rejected: wasteful duplication, no cross-engagement learning. A separate dedicated system DB in the per-engagement world — workable but awkward; the unified DB is the natural home. Building the registry scope-blind and migrating later — rejected: it forces a rewrite.",
+      "consequences": "The work is per-engagement; the workforce is system-level. The unified multi-engagement-DB migration is a strong prerequisite/enabler for the registry build and probably wants to be its own PI that PI-122 depends on (a production-architecture Project, not the ADO Project). Full detail: evolution doc §9A.",
+      "executive_summary": "The work is per-engagement; the workforce is system-level. The agent registry is a SYSTEM-level service with engagement overlays (following the System/Engagement area precedent): universal (area x tier) profiles + system skills/rules/learnings, with each engagement adding/overriding. Learnings gain a system/engagement scope axis with cross-engagement promotion (a system Database Architect with 50 projects of experience; a system enforced rule is the top gate). Forward direction: the per-engagement-DB architecture is superseded by a single multi-engagement DB (engagement_id rows) — the natural home — and the registry is designed scope-aware now so it needs no rework. The unified-DB migration is a PI-122 prerequisite, its own PI. Full detail in evolution doc §9A.",
+      "decision_date": "2026-06-01",
+      "status": "Active"
+    }
+  ],
+  "references": [
+    {
+      "source_type": "session",
+      "source_id": "SES-149",
+      "target_type": "project",
+      "target_id": "PRJ-018",
+      "relationship": "session_belongs_to_project"
+    },
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-051",
+      "target_type": "project",
+      "target_id": "PRJ-018",
+      "relationship": "conversation_belongs_to_project"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-149",
+      "target_type": "session",
+      "target_id": "SES-148",
+      "relationship": "session_follows_from"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-367",
+      "target_type": "conversation",
+      "target_id": "CNV-051",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-368",
+      "target_type": "conversation",
+      "target_id": "CNV-051",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-369",
+      "target_type": "conversation",
+      "target_id": "CNV-051",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-370",
+      "target_type": "conversation",
+      "target_id": "CNV-051",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-371",
+      "target_type": "conversation",
+      "target_id": "CNV-051",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-372",
+      "target_type": "conversation",
+      "target_id": "CNV-051",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-373",
+      "target_type": "conversation",
+      "target_id": "CNV-051",
+      "relationship": "decided_in"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": [
+    {
+      "planning_item_identifier": "PI-114"
+    }
+  ]
+}

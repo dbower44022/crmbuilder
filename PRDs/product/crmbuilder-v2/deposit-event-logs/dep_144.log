@@ -1,0 +1,37 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_149.json
+Label:  SES-149 / CNV-051 close-out — record the ADO agent-layer evolution as governance. A design-complete conversation (06-01-26) that evolved the ADO's agent layer; captured in agent-delivery-organization-evolution.md (v0.2). Records the seven design decisions (DEC-367..373) as governance anchors pointing to the doc sections, addresses (advances) PI-114 under PRJ-018. APPLY GATE: re-verify heads (SES-149/CNV-051/DEC-367..373 next-free at authoring) and apply in a clean window vs the parallel session.
+Deposit event: DEP-144
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-051 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== decisions (7 records) ===
+  ✓ POST decisions  DEC-367 (HTTP 201)
+  ✓ POST decisions  DEC-368 (HTTP 201)
+  ✓ POST decisions  DEC-369 (HTTP 201)
+  ✓ POST decisions  DEC-370 (HTTP 201)
+  ✓ POST decisions  DEC-371 (HTTP 201)
+  ✓ POST decisions  DEC-372 (HTTP 201)
+  ✓ POST decisions  DEC-373 (HTTP 201)
+
+=== references (9 records) ===
+  ✓ POST references  CNV-051 conversation_belongs_to_project PRJ-018 (HTTP 201)
+  ✓ POST references  SES-149 session_follows_from SES-148 (HTTP 201)
+  ✓ POST references  DEC-367 decided_in CNV-051 (HTTP 201)
+  ✓ POST references  DEC-368 decided_in CNV-051 (HTTP 201)
+  ✓ POST references  DEC-369 decided_in CNV-051 (HTTP 201)
+  ✓ POST references  DEC-370 decided_in CNV-051 (HTTP 201)
+  ✓ POST references  DEC-371 decided_in CNV-051 (HTTP 201)
+  ✓ POST references  DEC-372 decided_in CNV-051 (HTTP 201)
+  ✓ POST references  DEC-373 decided_in CNV-051 (HTTP 201)
+
+=== addresses_planning_items (1 record) ===
+  ✓ POST addresses_planning_items  → PI-114 (HTTP 201)
+
+✓ All 19 operations complete.
+
+✓ Recorded apply as deposit_event DEP-144 (HTTP 201).

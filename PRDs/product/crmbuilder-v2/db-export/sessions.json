@@ -3061,5 +3061,33 @@
     "session_superseded_at": null,
     "session_title": "ADO planning loop for PI-122 — dispatch, decompose, and scope all six phases with real specialists",
     "session_updated_at": "2026-06-01T00:15:54.422926"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-06-01T21:16:41.685290",
+    "session_created_at": "2026-06-01T21:16:41.685033",
+    "session_deleted_at": null,
+    "session_description": "A long design conversation that took the ADO agent layer from the v0.3 substrate (built, PI-114/WTK-001..006) to a design-complete model for the layer above it, all captured with full rationale in agent-delivery-organization-evolution.md (committed across ~10 commits, pushed to main; latest 8c223d8). The thread: (0) the originating seam — the two-tier 'scope vs do' split has variable width by phase (collapsible at Architecture, widest at Development); (1) the matrix org — passes x area-disciplines, the disciplines ARE the area vocab, profiles per (area x tier); (2) phase-major over area-major, with a reconciliation gate; (3) the thesis — front-load coherence (rigid serial design+reconciliation) to unleash massively parallel, conflict-free build, eliminating the ping-pong effect by construction; (4) the detailed reconciliation mechanism (Reconcile-as-Work-Task; FND- finding entity; detect-vs-resolve with a complete-phase blocking-findings precondition; Lead-vertical / Architect-detects-PM-arbitrates-horizontal); (5) the expert taxonomy (build areas get three tiers Architect/Developer/Tester for independent verification, design/methodology areas Architect-only); (6) the learning loop (the registry as living memory; LRN- learning entity; capture->propose->promote with a graded conservative-then-earned gate, enforced rules always human; per-release curation); (7) the release model (REL- entity orthogonal to Project; the coarse all-or-nothing design gate; hard-sync-at-Design / flow-after; generalized Workstream parentage for the horizontal reconcile home); (8) the four core passes, dissolving Documentation/Data Migration/Deployment into discipline concerns + release activities; (9) the system/engagement registry scope + the unified multi-engagement-DB direction (the registry is a system-level service with engagement overlays; cross-engagement learning; the per-engagement-DB model is superseded; design scope-aware now; the unified-DB migration is a PI-122 prerequisite); (10) the standing-agent runtime (no perpetual agents — all spawn-on-demand; 'standing' = contract scope; deterministic scheduler + invoked judgment-agents; human-in-the-loop at the gated points, autonomy grows with the learning loop). All seven design decisions are recorded here as DEC-367..373, each a concise governance anchor pointing to its doc section (the doc carries the full rationale). What remains is execution planning, not design: fold the expanded scope into the registry PRD / PI-122, scope the unified-DB-migration as its own PI, and sequence the build. Addresses (advances) PI-114 without resolving it.",
+    "session_ended_at": null,
+    "session_executive_summary": "Claude Code design conversation (06-01-26) that evolved the Agent Delivery Organization's agent layer to design-complete, captured in agent-delivery-organization-evolution.md (v0.2). It reshaped the ADO into a matrix organization (four passes Plan/Design/Develop/Test x area-disciplines) with per-area Architect/Developer/Tester experts; a coherence-first thesis (front-load serial design+reconciliation to unleash parallel conflict-free build); a reconciliation mechanism (finding entity, coarse all-or-nothing design gate); a release model (REL- entity); the registry reframed as a living, system-level learning knowledge base with engagement overlays and cross-engagement learning; and a spawn-on-demand runtime. Records the decisions as DEC-367..373 anchored to the doc; addresses PI-114.",
+    "session_identifier": "SES-149",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "kind": "advisory-and-design",
+      "runner": "claude-code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "ADO agent-layer evolution — design-complete (matrix org, learning registry, release model, runtime)",
+    "session_updated_at": "2026-06-01T21:16:41.685371"
   }
 ]
