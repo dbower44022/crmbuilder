@@ -208,7 +208,7 @@ The remaining Release-model details, all confirmed:
 
 ---
 
-## 7. Learning / Experience agents — the registry becomes the organization's **memory**
+## 7. Learning / Experience agents — the registry becomes the organization's **memory** (DETAILED 06-01-26)
 
 **DECISION direction (Doug, 06-01-26):** the experts should **gain experience over time and write it back into the V2 database, becoming smarter/more experienced after each Work Task.** This reframes the registry entirely: it is **not a static catalog of prompts/skills/rules — it is a living, curated institutional knowledge base** that the experts grow each release. (A senior DBA's value is years of "how *this* company's schema actually behaves"; the Database Architect should accumulate exactly that, queryable and auditable in the V2 DB.)
 
@@ -227,15 +227,66 @@ The remaining Release-model details, all confirmed:
                                 Advisory rules can float; hard constraints can't be self-granted.
 ```
 
-Pipeline: **observe → learn (free) → propose skill/rule (gated).**
+Pipeline: **observe → learn (free) → propose skill/rule (gated).** Detailed mechanism below.
 
-### The danger, and the resolution
+### 7.1 The `learning` entity (`LRN-`)
 
-A self-updating agent can (a) learn a *wrong* pattern and entrench it, (b) accumulate contradictory learnings, or (c) — worst — quietly **loosen a rule that blocked it** (reward-hacking its own governance). The resolution **reuses the registry's existing hybrid governance** rather than inventing a new safety system: the agent **proposes**; a **human gates** the high-stakes promotions (enforced-rule changes), exactly via the `enforced_with_override` → Needs Attention path. Learnings remain advisory/append-mostly/auditable.
+The raw observation layer is a distinct entity (DECISION) — *below* the curated skill/rule catalog, because a learning can be wrong/stale and accumulates evidence before it earns promotion (a flat "learnings are just advisory rules from birth" loses that distinction).
 
-### The hard part: curation / decay
+```
+learning (LRN-):  area, tier {architect|developer}, category {gotcha|pattern|constraint|preference},
+                  content (situation → guidance), status {active|stale|retired|promoted},
+                  confidence (derived from evidence count/spread)
+edges:  learning_derived_from    → Work Task / finding / Decision / test-failure   (the evidence)
+        learning_contradicted_by → Work Task / observation                          (counter-evidence)
+        learning_promoted_to     → skill / rule                                      (if promoted)
+```
 
-Every learning system rots — the codebase changes and a learning becomes *wrong*; learnings pile up and contradict. So **curation is mandatory**: learnings must be **re-validated and retired**, not merely accumulated. The stewardship skill therefore includes "*before relying on a learning, check it's still true; flag stale ones.*" Without this, an expert gets **confidently wrong over time** instead of smarter. **This is where such systems usually fail and is the part to design most carefully.**
+**Evidence is the spine of trust (DECISION — evidence is the promotion currency):** a learning seen *once* is a hunch; one confirmed across many Work Tasks is institutional knowledge. Confidence rises with confirming evidence and falls when contradicted — which is what **gates promotion** (no one-off → rule) and **triggers curation** (re-check the contradicted). Learnings are keyed by **(area, tier)** so design knowledge and implementation knowledge never blur.
+
+### 7.2 The lifecycle: capture → accumulate → propose → promote
+
+- **Capture** — at *every* Work Task close (a lightweight retro: "what did I learn?"), and also from §4.7 reconciliation findings and test failures. Free, append-mostly, evidence-tagged. Most tasks yield 0–2.
+- **Accumulate** — a recurring observation links new evidence to the *existing* learning (confidence rises), not a duplicate.
+- **Propose** — when a learning is well-evidenced (or judged important), the expert proposes promoting it: refine a **skill**, or add/change a **rule**.
+- **Promote** — gated (§7.3); `learning_promoted_to` links it; status → `promoted`.
+
+This is the engine of "smarter each release": findings + task experience → learnings → (promoted) skills/rules → next release's experts design with them baked in.
+
+### 7.3 The promotion gate — graded by stakes, conservative-then-earned (DECISION)
+
+A self-updating agent can entrench a wrong pattern or — worst — quietly **loosen a rule that blocked it** (reward-hacking its own governance). The gate **reuses the registry's hybrid governance** (no new safety system) and is graded; reusing the reconciliation #4 principle, it **starts conservative and is *earned*:**
+
+```
+Learning        → FREE always (an advisory observation; never blocks).
+Skill (how-to)  → expert-proposed; versioned + float/pin as the safety net.
+                  Human-reviewed EARLY; self-promotable once the expert earns trust.
+Advisory rule   → expert-proposed; light human ack early; loosens with track record.
+Enforced rule   → HUMAN REVIEW REQUIRED, ALWAYS — the permanent hard line. An agent must
+                  never self-grant or self-loosen a blocking constraint (the Needs Attention path).
+```
+
+The elegant part: **the learning loop measures exactly the trust that loosens the gate** — a discipline with a long, clean track record of correct promotions (few contradicted learnings) is a demonstrated, *evidenced* candidate for more autonomy. The system earns its own slack.
+
+### 7.4 Both tiers learn; only architects reconcile (DECISION)
+
+Architects accumulate **design** knowledge (patterns, conflict-prone spots, shared-resource gotchas); developers accumulate **implementation** knowledge (how performant SQL actually behaves here, build/test idioms). Both write learnings (statelessly, at task close — so even an *ephemeral* developer learns, because the knowledge persists in the DB). Only architects *reconcile* — that's design.
+
+### 7.5 Curation / decay — the part that usually kills these systems (DECISION)
+
+Every learning system rots — the code changes and a learning becomes *wrong*; learnings pile up and contradict. Two mechanisms:
+- **Per-release review (scheduled sweep):** at the start of each release's Design pass, each Architect runs a **"curate" Work Task** over its discipline's learnings — retire stale, promote well-evidenced, merge duplicates. Natural, because the expert is already loading its knowledge to design; tracked/auditable like the Reconcile task.
+- **Triggered re-validation (reactive catch):** a learning is flagged when **contradicted** (new counter-evidence) or its **evidence-source changed** (the pattern it described got refactored).
+
+**Honest about the hard part:** *automatically* detecting a stale learning is the genuinely difficult AI problem. The pragmatic answer is expert review + contradiction/source-change triggers + human spot-checks — plus that a learning relied on at design time and later found wrong becomes itself a high-value (meta-)learning. Without curation an expert gets **confidently wrong over time** instead of smarter.
+
+### 7.6 How learnings reach the expert, and the loop closing
+
+At contract-resolution (the registry resolver), the expert's contract includes its **active (area, tier) learnings** — "all active" early, a **retrieved relevant subset** at scale (another reason curation must keep the set small). The loop closes with reconciliation (§4.7): **finding → learning → rule → sharper next design.**
+
+### 7.7 Substrate / registry impact (the biggest expansion to PI-122)
+
+One new entity (`learning`, `LRN-`) + its edges; a **capture step** at Work-Task close; a **"curate" Work Task** per (release, area); the **promote workflow** reusing the existing skill/rule catalog + float/pin + `needs_attention` for the human gate. Everything else is existing machinery. See §9.
 
 ---
 
@@ -272,13 +323,13 @@ PI-122's Architecture-phase specs (the `agent_profile`/`skill`/`governance_rule`
 
 ## 10. Open decisions to detail next (each → a future governance Decision)
 
-These were surfaced; detail them before/while building. **Status as of 06-01-26:** items **1 (reconciliation)** and **4 (release model)** are ✅ DETAILED (see §4, §6, the thesis). Items 2, 3, 5, 6 remain open.
+These were surfaced; detail them before/while building. **Status as of 06-01-26:** items **1 (reconciliation)**, **3 (learning loop)**, and **4 (release model)** are ✅ DETAILED (see §4, §7, §6, the thesis). Items **2, 5, 6** remain open.
 
-> **▶ RESUME HERE (next working session):** detail **item 3 — the learning loop** next. It is the highest-leverage and least-defined piece, and it is what makes the front-loaded-design thesis *get better every release* (the experts learn → next release's design is sharper). Its sub-questions are listed in item 3 below; the conceptual model is §7.
+> **▶ RESUME HERE (next working session):** detail **item 2 — the expert taxonomy** next (which disciplines are first-class; how UI sub-areas Web/Mobile/Desktop map onto the area vocab; the architect↔developer profile pair per area). **Item 5 (phases-vs-cross-cutting)** is a quick confirm that could go first if you want a warm-up; **item 6 (standing-agent runtime)** is the "how do we actually run this" piece, best last as it ties to the registry↔runtime seam.
 
 1. **Reconciliation mechanism** — ✅ **DETAILED (06-01-26), see §4.** Settled: Reconcile-as-Work-Task; `finding` entity (`FND-`); detect-vs-resolve with a `complete-phase` blocking-findings precondition; Lead-resolves-vertical / Architect-detects-PM-arbitrates-horizontal; efficiencies flag-and-propose; conservative-then-earned automation; findings feed learning. **One residual dependency:** the *horizontal* Reconcile task's structural home is (release, area) → waits on the **Release entity** (item 4).
 2. **Expert taxonomy** — which disciplines/areas are first-class; how UI sub-areas (Web / Mobile / Desktop) map onto the area vocab (`SYSTEM_AREA_RANKS` vs. Engagement areas); architect-vs-developer profile pairs per area.
-3. **Learning store + loop** — the experience entity schema; the capture/propose/promote lifecycle; the human-gate boundary (proposed default: human review required to promote to an *enforced* rule); whether developers learn implementation knowledge; **curation cadence** (per-release review vs. continuous).
+3. **Learning store + loop** — ✅ **DETAILED (06-01-26), see §7.** Settled: a distinct `learning` entity (`LRN-`, keyed by area+tier) below the curated skill/rule catalog; **evidence is the promotion currency** (no one-off → rule); capture→accumulate→propose→promote lifecycle (capture at every Work-Task close + from findings/test-failures); a **graded, conservative-then-earned gate** (learnings free; skills/advisory-rules earn self-promotion; **enforced rules always human**); **both tiers learn** (tier-scoped), only architects reconcile; **curation = a per-release "curate" Work Task + triggered re-validation**; the resolver injects active (area,tier) learnings into the expert's contract.
 4. **Release model mechanics** — ✅ **DETAILED (06-01-26), see §6 + the thesis.** DECIDED in full: the **coarse / all-or-nothing design gate** (no build until all reconciliation is complete and clean) and **hard-sync-at-Design / flow-after**; **Release as a new entity (`REL-`) orthogonal to Project** (two memberships; cross-Project batches allowed); the `Open→Design→Develop→Test→Shipped` lifecycle with explicit intake-close + defer-to-next-release; the horizontal-reconcile home via **generalized Workstream parentage (PI *or* Release)**; the PM's release-management layer + release-scoped dispatch.
 5. **Phases-vs-cross-cutting** — confirm the four core passes (Plan/Design/Develop/Test) and where Documentation / Data Migration / Deployment attach.
 6. **Standing-agent runtime** — how standing experts are hosted/woken (pull-based), distinct from the per-task spawn; ties to the registry↔runtime seam (registry PRD §12) and the worktree-from-HEAD requirement.
