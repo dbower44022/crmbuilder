@@ -3089,5 +3089,33 @@
     "session_superseded_at": null,
     "session_title": "ADO agent-layer evolution — design-complete (matrix org, learning registry, release model, runtime)",
     "session_updated_at": "2026-06-01T21:16:41.685371"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-06-01T21:55:56.982827",
+    "session_created_at": "2026-06-01T21:55:56.982574",
+    "session_deleted_at": null,
+    "session_description": "Execution/planning session that completed the agent-delivery-organization-evolution.md §10 NEXT list. Prior steps in the thread (already committed): SES-149 recorded the seven ADO agent-layer design decisions as DEC-367..373; the Agent Profile Registry PRD was expanded to v0.3 (new §13/§14 — the registry as a living, system-level learning memory) and PI-122's description PATCHed to the v0.3 four-entity, scope-aware, learning-capable scope. This session scopes the final item: the unified multi-engagement-DB migration (evolution item 8 / DEC-373), the production-architecture change that replaces the per-engagement-DB-files model with a single multi-tenant DB keyed by row-level engagement_id, and the practical enabler of cross-engagement learning that PI-122 depends on. Actions: (1) created a new project PRJ-019 'Production Architecture' via direct POST /projects (the recording-rules mechanism for projects, governance-recording-rules.md §line 71) as the home for production-readiness work orthogonal to any feature or to the ADO; (2) scoped the migration as PI-123 (status Draft, item_type pending_work) under PRJ-019 via planning_item_belongs_to_project; (3) wired blocked_by PI-122 -> PI-123 so the registry build cannot start until the unified-DB foundation lands. The project-home decision (asked of and answered by Doug: a new production-architecture project, create now) is recorded as DEC-374, with the rejected alternatives (PRJ-018 ADO — conflates production-arch with the agent org per DEC-373; reopening the completed PRJ-014 Governance & Delivery Redesign — closed, and this is forward production work). Net new governance: PRJ-019 (created directly), PI-123, DEC-374, the membership + blocked_by edges. Does not resolve or address an existing PI's delivery — it creates the new prerequisite PI. Follows from SES-149.",
+    "session_ended_at": null,
+    "session_executive_summary": "Claude Code execution session (06-01-26) following the ADO agent-layer design conversation (SES-149). With the seven design decisions recorded (DEC-367..373) and the Agent Profile Registry PRD expanded to v0.3 + PI-122's scope, this session scoped the last evolution NEXT item: the unified multi-engagement-DB migration. It created a new Production Architecture project (PRJ-019, via direct POST per the recording rules) and scoped the migration as PI-123 (Draft) under it, then wired PI-122 blocked_by PI-123 so the registry build waits on the production-DB foundation that makes cross-engagement learning practical (DEC-373). The project-home choice (a new project, not the ADO's PRJ-018 or the completed PRJ-014) is recorded as DEC-374. Closes the evolution's §10 NEXT list.",
+    "session_identifier": "SES-150",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "kind": "planning-and-governance",
+      "runner": "claude-code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "Scope the unified multi-engagement-DB migration (PI-123) under a new Production Architecture project (PRJ-019)",
+    "session_updated_at": "2026-06-01T21:55:56.982920"
   }
 ]

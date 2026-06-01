@@ -1830,5 +1830,20 @@
     "status": "In Progress",
     "title": "Build the Agent Profile Registry",
     "updated_at": "2026-06-01T21:21:33.721504"
+  },
+  {
+    "area": null,
+    "claimed_at": null,
+    "claimed_by": null,
+    "created_at": "2026-06-01T21:55:57.332725",
+    "description": "Scoped per agent-delivery-organization-evolution.md item 8 and DEC-373. The current per-engagement-DB model (crmbuilder-v2/data/engagements/X.db each, CRMBUILDER_V2_DB_PATH routing, per-engagement Alembic chains) is a dev-stage convenience, not a production architecture — it precludes cross-engagement queries, multiplies ops/backup surface, and does not scale to SaaS. Target: a single multi-tenant database with a row-level engagement_id discriminator. Scope to be decomposed by the ADO when this PI is dispatched; expected concerns include: the schema change adding engagement_id to engagement-scoped tables; the data migration consolidating existing per-engagement DBs into the unified store; the access-layer/routing change from DB-path selection to row-scoped queries; the db-export/snapshot model; and backup/ops. WHY IT BLOCKS PI-122: the Agent Profile Registry is designed system-level + scope-aware (a system | engagement discriminator on every row, DEC-373) so it works on either foundation, but its biggest payoff — cross-engagement learning — is only practical on the unified DB. Building the registry on the per-engagement foundation would mean a separate physical system store and near-impossible cross-engagement queries; hence PI-122 blocked_by PI-123. Belongs to PRJ-019 (Production Architecture), a production-readiness theme orthogonal to the ADO (PRJ-018) and distinct from the completed Governance & Delivery Redesign (PRJ-014). Status Draft; awaits decomposition.",
+    "executive_summary": "Replace CRMBuilder v2's per-engagement-DB-files architecture (one .db per engagement under data/engagements/, routed by a meta layer, an Alembic chain each, no cross-engagement queries, multiplied ops/backup) with a single multi-tenant database keyed by a row-level engagement_id (the standard multi-tenant model). A production-architecture change and the practical enabler of the Agent Profile Registry's cross-engagement learning (DEC-373): in one DB the system/engagement registry scope collapses to row scope and cross-engagement learning becomes one GROUP BY query. PI-122 (Agent Profile Registry) is blocked_by this item. Belongs to the new Production Architecture project (PRJ-019), not the ADO project.",
+    "id": 123,
+    "identifier": "PI-123",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Draft",
+    "title": "Unified multi-engagement DB — migrate from per-engagement-DB files to a single multi-tenant database",
+    "updated_at": "2026-06-01T21:55:57.332727"
   }
 ]

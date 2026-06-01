@@ -268,5 +268,20 @@
     "project_status": "in_flight",
     "project_superseded_at": null,
     "project_updated_at": "2026-05-31T06:01:55.950390"
+  },
+  {
+    "project_cancelled_at": null,
+    "project_completed_at": null,
+    "project_created_at": "2026-06-01T21:53:15.564793",
+    "project_deleted_at": null,
+    "project_description": "Home for production-readiness work that is orthogonal to any single feature or to the Agent Delivery Organization (PRJ-018). The motivating first PI is the unified multi-engagement-DB migration (PI-123), which the Agent Profile Registry (PI-122) depends on because cross-engagement learning is only practical on a single DB (DEC-373 / agent-delivery-organization-evolution.md item 8). Subsequent production-architecture concerns (backup/ops consolidation, scale, tenancy isolation) accrue here rather than being bolted onto feature or ADO projects.",
+    "project_identifier": "PRJ-019",
+    "project_name": "Production Architecture",
+    "project_notes": null,
+    "project_purpose": "Carry CRMBuilder v2 from its dev-stage storage and runtime conveniences to a production-grade, multi-tenant, SaaS-ready architecture. First deliverable: replace the per-engagement-DB-files model (one .db per engagement, an Alembic chain each, no cross-engagement queries) with a single multi-tenant database keyed by a row-level engagement_id.",
+    "project_started_at": "2026-06-01T12:00:00",
+    "project_status": "in_flight",
+    "project_superseded_at": null,
+    "project_updated_at": "2026-06-01T21:53:15.565581"
   }
 ]

@@ -1,0 +1,27 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_150.json
+Label:  SES-150 / CNV-052 close-out — scope the unified multi-engagement-DB migration as PI-123 under a new Production Architecture project (PRJ-019), and wire PI-122 blocked_by PI-123. Closes the ADO evolution's (agent-delivery-organization-evolution.md) §10 NEXT list: governance (DEC-367..373, SES-149) and registry PRD v0.3 / PI-122 are already done; this scopes the last item. PRJ-019 was created via direct POST per governance-recording-rules.md §line 71. Records the project-home choice as DEC-374. APPLY GATE: re-verify heads (SES-150/CNV-052/DEC-374/PI-123 next-free at authoring) and apply in a clean window vs the parallel session.
+Deposit event: DEP-145
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-052 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== planning_items (1 record) ===
+  ✓ POST planning_items  PI-123 (HTTP 201)
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-374 (HTTP 201)
+
+=== references (5 records) ===
+  ✓ POST references  CNV-052 conversation_belongs_to_project PRJ-018 (HTTP 201)
+  ✓ POST references  SES-150 session_follows_from SES-149 (HTTP 201)
+  ✓ POST references  DEC-374 decided_in CNV-052 (HTTP 201)
+  ✓ POST references  PI-123 planning_item_belongs_to_project PRJ-019 (HTTP 201)
+  ✓ POST references  PI-122 blocked_by PI-123 (HTTP 201)
+
+✓ All 9 operations complete.
+
+✓ Recorded apply as deposit_event DEP-145 (HTTP 201).

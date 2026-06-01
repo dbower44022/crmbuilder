@@ -1,0 +1,108 @@
+{
+  "label": "SES-150 / CNV-052 close-out — scope the unified multi-engagement-DB migration as PI-123 under a new Production Architecture project (PRJ-019), and wire PI-122 blocked_by PI-123. Closes the ADO evolution's (agent-delivery-organization-evolution.md) §10 NEXT list: governance (DEC-367..373, SES-149) and registry PRD v0.3 / PI-122 are already done; this scopes the last item. PRJ-019 was created via direct POST per governance-recording-rules.md §line 71. Records the project-home choice as DEC-374. APPLY GATE: re-verify heads (SES-150/CNV-052/DEC-374/PI-123 next-free at authoring) and apply in a clean window vs the parallel session.",
+  "session": {
+    "session_identifier": "SES-150",
+    "session_title": "Scope the unified multi-engagement-DB migration (PI-123) under a new Production Architecture project (PRJ-019)",
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "runner": "claude-code",
+      "kind": "planning-and-governance"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_status": "complete",
+    "session_executive_summary": "Claude Code execution session (06-01-26) following the ADO agent-layer design conversation (SES-149). With the seven design decisions recorded (DEC-367..373) and the Agent Profile Registry PRD expanded to v0.3 + PI-122's scope, this session scoped the last evolution NEXT item: the unified multi-engagement-DB migration. It created a new Production Architecture project (PRJ-019, via direct POST per the recording rules) and scoped the migration as PI-123 (Draft) under it, then wired PI-122 blocked_by PI-123 so the registry build waits on the production-DB foundation that makes cross-engagement learning practical (DEC-373). The project-home choice (a new project, not the ADO's PRJ-018 or the completed PRJ-014) is recorded as DEC-374. Closes the evolution's §10 NEXT list.",
+    "session_description": "Execution/planning session that completed the agent-delivery-organization-evolution.md §10 NEXT list. Prior steps in the thread (already committed): SES-149 recorded the seven ADO agent-layer design decisions as DEC-367..373; the Agent Profile Registry PRD was expanded to v0.3 (new §13/§14 — the registry as a living, system-level learning memory) and PI-122's description PATCHed to the v0.3 four-entity, scope-aware, learning-capable scope. This session scopes the final item: the unified multi-engagement-DB migration (evolution item 8 / DEC-373), the production-architecture change that replaces the per-engagement-DB-files model with a single multi-tenant DB keyed by row-level engagement_id, and the practical enabler of cross-engagement learning that PI-122 depends on. Actions: (1) created a new project PRJ-019 'Production Architecture' via direct POST /projects (the recording-rules mechanism for projects, governance-recording-rules.md §line 71) as the home for production-readiness work orthogonal to any feature or to the ADO; (2) scoped the migration as PI-123 (status Draft, item_type pending_work) under PRJ-019 via planning_item_belongs_to_project; (3) wired blocked_by PI-122 -> PI-123 so the registry build cannot start until the unified-DB foundation lands. The project-home decision (asked of and answered by Doug: a new production-architecture project, create now) is recorded as DEC-374, with the rejected alternatives (PRJ-018 ADO — conflates production-arch with the agent org per DEC-373; reopening the completed PRJ-014 Governance & Delivery Redesign — closed, and this is forward production work). Net new governance: PRJ-019 (created directly), PI-123, DEC-374, the membership + blocked_by edges. Does not resolve or address an existing PI's delivery — it creates the new prerequisite PI. Follows from SES-149.",
+    "references": []
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-052",
+    "conversation_title": "Scope the unified multi-engagement-DB migration (PI-123) and wire PI-122 blocked_by it",
+    "conversation_purpose": "Complete the ADO evolution's §10 NEXT list by scoping its last item — the unified multi-engagement-DB migration — as a governed Planning Item under a new production-architecture project, and recording PI-122's dependency on it.",
+    "conversation_description": "Created project PRJ-019 'Production Architecture' (direct POST), scoped the unified multi-engagement-DB migration as PI-123 (Draft) under it, and wired PI-122 blocked_by PI-123. The project-home choice is recorded as DEC-374. Closes the evolution's §10 NEXT list; PI-122's registry build now formally waits on the production-DB foundation that makes cross-engagement learning practical (DEC-373).",
+    "conversation_summary": "Scoped the unified multi-engagement-DB migration as PI-123 (Draft) under a new Production Architecture project (PRJ-019), and wired PI-122 (Agent Profile Registry) blocked_by PI-123 — the registry's cross-engagement learning needs the unified DB to be practical (DEC-373). The project-home choice is recorded as DEC-374. Closes the ADO evolution's §10 NEXT list.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-052",
+        "target_type": "session",
+        "target_id": "SES-150",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [
+    {
+      "identifier": "PI-123",
+      "title": "Unified multi-engagement DB — migrate from per-engagement-DB files to a single multi-tenant database",
+      "item_type": "pending_work",
+      "status": "Draft",
+      "executive_summary": "Replace CRMBuilder v2's per-engagement-DB-files architecture (one .db per engagement under data/engagements/, routed by a meta layer, an Alembic chain each, no cross-engagement queries, multiplied ops/backup) with a single multi-tenant database keyed by a row-level engagement_id (the standard multi-tenant model). A production-architecture change and the practical enabler of the Agent Profile Registry's cross-engagement learning (DEC-373): in one DB the system/engagement registry scope collapses to row scope and cross-engagement learning becomes one GROUP BY query. PI-122 (Agent Profile Registry) is blocked_by this item. Belongs to the new Production Architecture project (PRJ-019), not the ADO project.",
+      "description": "Scoped per agent-delivery-organization-evolution.md item 8 and DEC-373. The current per-engagement-DB model (crmbuilder-v2/data/engagements/X.db each, CRMBUILDER_V2_DB_PATH routing, per-engagement Alembic chains) is a dev-stage convenience, not a production architecture — it precludes cross-engagement queries, multiplies ops/backup surface, and does not scale to SaaS. Target: a single multi-tenant database with a row-level engagement_id discriminator. Scope to be decomposed by the ADO when this PI is dispatched; expected concerns include: the schema change adding engagement_id to engagement-scoped tables; the data migration consolidating existing per-engagement DBs into the unified store; the access-layer/routing change from DB-path selection to row-scoped queries; the db-export/snapshot model; and backup/ops. WHY IT BLOCKS PI-122: the Agent Profile Registry is designed system-level + scope-aware (a system | engagement discriminator on every row, DEC-373) so it works on either foundation, but its biggest payoff — cross-engagement learning — is only practical on the unified DB. Building the registry on the per-engagement foundation would mean a separate physical system store and near-impossible cross-engagement queries; hence PI-122 blocked_by PI-123. Belongs to PRJ-019 (Production Architecture), a production-readiness theme orthogonal to the ADO (PRJ-018) and distinct from the completed Governance & Delivery Redesign (PRJ-014). Status Draft; awaits decomposition."
+    }
+  ],
+  "commits": [],
+  "decisions": [
+    {
+      "identifier": "DEC-374",
+      "title": "Unified-DB migration scoped as PI-123 under a new Production Architecture project (PRJ-019); PI-122 blocked_by it",
+      "context": "agent-delivery-organization-evolution.md item 8 / DEC-373 decided the unified multi-engagement-DB migration should be its own Planning Item that PI-122 (Agent Profile Registry) depends on, belonging to 'a production-architecture Project, not the ADO Project.' No such project existed: PRJ-018 is the ADO; PRJ-014 (Governance & Delivery Redesign), which owns the current per-engagement-DB architecture, is complete. A project home was required before the PI could be created.",
+      "decision": "Create a new project PRJ-019 'Production Architecture' (via direct POST /projects per governance-recording-rules.md) as the home for production-readiness work orthogonal to any feature or to the ADO. Scope the unified multi-engagement-DB migration as PI-123 (Draft, pending_work) under PRJ-019 via planning_item_belongs_to_project. Wire blocked_by PI-122 -> PI-123 so the registry build cannot start until the unified-DB foundation lands. Decision taken by Doug (06-01-26): new production-architecture project, create now.",
+      "alternatives_considered": "(a) Put the PI under PRJ-018 (ADO) — rejected: DEC-373 explicitly says NOT the ADO project; conflates production-architecture with the agent organization. (b) Reopen the completed PRJ-014 (Governance & Delivery Redesign) — rejected: it is closed, and this is forward production-readiness work replacing the architecture PRJ-014 delivered, not a continuation of that redesign. (c) Defer creating the PI — rejected: the user chose to scope it now to close the evolution's NEXT list.",
+      "consequences": "PI-122's registry build now formally waits on PI-123 (blocked_by). Future production-readiness concerns (tenancy isolation, ops/backup consolidation, scale) have a home in PRJ-019 rather than being bolted onto feature or ADO projects. The registry is built scope-aware regardless (DEC-373), so it works on either foundation; PI-123 makes its biggest payoff (cross-engagement learning) practical. The ADO evolution's §10 NEXT list is now fully closed (govern decisions, fold scope into PRD/PI-122, scope the unified-DB PI).",
+      "executive_summary": "Created a new project PRJ-019 'Production Architecture' (direct POST) as the home for production-readiness work orthogonal to the ADO, and scoped the unified multi-engagement-DB migration as PI-123 (Draft) under it, with PI-122 (Agent Profile Registry) blocked_by PI-123. Settles the project-home question DEC-373 left open ('a production-architecture Project, not the ADO Project') — rejecting PRJ-018 (conflates production-arch with the agent org) and reopening the completed PRJ-014 (closed; this is forward production work). The registry build now formally waits on the unified-DB foundation that makes its cross-engagement learning practical. Closes the ADO evolution's §10 NEXT list.",
+      "decision_date": "2026-06-01",
+      "status": "Active"
+    }
+  ],
+  "references": [
+    {
+      "source_type": "session",
+      "source_id": "SES-150",
+      "target_type": "project",
+      "target_id": "PRJ-018",
+      "relationship": "session_belongs_to_project"
+    },
+    {
+      "source_type": "conversation",
+      "source_id": "CNV-052",
+      "target_type": "project",
+      "target_id": "PRJ-018",
+      "relationship": "conversation_belongs_to_project"
+    },
+    {
+      "source_type": "session",
+      "source_id": "SES-150",
+      "target_type": "session",
+      "target_id": "SES-149",
+      "relationship": "session_follows_from"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-374",
+      "target_type": "conversation",
+      "target_id": "CNV-052",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-123",
+      "target_type": "project",
+      "target_id": "PRJ-019",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-122",
+      "target_type": "planning_item",
+      "target_id": "PI-123",
+      "relationship": "blocked_by"
+    }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": []
+}

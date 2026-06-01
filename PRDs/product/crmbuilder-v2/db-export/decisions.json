@@ -6101,5 +6101,22 @@
     "supersedes_id": null,
     "title": "ADO registry scope — a SYSTEM-level service with engagement overlays; the unified multi-engagement-DB direction",
     "updated_at": "2026-06-01T21:16:44.013273"
+  },
+  {
+    "alternatives_considered": "(a) Put the PI under PRJ-018 (ADO) — rejected: DEC-373 explicitly says NOT the ADO project; conflates production-architecture with the agent organization. (b) Reopen the completed PRJ-014 (Governance & Delivery Redesign) — rejected: it is closed, and this is forward production-readiness work replacing the architecture PRJ-014 delivered, not a continuation of that redesign. (c) Defer creating the PI — rejected: the user chose to scope it now to close the evolution's NEXT list.",
+    "consequences": "PI-122's registry build now formally waits on PI-123 (blocked_by). Future production-readiness concerns (tenancy isolation, ops/backup consolidation, scale) have a home in PRJ-019 rather than being bolted onto feature or ADO projects. The registry is built scope-aware regardless (DEC-373), so it works on either foundation; PI-123 makes its biggest payoff (cross-engagement learning) practical. The ADO evolution's §10 NEXT list is now fully closed (govern decisions, fold scope into PRD/PI-122, scope the unified-DB PI).",
+    "context": "agent-delivery-organization-evolution.md item 8 / DEC-373 decided the unified multi-engagement-DB migration should be its own Planning Item that PI-122 (Agent Profile Registry) depends on, belonging to 'a production-architecture Project, not the ADO Project.' No such project existed: PRJ-018 is the ADO; PRJ-014 (Governance & Delivery Redesign), which owns the current per-engagement-DB architecture, is complete. A project home was required before the PI could be created.",
+    "created_at": "2026-06-01T21:55:57.681240",
+    "decision": "Create a new project PRJ-019 'Production Architecture' (via direct POST /projects per governance-recording-rules.md) as the home for production-readiness work orthogonal to any feature or to the ADO. Scope the unified multi-engagement-DB migration as PI-123 (Draft, pending_work) under PRJ-019 via planning_item_belongs_to_project. Wire blocked_by PI-122 -> PI-123 so the registry build cannot start until the unified-DB foundation lands. Decision taken by Doug (06-01-26): new production-architecture project, create now.",
+    "decision_date": "2026-06-01",
+    "executive_summary": "Created a new project PRJ-019 'Production Architecture' (direct POST) as the home for production-readiness work orthogonal to the ADO, and scoped the unified multi-engagement-DB migration as PI-123 (Draft) under it, with PI-122 (Agent Profile Registry) blocked_by PI-123. Settles the project-home question DEC-373 left open ('a production-architecture Project, not the ADO Project') — rejecting PRJ-018 (conflates production-arch with the agent org) and reopening the completed PRJ-014 (closed; this is forward production work). The registry build now formally waits on the unified-DB foundation that makes its cross-engagement learning practical. Closes the ADO evolution's §10 NEXT list.",
+    "id": 361,
+    "identifier": "DEC-374",
+    "rationale": "",
+    "status": "Active",
+    "superseded_by_id": null,
+    "supersedes_id": null,
+    "title": "Unified-DB migration scoped as PI-123 under a new Production Architecture project (PRJ-019); PI-122 blocked_by it",
+    "updated_at": "2026-06-01T21:55:57.681242"
   }
 ]
