@@ -2,8 +2,8 @@
 
 **Document type:** Application development design (the centralized registry of skill and governance-rule definitions that the Agent Delivery Organization's agents draw from)
 **Proposed path:** `PRDs/product/crmbuilder-v2/agent-profile-registry/agent-profile-registry-PRD-v0.1.md`
-**Status:** v0.2 — DRAFT proposal. Nothing built. Reconciled against the locked ADO design, the completed ADO substrate (PI-114 / WTK-001…006), and the PI-112 governance model. (Filename retains `-v0.1` as the stable path; the version inside this header is authoritative.)
-**Last Updated:** 05-31-26 20:10
+**Status:** v0.3 — DRAFT proposal. Nothing built. Reconciled against the locked ADO design, the completed ADO substrate (PI-114 / WTK-001…006), the PI-112 governance model, and — as of v0.3 — the **agent-layer evolution** (`agent-delivery-organization-evolution.md` v0.2, design-complete; governed as **DEC-367…373** via SES-149). (Filename retains `-v0.1` as the stable path; the version inside this header is authoritative.)
+**Last Updated:** 06-01-26
 
 ---
 
@@ -23,12 +23,15 @@ This PRD is the product of a Claude.ai design conversation that ran **before** t
 |---------|------------------------|--------|---------|
 | 0.1 | 05-31-26 18:15 | Doug Bower / Claude | Initial proposal. Registry pattern (versioned skill + governance-rule catalog, float/pin propagation, hybrid advisory/enforced governance, resolver→contract) re-pointed from the original generic-agent framing onto the ADO tiers/phases/areas and reconciled with the PI-112 governance model. Illustrative artifacts attached under `illustrative/`. |
 | 0.2 | 05-31-26 20:10 | Doug Bower / Claude | Reconciliation pass after the ADO substrate landed (PI-114 / WTK-001…006). Refreshed the Alembic head (`0033` → `0036`). Closed two open questions: skills/rules are full governance entities (§10.1), and the `AGP`/`SKL`/`GVR` prefixes are verified collision-free (§10.2). Added §12, the registry↔runtime seam (the registry *holds and resolves*; the runtime *injects and runs* — a distinct §10 deferral), and noted the WTK-002…006 substrate endpoints as the concrete tool-skills profiles bind. No change to the model or the four decisions. |
+| 0.3 | 06-01-26 | Doug Bower / Claude | **Scope expansion** to absorb the agent-layer evolution (`agent-delivery-organization-evolution.md` v0.2; governed as DEC-367…373 via SES-149). The registry is no longer a static catalog — it becomes a **living, curated, system-level learning knowledge base**. Five expansions, all in new §13: (a) the roster is now **per (area × tier)** — build areas get Architect/Developer/Tester, design/methodology areas Architect-only (DEC-368), superseding §3.1's per-ADO-tier roster; (b) a **fourth registry entity — `learning` (`LRN-`)** — plus the capture→accumulate→propose→promote write-back lifecycle, the graded conservative-then-earned promotion gate, and per-release curation (DEC-369); (c) every registry row carries a **`system | engagement` scope discriminator** and the resolver merges System ∪ engagement-overlay, with **cross-engagement learning** as the multiplier (DEC-373); (d) the **unified multi-engagement-DB migration** is recorded as a **prerequisite PI** PI-122 depends on (DEC-373 / evolution item 8); (e) the **standing-agent runtime** is clarified — "standing" is a *contract scope*, not a process (all agents spawn-on-demand), sharpening the §12 seam (DEC-372). The v0.2 model (§4), hybrid split (§5), versioning (§6), and the four preserved decisions (§7) remain valid and are *extended*, not replaced, by §13. |
 
 ## Change Log
 
 **Version 0.1 (05-31-26 18:15):** First draft. Reframes a prior design conversation's agent-registry work as the ADO §10 agent-profile registry. Records the four design decisions made in that conversation (hybrid governance, two-kind skill taxonomy, storage path, drift-assertion pinning) with rationale and alternatives, and maps them onto V2 conventions. Implementation approach (governance entity + Alembic + access layer + REST envelope + MCP + recording rules) specified at proposal level only.
 
 **Version 0.2 (05-31-26 20:10):** Reconciliation pass once the ADO substrate was complete (PI-114 / WTK-001…006 on Alembic head `0036`). Mechanical refreshes (head reference) and two now-answerable open questions resolved — full governance entities for `skill`/`governance_rule` (§10.1), and the proposed identifier prefixes confirmed free against the live prefix registry (§10.2). Added §12 making the registry↔runtime boundary explicit so the registry is not mistaken for the whole §10 job, and tied the abstract "tool-skill" to the concrete substrate endpoints now shipped. The model (§4), the hybrid-governance split (§5), the versioning policy (§6), and the four preserved decisions (§7) are unchanged.
+
+**Version 0.3 (06-01-26):** Scope expansion folding in the agent-layer evolution (`agent-delivery-organization-evolution.md` v0.2, governed as DEC-367…373). The driving reframe: the registry stops being a static catalog of prompts/skills/rules and becomes **the organization's living memory** — a system-level, scope-aware, learning knowledge base that the area experts grow each release. Concretely the build now must add a fourth entity (`learning`/`LRN-`) and its write-back lifecycle, carry a `system | engagement` scope discriminator on every row, model the roster as per-(area × tier) experts, and be designed scope-aware so the future unified multi-engagement DB needs no rework. All of this is captured in the new **§13** (which supersedes the v0.2 §3.1 roster and extends §4/§5/§6/§10); the rest of the v0.2 document remains valid as the catalog-layer foundation §13 builds on. No code written; this is a PRD-scope change ahead of the PI-122 build.
 
 ---
 
@@ -55,6 +58,9 @@ The registry makes the agent **thin**: it holds only its identity, and resolves 
 This is the load-bearing section. The registry only earns its place if it fits what already exists.
 
 ### 3.1 The agents are the ADO tiers, not generic operators
+
+> **Superseded by §13.1 (v0.3).** The agent-layer evolution (DEC-368) refines the roster from the per-ADO-tier list below to a **per-(area × tier)** matrix: build areas get **Architect / Developer / Tester** profiles, design/methodology areas **Architect-only**. The "one profile per phase / per area" framing here is the right *shape*; §13.1 gives the corrected axis. Read §13.1 for the authoritative roster.
+
 An "agent profile" is the skill-and-rule definition for **one ADO role or specialization**:
 
 - **Project Manager** — one profile.
@@ -170,11 +176,16 @@ This work itself should be governed: a Planning Item, decomposed by the ADO once
 1. **Entity vs vocab for skills/rules — RESOLVED: full governance entities.** `skill` and `governance_rule` are full governance entities (not vocab/config). Rationale: the ADO values queryability and auditability ("what is this agent allowed to do, at what version?"), bindings are reference edges (which vocab cannot carry), and the entities want monitoring panels alongside the Workstream/Work Task panels just shipped — all of which the entity route gives and vocab does not. The added weight is one more entity set behind the same access-layer/Alembic/REST/MCP machinery already used for six v0.7 entities.
 2. **Identifier prefixes — RESOLVED: `AGP` / `SKL` / `GVR` are free.** Verified against the live prefix registry (the 22 in-use prefixes: CM, CNV, CONV, COP, CRM, DEP, DOM, ENG, ENT, FLD, MCF, PER, PRJ, PROC, RB, REF, REQ, SES, TST, WSK, WT, WTK). No collision; the proposals stand, to be finalized through the schema-spec process.
 
+### Resolved/reframed in v0.3 (see §13)
+
+4. **Profile ↔ ADO role coupling — REFRAMED by DEC-368.** A profile is keyed to a **(area × tier)** cell, not an ADO orchestration role. The PM and PI Lead remain single orchestration profiles; the former "Phase Specialist" / "Area Specialist" dissolve into per-area Architect/Developer/Tester profiles (§13.1). The 1:1-vs-compose question is settled by the keying: one profile per (area × tier).
+
 ### Still open
 
 3. **Broker scope.** How much enforcement does the access layer already cover, and what genuinely needs a separate evaluation step? Likely small (§3.5) — most enforced rules are edge rules, CHECK constraints, lifecycle-transition validation, and the gate logic already shipped in WTK-001…006. The build should *bind* those, not re-implement them; a standalone broker is warranted only for rules the access layer cannot express.
-4. **Profile ↔ ADO role coupling.** Is a profile pinned 1:1 to an ADO role/specialization, or can a role compose multiple profiles?
 5. **Relationship to WS-012 orchestrator retirement** (ADO §10) and the shelved `planning_item.area` column — any interaction? (The PM substrate that shipped, `pm.py`, reads dependencies from `blocked_by` edges, not the `planning_item.area` column, so the registry has no new dependency on it.)
+6. **Learning retrieval at scale (§13.2).** Early, the resolver injects *all* active (area, tier) learnings into the contract; at scale this needs a relevance-retrieval step. The retrieval mechanism (and how aggressively curation must keep the active set small) is open — it doesn't block the first build, which can inject all-active.
+7. **Automatic stale-learning detection (§13.2).** Curation relies on per-release expert review + contradiction/source-change triggers + human spot-checks; fully-automatic staleness detection is an open AI problem deliberately left to those pragmatic mechanisms for now.
 
 ---
 
@@ -200,3 +211,125 @@ ADO §10 defers **two** distinct things, and this PRD covers only the first. Kee
 **Why this matters for sequencing.** A registry with no runtime is an inert catalog nothing reads; a runtime with no registry can run off hardcoded prompts (less clean, but functional). The cheapest way to de-risk the whole layer is therefore **not** to build the registry first, but to prove **one** agent end-to-end: hand-write one role's system prompt (e.g. the Development Phase Specialist or a storage Area Specialist), bind it to the substrate tools it needs, wire the contract by hand (no registry), and run it for real against a throwaway Planning Item. Once an agent prompt is shown to correctly drive the substrate, the registry has a *proven* artifact to catalog and version — and several open questions (§10.3–10.4) answer themselves from real use. Recommended order: **prove one agent (runtime slice) → then build this registry to hold the proven prompts.**
 
 **The tool-skills are concrete now.** When v0.1 was written the substrate did not yet exist, so "tool skill (a capability with an I/O contract and a backing callable)" was abstract. As of v0.2 the backing callables are the shipped endpoints/MCP tools from WTK-002…006. A worked binding: the **Development Phase Specialist** profile's tool-skills are `GET /workstreams/{id}/prior-phase-outputs` (read its feed-forward context) and `POST /workstreams/{id}/scope` (record its Work Tasks); the **PI Lead** profile's are `phase-overview` + `start-execution` + `complete-phase`; the **Project Manager** profile's are `backlog` + `dispatch`. The registry binds these per profile; the runtime makes them callable inside a live agent.
+
+---
+
+## 13. v0.3 scope expansion — the registry as a living, system-level learning memory
+
+This section folds in the agent-layer evolution (`agent-delivery-organization-evolution.md` v0.2; governed as **DEC-367…373**, recorded via SES-149). It **supersedes §3.1** (roster) and **extends** §4 (model), §5 (governance), §6 (versioning), and §10 (open questions). The driving reframe, in one line: **the registry is not a static catalog of prompts/skills/rules — it is the organization's living, curated, system-level memory that the area experts grow each release** (DEC-369).
+
+### 13.1 The roster is per-(area × tier), not per-ADO-role (DEC-368)
+
+The "agents" the registry serves are the cells of a **matrix** — passes (Plan/Design/Develop/Test) × **areas** — where the areas *are* the discipline vocab (`vocab.SYSTEM_AREA_RANKS` + per-engagement Engagement areas). A profile is keyed to a **(area × tier)** cell:
+
+| Area kind | Areas | Tiers (profiles) |
+|---|---|---|
+| **build** | `storage`(1), `access`(2), `api`(3), `mcp`(4), `ui`(4), `espo`, `automation`, `infrastructure`, `programs` | **Architect · Developer · Tester** |
+| **design / methodology** | `methodology-product` / `-process` / `-interviews` / `-templates` | **Architect only** (the design artifact *is* the deliverable) |
+
+- The **PM** and **PI Lead** remain single orchestration profiles (cross-PI/portfolio and per-PI, from ADO v0.3).
+- The former generalist **Phase Specialist / Area Specialist dissolve** into these per-area experts.
+- **Only Architects are standing, portfolio-aware, reconciling, and learning at the design level**; Developers and Testers are per-task executors of clean specs (but they *also* write implementation learnings — §13.2). Reconciliation knowledge lives **only** in the design tier.
+- The **Tester** is a spec-driven test-*implementer* parallel to the Developer (derives tests from the Architect's test-spec, blind to the Developer's code). **Staff incrementally** — stand up Architect + Developer first, add the Tester when rigor warrants (profiles are system-level + sparsely instantiated, so this is a staffing choice, not a model change).
+- **Sub-disciplines** (Web/Mobile/Desktop UI) are modeled per-engagement as **Engagement areas** (`ui-web`/`ui-mobile`/…) — no model change; a universal two-level System sub-area model is a deferred upgrade.
+
+**Registry impact:** profiles multiply along (area × tier) but are *defined once at system level* (§13.3) and instantiated only for the cells a release touches. Skills/rules are shared across the cells that need them.
+
+### 13.2 A fourth registry entity — `learning` (`LRN-`) — and the write-back lifecycle (DEC-369)
+
+The registry gains a **third knowledge store below the skill/rule catalog**, with increasing governance:
+
+```
+1. Learnings (LRN-)  — append-mostly, evidence-tagged. Written freely by experts. Advisory only.
+2. Skills (how-to)   — versioned catalog (§4). Experts may PROPOSE updates; float/pin governs adoption.
+3. Rules (must/must-not) — versioned, governed. Promoting a learning to an ENFORCED rule = HUMAN review, always.
+```
+
+**The `learning` entity:**
+
+```
+learning (LRN-):  area, tier {architect|developer}, category {gotcha|pattern|constraint|preference},
+                  content (situation → guidance), status {active|stale|retired|promoted},
+                  confidence (derived from evidence count/spread), scope {system | <engagement>}   (§13.3)
+edges:  learning_derived_from    → Work Task / finding / Decision / test-failure   (the evidence)
+        learning_contradicted_by → Work Task / observation                          (counter-evidence)
+        learning_promoted_to     → skill / governance_rule                           (if promoted)
+```
+
+**Lifecycle — capture → accumulate → propose → promote:**
+- **Capture** at *every* Work-Task close (a lightweight "what did I learn?" retro), plus from reconciliation **findings** (`FND-`, the ADO build's reconciliation entity) and test failures. Free, append-mostly, evidence-tagged. Most tasks yield 0–2.
+- **Accumulate** — a recurring observation links new evidence to the *existing* learning (confidence rises), never a duplicate. **Evidence is the promotion currency:** seen once = a hunch; confirmed across many Work Tasks = institutional knowledge; contradicted = confidence falls + triggers curation.
+- **Propose** — when well-evidenced (or judged important), the expert proposes refining a **skill** or adding/changing a **rule**.
+- **Promote** — gated (§13.4); `learning_promoted_to` links it; status → `promoted`.
+
+**Curation / decay** (the part that usually kills these systems): a **per-release "curate" Work Task** per (release, area) — each Architect sweeps its discipline's learnings at the start of the release's Design pass (retire stale, promote well-evidenced, merge duplicates) — plus **triggered re-validation** when a learning is contradicted or its evidence-source is refactored. Auto-detecting staleness is left to expert review + triggers + human spot-checks (open question §10.7).
+
+**Resolver impact:** the contract the resolver composes (§4) now also injects the expert's **active (area, tier) learnings** — "all active" early, a retrieved relevant subset at scale (open question §10.6).
+
+### 13.3 Every row is scope-aware: `system | engagement`, with cross-engagement learning (DEC-373)
+
+**The work is per-engagement; the *workforce* is system-level.** A Database Architect's expertise is universal — defining it inside every engagement is wasteful duplication. So the registry is a **system-level service with engagement overlays**, following the exact precedent of `SYSTEM_AREA_RANKS` (universal-in-code) + `engagement_areas` (per-engagement):
+
+```
+SYSTEM REGISTRY      universal (area × tier) profiles + their SYSTEM skills / rules / learnings
+ENGAGEMENT OVERLAY   + engagement-specific skills / rules / learnings (additions)
+                     + overrides / disables of specific system rules    (changes)
+EFFECTIVE CONTRACT   = System ∪ engagement-additions − engagement-disabled ⊕ engagement-overrides   (resolver merges)
+```
+
+**Concretely:** every registry row (`agent_profile` / `skill` / `governance_rule` / `learning`) carries an explicit **`scope` discriminator** — `system`, or a specific engagement. **Design it scope-aware now** and the future unified DB (§13.5) needs *no registry rework*; build it scope-blind and you rewrite it.
+
+**The multiplier — cross-engagement learning.** A *system* Database Architect accumulates learnings across **every** engagement (a DBA with 50 projects, not one). The learning loop gains a **scope axis**: system learnings (universal) vs. engagement learnings (local), and a new promotion path — a learning seen *independently across multiple engagements* is evidence it's universal → **cross-engagement promotion** from engagement-scope to system-scope. Promoting to a **system enforced rule** is the **top gate** (human review **plus** cross-engagement evidence).
+
+### 13.4 The promotion gate — graded by stakes, conservative-then-earned (DEC-369 + DEC-373)
+
+Reusing the registry's hybrid governance (no new safety system), the gate is graded and *earned*:
+
+```
+Learning        → FREE always (advisory observation; never blocks).
+Skill (how-to)  → expert-proposed; versioned + float/pin as the safety net.
+                  Human-reviewed EARLY; self-promotable once the expert earns trust.
+Advisory rule   → expert-proposed; light human ack early; loosens with track record.
+Enforced rule   → HUMAN REVIEW REQUIRED, ALWAYS — the permanent hard line. An agent must never
+                  self-grant or self-loosen a blocking constraint (the Needs Attention path).
+System enforced rule → top gate: human review + cross-engagement evidence (§13.3).
+```
+
+**The learning loop measures exactly the trust that loosens the gate** — a discipline with a long, clean track record of correct promotions is an evidenced candidate for more autonomy. The system earns its own slack. This is the same conservative-then-earned principle as the reconciliation automation boundary (DEC-367).
+
+### 13.5 The unified multi-engagement DB — a prerequisite PI (DEC-373 / evolution item 8)
+
+The current **per-engagement-DB** architecture (one `…/engagements/X.db` each, routed by a meta layer) is a dev-stage convenience, not a production architecture (Alembic chain per engagement, no cross-engagement queries, multiplied ops). A future migration to a **single multi-tenant DB with row-level `engagement_id`** is the **natural home** for the system/engagement registry — in one DB the scope model collapses to row scope and cross-engagement learning becomes one `GROUP BY content across engagement_ids` query.
+
+**Sequencing consequence:** the registry's biggest payoff (cross-engagement learning) genuinely needs the unified DB to be practical. So the **unified-DB migration is a strong prerequisite for the registry build and is scoped as its own PI that PI-122 depends on** (§14). It belongs to a production-architecture Project, not the ADO Project. PI-122 is built **scope-aware** regardless, so it works on either foundation and gains nothing-rework when the migration lands.
+
+### 13.6 The standing-agent runtime sharpens the §12 seam (DEC-372)
+
+§12's registry↔runtime boundary is unchanged but clarified: **no agent is a perpetual process.** Because of DB-backed statelessness, *every* agent — Architect, Developer, Tester, PM, Lead — is **spawned on demand and ephemeral**: it reads its state/queue/learnings from the DB, does its unit, writes back, exits. So **"standing" is a *contract scope*, not a process lifetime** — a standing Architect's resolved contract grants portfolio-wide queue access + reconciliation + learning-curation; a Developer's grants one Work Task; both spawn fresh each time. This means the registry has **no daemon to model** — it resolves contracts; the runtime scheduler (a separate §10 follow-on) injects them and spawns the ephemeral agent (build agents in a fresh worktree from current `main` HEAD). The registry is **runtime-ready** when its resolver returns a complete contract (prompt + tools + ruleset + **active learnings** + version + scope-merge).
+
+### 13.7 Revised implementation checklist (extends §9)
+
+Beyond §9's three-entity set, the v0.3 build must:
+
+1. Add the **fourth entity `learning` (`LRN-`)** + its three edge kinds (`learning_derived_from`, `learning_contradicted_by`, `learning_promoted_to`) to the schema spec set, the Alembic migration, `REFERENCE_RELATIONSHIPS`, `_kinds_for_pair`, and the `relationship_kind` CHECK.
+2. Carry a **`scope` discriminator** (`system | engagement`) on every registry row (`agent_profile` / `skill` / `governance_rule` / `learning`) — the one design choice that makes the unified-DB migration rework-free.
+3. Model profiles per **(area × tier)** (§13.1), seeded with the two proven prompts (Development-area Architect-tier ≈ the proven "Development Phase Specialist"; an Area-Specialist ≈ a Developer-tier profile) mapped onto the new axis.
+4. Implement the **resolver** to compose the **effective contract** = System ∪ engagement-overlay, including active (area, tier) learnings.
+5. Implement the **write-back lifecycle** — a capture step at Work-Task close, the propose/promote workflow reusing the skill/rule catalog + float/pin + `needs_attention` human gate, and the per-release **curate** Work Task.
+6. (Schema-only in PI-122; *driven* by the runtime follow-on.) Keep the resolver runtime-ready per §13.6.
+
+The reconciliation `finding` entity (`FND-`) is an **ADO-substrate build concern** (it lives in the org's delivery model, not the registry), but the learning loop *consumes* findings as evidence — so the two builds are coupled at the `learning_derived_from → finding` edge. Sequence accordingly.
+
+---
+
+## 14. Build sequencing (v0.3)
+
+The evolution's §10 NEXT items resolve into this order:
+
+1. **Govern the design decisions** — ✅ done: DEC-367…373 recorded via SES-149 (06-01-26).
+2. **Fold the expanded scope into this PRD / PI-122** — ✅ done: §13 above; PI-122's description updated to the v0.3 scope.
+3. **Scope the unified multi-engagement-DB migration as its own PI** (§13.5) — a production-architecture PI that **PI-122 depends on** (`blocked_by`). To author next.
+4. **Build PI-122** (the registry, now scope-aware + learning-capable) — onto the unified-DB foundation once (3) lands; the schema is built scope-aware either way.
+5. **Wire the runtime scheduler** (§13.6 / §12) — the separate §10 follow-on that injects contracts and spawns ephemeral agents — after the registry can resolve them.
+
+Once (3)–(5) land, the ADO runs its own subsequent PIs with registry-supplied contracts instead of hand-written prompts.
